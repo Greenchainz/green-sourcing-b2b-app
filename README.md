@@ -10,7 +10,7 @@ GreenChainz is a comprehensive platform that connects businesses with verified s
 
 - **Backend**: Node.js + Express
 - **Database**: PostgreSQL 15
-- **Frontend**: React (planned)
+- **Frontend**: React 18 + Vite
 - **Infrastructure**: Docker + Docker Compose
 
 ## Prerequisites
@@ -48,21 +48,23 @@ curl http://localhost:3001/health
 docker compose up -d db
 ```
 
-2. Install backend dependencies:
+2. Install and run backend:
 ```bash
 cd backend
 npm install
-```
-
-3. Create a `.env` file in the root directory (copy from `.env.example`):
-```bash
-cp .env.example .env
-```
-
-4. Run the backend server:
-```bash
 npm start
 ```
+
+3. Install and run frontend (in a new terminal):
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+4. Access the application:
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:3001`
 
 ## API Endpoints
 
@@ -95,7 +97,13 @@ green-sourcing-b2b-app/
 │   └── Dockerfile       # Backend container configuration
 ├── database-schemas/     # Database schema definitions
 │   └── init.sql         # Initial schema and sample data
-├── frontend/            # React frontend (planned)
+├── frontend/            # React frontend
+│   ├── src/            # Source code
+│   │   ├── components/ # React components
+│   │   ├── App.jsx     # Main application component
+│   │   └── main.jsx    # Entry point
+│   ├── package.json    # Frontend dependencies
+│   └── vite.config.js  # Vite configuration
 ├── docker-compose.yml   # Docker orchestration
 ├── .env.example         # Environment variables template
 └── README.md           # This file
@@ -170,16 +178,21 @@ Key environment variables (see `.env.example`):
 - ✅ Docker containerization
 - ✅ Database initialization with sample data
 - ✅ Error handling and logging
+- ✅ React frontend with modern UI
+- ✅ Real-time health status monitoring
+- ✅ Supplier directory with sustainability ratings
+- ✅ Responsive design (mobile, tablet, desktop)
 
 ## Roadmap
 
-- [ ] Frontend React application
 - [ ] User authentication and authorization
 - [ ] Advanced supplier search and filtering
+- [ ] Product catalog and details
 - [ ] Sustainability scoring algorithms
 - [ ] Document verification system
 - [ ] Real-time notifications
 - [ ] Analytics dashboard
+- [ ] Multi-language support
 
 ## Contributing
 
