@@ -1,0 +1,51 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: 40px 20px;
+}
+
+.suppliers-section h2 {
+  color: var(--primary-green);
+  margin-bottom: 10px;
+  font-size: 2rem;
+}
+
+.section-description {
+  color: var(--text-light);
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 1.2rem;
+  color: var(--text-light);
+}
+
+.error {
+  background-color: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.footer {
+  background-color: var(--primary-green);
+  color: var(--white);
+  padding: 30px 0;
+  margin-top: 60px;
+  text-align: center;
+}
+
+.footer p {
+  margin: 0;
+}
