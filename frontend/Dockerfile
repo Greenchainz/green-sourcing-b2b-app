@@ -1,10 +1,12 @@
+
 # FILE: frontend/Dockerfile
-# PURPOSE: Builds the React + Vite Frontend (Corrected)
+# PURPOSE: Builds the React + Vite Frontend (Corrected Node Version)
 
 # -----------------
 # STAGE 1: The Builder
 # -----------------
-FROM node:18-alpine AS builder
+# --- FIX: Upgraded from node:18 to node:20 as required by Vite ---
+FROM node:20-alpine AS builder 
 
 WORKDIR /app
 
@@ -21,7 +23,8 @@ RUN npm run build
 # -----------------
 # STAGE 2: The Production Runner
 # -----------------
-FROM node:18-alpine AS runner
+# --- FIX: Using matching node:20 base ---
+FROM node:20-alpine AS runner 
 
 WORKDIR /app
 

@@ -1,26 +1,56 @@
-import SupplierProfile from './components/SupplierProfile';
 import './App.css'
+import { Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import { LandingPage } from './pages/LandingPage';
+import { ArchitectDashboard } from './pages/ArchitectDashboard';
+import { SupplierDashboard } from './pages/SupplierDashboard';
+import { NetworkBoard } from './pages/NetworkBoard';
+import { AdminConsole } from './pages/AdminConsole';
+import { ArchitectSurvey } from './components/ArchitectSurvey';
 
 function App() {
   return (
-    <div className="min-h-screen bg-neutral-light">
-      <header className="bg-green-primary text-white py-6 shadow-lg">
-        <div className="max-w-6xl mx-auto px-6">
-          <h1 className="text-3xl font-bold">GreenChainz B2B Platform</h1>
-          <p className="text-green-light mt-1">Global Trust Layer for Sustainable Commerce</p>
-        </div>
-      </header>
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/survey/architect" element={<ArchitectSurvey />} />
 
-      <main className="py-8">
-        <SupplierProfile supplierId={1} />
-      </main>
-
-      <footer className="bg-neutral-dark text-neutral-light py-4 mt-12">
-        <div className="max-w-6xl mx-auto px-6 text-center text-sm">
-          © 2025 GreenChainz - Verified Sustainable Sourcing Platform
-        </div>
-      </footer>
-    </div>
+      {/* Protected Routes */}
+      <Route
+        path="/dashboard/architect"
+        element={
+          <ProtectedRoute>
+            <ArchitectDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/supplier"
+        element={
+          <ProtectedRoute>
+            <SupplierDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/network"
+        element={
+          <ProtectedRoute>
+            <NetworkBoard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminConsole />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }
 

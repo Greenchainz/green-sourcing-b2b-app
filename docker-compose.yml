@@ -1,4 +1,5 @@
-version: '3.8'
+# FILE: docker-compose.yml
+# PURPOSE: The single, unified configuration for the GreenChainz platform.
 
 services:
   # ---------------------------------
@@ -16,39 +17,50 @@ services:
       POSTGRES_USER: ${DB_USER:-user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_DB: ${DB_NAME:-greenchainz_dev}
-# FILE: docker-compose.yml
 
-services:
-  # ... (db service is unchanged) ...
-
+  # ---------------------------------
+  # SERVICE 2: Backend (Node.js / Express)
+  # ---------------------------------
   backend:
     container_name: greenchainz-backend
     build:
-      context: . # <-- CHANGE THIS
-      dockerfile: ./backend/Dockerfile # <-- CHANGE THIS
+      context: . # Uses the root directory as context
+      dockerfile: ./backend/Dockerfile # Specifies the path to the Dockerfile
     restart: unless-stopped
     ports:
       - "3001:3001"
     depends_on:
       - db
     environment:
-      # ... (rest of environment is unchanged) ...
+      NODE_ENV: development
+      PORT: 3001
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      # Provide both legacy and app-consumed PG variables
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-greenchainz_dev}
+      # Keep DB_* for compatibility if other tools use them
+      DB_USER: ${DB_USER:-user}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_NAME: ${DB_NAME:-greenchainz_dev}
 
+  # ---------------------------------
+  # SERVICE 3: Frontend (React + Vite)
+  # ---------------------------------
   frontend:
     container_name: greenchainz-frontend
     build:
-      context: . # <-- CHANGE THIS
-      dockerfile: ./frontend/Dockerfile # <-- CHANGE THIS
+      context: . # Uses the root directory as context
+      dockerfile: ./frontend/Dockerfile # Specifies the path to the Dockerfile
     restart: unless-stopped
     ports:
       - "5173:5173"
     depends_on:
       - backend
     environment:
-      # ... (rest of environment is unchanged) ...
-
-# ... (volumes are unchanged) ...
-
+      NODE_ENV: development
+      VITE_API_BASE_URL: http://localhost:3001 # URL for the frontend to call the backend
 
 # ---------------------------------
 # VOLUMES: Ensures DB data persists
