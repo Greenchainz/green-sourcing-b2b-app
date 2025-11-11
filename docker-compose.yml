@@ -1,17 +1,58 @@
 version: '3.8'
+
 services:
+  # ---------------------------------
+  # SERVICE 1: PostgreSQL Database
+  # ---------------------------------
   db:
     image: postgres:15
-    container_name: greenchainz_db
-    restart: always
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: greenchainz_dev
+    container_name: greenchainz-db
+    restart: unless-stopped
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - greenchainz-db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-greenchainz_dev}
+# FILE: docker-compose.yml
 
+services:
+  # ... (db service is unchanged) ...
+
+  backend:
+    container_name: greenchainz-backend
+    build:
+      context: . # <-- CHANGE THIS
+      dockerfile: ./backend/Dockerfile # <-- CHANGE THIS
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    environment:
+      # ... (rest of environment is unchanged) ...
+
+  frontend:
+    container_name: greenchainz-frontend
+    build:
+      context: . # <-- CHANGE THIS
+      dockerfile: ./frontend/Dockerfile # <-- CHANGE THIS
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      # ... (rest of environment is unchanged) ...
+
+# ... (volumes are unchanged) ...
+
+
+# ---------------------------------
+# VOLUMES: Ensures DB data persists
+# ---------------------------------
 volumes:
-  postgres_data:
+  greenchainz-db-data:
+    driver: local
