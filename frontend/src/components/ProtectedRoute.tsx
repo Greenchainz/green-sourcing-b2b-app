@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-    const { token, loading } = useAuth();
+    const { user, loading } = useAuth();
     const location = useLocation();
 
     if (loading) {
@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         );
     }
 
-    if (!token) {
+    if (!user) {
         return <Navigate to="/login" replace state={{ from: location }} />;
     }
 
