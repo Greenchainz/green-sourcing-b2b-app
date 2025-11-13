@@ -1,31 +1,29 @@
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 export default function AuthCallback() {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
 
     useEffect(() => {
-        const token = searchParams.get('token');
-        const error = searchParams.get('error');
+        // Supabase handles the OAuth callback automatically
+        // Just check if we have a session and redirect
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+            if (error) {
+                console.error('OAuth error:', error);
+                navigate('/login?error=' + encodeURIComponent(error.message));
+                return;
+            }
 
-        if (error) {
-            // OAuth failed
-            console.error('OAuth authentication failed:', error);
-            navigate('/login?error=' + encodeURIComponent(error));
-            return;
-        }
-
-        if (token) {
-            // Store token and reload to trigger AuthContext bootstrap
-            localStorage.setItem('greenchainz-token', token);
-            // Redirect to home and let AuthContext pick up the token
-            window.location.href = '/';
-        } else {
-            // No token or error, redirect to login
-            navigate('/login?error=auth_failed');
-        }
-    }, [searchParams, navigate]);
+            if (session) {
+                // Successfully authenticated, redirect to dashboard
+                navigate('/dashboard/architect');
+            } else {
+                // No session, redirect to login
+                navigate('/login?error=auth_failed');
+            }
+        });
+    }, [navigate]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">

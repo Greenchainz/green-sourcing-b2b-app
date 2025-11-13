@@ -1,12 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { supabase } from '../../lib/supabase';
 
 export default function Login() {
-    const { login } = useAuth();
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -18,18 +15,33 @@ export default function Login() {
         setError(null);
         setLoading(true);
         try {
-            await login(email, password);
-            navigate('/');
+            const { data, error: signInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (signInError) throw signInError;
+            if (data.user) {
+                navigate('/dashboard/architect');
+            }
         } catch (err: any) {
-            setError(err?.response?.data?.error || 'Login failed');
+            setError(err?.message || 'Login failed');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleOAuthLogin = (provider: string) => {
-        // Redirect to backend OAuth route
-        window.location.href = `${API_URL}/auth/${provider}`;
+    const handleOAuthLogin = async (provider: 'google' | 'github' | 'azure' | 'linkedin_oidc') => {
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`
+                }
+            });
+            if (error) throw error;
+        } catch (err: any) {
+            setError(err?.message || 'OAuth login failed');
+        }
     };
 
     return (
@@ -78,7 +90,7 @@ export default function Login() {
                     </button>
 
                     <button
-                        onClick={() => handleOAuthLogin('linkedin')}
+                        onClick={() => handleOAuthLogin('linkedin_oidc')}
                         className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg bg-[#0077B5] hover:bg-[#006399] text-white font-medium transition-all hover:shadow-lg"
                     >
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -88,7 +100,7 @@ export default function Login() {
                     </button>
 
                     <button
-                        onClick={() => handleOAuthLogin('microsoft')}
+                        onClick={() => handleOAuthLogin('azure')}
                         className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all border border-slate-700 hover:shadow-lg"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
