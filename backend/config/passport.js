@@ -1,13 +1,13 @@
 // ============================================
 // PASSPORT.JS OAUTH CONFIGURATION
-// Google, Facebook, LinkedIn, GitHub
+// Google, GitHub, LinkedIn, Microsoft
 // ============================================
 
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const FacebookStrategy = require('passport-facebook').Strategy;
 const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
+const MicrosoftStrategy = require('passport-microsoft').Strategy;
 const { pool } = require('../db');
 
 // Serialize user into session
@@ -192,6 +192,50 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
            RETURNING *`,
                         [email, name, 'Buyer', 'github', profile.id]
+                    );
+                    user = result.rows[0];
+                }
+
+                return done(null, user);
+            } catch (err) {
+                return done(err, null);
+            }
+        }));
+}
+
+// ============================================
+// MICROSOFT OAUTH STRATEGY
+// ============================================
+if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
+    passport.use(new MicrosoftStrategy({
+        clientID: process.env.MICROSOFT_CLIENT_ID,
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+        callbackURL: process.env.MICROSOFT_CALLBACK_URL || 'http://localhost:3001/auth/microsoft/callback',
+        scope: ['user.read']
+    },
+        async (accessToken, refreshToken, profile, done) => {
+            try {
+                let result = await pool.query(
+                    'SELECT * FROM Users WHERE OAuthProvider = $1 AND OAuthID = $2',
+                    ['microsoft', profile.id]
+                );
+
+                let user;
+                if (result.rows.length > 0) {
+                    user = result.rows[0];
+                    await pool.query(
+                        'UPDATE Users SET LastLogin = NOW() WHERE UserID = $1',
+                        [user.userid]
+                    );
+                } else {
+                    const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+                    const name = profile.displayName || 'Microsoft User';
+
+                    result = await pool.query(
+                        `INSERT INTO Users (Email, FullName, Role, OAuthProvider, OAuthID, CreatedAt, LastLogin)
+           VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+           RETURNING *`,
+                        [email, name, 'Buyer', 'microsoft', profile.id]
                     );
                     user = result.rows[0];
                 }

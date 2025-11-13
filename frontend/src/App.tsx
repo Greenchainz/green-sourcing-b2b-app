@@ -2,6 +2,7 @@ import './App.css'
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import AuthCallback from './pages/AuthCallback';
 import { LandingPage } from './pages/LandingPage';
 import { ArchitectDashboard } from './pages/ArchitectDashboard';
 import { SupplierDashboard } from './pages/SupplierDashboard';
@@ -15,6 +16,7 @@ function App() {
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/survey/architect" element={<ArchitectSurvey />} />
 
       {/* Protected Routes */}

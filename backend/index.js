@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const session = require('express-session');
+const passport = require('./config/passport');
 const { authenticateToken, authorizeRoles, JWT_SECRET } = require('./middleware/auth');
 const FSCMockProvider = require('./providers/fscMock');
 const {
@@ -23,8 +25,20 @@ const YAML = require('yaml');
 const app = express();
 
 // Middleware
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
+
+// Session middleware for OAuth
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'greenchainz-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Serve static admin dashboard
 app.use('/admin/dashboard', express.static(path.join(__dirname, 'public')));
@@ -1220,6 +1234,50 @@ app.post('/api/v1/admin/notifications/:id/resend', authenticateToken, authorizeR
     res.status(500).json({ error: 'Failed to resend notification' });
   }
 });
+
+// ============================================
+// OAUTH AUTHENTICATION ROUTES
+// ============================================
+
+// Google OAuth
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login?error=google_auth_failed' }),
+  (req, res) => {
+    const token = jwt.sign({ userId: req.user.userid, email: req.user.email, role: req.user.role }, JWT_SECRET, { expiresIn: '7d' });
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback?token=${token}`);
+  }
+);
+
+// GitHub OAuth
+app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
+app.get('/auth/github/callback',
+  passport.authenticate('github', { failureRedirect: '/login?error=github_auth_failed' }),
+  (req, res) => {
+    const token = jwt.sign({ userId: req.user.userid, email: req.user.email, role: req.user.role }, JWT_SECRET, { expiresIn: '7d' });
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback?token=${token}`);
+  }
+);
+
+// LinkedIn OAuth
+app.get('/auth/linkedin', passport.authenticate('linkedin', { scope: ['r_emailaddress', 'r_liteprofile'] }));
+app.get('/auth/linkedin/callback',
+  passport.authenticate('linkedin', { failureRedirect: '/login?error=linkedin_auth_failed' }),
+  (req, res) => {
+    const token = jwt.sign({ userId: req.user.userid, email: req.user.email, role: req.user.role }, JWT_SECRET, { expiresIn: '7d' });
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback?token=${token}`);
+  }
+);
+
+// Microsoft OAuth
+app.get('/auth/microsoft', passport.authenticate('microsoft', { scope: ['user.read'] }));
+app.get('/auth/microsoft/callback',
+  passport.authenticate('microsoft', { failureRedirect: '/login?error=microsoft_auth_failed' }),
+  (req, res) => {
+    const token = jwt.sign({ userId: req.user.userid, email: req.user.email, role: req.user.role }, JWT_SECRET, { expiresIn: '7d' });
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback?token=${token}`);
+  }
+);
 
 // ============================================
 // SERVER STARTUP

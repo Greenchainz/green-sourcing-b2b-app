@@ -12,9 +12,10 @@ export function LandingPage() {
                             <h1 className="text-2xl font-bold text-white tracking-tight">GreenChainz</h1>
                         </div>
                         <nav className="flex items-center gap-6">
+                            <Link to="/survey/architect" className="text-slate-300 hover:text-white transition-colors">Take Survey</Link>
                             <Link to="/login" className="text-slate-300 hover:text-white transition-colors">Sign In</Link>
                             <Link
-                                to="/signup"
+                                to="/login"
                                 className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium transition-colors"
                             >
                                 Get Started
@@ -52,19 +53,19 @@ export function LandingPage() {
                         {/* Dual CTAs */}
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
                             <Link
-                                to="/signup?role=architect"
+                                to="/survey/architect"
                                 className="group relative px-8 py-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 text-white font-semibold text-lg shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 transition-all duration-300 hover:scale-105 w-full sm:w-auto"
                             >
                                 <span className="flex items-center gap-2 justify-center">
-                                    🏗️ Join as Architect
+                                    🏗️ Complete Survey
                                     <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                                     </svg>
                                 </span>
                             </Link>
 
-                            <Link
-                                to="/signup?role=supplier"
+                            <a
+                                href="mailto:partnerships@greenchainz.com"
                                 className="group px-8 py-4 rounded-xl border-2 border-sky-500/50 text-sky-400 font-semibold text-lg hover:bg-sky-500/10 hover:border-sky-500 transition-all duration-300 hover:scale-105 w-full sm:w-auto"
                             >
                                 <span className="flex items-center gap-2 justify-center">
@@ -73,18 +74,18 @@ export function LandingPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                                     </svg>
                                 </span>
-                            </Link>
+                            </a>
                         </div>
 
-                        <Link
-                            to="/partnerships"
+                        <a
+                            href="mailto:partnerships@greenchainz.com"
                             className="inline-flex items-center gap-2 text-slate-400 hover:text-sky-400 transition-colors text-sm"
                         >
                             <span>Become a Data Provider Partner</span>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </section>
