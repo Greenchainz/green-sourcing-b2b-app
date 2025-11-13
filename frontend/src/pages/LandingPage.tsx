@@ -206,24 +206,31 @@ export function LandingPage() {
                             </p>
                         </div>
 
-                        {[
-                            { title: 'Product', links: ['Features', 'Pricing', 'Demo', 'Roadmap'] },
-                            { title: 'Company', links: ['About', 'Blog', 'Careers', 'Contact'] },
-                            { title: 'Legal', links: ['Privacy', 'Terms', 'Security', 'Compliance'] }
-                        ].map((col, i) => (
-                            <div key={i}>
-                                <h4 className="font-semibold text-white mb-4">{col.title}</h4>
-                                <ul className="space-y-2">
-                                    {col.links.map((link, j) => (
-                                        <li key={j}>
-                                            <a href="#" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">
-                                                {link}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
+                        <div>
+                            <h4 className="font-semibold text-white mb-4">Product</h4>
+                            <ul className="space-y-2">
+                                <li><Link to="/features" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Features</Link></li>
+                                <li><Link to="/survey/architect" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Take Survey</Link></li>
+                                <li><Link to="/signup" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Sign Up</Link></li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h4 className="font-semibold text-white mb-4">Company</h4>
+                            <ul className="space-y-2">
+                                <li><Link to="/contact" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Contact</Link></li>
+                                <li><a href="mailto:partnerships@greenchainz.com" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Partnerships</a></li>
+                                <li><a href="mailto:hello@greenchainz.com" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Support</a></li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h4 className="font-semibold text-white mb-4">Legal</h4>
+                            <ul className="space-y-2">
+                                <li><Link to="/privacy" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Privacy</Link></li>
+                                <li><Link to="/terms" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Terms</Link></li>
+                            </ul>
+                        </div>
                     </div>
 
                     <div className="mt-12 pt-8 border-t border-slate-800 text-center text-slate-500 text-sm">
