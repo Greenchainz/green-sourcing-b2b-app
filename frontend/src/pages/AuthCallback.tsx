@@ -1,11 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 
 export default function AuthCallback() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { setToken } = useAuth();
 
     useEffect(() => {
         const token = searchParams.get('token');
@@ -19,15 +17,15 @@ export default function AuthCallback() {
         }
 
         if (token) {
-            // Store token and redirect to dashboard
-            localStorage.setItem('token', token);
-            if (setToken) setToken(token);
-            navigate('/dashboard/architect');
+            // Store token and reload to trigger AuthContext bootstrap
+            localStorage.setItem('greenchainz-token', token);
+            // Redirect to home and let AuthContext pick up the token
+            window.location.href = '/';
         } else {
             // No token or error, redirect to login
             navigate('/login?error=auth_failed');
         }
-    }, [searchParams, navigate, setToken]);
+    }, [searchParams, navigate]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
