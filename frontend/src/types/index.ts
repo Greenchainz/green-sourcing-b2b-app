@@ -1,3 +1,28 @@
+feat/supplier-dashboard
+export type Product = {
+  id: number;
+  name: string;
+  views: number;
+  rfqs: number;
+  status: 'Active' | 'Pending Review';
+  certifications: string[];
+};
+
+export type RFQ = {
+  company: string;
+  project: string;
+  product: string;
+  date: string;
+  status: 'New' | 'Responded' | 'In Discussion';
+};
+
+export type Supplier = {
+  name: string;
+  totalProducts: number;
+  rfqsThisMonth: number;
+  profileViews: number;
+};
+
  feat/rfq-protected-routes
 // frontend/src/types/index.ts
 
@@ -11,7 +36,7 @@ export interface RFQ {
   project_name: string;
   quantity: number;
   message: string;
-=======
+  
 feature/product-card-component
 // frontend/src/types/index.ts
 
@@ -80,3 +105,4 @@ export interface AuthContextType {
 main
 main
 }
+main

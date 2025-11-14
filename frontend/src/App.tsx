@@ -15,6 +15,10 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+ feat/supplier-dashboard
+import FilterSidebar, { FilterState } from './components/FilterSidebar';
+import { useState } from 'react';
+
 feat/rfq-protected-routes
 import Unauthorized from './pages/Unauthorized';
 
@@ -31,6 +35,7 @@ import Layout from './components/Layout';
  main
  main
 main
+ main
 
 function App() {
   const [filterState, setFilterState] = useState<FilterState | null>(null);
@@ -92,6 +97,9 @@ function App() {
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Protected Routes */}
+ feat/supplier-dashboard
+      <Route element={<ProtectedRoute />}>
+
       <Route
         path="/dashboard/architect"
         element={
@@ -124,7 +132,7 @@ function App() {
           </ProtectedRoute>
         }
       />
-=======
+
 feature/product-detail-page
       <Route path="/product/:id" element={<ProductDetailPage />} />
 
@@ -144,6 +152,7 @@ feature/product-card-component
  main
 main
  main
+ main
         <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/network" element={<NetworkBoard />} />
@@ -156,8 +165,12 @@ main
   );
 }
 
+feat/supplier-dashboard
+export default App
+
  feat/rfq-protected-routes
 export default App;
 
 export default App
+ main
  main

@@ -1,8 +1,14 @@
+feat/supplier-dashboard
+import { useEffect, useState, useContext } from 'react';
+
 // frontend/src/context/AuthContext.tsx
 import { useEffect, useState, useContext, createContext } from 'react';
+main
 import type { ReactNode } from 'react';
 import { supabase } from '../../lib/supabase'; // Corrected path
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+ feat/supplier-dashboard
+
 
 // Define the shape of the context
 interface AuthContextType {
@@ -30,6 +36,7 @@ main
 main
  main
 main
+main
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -47,6 +54,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         getSession();
 
         const { data: authListener } = supabase.auth.onAuthStateChange(
+ feat/supplier-dashboard
+            (_event, session) => {
+
  feat/filter-sidebar
             (_event, session) => {
 
@@ -70,6 +80,7 @@ main
  main
  main
 main
+ main
                 setSession(session);
                 setUser(session?.user ?? null);
                 setLoading(false);
