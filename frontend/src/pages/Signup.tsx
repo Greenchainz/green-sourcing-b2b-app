@@ -10,7 +10,11 @@ export default function Signup() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [company, setCompany] = useState('');
+  fix/add-data-provider-signup
+    const [role, setRole] = useState<'buyer' | 'supplier' | 'data_provider'>('buyer');
+
     const [role, setRole] = useState<'buyer' | 'supplier'>('buyer');
+main
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -34,7 +38,17 @@ export default function Signup() {
             if (signUpError) throw signUpError;
             if (data.user) {
                 // Redirect to appropriate dashboard
+fix/add-data-provider-signup
+                if (role === 'buyer') {
+                    navigate('/dashboard/architect');
+                } else if (role === 'supplier') {
+                    navigate('/dashboard/supplier');
+                } else {
+                    navigate('/dashboard');
+                }
+
                 navigate(role === 'buyer' ? '/dashboard/architect' : '/dashboard/supplier');
+ main
             }
         } catch (err) {
             setError((err as Error).message || 'Signup failed');
@@ -165,7 +179,7 @@ export default function Signup() {
 
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">I am a...</label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                             <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${
                                 role === 'buyer'
                                     ? 'border-sky-500 bg-sky-500/10' 
@@ -195,6 +209,21 @@ export default function Signup() {
                                     className="sr-only"
                                 />
                                 <span className="text-white font-medium">🌱 Supplier</span>
+                            </label>
+                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                role === 'data_provider'
+                                    ? 'border-sky-500 bg-sky-500/10'
+                                    : 'border-slate-700 hover:border-slate-600'
+                            }`}>
+                                <input
+                                    type="radio"
+                                    name="role"
+                                    value="data_provider"
+                                    checked={role === 'data_provider'}
+                                    onChange={(e) => setRole(e.target.value as 'data_provider')}
+                                    className="sr-only"
+                                />
+                                <span className="text-white font-medium">📊 Data Provider</span>
                             </label>
                         </div>
                     </div>
