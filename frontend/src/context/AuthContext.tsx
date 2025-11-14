@@ -1,9 +1,32 @@
 // frontend/src/context/AuthContext.tsx
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, createContext } from 'react';
 import type { ReactNode } from 'react';
-import { supabase } from '../../lib/supabase';
+ feat/greenchainz-search-bar
+import { supabase } from '../lib/supabase';
 import { AuthContext } from './authContextDefinition';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+feature/product-card-component
+
+
+ feat/product-card-component
+import { supabase } from '../../lib/supabase'; // Corrected path
+import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+
+// Define the shape of the context
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+}
+
+// Create the context with a default undefined value
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { supabase } from '../../lib/supabase';
+import { AuthContext } from './authContextDefinition';
+import type { Session, User } from '@supabase/supabase-js';
+main
+ main
+ main
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -21,7 +44,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         getSession();
 
         const { data: authListener } = supabase.auth.onAuthStateChange(
+ feature/product-card-component
             (_event: AuthChangeEvent, session: Session | null) => {
+
+feat/product-card-component
+           (_event: AuthChangeEvent, session: Session | null) => {
+feat/greenchainz-search-bar
+
+
+            (_event, session) => {
+main
+main
+ main
                 setSession(session);
                 setUser(session?.user ?? null);
                 setLoading(false);
