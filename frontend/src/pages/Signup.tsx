@@ -38,6 +38,8 @@ export default function Signup() {
                     navigate('/dashboard/architect');
                 } else if (role === 'supplier') {
                     navigate('/dashboard/supplier');
+                } else if (role === 'data_provider') {
+                    navigate('/dashboard/data-provider'); // Or wherever data providers should go
                 } else {
                     navigate('/dashboard');
                 }

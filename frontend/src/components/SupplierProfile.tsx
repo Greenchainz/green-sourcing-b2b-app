@@ -2,7 +2,7 @@
 // PURPOSE: Updated to call the new /api/me/passport endpoint
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import api from '../lib/api'; // Import our secure API client
 import SupplierProductList from './SupplierProductList';
 
@@ -81,9 +81,9 @@ export default function SupplierProfile() {
             <div className="max-w-6xl mx-auto p-6">
                 <div className="card text-center">
                     <h1 className="text-2xl font-bold text-green-primary mb-2">
-                        Welcome, {user.firstName}
+                        Welcome, {user.user_metadata.firstName}
                     </h1>
-                    <p className="text-neutral-dark">Your role is: **{user.role}**. Supplier dashboards are restricted to Supplier accounts.</p>
+                    <p className="text-neutral-dark">Your role is: **{user.user_metadata.role}**. Supplier dashboards are restricted to Supplier accounts.</p>
                 </div>
             </div>
         );
@@ -103,7 +103,7 @@ export default function SupplierProfile() {
                         {passport.companyName}
                     </h1>
                     <p className="text-neutral-medium text-sm">
-                        Welcome, {user.firstName} {user.lastName} ({user.email})
+                        Welcome, {user.user_metadata.firstName} {user.user_metadata.lastName} ({user.email})
                     </p>
                     {passport.companyAddress && (
                         <p className="text-neutral-dark mt-2">

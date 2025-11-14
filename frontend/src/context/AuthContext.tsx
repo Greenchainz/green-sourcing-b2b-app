@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+// frontend/src/context/AuthContext.tsx
+import { useEffect, useState, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
 import { AuthContext } from './authContextDefinition';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -20,7 +21,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         getSession();
 
         const { data: authListener } = supabase.auth.onAuthStateChange(
-            (event, session) => {
+            (_event: AuthChangeEvent, session: Session | null) => {
                 setSession(session);
                 setUser(session?.user ?? null);
                 setLoading(false);
@@ -39,3 +40,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
+// ADD THIS EXPORT
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
+
+// RE-EXPORT TYPES
+export type { User, Session } from '@supabase/supabase-js';
