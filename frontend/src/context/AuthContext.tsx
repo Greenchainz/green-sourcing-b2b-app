@@ -1,8 +1,21 @@
 // frontend/src/context/AuthContext.tsx
 import { useEffect, useState, useContext, createContext } from 'react';
 import type { ReactNode } from 'react';
+ feature/search-bar
 import { supabase } from '../../lib/supabase';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+
+ feat/greenchainz-search-bar
+import { supabase } from '../lib/supabase';
+import { AuthContext } from './authContextDefinition';
+import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+feature/product-card-component
+
+
+ feat/product-card-component
+import { supabase } from '../../lib/supabase'; // Corrected path
+import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+ main
 
 // Define the shape of the context
 interface AuthContextType {
@@ -11,8 +24,19 @@ interface AuthContextType {
   loading: boolean;
 }
 
+ feature/search-bar
 // Create the context with a default value
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Create the context with a default undefined value
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { supabase } from '../../lib/supabase';
+import { AuthContext } from './authContextDefinition';
+import type { Session, User } from '@supabase/supabase-js';
+main
+ main
+ main
+main
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -30,7 +54,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         getSession();
 
         const { data: authListener } = supabase.auth.onAuthStateChange(
+ feature/search-bar
            (_event: AuthChangeEvent, session: Session | null) => {
+
+ feature/product-card-component
+            (_event: AuthChangeEvent, session: Session | null) => {
+
+feat/product-card-component
+           (_event: AuthChangeEvent, session: Session | null) => {
+feat/greenchainz-search-bar
+
+
+            (_event, session) => {
+main
+main
+ main
+ main
                 setSession(session);
                 setUser(session?.user ?? null);
                 setLoading(false);
@@ -57,5 +96,4 @@ export const useAuth = () => {
     return context;
 };
 
-// RE-EXPORT TYPES
 export type { User, Session } from '@supabase/supabase-js';
