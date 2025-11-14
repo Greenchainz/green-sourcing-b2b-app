@@ -1,3 +1,48 @@
+feat/greenchainz-search-bar
+.product-card {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.product-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.product-card h3 {
+  margin-top: 1rem;
+  font-size: 1.2rem;
+}
+
+.product-card p {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.product-card-details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.product-card-certifications {
+  margin-top: 1rem;
+}
+
+.product-card-certifications span {
+  display: inline-block;
+  background-color: #f0f0f0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  margin-right: 0.5rem;
+
 /* frontend/src/components/ProductCard.css */
 
 :root {
@@ -114,4 +159,5 @@
   .product-card {
     margin-bottom: 1.5rem;
   }
+main
 }

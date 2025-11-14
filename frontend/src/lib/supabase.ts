@@ -1,3 +1,11 @@
+ feat/greenchainz-search-bar
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 import { createClient, SignInWithPasswordCredentials, SignUpWithPasswordCredentials } from '@supabase/supabase-js'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -71,3 +79,4 @@ export const createRFQ = async (rfqData: RFQ) => {
 
   return data
 }
+main
