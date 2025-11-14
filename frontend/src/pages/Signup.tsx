@@ -10,11 +10,15 @@ export default function Signup() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [company, setCompany] = useState('');
+ fix/add-data-provider-signup
+    const [role, setRole] = useState<'buyer' | 'supplier' | 'data_provider'>('buyer');
+
   fix/add-data-provider-signup
     const [role, setRole] = useState<'buyer' | 'supplier' | 'data_provider'>('buyer');
 
     const [role, setRole] = useState<'buyer' | 'supplier'>('buyer');
 main
+ main
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -39,17 +43,28 @@ main
             if (data.user) {
                 // Redirect to appropriate dashboard
 fix/add-data-provider-signup
+
+fix/add-data-provider-signup
+ main
                 if (role === 'buyer') {
                     navigate('/dashboard/architect');
                 } else if (role === 'supplier') {
                     navigate('/dashboard/supplier');
+ fix/add-data-provider-signup
+                } else if (role === 'data_provider') {
+                    navigate('/dashboard/data-provider'); // Or wherever data providers should go
+                } else {
+                    navigate('/dashboard');
+                }
+
                 } else {
                     navigate('/dashboard');
                 }
 
                 navigate(role === 'buyer' ? '/dashboard/architect' : '/dashboard/supplier');
  main
-            }
+ main
+    M         }
         } catch (err) {
             setError((err as Error).message || 'Signup failed');
         } finally {

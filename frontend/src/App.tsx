@@ -1,5 +1,5 @@
 import './App.css'
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Outlet } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -30,7 +30,11 @@ function App() {
       <Route path="/terms" element={<Terms />} />
 
       {/* Protected Routes */}
+ fix/add-data-provider-signup
+      <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+
       <Route element={<ProtectedRoute />}>
+main
         <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/network" element={<NetworkBoard />} />

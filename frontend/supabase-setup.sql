@@ -6,7 +6,11 @@ CREATE TABLE users (
   email TEXT UNIQUE NOT NULL,
 fix/add-data-provider-signup
   role TEXT NOT NULL CHECK (role IN ('buyer', 'supplier', 'admin', 'data_provider')),
+fix/add-data-provider-signup
+
+
   
+main
   role TEXT NOT NULL CHECK (role IN ('buyer', 'supplier', 'admin')),
  main
   company_name TEXT,
