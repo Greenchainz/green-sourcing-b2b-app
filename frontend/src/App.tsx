@@ -1,4 +1,4 @@
-import './App.css'
+import './App.css';
 import { Routes, Route, Outlet } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
@@ -14,6 +14,7 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import Unauthorized from './pages/Unauthorized';
 
 function App() {
   return (
@@ -28,21 +29,43 @@ function App() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Protected Routes */}
- fix/add-data-provider-signup
-      <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
-
-      <Route element={<ProtectedRoute />}>
-main
-        <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
-        <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
-        <Route path="/network" element={<NetworkBoard />} />
-        <Route path="/admin" element={<AdminConsole />} />
-      </Route>
+      <Route
+        path="/dashboard/architect"
+        element={
+          <ProtectedRoute allowedRoles={['buyer']}>
+            <ArchitectDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/supplier"
+        element={
+          <ProtectedRoute allowedRoles={['supplier']}>
+            <SupplierDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/network"
+        element={
+          <ProtectedRoute allowedRoles={['buyer', 'supplier']}>
+            <NetworkBoard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminConsole />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }
 
-export default App
-
+export default App;

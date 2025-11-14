@@ -1,15 +1,18 @@
- fix/add-data-provider-signup
 // frontend/src/context/AuthContext.tsx
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, createContext } from 'react';
 import type { ReactNode } from 'react';
-import { supabase } from '../../lib/supabase';
-import { AuthContext } from './authContextDefinition';
+import { supabase } from '../../lib/supabase'; // Corrected path
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
-import { supabase } from '../../lib/supabase';
-import { AuthContext } from './authContextDefinition';
-main
+
+// Define the shape of the context
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+}
+
+// Create the context with a default undefined value
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -23,19 +26,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(data.session?.user ?? null);
             setLoading(false);
         };
- fix/add-data-provider-signup
 
         getSession();
 
         const { data: authListener } = supabase.auth.onAuthStateChange(
            (_event: AuthChangeEvent, session: Session | null) => {
-
-
-        getSession();
-
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-            (event, session) => {
- main
                 setSession(session);
                 setUser(session?.user ?? null);
                 setLoading(false);
@@ -54,8 +49,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
-fix/add-data-provider-signup
-// ADD THIS EXPORT
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
@@ -66,5 +59,3 @@ export const useAuth = () => {
 
 // RE-EXPORT TYPES
 export type { User, Session } from '@supabase/supabase-js';
-
- main
