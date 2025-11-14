@@ -1,0 +1,66 @@
+<!-- frontend/src/email-templates/rfq-notification.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Request for Quote</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .header {
+            background-color: #f4f4f4;
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 0.8em;
+            text-align: center;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>You Have a New Request for Quote!</h2>
+        </div>
+        <div class="content">
+            <p>Hello,</p>
+            <p>A buyer has requested a quote for one of your products on GreenChainz.</p>
+
+            <h3>RFQ Details:</h3>
+            <ul>
+                <li><strong>Project Name:</strong> {{project_name}}</li>
+                <li><strong>Product:</strong> {{product_name}}</li>
+                <li><strong>Quantity:</strong> {{quantity}}</li>
+            </ul>
+
+            <h3>Message from the Buyer:</h3>
+            <p><em>"{{message}}"</em></p>
+
+            <p>Please log in to your GreenChainz supplier dashboard to respond to this request.</p>
+
+            <p>Thank you,<br>The GreenChainz Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2025 GreenChainz. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

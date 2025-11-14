@@ -55,6 +55,27 @@
         li {
             margin-bottom: 10px;
         }
+        .logo-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .logo-bar img {
+            height: 60px;
+            transition: filter 0.3s ease;
+            filter: grayscale(100%);
+        }
+        .logo-bar img:hover {
+            filter: grayscale(0%);
+        }
+        .dark-background-logo {
+            background-color: #333;
+            padding: 5px;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
@@ -129,9 +150,16 @@
 
     <!-- Trust Signals Section -->
     <section class="section" style="background: #f1f8f4;">
-        <h2>Trusted by Forward-Thinking Architects & Sustainable Builders</h2>
-        <p>"The global green building materials market is projected to exceed $1 trillion by 2037. GreenChainz is building the infrastructure to power it." — Market Research, 2025</p>
-        <p>[Logos: FSC | LEED | BREEAM | EPD International]<br>Caption: "Integrated with the world's most trusted sustainability standards"</p>
+        <h2>Integrated with the World's Most Trusted Sustainability Standards</h2>
+        <div class="logo-bar">
+            <img src="assets/images/epd_logo.png" alt="The International EPD® System">
+            <img src="assets/images/wap_logo.svg" alt="WAP Sustainability">
+            <img src="assets/images/bt_logo.svg" alt="Building Transparency" class="dark-background-logo">
+            <img src="assets/images/usgbc_logo.png" alt="USGBC">
+            <img src="assets/images/leed_logo.png" alt="LEED">
+            <img src="assets/images/fsc_logo.png" alt="FSC">
+            <img src="assets/images/breeam_logo.svg" alt="BREEAM">
+        </div>
     </section>
 
     <!-- Final CTA Section -->
