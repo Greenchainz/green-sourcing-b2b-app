@@ -15,9 +15,13 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+ feature/product-detail-page
+import ProductDetailPage from './pages/ProductDetailPage';
+
  feature/search-bar
 import Demo from './pages/Demo';
 import Layout from './components/Layout';
+ main
 
 function App() {
   return (
@@ -59,7 +63,13 @@ function App() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
-      <Route path="/products" element={<ProductsPage />} />
+feature/product-detail-page
+      <Route path="/product/:id" element={<ProductDetailPage />} />
+
+      {/* Protected Routes */}
+      <Route element={<ProtectedRoute />}>
+
+         route path="/products" element={<ProductsPage />} />
 
       {/* Protected Routes */}
 feature/product-card-component
@@ -67,6 +77,7 @@ feature/product-card-component
 
       <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
  main
+main
         <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/network" element={<NetworkBoard />} />
