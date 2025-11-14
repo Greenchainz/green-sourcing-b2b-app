@@ -1,4 +1,4 @@
-import './App.css'
+import './App.css';
 import { Routes, Route, Outlet } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -15,6 +15,9 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+feat/rfq-protected-routes
+import Unauthorized from './pages/Unauthorized';
+
  feat/filter-sidebar
 import FilterSidebar, { FilterState } from './components/FilterSidebar';
 import { useState } from 'react';
@@ -27,6 +30,7 @@ import Demo from './pages/Demo';
 import Layout from './components/Layout';
  main
  main
+main
 
 function App() {
   const [filterState, setFilterState] = useState<FilterState | null>(null);
@@ -84,6 +88,43 @@ function App() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+ feat/rfq-protected-routes
+      <Route path="/unauthorized" element={<Unauthorized />} />
+
+      {/* Protected Routes */}
+      <Route
+        path="/dashboard/architect"
+        element={
+          <ProtectedRoute allowedRoles={['buyer']}>
+            <ArchitectDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/supplier"
+        element={
+          <ProtectedRoute allowedRoles={['supplier']}>
+            <SupplierDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/network"
+        element={
+          <ProtectedRoute allowedRoles={['buyer', 'supplier']}>
+            <NetworkBoard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminConsole />
+          </ProtectedRoute>
+        }
+      />
+=======
 feature/product-detail-page
       <Route path="/product/:id" element={<ProductDetailPage />} />
 
@@ -109,9 +150,14 @@ main
         <Route path="/admin" element={<AdminConsole />} />
 main
       </Route>
+ main
     </Routes>
     </ErrorBoundary>
   );
 }
 
+ feat/rfq-protected-routes
+export default App;
+
 export default App
+ main

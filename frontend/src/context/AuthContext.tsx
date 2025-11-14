@@ -1,27 +1,8 @@
- feat/filter-sidebar
-import { useEffect, useState, useContext } from 'react';
-
 // frontend/src/context/AuthContext.tsx
 import { useEffect, useState, useContext, createContext } from 'react';
- main
 import type { ReactNode } from 'react';
- feature/search-bar
-import { supabase } from '../../lib/supabase';
-import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
-
- feat/greenchainz-search-bar
-import { supabase } from '../lib/supabase';
-import { AuthContext } from './authContextDefinition';
-import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
- feat/filter-sidebar
-
-feature/product-card-component
-
-
- feat/product-card-component
 import { supabase } from '../../lib/supabase'; // Corrected path
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
- main
 
 // Define the shape of the context
 interface AuthContextType {
@@ -29,6 +10,10 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
 }
+
+feat/rfq-protected-routes
+// Create the context with a default undefined value
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
  feature/search-bar
 // Create the context with a default value
@@ -44,6 +29,7 @@ main
  main
 main
  main
+main
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -66,6 +52,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
  feature/search-bar
            (_event: AuthChangeEvent, session: Session | null) => {
+ feat/rfq-protected-routes
+
 
  feature/product-card-component
             (_event: AuthChangeEvent, session: Session | null) => {
@@ -81,6 +69,7 @@ main
  main
  main
  main
+main
                 setSession(session);
                 setUser(session?.user ?? null);
                 setLoading(false);
