@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 export default function Signup() {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
-    const [password, setPassword]_useState('');
+    const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [company, setCompany] = useState('');
