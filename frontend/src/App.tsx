@@ -1,5 +1,6 @@
 import './App.css'
 import { Routes, Route, Outlet } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -18,9 +19,10 @@ import ProductsPage from './pages/ProductsPage';
 
 function App() {
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<LandingPage />} />
+    <ErrorBoundary>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
@@ -39,6 +41,7 @@ function App() {
         <Route path="/admin" element={<AdminConsole />} />
       </Route>
     </Routes>
+    </ErrorBoundary>
   );
 }
 
