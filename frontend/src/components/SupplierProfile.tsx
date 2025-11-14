@@ -2,7 +2,7 @@
 // PURPOSE: Updated to call the new /api/me/passport endpoint
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import api from '../lib/api'; // Import our secure API client
 import SupplierProductList from './SupplierProductList';
 
