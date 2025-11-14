@@ -14,11 +14,24 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import FilterSidebar, { FilterState } from './components/FilterSidebar';
+import { useState } from 'react';
 
 function App() {
+  const [filterState, setFilterState] = useState<FilterState | null>(null);
+
   return (
     <Routes>
       {/* Public Routes */}
+      <Route
+        path="/filter-demo"
+        element={
+          <div style={{ display: 'flex' }}>
+            <FilterSidebar onFilterChange={setFilterState} />
+            <pre>{JSON.stringify(filterState, null, 2)}</pre>
+          </div>
+        }
+      />
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
@@ -30,11 +43,7 @@ function App() {
       <Route path="/terms" element={<Terms />} />
 
       {/* Protected Routes */}
- fix/add-data-provider-signup
-      <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
-
       <Route element={<ProtectedRoute />}>
-main
         <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/network" element={<NetworkBoard />} />
@@ -45,4 +54,3 @@ main
 }
 
 export default App
-
