@@ -1,10 +1,14 @@
+ feature/product-detail-page
 // src/types.ts
 
+
+ main
 export interface Product {
   id: string;
   name: string;
   description: string;
   supplier_id: string;
+ feature/product-detail-page
   images: string[];
   specs: {
     [key: string]: string | number;
@@ -18,11 +22,25 @@ export interface Product {
     certifications?: string[];
   };
   supplier?: Supplier; // Optional: To be populated after fetching
+
+  material_type: string;
+  application: string;
+  certifications: string[];
+  sustainability_data: {
+    gwp: number;
+    recycled_content: number;
+  };
+  specs: {
+    [key: string]: string;
+  };
+  supplier: Supplier;
+ main
 }
 
 export interface Supplier {
   id: string;
   name: string;
+ feature/product-detail-page
   location: string;
   description: string;
   logo_url: string;
@@ -35,3 +53,7 @@ export interface RFQData {
   quantity?: number;
   timeline: 'ASAP' | '1-3 months' | '3-6 months' | '6+ months';
 }
+
+  logo_url: string;
+}
+ main

@@ -1,0 +1,33 @@
+.search-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.search-bar {
+  display: flex;
+  margin-bottom: 2rem;
+}
+
+.search-bar input {
+  flex-grow: 1;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px 0 0 4px;
+}
+
+.search-bar button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--primary);
+  background-color: var(--primary);
+  color: white;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+}
+
+.search-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
