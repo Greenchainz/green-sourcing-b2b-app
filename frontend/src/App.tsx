@@ -30,38 +30,12 @@ function App() {
       <Route path="/terms" element={<Terms />} />
 
       {/* Protected Routes */}
-      <Route
-        path="/dashboard/architect"
-        element={
-          <ProtectedRoute>
-            <ArchitectDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/dashboard/supplier"
-        element={
-          <ProtectedRoute>
-            <SupplierDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/network"
-        element={
-          <ProtectedRoute>
-            <NetworkBoard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminConsole />
-          </ProtectedRoute>
-        }
-      />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
+        <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
+        <Route path="/network" element={<NetworkBoard />} />
+        <Route path="/admin" element={<AdminConsole />} />
+      </Route>
     </Routes>
   );
 }
