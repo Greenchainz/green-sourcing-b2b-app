@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
 export default function Login() {
@@ -23,8 +23,8 @@ export default function Login() {
             if (data.user) {
                 navigate('/dashboard/architect');
             }
-        } catch (err: any) {
-            setError(err?.message || 'Login failed');
+        } catch (err) {
+            setError((err as Error).message || 'Login failed');
         } finally {
             setLoading(false);
         }
@@ -39,8 +39,8 @@ export default function Login() {
                 }
             });
             if (error) throw error;
-        } catch (err: any) {
-            setError(err?.message || 'OAuth login failed');
+        } catch (err) {
+            setError((err as Error).message || 'OAuth login failed');
         }
     };
 
@@ -126,8 +126,9 @@ export default function Login() {
                 {/* Email/Password Form */}
                 <form onSubmit={onSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
+                        <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">Email</label>
                         <input
+                            id="email"
                             type="email"
                             className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
                             placeholder="you@example.com"
@@ -137,8 +138,9 @@ export default function Login() {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                        <label htmlFor="password"  className="block text-sm font-medium text-slate-300 mb-2">Password</label>
                         <input
+                            id="password"
                             type="password"
                             className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
                             placeholder="••••••••"
@@ -158,9 +160,9 @@ export default function Login() {
 
                 <p className="mt-6 text-center text-sm text-slate-400">
                     Don't have an account?{' '}
-                    <a href="mailto:partnerships@greenchainz.com" className="text-sky-400 hover:text-sky-300 font-medium transition">
-                        Contact us
-                    </a>
+                    <Link to="/signup" className="text-sky-400 hover:text-sky-300 font-medium transition">
+                        Sign up
+                    </Link>
                 </p>
             </div>
         </div>

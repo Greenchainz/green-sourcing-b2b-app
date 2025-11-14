@@ -10,7 +10,7 @@ export default function Signup() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [company, setCompany] = useState('');
-    const [role, setRole] = useState<'Buyer' | 'Supplier'>('Buyer');
+    const [role, setRole] = useState<'buyer' | 'supplier'>('buyer');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -34,10 +34,10 @@ export default function Signup() {
             if (signUpError) throw signUpError;
             if (data.user) {
                 // Redirect to appropriate dashboard
-                navigate(role === 'Buyer' ? '/dashboard/architect' : '/dashboard/supplier');
+                navigate(role === 'buyer' ? '/dashboard/architect' : '/dashboard/supplier');
             }
-        } catch (err: any) {
-            setError(err?.message || 'Signup failed');
+        } catch (err) {
+            setError((err as Error).message || 'Signup failed');
         } finally {
             setLoading(false);
         }
@@ -52,8 +52,8 @@ export default function Signup() {
                 }
             });
             if (error) throw error;
-        } catch (err: any) {
-            setError(err?.message || 'OAuth signup failed');
+        } catch (err) {
+            setError((err as Error).message || 'OAuth signup failed');
         }
     };
 
@@ -167,31 +167,31 @@ export default function Signup() {
                         <label className="block text-sm font-medium text-slate-300 mb-2">I am a...</label>
                         <div className="grid grid-cols-2 gap-3">
                             <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                role === 'Buyer' 
+                                role === 'buyer'
                                     ? 'border-sky-500 bg-sky-500/10' 
                                     : 'border-slate-700 hover:border-slate-600'
                             }`}>
                                 <input
                                     type="radio"
                                     name="role"
-                                    value="Buyer"
-                                    checked={role === 'Buyer'}
-                                    onChange={(e) => setRole(e.target.value as 'Buyer')}
+                                    value="buyer"
+                                    checked={role === 'buyer'}
+                                    onChange={(e) => setRole(e.target.value as 'buyer')}
                                     className="sr-only"
                                 />
                                 <span className="text-white font-medium">🏗️ Architect/Buyer</span>
                             </label>
                             <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                role === 'Supplier' 
+                                role === 'supplier'
                                     ? 'border-sky-500 bg-sky-500/10' 
                                     : 'border-slate-700 hover:border-slate-600'
                             }`}>
                                 <input
                                     type="radio"
                                     name="role"
-                                    value="Supplier"
-                                    checked={role === 'Supplier'}
-                                    onChange={(e) => setRole(e.target.value as 'Supplier')}
+                                    value="supplier"
+                                    checked={role === 'supplier'}
+                                    onChange={(e) => setRole(e.target.value as 'supplier')}
                                     className="sr-only"
                                 />
                                 <span className="text-white font-medium">🌱 Supplier</span>
