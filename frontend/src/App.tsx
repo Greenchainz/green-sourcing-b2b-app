@@ -34,7 +34,11 @@ function App() {
       <Route path="/products" element={<ProductsPage />} />
 
       {/* Protected Routes */}
+feature/product-card-component
+      <Route element={<ProtectedRoute />}>
+
       <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+ main
         <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/network" element={<NetworkBoard />} />
