@@ -14,6 +14,7 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import ProductsPage from './pages/ProductsPage';
 
 function App() {
   return (
@@ -28,13 +29,10 @@ function App() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/products" element={<ProductsPage />} />
 
       {/* Protected Routes */}
- fix/add-data-provider-signup
       <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
-
-      <Route element={<ProtectedRoute />}>
-main
         <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/network" element={<NetworkBoard />} />
@@ -45,4 +43,3 @@ main
 }
 
 export default App
-
