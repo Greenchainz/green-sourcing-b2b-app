@@ -30,11 +30,7 @@ function App() {
       <Route path="/terms" element={<Terms />} />
 
       {/* Protected Routes */}
- fix/add-data-provider-signup
       <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
-
-      <Route element={<ProtectedRoute />}>
-main
         <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/network" element={<NetworkBoard />} />
