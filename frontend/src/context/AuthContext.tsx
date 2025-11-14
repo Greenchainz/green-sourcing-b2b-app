@@ -1,5 +1,9 @@
+ feat/filter-sidebar
+import { useEffect, useState, useContext } from 'react';
+
 // frontend/src/context/AuthContext.tsx
 import { useEffect, useState, useContext, createContext } from 'react';
+ main
 import type { ReactNode } from 'react';
  feature/search-bar
 import { supabase } from '../../lib/supabase';
@@ -9,6 +13,8 @@ import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { AuthContext } from './authContextDefinition';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+ feat/filter-sidebar
+
 feature/product-card-component
 
 
@@ -37,6 +43,7 @@ main
  main
  main
 main
+ main
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -54,6 +61,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         getSession();
 
         const { data: authListener } = supabase.auth.onAuthStateChange(
+ feat/filter-sidebar
+            (_event, session) => {
+
  feature/search-bar
            (_event: AuthChangeEvent, session: Session | null) => {
 
@@ -68,6 +78,7 @@ feat/greenchainz-search-bar
             (_event, session) => {
 main
 main
+ main
  main
  main
                 setSession(session);

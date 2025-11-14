@@ -15,6 +15,10 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+ feat/filter-sidebar
+import FilterSidebar, { FilterState } from './components/FilterSidebar';
+import { useState } from 'react';
+
  feature/product-detail-page
 import ProductDetailPage from './pages/ProductDetailPage';
 
@@ -22,10 +26,26 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import Demo from './pages/Demo';
 import Layout from './components/Layout';
  main
+ main
 
 function App() {
+  const [filterState, setFilterState] = useState<FilterState | null>(null);
+
   return (
     <Routes>
+ feat/filter-sidebar
+      {/* Public Routes */}
+      <Route
+        path="/filter-demo"
+        element={
+          <div style={{ display: 'flex' }}>
+            <FilterSidebar onFilterChange={setFilterState} />
+            <pre>{JSON.stringify(filterState, null, 2)}</pre>
+          </div>
+        }
+      />
+      <Route path="/" element={<LandingPage />} />
+
       <Route path="/" element={<Layout />}>
         {/* Public Routes */}
         <Route index element={<LandingPage />} />
@@ -55,6 +75,7 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
+ main
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
@@ -67,6 +88,9 @@ feature/product-detail-page
       <Route path="/product/:id" element={<ProductDetailPage />} />
 
       {/* Protected Routes */}
+feat/filter-sidebar
+      <Route element={<ProtectedRoute />}>
+
       <Route element={<ProtectedRoute />}>
 
          route path="/products" element={<ProductsPage />} />
@@ -78,6 +102,7 @@ feature/product-card-component
       <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
  main
 main
+ main
         <Route path="/dashboard/architect" element={<ArchitectDashboard />} />
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/network" element={<NetworkBoard />} />
