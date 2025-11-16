@@ -1,36 +1,36 @@
-feature/product-card-component
-// src/pages/ProductsPage.tsx
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { Product } from '@/types'
-import ProductCard from '@/components/ProductCard'
+// frontend/src/pages/ProductsPage.tsx
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { Product } from '../types';
+import ProductCard from '../components/ProductCard';
+import SearchBar from '../components/SearchBar';
 
 export default function ProductsPage() {
-    const [products, setProducts] = useState<Product[]>([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchProducts() {
             try {
                 const { data, error } = await supabase
                     .from('products')
-                    .select('*')
+                    .select('*, supplier:suppliers(*)')
                     .order('created_at', { ascending: false })
-                    .limit(50)
+                    .limit(50);
 
-                if (error) throw error
-                setProducts(data || [])
+                if (error) throw error;
+                setProducts(data || []);
             } catch (err: any) {
-                console.error('Error fetching products:', err.message)
-                setError(err.message)
+                console.error('Error fetching products:', err.message);
+                setError(err.message);
             } finally {
-                setLoading(false)
+                setLoading(false);
             }
         }
 
-        fetchProducts()
-    }, [])
+        fetchProducts();
+    }, []);
 
     if (loading) {
         return (
@@ -40,7 +40,7 @@ export default function ProductsPage() {
                     <p className="mt-4 text-gray-600">Loading products...</p>
                 </div>
             </div>
-        )
+        );
     }
 
     if (error) {
@@ -54,13 +54,12 @@ export default function ProductsPage() {
                     </p>
                 </div>
             </div>
-        )
+        );
     }
 
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">
                         Sustainable Building Products
@@ -70,47 +69,10 @@ export default function ProductsPage() {
                     </p>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="text-sm text-gray-500">Total Products</div>
-                        <div className="text-2xl font-bold text-gray-900">{products.length}</div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="text-sm text-gray-500">Avg Carbon Footprint</div>
-                        <div className="text-2xl font-bold text-green-600">
-                            {products.length > 0
-                                ? Math.round(
-                                    products.reduce(
-                                        (sum, p) => sum + (p.sustainability_data.gwp_fossil || 0),
-                                        0
-                                    ) / products.length
-                                )
-                                : 0}{' '}
-                            kg CO₂e
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="text-sm text-gray-500">Certified Products</div>
-                        <div className="text-2xl font-bold text-blue-600">
-                            {
-                                products.filter(
-                                    (p) => p.sustainability_data.certifications?.length
-                                ).length
-                            }
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="text-sm text-gray-500">Categories</div>
-                        <div className="text-2xl font-bold text-purple-600">
-                            {new Set(products.map((p) => p.category)).size}
-                        </div>
-                    </div>
-                </div>
+                <SearchBar />
 
-                {/* Products Grid */}
                 {products.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow p-12 text-center">
+                    <div className="bg-white rounded-lg shadow p-12 text-center mt-8">
                         <svg
                             className="mx-auto h-12 w-12 text-gray-400"
                             fill="none"
@@ -130,34 +92,18 @@ export default function ProductsPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                         {products.map((product) => (
-                            <ProductCard key={product.id} product={product} />
+                            <ProductCard
+                                key={product.id}
+                                product={product}
+                                supplierName={product.supplier?.name || 'Unknown Supplier'}
+                                onRequestQuote={() => {}}
+                            />
                         ))}
                     </div>
                 )}
             </div>
-=======
-import React from 'react';
-import SearchBar from '../components/SearchBar';
-
-const ProductsPage: React.FC = () => {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Sustainable Building Products
-          </h1>
-          <p className="mt-2 text-gray-600">
-            Browse verified sustainable materials from certified suppliers
-          </p>
-main
         </div>
-        <SearchBar />
-      </div>
-    </div>
-  );
-};
-
-export default ProductsPage;
+    );
+}

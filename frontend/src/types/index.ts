@@ -1,57 +1,4 @@
-feat/supplier-dashboard
-export type Product = {
-  id: number;
-  name: string;
-  views: number;
-  rfqs: number;
-  status: 'Active' | 'Pending Review';
-  certifications: string[];
-};
-
-export type RFQ = {
-  company: string;
-  project: string;
-  product: string;
-  date: string;
-  status: 'New' | 'Responded' | 'In Discussion';
-};
-
-export type Supplier = {
-  name: string;
-  totalProducts: number;
-  rfqsThisMonth: number;
-  profileViews: number;
-};
-
- feat/rfq-protected-routes
 // frontend/src/types/index.ts
-
-/**
- * @interface RFQ
- * @description Defines the structure for a Request for Quote object.
- */
-export interface RFQ {
-  buyer_id: string;      // UUID of the user sending the RFQ
-  product_id: string;    // UUID of the product being requested
-  project_name: string;
-  quantity: number;
-  message: string;
-  
-feature/product-card-component
-// frontend/src/types/index.ts
-
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  image_url?: string;
-  supplier_id: string;
-  sustainability_data: {
-    gwp_fossil?: number;
-    certifications?: string[];
-    recycled_content?: number;
-  };
-  // Other product fields as needed
 
 export interface User {
   id: string; // UUID
@@ -74,6 +21,10 @@ export interface Product {
   technical_specs?: Record<string, any>; // JSONB
   certifications?: string[]; // Array of certification names
   epd_link?: string;
+  sustainability_data?: {
+    gwp_fossil?: number;
+    recycled_content?: number;
+  };
   gwp?: number; // Global Warming Potential (kg CO2e)
   recycled_content_percent?: number;
   status: 'pending' | 'approved' | 'rejected';
@@ -102,7 +53,4 @@ export interface AuthContextType {
   login: (email: string, role: 'buyer' | 'supplier') => void;
   logout: () => void;
   isAuthenticated: boolean;
-main
-main
 }
-main
