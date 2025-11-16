@@ -1,6 +1,5 @@
 // frontend/src/components/ProductCard.tsx
-import React from 'react';
-import { Product } from '../types';
+import type { Product } from '../types';
 
 // Assuming we'll have a separate type for supplier info later
 // For now, we'll pass the supplier name as a prop.
@@ -69,24 +68,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequ
         </div>
 
         <div className="mt-4">
-            <p className="text-sm text-gray-600 font-semibold mb-2">Certifications</p>
-            <div className="flex flex-wrap items-center">
-                {certifications?.length ? (
-                    certifications.map(cert => <CertificationIcon key={cert} name={cert} />)
-                ) : (
-                    <p className="text-xs text-gray-400">No certifications listed.</p>
-                )}
-            </div>
+          <p className="text-sm text-gray-600 font-semibold mb-2">Certifications</p>
+          <div className="flex flex-wrap items-center">
+            {certifications?.length ? (
+              certifications.map(cert => <CertificationIcon key={cert} name={cert} />)
+            ) : (
+              <p className="text-xs text-gray-400">No certifications listed.</p>
+            )}
+          </div>
         </div>
       </div>
-       <div className="p-4 pt-0">
-         <button
-            onClick={() => onRequestQuote(product.id)}
-            className="w-full bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-opacity-50 transition-colors"
-          >
-            Request Quote
-          </button>
-        </div>
+      <div className="p-4 pt-0">
+        <button
+          onClick={() => onRequestQuote(product.id)}
+          className="w-full bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-opacity-50 transition-colors"
+        >
+          Request Quote
+        </button>
+      </div>
     </div>
   );
 };

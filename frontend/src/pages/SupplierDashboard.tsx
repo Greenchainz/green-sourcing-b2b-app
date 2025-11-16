@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Product, RFQ } from '../types';
+import type { Product } from '../types';
+import type { RFQ } from '../types';
 import './SupplierDashboard.css';
 import { Header } from './Header';
 import { StatsOverview } from './StatsOverview';
@@ -48,8 +49,8 @@ export function SupplierDashboard() {
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`pb-4 px-2 font-medium capitalize transition-colors ${activeTab === tab
-                                        ? 'text-sky-400 border-b-2 border-sky-400'
-                                        : 'text-slate-400 hover:text-slate-300'
+                                    ? 'text-sky-400 border-b-2 border-sky-400'
+                                    : 'text-slate-400 hover:text-slate-300'
                                     }`}
                             >
                                 {tab}

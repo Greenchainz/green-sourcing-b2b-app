@@ -1,6 +1,7 @@
 // frontend/src/pages/ProductDemoPage.tsx
 
-import React from 'react';
+import { useState } from 'react';
+import Header from '../components/Header';
 import ProductCard, { Product } from '../components/ProductCard';
 import './ProductDemoPage.css'; // We'll create this for layout
 
@@ -31,16 +32,16 @@ const ProductDemoPage: React.FC = () => {
       },
     },
     {
-        id: 'prod-003',
-        name: 'Low-VOC Paint',
-        image: 'https://via.placeholder.com/300x225/f7fafc/333333?text=Low-VOC+Paint',
-        supplier: 'PureCoat Paints',
-        certifications: ['GREENGUARD Gold'],
-        sustainability_data: {
-          carbon_footprint_kg_co2e: 1.5,
-          epd_verified: false,
-        },
+      id: 'prod-003',
+      name: 'Low-VOC Paint',
+      image: 'https://via.placeholder.com/300x225/f7fafc/333333?text=Low-VOC+Paint',
+      supplier: 'PureCoat Paints',
+      certifications: ['GREENGUARD Gold'],
+      sustainability_data: {
+        carbon_footprint_kg_co2e: 1.5,
+        epd_verified: false,
       },
+    },
   ];
 
   const handleRequestQuote = (productId: string) => {

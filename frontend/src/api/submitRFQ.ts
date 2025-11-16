@@ -1,15 +1,15 @@
 // frontend/src/api/submitRFQ.ts
 
 import { supabase } from '../../lib/supabase';
-import type { RFQ } from '../types';
+import type { RFQData } from '../types';
 
 /**
  * @function submitRFQ
  * @description Submits an RFQ to the database and triggers a notification.
- * @param {RFQ} rfqData - The RFQ data to submit.
+ * @param {RFQData} rfqData - The RFQ data to submit.
  * @returns {Promise<{success: boolean, error?: string}>} - The result of the operation.
  */
-export async function submitRFQ(rfqData: RFQ): Promise<{success: boolean, error?: string}> {
+export async function submitRFQ(rfqData: RFQData & { buyer_id?: string; product_id?: string; quantity?: number }): Promise<{ success: boolean, error?: string }> {
   try {
     // Step 1: Validate the incoming RFQ data to ensure it's not empty.
     if (!rfqData || !rfqData.buyer_id || !rfqData.product_id || !rfqData.project_name || rfqData.quantity <= 0) {

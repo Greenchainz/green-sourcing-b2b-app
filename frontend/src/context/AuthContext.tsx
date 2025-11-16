@@ -1,13 +1,14 @@
 // frontend/src/context/AuthContext.tsx
-import { useEffect, useState, useContext, createContext, ReactNode } from 'react';
+import { useEffect, useState, useContext, createContext } from 'react';
+import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 
 // Define the shape of the context
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
+    user: User | null;
+    session: Session | null;
+    loading: boolean;
 }
 
 // Create the context with a default undefined value

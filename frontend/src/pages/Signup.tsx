@@ -174,11 +174,10 @@ export default function Signup() {
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">I am a...</label>
                         <div className="grid grid-cols-3 gap-3">
-                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                role === 'buyer'
-                                    ? 'border-sky-500 bg-sky-500/10' 
-                                    : 'border-slate-700 hover:border-slate-600'
-                            }`}>
+                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${role === 'buyer'
+                                ? 'border-sky-500 bg-sky-500/10'
+                                : 'border-slate-700 hover:border-slate-600'
+                                }`}>
                                 <input
                                     type="radio"
                                     name="role"
@@ -189,11 +188,10 @@ export default function Signup() {
                                 />
                                 <span className="text-white font-medium">🏗️ Architect/Buyer</span>
                             </label>
-                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                role === 'supplier'
-                                    ? 'border-sky-500 bg-sky-500/10' 
-                                    : 'border-slate-700 hover:border-slate-600'
-                            }`}>
+                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${role === 'supplier'
+                                ? 'border-sky-500 bg-sky-500/10'
+                                : 'border-slate-700 hover:border-slate-600'
+                                }`}>
                                 <input
                                     type="radio"
                                     name="role"
@@ -204,11 +202,10 @@ export default function Signup() {
                                 />
                                 <span className="text-white font-medium">🌱 Supplier</span>
                             </label>
-                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                role === 'data_provider'
-                                    ? 'border-sky-500 bg-sky-500/10'
-                                    : 'border-slate-700 hover:border-slate-600'
-                            }`}>
+                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${role === 'data_provider'
+                                ? 'border-sky-500 bg-sky-500/10'
+                                : 'border-slate-700 hover:border-slate-600'
+                                }`}>
                                 <input
                                     type="radio"
                                     name="role"
@@ -243,7 +240,7 @@ export default function Signup() {
                     >
                         {loading ? 'Creating account…' : 'Create Account'}
                     </button>
-                </form>
+                </form >
 
                 <p className="mt-6 text-center text-sm text-slate-400">
                     Already have an account?{' '}
@@ -258,7 +255,7 @@ export default function Signup() {
                     {' '}and{' '}
                     <Link to="/privacy" className="text-sky-400 hover:text-sky-300">Privacy Policy</Link>
                 </p>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

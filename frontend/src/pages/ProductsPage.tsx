@@ -1,7 +1,7 @@
 // frontend/src/pages/ProductsPage.tsx
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Product } from '../types';
+import type { Product } from '../types';
 import ProductCard from '../components/ProductCard';
 import SearchBar from '../components/SearchBar';
 
@@ -98,7 +98,7 @@ export default function ProductsPage() {
                                 key={product.id}
                                 product={product}
                                 supplierName={product.supplier?.name || 'Unknown Supplier'}
-                                onRequestQuote={() => {}}
+                                onRequestQuote={() => { }}
                             />
                         ))}
                     </div>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Logo from '../components/Logo';
 
 export default function Contact() {
     return (
@@ -6,10 +7,7 @@ export default function Contact() {
             <header className="border-b border-slate-800/50 bg-slate-950/50 backdrop-blur-sm sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center justify-between">
-                        <Link to="/" className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-400" />
-                            <h1 className="text-2xl font-bold text-white">GreenChainz</h1>
-                        </Link>
+                        <Logo height={40} showText={true} />
                         <Link to="/" className="text-slate-300 hover:text-white transition-colors">← Back to Home</Link>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-import { Product } from '../types';
+import type { Product } from '../types';
 
 export function ProductsTab({ products }: { products: Product[] }) {
     return (
@@ -21,8 +21,8 @@ export function ProductsTab({ products }: { products: Product[] }) {
                                 <div className="flex items-center gap-3 mb-2">
                                     <h3 className="text-lg font-bold text-white">{product.name}</h3>
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${product.status === 'Active'
-                                            ? 'bg-green-500/10 border border-green-500/30 text-green-400'
-                                            : 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-400'
+                                        ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+                                        : 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-400'
                                         }`}>
                                         {product.status}
                                     </span>

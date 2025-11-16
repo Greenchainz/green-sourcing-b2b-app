@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Logo from '../components/Logo';
 
 export function LandingPage() {
     return (
@@ -7,10 +8,7 @@ export function LandingPage() {
             <header className="border-b border-slate-800/50 bg-slate-950/50 backdrop-blur-sm sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/30" />
-                            <h1 className="text-2xl font-bold text-white tracking-tight">GreenChainz</h1>
-                        </div>
+                        <Logo height={40} showText={true} />
                         <nav className="flex items-center gap-6">
                             <Link to="/survey/architect" className="text-slate-300 hover:text-white transition-colors">Take Survey</Link>
                             <Link to="/login" className="text-slate-300 hover:text-white transition-colors">Sign In</Link>
@@ -35,7 +33,7 @@ export function LandingPage() {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500" />
                             </span>
-                            Now accepting Founding 50 suppliers
+                            Now accepting Charter 175 members
                         </div>
 
                         <h2 className="text-5xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">

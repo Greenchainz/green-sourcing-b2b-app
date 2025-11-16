@@ -1,13 +1,13 @@
 
 // frontend/src/components/design-system/Button.tsx
 
-import React from 'react';
+import type { ButtonHTMLAttributes, FC } from 'react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger';
 }
 
-const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', ...props }) => {
+const Button: FC<ButtonProps> = ({ children, variant = 'primary', ...props }) => {
   const baseClasses = 'px-4 py-2 rounded-md font-bold focus:outline-none focus:ring-2 focus:ring-offset-2';
 
   const variantClasses = {

@@ -1,6 +1,6 @@
 // frontend/src/components/SearchBar.tsx
 import React, { useState, useEffect } from 'react';
-import { Product } from '../types';
+import type { Product } from '../types';
 import ProductCard from './ProductCard';
 import { supabase } from '../lib/supabase';
 import './SearchBar.css';
@@ -113,7 +113,7 @@ const SearchBar: React.FC = () => {
             key={product.id}
             product={product}
             supplierName={product.supplier?.name || 'Unknown Supplier'}
-            onRequestQuote={() => {}}
+            onRequestQuote={() => { }}
           />
         ))}
       </div>

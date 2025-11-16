@@ -1,14 +1,12 @@
 import { Link } from 'react-router-dom';
+import Logo from '../components/Logo';
 
 export default function Privacy() {
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
             <header className="border-b border-slate-800/50 bg-slate-950/50 backdrop-blur-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <Link to="/" className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-400" />
-                        <h1 className="text-2xl font-bold text-white">GreenChainz</h1>
-                    </Link>
+                    <Logo height={40} showText={true} />
                 </div>
             </header>
 

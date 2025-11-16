@@ -38,3 +38,14 @@ export interface RFQData {
   quantity?: number;
   timeline: 'ASAP' | '1-3 months' | '3-6 months' | '6+ months';
 }
+
+export interface RFQ {
+  id: string;
+  product_name: string;
+  buyer: string;
+  company: string;
+  quantity?: number;
+  deadline: string;
+  status: 'Pending' | 'Quoted' | 'Won' | 'Lost';
+  message?: string;
+}

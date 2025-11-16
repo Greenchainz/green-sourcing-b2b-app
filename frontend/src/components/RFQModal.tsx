@@ -1,6 +1,6 @@
 // src/components/RFQModal.tsx
 import { useState, useEffect, useRef } from 'react';
-import { RFQData } from '../types';
+import type { RFQData } from '../types';
 
 interface RFQModalProps {
   isOpen: boolean;
