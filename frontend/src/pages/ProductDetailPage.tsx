@@ -1,8 +1,5 @@
-'use client'; // If using Next.js 13+ App Router
-
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { ChevronRightIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
 // MOCK DATA (replace with Supabase query in Phase 1)
@@ -48,13 +45,13 @@ const MOCK_PRODUCT = {
 };
 
 export default function ProductDetailPage() {
- 
   const params = useParams();
   const productId = params?.id;
 
   const [activeTab, setActiveTab] = useState('overview');
   const [currentImage, setCurrentImage] = useState(0);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [isRFQSubmitted, setRFQSubmitted] = useState(false);
 
   // In Phase 1: Replace with Supabase query
   const product = MOCK_PRODUCT;
@@ -63,24 +60,12 @@ export default function ProductDetailPage() {
     e.preventDefault();
     // Phase 1: Submit to Supabase + send email
     console.log('RFQ submitted for product:', product.id);
-    alert('Quote request sent! (MVP placeholder)');
     setShowQuoteModal(false);
-
-  const [isModalOpen, setModalOpen] = useState(false);
-  const [isRFQSubmitted, setRFQSubmitted] = useState(false);
-  const product = sampleProduct; // In a real app, you'd fetch this data
-
-  const handleRFQSubmit = (rfqData: RFQData) => {
-    console.log('RFQ Submitted', rfqData);
-    setModalOpen(false);
     setRFQSubmitted(true);
-    // Here you would typically send the data to your backend
-
   };
 
   return (
     <div className="min-h-screen bg-background">
-
       {/* Breadcrumbs */}
       <div className="bg-muted border-b border-border py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -101,7 +86,6 @@ export default function ProductDetailPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-
           {/* Left: Image Gallery */}
           <div>
             {/* Main Image */}
@@ -183,7 +167,14 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
- 
+            {/* Success Message */}
+            {isRFQSubmitted && (
+              <div className="mb-6 p-4 bg-green-100 border border-green-500 rounded-lg">
+                <p className="text-green-800 font-semibold">RFQ Sent!</p>
+                <p className="text-green-700 text-sm">Your quote request has been sent. {product.company.name} will respond within 48 hours.</p>
+              </div>
+            )}
+
             {/* CTA Buttons */}
             <div className="flex gap-4">
               <button
@@ -195,26 +186,6 @@ export default function ProductDetailPage() {
               <button className="px-8 py-4 border-2 border-border text-foreground font-semibold rounded-lg hover:bg-muted transition-colors">
                 Save to Project
               </button>
-
-          <div className="lg:col-span-2">
-            <div className="bg-white p-6 rounded-lg shadow-lg">
-              {isRFQSubmitted ? (
-                <div className="text-center">
-                  <h2 className="text-2xl font-semibold text-green-800 mb-4">RFQ Sent!</h2>
-                  <p className="text-gray-600 mb-6">Your RFQ has been sent! {product.supplier?.name} will respond within 48 hours.</p>
-                </div>
-              ) : (
-                <>
-                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Request a Quote</h2>
-                  <p className="text-gray-600 mb-6">Get pricing and availability for your project from the supplier.</p>
-                  <button
-                    onClick={() => setModalOpen(true)}
-                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors text-lg">
-                    Request Quote
-                  </button>
-                </>
-              )}
- 
             </div>
 
             {/* EPD Download */}
@@ -228,7 +199,6 @@ export default function ProductDetailPage() {
               Download Environmental Product Declaration (EPD)
             </a>
           </div>
-
         </div>
 
         {/* Tabs Section */}
@@ -317,7 +287,6 @@ export default function ProductDetailPage() {
             {activeTab === 'certifications' && (
               <div>
                 <h2 className="text-2xl font-bold text-foreground mb-6">Sustainability Certifications & Data</h2>
-
                 <div className="space-y-6">
                   {product.certifications.map((cert, idx) => (
                     <div key={idx} className="p-6 border border-border rounded-lg">
@@ -327,7 +296,6 @@ export default function ProductDetailPage() {
                       {cert.credits && <p className="text-sm text-muted-foreground">LEED Credits: {cert.credits}</p>}
                     </div>
                   ))}
-
                   <div className="p-6 bg-muted rounded-lg">
                     <h3 className="text-lg font-semibold text-foreground mb-4">Environmental Product Declaration (EPD)</h3>
                     <div className="grid grid-cols-2 gap-4">
@@ -349,7 +317,6 @@ export default function ProductDetailPage() {
             )}
           </div>
         </div>
-
       </div>
 
       {/* Request Quote Modal */}
@@ -358,7 +325,6 @@ export default function ProductDetailPage() {
           <div className="bg-background rounded-lg p-8 max-w-md w-full mx-4">
             <h2 className="text-2xl font-bold text-foreground mb-4">Request Quote</h2>
             <p className="text-muted-foreground mb-6">Product: {product.name}</p>
-
             <form onSubmit={handleRequestQuote} className="space-y-4">
               <input
                 type="email"
@@ -378,7 +344,6 @@ export default function ProductDetailPage() {
                 required
                 className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
-
               <div className="flex gap-4">
                 <button
                   type="button"
@@ -398,7 +363,6 @@ export default function ProductDetailPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
