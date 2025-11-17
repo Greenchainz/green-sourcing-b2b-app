@@ -1,16 +1,7 @@
-// frontend/src/types.ts
-
-export interface Supplier {
-  id: string;
-  name: string;
-  location: string;
-  description: string;
-  logo_url: string;
-}
-
 export interface Product {
-  id: string;
+  id: number;
   name: string;
+ feature/rfq-system
   description: string;
   supplier_id: string;
   images: string[];
@@ -50,4 +41,17 @@ export interface RFQ {
   status: 'Pending' | 'Quoted' | 'Won' | 'Lost';
   message?: string;
   contact_preference?: 'email' | 'phone' | 'text';
+
+  company: string;
+  certification: string;
+  image: string;
+  featured: boolean;
+  materialType: string;
+  application: ('Residential' | 'Commercial')[];
+  certifications: string[];
+  location: string;
+  recycledContent: number;
+  carbonFootprint: number;
+  vocLevel: number;
+  main
 }
