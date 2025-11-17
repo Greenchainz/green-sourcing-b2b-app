@@ -22,10 +22,14 @@ import Unauthorized from './pages/Unauthorized';
 // import Demo from './pages/Demo';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
+feature/product-search-filter
+import SearchPage from './pages/SearchPage';
+
 import SupplierDashboard from './pages/SupplierDashboard/index';
 import ProductsPage from './pages/SupplierDashboard/ProductsPage';
 import AddProductPage from './pages/SupplierDashboard/AddProductPage';
-import EditProductPage from './pages/SupplierDashboard/EditProductPage';
+import EditProductPage from './pages/SupplierDashboard/EditProductPage'
+        main
 
 function App() {
   return (
@@ -47,6 +51,9 @@ function App() {
           {/* <Route path="product/:id" element={<ProductDetailPage />} /> */}
           {/* <Route path="products" element={<ProductsPage />} /> */}
           <Route path="badges/charter175" element={<Charter175 />} />
+feature/product-search-filter
+          <Route path="search" element={<SearchPage />} />
+
         </Route>
 
         {/* Supplier Dashboard Routes */}
@@ -54,6 +61,7 @@ function App() {
         <Route path="/dashboard/supplier/products" element={<ProductsPage />} />
         <Route path="/dashboard/supplier/products/new" element={<AddProductPage />} />
         <Route path="/dashboard/supplier/products/:id/edit" element={<EditProductPage />} />
+ main
 
           {/* Protected Routes - Temporarily disabled until demo pages are fixed */}
           {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}> */}
