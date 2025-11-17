@@ -7,7 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AuthCallback from './pages/AuthCallback';
 import { LandingPage } from './pages/LandingPage';
-// import { ArchitectDashboard } from './pages/ArchitectDashboard';
+import BuyerDashboard from './pages/BuyerDashboard';
 // import { SupplierDashboard } from './pages/SupplierDashboard';
 // import { NetworkBoard } from './pages/NetworkBoard';
 // import { AdminConsole } from './pages/AdminConsole';
@@ -45,16 +45,14 @@ function App() {
           <Route path="badges/charter175" element={<Charter175 />} />
 
           {/* Protected Routes - Temporarily disabled until demo pages are fixed */}
-          {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+          {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}> */}
             <Route
-              path="dashboard/architect"
+              path="dashboard"
               element={
-                <ProtectedRoute allowedRoles={['buyer']}>
-                  <ArchitectDashboard />
-                </ProtectedRoute>
+                  <BuyerDashboard />
               }
             />
-            <Route
+            {/* <Route
               path="dashboard/supplier"
               element={
                 <ProtectedRoute allowedRoles={['supplier']}>
