@@ -1,261 +1,183 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
+import { useState, FormEvent, FocusEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+// --- Validation Utilities ---
+const validateEmail = (email: string) => {
+    if (!email) return "Email is required.";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return "Please enter a valid email address.";
+    return "";
+};
+
+const validatePassword = (password: string) => {
+    if (!password) return "Password is required.";
+    if (password.length < 8) return "Password must be at least 8 characters.";
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).+$/;
+    if (!passwordRegex.test(password)) return "Password must include 1 uppercase letter, 1 number, and 1 special character.";
+    return "";
+};
+
+// --- Reusable Components with Error Handling ---
+const Input = ({ id, label, error, ...props }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-foreground">
+            {label}
+        </label>
+        <input
+            id={id}
+            name={id}
+            {...props}
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:border-transparent transition ${
+                error ? 'border-destructive ring-destructive' : 'border-border focus:ring-primary'
+            }`}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${id}-error` : undefined}
+        />
+        {error && <p id={`${id}-error`} className="mt-1 text-sm text-destructive" role="alert">{error}</p>}
+    </div>
+);
+
+const Dropdown = ({ id, label, ...props }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-foreground">{label}</label>
+        <select id={id} name={id} {...props} className="mt-1 block w-full px-3 py-2 border border-border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition bg-white" />
+    </div>
+);
+
 export default function Signup() {
     const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [company, setCompany] = useState('');
-    const [role, setRole] = useState<'buyer' | 'supplier' | 'data_provider'>('buyer');
-    const [error, setError] = useState<string | null>(null);
+    // --- State Management ---
+    const [formData, setFormData] = useState({
+        role: 'buyer' as 'buyer' | 'supplier',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        companyName: '',
+        projectType: 'Residential',
+        productCategory: 'Insulation',
+        agreedToTerms: false,
+    });
+
+    const [errors, setErrors] = useState({
+        email: '', password: '', confirmPassword: '', companyName: '', agreedToTerms: '', form: ''
+    });
+
     const [loading, setLoading] = useState(false);
 
-    const onSubmit = async (e: FormEvent) => {
+    // --- Handlers ---
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        const checked = (e.target as HTMLInputElement).checked;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    };
+
+    const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        let error = "";
+        switch (name) {
+            case 'email':
+                error = validateEmail(value);
+                break;
+            case 'password':
+                error = validatePassword(value);
+                break;
+            case 'confirmPassword':
+                if (formData.password && value !== formData.password) {
+                    error = "Passwords do not match.";
+                }
+                break;
+            case 'companyName':
+                if (!value) error = "Company name is required.";
+                break;
+        }
+        setErrors(prev => ({ ...prev, [name]: error }));
+    };
+
+    const validateForm = () => {
+        const newErrors = {
+            email: validateEmail(formData.email),
+            password: validatePassword(formData.password),
+            confirmPassword: formData.password !== formData.confirmPassword ? "Passwords do not match." : "",
+            companyName: !formData.companyName ? "Company name is required." : "",
+            agreedToTerms: !formData.agreedToTerms ? "You must agree to the Terms and Privacy Policy." : "",
+            form: ''
+        };
+        setErrors(newErrors);
+        return !Object.values(newErrors).some(error => error !== '');
+    };
+
+    const handleSignup = async (e: FormEvent) => {
         e.preventDefault();
-        setError(null);
+        setErrors(prev => ({ ...prev, form: '' }));
+
+        if (!validateForm()) return;
+
         setLoading(true);
         try {
-            const { data, error: signUpError } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        first_name: firstName,
-                        last_name: lastName,
-                        company: company,
-                        role: role
-                    }
-                }
+            const { error: signUpError } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: { data: { company_name: formData.companyName, role: formData.role, ...(formData.role === 'buyer' && { project_type: formData.projectType }), ...(formData.role === 'supplier' && { product_category: formData.productCategory }) } }
             });
+
             if (signUpError) throw signUpError;
-            if (data.user) {
-                // Redirect to appropriate dashboard
-                if (role === 'buyer') {
-                    navigate('/dashboard/architect');
-                } else if (role === 'supplier') {
-                    navigate('/dashboard/supplier');
-                } else if (role === 'data_provider') {
-                    navigate('/dashboard/data-provider');
-                } else {
-                    navigate('/dashboard');
-                }
-            }
+
+            if (formData.role === 'buyer') navigate('/dashboard');
+            else if (formData.role === 'supplier') navigate('/supplier/pending-approval');
+
         } catch (err) {
-            setError((err as Error).message || 'Signup failed');
+            const errorMessage = (err as Error).message.includes('already exists')
+                ? "This email is already registered. Please log in."
+                : "An unexpected error occurred. Please try again.";
+            setErrors(prev => ({...prev, form: errorMessage}));
         } finally {
             setLoading(false);
         }
     };
 
-    const handleOAuthSignup = async (provider: 'google' | 'github' | 'azure' | 'linkedin_oidc') => {
-        try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider,
-                options: {
-                    redirectTo: `${window.location.origin}/auth/callback`
-                }
-            });
-            if (error) throw error;
-        } catch (err) {
-            setError((err as Error).message || 'OAuth signup failed');
-        }
-    };
-
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-6">
-            <div className="w-full max-w-2xl bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-8 shadow-2xl">
-                {/* Logo */}
-                <div className="flex justify-center mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/30" />
-                        <h1 className="text-2xl font-bold text-white tracking-tight">GreenChainz</h1>
-                    </div>
+        <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div className="w-full max-w-lg space-y-8">
+                <div className="text-center">
+                    <img src="/brand/greenchainz-logo.png" alt="GreenChainz" className="mx-auto h-16 w-auto" />
+                    <h2 className="mt-6 text-3xl font-bold text-foreground">Create your account</h2>
                 </div>
 
-                <h2 className="text-2xl font-bold text-white mb-2 text-center">Create Your Account</h2>
-                <p className="text-slate-400 text-center mb-8">Join the global network for sustainable sourcing</p>
-
-                {error && (
-                    <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/50 text-red-400 text-sm">
-                        {error}
-                    </div>
-                )}
-
-                {/* OAuth Buttons */}
-                <div className="space-y-3 mb-8">
-                    <button
-                        onClick={() => handleOAuthSignup('google')}
-                        className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg bg-white hover:bg-gray-50 text-gray-900 font-medium transition-all border border-gray-200 hover:shadow-lg"
-                    >
-                        <svg className="w-5 h-5" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                        </svg>
-                        Continue with Google
-                    </button>
-
-                    <button
-                        onClick={() => handleOAuthSignup('github')}
-                        className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all border border-slate-700 hover:shadow-lg"
-                    >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                        </svg>
-                        Continue with GitHub
-                    </button>
+                <div className="flex justify-center bg-muted p-1 rounded-lg">
+                    <button onClick={() => setFormData(prev => ({ ...prev, role: 'buyer' }))} className={`w-1/2 py-2 px-4 text-sm font-medium rounded-md transition-colors ${formData.role === 'buyer' ? 'bg-primary text-white shadow' : 'text-muted-foreground hover:bg-border'}`}>I'm a Buyer</button>
+                    <button onClick={() => setFormData(prev => ({ ...prev, role: 'supplier' }))} className={`w-1/2 py-2 px-4 text-sm font-medium rounded-md transition-colors ${formData.role === 'supplier' ? 'bg-primary text-white shadow' : 'text-muted-foreground hover:bg-border'}`}>I'm a Supplier</button>
                 </div>
 
-                {/* Divider */}
-                <div className="relative mb-8">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-slate-700"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-4 bg-slate-900/50 text-slate-400">Or sign up with email</span>
-                    </div>
-                </div>
+                <form className="mt-8 space-y-6" onSubmit={handleSignup} noValidate>
+                    {errors.form && <div className="p-4 rounded-md bg-destructive/10 border border-destructive/50 text-destructive text-sm" role="alert">{errors.form}</div>}
 
-                {/* Signup Form */}
-                <form onSubmit={onSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">First Name</label>
-                            <input
-                                type="text"
-                                className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
-                                placeholder="John"
-                                value={firstName}
-                                onChange={(e) => setFirstName(e.target.value)}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Last Name</label>
-                            <input
-                                type="text"
-                                className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
-                                placeholder="Doe"
-                                value={lastName}
-                                onChange={(e) => setLastName(e.target.value)}
-                                required
-                            />
-                        </div>
+                    <div className="flex flex-col gap-y-4">
+                        <Input id="email" name="email" label="Email Address" type="email" value={formData.email} onChange={handleChange} onBlur={handleBlur} placeholder="you@company.com" error={errors.email} />
+                        <Input id="companyName" name="companyName" label="Company Name" type="text" value={formData.companyName} onChange={handleChange} onBlur={handleBlur} placeholder="Your Company, Inc." error={errors.companyName} />
+
+                        {formData.role === 'buyer' ? (
+                            <Dropdown id="projectType" name="projectType" label="Project Type" value={formData.projectType} onChange={handleChange} options={[{ value: 'Residential', label: 'Residential' }, { value: 'Commercial', label: 'Commercial' }, { value: 'Both', label: 'Both' }]} />
+                        ) : (
+                            <Dropdown id="productCategory" name="productCategory" label="Product Category" value={formData.productCategory} onChange={handleChange} options={[{ value: 'Insulation', label: 'Insulation' }, { value: 'Flooring', label: 'Flooring' }, { value: 'Roofing', label: 'Roofing' }, { value: 'Other', label: 'Other' }]} />
+                        )}
+
+                        <Input id="password" name="password" label="Password" type="password" value={formData.password} onChange={handleChange} onBlur={handleBlur} placeholder="••••••••" error={errors.password} />
+                        <Input id="confirmPassword" name="confirmPassword" label="Confirm Password" type="password" value={formData.confirmPassword} onChange={handleChange} onBlur={handleBlur} placeholder="••••••••" error={errors.confirmPassword} />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
-                        <input
-                            type="email"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
+                    <div className="flex items-center">
+                        <input id="agreedToTerms" name="agreedToTerms" type="checkbox" checked={formData.agreedToTerms} onChange={handleChange} className="h-4 w-4 text-primary focus:ring-primary border-border rounded" />
+                        <label htmlFor="agreedToTerms" className="ml-2 block text-sm text-muted-foreground">I agree to the <Link to="/legal/terms" className="font-medium text-primary hover:underline">Terms of Service</Link> and <Link to="/legal/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link></label>
                     </div>
+                     {errors.agreedToTerms && <p className="mt-1 text-sm text-destructive" role="alert">{errors.agreedToTerms}</p>}
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">Company</label>
-                        <input
-                            type="text"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
-                            placeholder="Your company name"
-                            value={company}
-                            onChange={(e) => setCompany(e.target.value)}
-                        />
-                    </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">I am a...</label>
-                        <div className="grid grid-cols-3 gap-3">
-                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${role === 'buyer'
-                                ? 'border-sky-500 bg-sky-500/10'
-                                : 'border-slate-700 hover:border-slate-600'
-                                }`}>
-                                <input
-                                    type="radio"
-                                    name="role"
-                                    value="buyer"
-                                    checked={role === 'buyer'}
-                                    onChange={(e) => setRole(e.target.value as 'buyer')}
-                                    className="sr-only"
-                                />
-                                <span className="text-white font-medium">🏗️ Architect/Buyer</span>
-                            </label>
-                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${role === 'supplier'
-                                ? 'border-sky-500 bg-sky-500/10'
-                                : 'border-slate-700 hover:border-slate-600'
-                                }`}>
-                                <input
-                                    type="radio"
-                                    name="role"
-                                    value="supplier"
-                                    checked={role === 'supplier'}
-                                    onChange={(e) => setRole(e.target.value as 'supplier')}
-                                    className="sr-only"
-                                />
-                                <span className="text-white font-medium">🌱 Supplier</span>
-                            </label>
-                            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all ${role === 'data_provider'
-                                ? 'border-sky-500 bg-sky-500/10'
-                                : 'border-slate-700 hover:border-slate-600'
-                                }`}>
-                                <input
-                                    type="radio"
-                                    name="role"
-                                    value="data_provider"
-                                    checked={role === 'data_provider'}
-                                    onChange={(e) => setRole(e.target.value as 'data_provider')}
-                                    className="sr-only"
-                                />
-                                <span className="text-white font-medium">📊 Data Provider</span>
-                            </label>
-                        </div>
-                    </div>
+                    <button type="submit" disabled={loading} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-colors">{loading ? 'Creating Account...' : 'Create Account'}</button>
+                </form>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-                        <input
-                            type="password"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength={8}
-                        />
-                        <p className="mt-1 text-xs text-slate-500">Minimum 8 characters</p>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-sky-600 to-cyan-600 text-white font-semibold py-3 rounded-lg hover:shadow-lg hover:shadow-sky-500/25 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    >
-                        {loading ? 'Creating account…' : 'Create Account'}
-                    </button>
-                </form >
-
-                <p className="mt-6 text-center text-sm text-slate-400">
-                    Already have an account?{' '}
-                    <Link to="/login" className="text-sky-400 hover:text-sky-300 font-medium transition">
-                        Sign in
-                    </Link>
-                </p>
-
-                <p className="mt-4 text-center text-xs text-slate-500">
-                    By signing up, you agree to our{' '}
-                    <Link to="/terms" className="text-sky-400 hover:text-sky-300">Terms</Link>
-                    {' '}and{' '}
-                    <Link to="/privacy" className="text-sky-400 hover:text-sky-300">Privacy Policy</Link>
-                </p>
-            </div >
-        </div >
+                 <p className="text-center text-sm text-muted-foreground">Already have an account? <Link to="/login" className="font-medium text-primary hover:underline">Sign in</Link></p>
+            </div>
+        </div>
     );
 }
