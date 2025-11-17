@@ -58,6 +58,7 @@ export default function Signup() {
         productCategory: 'Insulation',
         agreedToTerms: false,
     });
+    const [isAdmin, setIsAdmin] = useState(false);
 
     const [errors, setErrors] = useState({
         email: '', password: '', confirmPassword: '', companyName: '', agreedToTerms: '', form: ''
@@ -118,7 +119,7 @@ export default function Signup() {
             const { error: signUpError } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
-                options: { data: { company_name: formData.companyName, role: formData.role, ...(formData.role === 'buyer' && { project_type: formData.projectType }), ...(formData.role === 'supplier' && { product_category: formData.productCategory }) } }
+                options: { data: { company_name: formData.companyName, role: isAdmin ? 'admin' : formData.role, ...(formData.role === 'buyer' && { project_type: formData.projectType }), ...(formData.role === 'supplier' && { product_category: formData.productCategory }) } }
             });
 
             if (signUpError) throw signUpError;
@@ -165,6 +166,20 @@ export default function Signup() {
                         <Input id="password" name="password" label="Password" type="password" value={formData.password} onChange={handleChange} onBlur={handleBlur} placeholder="••••••••" error={errors.password} />
                         <Input id="confirmPassword" name="confirmPassword" label="Confirm Password" type="password" value={formData.confirmPassword} onChange={handleChange} onBlur={handleBlur} placeholder="••••••••" error={errors.confirmPassword} />
                     </div>
+
+                    {process.env.NODE_ENV === 'development' && (
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={isAdmin}
+                                onChange={(e) => setIsAdmin(e.target.checked)}
+                                id="admin-checkbox"
+                            />
+                            <label htmlFor="admin-checkbox" className="text-sm text-red-600">
+                                Create as Admin (Dev Only)
+                            </label>
+                        </div>
+                    )}
 
                     <div className="flex items-center">
                         <input id="agreedToTerms" name="agreedToTerms" type="checkbox" checked={formData.agreedToTerms} onChange={handleChange} className="h-4 w-4 text-primary focus:ring-primary border-border rounded" />

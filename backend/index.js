@@ -1,6 +1,6 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
 const { pool } = require('./db');
 const fs = require('fs');
 const path = require('path');
@@ -9,6 +9,8 @@ const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const passport = require('./config/passport');
 const { authenticateToken, authorizeRoles, JWT_SECRET } = require('./middleware/auth');
+const crypto = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
 const FSCMockProvider = require('./providers/fscMock');
 const {
   computeSupplierScore,
@@ -23,6 +25,11 @@ const swaggerUi = require('swagger-ui-express');
 const YAML = require('yaml');
 
 const app = express();
+
+// Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Middleware
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
@@ -57,6 +64,55 @@ app.get('/api/docs', (req, res) => {
     res.send(yaml);
   } catch (e) {
     res.status(500).json({ error: 'Spec not found' });
+  }
+});
+
+// Request password reset
+app.post('/api/v1/auth/request-password-reset', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const result = await pool.query('SELECT UserID, Email, FirstName as first_name FROM Users WHERE Email = $1', [email]);
+    if (result.rows.length === 0) {
+      // We don't want to reveal if an email exists or not for security reasons
+      return res.status(200).json({ message: 'If a user with that email exists, a password reset link has been sent.' });
+    }
+
+    const user = result.rows[0];
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour from now
+
+    await pool.query(
+      'UPDATE Users SET ResetToken = $1, ResetTokenExpiresAt = $2 WHERE UserID = $3',
+      [resetToken, resetTokenExpires, user.userid]
+    );
+
+    // Trigger the password reset email
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/reset-password?token=${resetToken}`;
+    const { error: emailError } = await supabase.functions.invoke('handle-transactional-email', {
+      body: {
+        emailType: 'password-reset',
+        payload: {
+          to: user.email,
+          userName: user.firstname || 'User',
+          resetLink: resetLink,
+        },
+      },
+    });
+
+    if (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      // We don't want to fail the request if the email fails to send
+    }
+
+    res.status(200).json({ message: 'If a user with that email exists, a password reset link has been sent.' });
+
+  } catch (err) {
+    console.error('Request password reset error:', err);
+    res.status(500).json({ error: 'Failed to request password reset' });
   }
 });
 
@@ -110,54 +166,22 @@ app.post('/api/v1/auth/register', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Send welcome email
+    // Send welcome email via Supabase Edge Function
     if (notificationsEnabled) {
-      try {
-        const roleName = userRole === 'Buyer' ? 'Buyer' : userRole === 'Supplier' ? 'Supplier' : 'Administrator';
-        await sendEmail({
-          to: email,
-          subject: `Welcome to GreenChainz, ${firstName || 'there'}!`,
-          text: `Hi ${firstName || 'there'},
+      const emailType = userRole === 'Supplier' ? 'supplier-welcome-pending' : 'buyer-welcome';
+      const { error: emailError } = await supabase.functions.invoke('handle-transactional-email', {
+        body: {
+          emailType: emailType,
+          payload: {
+            to: user.email,
+            firstName: user.firstname || 'there',
+            supplierName: user.firstname || 'Supplier',
+          },
+        },
+      });
 
-Welcome to GreenChainz - the verified B2B marketplace for sustainable materials!
-
-Your account has been created as a ${roleName}.
-
-${userRole === 'Buyer' ?
-              `As a Buyer, you can:
-- Search verified sustainable suppliers
-- Send RFQs to multiple suppliers instantly
-- Compare quotes and certifications
-- Track your project sourcing in one place
-
-Next steps:
-1. Complete your buyer profile at /buyers
-2. Browse our supplier directory
-3. Send your first RFQ` :
-
-              userRole === 'Supplier' ?
-                `As a Supplier, you can:
-- Showcase your FSC/LEED certifications
-- Receive RFQs from architects and contractors
-- Respond to quotes directly through the platform
-- Build your verified supplier profile
-
-Next steps:
-1. Complete your supplier profile
-2. Upload your products and certifications
-3. Start receiving RFQs from buyers` :
-
-                `As an Administrator, you have full access to platform management, supplier verification, and data provider integrations.`}
-
-Questions? Reply to this email anytime.
-
-Best,
-The GreenChainz Team
-www.greenchainz.com`,
-          notificationType: 'user_welcome'
-        });
-      } catch (e) {
-        console.warn('Welcome email failed:', e.message);
+      if (emailError) {
+        console.warn(`Welcome email failed to send for ${user.email}:`, emailError);
       }
     }
 
@@ -224,6 +248,44 @@ app.post('/api/v1/auth/login', async (req, res) => {
     res.status(500).json({ error: 'Login failed' });
   }
 });
+
+// Reset password with token
+app.post('/api/v1/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+
+    const result = await pool.query(
+      'SELECT UserID, ResetTokenExpiresAt FROM Users WHERE ResetToken = $1',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    const user = result.rows[0];
+    if (new Date() > new Date(user.resettokenexpiresat)) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      'UPDATE Users SET PasswordHash = $1, ResetToken = NULL, ResetTokenExpiresAt = NULL WHERE UserID = $2',
+      [passwordHash, user.userid]
+    );
+
+    res.status(200).json({ message: 'Password has been reset successfully.' });
+
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
 
 // Get current user profile (protected)
 app.get('/api/v1/auth/me', authenticateToken, async (req, res) => {
@@ -471,7 +533,24 @@ async function initSchema() {
 
 // ============================================
 // RFQ (REQUEST FOR QUOTE) ENDPOINTS
+app.post('/api/rfq', async (req, res) => {
+  try {
+    const { buyer_email, project_name, message, quantity, timeline, contact_preference } = req.body;
 
+    // Basic validation
+    if (!buyer_email || !message) {
+      return res.status(400).json({ error: 'Email and message are required' });
+    }
+
+    // In a real application, you would save this to the database
+    console.log('Received RFQ:', { buyer_email, project_name, message, quantity, timeline, contact_preference });
+
+    res.status(201).json({ success: true, message: 'RFQ submitted successfully' });
+  } catch (err) {
+    console.error('Error submitting RFQ:', err);
+    res.status(500).json({ error: 'Failed to submit RFQ' });
+  }
+});
 // ============================================
 // DATA PROVIDER INTEGRATION ENDPOINTS
 // ============================================
@@ -715,23 +794,58 @@ app.post('/api/v1/rfqs', authenticateToken, authorizeRoles('Buyer'), async (req,
       [buyerId, supplierId, productId || null, projectName, message, quantityNeeded, unit, budgetRange, deadlineDate]
     );
 
-    // Notification to supplier contact(s)
+    // Notifications
     if (notificationsEnabled) {
-      try {
-        const supplierEmailRes = await pool.query(`
-          SELECT u.Email FROM Users u
-          JOIN Suppliers s ON u.CompanyID = s.CompanyID
-          WHERE s.SupplierID = $1 AND u.Role = 'Supplier' LIMIT 1`, [supplierId]);
-        if (supplierEmailRes.rows.length) {
-          await sendEmail({
-            to: supplierEmailRes.rows[0].email,
-            subject: 'New RFQ Received',
-            text: `You have received a new RFQ (#${result.rows[0].rfqid}) from buyer ${buyerId}. Project: ${projectName || 'N/A'}`,
-            notificationType: 'rfq_created'
-          });
-        }
-      } catch (e) {
-        console.warn('RFQ email failed:', e.message);
+      // 1. Notify Supplier of new RFQ
+      const supplierEmailRes = await pool.query(`
+        SELECT u.Email, u.FirstName FROM Users u
+        JOIN Suppliers s ON u.CompanyID = s.CompanyID
+        WHERE s.SupplierID = $1 AND u.Role = 'Supplier' LIMIT 1`, [supplierId]);
+
+      // 1. Notify Supplier of new RFQ
+      const supplierInfoRes = await pool.query(`
+        SELECT u.Email, u.FirstName, c.CompanyName
+        FROM Users u
+        JOIN Companies c ON u.CompanyID = c.CompanyID
+        WHERE u.UserID IN (SELECT UserID FROM Suppliers WHERE SupplierID = $1)`,
+      [supplierId]);
+
+      const productInfoRes = await pool.query('SELECT Name FROM Products WHERE ProductID = $1', [productId]);
+
+      if (supplierInfoRes.rows.length) {
+        const supplier = supplierInfoRes.rows[0];
+        const productName = productInfoRes.rows.length ? productInfoRes.rows[0].name : 'a product';
+
+        const { error } = await supabase.functions.invoke('handle-transactional-email', {
+          body: {
+            emailType: 'supplier-new-rfq',
+            payload: {
+              to: supplier.email,
+              supplierName: supplier.firstname || 'Supplier',
+              buyerCompany: req.user.companyName || 'A Buyer',
+              productName: productName,
+              quantity: `${result.rows[0].quantityneeded} ${result.rows[0].unit}`,
+              buyerMessage: result.rows[0].message,
+            },
+          },
+        });
+        if (error) console.warn('Supplier RFQ notification email failed:', error);
+
+        // 2. Notify Buyer of RFQ confirmation
+        const { error: buyerError } = await supabase.functions.invoke('handle-transactional-email', {
+          body: {
+            emailType: 'buyer-rfq-confirmation',
+            payload: {
+              to: req.user.email,
+              buyerName: req.user.firstName || 'Buyer',
+              supplierCompany: supplier.companyname,
+              productName: productName,
+              quantity: `${result.rows[0].quantityneeded} ${result.rows[0].unit}`,
+              message: result.rows[0].message,
+            },
+          },
+        });
+        if (buyerError) console.warn('Buyer RFQ confirmation email failed:', buyerError);
       }
     }
 
@@ -832,22 +946,44 @@ app.post('/api/v1/rfqs/:id/respond', authenticateToken, authorizeRoles('Supplier
 
     // Notify buyer
     if (notificationsEnabled) {
-      try {
-        const buyerEmailRes = await pool.query(`
-          SELECT u.Email FROM Users u
-          JOIN Buyers b ON u.UserID = b.UserID
-          JOIN RFQs r ON r.BuyerID = b.BuyerID
-          WHERE r.RFQID = $1 LIMIT 1`, [rfqId]);
-        if (buyerEmailRes.rows.length) {
-          await sendEmail({
-            to: buyerEmailRes.rows[0].email,
-            subject: 'New RFQ Response Received',
-            text: `Your RFQ (#${rfqId}) has a new response (ResponseID ${result.rows[0].responseid}).`,
-            notificationType: 'rfq_response_received'
-          });
-        }
-      } catch (e) {
-        console.warn('RFQ response email failed:', e.message);
+      const rfqDetailsRes = await pool.query(`
+        SELECT
+          u.Email,
+          u.FirstName,
+          s.SupplierID,
+          p.Name as ProductName,
+          r.Unit
+        FROM RFQs r
+        JOIN Buyers b ON r.BuyerID = b.BuyerID
+        JOIN Users u ON b.UserID = u.UserID
+        LEFT JOIN Products p ON r.ProductID = p.ProductID
+        LEFT JOIN Suppliers s ON r.SupplierID = s.SupplierID
+        WHERE r.RFQID = $1`, [rfqId]
+      );
+
+      if (rfqDetailsRes.rows.length) {
+        const details = rfqDetailsRes.rows[0];
+        const supplierCompanyRes = await pool.query('SELECT CompanyName FROM Companies WHERE CompanyID = (SELECT CompanyID FROM Suppliers WHERE SupplierID = $1)', [details.supplierid]);
+        const supplierCompany = supplierCompanyRes.rows.length ? supplierCompanyRes.rows[0].companyname : 'A Supplier';
+
+        const { error } = await supabase.functions.invoke('handle-transactional-email', {
+          body: {
+            emailType: 'buyer-quote-response',
+            payload: {
+              to: details.email,
+              buyerName: details.firstname || 'Buyer',
+              supplierCompany: supplierCompany,
+              productName: details.productname || 'a product',
+              price: result.rows[0].quotedprice,
+              unit: details.unit || 'unit',
+              availability: 'N/A',
+              timeline: `${result.rows[0].leadtinedays} days`,
+              message: result.rows[0].message,
+              rfqId: rfqId,
+            },
+          },
+        });
+        if (error) console.warn('RFQ response email failed:', error);
       }
     }
 
