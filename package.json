@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "@react-email/components": "^1.0.1",
+    "@react-email/render": "^2.0.0",
+    "@react-email/tailwind": "^2.0.1",
+    "@supabase/supabase-js": "^2.81.1",
+    "resend": "^6.4.2"
+  },
+  "devDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}

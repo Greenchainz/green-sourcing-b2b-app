@@ -18,11 +18,22 @@ import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Unauthorized from './pages/Unauthorized';
-// import ProductDetailPage from './pages/ProductDetailPage';
+import feat/product-detail-page
+
+import RFQHistoryPage from './pages/RFQHistoryPage';
+ main
 // import ProductsPage from './pages/ProductsPage';
 // import Demo from './pages/Demo';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
+feature/product-search-filter
+import SearchPage from './pages/SearchPage';
+
+import SupplierDashboard from './pages/SupplierDashboard/index';
+import ProductsPage from './pages/SupplierDashboard/ProductsPage';
+import AddProductPage from './pages/SupplierDashboard/AddProductPage';
+import EditProductPage from './pages/SupplierDashboard/EditProductPage'
+        main
 
 // Placeholder components for other admin pages referenced in sidebar
 const AdminUsers = () => <h1>User Management</h1>;
@@ -45,9 +56,24 @@ function App() {
           <Route path="terms" element={<Terms />} />
           {/* <Route path="demo" element={<Demo />} /> */}
           <Route path="unauthorized" element={<Unauthorized />} />
-          {/* <Route path="product/:id" element={<ProductDetailPage />} /> */}
+          <Route path="product/:id" element={<ProductDetailPage />} />
+ feat/product-detail-page
+
+          <Route path="rfq-history" element={<RFQHistoryPage />} />
+ main
           {/* <Route path="products" element={<ProductsPage />} /> */}
           <Route path="badges/charter175" element={<Charter175 />} />
+feature/product-search-filter
+          <Route path="search" element={<SearchPage />} />
+
+        </Route>
+
+        {/* Supplier Dashboard Routes */}
+        <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
+        <Route path="/dashboard/supplier/products" element={<ProductsPage />} />
+        <Route path="/dashboard/supplier/products/new" element={<AddProductPage />} />
+        <Route path="/dashboard/supplier/products/:id/edit" element={<EditProductPage />} />
+ main
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
@@ -107,8 +133,12 @@ function App() {
                 </ProtectedRoute>
               }
             />
+feat/admin-content-moderation
           </Route>
         </Route>
+
+          </Route> */}
+main
       </Routes>
     </ErrorBoundary>
   );

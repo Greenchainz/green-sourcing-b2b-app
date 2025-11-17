@@ -1,16 +1,7 @@
-// frontend/src/types.ts
-
-export interface Supplier {
-  id: string;
-  name: string;
-  location: string;
-  description: string;
-  logo_url: string;
-}
-
 export interface Product {
-  id: string;
+  id: number;
   name: string;
+ feature/rfq-system
   description: string;
   supplier_id: string;
   images: string[];
@@ -37,6 +28,7 @@ export interface RFQData {
   message: string;
   quantity?: number;
   timeline: 'ASAP' | '1-3 months' | '3-6 months' | '6+ months';
+  contact_preference: 'email' | 'phone' | 'text';
 }
 
 export interface RFQ {
@@ -48,4 +40,18 @@ export interface RFQ {
   deadline: string;
   status: 'Pending' | 'Quoted' | 'Won' | 'Lost';
   message?: string;
+  contact_preference?: 'email' | 'phone' | 'text';
+
+  company: string;
+  certification: string;
+  image: string;
+  featured: boolean;
+  materialType: string;
+  application: ('Residential' | 'Commercial')[];
+  certifications: string[];
+  location: string;
+  recycledContent: number;
+  carbonFootprint: number;
+  vocLevel: number;
+  main
 }
