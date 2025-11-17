@@ -41,11 +41,13 @@ const sampleProduct: Product = {
 
 export default function ProductDetailPage() {
   const [isModalOpen, setModalOpen] = useState(false);
+  const [isRFQSubmitted, setRFQSubmitted] = useState(false);
   const product = sampleProduct; // In a real app, you'd fetch this data
 
   const handleRFQSubmit = (rfqData: RFQData) => {
     console.log('RFQ Submitted', rfqData);
     setModalOpen(false);
+    setRFQSubmitted(true);
     // Here you would typically send the data to your backend
   };
 
@@ -88,13 +90,22 @@ export default function ProductDetailPage() {
 
           <div className="lg:col-span-2">
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-4">Request a Quote</h2>
-              <p className="text-gray-600 mb-6">Get pricing and availability for your project from the supplier.</p>
-              <button
-                onClick={() => setModalOpen(true)}
-                className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors text-lg">
-                Request Quote
-              </button>
+              {isRFQSubmitted ? (
+                <div className="text-center">
+                  <h2 className="text-2xl font-semibold text-green-800 mb-4">RFQ Sent!</h2>
+                  <p className="text-gray-600 mb-6">Your RFQ has been sent! {product.supplier?.name} will respond within 48 hours.</p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Request a Quote</h2>
+                  <p className="text-gray-600 mb-6">Get pricing and availability for your project from the supplier.</p>
+                  <button
+                    onClick={() => setModalOpen(true)}
+                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors text-lg">
+                    Request Quote
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

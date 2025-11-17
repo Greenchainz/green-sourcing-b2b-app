@@ -37,6 +37,7 @@ export interface RFQData {
   message: string;
   quantity?: number;
   timeline: 'ASAP' | '1-3 months' | '3-6 months' | '6+ months';
+  contact_preference: 'email' | 'phone' | 'text';
 }
 
 export interface RFQ {
@@ -48,4 +49,5 @@ export interface RFQ {
   deadline: string;
   status: 'Pending' | 'Quoted' | 'Won' | 'Lost';
   message?: string;
+  contact_preference?: 'email' | 'phone' | 'text';
 }

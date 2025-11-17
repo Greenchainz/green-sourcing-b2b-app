@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
+import LandingPageValueProps from '../components/LandingPageValueProps';
 
 export function LandingPage() {
     return (
@@ -88,88 +89,7 @@ export function LandingPage() {
                 </div>
             </section>
 
-            {/* Value Props */}
-            <section className="py-20 bg-slate-900/50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid md:grid-cols-3 gap-8">
-                        {[
-                            {
-                                icon: '🔍',
-                                title: 'Search & Compare',
-                                description: 'Filter by carbon footprint, certifications, lead times, and 50+ sustainability metrics'
-                            },
-                            {
-                                icon: '🎯',
-                                title: 'Send RFQs Instantly',
-                                description: 'Message verified suppliers directly. Collaborate on projects. Track proposals in real-time.'
-                            },
-                            {
-                                icon: '🏆',
-                                title: 'Verified Suppliers',
-                                description: 'Every product backed by third-party certifications. FSC, B Corp, Cradle to Cradle, and more.'
-                            }
-                        ].map((feature, i) => (
-                            <div key={i} className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:border-sky-500/50 transition-colors">
-                                <div className="text-4xl mb-4">{feature.icon}</div>
-                                <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
-                                <p className="text-slate-400">{feature.description}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* How It Works */}
-            <section className="py-20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h3 className="text-3xl font-bold text-white text-center mb-12">How It Works</h3>
-
-                    <div className="grid lg:grid-cols-2 gap-12 items-center">
-                        <div className="space-y-6">
-                            {[
-                                { step: '01', title: 'Sign Up & Complete Survey', desc: 'Tell us about your sustainability goals and material needs' },
-                                { step: '02', title: 'Search Our Network', desc: 'Browse verified suppliers with real-time data and certifications' },
-                                { step: '03', title: 'Compare & Request Quotes', desc: 'Side-by-side comparison tools and instant RFQ workflows' },
-                                { step: '04', title: 'Close Deals Faster', desc: 'Message board, project tracking, and transparent pricing' }
-                            ].map((item, i) => (
-                                <div key={i} className="flex gap-4">
-                                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center text-white font-bold">
-                                        {item.step}
-                                    </div>
-                                    <div>
-                                        <h4 className="text-lg font-semibold text-white mb-1">{item.title}</h4>
-                                        <p className="text-slate-400">{item.desc}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="relative">
-                            <div className="aspect-video rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center">
-                                <div className="text-center">
-                                    <div className="text-6xl mb-4">🎬</div>
-                                    <p className="text-slate-400">Product Demo Video</p>
-                                    <p className="text-sm text-slate-500">(Coming Soon)</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Social Proof */}
-            <section className="py-20 bg-slate-900/50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h3 className="text-3xl font-bold text-white text-center mb-12">Trusted By Industry Leaders</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                        {['Patagonia', 'Interface', 'Herman Miller', 'Seventh Generation'].map((company, i) => (
-                            <div key={i} className="flex items-center justify-center p-6 rounded-xl bg-slate-800/30 border border-slate-700/30">
-                                <span className="text-slate-400 font-semibold">{company}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
+            <LandingPageValueProps />
 
             {/* Final CTA */}
             <section className="py-20">
