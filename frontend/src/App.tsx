@@ -17,8 +17,10 @@ import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Unauthorized from './pages/Unauthorized';
-import ProductDetailPage from './pages/ProductDetailPage';
+import feat/product-detail-page
+
 import RFQHistoryPage from './pages/RFQHistoryPage';
+ main
 // import ProductsPage from './pages/ProductsPage';
 // import Demo from './pages/Demo';
 import Layout from './components/Layout';
@@ -50,7 +52,10 @@ function App() {
           {/* <Route path="demo" element={<Demo />} /> */}
           <Route path="unauthorized" element={<Unauthorized />} />
           <Route path="product/:id" element={<ProductDetailPage />} />
+ feat/product-detail-page
+
           <Route path="rfq-history" element={<RFQHistoryPage />} />
+ main
           {/* <Route path="products" element={<ProductsPage />} /> */}
           <Route path="badges/charter175" element={<Charter175 />} />
 feature/product-search-filter
