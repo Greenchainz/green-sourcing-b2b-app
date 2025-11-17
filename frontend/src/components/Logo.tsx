@@ -13,7 +13,7 @@ export default function Logo({ height = 40, showText = true }: LogoProps) {
         <Link to="/" className="flex items-center gap-3" aria-label="GreenChainz Home">
             {imgOk ? (
                 <img
-                    src="/greenchainz-logo.svg"
+                    src="/assets/logo/greenchainz-full.svg"
                     alt="GreenChainz - Verified Sustainable Sourcing"
                     style={{ height }}
                     onError={() => setImgOk(false)}
