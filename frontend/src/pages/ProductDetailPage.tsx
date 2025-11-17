@@ -48,6 +48,7 @@ const MOCK_PRODUCT = {
 };
 
 export default function ProductDetailPage() {
+ feat/product-detail-page
   const params = useParams();
   const productId = params?.id;
 
@@ -64,6 +65,17 @@ export default function ProductDetailPage() {
     console.log('RFQ submitted for product:', product.id);
     alert('Quote request sent! (MVP placeholder)');
     setShowQuoteModal(false);
+=======
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [isRFQSubmitted, setRFQSubmitted] = useState(false);
+  const product = sampleProduct; // In a real app, you'd fetch this data
+
+  const handleRFQSubmit = (rfqData: RFQData) => {
+    console.log('RFQ Submitted', rfqData);
+    setModalOpen(false);
+    setRFQSubmitted(true);
+    // Here you would typically send the data to your backend
+ main
   };
 
   return (
@@ -171,6 +183,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
+ feat/product-detail-page
             {/* CTA Buttons */}
             <div className="flex gap-4">
               <button
@@ -182,6 +195,26 @@ export default function ProductDetailPage() {
               <button className="px-8 py-4 border-2 border-border text-foreground font-semibold rounded-lg hover:bg-muted transition-colors">
                 Save to Project
               </button>
+
+          <div className="lg:col-span-2">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              {isRFQSubmitted ? (
+                <div className="text-center">
+                  <h2 className="text-2xl font-semibold text-green-800 mb-4">RFQ Sent!</h2>
+                  <p className="text-gray-600 mb-6">Your RFQ has been sent! {product.supplier?.name} will respond within 48 hours.</p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Request a Quote</h2>
+                  <p className="text-gray-600 mb-6">Get pricing and availability for your project from the supplier.</p>
+                  <button
+                    onClick={() => setModalOpen(true)}
+                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors text-lg">
+                    Request Quote
+                  </button>
+                </>
+              )}
+ main
             </div>
 
             {/* EPD Download */}

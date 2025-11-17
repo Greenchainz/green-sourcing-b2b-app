@@ -16,6 +16,7 @@ export default function RFQModal({ isOpen, onClose, onSubmit, productName }: RFQ
     message: '',
     quantity: undefined,
     timeline: '1-3 months',
+    contact_preference: 'email',
   });
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -124,6 +125,23 @@ export default function RFQModal({ isOpen, onClose, onSubmit, productName }: RFQ
                 <option>3-6 months</option>
                 <option>6+ months</option>
               </select>
+            </div>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">Contact Preference</label>
+            <div className="mt-2 flex gap-4">
+              <label className="inline-flex items-center">
+                <input type="radio" name="contact_preference" value="email" checked={formData.contact_preference === 'email'} onChange={handleChange} className="form-radio" />
+                <span className="ml-2">Email</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input type="radio" name="contact_preference" value="phone" checked={formData.contact_preference === 'phone'} onChange={handleChange} className="form-radio" />
+                <span className="ml-2">Phone</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input type="radio" name="contact_preference" value="text" checked={formData.contact_preference === 'text'} onChange={handleChange} className="form-radio" />
+                <span className="ml-2">Text</span>
+              </label>
             </div>
           </div>
           <div className="flex justify-end gap-4">

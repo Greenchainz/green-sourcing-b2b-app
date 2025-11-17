@@ -7,7 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AuthCallback from './pages/AuthCallback';
 import { LandingPage } from './pages/LandingPage';
-// import { ArchitectDashboard } from './pages/ArchitectDashboard';
+import BuyerDashboard from './pages/BuyerDashboard';
 // import { SupplierDashboard } from './pages/SupplierDashboard';
 // import { NetworkBoard } from './pages/NetworkBoard';
 // import { AdminConsole } from './pages/AdminConsole';
@@ -17,11 +17,22 @@ import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Unauthorized from './pages/Unauthorized';
-import ProductDetailPage from './pages/ProductDetailPage';
+import feat/product-detail-page
+
+import RFQHistoryPage from './pages/RFQHistoryPage';
+ main
 // import ProductsPage from './pages/ProductsPage';
 // import Demo from './pages/Demo';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
+feature/product-search-filter
+import SearchPage from './pages/SearchPage';
+
+import SupplierDashboard from './pages/SupplierDashboard/index';
+import ProductsPage from './pages/SupplierDashboard/ProductsPage';
+import AddProductPage from './pages/SupplierDashboard/AddProductPage';
+import EditProductPage from './pages/SupplierDashboard/EditProductPage'
+        main
 
 function App() {
   return (
@@ -41,20 +52,33 @@ function App() {
           {/* <Route path="demo" element={<Demo />} /> */}
           <Route path="unauthorized" element={<Unauthorized />} />
           <Route path="product/:id" element={<ProductDetailPage />} />
+ feat/product-detail-page
+
+          <Route path="rfq-history" element={<RFQHistoryPage />} />
+ main
           {/* <Route path="products" element={<ProductsPage />} /> */}
           <Route path="badges/charter175" element={<Charter175 />} />
+feature/product-search-filter
+          <Route path="search" element={<SearchPage />} />
+
+        </Route>
+
+        {/* Supplier Dashboard Routes */}
+        <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
+        <Route path="/dashboard/supplier/products" element={<ProductsPage />} />
+        <Route path="/dashboard/supplier/products/new" element={<AddProductPage />} />
+        <Route path="/dashboard/supplier/products/:id/edit" element={<EditProductPage />} />
+ main
 
           {/* Protected Routes - Temporarily disabled until demo pages are fixed */}
-          {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+          {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}> */}
             <Route
-              path="dashboard/architect"
+              path="dashboard"
               element={
-                <ProtectedRoute allowedRoles={['buyer']}>
-                  <ArchitectDashboard />
-                </ProtectedRoute>
+                  <BuyerDashboard />
               }
             />
-            <Route
+            {/* <Route
               path="dashboard/supplier"
               element={
                 <ProtectedRoute allowedRoles={['supplier']}>
@@ -79,7 +103,6 @@ function App() {
               }
             />
           </Route> */}
-        </Route>
       </Routes>
     </ErrorBoundary>
   );
