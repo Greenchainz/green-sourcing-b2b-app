@@ -48,7 +48,7 @@ const MOCK_PRODUCT = {
 };
 
 export default function ProductDetailPage() {
- feat/product-detail-page
+ 
   const params = useParams();
   const productId = params?.id;
 
@@ -65,7 +65,7 @@ export default function ProductDetailPage() {
     console.log('RFQ submitted for product:', product.id);
     alert('Quote request sent! (MVP placeholder)');
     setShowQuoteModal(false);
-=======
+
   const [isModalOpen, setModalOpen] = useState(false);
   const [isRFQSubmitted, setRFQSubmitted] = useState(false);
   const product = sampleProduct; // In a real app, you'd fetch this data
@@ -75,7 +75,7 @@ export default function ProductDetailPage() {
     setModalOpen(false);
     setRFQSubmitted(true);
     // Here you would typically send the data to your backend
- main
+
   };
 
   return (
@@ -183,7 +183,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
- feat/product-detail-page
+ 
             {/* CTA Buttons */}
             <div className="flex gap-4">
               <button
@@ -214,7 +214,7 @@ export default function ProductDetailPage() {
                   </button>
                 </>
               )}
- main
+ 
             </div>
 
             {/* EPD Download */}
