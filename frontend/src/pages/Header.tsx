@@ -13,7 +13,7 @@ export function Header() {
                         <nav className="hidden md:flex items-center gap-4">
                             <a href="#" className="px-3 py-2 rounded-lg bg-sky-500/10 text-sky-400 font-medium">Dashboard</a>
                             <a href="#" className="px-3 py-2 text-slate-400 hover:text-white transition-colors">Products</a>
-                            <a href="#" className="px-3 py-2 text-slate-400 hover:text-white transition-colors">RFQs</a>
+                            <Link to="/rfq-history" className="px-3 py-2 text-slate-400 hover:text-white transition-colors">RFQs</Link>
                             <a href="#" className="px-3 py-2 text-slate-400 hover:text-white transition-colors">Network</a>
                         </nav>
                     </div>

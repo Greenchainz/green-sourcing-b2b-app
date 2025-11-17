@@ -471,7 +471,24 @@ async function initSchema() {
 
 // ============================================
 // RFQ (REQUEST FOR QUOTE) ENDPOINTS
+app.post('/api/rfq', async (req, res) => {
+  try {
+    const { buyer_email, project_name, message, quantity, timeline, contact_preference } = req.body;
 
+    // Basic validation
+    if (!buyer_email || !message) {
+      return res.status(400).json({ error: 'Email and message are required' });
+    }
+
+    // In a real application, you would save this to the database
+    console.log('Received RFQ:', { buyer_email, project_name, message, quantity, timeline, contact_preference });
+
+    res.status(201).json({ success: true, message: 'RFQ submitted successfully' });
+  } catch (err) {
+    console.error('Error submitting RFQ:', err);
+    res.status(500).json({ error: 'Failed to submit RFQ' });
+  }
+});
 // ============================================
 // DATA PROVIDER INTEGRATION ENDPOINTS
 // ============================================
