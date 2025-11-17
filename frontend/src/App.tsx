@@ -29,7 +29,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Routes>
-feat/legal-pages
+
         <Route path="/" element={<Layout />}>
           {/* Public Routes */}
           <Route index element={<LandingPage />} />
@@ -112,7 +112,7 @@ feat/legal-pages
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/content" element={<ContentModerationPage />} />
- main
+ 
       </Routes>
     </ErrorBoundary>
   );
