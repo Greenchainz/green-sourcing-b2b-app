@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
-import LandingPageValueProps from '../components/LandingPageValueProps';
+import WhySection from '../components/LandingPage/WhySection';
 import Footer from '../components/Footer';
 
 export function LandingPage() {
@@ -90,7 +90,7 @@ export function LandingPage() {
                 </div>
             </section>
 
-            <LandingPageValueProps />
+            <WhySection />
 
             {/* Final CTA */}
             <section className="py-20">
