@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 import LandingPageValueProps from '../components/LandingPageValueProps';
+import Footer from '../components/Footer';
 
 export function LandingPage() {
     return (
@@ -110,52 +111,7 @@ export function LandingPage() {
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="border-t border-slate-800 bg-slate-950 py-12">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid md:grid-cols-4 gap-8">
-                        <div>
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-400" />
-                                <span className="font-bold text-white">GreenChainz</span>
-                            </div>
-                            <p className="text-slate-400 text-sm">
-                                Global Trust Layer for Sustainable Commerce
-                            </p>
-                        </div>
-
-                        <div>
-                            <h4 className="font-semibold text-white mb-4">Product</h4>
-                            <ul className="space-y-2">
-                                <li><Link to="/features" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Features</Link></li>
-                                <li><Link to="/survey/architect" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Take Survey</Link></li>
-                                <li><Link to="/signup" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Sign Up</Link></li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h4 className="font-semibold text-white mb-4">Company</h4>
-                            <ul className="space-y-2">
-                                <li><Link to="/contact" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Contact</Link></li>
-                                <li><a href="mailto:partnerships@greenchainz.com" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Partnerships</a></li>
-                                <li><a href="mailto:hello@greenchainz.com" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Support</a></li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h4 className="font-semibold text-white mb-4">Legal</h4>
-                            <ul className="space-y-2">
-                                <li><Link to="/privacy" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Privacy</Link></li>
-                                <li><Link to="/terms" className="text-slate-400 hover:text-sky-400 transition-colors text-sm">Terms</Link></li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div className="mt-12 pt-8 border-t border-slate-800 text-center text-slate-500 text-sm">
-                        © {new Date().getFullYear()} GreenChainz. All rights reserved.
-                    </div>
-                </div>
-            </footer>
+            <Footer />
         </div>
     );
 }

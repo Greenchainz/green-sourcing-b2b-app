@@ -16,6 +16,7 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import SupplierAgreement from './pages/SupplierAgreement';
 import Unauthorized from './pages/Unauthorized';
 // import ProductDetailPage from './pages/ProductDetailPage';
 // import ProductsPage from './pages/ProductsPage';
@@ -36,8 +37,9 @@ function App() {
           <Route path="survey/architect" element={<ArchitectSurvey />} />
           <Route path="features" element={<Features />} />
           <Route path="contact" element={<Contact />} />
-          <Route path="privacy" element={<Privacy />} />
-          <Route path="terms" element={<Terms />} />
+          <Route path="privacy-policy" element={<Privacy />} />
+          <Route path="terms-of-service" element={<Terms />} />
+          <Route path="supplier-agreement" element={<SupplierAgreement />} />
           {/* <Route path="demo" element={<Demo />} /> */}
           <Route path="unauthorized" element={<Unauthorized />} />
           {/* <Route path="product/:id" element={<ProductDetailPage />} /> */}
