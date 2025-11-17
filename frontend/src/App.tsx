@@ -22,6 +22,7 @@ import Unauthorized from './pages/Unauthorized';
 // import Demo from './pages/Demo';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
+import SearchPage from './pages/SearchPage';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
           {/* <Route path="product/:id" element={<ProductDetailPage />} /> */}
           {/* <Route path="products" element={<ProductsPage />} /> */}
           <Route path="badges/charter175" element={<Charter175 />} />
+          <Route path="search" element={<SearchPage />} />
 
           {/* Protected Routes - Temporarily disabled until demo pages are fixed */}
           {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
