@@ -22,6 +22,10 @@ import Unauthorized from './pages/Unauthorized';
 // import Demo from './pages/Demo';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
+import SupplierDashboard from './pages/SupplierDashboard/index';
+import ProductsPage from './pages/SupplierDashboard/ProductsPage';
+import AddProductPage from './pages/SupplierDashboard/AddProductPage';
+import EditProductPage from './pages/SupplierDashboard/EditProductPage';
 
 function App() {
   return (
@@ -43,6 +47,13 @@ function App() {
           {/* <Route path="product/:id" element={<ProductDetailPage />} /> */}
           {/* <Route path="products" element={<ProductsPage />} /> */}
           <Route path="badges/charter175" element={<Charter175 />} />
+        </Route>
+
+        {/* Supplier Dashboard Routes */}
+        <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
+        <Route path="/dashboard/supplier/products" element={<ProductsPage />} />
+        <Route path="/dashboard/supplier/products/new" element={<AddProductPage />} />
+        <Route path="/dashboard/supplier/products/:id/edit" element={<EditProductPage />} />
 
           {/* Protected Routes - Temporarily disabled until demo pages are fixed */}
           {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
@@ -79,7 +90,6 @@ function App() {
               }
             />
           </Route> */}
-        </Route>
       </Routes>
     </ErrorBoundary>
   );
