@@ -11,3 +11,13 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+@media print {
+  header, footer {
+    display: none !important;
+  }
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+}

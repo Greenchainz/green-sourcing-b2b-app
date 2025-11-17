@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
+import Footer from '../components/Footer';
 
 export default function Terms() {
     return (
@@ -12,63 +13,32 @@ export default function Terms() {
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
                 <h1 className="text-4xl font-bold text-white mb-6">Terms of Service</h1>
-                <p className="text-slate-400 mb-8">Last updated: November 13, 2025</p>
+                <p className="text-slate-400 mb-8">Last Updated: November 17, 2025</p>
 
                 <div className="prose prose-invert max-w-none space-y-8">
                     <section className="text-slate-300">
-                        <h2 className="text-2xl font-bold text-white mb-4">1. Acceptance of Terms</h2>
-                        <p>
-                            By accessing and using GreenChainz, you accept and agree to be bound by these Terms of Service. If you do not agree, please do not use our platform.
-                        </p>
+                        <h2 className="text-2xl font-bold text-white mb-4">Platform Rules</h2>
+                        <p>You agree not to misuse the GreenChainz platform. This includes engaging in any activity that is illegal, fraudulent, or harmful to others. You will not attempt to compromise the security of the platform, introduce malicious software, or scrape data without authorization.</p>
                     </section>
 
                     <section className="text-slate-300">
-                        <h2 className="text-2xl font-bold text-white mb-4">2. Description of Service</h2>
-                        <p className="mb-4">
-                            GreenChainz provides a B2B marketplace platform connecting architects and contractors with verified sustainable building material suppliers. Our services include:
-                        </p>
-                        <ul className="list-disc pl-6 space-y-2">
-                            <li>Searchable database of sustainable materials</li>
-                            <li>Verification of supplier sustainability claims</li>
-                            <li>RFQ submission and management tools</li>
-                            <li>Project collaboration features</li>
-                        </ul>
+                        <h2 className="text-2xl font-bold text-white mb-4">Supplier Obligations</h2>
+                        <p>As a supplier, you are obligated to provide accurate and verifiable information about your products, including all sustainability certifications and data. You must maintain the quality of your listings and fulfill any RFQs you accept in a timely and professional manner.</p>
                     </section>
 
                     <section className="text-slate-300">
-                        <h2 className="text-2xl font-bold text-white mb-4">3. User Responsibilities</h2>
-                        <p className="mb-4">You agree to:</p>
-                        <ul className="list-disc pl-6 space-y-2">
-                            <li>Provide accurate account information</li>
-                            <li>Maintain the security of your account credentials</li>
-                            <li>Use the platform for lawful purposes only</li>
-                            <li>Not misrepresent your company or sustainability claims</li>
-                            <li>Respect intellectual property rights</li>
-                        </ul>
+                        <h2 className="text-2xl font-bold text-white mb-4">Buyer Conduct</h2>
+                        <p>As a buyer, you agree to use the platform for legitimate business purposes only. You will communicate with suppliers professionally and will not submit fraudulent or misleading RFQs. All interactions should be conducted in good faith.</p>
                     </section>
 
                     <section className="text-slate-300">
-                        <h2 className="text-2xl font-bold text-white mb-4">4. Supplier Verification</h2>
-                        <p>
-                            While we verify supplier certifications and sustainability data to the best of our ability, GreenChainz is not liable for inaccuracies or changes in supplier status. Users should conduct their own due diligence.
-                        </p>
+                        <h2 className="text-2xl font-bold text-white mb-4">Dispute Resolution</h2>
+                        <p>Any disputes arising between you and GreenChainz will be resolved through binding arbitration. Disputes between buyers and suppliers are to be resolved directly between the parties. GreenChainz may, but is not obligated to, provide assistance in mediating such disputes.</p>
                     </section>
 
                     <section className="text-slate-300">
-                        <h2 className="text-2xl font-bold text-white mb-4">5. Limitation of Liability</h2>
-                        <p>
-                            GreenChainz provides the platform "as is" without warranties. We are not liable for indirect damages, lost profits, or third-party claims arising from platform use.
-                        </p>
-                    </section>
-
-                    <section className="text-slate-300">
-                        <h2 className="text-2xl font-bold text-white mb-4">6. Contact</h2>
-                        <p>
-                            For questions about these Terms, contact us at{' '}
-                            <a href="mailto:legal@greenchainz.com" className="text-sky-400 hover:text-sky-300">
-                                legal@greenchainz.com
-                            </a>
-                        </p>
+                        <h2 className="text-2xl font-bold text-white mb-4">Limitation of Liability</h2>
+                        <p>GreenChainz provides the platform on an "as is" basis. We are not responsible for any damages or losses resulting from your use of the platform, including but not limited to lost profits, business interruption, or reputational harm. Our liability in any matter is limited to the amount of fees you have paid to us in the preceding twelve months.</p>
                     </section>
                 </div>
 
@@ -78,6 +48,7 @@ export default function Terms() {
                     </Link>
                 </div>
             </div>
+            <Footer />
         </div>
     );
 }

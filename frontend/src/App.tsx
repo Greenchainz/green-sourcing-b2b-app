@@ -12,6 +12,7 @@ import Features from './pages/Features';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import SupplierAgreement from './pages/SupplierAgreement';
 import Unauthorized from './pages/Unauthorized';
 import RFQHistoryPage from './pages/RFQHistoryPage';
 import Layout from './components/Layout';
@@ -28,6 +29,60 @@ function App() {
   return (
     <ErrorBoundary>
       <Routes>
+feat/legal-pages
+        <Route path="/" element={<Layout />}>
+          {/* Public Routes */}
+          <Route index element={<LandingPage />} />
+          <Route path="login" element={<Login />} />
+          <Route path="signup" element={<Signup />} />
+          <Route path="auth/callback" element={<AuthCallback />} />
+          <Route path="survey/architect" element={<ArchitectSurvey />} />
+          <Route path="features" element={<Features />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="privacy-policy" element={<Privacy />} />
+          <Route path="terms-of-service" element={<Terms />} />
+          <Route path="supplier-agreement" element={<SupplierAgreement />} />
+          {/* <Route path="demo" element={<Demo />} /> */}
+          <Route path="unauthorized" element={<Unauthorized />} />
+          {/* <Route path="product/:id" element={<ProductDetailPage />} /> */}
+          {/* <Route path="products" element={<ProductsPage />} /> */}
+          <Route path="badges/charter175" element={<Charter175 />} />
+
+          {/* Protected Routes - Temporarily disabled until demo pages are fixed */}
+          {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}> */}
+            <Route
+              path="dashboard"
+              element={
+                  <BuyerDashboard />
+              }
+            />
+            {/* <Route
+              path="dashboard/supplier"
+              element={
+                <ProtectedRoute allowedRoles={['supplier']}>
+                  <SupplierDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="network"
+              element={
+                <ProtectedRoute allowedRoles={['buyer', 'supplier']}>
+                  <NetworkBoard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminConsole />
+                </ProtectedRoute>
+              }
+            />
+          </Route> */}
+        </Route>
+
         {/* Public Routes */}
         <Route path="/" element={<Layout><LandingPage /></Layout>} />
         <Route path="/login" element={<Login />} />
@@ -57,6 +112,7 @@ function App() {
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/content" element={<ContentModerationPage />} />
+ main
       </Routes>
     </ErrorBoundary>
   );

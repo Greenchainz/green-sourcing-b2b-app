@@ -1,45 +1,56 @@
+ feat/legal-pages
+// frontend/src/types.ts
+
+
+main
 export interface Product {
   id: number;
   name: string;
  feature/rfq-system
   description: string;
   supplier_id: string;
-  images: string[];
-  specs: {
-    [key: string]: string | number;
-  };
-  sustainability_data: {
-    gwp?: number;
-    recycled_content?: number;
-    water_usage?: number;
-    voc_level?: number;
-    epd_link?: string;
-    certifications?: string[];
-  };
-  supplier?: Supplier;
   material_type: string;
-  application: string;
+  recycled_content: number;
   certifications: string[];
-}
-
-export interface RFQData {
-  buyer_email: string;
-  project_name?: string;
-  message: string;
-  quantity?: number;
-  timeline: 'ASAP' | '1-3 months' | '3-6 months' | '6+ months';
-  contact_preference: 'email' | 'phone' | 'text';
+  image_url?: string;
+  price?: number;
 }
 
 export interface RFQ {
-  id: string;
-  product_name: string;
-  buyer: string;
-  company: string;
+  id: number;
+  buyer_id: string;
+  product_id: number;
+  quantity: string;
+  message: string;
+feat/legal-pages
+  status: 'New' | 'Responded' | 'Archived';
+  created_at: string;
+
   quantity?: number;
-  deadline: string;
-  status: 'Pending' | 'Quoted' | 'Won' | 'Lost';
+  timeline: 'ASAP' | '1-3 months' | '3-6 months' | '6+ months';
+  contact_preference: 'email' | 'phone' | 'text';
+ main
+}
+
+export interface Quote {
+  id: number;
+  rfq_id: number;
+  supplier_id: string;
+  price: number;
+  availability: string;
+  timeline: string;
   message?: string;
+ feat/legal-pages
+  created_at: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role: 'buyer' | 'supplier' | 'admin';
+  company_name?: string;
+  name?: string;
+
   contact_preference?: 'email' | 'phone' | 'text';
 
   company: string;
@@ -54,4 +65,5 @@ export interface RFQ {
   carbonFootprint: number;
   vocLevel: number;
   main
+ main
 }
