@@ -1,11 +1,17 @@
 // frontend/src/components/Layout.tsx
 import { Outlet } from 'react-router-dom';
+import React from 'react';
 
-const Layout = () => {
+interface LayoutProps {
+  children?: React.ReactNode;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div>
+      {/* This is a simplified layout. In a real app, it would include Header, Footer, etc. */}
       <main>
-        <Outlet />
+        {children || <Outlet />}
       </main>
     </div>
   );

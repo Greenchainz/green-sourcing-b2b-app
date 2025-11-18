@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ChevronRightIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import ReviewsSection from '../components/Reviews/ReviewsSection';
 
 // MOCK DATA (replace with Supabase query in Phase 1)
 const MOCK_PRODUCT = {
@@ -235,6 +236,16 @@ export default function ProductDetailPage() {
             >
               Sustainability Data
             </button>
+            <button
+              onClick={() => setActiveTab('reviews')}
+              className={`px-4 py-3 font-medium ${
+                activeTab === 'reviews'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Reviews
+            </button>
           </div>
 
           {/* Tab Content */}
@@ -314,6 +325,10 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'reviews' && (
+              <ReviewsSection itemId={product.id} itemType="product" itemName={product.name} />
             )}
           </div>
         </div>

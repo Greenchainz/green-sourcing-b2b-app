@@ -18,73 +18,63 @@ import RFQHistoryPage from './pages/RFQHistoryPage';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
 import SearchPage from './pages/SearchPage';
+
+import ProductDetailPage from './pages/ProductDetailPage';
+import SupplierProfilePage from './pages/SupplierProfilePage';
+
+import SupplierProfile from './pages/SupplierProfile';
+
 import SupplierDashboard from './pages/SupplierDashboard/index';
 import ProductsPage from './pages/SupplierDashboard/ProductsPage';
 import AddProductPage from './pages/SupplierDashboard/AddProductPage';
 import EditProductPage from './pages/SupplierDashboard/EditProductPage';
 import AdminDashboard from './pages/Admin';
 import ContentModerationPage from './pages/Admin/ContentModerationPage';
-import EmailPreview from './pages/EmailPreview';
+import { ProjectProvider } from './context/ProjectContext';
+import Projects from './pages/BuyerDashboard/Projects';
+import ProjectDetail from './pages/BuyerDashboard/ProjectDetail';
 
 function App() {
   return (
     <ErrorBoundary>
+
+      <ProjectProvider>
+        <Routes>
+
+          <Route path="/" element={<Layout />}>
+          {/* Public Routes */}
+
       <Routes>
 
+        {/* Routes with the main Layout (Header, Footer, etc.) */}
+
+
         <Route path="/" element={<Layout />}>
-          {/* Public Routes */}
+
           <Route index element={<LandingPage />} />
-          <Route path="login" element={<Login />} />
-          <Route path="signup" element={<Signup />} />
-          <Route path="auth/callback" element={<AuthCallback />} />
-          <Route path="survey/architect" element={<ArchitectSurvey />} />
           <Route path="features" element={<Features />} />
           <Route path="contact" element={<Contact />} />
           <Route path="privacy-policy" element={<Privacy />} />
           <Route path="terms-of-service" element={<Terms />} />
           <Route path="supplier-agreement" element={<SupplierAgreement />} />
-          {/* <Route path="demo" element={<Demo />} /> */}
           <Route path="unauthorized" element={<Unauthorized />} />
-          {/* <Route path="product/:id" element={<ProductDetailPage />} /> */}
-          {/* <Route path="products" element={<ProductsPage />} /> */}
-          <Route path="badges/charter175" element={<Charter175 />} />
 
-          {/* Protected Routes - Temporarily disabled until demo pages are fixed */}
-          {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}> */}
-            <Route
-              path="dashboard"
-              element={
-                  <BuyerDashboard />
-              }
-            />
-            {/* <Route
-              path="dashboard/supplier"
-              element={
-                <ProtectedRoute allowedRoles={['supplier']}>
-                  <SupplierDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="network"
-              element={
-                <ProtectedRoute allowedRoles={['buyer', 'supplier']}>
-                  <NetworkBoard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="admin"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminConsole />
-                </ProtectedRoute>
-              }
-            />
-          </Route> */}
+          <Route path="survey/architect" element={<ArchitectSurvey />} />
+          <Route path="badges/charter175" element={<Charter175 />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="product/:id" element={<ProductDetailPage />} />
+          <Route path="supplier/:id" element={<SupplierProfilePage />} />
         </Route>
 
-        {/* Public Routes */}
+        {/* Standalone Routes (no main Layout) */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
+          <Route path="badges/charter175" element={<Charter175 />} />
+          <Route path="search" element={<Search
+        
+                                          {/* Public Routes */}
         <Route path="/" element={<Layout><LandingPage /></Layout>} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -99,7 +89,9 @@ function App() {
         
         {/* Search & Product Routes */}
         <Route path="/search" element={<Layout><SearchPage /></Layout>} />
-        
+        <Route path="/suppliers/:id" element={<Layout><SupplierProfile /></Layout>} />
+
+
         {/* Supplier Dashboard Routes */}
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/dashboard/supplier/products" element={<ProductsPage />} />
@@ -108,16 +100,20 @@ function App() {
         
         {/* Buyer Dashboard */}
         <Route path="/dashboard/buyer" element={<BuyerDashboard />} />
+        <Route path="/dashboard/buyer/projects" element={<Layout><Projects /></Layout>} />
+        <Route path="/dashboard/buyer/projects/:projectId" element={<Layout><ProjectDetail /></Layout>} />
         <Route path="/rfq-history" element={<RFQHistoryPage />} />
         
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/content" element={<ContentModerationPage />} />
 
-        {/* Dev Routes */}
-        <Route path="/email-preview" element={<EmailPreview />} />
  
+        </Routes>
+      {/* </ProjectProvider> */}
+
       </Routes>
+
     </ErrorBoundary>
   );
 }
