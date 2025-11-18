@@ -24,7 +24,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequ
     recycled_content,
     recycledContent,
     certifications,
-    epd_link,
     epd,
     supplier
   } = product;
