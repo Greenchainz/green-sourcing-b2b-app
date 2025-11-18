@@ -1,16 +1,13 @@
 // frontend/src/components/ProductCard.tsx
 import React, { useState } from 'react';
-import { Product } from '../mocks/productData'; // Using the mock data type for now
+import { Product } from '../mocks/productData';
 import { useProjects } from '../context/ProjectContext';
 import CreateProjectModal from './Projects/CreateProjectModal';
 
 type ProductCardProps = {
   product: Product;
-
-
-  supplierName?: string; // Make optional
-  onRequestQuote?: (productId: string) => void; // Make optional
-
+  supplierName?: string;
+  onRequestQuote?: (productId: string) => void;
 };
 
 const CertificationIcon: React.FC<{ name: string }> = ({ name }) => (
@@ -19,33 +16,32 @@ const CertificationIcon: React.FC<{ name: string }> = ({ name }) => (
   </div>
 );
 
+const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequestQuote }) => {
+  const {
+    name,
+    image_url,
+    imageUrl,
+    recycled_content,
+    recycledContent,
+    certifications,
+    epd_link,
+    epd,
+    supplier
+  } = product;
 
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { name, imageUrl, supplier, certifications, epd, recycledContent } = product;
   const { projects, addProductToProject } = useProjects();
-
   const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const handleAddToProject = (projectId: number) => {
     addProductToProject(projectId, product.id);
     setShowProjectMenu(false);
-    // Maybe show a toast notification here in the future
     alert(`Product added to project!`);
   };
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequestQuote }) => {
-  const {
-    name,
-    image_url,
-    recycled_content, // Use top-level property
-    certifications,
-    epd_link
-  } = product;
-
-  // gwp_fossil does not exist on the Product type, so we'll remove it for now.
-  const isVerified = !!epd_link;
-
+  const displayImage = image_url || imageUrl || 'https://via.placeholder.com/400x300.png?text=No+Image';
+  const displaySupplier = supplierName || supplier || 'Unknown Supplier';
+  const displayRecycledContent = recycled_content ?? recycledContent;
 
   return (
     <>
@@ -53,26 +49,27 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequ
         <div className="relative">
           <img
             className="w-full h-48 object-cover"
-            src={imageUrl || 'https://via.placeholder.com/400x300.png?text=No+Image'}
+            src={displayImage}
             alt={name}
           />
         </div>
         <div className="p-4 flex-grow flex flex-col">
-          <h3 className="text-sm text-gray-500 uppercase tracking-wide">{supplier}</h3>
+          <h3 className="text-sm text-gray-500 uppercase tracking-wide">{displaySupplier}</h3>
           <h2 className="text-lg font-bold text-gray-800 truncate" title={name}>{name}</h2>
 
           <div className="mt-4 flex-grow">
             <p className="text-sm text-gray-600 font-semibold">Sustainability</p>
             <div className="mt-2 text-xs text-gray-500 space-y-1">
-              {recycledContent !== undefined && (
-                <p><span className="font-bold">{recycledContent}%</span> Recycled Content</p>
+              {displayRecycledContent !== undefined && (
+                <p>
+                  <span className="font-bold">{displayRecycledContent}%</span> Recycled Content
+                </p>
               )}
               {epd?.gwp !== undefined && (
                 <p><span className="font-bold">{epd.gwp}</span> kg CO₂e/unit (GWP)</p>
               )}
             </div>
           </div>
-
 
           <div className="mt-4">
             <p className="text-sm text-gray-600 font-semibold mb-2">Certifications</p>
@@ -83,18 +80,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequ
                 <p className="text-xs text-gray-400">No certifications.</p>
               )}
             </div>
-
-        <div className="mt-4 flex-grow">
-          <p className="text-sm text-gray-600 font-semibold">Sustainability</p>
-          <div className="mt-2 text-xs text-gray-500 space-y-1">
-            {recycled_content !== undefined && (
-              <p>
-                <span className="font-bold">{recycled_content}%</span> Recycled Content
-              </p>
-            )}
-
           </div>
         </div>
+
         <div className="p-4 pt-0 relative">
           <button
             onClick={() => setShowProjectMenu(!showProjectMenu)}
@@ -138,24 +126,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequ
             </div>
           )}
         </div>
-      </div>
 
+        {onRequestQuote && (
+          <div className="p-4 pt-0">
+            <button
+              onClick={() => onRequestQuote(product.id.toString())}
+              className="w-full bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-opacity-50 transition-colors"
+            >
+              Request Quote
+            </button>
+          </div>
+        )}
+      </div>
 
       {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} />}
     </>
-
-      {onRequestQuote && (
-        <div className="p-4 pt-0">
-          <button
-            onClick={() => onRequestQuote(product.id.toString())}
-            className="w-full bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-opacity-50 transition-colors"
-          >
-            Request Quote
-          </button>
-        </div>
-      )}
-    </div>
-
   );
 };
 
