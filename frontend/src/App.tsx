@@ -30,16 +30,27 @@ import AddProductPage from './pages/SupplierDashboard/AddProductPage';
 import EditProductPage from './pages/SupplierDashboard/EditProductPage';
 import AdminDashboard from './pages/Admin';
 import ContentModerationPage from './pages/Admin/ContentModerationPage';
+import { ProjectProvider } from './context/ProjectContext';
+import Projects from './pages/BuyerDashboard/Projects';
+import ProjectDetail from './pages/BuyerDashboard/ProjectDetail';
 
 function App() {
   return (
     <ErrorBoundary>
+
+      <ProjectProvider>
+        <Routes>
+
+          <Route path="/" element={<Layout />}>
+          {/* Public Routes */}
+
       <Routes>
 
         {/* Routes with the main Layout (Header, Footer, etc.) */}
 
 
         <Route path="/" element={<Layout />}>
+
           <Route index element={<LandingPage />} />
           <Route path="features" element={<Features />} />
           <Route path="contact" element={<Contact />} />
@@ -89,12 +100,20 @@ function App() {
         
         {/* Buyer Dashboard */}
         <Route path="/dashboard/buyer" element={<BuyerDashboard />} />
+        <Route path="/dashboard/buyer/projects" element={<Layout><Projects /></Layout>} />
+        <Route path="/dashboard/buyer/projects/:projectId" element={<Layout><ProjectDetail /></Layout>} />
         <Route path="/rfq-history" element={<RFQHistoryPage />} />
         
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/content" element={<ContentModerationPage />} />
+
+ 
+        </Routes>
+      {/* </ProjectProvider> */}
+
       </Routes>
+
     </ErrorBoundary>
   );
 }
