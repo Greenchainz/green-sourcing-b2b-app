@@ -10,8 +10,13 @@ const config = {
     user: process.env.POSTGRES_USER || 'user',
     password: process.env.POSTGRES_PASSWORD || 'password',
     database: process.env.POSTGRES_DB || 'greenchainz_dev',
-    max: Number(process.env.PGPOOL_MAX || 10),
-    idleTimeoutMillis: Number(process.env.PGPOOL_IDLE || 30000)
+    // Optimized pool settings for better performance
+    max: Number(process.env.PGPOOL_MAX || 20), // Increased from 10 to handle more concurrent requests
+    min: Number(process.env.PGPOOL_MIN || 2), // Maintain minimum connections for faster response
+    idleTimeoutMillis: Number(process.env.PGPOOL_IDLE || 30000),
+    connectionTimeoutMillis: Number(process.env.PGPOOL_CONNECTION_TIMEOUT || 5000), // Timeout for acquiring connection
+    // Statement timeout to prevent long-running queries from blocking
+    statement_timeout: Number(process.env.PGPOOL_STATEMENT_TIMEOUT || 30000)
 };
 
 const pool = new Pool(config);
@@ -19,5 +24,16 @@ const pool = new Pool(config);
 pool.on('error', (err) => {
     console.error('Unexpected PG client error', err);
 });
+
+// Log pool statistics periodically for monitoring (development only)
+if (process.env.NODE_ENV !== 'production') {
+    setInterval(() => {
+        console.log('Pool stats:', {
+            total: pool.totalCount,
+            idle: pool.idleCount,
+            waiting: pool.waitingCount
+        });
+    }, 60000); // Log every minute
+}
 
 module.exports = { pool };
