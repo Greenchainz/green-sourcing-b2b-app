@@ -18,7 +18,12 @@ import RFQHistoryPage from './pages/RFQHistoryPage';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
 import SearchPage from './pages/SearchPage';
+
+import ProductDetailPage from './pages/ProductDetailPage';
+import SupplierProfilePage from './pages/SupplierProfilePage';
+
 import SupplierProfile from './pages/SupplierProfile';
+
 import SupplierDashboard from './pages/SupplierDashboard/index';
 import ProductsPage from './pages/SupplierDashboard/ProductsPage';
 import AddProductPage from './pages/SupplierDashboard/AddProductPage';
@@ -30,18 +35,31 @@ function App() {
   return (
     <ErrorBoundary>
       <Routes>
+
+        {/* Routes with the main Layout (Header, Footer, etc.) */}
+
+
         <Route path="/" element={<Layout />}>
           <Route index element={<LandingPage />} />
-          <Route path="login" element={<Login />} />
-          <Route path="signup" element={<Signup />} />
-          <Route path="auth/callback" element={<AuthCallback />} />
-          <Route path="survey/architect" element={<ArchitectSurvey />} />
           <Route path="features" element={<Features />} />
           <Route path="contact" element={<Contact />} />
           <Route path="privacy-policy" element={<Privacy />} />
           <Route path="terms-of-service" element={<Terms />} />
           <Route path="supplier-agreement" element={<SupplierAgreement />} />
           <Route path="unauthorized" element={<Unauthorized />} />
+
+          <Route path="survey/architect" element={<ArchitectSurvey />} />
+          <Route path="badges/charter175" element={<Charter175 />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="product/:id" element={<ProductDetailPage />} />
+          <Route path="supplier/:id" element={<SupplierProfilePage />} />
+        </Route>
+
+        {/* Standalone Routes (no main Layout) */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
           <Route path="badges/charter175" element={<Charter175 />} />
           <Route path="search" element={<Search
         
@@ -61,6 +79,7 @@ function App() {
         {/* Search & Product Routes */}
         <Route path="/search" element={<Layout><SearchPage /></Layout>} />
         <Route path="/suppliers/:id" element={<Layout><SupplierProfile /></Layout>} />
+
 
         {/* Supplier Dashboard Routes */}
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
