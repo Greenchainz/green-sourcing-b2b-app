@@ -92,18 +92,65 @@ async function computeSupplierScore(pool, supplierId) {
 }
 
 /**
- * Compute scores for all suppliers.
+ * Compute scores for all suppliers efficiently (single query).
  * @param {Pool} pool
  * @returns {Promise<Array>}
  */
 async function computeAllSupplierScores(pool) {
-    const suppliersRes = await pool.query('SELECT SupplierID FROM Suppliers');
-    const scores = [];
-    for (const row of suppliersRes.rows) {
-        const supplierId = row.supplierid;
-        scores.push(await computeSupplierScore(pool, supplierId));
-    }
-    return scores;
+    // Optimized: compute all scores in a single query instead of N+1 queries
+    const query = `
+    WITH all_certs AS (
+      SELECT sc.SupplierID,
+             c.CertifyingBody AS body,
+             sc.ExpiryDate,
+             sc.Status
+      FROM Supplier_Certifications sc
+      JOIN Certifications c ON sc.CertificationID = c.CertificationID
+
+      UNION ALL
+
+      SELECT f.SupplierID,
+             f.CertifyingBody AS body,
+             f.ExpiryDate,
+             f.CertificateStatus AS Status
+      FROM FSC_Certifications f
+    )
+    SELECT 
+      s.SupplierID,
+      COALESCE(COUNT(*) FILTER (WHERE ac.Status IS NOT NULL), 0) AS total_certs,
+      COALESCE(COUNT(DISTINCT ac.body), 0) AS distinct_bodies,
+      COALESCE(COUNT(*) FILTER (WHERE (ac.ExpiryDate IS NULL OR ac.ExpiryDate > CURRENT_DATE) AND ac.Status IN ('Valid','Verified')), 0) AS non_expired,
+      COALESCE(COUNT(*) FILTER (WHERE ac.ExpiryDate IS NOT NULL AND ac.ExpiryDate <= CURRENT_DATE), 0) AS expired
+    FROM Suppliers s
+    LEFT JOIN all_certs ac ON s.SupplierID = ac.SupplierID
+    GROUP BY s.SupplierID
+    ORDER BY s.SupplierID;`;
+
+    const result = await pool.query(query);
+    
+    return result.rows.map(row => {
+        const distinctBodies = Number(row.distinct_bodies) || 0;
+        const nonExpired = Number(row.non_expired) || 0;
+        const expired = Number(row.expired) || 0;
+        const totalCerts = Number(row.total_certs) || 0;
+
+        let score = BASE_SCORE + distinctBodies * 5 + nonExpired * 3 - expired * 2;
+        if (score < 0) score = 0;
+        if (score > MAX_SCORE) score = MAX_SCORE;
+
+        return {
+            supplierId: row.supplierid,
+            score,
+            components: {
+                distinctBodies,
+                nonExpired,
+                expired,
+                totalCerts,
+                base: BASE_SCORE,
+                weights: { distinctBody: 5, nonExpired: 3, expired: -2 }
+            }
+        };
+    });
 }
 
 /**
@@ -125,14 +172,42 @@ async function persistSupplierScore(pool, scoreData) {
 }
 
 /**
- * Compute and persist all supplier scores.
+ * Compute and persist all supplier scores efficiently using batch insert.
  * @param {Pool} pool
  */
 async function persistAllSupplierScores(pool) {
     const all = await computeAllSupplierScores(pool);
-    for (const s of all) {
-        await persistSupplierScore(pool, s);
+    
+    if (all.length === 0) {
+        return { count: 0, timestamp: new Date().toISOString() };
     }
+
+    // Optimized: Use a single batch upsert instead of sequential queries
+    const values = [];
+    const params = [];
+    let paramIndex = 1;
+
+    for (const s of all) {
+        const c = s.components;
+        values.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, CURRENT_TIMESTAMP)`);
+        params.push(s.supplierId, s.score, c.distinctBodies, c.nonExpired, c.expired, c.totalCerts);
+        paramIndex += 6;
+    }
+
+    const batchUpsertSQL = `
+        INSERT INTO Supplier_Verification_Scores
+            (SupplierID, Score, DistinctBodies, NonExpired, Expired, TotalCerts, CalculatedAt)
+        VALUES ${values.join(', ')}
+        ON CONFLICT (SupplierID) DO UPDATE SET
+            Score = EXCLUDED.Score,
+            DistinctBodies = EXCLUDED.DistinctBodies,
+            NonExpired = EXCLUDED.NonExpired,
+            Expired = EXCLUDED.Expired,
+            TotalCerts = EXCLUDED.TotalCerts,
+            CalculatedAt = CURRENT_TIMESTAMP
+    `;
+
+    await pool.query(batchUpsertSQL, params);
     return { count: all.length, timestamp: new Date().toISOString() };
 }
 

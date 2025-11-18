@@ -115,77 +115,108 @@ class FSCMockProvider extends BaseProvider {
     /**
      * Insert validated FSC certificates into database
      * Links to Suppliers table by matching company names
+     * Optimized: Uses batch lookups and parallel processing
      */
     async insertRecords(validRecords, dbPool) {
         let inserted = 0;
         let updated = 0;
         const errors = [];
 
-        for (const record of validRecords) {
-            try {
-                // Step 1: Find matching supplier by company name
-                const supplierQuery = await dbPool.query(
-                    `SELECT s.SupplierID, c.CompanyName 
-           FROM Suppliers s 
-           JOIN Companies c ON s.CompanyID = c.CompanyID 
-           WHERE LOWER(c.CompanyName) = LOWER($1)`,
-                    [record.supplierCompanyName]
-                );
+        if (validRecords.length === 0) {
+            return { inserted, updated, errors };
+        }
 
-                let supplierId = null;
-                if (supplierQuery.rows.length > 0) {
-                    supplierId = supplierQuery.rows[0].supplierid;
-                } else {
-                    console.warn(`[FSC] No supplier found for: ${record.supplierCompanyName}`);
-                    // Skip this record or create placeholder supplier
-                    continue;
+        // Optimized: Batch fetch all suppliers upfront to avoid N lookups
+        const companyNames = [...new Set(validRecords.map(r => r.supplierCompanyName))];
+        const supplierLookup = new Map();
+
+        if (companyNames.length > 0) {
+            const placeholders = companyNames.map((_, i) => `$${i + 1}`).join(',');
+            const supplierQuery = await dbPool.query(
+                `SELECT s.SupplierID, c.CompanyName 
+                 FROM Suppliers s 
+                 JOIN Companies c ON s.CompanyID = c.CompanyID 
+                 WHERE LOWER(c.CompanyName) IN (${placeholders})`,
+                companyNames.map(name => name.toLowerCase())
+            );
+
+            for (const row of supplierQuery.rows) {
+                supplierLookup.set(row.companyname.toLowerCase(), row.supplierid);
+            }
+        }
+
+        // Optimized: Process records in parallel batches (with concurrency limit)
+        const BATCH_SIZE = 10; // Process 10 records concurrently
+        const batches = [];
+        for (let i = 0; i < validRecords.length; i += BATCH_SIZE) {
+            batches.push(validRecords.slice(i, i + BATCH_SIZE));
+        }
+
+        for (const batch of batches) {
+            const promises = batch.map(async (record) => {
+                try {
+                    const supplierId = supplierLookup.get(record.supplierCompanyName.toLowerCase());
+                    
+                    if (!supplierId) {
+                        console.warn(`[FSC] No supplier found for: ${record.supplierCompanyName}`);
+                        return { type: 'skipped', certificate: record.certificateNumber };
+                    }
+
+                    // Map certificate type to schema (optional)
+                    const mappedCertType = record.certificateType === 'Chain of Custody' ? 'FSC CoC' : null;
+
+                    // Insert or update FSC certification
+                    const result = await dbPool.query(
+                        `INSERT INTO FSC_Certifications (
+                            SupplierID, CertificateNumber, CertificateType, CertificateStatus,
+                            IssueDate, ExpiryDate, CertifiedArea, AreaUnit, CertifyingBody,
+                            LastVerifiedAt, RawAPIResponse
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'hectares', $8, CURRENT_TIMESTAMP, $9::jsonb)
+                        ON CONFLICT (CertificateNumber) DO UPDATE SET
+                            CertificateStatus = EXCLUDED.CertificateStatus,
+                            ExpiryDate = EXCLUDED.ExpiryDate,
+                            CertifiedArea = EXCLUDED.CertifiedArea,
+                            LastVerifiedAt = CURRENT_TIMESTAMP,
+                            UpdatedAt = CURRENT_TIMESTAMP,
+                            RawAPIResponse = EXCLUDED.RawAPIResponse
+                        RETURNING (xmax = 0) AS inserted`,
+                        [
+                            supplierId,
+                            record.certificateNumber,
+                            mappedCertType,
+                            record.status,
+                            record.issueDate,
+                            record.expiryDate,
+                            record.certifiedAreaHectares,
+                            'FSC International',
+                            JSON.stringify(record)
+                        ]
+                    );
+
+                    return {
+                        type: result.rows[0].inserted ? 'inserted' : 'updated',
+                        certificate: record.certificateNumber
+                    };
+
+                } catch (error) {
+                    return {
+                        type: 'error',
+                        certificate: record.certificateNumber,
+                        error: error.message
+                    };
                 }
+            });
 
-                // Map certificate type to schema (optional)
-                // Use 'FSC CoC' for Chain of Custody, null otherwise to satisfy CHECK constraint
-                const mappedCertType = record.certificateType === 'Chain of Custody' ? 'FSC CoC' : null;
-
-                // Step 2: Insert or update FSC certification (align with schema)
-                const result = await dbPool.query(
-                    `INSERT INTO FSC_Certifications (
-                        SupplierID, CertificateNumber, CertificateType, CertificateStatus,
-                        IssueDate, ExpiryDate, CertifiedArea, AreaUnit, CertifyingBody,
-                        LastVerifiedAt, RawAPIResponse
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'hectares', $8, CURRENT_TIMESTAMP, $9::jsonb)
-                    ON CONFLICT (CertificateNumber) DO UPDATE SET
-                        CertificateStatus = EXCLUDED.CertificateStatus,
-                        ExpiryDate = EXCLUDED.ExpiryDate,
-                        CertifiedArea = EXCLUDED.CertifiedArea,
-                        LastVerifiedAt = CURRENT_TIMESTAMP,
-                        UpdatedAt = CURRENT_TIMESTAMP,
-                        RawAPIResponse = EXCLUDED.RawAPIResponse
-                    RETURNING (xmax = 0) AS inserted`,
-                    [
-                        supplierId,
-                        record.certificateNumber,
-                        mappedCertType,
-                        record.status,
-                        record.issueDate,
-                        record.expiryDate,
-                        record.certifiedAreaHectares,
-                        'FSC International',
-                        JSON.stringify(record)
-                    ]
-                );
-
-                // Check if row was inserted (true) or updated (false)
-                if (result.rows[0].inserted) {
-                    inserted++;
-                } else {
-                    updated++;
+            const results = await Promise.all(promises);
+            
+            // Aggregate results
+            for (const result of results) {
+                if (result.type === 'inserted') inserted++;
+                else if (result.type === 'updated') updated++;
+                else if (result.type === 'error') {
+                    errors.push({ certificate: result.certificate, error: result.error });
+                    console.error(`[FSC] Failed to insert ${result.certificate}:`, result.error);
                 }
-
-            } catch (error) {
-                errors.push({
-                    certificate: record.certificateNumber,
-                    error: error.message
-                });
-                console.error(`[FSC] Failed to insert ${record.certificateNumber}:`, error.message);
             }
         }
 

@@ -591,18 +591,34 @@ app.get('/api/v1/suppliers/:id/score', async (req, res) => {
   }
 });
 
-// Platform metrics endpoint
+// Platform metrics endpoint (optimized with parallel queries)
 app.get('/api/v1/metrics', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
   try {
-    const suppliersRes = await pool.query('SELECT COUNT(*) AS suppliers FROM Suppliers');
-    const productsRes = await pool.query('SELECT COUNT(*) AS products FROM Products');
-    const rfqsRes = await pool.query('SELECT COUNT(*) AS rfqs FROM RFQs');
-    const responsesRes = await pool.query('SELECT COUNT(*) AS responses FROM RFQ_Responses');
-    const fscValidRes = await pool.query("SELECT COUNT(*) AS fsc_valid FROM FSC_Certifications WHERE CertificateStatus = 'Valid'");
-    const fscExpiredRes = await pool.query("SELECT COUNT(*) AS fsc_expired FROM FSC_Certifications WHERE CertificateStatus = 'Expired'");
+    // Optimized: Run all count queries in parallel instead of sequentially
+    const [suppliersRes, productsRes, rfqsRes, responsesRes, fscValidRes, fscExpiredRes] = await Promise.all([
+      pool.query('SELECT COUNT(*) AS suppliers FROM Suppliers'),
+      pool.query('SELECT COUNT(*) AS products FROM Products'),
+      pool.query('SELECT COUNT(*) AS rfqs FROM RFQs'),
+      pool.query('SELECT COUNT(*) AS responses FROM RFQ_Responses'),
+      pool.query("SELECT COUNT(*) AS fsc_valid FROM FSC_Certifications WHERE CertificateStatus = 'Valid'"),
+      pool.query("SELECT COUNT(*) AS fsc_expired FROM FSC_Certifications WHERE CertificateStatus = 'Expired'")
+    ]);
 
-    const scoreList = await computeAllSupplierScores(pool);
-    const avgScore = scoreList.length ? (scoreList.reduce((sum, s) => sum + s.score, 0) / scoreList.length) : 0;
+    // Optimized: Use persisted scores if available for faster response
+    const scoresRes = await pool.query('SELECT Score FROM Supplier_Verification_Scores');
+    let avgScore = 0;
+    let scoreList = [];
+
+    if (scoresRes.rows.length > 0) {
+      // Use cached scores
+      const scores = scoresRes.rows.map(r => r.score);
+      avgScore = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+      scoreList = scoresRes.rows.map(r => ({ score: r.score }));
+    } else {
+      // Fallback to live computation if no cached scores
+      scoreList = await computeAllSupplierScores(pool);
+      avgScore = scoreList.length ? (scoreList.reduce((sum, s) => sum + s.score, 0) / scoreList.length) : 0;
+    }
 
     res.json({
       totals: {
@@ -615,7 +631,7 @@ app.get('/api/v1/metrics', authenticateToken, authorizeRoles('Admin'), async (re
       },
       verification: {
         averageSupplierScore: Math.round(avgScore),
-        supplierScores: scoreList
+        scoreCount: scoreList.length
       },
       timestamp: new Date().toISOString()
     });
