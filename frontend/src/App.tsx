@@ -24,6 +24,7 @@ import AddProductPage from './pages/SupplierDashboard/AddProductPage';
 import EditProductPage from './pages/SupplierDashboard/EditProductPage';
 import AdminDashboard from './pages/Admin';
 import ContentModerationPage from './pages/Admin/ContentModerationPage';
+import EmailPreview from './pages/EmailPreview';
 
 function App() {
   return (
@@ -112,6 +113,9 @@ function App() {
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/content" element={<ContentModerationPage />} />
+
+        {/* Dev Routes */}
+        <Route path="/email-preview" element={<EmailPreview />} />
  
       </Routes>
     </ErrorBoundary>
