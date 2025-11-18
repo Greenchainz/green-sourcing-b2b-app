@@ -18,6 +18,7 @@ import RFQHistoryPage from './pages/RFQHistoryPage';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
 import SearchPage from './pages/SearchPage';
+import SupplierProfile from './pages/SupplierProfile';
 import SupplierDashboard from './pages/SupplierDashboard/index';
 import ProductsPage from './pages/SupplierDashboard/ProductsPage';
 import AddProductPage from './pages/SupplierDashboard/AddProductPage';
@@ -42,8 +43,24 @@ function App() {
           <Route path="supplier-agreement" element={<SupplierAgreement />} />
           <Route path="unauthorized" element={<Unauthorized />} />
           <Route path="badges/charter175" element={<Charter175 />} />
-          <Route path="search" element={<SearchPage />} />
-        </Route>
+          <Route path="search" element={<Search
+        
+                                          {/* Public Routes */}
+        <Route path="/" element={<Layout><LandingPage /></Layout>} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/features" element={<Layout><Features /></Layout>} />
+        <Route path="/contact" element={<Layout><Contact /></Layout>} />
+        <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
+        <Route path="/terms" element={<Layout><Terms /></Layout>} />
+        <Route path="/unauthorized" element={<Layout><Unauthorized /></Layout>} />
+        <Route path="/architect-survey" element={<Layout><ArchitectSurvey /></Layout>} />
+        <Route path="/charter175" element={<Layout><Charter175 /></Layout>} />
+        
+        {/* Search & Product Routes */}
+        <Route path="/search" element={<Layout><SearchPage /></Layout>} />
+        <Route path="/suppliers/:id" element={<Layout><SupplierProfile /></Layout>} />
 
         {/* Supplier Dashboard Routes */}
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
