@@ -18,6 +18,7 @@ import RFQHistoryPage from './pages/RFQHistoryPage';
 import Layout from './components/Layout';
 import Charter175 from './pages/Charter175';
 import SearchPage from './pages/SearchPage';
+import SupplierProfile from './pages/SupplierProfile';
 import SupplierDashboard from './pages/SupplierDashboard/index';
 import ProductsPage from './pages/SupplierDashboard/ProductsPage';
 import AddProductPage from './pages/SupplierDashboard/AddProductPage';
@@ -98,6 +99,7 @@ function App() {
         
         {/* Search & Product Routes */}
         <Route path="/search" element={<Layout><SearchPage /></Layout>} />
+        <Route path="/suppliers/:id" element={<Layout><SupplierProfile /></Layout>} />
         
         {/* Supplier Dashboard Routes */}
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />

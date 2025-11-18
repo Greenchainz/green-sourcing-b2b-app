@@ -5,8 +5,8 @@ import type { Product } from '../types';
 // For now, we'll pass the supplier name as a prop.
 type ProductCardProps = {
   product: Product;
-  supplierName: string;
-  onRequestQuote: (productId: string) => void;
+  supplierName?: string; // Make optional
+  onRequestQuote?: (productId: string) => void; // Make optional
 };
 
 // Placeholder for certification icons.
@@ -24,13 +24,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequ
   const {
     name,
     image_url,
-    sustainability_data,
+    recycled_content, // Use top-level property
     certifications,
     epd_link
   } = product;
 
-  const recycledContent = sustainability_data?.recycled_content;
-  const gwp = sustainability_data?.gwp_fossil;
+  // gwp_fossil does not exist on the Product type, so we'll remove it for now.
   const isVerified = !!epd_link;
 
   return (
@@ -54,14 +53,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequ
         <div className="mt-4 flex-grow">
           <p className="text-sm text-gray-600 font-semibold">Sustainability</p>
           <div className="mt-2 text-xs text-gray-500 space-y-1">
-            {recycledContent !== undefined && (
+            {recycled_content !== undefined && (
               <p>
-                <span className="font-bold">{recycledContent}%</span> Recycled Content
-              </p>
-            )}
-            {gwp !== undefined && (
-              <p>
-                <span className="font-bold">{gwp}</span> kg CO₂e/unit (GWP)
+                <span className="font-bold">{recycled_content}%</span> Recycled Content
               </p>
             )}
           </div>
@@ -78,14 +72,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequ
           </div>
         </div>
       </div>
-      <div className="p-4 pt-0">
-        <button
-          onClick={() => onRequestQuote(product.id)}
-          className="w-full bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-opacity-50 transition-colors"
-        >
-          Request Quote
-        </button>
-      </div>
+      {onRequestQuote && (
+        <div className="p-4 pt-0">
+          <button
+            onClick={() => onRequestQuote(product.id.toString())}
+            className="w-full bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-opacity-50 transition-colors"
+          >
+            Request Quote
+          </button>
+        </div>
+      )}
     </div>
   );
 };
