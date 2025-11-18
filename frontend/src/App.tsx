@@ -30,9 +30,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Routes>
-
         <Route path="/" element={<Layout />}>
-          {/* Public Routes */}
           <Route index element={<LandingPage />} />
           <Route path="login" element={<Login />} />
           <Route path="signup" element={<Signup />} />
@@ -43,48 +41,11 @@ function App() {
           <Route path="privacy-policy" element={<Privacy />} />
           <Route path="terms-of-service" element={<Terms />} />
           <Route path="supplier-agreement" element={<SupplierAgreement />} />
-          {/* <Route path="demo" element={<Demo />} /> */}
           <Route path="unauthorized" element={<Unauthorized />} />
-          {/* <Route path="product/:id" element={<ProductDetailPage />} /> */}
-          {/* <Route path="products" element={<ProductsPage />} /> */}
           <Route path="badges/charter175" element={<Charter175 />} />
-
-          {/* Protected Routes - Temporarily disabled until demo pages are fixed */}
-          {/* <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}> */}
-            <Route
-              path="dashboard"
-              element={
-                  <BuyerDashboard />
-              }
-            />
-            {/* <Route
-              path="dashboard/supplier"
-              element={
-                <ProtectedRoute allowedRoles={['supplier']}>
-                  <SupplierDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="network"
-              element={
-                <ProtectedRoute allowedRoles={['buyer', 'supplier']}>
-                  <NetworkBoard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="admin"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminConsole />
-                </ProtectedRoute>
-              }
-            />
-          </Route> */}
-        </Route>
-
-        {/* Public Routes */}
+          <Route path="search" element={<Search
+        
+                                          {/* Public Routes */}
         <Route path="/" element={<Layout><LandingPage /></Layout>} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -100,7 +61,7 @@ function App() {
         {/* Search & Product Routes */}
         <Route path="/search" element={<Layout><SearchPage /></Layout>} />
         <Route path="/suppliers/:id" element={<Layout><SupplierProfile /></Layout>} />
-        
+
         {/* Supplier Dashboard Routes */}
         <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
         <Route path="/dashboard/supplier/products" element={<ProductsPage />} />
@@ -114,7 +75,6 @@ function App() {
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/content" element={<ContentModerationPage />} />
- 
       </Routes>
     </ErrorBoundary>
   );
