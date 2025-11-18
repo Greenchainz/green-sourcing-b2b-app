@@ -28,7 +28,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products }) => {
       {paginatedProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {paginatedProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product.id} product={product} supplierName={product.supplier_name} />
           ))}
         </div>
       ) : (

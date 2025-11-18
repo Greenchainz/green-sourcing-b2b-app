@@ -6,6 +6,11 @@ import CreateProjectModal from './Projects/CreateProjectModal';
 
 type ProductCardProps = {
   product: Product;
+
+
+  supplierName?: string; // Make optional
+  onRequestQuote?: (productId: string) => void; // Make optional
+
 };
 
 const CertificationIcon: React.FC<{ name: string }> = ({ name }) => (
@@ -13,6 +18,7 @@ const CertificationIcon: React.FC<{ name: string }> = ({ name }) => (
     {name}
   </div>
 );
+
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { name, imageUrl, supplier, certifications, epd, recycledContent } = product;
@@ -27,6 +33,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     // Maybe show a toast notification here in the future
     alert(`Product added to project!`);
   };
+
+const ProductCard: React.FC<ProductCardProps> = ({ product, supplierName, onRequestQuote }) => {
+  const {
+    name,
+    image_url,
+    recycled_content, // Use top-level property
+    certifications,
+    epd_link
+  } = product;
+
+  // gwp_fossil does not exist on the Product type, so we'll remove it for now.
+  const isVerified = !!epd_link;
+
 
   return (
     <>
@@ -54,6 +73,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
           </div>
 
+
           <div className="mt-4">
             <p className="text-sm text-gray-600 font-semibold mb-2">Certifications</p>
             <div className="flex flex-wrap items-center">
@@ -63,6 +83,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 <p className="text-xs text-gray-400">No certifications.</p>
               )}
             </div>
+
+        <div className="mt-4 flex-grow">
+          <p className="text-sm text-gray-600 font-semibold">Sustainability</p>
+          <div className="mt-2 text-xs text-gray-500 space-y-1">
+            {recycled_content !== undefined && (
+              <p>
+                <span className="font-bold">{recycled_content}%</span> Recycled Content
+              </p>
+            )}
+
           </div>
         </div>
         <div className="p-4 pt-0 relative">
@@ -110,8 +140,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
       </div>
 
+
       {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} />}
     </>
+
+      {onRequestQuote && (
+        <div className="p-4 pt-0">
+          <button
+            onClick={() => onRequestQuote(product.id.toString())}
+            className="w-full bg-green-700 text-white py-2 px-4 rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-opacity-50 transition-colors"
+          >
+            Request Quote
+          </button>
+        </div>
+      )}
+    </div>
+
   );
 };
 
