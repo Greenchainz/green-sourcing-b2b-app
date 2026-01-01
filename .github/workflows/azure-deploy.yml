@@ -1,5 +1,8 @@
 name: Build and Deploy to Azure
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
