@@ -1,3 +1,12 @@
-Merge pull request #4 from jnorvi5/copilot/update-copilot-instructions-file
+feat: Complete OAuth implementation and fix navigation
 
-Enhance copilot-instructions.md with comprehensive codebase guidance for AI agents
+- Add OAuth login for Google, GitHub, LinkedIn, and Microsoft
+- Fix broken navigation links (remove Suppliers, Resources, Investors, Contact placeholders)
+- Update Login page with beautiful OAuth buttons
+- Add AuthCallback page to handle OAuth redirects
+- Remove Facebook OAuth, add Microsoft OAuth
+- Update backend with OAuth routes and callbacks
+- Add passport-microsoft dependency
+- Fix CORS and session handling for OAuth
+- Update landing page CTAs to use survey and email contact
+- All OAuth providers redirect to frontend /auth/callback with JWT token
