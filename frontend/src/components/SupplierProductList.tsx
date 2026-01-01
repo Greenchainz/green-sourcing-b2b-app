@@ -60,7 +60,18 @@ export default function SupplierProductList({ supplierId }: { supplierId: number
     });
 
     useEffect(() => {
-        fetchProducts();
+        const loadProducts = async () => {
+            try {
+                setLoading(true);
+                const response = await api.get(`/suppliers/${supplierId}/products`);
+                setProducts(response.data.products);
+            } catch (err) {
+                console.error('Failed to fetch products:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadProducts();
     }, [supplierId]);
 
     const fetchProducts = async () => {
@@ -74,6 +85,7 @@ export default function SupplierProductList({ supplierId }: { supplierId: number
             setLoading(false);
         }
     };
+    // Keep fetchProducts for manual refresh calls
 
     const handleAddMaterial = () => {
         if (!newMaterial.materialName) return;
@@ -125,9 +137,10 @@ export default function SupplierProductList({ supplierId }: { supplierId: number
             });
             setShowAddForm(false);
             fetchProducts();
-        } catch (err: any) {
+        } catch (err) {
             console.error('Failed to create product:', err);
-            alert(err.response?.data?.error || 'Failed to create product');
+            const error = err as { response?: { data?: { error?: string } } };
+            alert(error.response?.data?.error || 'Failed to create product');
         }
     };
 

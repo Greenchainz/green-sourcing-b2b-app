@@ -1,4 +1,5 @@
 // frontend/src/context/AuthContext.tsx
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useState, useContext, createContext } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabase';

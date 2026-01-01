@@ -59,7 +59,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose }) => {
             <select
               id="projectType"
               value={type}
-              onChange={(e) => setType(e.target.value as any)}
+              onChange={(e) => setType(e.target.value as 'residential' | 'commercial' | 'industrial')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             >
               <option value="commercial">Commercial</option>
@@ -72,7 +72,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose }) => {
             <select
               id="leedLevel"
               value={targetLEED}
-              onChange={(e) => setTargetLEED(e.target.value as any)}
+              onChange={(e) => setTargetLEED(e.target.value as 'Silver' | 'Gold' | 'Platinum' | 'None')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             >
               <option value="None">None</option>

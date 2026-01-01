@@ -34,7 +34,7 @@ export function ArchitectSurvey() {
         setCurrentStep(totalSteps + 1);
     };
 
-    const updateResponse = (field: keyof SurveyResponse, value: any) => {
+    const updateResponse = (field: keyof SurveyResponse, value: string | number | string[]) => {
         setResponses(prev => ({ ...prev, [field]: value }));
     };
 

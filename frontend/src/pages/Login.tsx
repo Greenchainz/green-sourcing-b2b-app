@@ -69,7 +69,7 @@ export default function Login() {
             });
             if (signInError) throw signInError;
             navigate('/dashboard');
-        } catch (err) {
+        } catch {
             setErrors(prev => ({...prev, form: 'Invalid email or password.'}));
         } finally {
             setLoading(false);

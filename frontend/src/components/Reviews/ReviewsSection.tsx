@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { mockReviews, Review } from '../../mocks/reviewData';
+import { mockReviews } from '../../mocks/reviewData';
 import RatingDistribution from './RatingDistribution';
 import ReviewCard from './ReviewCard';
 import WriteReviewModal from './WriteReviewModal';

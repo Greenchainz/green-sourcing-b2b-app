@@ -12,10 +12,10 @@ const MOCK_SUPPLIER = {
 };
 
 export default function SupplierProfilePage() {
-  const { id } = useParams();
+  useParams(); // URL params available for future API calls
   const [activeTab, setActiveTab] = useState('reviews');
 
-  // In a real implementation, you would fetch supplier data here based on `id`
+  // In a real implementation, you would fetch supplier data here based on URL params
   const supplier = MOCK_SUPPLIER;
 
   return (

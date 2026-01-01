@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { MOCK_PROJECTS, Project } from '../mocks/projectData';
 

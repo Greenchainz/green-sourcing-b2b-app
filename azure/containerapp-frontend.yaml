@@ -1,0 +1,53 @@
+# Azure Container Apps - Frontend Configuration
+# Deploy with: az containerapp create --resource-group rg-greenchainz-prod-container --yaml azure/containerapp-frontend.yaml
+
+properties:
+  managedEnvironmentId: /subscriptions/{subscription-id}/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.App/managedEnvironments/cae-greenchainz-env
+  
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: true
+      targetPort: 80
+      transport: http
+      allowInsecure: false
+      traffic:
+        - latestRevision: true
+          weight: 100
+    
+    registries:
+      - server: acrgreenchainzprod916.azurecr.io
+        identity: system
+
+  template:
+    containers:
+      - name: greenchainz-frontend
+        image: acrgreenchainzprod916.azurecr.io/greenchainz-frontend:latest
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+        
+        probes:
+          - type: liveness
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          
+          - type: readiness
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+    scale:
+      minReplicas: 1
+      maxReplicas: 5
+      rules:
+        - name: http-scale
+          http:
+            metadata:
+              concurrentRequests: "100"
