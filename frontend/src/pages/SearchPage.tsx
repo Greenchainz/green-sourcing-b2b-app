@@ -4,9 +4,10 @@ import FilterPanel from '../components/FilterPanel';
 import ProductGrid from '../components/ProductGrid';
 import { Product } from '../types';
 import { supabase } from '../lib/supabase';
+import { MOCK_PRODUCTS } from '../mocks/productData';
 
 const SearchPage = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS); // TEMP: Use mock data for verification
   const [loading, setLoading] = useState(false);
 
   // Filters state
@@ -22,6 +23,7 @@ const SearchPage = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
+    /*
     const fetchProducts = async () => {
       setLoading(true);
       let query = supabase.from('products').select('*');
@@ -61,6 +63,7 @@ const SearchPage = () => {
     };
 
     fetchProducts();
+    */
   }, [searchQuery, materialTypes, application, certifications, location, recycledContent, carbonFootprint, vocLevel, isInitialLoad]);
 
   return (
