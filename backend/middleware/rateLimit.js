@@ -1,0 +1,108 @@
+/**
+ * Rate Limiting Middleware
+ * Uses Azure Cache for Redis for distributed rate limiting
+ */
+
+const redis = require('../services/azure/redis');
+
+/**
+ * Rate limit middleware factory
+ * @param {object} options - Rate limit options
+ */
+function rateLimitMiddleware(options = {}) {
+    const {
+        windowSeconds = 60,
+        maxRequests = 100,
+        keyGenerator = (req) => req.ip || req.headers['x-forwarded-for'] || 'anonymous',
+        message = 'Too many requests, please try again later.',
+        skipFailedRequests = false,
+        skipSuccessfulRequests = false
+    } = options;
+
+    return async (req, res, next) => {
+        // Skip if Redis not connected (fail open)
+        if (!redis.isConnected()) {
+            return next();
+        }
+
+        const identifier = typeof keyGenerator === 'function' 
+            ? keyGenerator(req) 
+            : keyGenerator;
+
+        try {
+            const result = await redis.rateLimit(identifier, maxRequests, windowSeconds);
+            
+            // Set rate limit headers
+            res.set('X-RateLimit-Limit', maxRequests);
+            res.set('X-RateLimit-Remaining', result.remaining);
+            res.set('X-RateLimit-Reset', Math.ceil(Date.now() / 1000) + result.resetIn);
+
+            if (!result.allowed) {
+                res.set('Retry-After', result.resetIn);
+                return res.status(429).json({
+                    error: message,
+                    retryAfter: result.resetIn
+                });
+            }
+
+            next();
+        } catch (e) {
+            // Fail open on errors
+            console.warn('Rate limit middleware error:', e.message);
+            next();
+        }
+    };
+}
+
+/**
+ * Pre-configured rate limiters
+ */
+const rateLimiters = {
+    // General API rate limit (100 requests per minute)
+    general: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 100
+    }),
+    
+    // Strict rate limit for auth endpoints (10 per minute)
+    auth: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 10,
+        message: 'Too many authentication attempts. Please wait before trying again.'
+    }),
+    
+    // RFQ submission limit (5 per minute)
+    rfq: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 5,
+        keyGenerator: (req) => `rfq:${req.user?.userId || req.ip}`,
+        message: 'You are submitting RFQs too quickly. Please wait a moment.'
+    }),
+    
+    // File upload limit (10 per 5 minutes)
+    upload: rateLimitMiddleware({
+        windowSeconds: 300,
+        maxRequests: 10,
+        keyGenerator: (req) => `upload:${req.user?.userId || req.ip}`,
+        message: 'Upload limit reached. Please wait before uploading more files.'
+    }),
+    
+    // Search rate limit (30 per minute)
+    search: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 30,
+        keyGenerator: (req) => `search:${req.ip}`
+    }),
+    
+    // Admin operations (higher limit)
+    admin: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 200,
+        keyGenerator: (req) => `admin:${req.user?.userId}`
+    })
+};
+
+module.exports = {
+    rateLimitMiddleware,
+    ...rateLimiters
+};

@@ -10,6 +10,7 @@ const session = require('express-session');
 const passport = require('./config/passport');
 const { authenticateToken, authorizeRoles, JWT_SECRET } = require('./middleware/auth');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const lusca = require('lusca');
 const { createClient } = require('@supabase/supabase-js');
 const FSCMockProvider = require('./providers/fscMock');
@@ -25,6 +26,19 @@ const errorMonitoring = require('./services/errorMonitoring');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yaml');
 
+// Azure Services Integration
+const azureServices = require('./services/azure');
+const azureMonitoring = require('./services/azure/monitoring');
+const azureRedis = require('./services/azure/redis');
+
+// Routes
+const uploadRoutes = require('./routes/uploads');
+const documentAIRoutes = require('./routes/documentAI');
+
+// Middleware
+const { general: generalRateLimit, auth: authRateLimit } = require('./middleware/rateLimit');
+const { supplierProfile: cacheSupplierProfile, searchResults: cacheSearchResults } = require('./middleware/cache');
+
 const app = express();
 
 // Supabase client
@@ -35,6 +49,11 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Middleware
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
+
+// Azure Application Insights request tracking
+if (process.env.FEATURE_AZURE_MONITORING === 'true') {
+  app.use(azureMonitoring.expressMiddleware());
+}
 
 // Session middleware for OAuth
 app.use(session({
@@ -54,10 +73,68 @@ app.use(passport.session());
 // Serve static admin dashboard
 app.use('/admin/dashboard', express.static(path.join(__dirname, 'public')));
 
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.json({ message: 'GreenChainz Backend API is running!' });
+const healthRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,             // limit each IP to 60 health requests per minute
+  standardHeaders: true,
+  legacyHeaders: false
 });
+
+// Health check endpoint
+app.get('/', healthRateLimiter, async (req, res) => {
+  const health = {
+    status: 'healthy',
+    message: 'GreenChainz Backend API is running!',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '0.2.0',
+    environment: process.env.NODE_ENV || 'development'
+  };
+
+  // Check Redis if enabled
+  if (process.env.FEATURE_REDIS_CACHING === 'true') {
+    health.redis = await azureRedis.ping() ? 'connected' : 'disconnected';
+  }
+
+  // Check database
+  try {
+    await pool.query('SELECT 1');
+    health.database = 'connected';
+  } catch (e) {
+    health.database = 'disconnected';
+    health.status = 'degraded';
+  }
+
+  res.json(health);
+});
+
+// Azure health probe endpoint (required for Container Apps)
+app.get('/health', healthRateLimiter, async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).json({ status: 'healthy' });
+  } catch (e) {
+    res.status(503).json({ status: 'unhealthy', error: e.message });
+  }
+});
+
+// Readiness probe
+app.get('/ready', healthRateLimiter, async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).json({ ready: true });
+  } catch (e) {
+    res.status(503).json({ ready: false });
+  }
+});
+
+// Apply rate limiting (after health checks)
+if (process.env.FEATURE_REDIS_CACHING === 'true') {
+  app.use('/api', generalRateLimit);
+}
+
+// Mount Azure-powered routes
+app.use('/api/v1/uploads', uploadRoutes);
+app.use('/api/v1/ai', documentAIRoutes);
 
 // Serve OpenAPI spec (YAML)
 app.get('/api/docs', (req, res) => {
@@ -356,8 +433,8 @@ app.post('/api/v1/suppliers', async (req, res) => {
   }
 });
 
-// Get supplier sustainability passport
-app.get('/api/v1/suppliers/:id/profile', async (req, res) => {
+// Get supplier sustainability passport (cached)
+app.get('/api/v1/suppliers/:id/profile', cacheSupplierProfile, async (req, res) => {
   try {
     const { id } = req.params; // id = CompanyID
 
@@ -419,8 +496,8 @@ app.post('/api/v1/suppliers/:id/certifications', authenticateToken, authorizeRol
   }
 });
 
-// List all suppliers with basic info and certification count
-app.get('/api/v1/suppliers', async (req, res) => {
+// List all suppliers with basic info and certification count (cached)
+app.get('/api/v1/suppliers', cacheSearchResults, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -532,6 +609,18 @@ async function initSchema() {
   } catch (err) {
     console.error('❌ Schema init failed:', err.message);
     await errorMonitoring.notifyDatabaseError(err, 'Schema initialization');
+    azureMonitoring.trackException(err, { context: 'schema_initialization' });
+  }
+}
+
+async function initAzureServices() {
+  try {
+    const results = await azureServices.initializeAll();
+    console.log('🔷 Azure services status:', results);
+    return results;
+  } catch (err) {
+    console.error('❌ Azure services init failed:', err.message);
+    return null;
   }
 }
 
@@ -1443,5 +1532,26 @@ const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, async () => {
   console.log(`🚀 Backend server listening at http://localhost:${PORT}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Initialize Azure services first (for monitoring)
+  await initAzureServices();
+  
+  // Then initialize database schema
   await initSchema();
+  
+  console.log('✅ GreenChainz backend fully initialized');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully...');
+  await azureServices.shutdownAll();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('🛑 SIGINT received, shutting down gracefully...');
+  await azureServices.shutdownAll();
+  process.exit(0);
 });
