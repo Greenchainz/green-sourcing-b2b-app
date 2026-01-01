@@ -10,6 +10,7 @@ const session = require('express-session');
 const passport = require('./config/passport');
 const { authenticateToken, authorizeRoles, JWT_SECRET } = require('./middleware/auth');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const lusca = require('lusca');
 const { createClient } = require('@supabase/supabase-js');
 const FSCMockProvider = require('./providers/fscMock');
@@ -72,8 +73,15 @@ app.use(passport.session());
 // Serve static admin dashboard
 app.use('/admin/dashboard', express.static(path.join(__dirname, 'public')));
 
+const healthRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,             // limit each IP to 60 health requests per minute
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // Health check endpoint
-app.get('/', async (req, res) => {
+app.get('/', healthRateLimiter, async (req, res) => {
   const health = {
     status: 'healthy',
     message: 'GreenChainz Backend API is running!',
@@ -100,7 +108,7 @@ app.get('/', async (req, res) => {
 });
 
 // Azure health probe endpoint (required for Container Apps)
-app.get('/health', async (req, res) => {
+app.get('/health', healthRateLimiter, async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.status(200).json({ status: 'healthy' });
@@ -110,7 +118,7 @@ app.get('/health', async (req, res) => {
 });
 
 // Readiness probe
-app.get('/ready', async (req, res) => {
+app.get('/ready', healthRateLimiter, async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.status(200).json({ ready: true });
