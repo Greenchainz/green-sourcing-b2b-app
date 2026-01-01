@@ -1,3 +1,7 @@
-Merge pull request #10 from jnorvi5/fix/add-data-provider-signup
+feat: Set up Supabase client
 
-fix: Add Data Provider to Signup Form
+- Created `frontend/src/lib/supabase.ts` to initialize the Supabase client.
+- Added authentication helper functions (`signUp`, `signIn`, `signOut`, `getUser`).
+- Added database helper function stubs (`getProducts`, `createRFQ`).
+- Created `frontend/.env.example` with the required Supabase environment variables.
+- Fixed linting issues in `frontend/src/lib/supabase.ts`.
