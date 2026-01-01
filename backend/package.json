@@ -26,6 +26,7 @@
     "passport-microsoft": "^1.0.0",
     "pg": "^8.11.3",
     "swagger-ui-express": "^5.0.1",
-    "yaml": "^2.5.1"
+    "yaml": "^2.5.1",
+    "lusca": "^1.7.0"
   }
 }

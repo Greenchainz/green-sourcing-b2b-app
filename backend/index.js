@@ -10,6 +10,7 @@ const session = require('express-session');
 const passport = require('./config/passport');
 const { authenticateToken, authorizeRoles, JWT_SECRET } = require('./middleware/auth');
 const crypto = require('crypto');
+const lusca = require('lusca');
 const { createClient } = require('@supabase/supabase-js');
 const FSCMockProvider = require('./providers/fscMock');
 const {
@@ -42,6 +43,9 @@ app.use(session({
   saveUninitialized: false,
   cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 }
 }));
+
+// CSRF protection for routes using session cookies
+app.use(lusca.csrf());
 
 // Initialize Passport
 app.use(passport.initialize());
