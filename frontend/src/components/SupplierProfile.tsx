@@ -41,11 +41,12 @@ export default function SupplierProfile() {
                 // Call our new secure endpoint
                 const response = await api.get('/me/passport');
                 setPassport(response.data);
-            } catch (err: any) {
+            } catch (err) {
                 console.error("Failed to fetch passport:", err);
-                if (err.response?.status === 403) {
+                const error = err as { response?: { status?: number } };
+                if (error.response?.status === 403) {
                     setError("Access denied. This view is for Supplier accounts.");
-                } else if (err.response?.status === 404) {
+                } else if (error.response?.status === 404) {
                     setError("Supplier profile not found. Please complete onboarding.");
                 } else {
                     setError("An error occurred while loading the passport.");

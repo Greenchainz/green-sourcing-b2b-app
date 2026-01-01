@@ -1,6 +1,6 @@
 // frontend/src/components/Projects/AddProductsModal.tsx
 import React, { useState } from 'react';
-import { MOCK_PRODUCTS, Product } from '../../mocks/productData';
+import { MOCK_PRODUCTS } from '../../mocks/productData';
 import { useProjects } from '../../context/ProjectContext';
 
 interface AddProductsModalProps {
