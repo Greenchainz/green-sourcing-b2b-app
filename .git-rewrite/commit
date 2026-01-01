@@ -1,6 +1,6 @@
-tree dc76db6eccfecd48413bb9d4206182df6ee4ff21
-parent 5e3a812d19826bb14f818b6fd8259922488cd8f5
-author jnorvi5 <jnorvi5@wgu.edu> 1763046180 -0500
-committer jnorvi5 <jnorvi5@wgu.edu> 1763046180 -0500
+tree 2330d4184e52abd63a8ec1819660ae0239faae1d
+parent 188660ba26b3f5a0523b075744ccb2bed4518afe
+author jnorvi5 <jnorvi5@wgu.edu> 1763049949 -0500
+committer jnorvi5 <jnorvi5@wgu.edu> 1763049949 -0500
 
-docs: Add Vercel deployment fix guide
+Add navigation status documentation
