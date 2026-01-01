@@ -1,1 +1,3 @@
-Add all missing pages: Signup, Features, Contact, Privacy, Terms - Fix all navigation links
+Merge pull request #10 from jnorvi5/fix/add-data-provider-signup
+
+fix: Add Data Provider to Signup Form

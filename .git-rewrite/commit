@@ -1,6 +1,26 @@
-tree 2330d4184e52abd63a8ec1819660ae0239faae1d
-parent 188660ba26b3f5a0523b075744ccb2bed4518afe
-author jnorvi5 <jnorvi5@wgu.edu> 1763049949 -0500
-committer jnorvi5 <jnorvi5@wgu.edu> 1763049949 -0500
+tree 3415df0397fa3c20621a29b6e186897e63f946d7
+parent d1083bb54c05b7cc90fe2dfad845fc3f722889a4
+parent 816aec9e09410c2bd5892d4bdf5434b45d8a52ab
+author Jerit Norville <jnorvi5@wgu.edu> 1763097720 -0500
+committer GitHub <noreply@github.com> 1763097720 -0500
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJpFrx4CRC1aQ7uu5UhlAAAkGIQAKztNYz924jkLeHYdp/7yJOz
+ hKXg3XdHrW/RyVaoO4sx5rKsrJ9Zg2PNj1T3wnjpDwFBouMDIorHjP4CJeVlSQAK
+ /2ejFpFXInxjxskb5iSZgU3mJaSJSNoLPIuCFLKSRWchJ/dGZuNcDs2g5MEFdF++
+ wAuFN4WsOP9tHs5My0O8Reu+0PFA3T8SPosVrJfywFqlZ93a+oP31B1eYKOaz1oT
+ ka9VBlGyQJh/QfTQzsBhuKVsSP3jHBd4U3DwJrKKEm3IGaUq69vbT+7c13XRGjdb
+ nYLf8TcVPvED37sZ7u9j1QkfMeFvSxkPU4MgIsrfgxEPZ7p8pyS3eh0M5ziUwu4T
+ HbT8akDNuBqQVEymJIubG0MwlBbXfKfEwita0L3MACPOfCr2y3U+03bVNKJFV/BT
+ K6A4q5/tTB1k3GUeNkXNOV3i13GE1q9CbwyCwJDBfCi9Kq7UcHY9m2qjw5sXbtL8
+ Kij7NJKbaRHIJ6EpMQmE+uJEQUzhAB6QMLP2YN+rXKUGrFhDH6Vw6b8Y4kFjtSrQ
+ b9b/kk91msceBuNhwmHfZZebPgzOsLdSyFa4wuXThyvJd4buh5KyWHmkcecEk+V2
+ L95i94ORUFV6QLlBNoyPtBc3V6te9O1GUk6SBV0IJl2mHVnSop463roikLVAnr34
+ uCZBSvcxootKnzxR9L9j
+ =4044
+ -----END PGP SIGNATURE-----
+ 
 
-Add navigation status documentation
+Merge pull request #10 from jnorvi5/fix/add-data-provider-signup
+
+fix: Add Data Provider to Signup Form
