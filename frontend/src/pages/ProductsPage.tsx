@@ -21,9 +21,10 @@ export default function ProductsPage() {
 
                 if (error) throw error;
                 setProducts(data || []);
-            } catch (err: any) {
-                console.error('Error fetching products:', err.message);
-                setError(err.message);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Unknown error';
+                console.error('Error fetching products:', message);
+                setError(message);
             } finally {
                 setLoading(false);
             }
