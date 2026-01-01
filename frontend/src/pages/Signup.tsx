@@ -13,7 +13,7 @@ const validateEmail = (email: string) => {
 const validatePassword = (password: string) => {
     if (!password) return "Password is required.";
     if (password.length < 8) return "Password must be at least 8 characters.";
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).+$/;
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/;
     if (!passwordRegex.test(password)) return "Password must include 1 uppercase letter, 1 number, and 1 special character.";
     return "";
 };

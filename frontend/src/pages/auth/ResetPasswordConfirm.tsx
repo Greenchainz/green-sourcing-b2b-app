@@ -32,7 +32,7 @@ export default function ResetPasswordConfirm() {
     // This effect handles the session update from the reset token in the URL.
     // Supabase automatically detects the `access_token` and updates the session.
     useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
             if (event === 'PASSWORD_RECOVERY') {
                 // The user is now in a password recovery state.
                 // We don't need to do anything here, just let them set a new password.

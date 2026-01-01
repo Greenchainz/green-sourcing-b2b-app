@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   UserGroupIcon,
@@ -17,7 +17,7 @@ const MOCK_STATS = {
 };
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState(MOCK_STATS);
+  const [stats] = useState(MOCK_STATS);
 
   return (
     <div className="min-h-screen bg-background flex">

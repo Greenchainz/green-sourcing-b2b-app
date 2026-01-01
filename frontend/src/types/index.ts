@@ -9,7 +9,8 @@ export interface User {
 }
 
 export interface Supplier extends User {
-  // Supplier-specific fields can be added here if any in the future
+  company_address?: string;
+  esg_summary?: string;
 }
 
 export interface Product {
@@ -18,7 +19,7 @@ export interface Product {
   name: string;
   description?: string;
   image_url?: string;
-  technical_specs?: Record<string, any>; // JSONB
+  technical_specs?: Record<string, string | number | boolean>; // JSONB
   certifications?: string[]; // Array of certification names
   epd_link?: string;
   sustainability_data?: {
