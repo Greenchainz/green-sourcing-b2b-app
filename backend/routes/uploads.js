@@ -253,6 +253,7 @@ router.delete('/:blobName(*)',
  */
 router.get('/sas/:blobName(*)',
     authenticateToken,
+    uploadRateLimit,
     async (req, res) => {
         try {
             const expiresInMinutes = parseInt(req.query.expires) || 60;
