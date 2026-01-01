@@ -56,7 +56,7 @@ export default function ResetPassword() {
                 redirectTo: `${window.location.origin}/auth/reset-password-confirm`,
             });
             setMessage('If an account exists for this email, a password reset link has been sent.');
-        } catch (err) {
+        } catch {
             setMessage('If an account exists for this email, a password reset link has been sent.');
         } finally {
             setLoading(false);

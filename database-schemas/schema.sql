@@ -12,11 +12,17 @@ CREATE TABLE IF NOT EXISTS Users (
   CompanyID BIGINT,
   OAuthProvider VARCHAR(50),
   OAuthID VARCHAR(255),
+  ResetToken VARCHAR(255),
+  ResetTokenExpiresAt TIMESTAMP,
   LastLogin TIMESTAMP,
   CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT oauth_unique UNIQUE (OAuthProvider, OAuthID)
 );
+
+-- Add reset token columns if they don't exist (for existing databases)
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS ResetToken VARCHAR(255);
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS ResetTokenExpiresAt TIMESTAMP;
 
 -- Companies
 CREATE TABLE IF NOT EXISTS Companies (

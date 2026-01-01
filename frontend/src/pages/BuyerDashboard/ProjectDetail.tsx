@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjects } from '../../context/ProjectContext';
-import { MOCK_PRODUCTS, Product } from '../../mocks/productData';
+import { MOCK_PRODUCTS } from '../../mocks/productData';
 import ProductCard from '../../components/ProductCard'; // Reusing for now, will adapt as needed
 import AddProductsModal from '../../components/Projects/AddProductsModal';
 
