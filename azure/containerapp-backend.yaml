@@ -1,0 +1,174 @@
+# Azure Container Apps - Backend Configuration
+# Deploy with: az containerapp create --resource-group rg-greenchainz-prod-container --yaml azure/containerapp-backend.yaml
+
+properties:
+  managedEnvironmentId: /subscriptions/{subscription-id}/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.App/managedEnvironments/cae-greenchainz-env
+  
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: true
+      targetPort: 3001
+      transport: http
+      allowInsecure: false
+      traffic:
+        - latestRevision: true
+          weight: 100
+      corsPolicy:
+        allowedOrigins:
+          - "https://greenchainz-frontend.azurecontainerapps.io"
+          - "https://greenchainz.com"
+          - "https://www.greenchainz.com"
+        allowedMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        allowedHeaders:
+          - "*"
+        allowCredentials: true
+    
+    registries:
+      - server: acrgreenchainzprod916.azurecr.io
+        identity: system
+    
+    secrets:
+      - name: postgres-password
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/postgres-password
+        identity: system
+      - name: jwt-secret
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/jwt-secret
+        identity: system
+      - name: redis-password
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/redis-password
+        identity: system
+      - name: session-secret
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/session-secret
+        identity: system
+
+  template:
+    containers:
+      - name: greenchainz-backend
+        image: acrgreenchainzprod916.azurecr.io/greenchainz-backend:latest
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        
+        env:
+          # Core Settings
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "3001"
+          
+          # Frontend URL
+          - name: FRONTEND_URL
+            value: https://greenchainz-frontend.azurecontainerapps.io
+          
+          # Database (secrets from Key Vault)
+          - name: POSTGRES_HOST
+            value: your-postgres-host.postgres.database.azure.com
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: DB_USER
+            value: greenchainz_admin
+          - name: DB_PASSWORD
+            secretRef: postgres-password
+          - name: DB_NAME
+            value: greenchainz_prod
+          - name: POSTGRES_SSL
+            value: "true"
+          
+          # Connection Pool
+          - name: PGPOOL_MAX
+            value: "50"
+          - name: PGPOOL_MIN
+            value: "5"
+          
+          # JWT & Session (secrets)
+          - name: JWT_SECRET
+            secretRef: jwt-secret
+          - name: SESSION_SECRET
+            secretRef: session-secret
+          
+          # Redis
+          - name: REDIS_HOST
+            value: greenchainz.redis.cache.windows.net
+          - name: REDIS_PORT
+            value: "6380"
+          - name: REDIS_PASSWORD
+            secretRef: redis-password
+          - name: REDIS_SSL
+            value: "true"
+          
+          # Feature Flags
+          - name: FEATURE_REDIS_CACHING
+            value: "true"
+          - name: FEATURE_AZURE_MONITORING
+            value: "true"
+          - name: FEATURE_AI_DOCUMENT_ANALYSIS
+            value: "true"
+          - name: NOTIFICATIONS_ENABLED
+            value: "true"
+          
+          # Azure Services
+          - name: AZURE_USE_MANAGED_IDENTITY
+            value: "true"
+          - name: AZURE_KEY_VAULT_URL
+            value: https://greenchianz-vault.vault.azure.net/
+          - name: AZURE_STORAGE_ACCOUNT_NAME
+            value: revitfiles
+          - name: AZURE_STORAGE_CONTAINER_NAME
+            value: greenchainz-uploads
+          
+          # Application Insights
+          - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+            value: "InstrumentationKey=your-key;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/"
+          
+          # Document Intelligence
+          - name: AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
+            value: https://greenchainz-content-intel.cognitiveservices.azure.com/
+        
+        probes:
+          - type: liveness
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          
+          - type: readiness
+            httpGet:
+              path: /ready
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          
+          - type: startup
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+
+    scale:
+      minReplicas: 1
+      maxReplicas: 10
+      rules:
+        - name: http-scale
+          http:
+            metadata:
+              concurrentRequests: "50"
+        - name: cpu-scale
+          custom:
+            type: cpu
+            metadata:
+              type: Utilization
+              value: "70"
+
+  identity:
+    type: SystemAssigned
