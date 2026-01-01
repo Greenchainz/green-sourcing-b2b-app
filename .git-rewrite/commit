@@ -1,0 +1,26 @@
+tree 023561728465db04ad5fb674188abb3e04d3489f
+parent abb4bdb1c21c0b87ffcabefa6126dfd21fc95aae
+parent de9e7b9e3ff926e5cd902f5bc8d179c99a9b623d
+author Jerit Norville <jnorvi5@wgu.edu> 1761722273 -0400
+committer GitHub <noreply@github.com> 1761722273 -0400
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJpAb+hCRC1aQ7uu5UhlAAAtJQQADTpWpqmpMYVzzRXtnmljI1l
+ Y/EcjsJ7zLnGXQOka3IIk6eMRic3DohFXaqfR85vlkIZiRrCNspkohfdJ2nbhG4k
+ Hwr4Hcbvk2CyEA9VTTPf8djlGcPwjyBi1/eftpdNnKtnbcTQSkb8Jvt4/5Bu5/0/
+ R0Q697o9L0+oAGjQfQ9xNfXOzuuF2WRXTinehDSTUh1iWIoCqYTN+cpmsa6LQeGs
+ 9vedMCkhwxHifoutAKrZI2gYvLrucOIjPdTPzBoKxHrk6rNHdoAQ3wu0Wbnp60t3
+ XVk6e6M9ZqOtrnyUT66USRAJPtF6CuLkkQoC/QkGC9n1RQC428TXCDeMys0+v041
+ Crqj3CEnvzG/BjkgrkCV9tZ13MBiQhQVX+gaWkg0s+wx/AHqpjt2J5mD0DI1Qj4A
+ mhLCEw//TaQni7C1CoEb2KAExvB4za53BwBsD3v9kDGeffB/wk3iEh6qbZWW29ZP
+ z5bWSc6s6neEEZWaJa/XMCD4gBMNmYLzmUe7gfoNaSna4Wqf5HrJN61LMTzCU+JU
+ 6IKmZhg/NESc6iaMeLCk5noPbLRJoHbz4/IjWF08u+zSB0+E9PcQl7D6pEUd+M3c
+ T8NPZZNkRJeYb9aDSIP216ruKqdhA20v5+E2+aT9vO2Dv7enlJUhGqx9mY5RQlKA
+ 56BUf5/znSraZ0YwjXgV
+ =JZJf
+ -----END PGP SIGNATURE-----
+ 
+
+Merge pull request #4 from jnorvi5/copilot/update-copilot-instructions-file
+
+Enhance copilot-instructions.md with comprehensive codebase guidance for AI agents
