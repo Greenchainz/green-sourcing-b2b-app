@@ -13,8 +13,7 @@ WORKDIR /app
 COPY backend/package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production
-
+RUN npm install --only=production
 # -----------------
 # Stage 2: Builder
 # -----------------
