@@ -5,11 +5,11 @@ require('dotenv').config({ path: path.resolve(process.cwd(), '.env') });
 // Choose a sensible default host based on runtime: use env if provided, otherwise localhost.
 // If you later containerize the backend with docker-compose, set POSTGRES_HOST=db.
 const config = {
-    host: process.env.POSTGRES_HOST || 'localhost',
-    port: Number(process.env.POSTGRES_PORT || 5432),
-    user: process.env.DB_USER || process.env.POSTGRES_USER || 'user',
-    password: process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'password',
-    database: process.env.DB_NAME || process.env.POSTGRES_DB || 'greenchainz_dev',
+    host: process.env.POSTGRES_HOST || process.env.DATABASE_HOST || 'localhost',
+    port: Number(process.env.POSTGRES_PORT || process.env.DATABASE_PORT || 5432),
+    user: process.env.DB_USER || process.env.POSTGRES_USER || process.env.DATABASE_USER || 'user',
+    password: process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || process.env.DATABASE_PASSWORD || 'password',
+    database: process.env.DB_NAME || process.env.POSTGRES_DB || process.env.DATABASE_NAME || 'greenchainz_dev',
     // Optimized pool settings for better performance
     max: Number(process.env.PGPOOL_MAX || 20), // Increased from 10 to handle more concurrent requests
     min: Number(process.env.PGPOOL_MIN || 2), // Maintain minimum connections for faster response
@@ -18,21 +18,42 @@ const config = {
     // Statement timeout to prevent long-running queries from blocking
     statement_timeout: Number(process.env.PGPOOL_STATEMENT_TIMEOUT || 30000),
     // SSL configuration for production (Azure, Supabase, etc.)
-    ssl: process.env.POSTGRES_SSL === 'true' || process.env.NODE_ENV === 'production' 
+    ssl: process.env.POSTGRES_SSL === 'true' || 
+         process.env.NODE_ENV === 'production' ||
+         (process.env.POSTGRES_HOST && process.env.POSTGRES_HOST.includes('supabase'))
         ? { rejectUnauthorized: false } 
         : false
 };
 
+// Log configuration (hide password)
+if (process.env.NODE_ENV === 'development') {
+    console.log('📊 Database Config:', {
+        host: config.host,
+        port: config.port,
+        user: config.user,
+        database: config.database,
+        ssl: config.ssl ? 'enabled' : 'disabled',
+        poolMax: config.max,
+        poolMin: config.min
+    });
+}
+
 const pool = new Pool(config);
 
 pool.on('error', (err) => {
-    console.error('Unexpected PG client error', err);
+    console.error('❌ Unexpected PG client error', err);
+});
+
+pool.on('connect', () => {
+    if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Connection to Postgres established');
+    }
 });
 
 // Log pool statistics periodically for monitoring (development only)
 if (process.env.NODE_ENV !== 'production') {
     setInterval(() => {
-        console.log('Pool stats:', {
+        console.log('📈 Pool stats:', {
             total: pool.totalCount,
             idle: pool.idleCount,
             waiting: pool.waitingCount
