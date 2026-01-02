@@ -94,8 +94,7 @@ jobs:
           az containerapp update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY }}/greenchainz-backend:${{ github.sha }} \
-                        --target-port 3001
+            --image ${{ env.REGISTRY }}/greenchainz-backend:${{ github.sha }}
       
       - name: Verify Backend Deployment
         run: |
