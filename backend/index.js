@@ -1,4 +1,4 @@
-// Routes
-const uploadRoutes = require('./routes/uploads');
-const documentAIRoutes = require('./routes/documentAI');
-const authSyncRoutes = require('./routes/auth-sync');
+// Mount Azure-powered routes
+app.use('/api/v1/uploads', uploadRoutes);
+app.use('/api/v1/ai', documentAIRoutes);
+app.use('/api/v1/auth', authSyncRoutes);
