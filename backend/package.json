@@ -28,6 +28,7 @@
     "express": "^4.22.1",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.1",
+        "helmet": "^8.0.0",
     "intercom-client": "^6.4.0",
     "jsonwebtoken": "^9.0.2",
     "lusca": "^1.7.0",
