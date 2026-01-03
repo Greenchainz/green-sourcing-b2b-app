@@ -72,8 +72,8 @@ chmod +x azure/deploy.sh
 │                            Azure Container Apps                              │
 │  ┌─────────────────────────────┐   ┌─────────────────────────────────────┐  │
 │  │    greenchainz-frontend     │   │       greenchainz-container         │  │
-│  │    (React + Vite + nginx)   │──▶│       (Node.js + Express)           │  │
-│  │    Port: 80                 │   │       Port: 3001                    │  │
+│  │         (Next.js)           │──▶│       (Node.js + Express)           │  │
+│  │    Port: 3000               │   │       Port: 3001                    │  │
 │  └─────────────────────────────┘   └─────────────────────────────────────┘  │
 │              │                                    │                          │
 └──────────────┼────────────────────────────────────┼──────────────────────────┘
@@ -91,7 +91,7 @@ chmod +x azure/deploy.sh
                                  │  └─────────────┘  └─────────────────────┘  │
                                  │  ┌─────────────┐  ┌─────────────────────┐  │
                                  │  │  Blob       │  │  PostgreSQL         │  │
-                                 │  │  Storage    │  │  (Supabase)         │  │
+                                 │  │  Storage    │  │  (Your DB)          │  │
                                  │  └─────────────┘  └─────────────────────┘  │
                                  └─────────────────────────────────────────────┘
 ```
@@ -113,6 +113,11 @@ DB_NAME=greenchainz_prod
 AZURE_KEY_VAULT_URL=https://greenchianz-vault.vault.azure.net/
 REDIS_HOST=greenchainz.redis.cache.windows.net
 APPLICATIONINSIGHTS_CONNECTION_STRING=<from App Insights>
+
+# Frontend (Next.js public config)
+NEXT_PUBLIC_BACKEND_URL=https://<your-backend-fqdn>
+NEXT_PUBLIC_AZURE_TENANT=greenchainz2025.onmicrosoft.com
+NEXT_PUBLIC_AZURE_CLIENT_ID=<from Azure App Registration>
 ```
 
 ### Container App Configuration
