@@ -63,6 +63,26 @@ az keyvault secret set \
   --name "redis-password" \
   --value "$REDIS_PASSWORD" &> /dev/null && echo "✅ redis-password set"
 
+# Optional: Application Insights (for monitoring and telemetry)
+# Set APPINSIGHTS_CONNECTION_STRING environment variable before running this script
+if [ -n "$APPINSIGHTS_CONNECTION_STRING" ]; then
+  az keyvault secret set \
+    --vault-name "$VAULT_NAME" \
+    --name "appinsights-connection-string" \
+    --value "$APPINSIGHTS_CONNECTION_STRING" &> /dev/null && echo "✅ appinsights-connection-string set"
+else
+  echo "ℹ️  APPINSIGHTS_CONNECTION_STRING not set; skipping appinsights-connection-string (optional)"
+fi
+
+# Optional: Document Intelligence (for AI-powered document parsing)
+# Set AZURE_DOCUMENT_INTELLIGENCE_KEY environment variable before running this script
+if [ -n "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
+  az keyvault secret set \
+    --vault-name "$VAULT_NAME" \
+    --name "document-intelligence-key" \
+    --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
+else
+  echo "ℹ️  AZURE_DOCUMENT_INTELLIGENCE_KEY not set; skipping document-intelligence-key (optional)"
 # Application Insights Connection String (required by containerapp-backend.yaml)
 if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
   echo "❌ APPINSIGHTS_CONNECTION_STRING not set. This is required by the backend container app."
@@ -104,16 +124,21 @@ az keyvault secret set \
   --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
 
 echo ""
-echo "🎉 All secrets configured successfully!"
+echo "🎉 All required secrets configured successfully!"
 echo ""
 echo "Next steps:"
-echo "1. Add to Container App environment variables:"
-echo "   JWT_SECRET=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/jwt-secret/)"
-echo "   SESSION_SECRET=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/session-secret/)"
-echo "   REDIS_PASSWORD=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/redis-password/)"
-echo "   APPLICATIONINSIGHTS_CONNECTION_STRING=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/appinsights-connection-string/)"
-echo "   AZURE_DOCUMENT_INTELLIGENCE_KEY=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/document-intelligence-key/)"
-echo ""
-echo "2. Grant managed identity access to Key Vault:"
+echo "1. Grant managed identity access to Key Vault:"
 echo "   ./azure/grant-keyvault-access.sh"
+echo ""
+echo "2. The secrets are already configured in azure/containerapp-backend.yaml"
+echo ""
+echo "3. Optional: To enable Application Insights monitoring:"
+echo "   - Set APPINSIGHTS_CONNECTION_STRING and re-run this script"
+echo "   - Uncomment Application Insights configuration in azure/containerapp-backend.yaml"
+echo "   - Set FEATURE_AZURE_MONITORING=true in the YAML"
+echo ""
+echo "4. Optional: To enable Document Intelligence AI:"
+echo "   - Set AZURE_DOCUMENT_INTELLIGENCE_KEY and re-run this script"
+echo "   - Uncomment Document Intelligence configuration in azure/containerapp-backend.yaml"
+echo "   - Set FEATURE_AI_DOCUMENT_ANALYSIS=true in the YAML"
 echo ""
