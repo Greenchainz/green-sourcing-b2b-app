@@ -36,20 +36,82 @@ az account set --subscription "greenchainz-core-start"
 
 ### 2. Configure Secrets in Key Vault
 
+You can use the automated script or configure secrets manually:
+
+**Option A: Automated Setup (Recommended)**
 ```bash
-# Database password
+# Set required environment variables
+export DB_PASSWORD="YOUR_DB_PASSWORD"
+export APPINSIGHTS_CONNECTION_STRING="InstrumentationKey=...;IngestionEndpoint=..."
+export AZURE_DOCUMENT_INTELLIGENCE_KEY="your-document-intelligence-key"
+
+# Run the setup script
+chmod +x azure/setup-secrets.sh
+./azure/setup-secrets.sh
+```
+
+**Option B: Manual Configuration**
+**Required Environment Variables Before Running Setup:**
+
+The `setup-secrets.sh` script requires these environment variables to be set:
+
+```bash
+# Database password (required)
+export DB_PASSWORD="YOUR_DB_PASSWORD"
+
+# Application Insights connection string (required)
+# Get from: Azure Portal → Application Insights → greenchainz-platform → Overview
+export APPINSIGHTS_CONNECTION_STRING="InstrumentationKey=xxx;IngestionEndpoint=https://..."
+
+# Document Intelligence API key (required)
+# Get from: Azure Portal → Document Intelligence → greenchainz-content-intel → Keys and Endpoint
+export AZURE_DOCUMENT_INTELLIGENCE_KEY="YOUR_DOCUMENT_INTELLIGENCE_KEY"
+```
+
+**Run the automated setup script:**
+
+```bash
+# Set all required environment variables first (see above)
+./azure/setup-secrets.sh
+```
+
+This script will automatically:
+- Generate secure JWT and session secrets
+- Fetch the Redis password from Azure
+- Set all required secrets in Key Vault
+
+**Manual setup (alternative):**
+
+```bash
+# Database password (required)
 az keyvault secret set --vault-name greenchianz-vault --name postgres-password --value "YOUR_DB_PASSWORD"
 
-# JWT secret (generate a secure one)
+# JWT secret (auto-generated, required)
 az keyvault secret set --vault-name greenchianz-vault --name jwt-secret --value "$(openssl rand -base64 32)"
 
-# Session secret
+# Session secret (auto-generated, required)
 az keyvault secret set --vault-name greenchianz-vault --name session-secret --value "$(openssl rand -base64 32)"
 
-# Redis password (get from Azure Portal)
+# Redis password (fetched from Azure, required)
 REDIS_KEY=$(az redis list-keys --name greenchainz --resource-group greenchainz-production --query "primaryKey" -o tsv)
 az keyvault secret set --vault-name greenchianz-vault --name redis-password --value "$REDIS_KEY"
+
+# Application Insights connection string (required for monitoring)
+az keyvault secret set --vault-name greenchianz-vault --name appinsights-connection-string --value "InstrumentationKey=...;IngestionEndpoint=..."
+
+# Document Intelligence key (required for AI document analysis)
+az keyvault secret set --vault-name greenchianz-vault --name document-intelligence-key --value "your-document-intelligence-key"
 ```
+
+**Note**: Application Insights and Document Intelligence secrets are required by the backend container configuration. If you want to deploy without these services, you'll need to modify `azure/containerapp-backend.yaml` to remove the corresponding secretRef entries.
+# Application Insights connection string
+az keyvault secret set --vault-name greenchianz-vault --name appinsights-connection-string --value "YOUR_CONNECTION_STRING"
+
+# Document Intelligence API key
+az keyvault secret set --vault-name greenchianz-vault --name document-intelligence-key --value "YOUR_API_KEY"
+```
+
+**Note:** Application Insights and Document Intelligence secrets are required by the container app configuration. The backend gracefully handles missing credentials, but the secrets must exist in Key Vault for the container to start. Use feature flags (`FEATURE_AZURE_MONITORING` and `FEATURE_AI_DOCUMENT_ANALYSIS`) in the container app configuration to disable these services if not needed.
 
 ### 3. Build and Deploy
 
@@ -72,8 +134,8 @@ chmod +x azure/deploy.sh
 │                            Azure Container Apps                              │
 │  ┌─────────────────────────────┐   ┌─────────────────────────────────────┐  │
 │  │    greenchainz-frontend     │   │       greenchainz-container         │  │
-│  │    (React + Vite + nginx)   │──▶│       (Node.js + Express)           │  │
-│  │    Port: 80                 │   │       Port: 3001                    │  │
+│  │         (Next.js)           │──▶│       (Node.js + Express)           │  │
+│  │    Port: 3000               │   │       Port: 3001                    │  │
 │  └─────────────────────────────┘   └─────────────────────────────────────┘  │
 │              │                                    │                          │
 └──────────────┼────────────────────────────────────┼──────────────────────────┘
@@ -91,7 +153,7 @@ chmod +x azure/deploy.sh
                                  │  └─────────────┘  └─────────────────────┘  │
                                  │  ┌─────────────┐  ┌─────────────────────┐  │
                                  │  │  Blob       │  │  PostgreSQL         │  │
-                                 │  │  Storage    │  │  (Supabase)         │  │
+                                 │  │  Storage    │  │  (Your DB)          │  │
                                  │  └─────────────┘  └─────────────────────┘  │
                                  └─────────────────────────────────────────────┘
 ```
@@ -103,17 +165,34 @@ chmod +x azure/deploy.sh
 Copy `.env.azure.example` to `.env` and configure:
 
 ```bash
-# Required
+# Required - Database
 POSTGRES_HOST=your-db-host.postgres.database.azure.com
 DB_USER=greenchainz_admin
 DB_PASSWORD=<from Key Vault>
 DB_NAME=greenchainz_prod
 
-# Azure Services
+# Required - Azure Services
 AZURE_KEY_VAULT_URL=https://greenchianz-vault.vault.azure.net/
 REDIS_HOST=greenchainz.redis.cache.windows.net
-APPLICATIONINSIGHTS_CONNECTION_STRING=<from App Insights>
+
+# Required - Application Insights (get from Azure Portal)
+APPLICATIONINSIGHTS_CONNECTION_STRING=InstrumentationKey=xxx;IngestionEndpoint=https://...
+
+# Required - Document Intelligence (get from Azure Portal)
+AZURE_DOCUMENT_INTELLIGENCE_KEY=<your-api-key>
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://greenchainz-content-intel.cognitiveservices.azure.com/
+
+# Optional - Feature Flags (disable services if not needed)
+FEATURE_AZURE_MONITORING=true          # Set to false to disable Application Insights
+FEATURE_AI_DOCUMENT_ANALYSIS=true     # Set to false to disable Document Intelligence
+
+# Frontend (Next.js public config)
+NEXT_PUBLIC_BACKEND_URL=https://<your-backend-fqdn>
+NEXT_PUBLIC_AZURE_TENANT=greenchainz2025.onmicrosoft.com
+NEXT_PUBLIC_AZURE_CLIENT_ID=<from Azure App Registration>
 ```
+
+**Important:** The container app configuration requires Application Insights and Document Intelligence secrets to exist in Key Vault, even if you disable these features with feature flags. The backend will gracefully skip initialization of disabled services.
 
 ### Container App Configuration
 

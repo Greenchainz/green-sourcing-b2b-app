@@ -17,6 +17,7 @@ REDIS_RG="greenchainz-production"
 LOG_ANALYTICS="workspace-rggreenchainzprodcontainer5PZ8"
 APP_INSIGHTS="greenchainz-platform"
 STORAGE_ACCOUNT="revitfiles"
+STORAGE_RG="rg-greenchainz"
 
 # Colors
 RED='\033[0;31m'
@@ -175,6 +176,36 @@ if [ -n "$PRINCIPAL_ID" ]; then
         2>/dev/null || echo_warn "Key Vault policy may need manual configuration"
     
     echo_success "Key Vault access configured"
+
+    # Grant Container App identity permission to pull from ACR (recommended when using registry identity: system)
+    echo_info "Granting ACR pull permissions to managed identity..."
+    ACR_ID=$(az acr show --name $ACR_NAME --query "id" -o tsv 2>/dev/null || echo "")
+    if [ -n "$ACR_ID" ]; then
+        az role assignment create \
+            --assignee-object-id "$PRINCIPAL_ID" \
+            --assignee-principal-type ServicePrincipal \
+            --role "AcrPull" \
+            --scope "$ACR_ID" \
+            2>/dev/null || echo_warn "ACR role assignment may already exist (or require manual configuration)"
+        echo_success "ACR pull permissions configured"
+    else
+        echo_warn "Could not resolve ACR resource id; skipping AcrPull assignment"
+    fi
+
+    # Grant Container App identity permission to read/write blobs (required for managed identity storage access)
+    echo_info "Granting Storage Blob Data Contributor to managed identity..."
+    STORAGE_ID=$(az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$STORAGE_RG" --query "id" -o tsv 2>/dev/null || echo "")
+    if [ -n "$STORAGE_ID" ]; then
+        az role assignment create \
+            --assignee-object-id "$PRINCIPAL_ID" \
+            --assignee-principal-type ServicePrincipal \
+            --role "Storage Blob Data Contributor" \
+            --scope "$STORAGE_ID" \
+            2>/dev/null || echo_warn "Storage role assignment may already exist (or require manual configuration)"
+        echo_success "Storage permissions configured"
+    else
+        echo_warn "Could not resolve Storage Account id; skipping Storage role assignment"
+    fi
 else
     echo_warn "Managed identity not found. Configure Key Vault access manually."
 fi

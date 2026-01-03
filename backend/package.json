@@ -15,7 +15,6 @@
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
     "@azure/storage-blob": "^12.26.0",
-    "@supabase/supabase-js": "^2.47.0",
     "applicationinsights": "^3.4.0",
     "bcrypt": "^6.0.0",
     "cheerio": "^1.0.0",

@@ -61,6 +61,24 @@ async function connect() {
 }
 
 /**
+ * Connect if REDIS_HOST is configured.
+ * Returns connected client or null.
+ */
+async function connectIfConfigured() {
+    const hasConfig = !!process.env.REDIS_HOST;
+    if (!hasConfig) return null;
+    return await connect();
+}
+
+async function pingSafe() {
+    try {
+        return (await ping()) ? 'ok' : 'unhealthy';
+    } catch {
+        return 'unhealthy';
+    }
+}
+
+/**
  * Disconnect from Redis
  */
 async function disconnect() {
@@ -196,6 +214,7 @@ async function ping() {
 
 module.exports = {
     connect,
+    connectIfConfigured,
     disconnect,
     get,
     set,
@@ -205,5 +224,6 @@ module.exports = {
     incr,
     rateLimit,
     ping,
+    pingSafe,
     isConnected: () => isConnected
 };
