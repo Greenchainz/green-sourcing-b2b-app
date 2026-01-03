@@ -8,6 +8,8 @@
     "start": "node index.js",
     "dev": "node index.js",
     "seed": "node scripts/seed.js",
+    "seed:rfq-simulator": "node scripts/seed-rfq-simulator.js",
+    "db:apply:rfq-simulator": "node scripts/db/apply-rfq-simulator-schema.js",
     "test": "echo \"No tests yet\" && exit 0"
   },
   "dependencies": {

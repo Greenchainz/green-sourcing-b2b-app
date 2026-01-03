@@ -11,6 +11,7 @@ require('dotenv').config();
 const uploadRoutes = require('./routes/uploads');
 const documentAIRoutes = require('./routes/documentAI');
 const authSyncRoutes = require('./routes/auth-sync');
+const rfqSimulatorRoutes = require('./routes/rfq-simulator');
 
 // Middleware
 const rateLimit = require('./middleware/rateLimit');
@@ -56,6 +57,7 @@ app.get('/health', (req, res) => {
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/v1/ai', documentAIRoutes);
 app.use('/api/v1/auth', authSyncRoutes);
+app.use('/api/v1/rfq-simulator', rfqSimulatorRoutes);
 
 // Error Handling
 app.use((err, req, res, next) => {

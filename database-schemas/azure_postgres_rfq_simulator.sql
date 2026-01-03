@@ -20,6 +20,9 @@ BEGIN;
 -- UUID generation (works on Azure Postgres)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Case-insensitive text (emails, tokens)
+CREATE EXTENSION IF NOT EXISTS citext;
+
 -- Optional: useful for text search / typeahead
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -43,7 +46,7 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS suppliers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
-  email TEXT,
+  email CITEXT,
   description TEXT,
   location TEXT,
   logo_url TEXT,
@@ -62,6 +65,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email_unique
   WHERE email IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_suppliers_tier ON suppliers(tier);
 CREATE INDEX IF NOT EXISTS idx_suppliers_location_trgm ON suppliers USING gin (location gin_trgm_ops);
+
+-- Enterprise-grade: constrain tier values (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'suppliers_tier_check'
+  ) THEN
+    ALTER TABLE suppliers
+      ADD CONSTRAINT suppliers_tier_check
+      CHECK (tier IN ('enterprise','pro','claimed','free','scraped'));
+  END IF;
+END $$;
 
 DROP TRIGGER IF EXISTS trg_suppliers_updated_at ON suppliers;
 CREATE TRIGGER trg_suppliers_updated_at
@@ -101,7 +116,7 @@ CREATE TABLE IF NOT EXISTS rfqs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
   -- Minimal buyer identity for simulator
-  buyer_email TEXT NOT NULL,
+  buyer_email CITEXT NOT NULL,
 
   -- Matching + targeting
   product_id UUID REFERENCES products(id) ON DELETE SET NULL,
@@ -131,6 +146,18 @@ DROP TRIGGER IF EXISTS trg_rfqs_updated_at ON rfqs;
 CREATE TRIGGER trg_rfqs_updated_at
   BEFORE UPDATE ON rfqs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Enterprise-grade: constrain RFQ status values (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'rfqs_status_check'
+  ) THEN
+    ALTER TABLE rfqs
+      ADD CONSTRAINT rfqs_status_check
+      CHECK (status IN ('pending','open','responded','closed','cancelled','expired'));
+  END IF;
+END $$;
 
 -- Optional: RFQ responses (not required by distributor, but useful for simulator)
 CREATE TABLE IF NOT EXISTS rfq_responses (
@@ -168,6 +195,42 @@ CREATE INDEX IF NOT EXISTS idx_rfq_dist_queue_supplier_id ON "RFQ_Distribution_Q
 CREATE INDEX IF NOT EXISTS idx_rfq_dist_queue_visible_at ON "RFQ_Distribution_Queue"(visible_at);
 CREATE INDEX IF NOT EXISTS idx_rfq_dist_queue_status ON "RFQ_Distribution_Queue"(status);
 
+-- Enterprise-grade: queue correctness + performance (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'rfq_distribution_queue_wave_check'
+  ) THEN
+    ALTER TABLE "RFQ_Distribution_Queue"
+      ADD CONSTRAINT rfq_distribution_queue_wave_check
+      CHECK (wave_number >= 1);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'rfq_distribution_queue_status_check'
+  ) THEN
+    ALTER TABLE "RFQ_Distribution_Queue"
+      ADD CONSTRAINT rfq_distribution_queue_status_check
+      CHECK (status IN ('pending','notified','viewed','responded','expired'));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'rfq_distribution_queue_expires_check'
+  ) THEN
+    ALTER TABLE "RFQ_Distribution_Queue"
+      ADD CONSTRAINT rfq_distribution_queue_expires_check
+      CHECK (expires_at IS NULL OR expires_at > visible_at);
+  END IF;
+END $$;
+
+-- Hot-path indexes for wave runners / inbox reads
+CREATE INDEX IF NOT EXISTS idx_rfq_dist_queue_pending_visible
+  ON "RFQ_Distribution_Queue"(visible_at)
+  WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS idx_rfq_dist_queue_supplier_status_visible
+  ON "RFQ_Distribution_Queue"(supplier_id, status, visible_at);
+
 -- Supplier performance metrics (for ranking)
 CREATE TABLE IF NOT EXISTS "Supplier_Response_Metrics" (
   supplier_id UUID PRIMARY KEY REFERENCES suppliers(id) ON DELETE CASCADE,
@@ -197,7 +260,7 @@ CREATE TABLE IF NOT EXISTS "Supplier_Verification_Scores" (
 CREATE TABLE IF NOT EXISTS scraped_supplier_data (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   company_name TEXT NOT NULL,
-  email TEXT NOT NULL,
+  email CITEXT NOT NULL,
   category TEXT,
 
   claimed_status TEXT DEFAULT 'unclaimed', -- claimed/unclaimed
@@ -224,6 +287,26 @@ CREATE TRIGGER trg_scraped_supplier_data_updated_at
   BEFORE UPDATE ON scraped_supplier_data
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Enterprise-grade: constrain growth-loop status fields (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'scraped_supplier_data_claimed_status_check'
+  ) THEN
+    ALTER TABLE scraped_supplier_data
+      ADD CONSTRAINT scraped_supplier_data_claimed_status_check
+      CHECK (claimed_status IN ('unclaimed','claimed'));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'scraped_supplier_data_conversion_status_check'
+  ) THEN
+    ALTER TABLE scraped_supplier_data
+      ADD CONSTRAINT scraped_supplier_data_conversion_status_check
+      CHECK (conversion_status IN ('unconverted','converted'));
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS missed_rfqs (
   id BIGSERIAL PRIMARY KEY,
   supplier_id UUID NOT NULL REFERENCES scraped_supplier_data(id) ON DELETE CASCADE,
@@ -238,24 +321,155 @@ CREATE INDEX IF NOT EXISTS idx_missed_rfqs_supplier_id ON missed_rfqs(supplier_i
 -- backend/services/campaigns/tracking.js updates opened_at/clicked_at/metadata by id
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS "Notification_Log" (
+-- IMPORTANT:
+-- The backend queries `Notification_Log` WITHOUT quotes.
+-- In Postgres, that resolves to the lowercased identifier: notification_log.
+CREATE TABLE IF NOT EXISTS notification_log (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "NotificationType" VARCHAR(100) NOT NULL,
-  "Recipient" VARCHAR(255) NOT NULL,
-  "Subject" VARCHAR(500),
-  "MessageBody" TEXT,
-  "Status" VARCHAR(50) DEFAULT 'pending',
-  "ErrorMessage" TEXT,
+  notificationtype VARCHAR(100) NOT NULL,
+  recipient VARCHAR(255) NOT NULL,
+  subject VARCHAR(500),
+  messagebody TEXT,
+  status VARCHAR(50) DEFAULT 'pending',
+  errormessage TEXT,
   opened_at TIMESTAMPTZ,
   clicked_at TIMESTAMPTZ,
   metadata JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_notification_log_recipient ON "Notification_Log"("Recipient");
-CREATE INDEX IF NOT EXISTS idx_notification_log_status ON "Notification_Log"("Status");
-CREATE INDEX IF NOT EXISTS idx_notification_log_type ON "Notification_Log"("NotificationType");
-CREATE INDEX IF NOT EXISTS idx_notification_log_created_at ON "Notification_Log"(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notification_log_recipient ON notification_log(recipient);
+CREATE INDEX IF NOT EXISTS idx_notification_log_status ON notification_log(status);
+CREATE INDEX IF NOT EXISTS idx_notification_log_type ON notification_log(notificationtype);
+CREATE INDEX IF NOT EXISTS idx_notification_log_created_at ON notification_log(created_at DESC);
+
+-- Optional compatibility view for humans (only if quoted table doesn't exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'Notification_Log' AND c.relkind = 'r'
+  ) THEN
+    EXECUTE 'CREATE OR REPLACE VIEW "Notification_Log" AS SELECT * FROM notification_log';
+  END IF;
+END $$;
+
+-- ============================================
+-- Concurrency-safe helpers (enterprise correctness)
+-- ============================================
+
+-- Atomically mark a queue entry as notified (safe under concurrency)
+CREATE OR REPLACE FUNCTION gc_mark_queue_notified(p_rfq_id UUID, p_supplier_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  updated_rows INTEGER;
+BEGIN
+  UPDATE "RFQ_Distribution_Queue"
+  SET notified_at = NOW(),
+      status = 'notified'
+  WHERE rfq_id = p_rfq_id
+    AND supplier_id = p_supplier_id
+    AND status = 'pending'
+    AND visible_at <= NOW()
+    AND (expires_at IS NULL OR expires_at > NOW());
+
+  GET DIAGNOSTICS updated_rows = ROW_COUNT;
+  RETURN updated_rows = 1;
+END;
+$$;
+
+-- Atomically mark a queue entry as responded
+CREATE OR REPLACE FUNCTION gc_mark_queue_responded(p_rfq_id UUID, p_supplier_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  updated_rows INTEGER;
+BEGIN
+  UPDATE "RFQ_Distribution_Queue"
+  SET responded_at = NOW(),
+      status = 'responded'
+  WHERE rfq_id = p_rfq_id
+    AND supplier_id = p_supplier_id
+    AND status IN ('pending','notified','viewed')
+    AND visible_at <= NOW()
+    AND (expires_at IS NULL OR expires_at > NOW());
+
+  GET DIAGNOSTICS updated_rows = ROW_COUNT;
+  RETURN updated_rows >= 1;
+END;
+$$;
+
+-- Claim and mark due notifications in a single atomic statement.
+-- This is safe for multiple concurrent workers (uses SKIP LOCKED).
+CREATE OR REPLACE FUNCTION gc_claim_due_notifications(p_limit INTEGER DEFAULT 100)
+RETURNS TABLE (
+  rfq_id UUID,
+  supplier_id UUID,
+  wave_number INTEGER,
+  visible_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ
+)
+LANGUAGE sql
+AS $$
+  WITH due AS (
+    SELECT q.rfq_id, q.supplier_id
+    FROM "RFQ_Distribution_Queue" q
+    WHERE q.status = 'pending'
+      AND q.visible_at <= NOW()
+      AND (q.expires_at IS NULL OR q.expires_at > NOW())
+    ORDER BY q.visible_at ASC
+    FOR UPDATE SKIP LOCKED
+    LIMIT GREATEST(p_limit, 0)
+  )
+  UPDATE "RFQ_Distribution_Queue" q
+  SET notified_at = NOW(),
+      status = 'notified'
+  FROM due
+  WHERE q.rfq_id = due.rfq_id
+    AND q.supplier_id = due.supplier_id
+  RETURNING q.rfq_id, q.supplier_id, q.wave_number, q.visible_at, q.expires_at;
+$$;
+
+-- Expire queue entries that are past their expiry time.
+CREATE OR REPLACE FUNCTION gc_expire_queue_entries()
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  updated_rows INTEGER;
+BEGIN
+  UPDATE "RFQ_Distribution_Queue"
+  SET status = 'expired'
+  WHERE status IN ('pending','notified','viewed')
+    AND expires_at IS NOT NULL
+    AND expires_at <= NOW();
+
+  GET DIAGNOSTICS updated_rows = ROW_COUNT;
+  RETURN updated_rows;
+END;
+$$;
+
+-- Supplier inbox view (what's visible "now")
+CREATE OR REPLACE VIEW rfq_supplier_inbox AS
+SELECT
+  q.supplier_id,
+  q.rfq_id,
+  q.wave_number,
+  q.visible_at,
+  q.expires_at,
+  q.status AS queue_status,
+  r.project_name,
+  r.category,
+  r.budget,
+  r.created_at AS rfq_created_at
+FROM "RFQ_Distribution_Queue" q
+JOIN rfqs r ON r.id = q.rfq_id
+WHERE q.visible_at <= NOW()
+  AND (q.expires_at IS NULL OR q.expires_at > NOW());
 
 COMMIT;
 
