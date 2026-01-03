@@ -109,6 +109,8 @@ deploy_frontend() {
     docker build \
         -f Dockerfile \
         --build-arg NEXT_PUBLIC_BACKEND_URL=https://${BACKEND_URL} \
+        --build-arg NEXT_PUBLIC_AZURE_TENANT=${NEXT_PUBLIC_AZURE_TENANT:-"greenchainz2025.onmicrosoft.com"} \
+        --build-arg NEXT_PUBLIC_AZURE_CLIENT_ID=${NEXT_PUBLIC_AZURE_CLIENT_ID:-""} \
         -t ${FRONTEND_IMAGE}:${TAG} \
         -t ${FRONTEND_IMAGE}:$(date +%Y%m%d-%H%M%S) \
         .
@@ -131,7 +133,7 @@ deploy_frontend() {
             --resource-group $RESOURCE_GROUP \
             --environment $CONTAINER_ENV \
             --image ${FRONTEND_IMAGE}:${TAG} \
-            --target-port 80 \
+            --target-port 3000 \
             --ingress external \
             --min-replicas 1 \
             --max-replicas 5 \

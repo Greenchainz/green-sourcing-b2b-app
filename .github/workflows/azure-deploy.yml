@@ -8,7 +8,14 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
-      - 'frontend/**'
+      - 'app/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'emails/**'
+      - 'Dockerfile'
+      - 'next.config.js'
+      - 'package.json'
+      - 'package-lock.json'
       - 'database-schemas/**'
       - '.github/workflows/azure-deploy.yml'
   workflow_dispatch:
@@ -48,7 +55,14 @@ jobs:
               - 'backend/**'
               - 'database-schemas/**'
             frontend:
-              - 'frontend/**'
+              - 'app/**'
+              - 'lib/**'
+              - 'public/**'
+              - 'emails/**'
+              - 'Dockerfile'
+              - 'next.config.js'
+              - 'package.json'
+              - 'package-lock.json'
 
   # Build and deploy backend
   deploy-backend:
@@ -161,12 +175,12 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: frontend/Dockerfile.azure
+          file: Dockerfile
           push: true
           build-args: |
-            VITE_API_BASE_URL=${{ steps.backend-url.outputs.url }}
-            VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
-            VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }}
+            NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }}
+            NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           tags: |
             ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }}
             ${{ env.REGISTRY }}/greenchainz-frontend:latest
@@ -181,7 +195,13 @@ jobs:
             az containerapp update \
               --name ${{ env.FRONTEND_APP }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
-              --image ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }}
+              --image ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }} \
+              --set-env-vars \
+                NODE_ENV=production \
+                PORT=3000 \
+                NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }} \
+                NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
+                NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           else
             # Create new app
             az containerapp create \
@@ -189,14 +209,20 @@ jobs:
               --resource-group ${{ env.RESOURCE_GROUP }} \
               --environment ${{ env.CONTAINER_ENV }} \
               --image ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }} \
-              --target-port 80 \
+              --target-port 3000 \
               --ingress external \
               --min-replicas 1 \
               --max-replicas 5 \
               --cpu 0.25 \
               --memory 0.5Gi \
               --registry-server ${{ env.REGISTRY }} \
-              --registry-identity system
+              --registry-identity system \
+              --env-vars \
+                NODE_ENV=production \
+                PORT=3000 \
+                NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }} \
+                NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
+                NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           fi
       
       - name: Verify Frontend Deployment
