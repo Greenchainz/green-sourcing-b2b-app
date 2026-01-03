@@ -69,6 +69,14 @@ if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
   echo "   Set it with: export APPINSIGHTS_CONNECTION_STRING='your-connection-string'"
   exit 1
 fi
+# Application Insights - Required by containerapp-backend.yaml
+if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
+  echo "❌ ERROR: APPINSIGHTS_CONNECTION_STRING not set"
+  echo "   This is required by azure/containerapp-backend.yaml"
+  echo "   To disable monitoring, set FEATURE_AZURE_MONITORING=false in the container app"
+  exit 1
+fi
+
 az keyvault secret set \
   --vault-name "$VAULT_NAME" \
   --name "appinsights-connection-string" \
@@ -78,8 +86,18 @@ az keyvault secret set \
 if [ -z "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
   echo "❌ AZURE_DOCUMENT_INTELLIGENCE_KEY not set. This is required by the backend container app."
   echo "   Set it with: export AZURE_DOCUMENT_INTELLIGENCE_KEY='your-key'"
+# Document Intelligence - Required by containerapp-backend.yaml
+if [ -z "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
+  echo "❌ ERROR: AZURE_DOCUMENT_INTELLIGENCE_KEY not set"
+  echo "   This is required by azure/containerapp-backend.yaml"
+  echo "   To disable document AI, set FEATURE_AI_DOCUMENT_ANALYSIS=false in the container app"
   exit 1
 fi
+az keyvault secret set \
+  --vault-name "$VAULT_NAME" \
+  --name "document-intelligence-key" \
+  --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
+
 az keyvault secret set \
   --vault-name "$VAULT_NAME" \
   --name "document-intelligence-key" \
