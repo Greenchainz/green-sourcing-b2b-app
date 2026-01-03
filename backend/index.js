@@ -9,6 +9,8 @@ require('dotenv').config();
 // Routes
 const uploadRoutes = require('./routes/uploads');
 const documentAIRoutes = require('./routes/documentAI');
+const authSyncRoutes = require('./routes/auth-sync');
+const rfqSimulatorRoutes = require('./routes/rfq-simulator');
 const authRoutes = require('./routes/auth');
 const rfqRoutes = require('./routes/rfqs');
 

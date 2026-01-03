@@ -2,20 +2,30 @@
 
 This directory contains database schemas and migration files for the GreenChainz platform.
 
-## MVP Schema
+## Azure Postgres (RFQ Simulator) Schema
 
-The `mvp_schema.sql` file contains the complete schema for the Minimum Viable Product (MVP). It is designed to be idempotent, meaning it can be run multiple times without causing errors or creating duplicate objects.
+The repo historically contained multiple schema variants (some BIGINT/SERIAL, some UUID). The backend RFQ distribution + growth campaign code expects **UUID** tables like `rfqs(id)`, `suppliers(id)`, and the quoted distribution tables (e.g. `"RFQ_Distribution_Queue"`).
 
-### How to Run the MVP Schema Script
+Use this file as the canonical Azure Postgres schema for the RFQ simulator:
 
-1.  **Navigate to the Supabase SQL Editor:**
-    *   Open your Supabase project.
-    *   In the left sidebar, click on the **SQL Editor** icon.
-2.  **Create a New Query:**
-    *   Click on **"New query"**.
-3.  **Load and Run the Script:**
-    *   Copy the entire content of `mvp_schema.sql`.
-    *   Paste the content into the Supabase SQL editor.
-    *   Click **"RUN"**.
+- `azure_postgres_rfq_simulator.sql`
 
-The script will create all the necessary tables, enums, relationships, and indexes for the MVP.
+### How to Apply on Azure Database for PostgreSQL
+
+You can run it from any machine with `psql` installed (or from an Azure-hosted runner):
+
+```bash
+psql "$DATABASE_URL" -f database-schemas/azure_postgres_rfq_simulator.sql
+```
+
+Where `DATABASE_URL` looks like:
+
+```text
+postgresql://<user>:<password>@<server>.postgres.database.azure.com:5432/<db>?sslmode=require
+```
+
+### Notes
+
+- This script is **idempotent** (safe to re-run).
+- It intentionally creates some tables with **quoted names** (e.g. `"RFQ_Distribution_Queue"`) because backend code queries those exact identifiers.
+- Older files like `mvp_schema.sql`, `schema.sql`, and some `migrations/*` may not match the UUID-based RFQ simulator workflow.

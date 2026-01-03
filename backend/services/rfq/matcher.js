@@ -74,9 +74,15 @@ async function findMatchingSuppliers(rfqId) {
 
             if (materialType) {
                 const supplierQuery = `
-                    SELECT s.*, array_agg(p.certifications) as certifications
+                    SELECT
+                        s.*,
+                        COALESCE(
+                            array_agg(DISTINCT c) FILTER (WHERE c IS NOT NULL),
+                            ARRAY[]::text[]
+                        ) AS certifications
                     FROM suppliers s
                     JOIN products p ON s.id = p.supplier_id
+                    LEFT JOIN LATERAL unnest(COALESCE(p.certifications, ARRAY[]::text[])) AS c ON true
                     WHERE p.material_type = $1
                     GROUP BY s.id
                 `;
