@@ -6,49 +6,49 @@ export default function SiteHeader() {
     <header className="gc-header">
       <div className="gc-container">
         <div className="gc-header-inner">
-        <Link href="/" className="group flex items-center gap-3">
-          <Image
-            src="/assets/logo/greenchainz-full.svg"
-            alt="GreenChainz"
-            width={172}
-            height={40}
-            priority
-            className="gc-wordmark"
-          />
-          <Image
-            src="/brand/logo-icon.png"
-            alt="GreenChainz"
-            width={36}
-            height={36}
-            priority
-            className="gc-mark"
-          />
-          <span className="sr-only">GreenChainz home</span>
-        </Link>
+          {/* Logo */}
+          <Link
+            href="/"
+            className="group"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
+          >
+            {/* Full wordmark for larger screens */}
+            <Image
+              src="/brand/logo-main.png"
+              alt="GreenChainz"
+              width={172}
+              height={40}
+              priority
+              className="gc-wordmark"
+              style={{ height: 36, width: 'auto' }}
+            />
+            {/* Icon only for mobile */}
+            <Image
+              src="/brand/logo-icon.png"
+              alt="GreenChainz"
+              width={36}
+              height={36}
+              priority
+              className="gc-mark"
+              style={{ height: 36, width: 36 }}
+            />
+            <span className="sr-only">GreenChainz home</span>
+          </Link>
 
-        <nav className="gc-nav" aria-label="Primary">
-          <Link
-            href="/rfqs/create"
-            className="gc-link"
-          >
-            Create RFQ
-          </Link>
-          <Link
-            href="/login"
-            className="gc-link"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/signup"
-            className="gc-btn gc-btn-primary"
-          >
-            Get started
-          </Link>
-        </nav>
+          {/* Navigation */}
+          <nav className="gc-nav" aria-label="Primary navigation">
+            <Link href="/rfqs/create" className="gc-link">
+              Create RFQ
+            </Link>
+            <Link href="/login" className="gc-link">
+              Log in
+            </Link>
+            <Link href="/signup" className="gc-btn gc-btn-primary">
+              Get Started
+            </Link>
+          </nav>
         </div>
       </div>
     </header>
   )
 }
-
