@@ -1,5 +1,8 @@
-/* Minimal global styles (Tailwind not required for build) */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* Brand foundation + predictable layout */
 html,
 body {
   height: 100%;
@@ -9,11 +12,35 @@ body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     'Apple Color Emoji', 'Segoe UI Emoji';
-  background: #fff;
-  color: #0f172a;
 }
 
 * {
   box-sizing: border-box;
 }
+
+/* Token-ish classes used by components (keeps shadcn-ish naming working) */
+:root {
+  --background: 255 255 255;
+  --foreground: 15 23 42;
+  --muted-foreground: 71 85 105;
+  --border: 226 232 240;
+  --primary: 5 150 105; /* emerald-600 */
+}
+
+.bg-background {
+  background-color: rgb(var(--background));
+}
+.text-foreground {
+  color: rgb(var(--foreground));
+}
+.text-muted-foreground {
+  color: rgb(var(--muted-foreground));
+}
+.border-border {
+  border-color: rgb(var(--border));
+}
+.text-primary {
+  color: rgb(var(--primary));
+}
+
 
