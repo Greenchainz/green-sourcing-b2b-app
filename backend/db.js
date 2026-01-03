@@ -20,21 +20,29 @@ function shouldUseSsl() {
 
 // Prefer a single Azure-style DATABASE_URL / connection string when provided.
 // Otherwise fall back to individual host/port/user/password/database variables.
+let baseConfig;
+if (connectionString) {
+    baseConfig = { connectionString };
+} else if (process.env.NODE_ENV === 'production') {
+    baseConfig = {
+        host: requireEnv('POSTGRES_HOST'),
+        port: Number(process.env.POSTGRES_PORT || 5432),
+        user: requireEnv('DB_USER'),
+        password: requireEnv('DB_PASSWORD', { minLength: 12 }),
+        database: requireEnv('DB_NAME')
+    };
+} else {
+    baseConfig = {
+        host: process.env.POSTGRES_HOST || process.env.DATABASE_HOST || 'localhost',
+        port: Number(process.env.POSTGRES_PORT || process.env.DATABASE_PORT || 5432),
+        user: process.env.DB_USER || process.env.POSTGRES_USER || process.env.DATABASE_USER || 'user',
+        password: process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || process.env.DATABASE_PASSWORD || 'password',
+        database: process.env.DB_NAME || process.env.POSTGRES_DB || process.env.DATABASE_NAME || 'greenchainz_dev'
+    };
+}
+
 const config = {
-    ...(connectionString
-        ? { connectionString }
-        : {
-            host: process.env.POSTGRES_HOST || process.env.DATABASE_HOST || 'localhost',
-            port: Number(process.env.POSTGRES_PORT || process.env.DATABASE_PORT || 5432),
-            user: process.env.DB_USER || process.env.POSTGRES_USER || process.env.DATABASE_USER || 'user',
-            password: process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || process.env.DATABASE_PASSWORD || 'password',
-            database: process.env.DB_NAME || process.env.POSTGRES_DB || process.env.DATABASE_NAME || 'greenchainz_dev'
-        }),
-    host: process.env.NODE_ENV === 'production' ? requireEnv('POSTGRES_HOST') : (process.env.POSTGRES_HOST || 'localhost'),
-    port: Number(process.env.POSTGRES_PORT || 5432),
-    user: process.env.NODE_ENV === 'production' ? requireEnv('DB_USER') : (process.env.DB_USER || 'user'),
-    password: process.env.NODE_ENV === 'production' ? requireEnv('DB_PASSWORD', { minLength: 12 }) : (process.env.DB_PASSWORD || 'password'),
-    database: process.env.NODE_ENV === 'production' ? requireEnv('DB_NAME') : (process.env.DB_NAME || 'greenchainz_dev'),
+    ...baseConfig,
     // Optimized pool settings for better performance
     max: Number(process.env.PGPOOL_MAX || 20),
     min: Number(process.env.PGPOOL_MIN || 2),
@@ -44,10 +52,6 @@ const config = {
     statement_timeout: Number(process.env.PGPOOL_STATEMENT_TIMEOUT || 30000),
     // SSL is required for Azure Database for PostgreSQL in most environments.
     ssl: shouldUseSsl() ? { rejectUnauthorized: false } : false
-    // SSL configuration for production (Azure Database for PostgreSQL)
-    ssl: process.env.POSTGRES_SSL === 'true' || process.env.NODE_ENV === 'production'
-        ? { rejectUnauthorized: false }
-        : false
 };
 
 // Log configuration (hide password)

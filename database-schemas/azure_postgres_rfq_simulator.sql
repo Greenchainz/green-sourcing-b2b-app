@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE INDEX IF NOT EXISTS idx_products_supplier_id ON products(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_products_material_type ON products(material_type);
+CREATE INDEX IF NOT EXISTS idx_products_material_type_supplier_id ON products(material_type, supplier_id);
 CREATE INDEX IF NOT EXISTS idx_products_certifications_gin ON products USING GIN (certifications);
 CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin (name gin_trgm_ops);
 
@@ -157,6 +158,7 @@ CREATE INDEX IF NOT EXISTS idx_rfqs_status ON rfqs(status);
 CREATE INDEX IF NOT EXISTS idx_rfqs_supplier_id ON rfqs(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_rfqs_product_id ON rfqs(product_id);
 CREATE INDEX IF NOT EXISTS idx_rfqs_category ON rfqs(category);
+CREATE INDEX IF NOT EXISTS idx_rfqs_category_created_at ON rfqs(category, created_at DESC);
 
 DROP TRIGGER IF EXISTS trg_rfqs_updated_at ON rfqs;
 CREATE TRIGGER trg_rfqs_updated_at
@@ -396,7 +398,7 @@ BEGIN
 END $$;
 
 CREATE TABLE IF NOT EXISTS missed_rfqs (
-  id BIGSERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   supplier_id UUID NOT NULL REFERENCES scraped_supplier_data(id) ON DELETE CASCADE,
   sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
