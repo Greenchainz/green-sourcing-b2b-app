@@ -1,5 +1,10 @@
-import React from "react";
-import Footer from "./components/Footer";
+import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'GreenChainz - Verified Sustainable Sourcing',
+  description: 'B2B marketplace for verified sustainable building materials',
+};
 
 export default function RootLayout({
   children,
@@ -8,13 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col">
-        {/* Your existing header/nav components */}
-
-        <main className="flex-1">{children}</main>
-
-        <Footer />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
