@@ -39,6 +39,15 @@ echo "✅ Redis password retrieved"
 # Set secrets in Key Vault
 echo "📝 Creating secrets in $VAULT_NAME..."
 
+if [ -n "$DB_PASSWORD" ]; then
+  az keyvault secret set \
+    --vault-name "$VAULT_NAME" \
+    --name "postgres-password" \
+    --value "$DB_PASSWORD" &> /dev/null && echo "✅ postgres-password set"
+else
+  echo "ℹ️  DB_PASSWORD not set; skipping postgres-password"
+fi
+
 az keyvault secret set \
   --vault-name "$VAULT_NAME" \
   --name "jwt-secret" \
@@ -54,6 +63,24 @@ az keyvault secret set \
   --name "redis-password" \
   --value "$REDIS_PASSWORD" &> /dev/null && echo "✅ redis-password set"
 
+if [ -n "$APPINSIGHTS_CONNECTION_STRING" ]; then
+  az keyvault secret set \
+    --vault-name "$VAULT_NAME" \
+    --name "appinsights-connection-string" \
+    --value "$APPINSIGHTS_CONNECTION_STRING" &> /dev/null && echo "✅ appinsights-connection-string set"
+else
+  echo "ℹ️  APPINSIGHTS_CONNECTION_STRING not set; skipping appinsights-connection-string"
+fi
+
+if [ -n "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
+  az keyvault secret set \
+    --vault-name "$VAULT_NAME" \
+    --name "document-intelligence-key" \
+    --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
+else
+  echo "ℹ️  AZURE_DOCUMENT_INTELLIGENCE_KEY not set; skipping document-intelligence-key"
+fi
+
 echo ""
 echo "🎉 All secrets configured successfully!"
 echo ""
@@ -62,6 +89,8 @@ echo "1. Add to Container App environment variables:"
 echo "   JWT_SECRET=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/jwt-secret/)"
 echo "   SESSION_SECRET=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/session-secret/)"
 echo "   REDIS_PASSWORD=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/redis-password/)"
+echo "   APPLICATIONINSIGHTS_CONNECTION_STRING=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/appinsights-connection-string/)"
+echo "   AZURE_DOCUMENT_INTELLIGENCE_KEY=@Microsoft.KeyVault(SecretUri=https://$VAULT_NAME.vault.azure.net/secrets/document-intelligence-key/)"
 echo ""
 echo "2. Grant managed identity access to Key Vault:"
 echo "   ./azure/grant-keyvault-access.sh"

@@ -46,6 +46,12 @@ properties:
       - name: session-secret
         keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/session-secret
         identity: system
+      - name: appinsights-connection-string
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/appinsights-connection-string
+        identity: system
+      - name: document-intelligence-key
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/document-intelligence-key
+        identity: system
 
   template:
     containers:
@@ -124,11 +130,13 @@ properties:
           
           # Application Insights
           - name: APPLICATIONINSIGHTS_CONNECTION_STRING
-            value: "InstrumentationKey=your-key;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/"
+            secretRef: appinsights-connection-string
           
           # Document Intelligence
           - name: AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
             value: https://greenchainz-content-intel.cognitiveservices.azure.com/
+          - name: AZURE_DOCUMENT_INTELLIGENCE_KEY
+            secretRef: document-intelligence-key
         
         probes:
           - type: liveness

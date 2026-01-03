@@ -8,7 +8,7 @@ properties:
     activeRevisionsMode: Single
     ingress:
       external: true
-      targetPort: 80
+      targetPort: 3000
       transport: http
       allowInsecure: false
       traffic:
@@ -26,12 +26,31 @@ properties:
         resources:
           cpu: 0.25
           memory: 0.5Gi
+
+        env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "3000"
+          # Public runtime config (also used at build-time via Docker build args)
+          - name: NEXT_PUBLIC_BACKEND_URL
+            value: https://greenchainz-container.eastus.azurecontainerapps.io
+          - name: NEXT_PUBLIC_AZURE_TENANT
+            value: greenchainz2025.onmicrosoft.com
+          - name: NEXT_PUBLIC_AZURE_CLIENT_ID
+            value: ""
+          - name: NEXT_PUBLIC_AZURE_REDIRECT_URI
+            value: https://greenchainz-frontend.eastus.azurecontainerapps.io/login/callback
+          - name: NEXT_PUBLIC_SUPABASE_URL
+            value: ""
+          - name: NEXT_PUBLIC_SUPABASE_ANON_KEY
+            value: ""
         
         probes:
           - type: liveness
             httpGet:
               path: /
-              port: 80
+              port: 3000
             initialDelaySeconds: 10
             periodSeconds: 30
             failureThreshold: 3
@@ -39,7 +58,7 @@ properties:
           - type: readiness
             httpGet:
               path: /
-              port: 80
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
 
@@ -51,3 +70,6 @@ properties:
           http:
             metadata:
               concurrentRequests: "100"
+
+  identity:
+    type: SystemAssigned

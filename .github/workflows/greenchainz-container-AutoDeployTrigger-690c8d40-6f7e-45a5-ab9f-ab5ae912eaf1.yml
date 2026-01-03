@@ -2,14 +2,6 @@ name: Trigger auto deployment for greenchainz-container
 
 # When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
-  push:
-    branches: 
-      [ main ]
-    paths:
-    - '**'
-    - '.github/workflows/greenchainz-container-AutoDeployTrigger-690c8d40-6f7e-45a5-ab9f-ab5ae912eaf1.yml'
-
   # Allow manual trigger 
   workflow_dispatch:      
 

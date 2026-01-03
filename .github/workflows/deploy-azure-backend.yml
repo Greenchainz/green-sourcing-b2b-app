@@ -1,20 +1,13 @@
 name: Deploy Backend to Azure Container Apps
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - 'Dockerfile.azure'
-      - '.github/workflows/deploy-azure-backend.yml'
   workflow_dispatch:
 
 env:
   REGISTRY: acrgreenchainzprod916.azurecr.io
   IMAGE_NAME: greenchainz-backend
-  AZURE_CONTAINER_APP_NAME: greenchainz-backend
-  AZURE_RESOURCE_GROUP: greenchainz-production
+  AZURE_CONTAINER_APP_NAME: greenchainz-container
+  AZURE_RESOURCE_GROUP: rg-greenchainz-prod-container
 
 jobs:
   build-and-deploy:
