@@ -32,7 +32,7 @@ properties:
             value: production
           - name: PORT
             value: "3000"
-          # Public runtime config (also used at build-time via Docker build args)
+          # Public runtime config (also baked in at build time via Docker build args)
           - name: NEXT_PUBLIC_BACKEND_URL
             value: https://greenchainz-container.eastus.azurecontainerapps.io
           - name: NEXT_PUBLIC_AZURE_TENANT
@@ -40,12 +40,23 @@ properties:
           - name: NEXT_PUBLIC_AZURE_CLIENT_ID
             value: ""
         
+        # ─────────────────────────────────────────────────────────────
+        # Health Probes (use root path for Next.js)
+        # ─────────────────────────────────────────────────────────────
         probes:
+          - type: startup
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          
           - type: liveness
             httpGet:
               path: /
               port: 3000
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 30
             failureThreshold: 3
           
@@ -55,6 +66,7 @@ properties:
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
+            failureThreshold: 3
 
     scale:
       minReplicas: 1

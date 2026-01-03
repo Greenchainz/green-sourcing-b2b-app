@@ -1,162 +1,130 @@
 #!/bin/bash
-
+# =============================================================================
 # GreenChainz Azure Key Vault Secrets Setup
+# =============================================================================
 # Usage: ./azure/setup-secrets.sh
+#
+# Required Key Vault Secrets:
+#   - postgres-password   : Database password (set DB_PASSWORD env var)
+#   - jwt-secret          : JWT signing secret (auto-generated)
+#   - session-secret      : Express session secret (auto-generated)
+#   - redis-password      : Azure Redis Cache password (fetched from Azure)
+# =============================================================================
 
 set -e
 
-echo "🔐 Setting up GreenChainz Azure Key Vault Secrets..."
-
-# Variables
+# Configuration
 VAULT_NAME="greenchianz-vault"
-RESSOURCE_GROUP="greenchainz-production"
+REDIS_NAME="greenchainz"
+REDIS_RG="greenchainz-production"
 
-# Check if logged in
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+echo_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+echo_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+echo_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║      GreenChainz Key Vault Secrets Setup                   ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+echo ""
+
+# Check Azure login
 if ! az account show &> /dev/null; then
-    echo "❌ Not logged into Azure. Run 'az login' first."
+    echo_error "Not logged into Azure. Run 'az login' first."
     exit 1
 fi
+echo_success "Connected to Azure"
 
-echo "✅ Connected to Azure"
-
+# ─────────────────────────────────────────────────────────────────────────────
 # Generate secure secrets
+# ─────────────────────────────────────────────────────────────────────────────
+echo_info "Generating secure secrets..."
 JWT_SECRET=$(openssl rand -base64 32)
 SESSION_SECRET=$(openssl rand -base64 32)
 
-# Get Redis key
-echo "🔍 Fetching Redis password..."
+# ─────────────────────────────────────────────────────────────────────────────
+# Fetch Redis password from Azure
+# ─────────────────────────────────────────────────────────────────────────────
+echo_info "Fetching Redis password from Azure..."
 REDIS_PASSWORD=$(az redis list-keys \
-  --name greenchainz \
-  --resource-group greenchainz-production \
-  --query "primaryKey" -o tsv)
+  --name "$REDIS_NAME" \
+  --resource-group "$REDIS_RG" \
+  --query "primaryKey" -o tsv 2>/dev/null || echo "")
 
 if [ -z "$REDIS_PASSWORD" ]; then
-    echo "❌ Could not retrieve Redis password. Check Azure resources."
+    echo_error "Could not retrieve Redis password. Check Azure resources."
     exit 1
 fi
-echo "✅ Redis password retrieved"
+echo_success "Redis password retrieved"
 
+# ─────────────────────────────────────────────────────────────────────────────
 # Set secrets in Key Vault
-echo "📝 Creating secrets in $VAULT_NAME..."
+# ─────────────────────────────────────────────────────────────────────────────
+echo_info "Setting secrets in Key Vault: $VAULT_NAME"
 
+# Database password (required - must be set via env var)
 if [ -n "$DB_PASSWORD" ]; then
-  az keyvault secret set \
-    --vault-name "$VAULT_NAME" \
-    --name "postgres-password" \
-    --value "$DB_PASSWORD" &> /dev/null && echo "✅ postgres-password set"
+    az keyvault secret set \
+        --vault-name "$VAULT_NAME" \
+        --name "postgres-password" \
+        --value "$DB_PASSWORD" &> /dev/null
+    echo_success "postgres-password set"
 else
-  echo "ℹ️  DB_PASSWORD not set; skipping postgres-password"
+    echo_warn "DB_PASSWORD not set; skipping postgres-password"
+    echo "   Set it with: export DB_PASSWORD='your-db-password'"
 fi
 
+# JWT secret (auto-generated)
 az keyvault secret set \
-  --vault-name "$VAULT_NAME" \
-  --name "jwt-secret" \
-  --value "$JWT_SECRET" &> /dev/null && echo "✅ jwt-secret set"
-
-az keyvault secret set \
-  --vault-name "$VAULT_NAME" \
-  --name "session-secret" \
-  --value "$SESSION_SECRET" &> /dev/null && echo "✅ session-secret set"
-
-az keyvault secret set \
-  --vault-name "$VAULT_NAME" \
-  --name "redis-password" \
-  --value "$REDIS_PASSWORD" &> /dev/null && echo "✅ redis-password set"
-
-# Application Insights (required by backend YAML, but backend handles empty value gracefully)
-APPINSIGHTS_VALUE="${APPINSIGHTS_CONNECTION_STRING:-}"
-az keyvault secret set \
-  --vault-name "$VAULT_NAME" \
-  --name "appinsights-connection-string" \
-  --value "$APPINSIGHTS_VALUE" &> /dev/null && echo "✅ appinsights-connection-string set"
-if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
-  echo "   ⚠️  APPINSIGHTS_CONNECTION_STRING not provided - set to empty (monitoring will be disabled)"
-fi
-
-# Azure Document Intelligence (required by backend YAML, but backend handles empty value gracefully)
-DOCUMENT_INTEL_VALUE="${AZURE_DOCUMENT_INTELLIGENCE_KEY:-}"
-az keyvault secret set \
-  --vault-name "$VAULT_NAME" \
-  --name "document-intelligence-key" \
-  --value "$DOCUMENT_INTEL_VALUE" &> /dev/null && echo "✅ document-intelligence-key set"
-if [ -z "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
-  echo "   ⚠️  AZURE_DOCUMENT_INTELLIGENCE_KEY not provided - set to empty (AI document analysis will be disabled)"
-# Optional: Application Insights (for monitoring and telemetry)
-# Set APPINSIGHTS_CONNECTION_STRING environment variable before running this script
-if [ -n "$APPINSIGHTS_CONNECTION_STRING" ]; then
-  az keyvault secret set \
     --vault-name "$VAULT_NAME" \
-    --name "appinsights-connection-string" \
-    --value "$APPINSIGHTS_CONNECTION_STRING" &> /dev/null && echo "✅ appinsights-connection-string set"
-else
-  echo "ℹ️  APPINSIGHTS_CONNECTION_STRING not set; skipping appinsights-connection-string (optional)"
-fi
+    --name "jwt-secret" \
+    --value "$JWT_SECRET" &> /dev/null
+echo_success "jwt-secret set (auto-generated)"
 
-# Optional: Document Intelligence (for AI-powered document parsing)
-# Set AZURE_DOCUMENT_INTELLIGENCE_KEY environment variable before running this script
-if [ -n "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
-  az keyvault secret set \
+# Session secret (auto-generated)
+az keyvault secret set \
     --vault-name "$VAULT_NAME" \
-    --name "document-intelligence-key" \
-    --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
-else
-  echo "ℹ️  AZURE_DOCUMENT_INTELLIGENCE_KEY not set; skipping document-intelligence-key (optional)"
-# Application Insights Connection String (required by containerapp-backend.yaml)
-if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
-  echo "❌ APPINSIGHTS_CONNECTION_STRING not set. This is required by the backend container app."
-  echo "   Set it with: export APPINSIGHTS_CONNECTION_STRING='your-connection-string'"
-  exit 1
-fi
-# Application Insights - Required by containerapp-backend.yaml
-if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
-  echo "❌ ERROR: APPINSIGHTS_CONNECTION_STRING not set"
-  echo "   This is required by azure/containerapp-backend.yaml"
-  echo "   To disable monitoring, set FEATURE_AZURE_MONITORING=false in the container app"
-  exit 1
-fi
+    --name "session-secret" \
+    --value "$SESSION_SECRET" &> /dev/null
+echo_success "session-secret set (auto-generated)"
 
+# Redis password (fetched from Azure)
 az keyvault secret set \
-  --vault-name "$VAULT_NAME" \
-  --name "appinsights-connection-string" \
-  --value "$APPINSIGHTS_CONNECTION_STRING" &> /dev/null && echo "✅ appinsights-connection-string set"
+    --vault-name "$VAULT_NAME" \
+    --name "redis-password" \
+    --value "$REDIS_PASSWORD" &> /dev/null
+echo_success "redis-password set"
 
-# Document Intelligence Key (required by containerapp-backend.yaml)
-if [ -z "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
-  echo "❌ AZURE_DOCUMENT_INTELLIGENCE_KEY not set. This is required by the backend container app."
-  echo "   Set it with: export AZURE_DOCUMENT_INTELLIGENCE_KEY='your-key'"
-# Document Intelligence - Required by containerapp-backend.yaml
-if [ -z "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
-  echo "❌ ERROR: AZURE_DOCUMENT_INTELLIGENCE_KEY not set"
-  echo "   This is required by azure/containerapp-backend.yaml"
-  echo "   To disable document AI, set FEATURE_AI_DOCUMENT_ANALYSIS=false in the container app"
-  exit 1
-fi
-az keyvault secret set \
-  --vault-name "$VAULT_NAME" \
-  --name "document-intelligence-key" \
-  --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
-
-az keyvault secret set \
-  --vault-name "$VAULT_NAME" \
-  --name "document-intelligence-key" \
-  --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Summary
+# ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "🎉 All required secrets configured successfully!"
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║                   Secrets Configured                       ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+echo ""
+echo "Required secrets in Key Vault ($VAULT_NAME):"
+echo "  ✅ jwt-secret"
+echo "  ✅ session-secret"
+echo "  ✅ redis-password"
+if [ -n "$DB_PASSWORD" ]; then
+    echo "  ✅ postgres-password"
+else
+    echo "  ⚠️  postgres-password (not set - run with DB_PASSWORD env var)"
+fi
 echo ""
 echo "Next steps:"
-echo "1. Grant managed identity access to Key Vault:"
-echo "   ./azure/grant-keyvault-access.sh"
+echo "  1. Grant managed identity access to Key Vault:"
+echo "     ./azure/grant-keyvault-access.sh"
 echo ""
-echo "2. The secrets are already configured in azure/containerapp-backend.yaml"
-echo ""
-echo "3. Optional: To enable Application Insights monitoring:"
-echo "   - Set APPINSIGHTS_CONNECTION_STRING and re-run this script"
-echo "   - Uncomment Application Insights configuration in azure/containerapp-backend.yaml"
-echo "   - Set FEATURE_AZURE_MONITORING=true in the YAML"
-echo ""
-echo "4. Optional: To enable Document Intelligence AI:"
-echo "   - Set AZURE_DOCUMENT_INTELLIGENCE_KEY and re-run this script"
-echo "   - Uncomment Document Intelligence configuration in azure/containerapp-backend.yaml"
-echo "   - Set FEATURE_AI_DOCUMENT_ANALYSIS=true in the YAML"
+echo "  2. Build and deploy your application:"
+echo "     ./azure/deploy.sh all"
 echo ""
