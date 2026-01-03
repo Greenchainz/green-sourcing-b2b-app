@@ -1,87 +1,146 @@
 const { pool } = require('../../db');
 
 /**
+ * Wave configuration: maps tiers to wave numbers and delays.
+ * Wave 1 (0 min): Enterprise - immediate access
+ * Wave 2 (15 min): Pro - slight delay
+ * Wave 3 (30 min): Claimed/Free - standard delay
+ * Wave 4 (2 hours): Scraped - significant delay
+ */
+const WAVE_CONFIG = {
+    enterprise: { wave: 1, delayMinutes: 0 },
+    pro: { wave: 2, delayMinutes: 15 },
+    claimed: { wave: 3, delayMinutes: 30 },
+    free: { wave: 3, delayMinutes: 30 },
+    scraped: { wave: 4, delayMinutes: 120 }
+};
+
+// Default expiry: 48 hours after visibility
+const DEFAULT_EXPIRY_HOURS = 48;
+
+/**
+ * Gets wave configuration for a supplier tier.
+ * @param {string} tier - Supplier tier.
+ * @returns {{wave: number, delayMinutes: number}}
+ */
+function getWaveConfig(tier) {
+    const normalizedTier = (tier || 'free').toLowerCase();
+    return WAVE_CONFIG[normalizedTier] || WAVE_CONFIG.free;
+}
+
+/**
  * Inserts an entry into the RFQ distribution queue.
+ * Uses quoted table name per canonical schema (azure_postgres_rfq_simulator.sql).
+ * 
  * @param {object} client - Database client for transaction.
  * @param {string} rfqId - RFQ UUID.
  * @param {string} supplierId - Supplier UUID.
- * @param {number} wave - Wave number.
+ * @param {number} wave - Wave number (1-4).
  * @param {Date} visibleAt - Time when RFQ becomes visible.
- * @param {Date} expiresAt - Time when RFQ expires (optional).
+ * @param {Date} expiresAt - Time when RFQ expires.
  */
-async function insertQueueEntries(client, rfqId, supplierId, wave, visibleAt, expiresAt) {
+async function insertQueueEntry(client, rfqId, supplierId, wave, visibleAt, expiresAt) {
     const query = `
-        INSERT INTO "RFQ_Distribution_Queue" (rfq_id, supplier_id, wave_number, visible_at, expires_at)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (rfq_id, supplier_id) DO NOTHING
+        INSERT INTO "RFQ_Distribution_Queue" 
+            (rfq_id, supplier_id, wave_number, visible_at, expires_at, status)
+        VALUES ($1, $2, $3, $4, $5, 'pending')
+        ON CONFLICT (rfq_id, supplier_id) DO UPDATE SET
+            wave_number = EXCLUDED.wave_number,
+            visible_at = EXCLUDED.visible_at,
+            expires_at = EXCLUDED.expires_at,
+            status = 'pending'
+        WHERE "RFQ_Distribution_Queue".status = 'pending'
     `;
     await client.query(query, [rfqId, supplierId, wave, visibleAt, expiresAt]);
 }
 
 /**
  * Creates distribution waves for an RFQ based on supplier tiers.
+ * Higher-tier suppliers see RFQs first, creating urgency for upgrades.
+ * 
  * @param {string} rfqId - The RFQ UUID.
- * @param {Array} suppliers - List of suppliers with 'tier' property.
+ * @param {Array} suppliers - List of suppliers with 'tier' and 'id' properties.
+ * @returns {Promise<{success: boolean, count: number, error?: string}>}
  */
 async function createDistributionWaves(rfqId, suppliers) {
+    if (!rfqId) {
+        console.error('createDistributionWaves called without rfqId');
+        return { success: false, count: 0, error: 'Missing rfqId' };
+    }
+
+    if (!Array.isArray(suppliers) || suppliers.length === 0) {
+        console.log(`No suppliers to distribute for RFQ ${rfqId}`);
+        return { success: true, count: 0 };
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const now = new Date();
+        let insertedCount = 0;
 
-        // Define delays in minutes
-        const delays = {
-            enterprise: 0,
-            pro: 15,
-            claimed: 30,
-            free: 30,
-            scraped: 120 // 2 hours
-        };
-
-        // Define waves
-        // Wave 1 (0 min): Enterprise
-        // Wave 2 (15 min): Pro
-        // Wave 3 (30 min): Claimed/Free
-        // Wave 4 (2 hours): Scraped
+        // Group suppliers by wave for batch efficiency info
+        const waveGroups = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
         for (const supplier of suppliers) {
-            let wave = 1;
-            let delayMinutes = 0;
-            const tier = (supplier.tier || 'free').toLowerCase();
-
-            if (tier === 'enterprise') {
-                wave = 1;
-                delayMinutes = delays.enterprise;
-            } else if (tier === 'pro') {
-                wave = 2;
-                delayMinutes = delays.pro;
-            } else if (tier === 'claimed' || tier === 'free') {
-                wave = 3;
-                delayMinutes = delays.claimed; // 30 min for both
-            } else { // scraped
-                wave = 4;
-                delayMinutes = delays.scraped;
+            if (!supplier.id) {
+                console.warn(`Skipping supplier without id in RFQ ${rfqId} distribution`);
+                continue;
             }
 
-            const visibleAt = new Date(now.getTime() + delayMinutes * 60000);
-            const expiresAt = new Date(now.getTime() + (delayMinutes + 2880) * 60000); // Expires in 48 hours + delay
+            const config = getWaveConfig(supplier.tier);
+            waveGroups[config.wave]++;
 
-            await insertQueueEntries(client, rfqId, supplier.id, wave, visibleAt, expiresAt);
+            const visibleAt = new Date(now.getTime() + config.delayMinutes * 60 * 1000);
+            const expiresAt = new Date(visibleAt.getTime() + DEFAULT_EXPIRY_HOURS * 60 * 60 * 1000);
+
+            await insertQueueEntry(client, rfqId, supplier.id, config.wave, visibleAt, expiresAt);
+            insertedCount++;
         }
 
         await client.query('COMMIT');
-        console.log(`Created waves for RFQ ${rfqId} with ${suppliers.length} suppliers.`);
+        
+        console.log(`Created waves for RFQ ${rfqId}: ` +
+            `Wave1=${waveGroups[1]}, Wave2=${waveGroups[2]}, ` +
+            `Wave3=${waveGroups[3]}, Wave4=${waveGroups[4]}, ` +
+            `Total=${insertedCount}`);
+
+        return { success: true, count: insertedCount };
+
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error('Error creating distribution waves:', err);
-        throw err;
+        console.error(`Error creating distribution waves for RFQ ${rfqId}:`, err);
+        return { success: false, count: 0, error: err.message };
     } finally {
         client.release();
     }
 }
 
+/**
+ * Gets the current queue status for an RFQ.
+ * @param {string} rfqId - The RFQ UUID.
+ * @returns {Promise<Array>}
+ */
+async function getQueueStatus(rfqId) {
+    const result = await pool.query(
+        `SELECT 
+            wave_number,
+            status,
+            COUNT(*) as count
+         FROM "RFQ_Distribution_Queue"
+         WHERE rfq_id = $1
+         GROUP BY wave_number, status
+         ORDER BY wave_number`,
+        [rfqId]
+    );
+    return result.rows;
+}
+
 module.exports = {
     createDistributionWaves,
-    insertQueueEntries
+    insertQueueEntry,
+    getQueueStatus,
+    getWaveConfig,
+    WAVE_CONFIG
 };

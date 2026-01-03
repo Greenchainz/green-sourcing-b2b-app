@@ -68,8 +68,10 @@ async function sendEmail({ to, subject, text, html, notificationType }) {
 async function logNotification(type, recipient, subject, body, status, error) {
     if (!pool) return; // No logging if pool not set
     try {
+        // Uses lowercase table name and column names per canonical schema
+        // (azure_postgres_rfq_simulator.sql)
         await pool.query(
-            `INSERT INTO Notification_Log (NotificationType, Recipient, Subject, MessageBody, Status, ErrorMessage)
+            `INSERT INTO notification_log (notificationtype, recipient, subject, messagebody, status, errormessage)
              VALUES ($1, $2, $3, $4, $5, $6)`,
             [type, recipient, subject, body, status, error]
         );

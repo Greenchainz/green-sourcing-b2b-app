@@ -79,6 +79,30 @@ const rateLimiters = {
         message: 'You are submitting RFQs too quickly. Please wait a moment.'
     }),
     
+    // RFQ simulator endpoint limit (20 per minute) - for internal/worker use
+    simulator: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 20,
+        keyGenerator: (req) => `sim:${req.ip}`,
+        message: 'RFQ simulator rate limit exceeded. Please wait.'
+    }),
+    
+    // Queue claim endpoint limit (50 per minute) - for worker processes
+    queueClaim: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 50,
+        keyGenerator: (req) => `queue:${req.ip}`,
+        message: 'Queue claim rate limit exceeded. Please wait.'
+    }),
+    
+    // Inbox read limit (100 per minute)
+    inbox: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 100,
+        keyGenerator: (req) => `inbox:${req.params?.supplierId || req.ip}`,
+        message: 'Inbox read rate limit exceeded.'
+    }),
+    
     // File upload limit (10 per 5 minutes)
     upload: rateLimitMiddleware({
         windowSeconds: 300,
