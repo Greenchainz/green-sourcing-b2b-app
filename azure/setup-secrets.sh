@@ -63,22 +63,24 @@ az keyvault secret set \
   --name "redis-password" \
   --value "$REDIS_PASSWORD" &> /dev/null && echo "✅ redis-password set"
 
-if [ -n "$APPINSIGHTS_CONNECTION_STRING" ]; then
-  az keyvault secret set \
-    --vault-name "$VAULT_NAME" \
-    --name "appinsights-connection-string" \
-    --value "$APPINSIGHTS_CONNECTION_STRING" &> /dev/null && echo "✅ appinsights-connection-string set"
-else
-  echo "ℹ️  APPINSIGHTS_CONNECTION_STRING not set; skipping appinsights-connection-string"
+# Application Insights (required by backend YAML, but backend handles empty value gracefully)
+APPINSIGHTS_VALUE="${APPINSIGHTS_CONNECTION_STRING:-}"
+az keyvault secret set \
+  --vault-name "$VAULT_NAME" \
+  --name "appinsights-connection-string" \
+  --value "$APPINSIGHTS_VALUE" &> /dev/null && echo "✅ appinsights-connection-string set"
+if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
+  echo "   ⚠️  APPINSIGHTS_CONNECTION_STRING not provided - set to empty (monitoring will be disabled)"
 fi
 
-if [ -n "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
-  az keyvault secret set \
-    --vault-name "$VAULT_NAME" \
-    --name "document-intelligence-key" \
-    --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
-else
-  echo "ℹ️  AZURE_DOCUMENT_INTELLIGENCE_KEY not set; skipping document-intelligence-key"
+# Azure Document Intelligence (required by backend YAML, but backend handles empty value gracefully)
+DOCUMENT_INTEL_VALUE="${AZURE_DOCUMENT_INTELLIGENCE_KEY:-}"
+az keyvault secret set \
+  --vault-name "$VAULT_NAME" \
+  --name "document-intelligence-key" \
+  --value "$DOCUMENT_INTEL_VALUE" &> /dev/null && echo "✅ document-intelligence-key set"
+if [ -z "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
+  echo "   ⚠️  AZURE_DOCUMENT_INTELLIGENCE_KEY not provided - set to empty (AI document analysis will be disabled)"
 fi
 
 echo ""
