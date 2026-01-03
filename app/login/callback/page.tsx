@@ -33,29 +33,9 @@ function CallbackPageInner() {
           throw new Error('No authorization code received from Azure AD');
         }
 
-        // Exchange code for ID token on backend
-        // The backend will use client_secret (keep secret!)
-        const tokenResponse = await fetch(`${BACKEND_URL}/api/v1/auth/azure-token-exchange`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, redirectUri: AZURE_REDIRECT_URI }),
-        });
-
-        if (!tokenResponse.ok) {
-          throw new Error('Failed to exchange code for token');
-        }
-
-        const tokenData = await tokenResponse.json();
-        // tokenData contains: { idToken, email, firstName, lastName, azureId }
-
-        // Sign user in via our backend
-        await handleAzureCallback(
-          code,
-          tokenData.email,
-          tokenData.firstName,
-          tokenData.lastName,
-          tokenData.azureId
-        );
+        // Sign user in via our backend.
+        // Backend performs the secure code exchange using AZURE_CLIENT_SECRET.
+        await handleAzureCallback(code, AZURE_REDIRECT_URI);
 
         // Clear session storage
         sessionStorage.removeItem('oauth_state');
@@ -63,8 +43,8 @@ function CallbackPageInner() {
 
         // Redirect based on role
         // The auth store will handle the redirect, but we can also do it here
-        const redirectTo = tokenData.role === 'supplier' ? '/supplier/dashboard' : '/architect/dashboard';
-        router.push(redirectTo);
+        // Redirect handled by auth store after role is known.
+        router.push('/'); // safe fallback
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
         setError(errorMessage);

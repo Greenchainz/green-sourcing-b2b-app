@@ -9,7 +9,7 @@
  * - RFQ attachments
  */
 
-const { BlobServiceClient } = require('@azure/storage-blob');
+const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } = require('@azure/storage-blob');
 const { DefaultAzureCredential } = require('@azure/identity');
 const path = require('path');
 const crypto = require('crypto');
@@ -17,6 +17,7 @@ const crypto = require('crypto');
 let blobServiceClient = null;
 let containerClient = null;
 let isInitialized = false;
+let initMode = null; // 'connection_string' | 'managed_identity'
 
 const CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'greenchainz-uploads';
 const ALLOWED_MIME_TYPES = [
@@ -42,6 +43,7 @@ async function initialize() {
     try {
         if (connectionString) {
             blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+            initMode = 'connection_string';
         } else if (accountName) {
             // Use Managed Identity
             const credential = new DefaultAzureCredential();
@@ -49,6 +51,7 @@ async function initialize() {
                 `https://${accountName}.blob.core.windows.net`,
                 credential
             );
+            initMode = 'managed_identity';
         } else {
             console.warn('Azure Storage not configured');
             return;
@@ -56,10 +59,16 @@ async function initialize() {
 
         containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
         
-        // Create container if it doesn't exist
-        await containerClient.createIfNotExists({
-            access: 'blob' // Public read access for blobs
-        });
+        // Create container if it doesn't exist (PRIVATE by default).
+        await containerClient.createIfNotExists();
+
+        // Ensure container is not publicly readable (defense in depth).
+        // If it was created historically as public, lock it down.
+        try {
+            await containerClient.setAccessPolicy(undefined);
+        } catch {
+            // ignore (permissions may not allow in some environments)
+        }
 
         isInitialized = true;
     } catch (e) {
@@ -169,13 +178,35 @@ async function getSasUrl(blobName, expiresInMinutes = 60) {
 
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
     
+    const startsOn = new Date();
     const expiresOn = new Date();
     expiresOn.setMinutes(expiresOn.getMinutes() + expiresInMinutes);
 
-    const sasUrl = await blockBlobClient.generateSasUrl({
-        permissions: 'r', // Read only
-        expiresOn
-    });
+    // If using connection string, generate standard SAS.
+    // If using Managed Identity, generate a user delegation SAS.
+    let sasToken;
+    if (initMode === 'connection_string') {
+        sasToken = generateBlobSASQueryParameters({
+            containerName: containerClient.containerName,
+            blobName,
+            permissions: BlobSASPermissions.parse('r'),
+            startsOn,
+            expiresOn
+        }, blockBlobClient.credential).toString();
+    } else if (initMode === 'managed_identity') {
+        const delegationKey = await blobServiceClient.getUserDelegationKey(startsOn, expiresOn);
+        sasToken = generateBlobSASQueryParameters({
+            containerName: containerClient.containerName,
+            blobName,
+            permissions: BlobSASPermissions.parse('r'),
+            startsOn,
+            expiresOn
+        }, delegationKey, containerClient.accountName).toString();
+    } else {
+        return null;
+    }
+
+    const sasUrl = `${blockBlobClient.url}?${sasToken}`;
 
     return sasUrl;
 }

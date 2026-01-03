@@ -29,10 +29,7 @@ interface AuthState {
   // Auth methods
   handleAzureCallback: (
     code: string,
-    email: string,
-    firstName?: string,
-    lastName?: string,
-    azureId?: string
+    redirectUri: string
   ) => Promise<void>;
   refreshAccessToken: () => Promise<void>;
   updateRole: (newRole: 'architect' | 'supplier') => Promise<void>;
@@ -77,18 +74,32 @@ export const useAuth = create<AuthState>()(
       setError: (error) => set({ error }),
 
       // Exchange Azure auth code for JWT tokens
-      handleAzureCallback: async (code, email, firstName, lastName, azureId) => {
+      handleAzureCallback: async (code, redirectUri) => {
         set({ isLoading: true, error: null });
         try {
+          // 1) Exchange code -> ID token via backend (keeps client_secret server-side)
+          const exchange = await fetch(`${BACKEND_URL}/api/v1/auth/azure-token-exchange`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, redirectUri }),
+          });
+
+          if (!exchange.ok) {
+            throw new Error('Token exchange failed');
+          }
+
+          const tokenData = await exchange.json();
+
+          // 2) Create/lookup user + mint our JWT
           const response = await fetch(`${BACKEND_URL}/api/v1/auth/azure-callback`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               code,
-              email,
-              firstName: firstName || null,
-              lastName: lastName || null,
-              azureId: azureId || email, // Fallback to email if azureId not provided
+              email: tokenData.email,
+              firstName: tokenData.firstName,
+              lastName: tokenData.lastName,
+              azureId: tokenData.azureId,
             }),
           });
 

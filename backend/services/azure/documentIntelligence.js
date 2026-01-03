@@ -24,7 +24,7 @@ async function initialize() {
     const key = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
 
     if (!endpoint || !key) {
-        console.warn('Azure Document Intelligence not configured');
+        console.warn('Azure Document Intelligence not configured (AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT / AZURE_DOCUMENT_INTELLIGENCE_KEY)');
         return;
     }
 
