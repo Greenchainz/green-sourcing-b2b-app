@@ -338,6 +338,18 @@ CREATE TABLE IF NOT EXISTS notification_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Enterprise-grade: constrain notification statuses used by mailer + tracking (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'notification_log_status_check'
+  ) THEN
+    ALTER TABLE notification_log
+      ADD CONSTRAINT notification_log_status_check
+      CHECK (status IN ('pending','sent','failed','skipped','opened'));
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_notification_log_recipient ON notification_log(recipient);
 CREATE INDEX IF NOT EXISTS idx_notification_log_status ON notification_log(status);
 CREATE INDEX IF NOT EXISTS idx_notification_log_type ON notification_log(notificationtype);
