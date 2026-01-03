@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import SiteHeader from './components/SiteHeader'
+import Footer from './components/Footer'
 
 export const metadata: Metadata = {
   title: 'GreenChainz - Verified Sustainable Sourcing',
@@ -32,7 +34,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <div className="gc-shell">
+          <SiteHeader />
+          <main className="gc-main">{children}</main>
+          <Footer />
+        </div>
+      </body>
     </html>
   )
 }

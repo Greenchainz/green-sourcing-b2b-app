@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import TrustBadges from '@/app/components/TrustBadges';
 
 export default function NewRFQPage() {
   const router = useRouter();
@@ -12,8 +13,13 @@ export default function NewRFQPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">Redirecting to RFQ creation…</div>
+    <div className="gc-page" style={{ padding: 32 }}>
+      <div style={{ maxWidth: 720, margin: '0 auto', display: 'grid', gap: 16 }}>
+        <TrustBadges variant="compact" size="sm" />
+        <div className="gc-card" style={{ padding: 18, color: 'var(--gc-slate-700)' }}>
+          Redirecting to RFQ creation…
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,74 +1,96 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import TrustBadges from './TrustBadges';
 
 export default function Footer() {
   return (
-    <footer className="bg-background border-t border-border mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <footer style={{ background: '#ffffff', borderTop: '1px solid rgba(209, 250, 229, 0.85)' }}>
+      <div className="gc-container" style={{ paddingTop: 48, paddingBottom: 48 }}>
+        <div style={{ marginBottom: 40 }}>
+          <TrustBadges variant="compact" size="sm" />
+        </div>
         {/* Footer Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 28,
+          }}
+        >
 
           {/* Column 1: Logo + Tagline */}
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Link href="/" className="inline-block">
               <Image
-                src="/assets/logo/greenchainz-logo.svg"
+                src="/assets/logo/greenchainz-full.svg"
                 alt="GreenChainz"
                 width={160}
                 height={40}
-                className="h-10 w-auto"
+                style={{ height: 40, width: 'auto' }}
               />
             </Link>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--gc-slate-600)', lineHeight: 1.6 }}>
               The Data-Driven B2B Marketplace for Verified Green Materials
             </p>
           </div>
 
           {/* Column 2: Quick Links */}
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-4">Company</h3>
-            <ul className="space-y-3">
-              <li><Link href="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">About</Link></li>
-              <li><Link href="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">Blog</Link></li>
-              <li><Link href="/careers" className="text-sm text-muted-foreground hover:text-primary transition-colors">Careers</Link></li>
-              <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contact</Link></li>
+            <h3 style={{ fontSize: 12, fontWeight: 800, color: 'var(--gc-slate-900)', margin: '0 0 12px 0' }}>Company</h3>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+              <li><Link href="/about" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>About</Link></li>
+              <li><Link href="/blog" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Blog</Link></li>
+              <li><Link href="/careers" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Careers</Link></li>
+              <li><Link href="/contact" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Contact</Link></li>
             </ul>
           </div>
 
           {/* Column 3: Resources */}
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-4">Resources</h3>
-            <ul className="space-y-3">
-              <li><Link href="/how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-colors">How It Works</Link></li>
-              <li><Link href="/pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors">Pricing</Link></li>
-              <li><Link href="/help" className="text-sm text-muted-foreground hover:text-primary transition-colors">Help Center</Link></li>
-              <li><Link href="/developers" className="text-sm text-muted-foreground hover:text-primary transition-colors">API Docs</Link></li>
-              <li><Link href="/partners" className="text-sm text-muted-foreground hover:text-primary transition-colors">Partner Program</Link></li>
+            <h3 style={{ fontSize: 12, fontWeight: 800, color: 'var(--gc-slate-900)', margin: '0 0 12px 0' }}>Resources</h3>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+              <li><Link href="/how-it-works" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>How It Works</Link></li>
+              <li><Link href="/pricing" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Pricing</Link></li>
+              <li><Link href="/help" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Help Center</Link></li>
+              <li><Link href="/developers" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>API Docs</Link></li>
+              <li><Link href="/partners" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Partner Program</Link></li>
             </ul>
           </div>
 
           {/* Column 4: Legal */}
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-4">Legal</h3>
-            <ul className="space-y-3">
-              <li><Link href="/legal/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/legal/terms" className="text-sm text-muted-foreground hover:text-primary transition-colors">Terms of Service</Link></li>
-              <li><Link href="/legal/supplier-agreement" className="text-sm text-muted-foreground hover:text-primary transition-colors">Supplier Agreement</Link></li>
+            <h3 style={{ fontSize: 12, fontWeight: 800, color: 'var(--gc-slate-900)', margin: '0 0 12px 0' }}>Legal</h3>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+              <li><Link href="/legal/privacy" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Privacy Policy</Link></li>
+              <li><Link href="/legal/terms" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Terms of Service</Link></li>
+              <li><Link href="/legal/supplier-agreement" className="gc-link" style={{ padding: 0, borderRadius: 0, fontWeight: 600 }}>Supplier Agreement</Link></li>
             </ul>
           </div>
 
         </div>
 
         {/* Bottom Bar: Social + Copyright */}
-        <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
+        <div
+          style={{
+            marginTop: 48,
+            paddingTop: 24,
+            borderTop: '1px solid rgba(209, 250, 229, 0.85)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+          }}
+        >
 
           {/* Social Media Icons */}
-          <div className="flex items-center gap-6">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             <a
               href="https://linkedin.com/company/greenchainz"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors"
+              className="gc-link"
+              style={{ padding: 8 }}
               aria-label="LinkedIn"
             >
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
@@ -79,7 +101,8 @@ export default function Footer() {
               href="https://twitter.com/greenchainzhq"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors"
+              className="gc-link"
+              style={{ padding: 8 }}
               aria-label="Twitter"
             >
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
@@ -89,7 +112,7 @@ export default function Footer() {
           </div>
 
           {/* Copyright */}
-          <p className="text-sm text-muted-foreground">
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--gc-slate-600)' }}>
             © {new Date().getFullYear()} GreenChainz. All rights reserved.
           </p>
 
