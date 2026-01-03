@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
+const { pool } = require('./db');
 
 // Load environment variables
 dotenv.config();
