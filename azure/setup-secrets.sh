@@ -63,6 +63,24 @@ az keyvault secret set \
   --name "redis-password" \
   --value "$REDIS_PASSWORD" &> /dev/null && echo "✅ redis-password set"
 
+# Application Insights (required by backend YAML, but backend handles empty value gracefully)
+APPINSIGHTS_VALUE="${APPINSIGHTS_CONNECTION_STRING:-}"
+az keyvault secret set \
+  --vault-name "$VAULT_NAME" \
+  --name "appinsights-connection-string" \
+  --value "$APPINSIGHTS_VALUE" &> /dev/null && echo "✅ appinsights-connection-string set"
+if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
+  echo "   ⚠️  APPINSIGHTS_CONNECTION_STRING not provided - set to empty (monitoring will be disabled)"
+fi
+
+# Azure Document Intelligence (required by backend YAML, but backend handles empty value gracefully)
+DOCUMENT_INTEL_VALUE="${AZURE_DOCUMENT_INTELLIGENCE_KEY:-}"
+az keyvault secret set \
+  --vault-name "$VAULT_NAME" \
+  --name "document-intelligence-key" \
+  --value "$DOCUMENT_INTEL_VALUE" &> /dev/null && echo "✅ document-intelligence-key set"
+if [ -z "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
+  echo "   ⚠️  AZURE_DOCUMENT_INTELLIGENCE_KEY not provided - set to empty (AI document analysis will be disabled)"
 # Optional: Application Insights (for monitoring and telemetry)
 # Set APPINSIGHTS_CONNECTION_STRING environment variable before running this script
 if [ -n "$APPINSIGHTS_CONNECTION_STRING" ]; then

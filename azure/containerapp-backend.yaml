@@ -130,6 +130,19 @@ properties:
           - name: AZURE_STORAGE_CONTAINER_NAME
             value: greenchainz-uploads
           
+          # Application Insights
+          # Note: Secret must exist in Key Vault (can be empty string if not configured)
+          # Backend handles missing/empty connection string gracefully
+          - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+            secretRef: appinsights-connection-string
+          
+          # Document Intelligence
+          # Note: Secret must exist in Key Vault (can be empty string if not configured)
+          # Backend handles missing/empty key gracefully; controlled by FEATURE_AI_DOCUMENT_ANALYSIS flag
+          - name: AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
+            value: https://greenchainz-content-intel.cognitiveservices.azure.com/
+          - name: AZURE_DOCUMENT_INTELLIGENCE_KEY
+            secretRef: document-intelligence-key
           # Application Insights (Optional - uncomment after setting up the service)
           # To enable:
           # 1. Set APPINSIGHTS_CONNECTION_STRING in Key Vault: ./azure/setup-secrets.sh
