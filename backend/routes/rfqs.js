@@ -1,22 +1,34 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const { pool } = require('../index');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-min-32-chars-long';
 
 // ============================================
 // MIDDLEWARE
 // ============================================
 
-// Auth middleware - extract user from JWT or session
+// Auth middleware - extract user from JWT token
 const authMiddleware = (req, res, next) => {
-  const userId = req.headers['x-user-id'];
-  const userRole = req.headers['x-user-role'];
+  const authHeader = req.headers.authorization;
   
-  if (!userId) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authorization header required' });
   }
-  
-  req.user = { id: userId, role: userRole || 'architect' };
-  next();
+
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'Bearer token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = { id: decoded.userId, email: decoded.email, role: decoded.role };
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
 };
 
 router.use(authMiddleware);
