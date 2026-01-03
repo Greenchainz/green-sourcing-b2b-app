@@ -2,6 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const { distributeRFQ } = require('../services/rfq/distributor');
+const RateLimit = require('express-rate-limit');
+
+const rfqLimiter = RateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 RFQ creation requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // Optional protection: if INTERNAL_API_KEY is set, require it.
 function requireInternalKey(req, res, next) {
@@ -17,7 +25,7 @@ function requireInternalKey(req, res, next) {
 router.use(requireInternalKey);
 
 // Create an RFQ in the UUID simulator schema and distribute it.
-router.post('/rfqs', async (req, res) => {
+router.post('/rfqs', rfqLimiter, async (req, res) => {
   const {
     buyer_email,
     product_id,
