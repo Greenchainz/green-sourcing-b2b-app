@@ -46,12 +46,14 @@ properties:
       - name: session-secret
         keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/session-secret
         identity: system
-      - name: appinsights-connection-string
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/appinsights-connection-string
-        identity: system
-      - name: document-intelligence-key
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/document-intelligence-key
-        identity: system
+      # Optional: Application Insights (uncomment if configured)
+      # - name: appinsights-connection-string
+      #   keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/appinsights-connection-string
+      #   identity: system
+      # Optional: Document Intelligence (uncomment if configured)
+      # - name: document-intelligence-key
+      #   keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/document-intelligence-key
+      #   identity: system
 
   template:
     containers:
@@ -112,9 +114,9 @@ properties:
           - name: FEATURE_REDIS_CACHING
             value: "true"
           - name: FEATURE_AZURE_MONITORING
-            value: "true"
+            value: "false"  # Set to "true" after configuring Application Insights
           - name: FEATURE_AI_DOCUMENT_ANALYSIS
-            value: "true"
+            value: "false"  # Set to "true" after configuring Document Intelligence
           - name: NOTIFICATIONS_ENABLED
             value: "true"
           
@@ -141,6 +143,25 @@ properties:
             value: https://greenchainz-content-intel.cognitiveservices.azure.com/
           - name: AZURE_DOCUMENT_INTELLIGENCE_KEY
             secretRef: document-intelligence-key
+          # Application Insights (Optional - uncomment after setting up the service)
+          # To enable:
+          # 1. Set APPINSIGHTS_CONNECTION_STRING in Key Vault: ./azure/setup-secrets.sh
+          # 2. Uncomment the secret in the secrets section above
+          # 3. Uncomment the environment variable below
+          # 4. Set FEATURE_AZURE_MONITORING=true
+          # - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+          #   secretRef: appinsights-connection-string
+          
+          # Document Intelligence (Optional - uncomment after setting up the service)
+          # To enable:
+          # 1. Set AZURE_DOCUMENT_INTELLIGENCE_KEY in Key Vault: ./azure/setup-secrets.sh
+          # 2. Uncomment the secret in the secrets section above
+          # 3. Uncomment the environment variables below
+          # 4. Set FEATURE_AI_DOCUMENT_ANALYSIS=true
+          # - name: AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
+          #   value: https://greenchainz-content-intel.cognitiveservices.azure.com/
+          # - name: AZURE_DOCUMENT_INTELLIGENCE_KEY
+          #   secretRef: document-intelligence-key
         
         probes:
           - type: liveness
