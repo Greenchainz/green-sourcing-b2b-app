@@ -63,23 +63,31 @@ az keyvault secret set \
   --name "redis-password" \
   --value "$REDIS_PASSWORD" &> /dev/null && echo "✅ redis-password set"
 
-if [ -n "$APPINSIGHTS_CONNECTION_STRING" ]; then
-  az keyvault secret set \
-    --vault-name "$VAULT_NAME" \
-    --name "appinsights-connection-string" \
-    --value "$APPINSIGHTS_CONNECTION_STRING" &> /dev/null && echo "✅ appinsights-connection-string set"
-else
-  echo "ℹ️  APPINSIGHTS_CONNECTION_STRING not set; skipping appinsights-connection-string"
+# Application Insights - Required by containerapp-backend.yaml
+if [ -z "$APPINSIGHTS_CONNECTION_STRING" ]; then
+  echo "❌ ERROR: APPINSIGHTS_CONNECTION_STRING not set"
+  echo "   This is required by azure/containerapp-backend.yaml"
+  echo "   To disable monitoring, set FEATURE_AZURE_MONITORING=false in the container app"
+  exit 1
 fi
 
-if [ -n "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
-  az keyvault secret set \
-    --vault-name "$VAULT_NAME" \
-    --name "document-intelligence-key" \
-    --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
-else
-  echo "ℹ️  AZURE_DOCUMENT_INTELLIGENCE_KEY not set; skipping document-intelligence-key"
+az keyvault secret set \
+  --vault-name "$VAULT_NAME" \
+  --name "appinsights-connection-string" \
+  --value "$APPINSIGHTS_CONNECTION_STRING" &> /dev/null && echo "✅ appinsights-connection-string set"
+
+# Document Intelligence - Required by containerapp-backend.yaml
+if [ -z "$AZURE_DOCUMENT_INTELLIGENCE_KEY" ]; then
+  echo "❌ ERROR: AZURE_DOCUMENT_INTELLIGENCE_KEY not set"
+  echo "   This is required by azure/containerapp-backend.yaml"
+  echo "   To disable document AI, set FEATURE_AI_DOCUMENT_ANALYSIS=false in the container app"
+  exit 1
 fi
+
+az keyvault secret set \
+  --vault-name "$VAULT_NAME" \
+  --name "document-intelligence-key" \
+  --value "$AZURE_DOCUMENT_INTELLIGENCE_KEY" &> /dev/null && echo "✅ document-intelligence-key set"
 
 echo ""
 echo "🎉 All secrets configured successfully!"
