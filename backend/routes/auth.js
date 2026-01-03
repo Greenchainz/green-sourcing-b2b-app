@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { pool } = require('../index');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
 
 // ============================================
 // CONSTANTS
@@ -15,6 +16,14 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-min-32-chars-long';
 const JWT_EXPIRY = '7d'; // Token valid for 7 days
+
+// Rate limiter specifically for token verification to prevent abuse
+const verifyTokenLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  max: 30, // limit each IP to 30 requests per windowMs for /verify
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================
 // HELPER FUNCTIONS
@@ -300,7 +309,7 @@ router.patch('/role', async (req, res) => {
 // Verify JWT token validity
 // ============================================
 
-router.post('/verify', (req, res) => {
+router.post('/verify', verifyTokenLimiter, (req, res) => {
   try {
     const { token } = req.body;
 
