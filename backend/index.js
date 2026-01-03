@@ -100,15 +100,15 @@ app.get('/ready', async (req, res) => {
 
 // Import route handlers
 try {
+  const authRoutes = require('./routes/auth');
   const uploadRoutes = require('./routes/uploads');
   const documentAIRoutes = require('./routes/documentAI');
-  const authSyncRoutes = require('./routes/authSync');
   const rfqRoutes = require('./routes/rfqs');
   
-  // Mount routes
+  // Mount routes - auth is not nested under /v1 because login needs to be accessible
+  app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/uploads', uploadRoutes);
   app.use('/api/v1/ai', documentAIRoutes);
-  app.use('/api/v1/auth', authSyncRoutes);
   app.use('/api/v1/rfqs', rfqRoutes);
   
   console.log('✅ All route modules loaded successfully');
