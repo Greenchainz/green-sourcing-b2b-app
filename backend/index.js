@@ -98,18 +98,22 @@ app.get('/ready', async (req, res) => {
 // API ROUTES
 // ============================================
 
-// Import route handlers (create these files)
+// Import route handlers
 try {
   const uploadRoutes = require('./routes/uploads');
   const documentAIRoutes = require('./routes/documentAI');
   const authSyncRoutes = require('./routes/authSync');
+  const rfqRoutes = require('./routes/rfqs');
   
-  // Mount Azure-powered routes
+  // Mount routes
   app.use('/api/v1/uploads', uploadRoutes);
   app.use('/api/v1/ai', documentAIRoutes);
   app.use('/api/v1/auth', authSyncRoutes);
+  app.use('/api/v1/rfqs', rfqRoutes);
+  
+  console.log('✅ All route modules loaded successfully');
 } catch (err) {
-  console.warn('Some route modules not found - they will be created on first request');
+  console.warn('⚠️ Warning - some route modules failed to load:', err.message);
 }
 
 // ============================================
