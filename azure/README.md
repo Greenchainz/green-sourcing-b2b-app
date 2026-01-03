@@ -36,20 +36,43 @@ az account set --subscription "greenchainz-core-start"
 
 ### 2. Configure Secrets in Key Vault
 
+You can use the automated script or configure secrets manually:
+
+**Option A: Automated Setup (Recommended)**
 ```bash
-# Database password
+# Set required environment variables
+export DB_PASSWORD="YOUR_DB_PASSWORD"
+export APPINSIGHTS_CONNECTION_STRING="InstrumentationKey=...;IngestionEndpoint=..."
+export AZURE_DOCUMENT_INTELLIGENCE_KEY="your-document-intelligence-key"
+
+# Run the setup script
+chmod +x azure/setup-secrets.sh
+./azure/setup-secrets.sh
+```
+
+**Option B: Manual Configuration**
+```bash
+# Database password (required)
 az keyvault secret set --vault-name greenchianz-vault --name postgres-password --value "YOUR_DB_PASSWORD"
 
-# JWT secret (generate a secure one)
+# JWT secret (auto-generated, required)
 az keyvault secret set --vault-name greenchianz-vault --name jwt-secret --value "$(openssl rand -base64 32)"
 
-# Session secret
+# Session secret (auto-generated, required)
 az keyvault secret set --vault-name greenchianz-vault --name session-secret --value "$(openssl rand -base64 32)"
 
-# Redis password (get from Azure Portal)
+# Redis password (fetched from Azure, required)
 REDIS_KEY=$(az redis list-keys --name greenchainz --resource-group greenchainz-production --query "primaryKey" -o tsv)
 az keyvault secret set --vault-name greenchianz-vault --name redis-password --value "$REDIS_KEY"
+
+# Application Insights connection string (required for monitoring)
+az keyvault secret set --vault-name greenchianz-vault --name appinsights-connection-string --value "InstrumentationKey=...;IngestionEndpoint=..."
+
+# Document Intelligence key (required for AI document analysis)
+az keyvault secret set --vault-name greenchianz-vault --name document-intelligence-key --value "your-document-intelligence-key"
 ```
+
+**Note**: Application Insights and Document Intelligence secrets are required by the backend container configuration. If you want to deploy without these services, you'll need to modify `azure/containerapp-backend.yaml` to remove the corresponding secretRef entries.
 
 ### 3. Build and Deploy
 
