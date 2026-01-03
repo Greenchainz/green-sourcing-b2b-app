@@ -76,6 +76,22 @@ BEGIN
       ADD CONSTRAINT suppliers_tier_check
       CHECK (tier IN ('enterprise','pro','claimed','free','scraped'));
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'suppliers_latitude_check'
+  ) THEN
+    ALTER TABLE suppliers
+      ADD CONSTRAINT suppliers_latitude_check
+      CHECK (latitude IS NULL OR (latitude >= -90 AND latitude <= 90));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'suppliers_longitude_check'
+  ) THEN
+    ALTER TABLE suppliers
+      ADD CONSTRAINT suppliers_longitude_check
+      CHECK (longitude IS NULL OR (longitude >= -180 AND longitude <= 180));
+  END IF;
 END $$;
 
 DROP TRIGGER IF EXISTS trg_suppliers_updated_at ON suppliers;
@@ -157,6 +173,14 @@ BEGIN
       ADD CONSTRAINT rfqs_status_check
       CHECK (status IN ('pending','open','responded','closed','cancelled','expired'));
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'rfqs_budget_nonnegative_check'
+  ) THEN
+    ALTER TABLE rfqs
+      ADD CONSTRAINT rfqs_budget_nonnegative_check
+      CHECK (budget IS NULL OR budget >= 0);
+  END IF;
 END $$;
 
 -- Optional: RFQ responses (not required by distributor, but useful for simulator)
@@ -170,6 +194,18 @@ CREATE TABLE IF NOT EXISTS rfq_responses (
 );
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_rfq_id ON rfq_responses(rfq_id);
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_supplier_id ON rfq_responses(supplier_id);
+
+-- Enterprise-grade: constrain RFQ response status (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'rfq_responses_status_check'
+  ) THEN
+    ALTER TABLE rfq_responses
+      ADD CONSTRAINT rfq_responses_status_check
+      CHECK (status IN ('pending','accepted','declined'));
+  END IF;
+END $$;
 
 -- ============================================
 -- RFQ distribution (wave-based visibility)
@@ -242,6 +278,46 @@ CREATE TABLE IF NOT EXISTS "Supplier_Response_Metrics" (
   last_updated TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Enterprise-grade: constrain metrics ranges (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'supplier_response_metrics_response_rate_check'
+  ) THEN
+    ALTER TABLE "Supplier_Response_Metrics"
+      ADD CONSTRAINT supplier_response_metrics_response_rate_check
+      CHECK (response_rate >= 0 AND response_rate <= 100);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'supplier_response_metrics_win_rate_check'
+  ) THEN
+    ALTER TABLE "Supplier_Response_Metrics"
+      ADD CONSTRAINT supplier_response_metrics_win_rate_check
+      CHECK (win_rate >= 0 AND win_rate <= 100);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'supplier_response_metrics_avg_response_time_check'
+  ) THEN
+    ALTER TABLE "Supplier_Response_Metrics"
+      ADD CONSTRAINT supplier_response_metrics_avg_response_time_check
+      CHECK (avg_response_time_minutes >= 0);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'supplier_response_metrics_totals_check'
+  ) THEN
+    ALTER TABLE "Supplier_Response_Metrics"
+      ADD CONSTRAINT supplier_response_metrics_totals_check
+      CHECK (
+        total_rfqs_received >= 0
+        AND total_responses >= 0
+        AND total_responses <= total_rfqs_received
+      );
+  END IF;
+END $$;
+
 -- Verification scores (for ranking)
 CREATE TABLE IF NOT EXISTS "Supplier_Verification_Scores" (
   supplier_id UUID PRIMARY KEY REFERENCES suppliers(id) ON DELETE CASCADE,
@@ -250,6 +326,18 @@ CREATE TABLE IF NOT EXISTS "Supplier_Verification_Scores" (
   verification_date TIMESTAMPTZ,
   details JSONB
 );
+
+-- Enterprise-grade: constrain verification score range (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'supplier_verification_scores_range_check'
+  ) THEN
+    ALTER TABLE "Supplier_Verification_Scores"
+      ADD CONSTRAINT supplier_verification_scores_range_check
+      CHECK (verification_score >= 0 AND verification_score <= 100);
+  END IF;
+END $$;
 
 -- ============================================
 -- Scraped supplier growth loop (missed RFQ emails + claim flow)
