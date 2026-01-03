@@ -197,7 +197,15 @@ jobs:
             az containerapp update \
               --name ${{ env.FRONTEND_APP }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
-              --image ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }}
+              --image ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }} \
+              --set-env-vars \
+                NODE_ENV=production \
+                PORT=3000 \
+                NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }} \
+                NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
+                NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+                NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
+                NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           else
             # Create new app
             az containerapp create \
@@ -212,7 +220,15 @@ jobs:
               --cpu 0.25 \
               --memory 0.5Gi \
               --registry-server ${{ env.REGISTRY }} \
-              --registry-identity system
+              --registry-identity system \
+              --env-vars \
+                NODE_ENV=production \
+                PORT=3000 \
+                NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }} \
+                NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
+                NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+                NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
+                NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           fi
       
       - name: Verify Frontend Deployment
