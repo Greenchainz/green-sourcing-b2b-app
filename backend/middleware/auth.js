@@ -1,7 +1,12 @@
 const jwt = require('jsonwebtoken');
 
-// JWT secret from environment or default (change in production!)
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const { requireEnv } = require('../config/validateEnv');
+
+function getJwtSecret() {
+    return process.env.NODE_ENV === 'production'
+        ? requireEnv('JWT_SECRET', { minLength: 32 })
+        : requireEnv('JWT_SECRET', { minLength: 16 });
+}
 
 /**
  * Middleware to authenticate JWT token from Authorization header
@@ -16,7 +21,7 @@ function authenticateToken(req, res, next) {
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, getJwtSecret());
         req.user = decoded;
         next();
     } catch (err) {
@@ -49,5 +54,5 @@ function authorizeRoles(...roles) {
 module.exports = {
     authenticateToken,
     authorizeRoles,
-    JWT_SECRET
+    getJwtSecret
 };

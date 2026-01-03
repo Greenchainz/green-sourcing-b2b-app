@@ -105,12 +105,10 @@ deploy_frontend() {
         BACKEND_URL="greenchainz-container.${LOCATION}.azurecontainerapps.io"
     fi
     
-    # Build from repository root
+    # Build from repository root (Next.js)
     docker build \
-        -f frontend/Dockerfile.azure \
-        --build-arg VITE_API_BASE_URL=https://${BACKEND_URL} \
-        --build-arg VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-""} \
-        --build-arg VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-""} \
+        -f Dockerfile \
+        --build-arg NEXT_PUBLIC_BACKEND_URL=https://${BACKEND_URL} \
         -t ${FRONTEND_IMAGE}:${TAG} \
         -t ${FRONTEND_IMAGE}:$(date +%Y%m%d-%H%M%S) \
         .
