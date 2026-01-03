@@ -24,8 +24,8 @@ services:
   backend:
     container_name: greenchainz-backend
     build:
-      context: . # Uses the root directory as context
-      dockerfile: ./backend/Dockerfile # Specifies the path to the Dockerfile
+      context: .
+      dockerfile: ./backend/Dockerfile
     restart: unless-stopped
     ports:
       - "3001:3001"
@@ -46,21 +46,21 @@ services:
       DB_NAME: ${DB_NAME:-greenchainz_dev}
 
   # ---------------------------------
-  # SERVICE 3: Frontend (React + Vite)
+  # SERVICE 3: Frontend (Next.js)
   # ---------------------------------
   frontend:
     container_name: greenchainz-frontend
     build:
-      context: . # Uses the root directory as context
-      dockerfile: ./frontend/Dockerfile # Specifies the path to the Dockerfile
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "3000:3000"
     depends_on:
       - backend
     environment:
       NODE_ENV: development
-      VITE_API_BASE_URL: http://localhost:3001 # URL for the frontend to call the backend
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
 
 # ---------------------------------
 # VOLUMES: Ensures DB data persists

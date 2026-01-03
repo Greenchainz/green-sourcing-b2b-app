@@ -14,10 +14,14 @@
     "@react-email/tailwind": "^2.0.1",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.81.1",
+    "connect-redis": "^7.1.1",
+    "cookie-parser": "^1.4.7",
+    "cookie-signature": "^1.2.2",
     "next": "^15.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "resend": "^6.4.2"
+    "resend": "^6.4.2",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
