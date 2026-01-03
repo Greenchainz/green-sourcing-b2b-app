@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import TrustBadges from '@/app/components/TrustBadges';
 
 interface Material {
   name: string;
@@ -100,10 +101,15 @@ export default function CreateRFQPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Create RFQ</h1>
-        <p className="text-gray-600 mb-8">Request for Quote - Find verified sustainable materials</p>
+    <div className="gc-page" style={{ padding: '40px 0' }}>
+      <div className="gc-container">
+        <TrustBadges variant="compact" size="sm" />
+        <div style={{ height: 16 }} />
+        <div className="gc-card" style={{ padding: 28 }}>
+          <h1 style={{ margin: '0 0 6px 0', fontSize: 28, fontWeight: 900, color: 'var(--gc-slate-900)' }}>Create RFQ</h1>
+          <p style={{ margin: '0 0 20px 0', color: 'var(--gc-slate-600)' }}>
+            Request for Quote - Find verified sustainable materials
+          </p>
 
         {success && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -286,6 +292,7 @@ export default function CreateRFQPage() {
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

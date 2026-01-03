@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Image from 'next/image';
+import TrustBadges from '../components/TrustBadges';
 
 const AZURE_TENANT = process.env.NEXT_PUBLIC_AZURE_TENANT || 'greenchainz2025.onmicrosoft.com';
 const AZURE_CLIENT_ID = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || '';
@@ -47,20 +48,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-12">
-      <div className="w-full max-w-md">
+    <div className="gc-page" style={{ padding: '48px 0' }}>
+      <div className="gc-container" style={{ maxWidth: 520 }}>
         {/* Logo / Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">GreenChainz</h1>
-          <p className="text-slate-600">Verified Sustainable Building Materials</p>
+          <div className="flex items-center justify-center mb-3">
+            <Image
+              src="/assets/logo/greenchainz-full.svg"
+              alt="GreenChainz"
+              width={190}
+              height={44}
+              priority
+              className="h-10 w-auto"
+            />
+          </div>
+          <p style={{ margin: 0, color: 'var(--gc-slate-600)' }}>Verified Sustainable Building Materials</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-lg shadow-lg p-8 space-y-6">
+        <div className="gc-card" style={{ padding: 28 }}>
           {/* Title */}
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Sign In</h2>
-            <p className="text-slate-600 text-sm mt-1">Sign in with your Microsoft account</p>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: 'var(--gc-slate-900)' }}>Sign In</h2>
+            <p style={{ margin: '6px 0 0 0', color: 'var(--gc-slate-600)', fontSize: 13 }}>
+              Sign in with your Microsoft account
+            </p>
           </div>
 
           {/* Error Message */}
@@ -86,7 +98,8 @@ export default function LoginPage() {
               <button
                 onClick={initiateAzureLogin}
                 disabled={isLoading || isInitializing}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="gc-btn gc-btn-primary"
+                style={{ width: '100%', padding: '0.85rem 1rem', fontSize: 15 }}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
@@ -105,8 +118,8 @@ export default function LoginPage() {
               </div>
 
               {/* Info Text */}
-              <div className="bg-slate-50 rounded-lg p-4">
-                <p className="text-xs text-slate-600 leading-relaxed">
+              <div style={{ background: 'rgba(248, 250, 252, 0.9)', borderRadius: 14, padding: 14, border: '1px solid rgba(226,232,240,0.9)' }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--gc-slate-600)', lineHeight: 1.6 }}>
                   <strong>New to GreenChainz?</strong> Sign in with your Microsoft account to create an account. You can choose your role as an architect or supplier after signing in.
                 </p>
               </div>
@@ -128,9 +141,13 @@ export default function LoginPage() {
           </div>
         </div>
 
+        <div className="mt-6">
+          <TrustBadges variant="compact" size="sm" />
+        </div>
+
         {/* Support Link */}
         <div className="mt-6 text-center">
-          <p className="text-sm text-slate-600">
+          <p style={{ fontSize: 14, color: 'var(--gc-slate-600)', margin: 0 }}>
             Need help?{' '}
             <a href="mailto:support@greenchainz.com" className="text-teal-600 hover:text-teal-700 font-medium">
               Contact support

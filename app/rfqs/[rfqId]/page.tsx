@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import TrustBadges from '@/app/components/TrustBadges';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -145,10 +146,13 @@ export default function RFQDetailPage() {
   if (!rfq) return <div className="p-8">RFQ not found</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="gc-page" style={{ padding: 24 }}>
+      <div style={{ maxWidth: 1024, margin: '0 auto' }}>
+        <div style={{ marginBottom: 16 }}>
+          <TrustBadges variant="compact" size="sm" />
+        </div>
         {/* Header */}
-        <div className="bg-white p-6 rounded-lg shadow mb-6">
+        <div className="gc-card" style={{ padding: 22, marginBottom: 18 }}>
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-3xl font-bold mb-2">{rfq.project_name}</h1>
@@ -179,7 +183,7 @@ export default function RFQDetailPage() {
         </div>
 
         {/* Materials */}
-        <div className="bg-white p-6 rounded-lg shadow mb-6">
+        <div className="gc-card" style={{ padding: 22, marginBottom: 18 }}>
           <h2 className="text-xl font-bold mb-4">Required Materials</h2>
           <div className="space-y-3">
             {rfq.materials.map((material, idx) => (
@@ -199,7 +203,7 @@ export default function RFQDetailPage() {
         </div>
 
         {/* Supplier Responses */}
-        <div className="bg-white p-6 rounded-lg shadow mb-6">
+        <div className="gc-card" style={{ padding: 22, marginBottom: 18 }}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">
               Bids Received ({responses.length})
@@ -207,7 +211,8 @@ export default function RFQDetailPage() {
             {user && rfq.status === 'open' && (
               <button
                 onClick={() => setShowBidForm(!showBidForm)}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                className="gc-btn gc-btn-primary"
+                style={{ padding: '0.55rem 0.95rem' }}
               >
                 {showBidForm ? 'Cancel' : 'Submit Bid'}
               </button>
@@ -216,7 +221,11 @@ export default function RFQDetailPage() {
 
           {/* Bid Form */}
           {showBidForm && user && (
-            <form onSubmit={handleSubmitBid} className="p-4 bg-blue-50 rounded mb-6">
+            <form
+              onSubmit={handleSubmitBid}
+              className="gc-card"
+              style={{ padding: 16, marginBottom: 18, background: 'rgba(236, 253, 245, 0.75)' }}
+            >
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                   {error}
@@ -255,7 +264,8 @@ export default function RFQDetailPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="mt-4 w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400"
+                className="gc-btn gc-btn-primary"
+                style={{ marginTop: 14, width: '100%' }}
               >
                 {submitting ? 'Submitting...' : 'Submit Bid'}
               </button>

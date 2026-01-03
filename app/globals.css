@@ -1,7 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Brand foundation + predictable layout */
 html,
 body {
@@ -12,6 +8,8 @@ body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     'Apple Color Emoji', 'Segoe UI Emoji';
+  background: #ffffff;
+  color: #0f172a;
 }
 
 * {
@@ -25,6 +23,14 @@ body {
   --muted-foreground: 71 85 105;
   --border: 226 232 240;
   --primary: 5 150 105; /* emerald-600 */
+
+  --gc-emerald-600: #059669;
+  --gc-emerald-700: #047857;
+  --gc-slate-900: #0f172a;
+  --gc-slate-700: #334155;
+  --gc-slate-600: #475569;
+  --gc-slate-200: #e2e8f0;
+  --gc-glass: rgba(255, 255, 255, 0.74);
 }
 
 .bg-background {
@@ -42,5 +48,176 @@ body {
 .text-primary {
   color: rgb(var(--primary));
 }
+
+/* Smooth, premium feel without heavy animation libraries */
+@media (prefers-reduced-motion: no-preference) {
+  html:focus-within {
+    scroll-behavior: smooth;
+  }
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.22);
+}
+
+/* ---------- GreenChainz brand system (semantic classes) ---------- */
+.gc-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.gc-main {
+  flex: 1;
+}
+
+.gc-container {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .gc-container {
+    padding: 0 1.5rem;
+  }
+}
+
+.gc-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(209, 250, 229, 0.85);
+}
+
+.gc-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+}
+
+.gc-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gc-link {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gc-slate-700);
+  text-decoration: none;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.gc-link:hover {
+  background: rgba(236, 253, 245, 0.65);
+  color: var(--gc-emerald-700);
+}
+
+.gc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  will-change: transform;
+}
+
+.gc-btn:active {
+  transform: translateY(1px);
+}
+
+.gc-btn-primary {
+  color: white;
+  background: linear-gradient(90deg, var(--gc-emerald-600), #16a34a);
+  box-shadow: 0 10px 30px rgba(2, 44, 34, 0.12);
+}
+
+.gc-btn-primary:hover {
+  background: linear-gradient(90deg, var(--gc-emerald-700), #15803d);
+  box-shadow: 0 18px 45px rgba(2, 44, 34, 0.16);
+  transform: translateY(-1px);
+}
+
+.gc-card {
+  background: var(--gc-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(209, 250, 229, 0.85);
+  border-radius: 1.25rem;
+  box-shadow: 0 18px 55px rgba(2, 44, 34, 0.12);
+}
+
+.gc-page {
+  background: radial-gradient(900px 500px at 10% 10%, rgba(16, 185, 129, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 90% 20%, rgba(20, 184, 166, 0.14), transparent 55%),
+    linear-gradient(135deg, #ecfdf5 0%, #f8fafc 40%, #f0fdfa 100%);
+}
+
+.gc-trust {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(209, 250, 229, 0.85);
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(2, 44, 34, 0.08);
+}
+
+.gc-trust-inner {
+  padding: 1rem;
+}
+
+.gc-trust-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.gc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  border-radius: 0.75rem;
+  outline: none;
+}
+
+.gc-badge:focus-visible {
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.35);
+}
+
+.gc-badge-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gc-slate-700);
+}
+
+.gc-badge-logo {
+  filter: grayscale(1);
+  opacity: 0.82;
+  transition: filter 160ms ease, opacity 160ms ease;
+}
+
+.gc-badge:hover .gc-badge-logo {
+  filter: grayscale(0);
+  opacity: 1;
+}
+
 
 
