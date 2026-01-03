@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'GreenChainz',
+    title: 'Greenchainz',
   },
   viewport: {
     width: 'device-width',
