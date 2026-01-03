@@ -1,3 +1,5 @@
+'use client';
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -23,13 +25,19 @@ interface AuthState {
   setRefreshToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  
+
   // Auth methods
-  handleAzureCallback: (code: string, email: string, firstName?: string, lastName?: string, azureId?: string) => Promise<void>;
+  handleAzureCallback: (
+    code: string,
+    email: string,
+    firstName?: string,
+    lastName?: string,
+    azureId?: string
+  ) => Promise<void>;
   refreshAccessToken: () => Promise<void>;
   updateRole: (newRole: 'architect' | 'supplier') => Promise<void>;
   logout: () => Promise<void>;
-  
+
   // Utilities
   isAuthenticated: () => boolean;
   getAuthHeader: () => Record<string, string>;
@@ -38,7 +46,17 @@ interface AuthState {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
-export const useAuth = create<AuthState>(
+function mirrorJwtTokenToLocalStorage(token: string | null) {
+  // Some older pages expect this key; keep it in sync.
+  try {
+    if (token) localStorage.setItem('jwt_token', token);
+    else localStorage.removeItem('jwt_token');
+  } catch {
+    // ignore (SSR / storage blocked)
+  }
+}
+
+export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
       // Initial state
@@ -50,7 +68,10 @@ export const useAuth = create<AuthState>(
 
       // State setters
       setUser: (user) => set({ user }),
-      setToken: (token) => set({ token }),
+      setToken: (token) => {
+        mirrorJwtTokenToLocalStorage(token);
+        set({ token });
+      },
       setRefreshToken: (refreshToken) => set({ refreshToken }),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
@@ -76,6 +97,10 @@ export const useAuth = create<AuthState>(
           }
 
           const data = await response.json();
+
+          // Keep jwt_token in sync for any legacy callers.
+          mirrorJwtTokenToLocalStorage(data.token ?? null);
+
           set({
             user: {
               id: data.user.id,
@@ -112,11 +137,13 @@ export const useAuth = create<AuthState>(
 
           if (!response.ok) {
             // Refresh failed, clear auth
+            mirrorJwtTokenToLocalStorage(null);
             set({ token: null, refreshToken: null, user: null });
             throw new Error('Token refresh failed');
           }
 
           const data = await response.json();
+          mirrorJwtTokenToLocalStorage(data.token ?? null);
           set({ token: data.token, error: null });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Token refresh failed';
@@ -138,7 +165,7 @@ export const useAuth = create<AuthState>(
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ role: newRole }),
           });
@@ -148,6 +175,7 @@ export const useAuth = create<AuthState>(
           }
 
           const data = await response.json();
+          mirrorJwtTokenToLocalStorage(data.token ?? null);
           set({
             user: {
               ...get().user!,
@@ -171,13 +199,15 @@ export const useAuth = create<AuthState>(
             await fetch(`${BACKEND_URL}/api/v1/auth/logout`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${token}`,
+                Authorization: `Bearer ${token}`,
               },
             });
-          } catch (error) {
-            console.error('Logout error:', error);
+          } catch {
+            // ignore
           }
         }
+
+        mirrorJwtTokenToLocalStorage(null);
         set({ user: null, token: null, refreshToken: null, error: null });
       },
 
@@ -187,14 +217,14 @@ export const useAuth = create<AuthState>(
       },
 
       // Get Authorization header for API calls
-      getAuthHeader: () => {
+      getAuthHeader: (): Record<string, string> => {
         const token = get().token;
-        if (!token) return {};
-        return { 'Authorization': `Bearer ${token}` };
+        return { Authorization: token ? `Bearer ${token}` : '' };
       },
 
       // Clear all auth state
       clearAuth: () => {
+        mirrorJwtTokenToLocalStorage(null);
         set({
           user: null,
           token: null,
@@ -215,3 +245,4 @@ export const useAuth = create<AuthState>(
     }
   )
 );
+

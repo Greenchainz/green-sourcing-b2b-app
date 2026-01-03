@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 
 interface Material {
   name: string;
@@ -12,6 +13,7 @@ interface Material {
 
 export default function CreateRFQPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -56,8 +58,6 @@ export default function CreateRFQPage() {
     setError(null);
 
     try {
-      // Get token from localStorage (set during login)
-      const token = localStorage.getItem('jwt_token');
       if (!token) {
         throw new Error('Not authenticated. Please log in first.');
       }

@@ -1,16 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 
 const AZURE_TENANT = process.env.NEXT_PUBLIC_AZURE_TENANT || 'greenchainz2025.onmicrosoft.com';
 const AZURE_CLIENT_ID = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || '';
-const AZURE_CLIENT_SECRET = process.env.NEXT_PUBLIC_AZURE_CLIENT_SECRET || ''; // Should NOT be exposed
 const AZURE_REDIRECT_URI = process.env.NEXT_PUBLIC_AZURE_REDIRECT_URI || `${typeof window !== 'undefined' ? window.location.origin : ''}/login/callback`;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
-export default function CallbackPage() {
+function CallbackPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { handleAzureCallback } = useAuth();
@@ -125,4 +124,25 @@ export default function CallbackPage() {
   }
 
   return null;
+}
+
+export default function CallbackPage() {
+  // Next.js requires useSearchParams() to be wrapped in Suspense.
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center mb-4">
+              <div className="w-12 h-12 border-4 border-slate-200 border-t-teal-500 rounded-full animate-spin"></div>
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900">Signing you in...</h2>
+            <p className="text-slate-600 text-sm mt-2">Completing authentication</p>
+          </div>
+        </div>
+      }
+    >
+      <CallbackPageInner />
+    </Suspense>
+  );
 }
