@@ -39,12 +39,6 @@ properties:
             value: greenchainz2025.onmicrosoft.com
           - name: NEXT_PUBLIC_AZURE_CLIENT_ID
             value: ""
-          - name: NEXT_PUBLIC_AZURE_REDIRECT_URI
-            value: https://greenchainz-frontend.eastus.azurecontainerapps.io/login/callback
-          - name: NEXT_PUBLIC_SUPABASE_URL
-            value: ""
-          - name: NEXT_PUBLIC_SUPABASE_ANON_KEY
-            value: ""
         
         probes:
           - type: liveness

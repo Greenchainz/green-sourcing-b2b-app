@@ -91,7 +91,7 @@ chmod +x azure/deploy.sh
                                  │  └─────────────┘  └─────────────────────┘  │
                                  │  ┌─────────────┐  ┌─────────────────────┐  │
                                  │  │  Blob       │  │  PostgreSQL         │  │
-                                 │  │  Storage    │  │  (Supabase)         │  │
+                                 │  │  Storage    │  │  (Your DB)          │  │
                                  │  └─────────────┘  └─────────────────────┘  │
                                  └─────────────────────────────────────────────┘
 ```
@@ -118,8 +118,6 @@ APPLICATIONINSIGHTS_CONNECTION_STRING=<from App Insights>
 NEXT_PUBLIC_BACKEND_URL=https://<your-backend-fqdn>
 NEXT_PUBLIC_AZURE_TENANT=greenchainz2025.onmicrosoft.com
 NEXT_PUBLIC_AZURE_CLIENT_ID=<from Azure App Registration>
-NEXT_PUBLIC_SUPABASE_URL=<from Supabase>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<from Supabase>
 ```
 
 ### Container App Configuration

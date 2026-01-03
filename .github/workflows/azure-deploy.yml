@@ -179,8 +179,6 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }}
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }}
             NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           tags: |
@@ -202,8 +200,6 @@ jobs:
                 NODE_ENV=production \
                 PORT=3000 \
                 NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }} \
-                NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
-                NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
                 NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
                 NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           else
@@ -225,8 +221,6 @@ jobs:
                 NODE_ENV=production \
                 PORT=3000 \
                 NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }} \
-                NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
-                NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
                 NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
                 NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           fi
