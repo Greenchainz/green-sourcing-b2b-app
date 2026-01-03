@@ -105,7 +105,7 @@ deploy_frontend() {
         BACKEND_URL="greenchainz-container.${LOCATION}.azurecontainerapps.io"
     fi
     
-    # Build from repository root
+    # Build from repository root (Next.js)
     docker build \
         -f Dockerfile \
         --build-arg NEXT_PUBLIC_BACKEND_URL=https://${BACKEND_URL} \

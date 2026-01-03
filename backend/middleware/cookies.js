@@ -2,10 +2,13 @@
 
 const { COOKIE_NAMES, EXPIRATION, DEFAULT_SETTINGS, PUBLIC_SETTINGS } = require('../config/cookieConfig');
 const crypto = require('crypto');
+const { requireEnv } = require('../config/validateEnv');
 
 // Helper to encrypt values (for sensitive cookies like gc_user_id or gc_preferences if they contain PII)
 const algorithm = 'aes-256-cbc';
-const secretKey = process.env.COOKIE_SECRET || 'default-secret-change-me-32chars'; // Must be 32 chars
+const secretKey = process.env.NODE_ENV === 'production'
+  ? requireEnv('COOKIE_SECRET', { minLength: 32 })
+  : requireEnv('COOKIE_SECRET', { minLength: 16 });
 // Ensure key is 32 bytes
 const key = crypto.scryptSync(secretKey, 'salt', 32);
 

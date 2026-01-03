@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../index');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
+const { requireEnv } = require('../config/validateEnv');
 
 // ============================================
 // CONSTANTS
@@ -12,9 +13,11 @@ const rateLimit = require('express-rate-limit');
 const AZURE_TENANT_ID = process.env.AZURE_TENANT_ID || 'greenchainz2025.onmicrosoft.com';
 const AZURE_CLIENT_ID = process.env.AZURE_CLIENT_ID || '';
 const AZURE_CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET || '';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-min-32-chars-long';
+const JWT_SECRET = process.env.NODE_ENV === 'production'
+  ? requireEnv('JWT_SECRET', { minLength: 32 })
+  : requireEnv('JWT_SECRET', { minLength: 16 });
 const JWT_EXPIRY = '7d'; // Token valid for 7 days
 
 // Rate limiter specifically for token verification to prevent abuse
@@ -44,6 +47,73 @@ const verifyJWT = (token) => {
     return null;
   }
 };
+
+// ============================================
+// POST /api/v1/auth/azure-token-exchange
+// Exchange Azure AD auth code -> ID token (server-side using client secret)
+// ============================================
+
+router.post('/azure-token-exchange', async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body || {};
+    if (!code || !redirectUri) {
+      return res.status(400).json({ error: 'code and redirectUri required' });
+    }
+
+    const tenant = process.env.NODE_ENV === 'production'
+      ? requireEnv('AZURE_TENANT_ID')
+      : (AZURE_TENANT_ID || 'common');
+    const clientId = process.env.NODE_ENV === 'production'
+      ? requireEnv('AZURE_CLIENT_ID')
+      : AZURE_CLIENT_ID;
+    const clientSecret = process.env.NODE_ENV === 'production'
+      ? requireEnv('AZURE_CLIENT_SECRET', { minLength: 10 })
+      : AZURE_CLIENT_SECRET;
+
+    const tokenUrl = `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`;
+
+    const form = new URLSearchParams();
+    form.set('client_id', clientId);
+    form.set('client_secret', clientSecret);
+    form.set('grant_type', 'authorization_code');
+    form.set('code', code);
+    form.set('redirect_uri', redirectUri);
+    form.set('scope', 'openid profile email');
+
+    const tokenResp = await axios.post(tokenUrl, form.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 15000,
+    });
+
+    const idToken = tokenResp.data?.id_token;
+    if (!idToken) {
+      return res.status(502).json({ error: 'Azure token response missing id_token' });
+    }
+
+    // Decode token payload (claims). This token was obtained via client_secret exchange.
+    const [, payloadB64] = String(idToken).split('.');
+    const payloadJson = Buffer.from(payloadB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    const claims = JSON.parse(payloadJson);
+
+    const email =
+      claims.preferred_username ||
+      (Array.isArray(claims.emails) ? claims.emails[0] : undefined) ||
+      claims.email ||
+      null;
+    const azureId = claims.oid || claims.sub || null;
+
+    res.status(200).json({
+      idToken,
+      email,
+      firstName: claims.given_name || null,
+      lastName: claims.family_name || null,
+      azureId,
+    });
+  } catch (error) {
+    console.error('Azure token exchange error:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Token exchange failed' });
+  }
+});
 
 // ============================================
 // POST /api/v1/auth/azure-callback
