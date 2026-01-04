@@ -17,6 +17,8 @@ const aiGatewayRoutes = require('./routes/ai-gateway');
 
 // AI Gateway
 const aiGateway = require('./services/ai-gateway');
+const revitRoutes = require('./routes/revit');
+const scoringRoutes = require('./routes/scoring');
 
 // Middleware
 const rateLimit = require('./middleware/rateLimit');
@@ -149,6 +151,11 @@ async function start() {
     aiGateway.initialize().catch(err => {
         console.warn('⚠️  AI Gateway initialization warning:', err.message);
     });
+    app.use('/api/v1/scoring', scoringRoutes);
+
+    // Integration APIs
+    // Revit Integration - Azure Entra ID auth, project/material sync
+    app.use('/api/integrations/revit/v1', revitRoutes);
 
     // Internal API routes (protected by INTERNAL_API_KEY)
     // RFQ Simulator - distribution engine, queue management, metrics
