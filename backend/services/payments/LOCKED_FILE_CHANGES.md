@@ -78,11 +78,12 @@ app.use('/api/v1/payments', paymentsRoutes);
 
 ### Changes Required
 
-Add the Stripe package to dependencies:
+Add the Stripe and Axios packages to dependencies:
 
 ```json
 {
   "dependencies": {
+    "axios": "^1.7.0",
     "stripe": "^14.0.0"
   }
 }
@@ -93,10 +94,12 @@ Add the Stripe package to dependencies:
 ```diff
 --- a/backend/package.json
 +++ b/backend/package.json
-@@ -44,6 +44,7 @@ const aiGateway = require('./services/ai-gateway');
-     "passport-linkedin-oauth2": "^2.0.0",
-     "passport-microsoft": "^1.0.0",
-     "pg": "^8.11.3",
+@@ -15,6 +15,7 @@
+   "dependencies": {
+     "@azure/ai-form-recognizer": "^5.0.0",
+     "@azure/identity": "^4.5.0",
++    "axios": "^1.7.0",
+     ...
      "redis": "^4.7.0",
 +    "stripe": "^14.0.0",
      "swagger-ui-express": "^5.0.1",
@@ -107,7 +110,7 @@ Add the Stripe package to dependencies:
 ### Installation Command
 
 ```bash
-cd backend && npm install stripe@^14.0.0
+cd backend && npm install stripe@^14.0.0 axios@^1.7.0
 ```
 
 ---
