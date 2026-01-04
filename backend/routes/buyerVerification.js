@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 const { getJwtSecret } = require('../middleware/auth');
 const {
@@ -17,6 +18,14 @@ const {
     canDistributeRFQ,
     verifyDeposit
 } = require('../services/linkedinVerification');
+
+// Rate limiter for LinkedIn verification endpoint to prevent abuse / DoS
+const linkedinVerificationLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // limit each IP to 20 LinkedIn verification requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false
+});
 const { getBuyerIdFromUser } = require('../middleware/buyerVerification');
 
 // ============================================
@@ -129,7 +138,7 @@ router.get('/can-distribute', async (req, res) => {
 // Complete LinkedIn verification (called after OAuth callback)
 // ============================================
 
-router.post('/linkedin', async (req, res) => {
+router.post('/linkedin', linkedinVerificationLimiter, async (req, res) => {
     try {
         const { profile_id, profile_url } = req.body;
 
