@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../index');
 
 const { getJwtSecret } = require('../middleware/auth');
+const stripeService = require('../services/payments/stripe');
+const { calculateMatchScore } = require('../services/rfq/matcher');
 
 // ============================================
 // MIDDLEWARE
@@ -99,7 +101,35 @@ router.post('/', async (req, res) => {
       return res.status(403).json({ error: 'Only architects can create RFQs' });
     }
     
-    const { project_name, description, deadline, budget, materials, certifications_required } = req.body;
+    // LinkedIn verification check - user must have verified LinkedIn profile
+    if (!req.user.linkedin_verified) {
+      return res.status(403).json({ 
+        error: 'LinkedIn verification required',
+        code: 'LINKEDIN_VERIFICATION_REQUIRED',
+        message: 'Please verify your LinkedIn profile before creating RFQs'
+      });
+    }
+    
+    const { project_name, description, deadline, budget, materials, certifications_required, deposit_payment_intent_id } = req.body;
+    
+    // Deposit verification - require deposit payment for RFQ creation
+    if (!deposit_payment_intent_id) {
+      return res.status(400).json({ 
+        error: 'Deposit payment required',
+        code: 'DEPOSIT_REQUIRED',
+        message: 'A deposit payment is required to create an RFQ. Please complete payment first.'
+      });
+    }
+    
+    // Verify the deposit payment was successful via Stripe
+    const depositVerified = await stripeService.verifyPayment(deposit_payment_intent_id);
+    if (!depositVerified) {
+      return res.status(400).json({ 
+        error: 'Deposit payment not verified',
+        code: 'DEPOSIT_NOT_VERIFIED',
+        message: 'The deposit payment could not be verified. Please ensure payment was completed successfully.'
+      });
+    }
     
     // Validate
     const validationErrors = validateRFQCreation(req.body);
@@ -112,12 +142,12 @@ router.post('/', async (req, res) => {
     try {
       await client.query('BEGIN');
       
-      // 1. Create RFQ
+      // 1. Create RFQ with deposit_verified flag
       const rfqResult = await client.query(
-        `INSERT INTO RFQs (architect_id, project_name, description, deadline, budget, certifications_required, status, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 'open', NOW())
+        `INSERT INTO RFQs (architect_id, project_name, description, deadline, budget, certifications_required, status, deposit_verified, deposit_payment_intent_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'open', TRUE, $7, NOW())
          RETURNING id, created_at`,
-        [req.user.id, project_name, description || null, deadline, budget || null, certifications_required || null]
+        [req.user.id, project_name, description || null, deadline, budget || null, certifications_required || null, deposit_payment_intent_id]
       );
       
       const rfqId = rfqResult.rows[0].id;
@@ -134,6 +164,12 @@ router.post('/', async (req, res) => {
       
       await Promise.all(lineItemInserts);
       
+      // 3. Link the deposit to this RFQ
+      await client.query(
+        `UPDATE rfq_deposits SET rfq_id = $1, updated_at = NOW() WHERE payment_intent_id = $2`,
+        [rfqId, deposit_payment_intent_id]
+      );
+      
       await client.query('COMMIT');
       
       res.status(201).json({
@@ -142,6 +178,7 @@ router.post('/', async (req, res) => {
         deadline,
         materials_count: materials.length,
         status: 'open',
+        deposit_verified: true,
         created_at: rfqResult.rows[0].created_at
       });
     } catch (error) {
@@ -329,10 +366,11 @@ router.post('/:rfqId/respond', async (req, res) => {
 router.get('/:rfqId/responses', async (req, res) => {
   try {
     const { rfqId } = req.params;
+    const includeScoreBreakdown = req.query.include_score_breakdown === 'true';
     
-    // Check user owns the RFQ
+    // Get RFQ details including for score calculation
     const rfqCheck = await pool.query(
-      'SELECT architect_id FROM RFQs WHERE id = $1',
+      'SELECT * FROM RFQs WHERE id = $1',
       [rfqId]
     );
     
@@ -340,17 +378,25 @@ router.get('/:rfqId/responses', async (req, res) => {
       return res.status(404).json({ error: 'RFQ not found' });
     }
     
-    if (rfqCheck.rows[0].architect_id !== req.user.id) {
+    const rfq = rfqCheck.rows[0];
+    
+    if (rfq.architect_id !== req.user.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    // Get all responses with their quotes
+    // Get all responses with their quotes and supplier details
     const result = await pool.query(
       `SELECT 
         r.id as response_id,
         r.supplier_id,
         r.notes,
         r.created_at,
+        s.name as supplier_name,
+        s.tier as supplier_tier,
+        s.latitude as supplier_latitude,
+        s.longitude as supplier_longitude,
+        s.location as supplier_location,
+        s.category as supplier_category,
         json_agg(
           json_build_object(
             'quote_id', q.id,
@@ -359,19 +405,68 @@ router.get('/:rfqId/responses', async (req, res) => {
             'availability', q.availability,
             'lead_time_days', q.lead_time_days
           ) ORDER BY q.rfq_line_item_id
-        ) as quotes
+        ) as quotes,
+        COALESCE(
+          (SELECT array_agg(DISTINCT cert) 
+           FROM products p, unnest(COALESCE(p.certifications, ARRAY[]::text[])) AS cert
+           WHERE p.supplier_id = s.id AND cert IS NOT NULL),
+          ARRAY[]::text[]
+        ) AS supplier_certifications
        FROM RFQ_Responses r
        LEFT JOIN RFQ_Response_Quotes q ON r.id = q.rfq_response_id
+       LEFT JOIN suppliers s ON r.supplier_id = s.id
        WHERE r.rfq_id = $1
-       GROUP BY r.id, r.supplier_id, r.notes, r.created_at
+       GROUP BY r.id, r.supplier_id, r.notes, r.created_at, 
+                s.name, s.tier, s.latitude, s.longitude, s.location, s.category, s.id
        ORDER BY r.created_at DESC`,
       [rfqId]
     );
     
+    // Calculate score breakdown for each response if requested
+    const responsesWithScores = result.rows.map(response => {
+      // Build supplier object for score calculation
+      const supplier = {
+        id: response.supplier_id,
+        name: response.supplier_name,
+        tier: response.supplier_tier,
+        latitude: response.supplier_latitude,
+        longitude: response.supplier_longitude,
+        location: response.supplier_location,
+        category: response.supplier_category,
+        certifications: response.supplier_certifications
+      };
+      
+      // Calculate match score with breakdown
+      const scoreResult = calculateMatchScore(supplier, rfq, { returnBreakdown: true });
+      
+      // Build response object
+      const responseData = {
+        response_id: response.response_id,
+        supplier_id: response.supplier_id,
+        supplier_name: response.supplier_name,
+        notes: response.notes,
+        created_at: response.created_at,
+        quotes: response.quotes,
+        match_score: scoreResult.score
+      };
+      
+      // Include full breakdown if requested
+      if (includeScoreBreakdown) {
+        responseData.score_breakdown = scoreResult.breakdown;
+        responseData.score_calculated_at = scoreResult.calculated_at;
+      }
+      
+      return responseData;
+    });
+    
+    // Sort by match score (highest first)
+    responsesWithScores.sort((a, b) => b.match_score - a.match_score);
+    
     res.json({
       rfq_id: rfqId,
-      response_count: result.rows.length,
-      responses: result.rows
+      response_count: responsesWithScores.length,
+      responses: responsesWithScores,
+      include_score_breakdown: includeScoreBreakdown
     });
   } catch (error) {
     console.error('Error fetching responses:', error);

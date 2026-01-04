@@ -17,6 +17,119 @@ function parseProjectDetails(projectDetails) {
 }
 
 /**
+ * Converts degrees to radians.
+ * @param {number} deg - Degrees
+ * @returns {number} Radians
+ */
+function toRadians(deg) {
+    return deg * (Math.PI / 180);
+}
+
+/**
+ * Calculates distance between two coordinates using the Haversine formula.
+ * Returns distance in kilometers.
+ * 
+ * @param {number} lat1 - Latitude of point 1
+ * @param {number} lon1 - Longitude of point 1
+ * @param {number} lat2 - Latitude of point 2
+ * @param {number} lon2 - Longitude of point 2
+ * @returns {number} Distance in kilometers
+ */
+function haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in kilometers
+    
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    
+    return R * c;
+}
+
+/**
+ * Calculates a distance score (0-100) based on how close supplier is to RFQ location.
+ * Closer suppliers get higher scores.
+ * 
+ * Score bands:
+ * - Within 50km: 100 points
+ * - 50-100km: 90 points
+ * - 100-250km: 75 points
+ * - 250-500km: 50 points
+ * - 500-1000km: 25 points
+ * - >1000km: 10 points
+ * - No location data: 50 points (neutral)
+ * 
+ * @param {object} supplier - Supplier object with latitude/longitude
+ * @param {object} rfq - RFQ object with project location data
+ * @returns {{score: number, distance_km: number|null, has_location: boolean}}
+ */
+function calculateDistanceScore(supplier, rfq) {
+    const projectDetails = parseProjectDetails(rfq?.project_details);
+    
+    // Get supplier coordinates
+    const supplierLat = parseFloat(supplier?.latitude);
+    const supplierLon = parseFloat(supplier?.longitude);
+    
+    // Get RFQ/project coordinates (could be in project_details or directly on rfq)
+    const rfqLat = parseFloat(projectDetails?.latitude || rfq?.latitude);
+    const rfqLon = parseFloat(projectDetails?.longitude || rfq?.longitude);
+    
+    // Check if we have valid coordinates for both
+    const hasSupplierLocation = !isNaN(supplierLat) && !isNaN(supplierLon);
+    const hasRfqLocation = !isNaN(rfqLat) && !isNaN(rfqLon);
+    
+    // If either location is missing, return neutral score
+    if (!hasSupplierLocation || !hasRfqLocation) {
+        return {
+            score: 50, // Neutral score when location data unavailable
+            distance_km: null,
+            has_location: false,
+            reason: hasSupplierLocation ? 'RFQ location not specified' : 
+                    hasRfqLocation ? 'Supplier location not specified' : 
+                    'No location data available'
+        };
+    }
+    
+    // Calculate actual distance
+    const distanceKm = haversineDistance(supplierLat, supplierLon, rfqLat, rfqLon);
+    
+    // Score based on distance bands
+    let score;
+    let reason;
+    
+    if (distanceKm <= 50) {
+        score = 100;
+        reason = 'Local supplier (within 50km)';
+    } else if (distanceKm <= 100) {
+        score = 90;
+        reason = 'Regional supplier (50-100km)';
+    } else if (distanceKm <= 250) {
+        score = 75;
+        reason = 'Near-regional supplier (100-250km)';
+    } else if (distanceKm <= 500) {
+        score = 50;
+        reason = 'National supplier (250-500km)';
+    } else if (distanceKm <= 1000) {
+        score = 25;
+        reason = 'Extended national supplier (500-1000km)';
+    } else {
+        score = 10;
+        reason = 'International/distant supplier (>1000km)';
+    }
+    
+    return {
+        score,
+        distance_km: Math.round(distanceKm * 10) / 10, // Round to 1 decimal
+        has_location: true,
+        reason
+    };
+}
+
+/**
  * Anonymize supplier data for shadow/unclaimed suppliers.
  * Ensures scraped supplier identities are never revealed in RFQ matching.
  * @param {object} supplier - The supplier object
@@ -46,54 +159,116 @@ function anonymizeIfShadow(supplier) {
 
 /**
  * Calculates a match score (0-100) for a supplier against an RFQ.
+ * Returns both total score and component breakdown for explainability.
+ * 
+ * Score Weight Distribution:
+ * - Product Category Match: 35% (35 points max)
+ * - Certification Match: 25% (25 points max)
+ * - Distance/Location: 20% (20 points max)
+ * - Category Match: 10% (10 points max)
+ * - Tier Bonus: 10% (10 points max)
+ * 
  * @param {object} supplier - The supplier object.
  * @param {object} rfq - The RFQ object.
- * @returns {number} - The match score.
+ * @param {object} options - Options (e.g., { returnBreakdown: false })
+ * @returns {number|{score: number, breakdown: object}} - The match score or score with breakdown
  */
-function calculateMatchScore(supplier, rfq) {
-    let score = 0;
+function calculateMatchScore(supplier, rfq, options = {}) {
+    const { returnBreakdown = false } = options;
+    
+    const breakdown = {
+        product_category: { score: 0, max: 35, weight: '35%', reason: '' },
+        certifications: { score: 0, max: 25, weight: '25%', reason: '' },
+        distance: { score: 0, max: 20, weight: '20%', reason: '', distance_km: null },
+        category: { score: 0, max: 10, weight: '10%', reason: '' },
+        tier_bonus: { score: 0, max: 10, weight: '10%', reason: '' }
+    };
 
-    // 1. Product Category Match (40 points)
+    // 1. Product Category Match (35 points max)
     // Base score for being in the candidate pool
-    score += 40;
+    breakdown.product_category.score = 35;
+    breakdown.product_category.reason = 'Matched to candidate pool by product/material type';
 
-    // 2. Certification Requirements (30 points)
+    // 2. Certification Requirements (25 points max)
     const projectDetails = parseProjectDetails(rfq?.project_details);
     const requiredCerts = projectDetails.certifications || [];
     const supplierCerts = supplier.certifications || [];
 
     if (Array.isArray(requiredCerts) && requiredCerts.length > 0 && Array.isArray(supplierCerts)) {
-        const matchCount = requiredCerts.filter(c => 
+        const matchedCerts = requiredCerts.filter(c => 
             supplierCerts.some(sc => 
                 sc && c && sc.toLowerCase() === c.toLowerCase()
             )
-        ).length;
-        score += (matchCount / requiredCerts.length) * 30;
+        );
+        const matchCount = matchedCerts.length;
+        breakdown.certifications.score = Math.round((matchCount / requiredCerts.length) * 25);
+        breakdown.certifications.reason = matchCount > 0 
+            ? `Matched ${matchCount}/${requiredCerts.length} required certifications: ${matchedCerts.join(', ')}`
+            : `No matching certifications (required: ${requiredCerts.join(', ')})`;
+        breakdown.certifications.matched = matchedCerts;
+        breakdown.certifications.required = requiredCerts;
     } else {
         // No specific requirements or no supplier certs to compare
-        score += 30;
+        breakdown.certifications.score = 25;
+        breakdown.certifications.reason = 'No specific certification requirements';
     }
 
-    // 3. Location/Service Radius (20 points)
-    // If supplier has location data, give full points
-    if (supplier.latitude && supplier.longitude) {
-        score += 20;
-    } else if (supplier.location) {
-        score += 10; // Partial credit for text location
-    } else {
-        score += 5; // Minimal credit
-    }
+    // 3. Distance/Location Score (20 points max) - Now using actual distance calculation
+    const distanceResult = calculateDistanceScore(supplier, rfq);
+    // Scale the 0-100 distance score to 0-20 points
+    breakdown.distance.score = Math.round((distanceResult.score / 100) * 20);
+    breakdown.distance.reason = distanceResult.reason;
+    breakdown.distance.distance_km = distanceResult.distance_km;
+    breakdown.distance.has_location = distanceResult.has_location;
 
-    // 4. Category match bonus (10 points)
+    // 4. Category match (10 points max)
     if (rfq.category && supplier.category) {
         if (rfq.category.toLowerCase() === supplier.category.toLowerCase()) {
-            score += 10;
+            breakdown.category.score = 10;
+            breakdown.category.reason = `Exact category match: ${rfq.category}`;
+        } else {
+            breakdown.category.score = 0;
+            breakdown.category.reason = `Category mismatch: RFQ(${rfq.category}) vs Supplier(${supplier.category})`;
         }
     } else {
-        score += 10; // No category filter, give full points
+        breakdown.category.score = 10; // No category filter, give full points
+        breakdown.category.reason = 'No category filter applied';
     }
 
-    return Math.min(Math.round(score), 100);
+    // 5. Tier bonus (10 points max) - Premium suppliers get preference
+    const tierBonuses = {
+        enterprise: 10,
+        premium: 10,
+        pro: 7,
+        standard: 5,
+        claimed: 3,
+        free: 2,
+        scraped: 0
+    };
+    const tier = (supplier.tier || 'free').toLowerCase();
+    breakdown.tier_bonus.score = tierBonuses[tier] || 2;
+    breakdown.tier_bonus.reason = `Tier: ${tier} (${breakdown.tier_bonus.score}/10 bonus)`;
+    breakdown.tier_bonus.tier = tier;
+
+    // Calculate total score
+    const totalScore = Math.min(
+        breakdown.product_category.score +
+        breakdown.certifications.score +
+        breakdown.distance.score +
+        breakdown.category.score +
+        breakdown.tier_bonus.score,
+        100
+    );
+
+    if (returnBreakdown) {
+        return {
+            score: totalScore,
+            breakdown,
+            calculated_at: new Date().toISOString()
+        };
+    }
+
+    return totalScore;
 }
 
 /**
@@ -342,5 +517,7 @@ module.exports = {
     findMatchingSuppliers,
     findMatchingMaterials,
     calculateMatchScore,
+    calculateDistanceScore,
+    haversineDistance,
     anonymizeIfShadow
 };
