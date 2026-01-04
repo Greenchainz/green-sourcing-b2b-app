@@ -2,6 +2,7 @@ const { pool } = require('../../db');
 const { findMatchingSuppliers } = require('./matcher');
 const { createDistributionWaves } = require('./waves');
 const entitlements = require('../entitlements');
+const { createDistributionWaves, isShadowTier, ACCESS_LEVELS } = require('./waves');
 
 /**
  * Calculates the Haversine distance between two points in kilometers.
@@ -125,7 +126,13 @@ function calculatePriorityScore(supplier, rfq, metrics, verification, supplierEn
 
 /**
  * Main distribution function.
- * Creates distribution waves for matching suppliers.
+ * Creates distribution waves for matching suppliers with tiered access.
+ * 
+ * Tiered Access Policy:
+ * - Premium suppliers: Wave 1, immediate full access
+ * - Standard suppliers: Wave 2, 15-min delay, full access
+ * - Free suppliers: Wave 3, 60-min delay, full access
+ * - Shadow suppliers: Wave 4, outreach/claim prompts ONLY (no full listing)
  * 
  * Now integrates with the entitlements service to:
  * - Factor subscription tier into priority scoring
@@ -137,31 +144,32 @@ function calculatePriorityScore(supplier, rfq, metrics, verification, supplierEn
  * @param {boolean} options.useEntitlements - Use entitlements service (default: true)
  * @param {boolean} options.enforceQuotas - Enforce RFQ quotas (default: true)
  * @returns {Promise<{success: boolean, supplierCount: number, skippedQuota?: number, error?: string}>}
+ * @returns {Promise<{success: boolean, supplierCount: number, shadowCount: number, waveBreakdown: object, error?: string}>}
  */
 async function distributeRFQ(rfqId, options = {}) {
     const { useEntitlements = true, enforceQuotas = true } = options;
 
     if (!rfqId) {
         console.error('distributeRFQ called without rfqId');
-        return { success: false, supplierCount: 0, error: 'Missing rfqId' };
+        return { success: false, supplierCount: 0, shadowCount: 0, waveBreakdown: {}, error: 'Missing rfqId' };
     }
 
     const client = await pool.connect();
     try {
-        console.log(`Starting distribution for RFQ ${rfqId}`);
+        console.log(`[RFQ Distribution] Starting distribution for RFQ ${rfqId}`);
 
         // 1. Find Matching Suppliers
         let candidates = await findMatchingSuppliers(rfqId);
         if (!candidates || candidates.length === 0) {
-            console.log(`No matching suppliers found for RFQ ${rfqId}.`);
-            return { success: true, supplierCount: 0 };
+            console.log(`[RFQ Distribution] No matching suppliers found for RFQ ${rfqId}.`);
+            return { success: true, supplierCount: 0, shadowCount: 0, waveBreakdown: {} };
         }
 
         // 2. Fetch RFQ details
         const rfqRes = await client.query('SELECT * FROM rfqs WHERE id = $1', [rfqId]);
         if (rfqRes.rows.length === 0) {
-            console.error(`RFQ ${rfqId} not found during distribution.`);
-            return { success: false, supplierCount: 0, error: 'RFQ not found' };
+            console.error(`[RFQ Distribution] RFQ ${rfqId} not found during distribution.`);
+            return { success: false, supplierCount: 0, shadowCount: 0, waveBreakdown: {}, error: 'RFQ not found' };
         }
         const rfq = rfqRes.rows[0];
 
@@ -201,9 +209,26 @@ async function distributeRFQ(rfqId, options = {}) {
             const supplierEntitlements = entitlementsMap.get(s.id) || null;
             const priorityScore = calculatePriorityScore(s, rfq, metrics, verification, supplierEntitlements);
             return { ...s, metrics, verification, entitlements: supplierEntitlements, priorityScore };
+        // 4. Calculate Priority Scores and categorize by tier
+        let fullAccessCount = 0;
+        let shadowAccessCount = 0;
+        
+        candidates = candidates.map(s => {
+            const metrics = metricsMap.get(s.id) || {};
+            const verification = verifyMap.get(s.id) || {};
+            const priorityScore = calculatePriorityScore(s, rfq, metrics, verification);
+            const isShadow = isShadowTier(s.tier);
+            
+            if (isShadow) {
+                shadowAccessCount++;
+            } else {
+                fullAccessCount++;
+            }
+            
+            return { ...s, metrics, verification, priorityScore, isShadow };
         });
 
-        // Sort by Priority Score Descending
+        // Sort by Priority Score Descending (within tier groups)
         candidates.sort((a, b) => b.priorityScore - a.priorityScore);
 
         console.log(`Ranked ${candidates.length} suppliers for RFQ ${rfqId}`);
@@ -213,18 +238,39 @@ async function distributeRFQ(rfqId, options = {}) {
             useEntitlements, 
             enforceQuotas 
         });
+        console.log(`[RFQ Distribution] Ranked ${candidates.length} suppliers for RFQ ${rfqId}:`);
+        console.log(`  - Full access eligible: ${fullAccessCount}`);
+        console.log(`  - Shadow/outreach only: ${shadowAccessCount}`);
 
-        console.log(`Distribution waves created for RFQ ${rfqId}.`);
+        // 5. Create Distribution Waves with tiered access
+        const waveResult = await createDistributionWaves(rfqId, candidates);
+
+        if (!waveResult.success) {
+            console.error(`[RFQ Distribution] Failed to create waves for RFQ ${rfqId}: ${waveResult.error}`);
+            return { 
+                success: false, 
+                supplierCount: 0, 
+                shadowCount: 0, 
+                waveBreakdown: {},
+                error: waveResult.error 
+            };
+        }
+
+        console.log(`[RFQ Distribution] Waves created for RFQ ${rfqId}:`);
+        console.log(`  - Full access: ${waveResult.count} suppliers`);
+        console.log(`  - Shadow outreach: ${waveResult.shadowCount} suppliers`);
 
         return { 
             success: true, 
             supplierCount: waveResult.count,
             skippedQuota: waveResult.skippedQuota || 0
+            shadowCount: waveResult.shadowCount,
+            waveBreakdown: waveResult.waveBreakdown || {}
         };
 
     } catch (err) {
-        console.error(`Error distributing RFQ ${rfqId}:`, err);
-        return { success: false, supplierCount: 0, error: err.message };
+        console.error(`[RFQ Distribution] Error distributing RFQ ${rfqId}:`, err);
+        return { success: false, supplierCount: 0, shadowCount: 0, waveBreakdown: {}, error: err.message };
     } finally {
         client.release();
     }
