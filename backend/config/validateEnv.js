@@ -22,6 +22,7 @@ const REQUIRED_SECRETS = [
   { name: 'SESSION_SECRET', minLength: 32, description: 'Express session signing key' },
   { name: 'COOKIE_SECRET', minLength: 32, description: 'Cookie encryption key' },
   { name: 'DB_PASSWORD', minLength: 12, description: 'PostgreSQL database password' },
+  { name: 'STRIPE_SECRET_KEY', minLength: 20, description: 'Stripe API secret key for payments' },
 ];
 
 // ============================================
@@ -70,6 +71,15 @@ const CONDITIONAL_REQUIREMENTS = [
       { name: 'SMTP_HOST', description: 'SMTP server host' },
       { name: 'SMTP_USER', description: 'SMTP username' },
       { name: 'SMTP_PASS', minLength: 8, description: 'SMTP password' },
+    ],
+  },
+  // LinkedIn OAuth required if LinkedIn verification feature is enabled
+  {
+    condition: () => process.env.FEATURE_LINKEDIN_VERIFICATION === 'true',
+    requirements: [
+      { name: 'LINKEDIN_CLIENT_ID', description: 'LinkedIn OAuth application ID' },
+      { name: 'LINKEDIN_CLIENT_SECRET', minLength: 10, description: 'LinkedIn OAuth secret' },
+      { name: 'LINKEDIN_REDIRECT_URI', description: 'LinkedIn OAuth redirect URI' },
     ],
   },
 ];
