@@ -189,7 +189,7 @@ async function syncSupplierToIntercom(supplier) {
 
     return { success: true, contact, created };
   } catch (error) {
-    console.error(`Error syncing supplier ${supplier.id} to Intercom:`, error.message);
+    console.error('Error syncing supplier %s to Intercom:', supplier.id, error.message);
     return { success: false, error: error.message };
   }
 }
