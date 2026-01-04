@@ -15,6 +15,7 @@ module.exports = {
     getCategoryTree: search.getCategoryTree,
     compareMaterials: search.compareMaterials,
     getAvailableCertifications: search.getAvailableCertifications,
+    getFacets: search.getFacets,
     
     // Scoring functions
     calculateSustainabilityBreakdown: scoring.calculateSustainabilityBreakdown,
