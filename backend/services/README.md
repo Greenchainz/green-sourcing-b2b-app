@@ -1,6 +1,93 @@
+# Backend Services
+
+This directory contains the backend services for GreenChainz including data provider integrations and the billing/entitlements system.
+
+## Entitlements Service (`entitlements/index.js`)
+
+The entitlements service manages supplier pricing tiers (Free/Standard/Premium) and their associated capabilities. It provides a central interface for checking tier-based permissions across the platform.
+
+### Tier Structure
+
+| Tier | Monthly | RFQ Wave | RFQ Delay | RFQ Quota | Outbound Messaging |
+|------|---------|----------|-----------|-----------|-------------------|
+| **Free** | $0 | 3 | 30 min | 10/month | ❌ |
+| **Standard** | $49 | 2 | 15 min | 50/month | ✅ 25/month |
+| **Premium** | $199 | 1 | 0 min | Unlimited | ✅ Unlimited |
+
+### Core Functions
+
+```javascript
+const entitlements = require('./services/entitlements');
+
+// Check if supplier can send outbound messages
+const canSend = await entitlements.canOutbound(supplierId);
+// Returns: { allowed: true, remaining: 20 } or { allowed: false, reason: '...' }
+
+// Get RFQ priority (wave placement)
+const priority = await entitlements.getRfqPriority(supplierId);
+// Returns: { waveNumber: 1, delayMinutes: 0, tierCode: 'premium' }
+
+// Get all quotas
+const quotas = await entitlements.getQuotas(supplierId);
+// Returns: { rfq: { limit: 50, used: 12, remaining: 38 }, outbound: {...} }
+
+// Get full entitlements
+const ent = await entitlements.getEntitlements(supplierId);
+// Returns all tier capabilities (messaging, badges, analytics, etc.)
+
+// Check if supplier can receive more RFQs
+const canReceive = await entitlements.canReceiveRfq(supplierId);
+```
+
+### Tier Management
+
+```javascript
+// Set supplier to a tier
+await entitlements.setSupplierTier(supplierId, 'standard', {
+  billingCycle: 'monthly',
+  stripeCustomerId: 'cus_xxx',
+  trialDays: 14
+});
+
+// Get all available tiers
+const tiers = await entitlements.getAllTiers();
+
+// Get specific tier info
+const tier = await entitlements.getTierByCode('premium');
+```
+
+### Usage Tracking
+
+```javascript
+// Track RFQ received (for quota enforcement)
+await entitlements.incrementRfqUsage(supplierId, rfqId);
+
+// Track outbound message (for quota enforcement)
+await entitlements.incrementOutboundUsage(supplierId, messageId);
+
+// Reset monthly usage (run on cron)
+await entitlements.resetMonthlyUsage();
+```
+
+### Database Tables
+
+- `Supplier_Tiers` - Defines Free/Standard/Premium tiers
+- `Tier_Entitlements` - Maps tiers to capabilities (wave, quota, features)
+- `Supplier_Subscriptions` - Links suppliers to their tier + tracks usage
+- `Supplier_Usage_Log` - Audit trail for billing/analytics
+
+### Integration Points
+
+The entitlements service is integrated with:
+- **RFQ Distribution** (`rfq/waves.js`) - Wave placement based on tier
+- **RFQ Distributor** (`rfq/distributor.js`) - Priority scoring includes tier
+- **Messaging** (`intercom/messaging.js`) - Outbound permission checks
+
+---
+
 # Data Provider Integration Services
 
-This directory contains the backend services for integrating with 10 data providers for certification verification and environmental data. See [DATA-PROVIDERS.md](../../DATA-PROVIDERS.md) for the complete integration roadmap.
+This directory also contains the backend services for integrating with 10 data providers for certification verification and environmental data. See [DATA-PROVIDERS.md](../../DATA-PROVIDERS.md) for the complete integration roadmap.
 
 ## Implemented Services
 
