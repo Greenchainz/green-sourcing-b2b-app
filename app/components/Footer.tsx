@@ -1,47 +1,34 @@
-import Image from 'next/image'
-import Link from 'next/link'
-import TrustBadges from './TrustBadges'
+import Image from "next/image";
+import Link from "next/link";
+import TrustBadges from "./TrustBadges";
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear()
+  const currentYear = new Date().getFullYear();
 
   return (
     <footer className="gc-footer">
-      <div className="gc-container" style={{ paddingTop: 48, paddingBottom: 48 }}>
+      <div className="gc-container py-12">
         {/* Trust Badges (Compact) */}
-        <div style={{ marginBottom: 40 }}>
+        <div className="mb-10">
           <TrustBadges variant="compact" size="sm" />
         </div>
 
         {/* Footer Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 32,
-          }}
-        >
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-8">
           {/* Column 1: Brand */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="flex flex-col gap-3.5">
             <Link href="/" aria-label="GreenChainz home">
               <Image
                 src="/brand/logo-main.png"
                 alt="GreenChainz"
                 width={160}
                 height={40}
-                style={{ height: 38, width: 'auto' }}
+                className="h-[38px] w-auto"
               />
             </Link>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 14,
-                color: 'var(--gc-slate-600)',
-                lineHeight: 1.6,
-                maxWidth: 260,
-              }}
-            >
-              The data-driven B2B marketplace for verified green building materials.
+            <p className="m-0 text-sm text-[var(--gc-slate-600)] leading-[1.6] max-w-[260px]">
+              The data-driven B2B marketplace for verified green building
+              materials.
             </p>
           </div>
 
@@ -49,10 +36,18 @@ export default function Footer() {
           <div>
             <h3 className="gc-footer-heading">Company</h3>
             <nav aria-label="Company links">
-              <Link href="/about" className="gc-footer-link">About</Link>
-              <Link href="/blog" className="gc-footer-link">Blog</Link>
-              <Link href="/careers" className="gc-footer-link">Careers</Link>
-              <Link href="/contact" className="gc-footer-link">Contact</Link>
+              <Link href="/about" className="gc-footer-link">
+                About
+              </Link>
+              <Link href="/blog" className="gc-footer-link">
+                Blog
+              </Link>
+              <Link href="/careers" className="gc-footer-link">
+                Careers
+              </Link>
+              <Link href="/contact" className="gc-footer-link">
+                Contact
+              </Link>
             </nav>
           </div>
 
@@ -60,11 +55,21 @@ export default function Footer() {
           <div>
             <h3 className="gc-footer-heading">Resources</h3>
             <nav aria-label="Resources links">
-              <Link href="/how-it-works" className="gc-footer-link">How It Works</Link>
-              <Link href="/pricing" className="gc-footer-link">Pricing</Link>
-              <Link href="/help" className="gc-footer-link">Help Center</Link>
-              <Link href="/developers" className="gc-footer-link">API Docs</Link>
-              <Link href="/partners" className="gc-footer-link">Partner Program</Link>
+              <Link href="/how-it-works" className="gc-footer-link">
+                How It Works
+              </Link>
+              <Link href="/pricing" className="gc-footer-link">
+                Pricing
+              </Link>
+              <Link href="/help" className="gc-footer-link">
+                Help Center
+              </Link>
+              <Link href="/developers" className="gc-footer-link">
+                API Docs
+              </Link>
+              <Link href="/partners" className="gc-footer-link">
+                Partner Program
+              </Link>
             </nav>
           </div>
 
@@ -72,28 +77,23 @@ export default function Footer() {
           <div>
             <h3 className="gc-footer-heading">Legal</h3>
             <nav aria-label="Legal links">
-              <Link href="/legal/privacy" className="gc-footer-link">Privacy Policy</Link>
-              <Link href="/legal/terms" className="gc-footer-link">Terms of Service</Link>
-              <Link href="/legal/supplier-agreement" className="gc-footer-link">Supplier Agreement</Link>
+              <Link href="/legal/privacy" className="gc-footer-link">
+                Privacy Policy
+              </Link>
+              <Link href="/legal/terms" className="gc-footer-link">
+                Terms of Service
+              </Link>
+              <Link href="/legal/supplier-agreement" className="gc-footer-link">
+                Supplier Agreement
+              </Link>
             </nav>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div
-          style={{
-            marginTop: 48,
-            paddingTop: 24,
-            borderTop: '1px solid var(--gc-glass-border)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-          }}
-        >
+        <div className="mt-12 pt-6 border-t border-[var(--gc-glass-border)] flex flex-wrap items-center justify-between gap-4">
           {/* Social Icons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="flex items-center gap-2">
             <a
               href="https://linkedin.com/company/greenchainz"
               target="_blank"
@@ -130,17 +130,11 @@ export default function Footer() {
           </div>
 
           {/* Copyright */}
-          <p
-            style={{
-              margin: 0,
-              fontSize: 13,
-              color: 'var(--gc-slate-500)',
-            }}
-          >
+          <p className="m-0 text-[13px] text-[var(--gc-slate-500)]">
             © {currentYear} GreenChainz, Inc. All rights reserved.
           </p>
         </div>
       </div>
     </footer>
-  )
+  );
 }
