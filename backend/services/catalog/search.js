@@ -235,9 +235,13 @@ async function searchMaterials({
             relevanceScore: parseFloat(row.rank) || 0
         }));
         
+        // Fetch facets for filtering (categories, certifications, score ranges)
+        const facets = await getFacets(query, category, certifications, minScore);
+        
         return {
             materials,
             total,
+            facets,
             pagination: {
                 limit,
                 offset,
@@ -256,6 +260,151 @@ async function searchMaterials({
     } catch (error) {
         console.error('Search query failed:', error);
         throw new Error(`Material search failed: ${error.message}`);
+    }
+}
+
+/**
+ * Get facets for search filtering
+ * Returns counts by category, certification, and score ranges
+ * 
+ * @param {string} query - Current search query (to scope facets)
+ * @param {string|number} category - Current category filter
+ * @param {Array<string>} certifications - Current certification filters
+ * @param {number} minScore - Current minimum score filter
+ * @returns {Object} - { categories, certifications, scoreRanges }
+ */
+async function getFacets(query = '', category = null, certifications = [], minScore = null) {
+    try {
+        // Build base search condition if query exists
+        const search = buildSearchCondition(query);
+        const baseCondition = search.condition;
+        const baseParams = [...search.params];
+        
+        // Category facets
+        const categoryFacetsQuery = `
+            WITH search_vector AS (
+                SELECT 
+                    p."ProductID",
+                    setweight(to_tsvector('english', COALESCE(p."ProductName", '')), 'A') ||
+                    setweight(to_tsvector('english', COALESCE(p."Description", '')), 'B') ||
+                    setweight(to_tsvector('english', COALESCE(pc."CategoryName", '')), 'C') AS search_vector
+                FROM Products p
+                LEFT JOIN Product_Categories pc ON p."CategoryID" = pc."CategoryID"
+            )
+            SELECT 
+                pc."CategoryID" AS id,
+                pc."CategoryName" AS name,
+                COUNT(p."ProductID") AS count
+            FROM Products p
+            LEFT JOIN search_vector sv ON p."ProductID" = sv."ProductID"
+            LEFT JOIN Product_Categories pc ON p."CategoryID" = pc."CategoryID"
+            WHERE ${baseCondition}
+            GROUP BY pc."CategoryID", pc."CategoryName"
+            HAVING COUNT(p."ProductID") > 0
+            ORDER BY COUNT(p."ProductID") DESC
+            LIMIT 20
+        `;
+        
+        // Certification facets
+        const certFacetsQuery = `
+            WITH search_vector AS (
+                SELECT 
+                    p."ProductID",
+                    setweight(to_tsvector('english', COALESCE(p."ProductName", '')), 'A') ||
+                    setweight(to_tsvector('english', COALESCE(p."Description", '')), 'B') AS search_vector
+                FROM Products p
+            )
+            SELECT 
+                c."Name" AS name,
+                c."CertifyingBody" AS certifying_body,
+                COUNT(DISTINCT p."ProductID") AS count
+            FROM Products p
+            LEFT JOIN search_vector sv ON p."ProductID" = sv."ProductID"
+            LEFT JOIN Supplier_Certifications sc ON p."SupplierID" = sc."SupplierID"
+            JOIN Certifications c ON sc."CertificationID" = c."CertificationID"
+            WHERE ${baseCondition}
+            AND (sc."Status" = 'Valid' OR sc."ExpiryDate" > NOW() OR sc."ExpiryDate" IS NULL)
+            GROUP BY c."Name", c."CertifyingBody"
+            HAVING COUNT(DISTINCT p."ProductID") > 0
+            ORDER BY COUNT(DISTINCT p."ProductID") DESC
+            LIMIT 30
+        `;
+        
+        // Score range facets
+        const scoreRangeFacetsQuery = `
+            WITH search_vector AS (
+                SELECT 
+                    p."ProductID",
+                    setweight(to_tsvector('english', COALESCE(p."ProductName", '')), 'A') ||
+                    setweight(to_tsvector('english', COALESCE(p."Description", '')), 'B') AS search_vector
+                FROM Products p
+            )
+            SELECT 
+                CASE 
+                    WHEN COALESCE(mss.total_score, 0) >= 80 THEN 'excellent'
+                    WHEN COALESCE(mss.total_score, 0) >= 60 THEN 'good'
+                    WHEN COALESCE(mss.total_score, 0) >= 40 THEN 'average'
+                    ELSE 'below_average'
+                END AS range,
+                COUNT(p."ProductID") AS count
+            FROM Products p
+            LEFT JOIN search_vector sv ON p."ProductID" = sv."ProductID"
+            LEFT JOIN material_sustainability_scores mss 
+                ON mss.entity_type = 'product' AND mss.entity_id = p."ProductID"::text
+            WHERE ${baseCondition}
+            GROUP BY 
+                CASE 
+                    WHEN COALESCE(mss.total_score, 0) >= 80 THEN 'excellent'
+                    WHEN COALESCE(mss.total_score, 0) >= 60 THEN 'good'
+                    WHEN COALESCE(mss.total_score, 0) >= 40 THEN 'average'
+                    ELSE 'below_average'
+                END
+            ORDER BY 
+                CASE 
+                    WHEN COALESCE(mss.total_score, 0) >= 80 THEN 1
+                    WHEN COALESCE(mss.total_score, 0) >= 60 THEN 2
+                    WHEN COALESCE(mss.total_score, 0) >= 40 THEN 3
+                    ELSE 4
+                END
+        `;
+        
+        // Execute all facet queries in parallel
+        const [categoryResult, certResult, scoreResult] = await Promise.all([
+            pool.query(categoryFacetsQuery, baseParams),
+            pool.query(certFacetsQuery, baseParams),
+            pool.query(scoreRangeFacetsQuery, baseParams)
+        ]);
+        
+        return {
+            categories: categoryResult.rows.map(row => ({
+                id: row.id,
+                name: row.name,
+                count: parseInt(row.count)
+            })),
+            certifications: certResult.rows.map(row => ({
+                name: row.name,
+                certifyingBody: row.certifying_body,
+                count: parseInt(row.count)
+            })),
+            scoreRanges: scoreResult.rows.map(row => ({
+                range: row.range,
+                label: row.range === 'excellent' ? 'Excellent (80-100)' :
+                       row.range === 'good' ? 'Good (60-79)' :
+                       row.range === 'average' ? 'Average (40-59)' : 'Below Average (0-39)',
+                minScore: row.range === 'excellent' ? 80 :
+                          row.range === 'good' ? 60 :
+                          row.range === 'average' ? 40 : 0,
+                count: parseInt(row.count)
+            }))
+        };
+    } catch (error) {
+        console.error('Facets query failed:', error);
+        // Return empty facets on error to not break the search
+        return {
+            categories: [],
+            certifications: [],
+            scoreRanges: []
+        };
     }
 }
 
@@ -648,6 +797,7 @@ module.exports = {
     getCategoryTree,
     compareMaterials,
     getAvailableCertifications,
+    getFacets,
     // Constants for external use
     SORT_OPTIONS,
     DEFAULT_LIMIT,

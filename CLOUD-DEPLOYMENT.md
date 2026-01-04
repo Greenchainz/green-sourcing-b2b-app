@@ -198,9 +198,13 @@ POSTGRES_PORT=5432
 # JWT Secret
 JWT_SECRET=<generate-random-secret>
 
-# Stripe (when ready)
-STRIPE_SECRET_KEY=sk_test_...
+# Stripe Payment Integration
+STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+
+# LinkedIn OAuth (Buyer Verification)
+LINKEDIN_CLIENT_ID=<your-linkedin-client-id>
+LINKEDIN_CLIENT_SECRET=<your-linkedin-client-secret>
 
 # CORS (update with your domain)
 CORS_ORIGIN=https://your-frontend-domain.com
@@ -213,6 +217,103 @@ BUYER_FORM_URL=https://docs.google.com/forms/d/e/EXAMPLE_BUYER/viewform?embedded
 NODE_ENV=production
 PORT=3001
 ```
+
+---
+
+## **Stripe Webhook Configuration**
+
+GreenChainz uses Stripe webhooks for payment processing (RFQ deposits, supplier subscriptions).
+
+### **Webhook Endpoints**
+
+| Environment | Webhook URL |
+|-------------|-------------|
+| **Production** | `https://greenchainz-container.eastus.azurecontainerapps.io/api/webhooks/stripe` |
+| **Staging** | `https://greenchainz-container-staging.eastus.azurecontainerapps.io/api/webhooks/stripe` |
+
+### **Setting Up Stripe Webhooks**
+
+1. **Go to Stripe Dashboard** → Developers → Webhooks
+2. **Add endpoint** with the appropriate URL from the table above
+3. **Select events** to listen for:
+   - `checkout.session.completed` - RFQ deposit payments
+   - `customer.subscription.created` - Supplier tier subscriptions
+   - `customer.subscription.updated` - Subscription changes
+   - `customer.subscription.deleted` - Subscription cancellations
+   - `invoice.paid` - Successful invoice payments
+   - `invoice.payment_failed` - Failed payments
+
+4. **Copy the signing secret** (starts with `whsec_`)
+5. **Store in Azure Key Vault**:
+   ```bash
+   export STRIPE_WEBHOOK_SECRET='whsec_...'
+   ./azure/setup-secrets.sh
+   ```
+
+### **Verifying Webhook Configuration**
+
+Test the webhook endpoint:
+```bash
+# Production
+curl -X POST https://greenchainz-container.eastus.azurecontainerapps.io/api/webhooks/stripe \
+  -H "Content-Type: application/json" \
+  -d '{"test": true}'
+# Should return 400 (missing signature) - confirms endpoint is reachable
+
+# Staging
+curl -X POST https://greenchainz-container-staging.eastus.azurecontainerapps.io/api/webhooks/stripe \
+  -H "Content-Type: application/json" \
+  -d '{"test": true}'
+```
+
+### **Azure Key Vault Secrets for Payments**
+
+Required secrets in `greenchianz-vault`:
+
+| Secret Name | Description | Example |
+|-------------|-------------|---------|
+| `stripe-secret-key` | Stripe API secret key | `sk_live_...` |
+| `stripe-webhook-secret` | Webhook signing secret | `whsec_...` |
+
+Set these using:
+```bash
+export STRIPE_SECRET_KEY='sk_live_...'
+export STRIPE_WEBHOOK_SECRET='whsec_...'
+./azure/setup-secrets.sh
+```
+
+---
+
+## **LinkedIn OAuth Configuration**
+
+GreenChainz uses LinkedIn OAuth for buyer verification (professional identity validation).
+
+### **OAuth Callback URLs**
+
+| Environment | Callback URL |
+|-------------|--------------|
+| **Production** | `https://greenchainz-container.eastus.azurecontainerapps.io/api/auth/linkedin/callback` |
+| **Staging** | `https://greenchainz-container-staging.eastus.azurecontainerapps.io/api/auth/linkedin/callback` |
+
+### **Setting Up LinkedIn App**
+
+1. Go to [LinkedIn Developer Portal](https://developer.linkedin.com/)
+2. Create a new app or use existing
+3. Under **Auth** tab, add the callback URLs above
+4. Copy the **Client ID** and **Client Secret**
+5. Store in Azure Key Vault:
+   ```bash
+   export LINKEDIN_CLIENT_ID='your-client-id'
+   export LINKEDIN_CLIENT_SECRET='your-client-secret'
+   ./azure/setup-secrets.sh
+   ```
+
+### **Azure Key Vault Secrets for LinkedIn**
+
+| Secret Name | Description |
+|-------------|-------------|
+| `linkedin-client-id` | LinkedIn OAuth Client ID |
+| `linkedin-client-secret` | LinkedIn OAuth Client Secret |
 
 Quick test links you can email immediately (will preserve invite/email params):
 

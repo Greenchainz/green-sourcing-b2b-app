@@ -47,6 +47,20 @@ properties:
       - name: session-secret
         keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/session-secret
         identity: system
+      # Stripe payment integration
+      - name: stripe-secret-key
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/stripe-secret-key
+        identity: system
+      - name: stripe-webhook-secret
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/stripe-webhook-secret
+        identity: system
+      # LinkedIn OAuth integration
+      - name: linkedin-client-id
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/linkedin-client-id
+        identity: system
+      - name: linkedin-client-secret
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/linkedin-client-secret
+        identity: system
 
   template:
     containers:
@@ -124,6 +138,22 @@ properties:
             value: "true"
           
           # ─────────────────────────────────────────────────────────────
+          # Stripe Payment Integration
+          # ─────────────────────────────────────────────────────────────
+          - name: STRIPE_SECRET_KEY
+            secretRef: stripe-secret-key
+          - name: STRIPE_WEBHOOK_SECRET
+            secretRef: stripe-webhook-secret
+          
+          # ─────────────────────────────────────────────────────────────
+          # LinkedIn OAuth Integration
+          # ─────────────────────────────────────────────────────────────
+          - name: LINKEDIN_CLIENT_ID
+            secretRef: linkedin-client-id
+          - name: LINKEDIN_CLIENT_SECRET
+            secretRef: linkedin-client-secret
+          
+          # ─────────────────────────────────────────────────────────────
           # Azure Services
           # ─────────────────────────────────────────────────────────────
           - name: AZURE_USE_MANAGED_IDENTITY
@@ -136,7 +166,9 @@ properties:
             value: greenchainz-uploads
         
         # ─────────────────────────────────────────────────────────────
-        # Health Probes (all use /health - no /ready endpoint exists)
+        # Health Probes
+        # - Liveness: /health - basic process health check
+        # - Readiness: /ready - checks database/Redis connectivity
         # ─────────────────────────────────────────────────────────────
         probes:
           - type: liveness
@@ -149,7 +181,7 @@ properties:
           
           - type: readiness
             httpGet:
-              path: /health
+              path: /ready
               port: 3001
             initialDelaySeconds: 5
             periodSeconds: 10
