@@ -2,8 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import MetricCard from "../../components/admin/MetricCard";
-import StatusBadge from "../../components/admin/StatusBadge";
+import MetricCard from "../components/admin/MetricCard";
+import StatusBadge from "../components/admin/StatusBadge";
 
 export default function AdminOverview() {
   return (
