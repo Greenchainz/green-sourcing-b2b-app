@@ -1,94 +1,58 @@
-import TrustBadges from './components/TrustBadges'
-import Link from 'next/link'
+import TrustBadges from "./components/TrustBadges";
+import Link from "next/link";
 
 const STATS = [
-  { value: '50+', label: 'Verified Suppliers' },
-  { value: 'Fast', label: 'RFQ Distribution' },
-  { value: '24/7', label: 'Verification Checks' },
-] as const
+  { value: "50+", label: "Verified Suppliers" },
+  { value: "Fast", label: "RFQ Distribution" },
+  { value: "24/7", label: "Verification Checks" },
+] as const;
 
 export default function Home() {
   return (
     <div className="gc-page">
-      <div className="gc-container" style={{ paddingTop: 64, paddingBottom: 80 }}>
+      <div className="gc-container py-16 pb-20">
         {/* Hero Section */}
-        <section style={{ textAlign: 'center', marginBottom: 48 }}>
+        <section className="text-center mb-12">
           <h1 className="gc-hero-title gc-animate-fade-in">
-            <span style={{ color: 'var(--gc-slate-900)', fontWeight: 900 }}>
+            <span className="text-[var(--gc-slate-900)] font-black">
               The Trust Layer
             </span>
             <br />
-            <span
-              style={{
-                fontWeight: 900,
-                background: 'linear-gradient(135deg, var(--gc-emerald-600), var(--gc-teal-600))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
+            <span className="font-black text-transparent bg-clip-text bg-gradient-to-br from-[var(--gc-emerald-600)] to-[var(--gc-teal-600)]">
               for Sustainable Commerce
             </span>
           </h1>
 
-          <p
-            className="gc-hero-subtitle gc-animate-fade-in gc-stagger-1"
-            style={{
-              marginTop: 20,
-              marginBottom: 0,
-            }}
-          >
-            Connect verified suppliers with architects &amp; builders. Automated certification
-            verification. Real-time material sourcing powered by LEED, EPD, FSC, and more.
+          <p className="gc-hero-subtitle gc-animate-fade-in gc-stagger-1 mt-5 mb-0">
+            Connect verified suppliers with architects &amp; builders. Automated
+            certification verification. Real-time material sourcing powered by
+            LEED, EPD, FSC, and more.
           </p>
         </section>
 
         {/* CTA Buttons */}
-        <div
-          className="gc-animate-fade-in gc-stagger-2"
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 14,
-            flexWrap: 'wrap',
-            marginBottom: 36,
-          }}
-        >
+        <div className="gc-animate-fade-in gc-stagger-2 flex justify-center gap-3.5 flex-wrap mb-9">
           <Link
             href="/signup?type=supplier"
-            className="gc-btn gc-btn-primary"
-            style={{ padding: '1rem 1.5rem', fontSize: 16 }}
+            className="gc-btn gc-btn-primary py-4 px-6 text-base"
           >
             Join as Supplier
           </Link>
           <Link
             href="/signup?type=architect"
-            className="gc-btn gc-btn-secondary"
-            style={{ padding: '1rem 1.5rem', fontSize: 16 }}
+            className="gc-btn gc-btn-secondary py-4 px-6 text-base"
           >
             Join as Architect
           </Link>
         </div>
 
         {/* Trust Badges */}
-        <div
-          className="gc-animate-fade-in gc-stagger-3"
-          style={{ maxWidth: 1024, margin: '0 auto 32px auto' }}
-        >
+        <div className="gc-animate-fade-in gc-stagger-3 max-w-5xl mx-auto mb-8">
           <TrustBadges variant="full" size="md" />
         </div>
 
         {/* Stats Grid */}
-        <div
-          className="gc-animate-fade-in gc-stagger-4"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 16,
-            maxWidth: 800,
-            margin: '0 auto',
-          }}
-        >
+        <div className="gc-animate-fade-in gc-stagger-4 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 max-w-[800px] mx-auto">
           {STATS.map((stat) => (
             <div key={stat.label} className="gc-card gc-card-hover gc-stat">
               <div className="gc-stat-value">{stat.value}</div>
@@ -98,40 +62,17 @@ export default function Home() {
         </div>
 
         {/* Features Section */}
-        <section style={{ marginTop: 80 }}>
-          <h2
-            style={{
-              textAlign: 'center',
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 800,
-              color: 'var(--gc-slate-900)',
-              marginBottom: 12,
-            }}
-          >
+        <section className="mt-20">
+          <h2 className="text-center text-[clamp(1.5rem,4vw,2rem)] font-extrabold text-[var(--gc-slate-900)] mb-3">
             Why GreenChainz?
           </h2>
-          <p
-            style={{
-              textAlign: 'center',
-              color: 'var(--gc-slate-600)',
-              maxWidth: 640,
-              margin: '0 auto 40px auto',
-              lineHeight: 1.7,
-            }}
-          >
-            We&apos;re building the infrastructure for sustainable procurement—connecting data,
-            certifications, and suppliers in one seamless platform.
+          <p className="text-center text-[var(--gc-slate-600)] max-w-2xl mx-auto mb-10 leading-[1.7]">
+            We&apos;re building the infrastructure for sustainable
+            procurement—connecting data, certifications, and suppliers in one
+            seamless platform.
           </p>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: 20,
-              maxWidth: 1024,
-              margin: '0 auto',
-            }}
-          >
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 max-w-5xl mx-auto">
             {[
               {
                 icon: (
@@ -143,14 +84,14 @@ export default function Home() {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ width: 28, height: 28 }}
+                    className="w-7 h-7"
                   >
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     <path d="m9 12 2 2 4-4" />
                   </svg>
                 ),
-                title: 'Verified Certifications',
-                desc: 'Every supplier is validated against LEED, FSC, EPD, and other gold-standard certifications.',
+                title: "Verified Certifications",
+                desc: "Every supplier is validated against LEED, FSC, EPD, and other gold-standard certifications.",
               },
               {
                 icon: (
@@ -162,14 +103,14 @@ export default function Home() {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ width: 28, height: 28 }}
+                    className="w-7 h-7"
                   >
                     <circle cx="12" cy="12" r="10" />
                     <path d="M12 6v6l4 2" />
                   </svg>
                 ),
-                title: 'Fast RFQ Distribution',
-                desc: 'Location-based matching delivers your RFQs to the right suppliers—fast and efficiently.',
+                title: "Fast RFQ Distribution",
+                desc: "Location-based matching delivers your RFQs to the right suppliers—fast and efficiently.",
               },
               {
                 icon: (
@@ -181,54 +122,24 @@ export default function Home() {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ width: 28, height: 28 }}
+                    className="w-7 h-7"
                   >
                     <path d="M3 3v18h18" />
                     <path d="m19 9-5 5-4-4-3 3" />
                   </svg>
                 ),
-                title: 'Sustainability Scoring',
-                desc: 'Real-time dashboards show project-level LEED points, carbon footprint, and EPD metrics.',
+                title: "Sustainability Scoring",
+                desc: "Real-time dashboards show project-level LEED points, carbon footprint, and EPD metrics.",
               },
             ].map((feature) => (
-              <div
-                key={feature.title}
-                className="gc-card gc-card-hover"
-                style={{ padding: 24 }}
-              >
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    background: 'linear-gradient(135deg, var(--gc-emerald-100), var(--gc-teal-100))',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--gc-emerald-700)',
-                    marginBottom: 16,
-                  }}
-                >
+              <div key={feature.title} className="gc-card gc-card-hover p-6">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--gc-emerald-100)] to-[var(--gc-teal-100)] flex items-center justify-center text-[var(--gc-emerald-700)] mb-4">
                   {feature.icon}
                 </div>
-                <h3
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 800,
-                    color: 'var(--gc-slate-900)',
-                    marginBottom: 8,
-                  }}
-                >
+                <h3 className="text-lg font-extrabold text-[var(--gc-slate-900)] mb-2">
                   {feature.title}
                 </h3>
-                <p
-                  style={{
-                    fontSize: 14,
-                    color: 'var(--gc-slate-600)',
-                    lineHeight: 1.6,
-                    margin: 0,
-                  }}
-                >
+                <p className="text-sm text-[var(--gc-slate-600)] leading-[1.6] m-0">
                   {feature.desc}
                 </p>
               </div>
@@ -237,48 +148,24 @@ export default function Home() {
         </section>
 
         {/* CTA Banner */}
-        <section
-          className="gc-card"
-          style={{
-            marginTop: 80,
-            padding: '48px 32px',
-            textAlign: 'center',
-            background:
-              'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(20, 184, 166, 0.06))',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 800,
-              color: 'var(--gc-slate-900)',
-              marginBottom: 12,
-            }}
-          >
+        <section className="gc-card mt-20 py-12 px-8 text-center bg-gradient-to-br from-[rgba(16,185,129,0.08)] to-[rgba(20,184,166,0.06)]">
+          <h2 className="text-[clamp(1.5rem,4vw,2rem)] font-extrabold text-[var(--gc-slate-900)] mb-3">
             Ready to streamline your sourcing?
           </h2>
-          <p
-            style={{
-              color: 'var(--gc-slate-600)',
-              maxWidth: 520,
-              margin: '0 auto 24px auto',
-              lineHeight: 1.7,
-            }}
-          >
-            Join architects and suppliers who trust GreenChainz for verified, sustainable materials.
+          <p className="text-[var(--gc-slate-600)] max-w-[520px] mx-auto mb-6 leading-[1.7]">
+            Join architects and suppliers who trust GreenChainz for verified,
+            sustainable materials.
           </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div className="flex justify-center gap-3 flex-wrap">
             <Link
               href="/rfqs/create"
-              className="gc-btn gc-btn-primary"
-              style={{ padding: '0.9rem 1.4rem', fontSize: 15 }}
+              className="gc-btn gc-btn-primary py-3.5 px-5.5 text-[15px]"
             >
               Create Your First RFQ
             </Link>
             <Link
               href="/how-it-works"
-              className="gc-btn gc-btn-ghost"
-              style={{ padding: '0.9rem 1.4rem', fontSize: 15 }}
+              className="gc-btn gc-btn-ghost py-3.5 px-5.5 text-[15px]"
             >
               Learn More →
             </Link>
@@ -286,5 +173,5 @@ export default function Home() {
         </section>
       </div>
     </div>
-  )
+  );
 }
