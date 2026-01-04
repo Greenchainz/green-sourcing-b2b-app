@@ -1,25 +1,40 @@
-'use client';
+'use client'
 
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import TrustBadges from '@/app/components/TrustBadges';
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function NewRFQPage() {
-  const router = useRouter();
+  const router = useRouter()
+
   useEffect(() => {
-    // Consolidated canonical RFQ creation route:
-    // - `/rfqs/create` talks to the Express backend (JWT)
-    router.replace('/rfqs/create');
-  }, [router]);
+    // Canonical RFQ creation route
+    router.replace('/rfqs/create')
+  }, [router])
 
   return (
-    <div className="gc-page" style={{ padding: 32 }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', display: 'grid', gap: 16 }}>
-        <TrustBadges variant="compact" size="sm" />
-        <div className="gc-card" style={{ padding: 18, color: 'var(--gc-slate-700)' }}>
-          Redirecting to RFQ creation…
+    <div className="gc-page" style={{ padding: 48 }}>
+      <div className="gc-container" style={{ maxWidth: 480 }}>
+        <div
+          className="gc-card gc-animate-fade-in"
+          style={{
+            padding: 32,
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <div className="gc-spinner" />
+          </div>
+          <p
+            style={{
+              margin: 0,
+              color: 'var(--gc-slate-600)',
+              fontSize: 14,
+            }}
+          >
+            Redirecting to RFQ creation…
+          </p>
         </div>
       </div>
     </div>
-  );
+  )
 }
