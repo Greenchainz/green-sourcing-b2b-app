@@ -115,6 +115,42 @@ jobs:
           echo "🎯 Deploying to: ${ENV}"
 
   # ─────────────────────────────────────────────────────────────────────────────
+  # Preflight: check whether target apps already exist
+  # (bootstraps first-time creation even if only backend changes triggered the run)
+  # ─────────────────────────────────────────────────────────────────────────────
+  preflight:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    outputs:
+      backend_exists: ${{ steps.check.outputs.backend_exists }}
+      frontend_exists: ${{ steps.check.outputs.frontend_exists }}
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Check target apps exist
+        id: check
+        shell: bash
+        run: |
+          RESOURCE_GROUP="${{ needs.setup.outputs.resource_group }}"
+          BACKEND_APP="${{ needs.setup.outputs.backend_app }}"
+          FRONTEND_APP="${{ needs.setup.outputs.frontend_app }}"
+
+          if az containerapp show --name "$BACKEND_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+            echo "backend_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "backend_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+          if az containerapp show --name "$FRONTEND_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+            echo "frontend_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "frontend_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────────
   # Detect which components changed (for push events)
   # ─────────────────────────────────────────────────────────────────────────────
   changes:
@@ -145,10 +181,10 @@ jobs:
   # Build and deploy backend
   # ─────────────────────────────────────────────────────────────────────────────
   deploy-backend:
-    needs: [setup, changes]
+    needs: [setup, changes, preflight]
     if: |
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'all' || github.event.inputs.deploy_target == 'backend')) ||
-      (github.event_name == 'push' && needs.changes.outputs.backend == 'true')
+      (github.event_name == 'push' && (needs.changes.outputs.backend == 'true' || needs.preflight.outputs.backend_exists == 'false'))
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
 
@@ -259,13 +295,13 @@ jobs:
   # Build and deploy frontend
   # ─────────────────────────────────────────────────────────────────────────────
   deploy-frontend:
-    needs: [setup, changes, deploy-backend]
+    needs: [setup, changes, preflight, deploy-backend]
     if: |
       always() &&
       (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') &&
       (
         (github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'all' || github.event.inputs.deploy_target == 'frontend')) ||
-        (github.event_name == 'push' && needs.changes.outputs.frontend == 'true')
+        (github.event_name == 'push' && (needs.changes.outputs.frontend == 'true' || needs.preflight.outputs.frontend_exists == 'false'))
       )
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}

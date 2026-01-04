@@ -2,7 +2,7 @@
 # Deploy with: az containerapp create --resource-group rg-greenchainz-prod-container --yaml azure/containerapp-frontend.yaml
 
 properties:
-  managedEnvironmentId: /subscriptions/{subscription-id}/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.App/managedEnvironments/cae-greenchainz-env
+  managedEnvironmentId: /subscriptions/f9164e8d-d74d-43ea-98d4-b0466b3ef8b8/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.App/managedEnvironments/cae-greenchainz-env
   
   configuration:
     activeRevisionsMode: Single
@@ -34,7 +34,7 @@ properties:
             value: "3000"
           # Public runtime config (also baked in at build time via Docker build args)
           - name: NEXT_PUBLIC_BACKEND_URL
-            value: https://greenchainz-container.eastus.azurecontainerapps.io
+            value: https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
           - name: NEXT_PUBLIC_AZURE_TENANT
             value: greenchainz2025.onmicrosoft.com
           - name: NEXT_PUBLIC_AZURE_CLIENT_ID
