@@ -53,6 +53,7 @@ echo_success "Connected to Azure"
 echo_info "Generating secure secrets..."
 JWT_SECRET=$(openssl rand -base64 32)
 SESSION_SECRET=$(openssl rand -base64 32)
+COOKIE_SECRET=$(openssl rand -base64 32)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fetch Redis password from Azure
@@ -99,6 +100,13 @@ az keyvault secret set \
     --name "session-secret" \
     --value "$SESSION_SECRET" &> /dev/null
 echo_success "session-secret set (auto-generated)"
+
+# Cookie secret (auto-generated)
+az keyvault secret set \
+    --vault-name "$VAULT_NAME" \
+    --name "cookie-secret" \
+    --value "$COOKIE_SECRET" &> /dev/null
+echo_success "cookie-secret set (auto-generated)"
 
 # Redis password (fetched from Azure)
 az keyvault secret set \
@@ -172,6 +180,7 @@ echo ""
 echo "Core secrets in Key Vault ($VAULT_NAME):"
 echo "  ✅ jwt-secret"
 echo "  ✅ session-secret"
+echo "  ✅ cookie-secret"
 echo "  ✅ redis-password"
 if [ -n "$DB_PASSWORD" ]; then
     echo "  ✅ postgres-password"

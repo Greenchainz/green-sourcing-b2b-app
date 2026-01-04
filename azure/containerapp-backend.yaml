@@ -41,6 +41,9 @@ properties:
       - name: jwt-secret
         keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/jwt-secret
         identity: system
+      - name: cookie-secret
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/cookie-secret
+        identity: system
       - name: redis-password
         keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/redis-password
         identity: system
@@ -112,6 +115,8 @@ properties:
             secretRef: jwt-secret
           - name: SESSION_SECRET
             secretRef: session-secret
+          - name: COOKIE_SECRET
+            secretRef: cookie-secret
           
           # ─────────────────────────────────────────────────────────────
           # Redis Configuration
@@ -135,7 +140,7 @@ properties:
           - name: FEATURE_AI_DOCUMENT_ANALYSIS
             value: "false"
           - name: NOTIFICATIONS_ENABLED
-            value: "true"
+            value: "false"
           
           # ─────────────────────────────────────────────────────────────
           # Stripe Payment Integration
