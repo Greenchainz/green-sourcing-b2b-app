@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GreenChainz Revit Integration API Contract",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "API contract for Revit add-in integration with GreenChainz sustainability platform",
   "contact": {
     "name": "GreenChainz API Support",
@@ -225,6 +225,7 @@
         "path": "/projects/{projectId}/materials/sync",
         "auth": "azure_entra + plugin_registered + active_session",
         "description": "Sync materials from Revit to GreenChainz",
+        "rateLimit": { "requests": 10, "window": "1 minute" },
         "request": {
           "type": "object",
           "required": ["materials"],
@@ -273,6 +274,153 @@
           "properties": {
             "productId": { "type": "integer", "description": "GreenChainz product ID" },
             "categoryId": { "type": "integer", "description": "GreenChainz category ID" }
+          }
+        }
+      },
+      "alternatives": {
+        "method": "POST",
+        "path": "/materials/{mappingId}/alternatives",
+        "auth": "azure_entra + plugin_registered",
+        "description": "Get AI-powered sustainable alternatives for a mapped material",
+        "request": {
+          "type": "object",
+          "properties": {
+            "maxAlternatives": { 
+              "type": "integer", 
+              "default": 5, 
+              "maximum": 5,
+              "description": "Maximum number of alternatives to return" 
+            },
+            "prioritize": { 
+              "type": "string", 
+              "enum": ["sustainability", "carbon", "cost", "availability"],
+              "default": "sustainability",
+              "description": "What to prioritize when finding alternatives"
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean" },
+            "mappingId": { "type": "integer" },
+            "alternatives": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/Alternative" }
+            },
+            "comparison": {
+              "type": "object",
+              "properties": {
+                "currentMaterial": { "$ref": "#/definitions/MaterialSummary" },
+                "bestAlternative": { "$ref": "#/definitions/Alternative" },
+                "totalAlternatives": { "type": "integer" },
+                "aiPowered": { "type": "boolean" }
+              }
+            },
+            "aiStatus": { 
+              "type": ["string", "object"],
+              "description": "AI service status - 'ok' or error details with fallback info"
+            }
+          }
+        }
+      },
+      "batchMatch": {
+        "method": "POST",
+        "path": "/materials/batch-match",
+        "auth": "azure_entra + plugin_registered",
+        "description": "Batch match Revit material names to catalog products with confidence scores",
+        "request": {
+          "type": "object",
+          "required": ["materials"],
+          "properties": {
+            "materials": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "oneOf": [
+                  { "type": "string", "description": "Material name" },
+                  {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "category": { "type": "string" },
+                      "revitMaterialId": { "type": "string" }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean" },
+            "matches": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/BatchMatchResult" }
+            },
+            "stats": {
+              "type": "object",
+              "properties": {
+                "total": { "type": "integer" },
+                "matched": { "type": "integer" },
+                "highConfidence": { "type": "integer" },
+                "lowConfidence": { "type": "integer" },
+                "noMatch": { "type": "integer" }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "matchRate": { "type": "string", "description": "e.g., '75%'" },
+                "highConfidenceRate": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "catalog": {
+      "search": {
+        "method": "GET",
+        "path": "/catalog/search",
+        "auth": "azure_entra + plugin_registered",
+        "description": "Search GreenChainz catalog with sustainability scores (optimized for Revit)",
+        "queryParams": {
+          "q": { "type": "string", "description": "Search query" },
+          "category": { "type": "string", "description": "Filter by category name or ID" },
+          "certifications": { "type": "string", "description": "Comma-separated certification names" },
+          "minScore": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Minimum sustainability score" },
+          "limit": { "type": "integer", "default": 20, "maximum": 50 },
+          "offset": { "type": "integer", "default": 0 },
+          "sortBy": { "type": "string", "enum": ["relevance", "score", "price_asc", "price_desc", "newest", "name"], "default": "score" }
+        },
+        "response": {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean" },
+            "materials": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/CatalogMaterial" }
+            },
+            "total": { "type": "integer" },
+            "pagination": { "$ref": "#/definitions/Pagination" },
+            "query": { "type": "string", "nullable": true }
+          }
+        }
+      },
+      "get": {
+        "method": "GET",
+        "path": "/catalog/{materialId}",
+        "auth": "azure_entra + plugin_registered",
+        "description": "Get material details by ID (lightweight for Revit)",
+        "response": {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean" },
+            "material": { "$ref": "#/definitions/CatalogMaterialDetail" }
           }
         }
       }
@@ -399,7 +547,144 @@
       "properties": {
         "total": { "type": "integer" },
         "limit": { "type": "integer" },
-        "offset": { "type": "integer" }
+        "offset": { "type": "integer" },
+        "hasMore": { "type": "boolean" },
+        "page": { "type": "integer" },
+        "totalPages": { "type": "integer" }
+      }
+    },
+    "Alternative": {
+      "type": "object",
+      "properties": {
+        "rank": { "type": "integer" },
+        "id": { "type": "integer", "nullable": true, "description": "Product ID if from catalog" },
+        "name": { "type": "string" },
+        "category": { "type": "string", "nullable": true },
+        "supplier": { "type": "string", "nullable": true },
+        "sustainabilityScore": { "type": "integer", "nullable": true },
+        "scoreImprovement": { "type": "string", "nullable": true, "description": "e.g., '+15.5%'" },
+        "estimatedCarbonReduction": { "type": "string", "nullable": true },
+        "certifications": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": "string", "nullable": true },
+        "source": { "type": "string", "enum": ["ai", "catalog"] }
+      }
+    },
+    "MaterialSummary": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "mappedProduct": { "type": "string", "nullable": true },
+        "sustainabilityScore": { "type": "integer", "nullable": true },
+        "embodiedCarbonKg": { "type": "number", "nullable": true },
+        "fscCertified": { "type": "boolean" },
+        "hasEPD": { "type": "boolean" }
+      }
+    },
+    "BatchMatchResult": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "revitMaterialId": { "type": "string", "nullable": true }
+          }
+        },
+        "matched": { "type": "boolean" },
+        "bestMatch": { "$ref": "#/definitions/MatchSuggestion" },
+        "suggestions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/MatchSuggestion" }
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "confidenceLevel": { "type": "string", "enum": ["high", "medium", "low"] },
+        "error": { "type": "string", "nullable": true }
+      }
+    },
+    "MatchSuggestion": {
+      "type": "object",
+      "properties": {
+        "rank": { "type": "integer" },
+        "productId": { "type": "integer" },
+        "productName": { "type": "string" },
+        "category": { "type": "string", "nullable": true },
+        "supplier": { "type": "string", "nullable": true },
+        "sustainabilityScore": { "type": "integer" },
+        "tier": { "type": "string", "nullable": true },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "confidenceLevel": { "type": "string", "enum": ["high", "medium", "low"] }
+      }
+    },
+    "CatalogMaterial": {
+      "type": "object",
+      "description": "Lightweight catalog material for Revit plugin",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "sku": { "type": "string", "nullable": true },
+        "category": { "type": "string", "nullable": true },
+        "supplier": { "type": "string", "nullable": true },
+        "sustainabilityScore": { "type": "integer" },
+        "certifications": { "type": "array", "items": { "type": "string" } },
+        "certificationCount": { "type": "integer" },
+        "unitPrice": { "type": "number", "nullable": true },
+        "currency": { "type": "string", "nullable": true },
+        "tier": { "type": "string", "enum": ["excellent", "good", "average", "unscored"] }
+      }
+    },
+    "CatalogMaterialDetail": {
+      "type": "object",
+      "description": "Detailed catalog material for Revit plugin",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "description": { "type": "string", "nullable": true },
+        "sku": { "type": "string", "nullable": true },
+        "category": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer" },
+            "name": { "type": "string" }
+          }
+        },
+        "supplier": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer" },
+            "name": { "type": "string" }
+          }
+        },
+        "sustainability": {
+          "type": "object",
+          "properties": {
+            "score": { "type": "integer" },
+            "tier": { "type": "string", "nullable": true },
+            "whyRecommended": { "type": "string", "nullable": true }
+          }
+        },
+        "certifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "certifyingBody": { "type": "string", "nullable": true },
+              "status": { "type": "string" }
+            }
+          }
+        },
+        "epd": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "epdNumber": { "type": "string" },
+            "globalWarmingPotential": { "type": "number", "nullable": true },
+            "declaredUnit": { "type": "string", "nullable": true }
+          }
+        },
+        "leedCredits": { "type": "integer" },
+        "unitPrice": { "type": "number", "nullable": true },
+        "currency": { "type": "string", "nullable": true }
       }
     },
     "Error": {
@@ -422,7 +707,15 @@
     "REVIT_SESSION_002": "Active session not found",
     "REVIT_PROJ_404": "Project not found",
     "REVIT_MAP_403": "Not authorized to modify mapping",
-    "REVIT_MAP_404": "Material mapping not found"
+    "REVIT_MAP_404": "Material mapping not found",
+    "REVIT_RATE_429": "Rate limit exceeded (100 requests/minute per session)",
+    "REVIT_CATALOG_404": "Material not found in catalog",
+    "REVIT_CATALOG_500": "Catalog search or retrieval failed",
+    "REVIT_ALT_403": "Not authorized to access material alternatives",
+    "REVIT_ALT_404": "Material mapping not found for alternatives",
+    "REVIT_ALT_500": "Failed to get material alternatives",
+    "REVIT_BATCH_400": "Invalid batch match request (missing materials array or exceeds limit)",
+    "REVIT_BATCH_500": "Batch matching failed"
   },
   "rateLimits": {
     "default": {
@@ -436,6 +729,19 @@
     }
   },
   "changelog": [
+    {
+      "version": "1.1.0",
+      "date": "2026-01-04",
+      "changes": [
+        "Added GET /catalog/search - Optimized catalog search for Revit plugin",
+        "Added GET /catalog/{materialId} - Get material details (lightweight)",
+        "Added POST /materials/{mappingId}/alternatives - AI-powered sustainable alternatives",
+        "Added POST /materials/batch-match - Batch material matching with confidence scores",
+        "Added rate limiting (100 req/min per session) across all endpoints",
+        "Added stricter rate limiting for sync operations (10 req/min)",
+        "New definitions: Alternative, BatchMatchResult, CatalogMaterial, CatalogMaterialDetail"
+      ]
+    },
     {
       "version": "1.0.0",
       "date": "2026-01-04",
