@@ -13,6 +13,7 @@ const authSyncRoutes = require('./routes/auth-sync');
 const rfqSimulatorRoutes = require('./routes/rfq-simulator');
 const authRoutes = require('./routes/auth');
 const rfqRoutes = require('./routes/rfqs');
+const shadowSupplierRoutes = require('./routes/shadow-suppliers');
 
 // Middleware
 const rateLimit = require('./middleware/rateLimit');
@@ -143,6 +144,9 @@ async function start() {
     // Internal API routes (protected by INTERNAL_API_KEY)
     // RFQ Simulator - distribution engine, queue management, metrics
     app.use('/api/internal/simulator', rfqSimulatorRoutes);
+    
+    // Shadow Supplier routes - claim flow, ingestion, catalog
+    app.use('/api/internal/shadow', shadowSupplierRoutes);
 
     // ============================================
     // ERROR HANDLING
