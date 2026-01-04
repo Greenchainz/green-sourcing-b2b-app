@@ -1,49 +1,70 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import TrustBadges from '@/app/components/TrustBadges'
-import RFQCheckout, { StripePaymentResult } from '@/app/components/RFQCheckout'
 import CheckoutTrustSignals from '@/app/components/CheckoutTrustSignals'
+import { RFQStepper, LinkedInVerificationGate, DepositPayment, DEFAULT_DEPOSIT_AMOUNT } from '@/app/components/rfq'
 
 interface Material {
+  id?: string
   name: string
   quantity: number
   unit: string
   specification?: string
+  fromCatalog?: boolean
 }
 
-type Step = 'form' | 'checkout' | 'success'
+type RFQFormStep = 1 | 2 | 3 | 4 | 5
+
+interface User {
+  id: string
+  email: string
+  firstName?: string | null
+  lastName?: string | null
+  role: 'architect' | 'supplier'
+  linkedin_verified?: boolean
+}
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
 
 export default function CreateRFQPage() {
   const router = useRouter()
-  const { token, user } = useAuth()
+  const { token, user } = useAuth() as { token: string | null; user: User | null }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [step, setStep] = useState<Step>('form')
-  const [paymentResult, setPaymentResult] = useState<StripePaymentResult | null>(null)
+  const [currentStep, setCurrentStep] = useState<RFQFormStep>(1)
   const [createdRfqId, setCreatedRfqId] = useState<string | null>(null)
+  const [depositPaymentIntentId, setDepositPaymentIntentId] = useState<string | null>(null)
+  const [depositAmount, setDepositAmount] = useState<number>(0)
 
-  const [materials, setMaterials] = useState<Material[]>([
-    { name: '', quantity: 0, unit: '' },
-  ])
-
+  // Form data
   const [formData, setFormData] = useState({
     project_name: '',
     description: '',
     deadline: '',
     budget: '',
     certifications_required: '',
+    location: '',
   })
 
+  const [materials, setMaterials] = useState<Material[]>([
+    { name: '', quantity: 0, unit: '' },
+  ])
+
+  // Check if user is LinkedIn verified (mock - in production, check user.linkedin_verified)
+  const isLinkedInVerified = user?.linkedin_verified ?? false
+
+  // Handle form field changes
   const handleFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Material handlers
   const handleMaterialChange = (
     index: number,
     field: string,
@@ -52,7 +73,7 @@ export default function CreateRFQPage() {
     const updatedMaterials = [...materials]
     updatedMaterials[index] = {
       ...updatedMaterials[index],
-      [field]: field === 'quantity' ? parseFloat(String(value)) : value,
+      [field]: field === 'quantity' ? parseFloat(String(value)) || 0 : value,
     }
     setMaterials(updatedMaterials)
   }
@@ -65,7 +86,8 @@ export default function CreateRFQPage() {
     setMaterials((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const validateForm = (): boolean => {
+  // Validation
+  const validateStep1 = (): boolean => {
     if (!formData.project_name.trim()) {
       setError('Please enter a project name')
       return false
@@ -74,6 +96,10 @@ export default function CreateRFQPage() {
       setError('Please select a deadline')
       return false
     }
+    return true
+  }
+
+  const validateStep2 = (): boolean => {
     const validMaterials = materials.filter((m) => m.name.trim() !== '')
     if (validMaterials.length === 0) {
       setError('Please add at least one material')
@@ -82,18 +108,48 @@ export default function CreateRFQPage() {
     return true
   }
 
-  const handleProceedToCheckout = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  // Navigation
+  const goToStep = (step: RFQFormStep) => {
     setError(null)
-
-    if (!validateForm()) return
-
-    // Move to checkout step
-    setStep('checkout')
+    setCurrentStep(step)
   }
 
-  const handlePaymentSuccess = async (result: StripePaymentResult) => {
-    setPaymentResult(result)
+  const nextStep = () => {
+    setError(null)
+
+    if (currentStep === 1 && !validateStep1()) return
+    if (currentStep === 2 && !validateStep2()) return
+    if (currentStep === 3 && !isLinkedInVerified) {
+      setError('Please verify your LinkedIn profile to continue')
+      return
+    }
+
+    if (currentStep < 5) {
+      setCurrentStep((prev) => (prev + 1) as RFQFormStep)
+    }
+  }
+
+  const prevStep = () => {
+    setError(null)
+    if (currentStep > 1) {
+      setCurrentStep((prev) => (prev - 1) as RFQFormStep)
+    }
+  }
+
+  // Handle deposit payment success
+  const handleDepositSuccess = (paymentIntentId: string, amount: number) => {
+    setDepositPaymentIntentId(paymentIntentId)
+    setDepositAmount(amount)
+    setCurrentStep(5) // Move to review step
+  }
+
+  // Submit RFQ
+  const handleSubmitRFQ = async () => {
+    if (!depositPaymentIntentId) {
+      setError('Payment not completed. Please complete the deposit payment.')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -102,27 +158,24 @@ export default function CreateRFQPage() {
         throw new Error('Not authenticated. Please log in first.')
       }
 
-      // Create the RFQ after successful payment
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rfqs`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            project_name: formData.project_name,
-            description: formData.description || null,
-            deadline: formData.deadline,
-            budget: formData.budget ? parseFloat(formData.budget) : null,
-            certifications_required: formData.certifications_required || null,
-            materials: materials.filter((m) => m.name.trim() !== ''),
-            payment_intent_id: result.paymentIntentId,
-            deposit_amount: result.amount,
-          }),
-        }
-      )
+      const response = await fetch(`${BACKEND_URL}/api/v1/rfqs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          project_name: formData.project_name,
+          description: formData.description || null,
+          deadline: formData.deadline,
+          budget: formData.budget ? parseFloat(formData.budget) : null,
+          certifications_required: formData.certifications_required || null,
+          location: formData.location || null,
+          materials: materials.filter((m) => m.name.trim() !== ''),
+          deposit_payment_intent_id: depositPaymentIntentId,
+          deposit_amount: depositAmount,
+        }),
+      })
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -133,9 +186,8 @@ export default function CreateRFQPage() {
 
       const rfqResult = await response.json()
       setCreatedRfqId(rfqResult.id)
-      setStep('success')
 
-      // Redirect after showing success
+      // Redirect after a brief delay
       setTimeout(() => {
         router.push(`/rfqs/${rfqResult.id}`)
       }, 3000)
@@ -148,15 +200,10 @@ export default function CreateRFQPage() {
     }
   }
 
-  const handleBackToForm = () => {
-    setStep('form')
-    setError(null)
-  }
-
   const validMaterialsCount = materials.filter((m) => m.name.trim() !== '').length
 
-  // Success Step
-  if (step === 'success') {
+  // Success State
+  if (createdRfqId) {
     return (
       <div className="gc-page" style={{ padding: '48px 0' }}>
         <div className="gc-container" style={{ maxWidth: 600 }}>
@@ -214,7 +261,7 @@ export default function CreateRFQPage() {
             </p>
 
             {/* Deposit Confirmation */}
-            {paymentResult && (
+            {depositAmount > 0 && (
               <div
                 style={{
                   padding: 16,
@@ -238,12 +285,9 @@ export default function CreateRFQPage() {
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gc-emerald-700)' }}>
-                    Deposit of ${(paymentResult.amount / 100).toFixed(2)} confirmed
+                    Deposit of ${(depositAmount / 100).toFixed(2)} confirmed
                   </span>
                 </div>
-                <p style={{ margin: '8px 0 0 0', fontSize: 12, color: 'var(--gc-slate-600)' }}>
-                  Receipt sent to {paymentResult.receiptEmail}
-                </p>
               </div>
             )}
 
@@ -294,105 +338,28 @@ export default function CreateRFQPage() {
     )
   }
 
-  // Checkout Step
-  if (step === 'checkout') {
-    return (
-      <div className="gc-page" style={{ padding: '32px 0 48px 0' }}>
-        <div className="gc-container">
-          <RFQCheckout
-            projectName={formData.project_name}
-            materialsCount={validMaterialsCount}
-            budget={formData.budget ? parseFloat(formData.budget) : null}
-            deadline={formData.deadline}
-            onPaymentSuccess={handlePaymentSuccess}
-            onBack={handleBackToForm}
-            isProcessing={loading}
-          />
-
-          {error && (
-            <div className="gc-alert gc-alert-error" style={{ marginTop: 20, maxWidth: 600, marginLeft: 'auto', marginRight: 'auto' }}>
-              {error}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Form Step (default)
   return (
-    <div className="gc-page" style={{ padding: '48px 0' }}>
-      <div className="gc-container" style={{ maxWidth: 720 }}>
+    <div className="gc-page" style={{ padding: '32px 0 48px 0' }}>
+      <div className="gc-container" style={{ maxWidth: 800 }}>
         {/* Trust Badges */}
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 20 }}>
           <TrustBadges variant="compact" size="sm" />
         </div>
 
-        {/* Form Card */}
+        {/* Stepper */}
+        <RFQStepper
+          currentStep={currentStep}
+          steps={[
+            { id: 1, label: 'Project Details', description: 'Name & requirements' },
+            { id: 2, label: 'Materials', description: 'Select or add materials' },
+            { id: 3, label: 'Verification', description: 'LinkedIn identity' },
+            { id: 4, label: 'Deposit', description: `$${DEFAULT_DEPOSIT_AMOUNT} refundable` },
+            { id: 5, label: 'Review', description: 'Confirm & submit' },
+          ]}
+        />
+
+        {/* Main Form Card */}
         <div className="gc-card gc-animate-fade-in" style={{ padding: 32 }}>
-          {/* Header */}
-          <div style={{ marginBottom: 28 }}>
-            {/* Step Indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <span
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--gc-emerald-500) 0%, var(--gc-teal-500) 100%)',
-                  color: 'white',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                1
-              </span>
-              <span style={{ width: 20, height: 2, background: 'var(--gc-slate-200)', borderRadius: 1 }} />
-              <span
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  background: 'var(--gc-slate-100)',
-                  color: 'var(--gc-slate-400)',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                2
-              </span>
-              <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--gc-slate-500)', fontWeight: 600 }}>
-                Step 1: Project Details
-              </span>
-            </div>
-
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 28,
-                fontWeight: 900,
-                color: 'var(--gc-slate-900)',
-              }}
-            >
-              Create RFQ
-            </h1>
-            <p
-              style={{
-                margin: '8px 0 0 0',
-                color: 'var(--gc-slate-600)',
-                fontSize: 15,
-              }}
-            >
-              Request for Quote — Find verified sustainable materials for your project
-            </p>
-          </div>
-
           {/* Error Message */}
           {error && (
             <div className="gc-alert gc-alert-error" style={{ marginBottom: 24 }}>
@@ -400,138 +367,160 @@ export default function CreateRFQPage() {
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleProceedToCheckout}>
-            {/* Project Name */}
-            <div className="gc-form-group">
-              <label htmlFor="project_name" className="gc-label gc-label-required">
-                Project Name
-              </label>
-              <input
-                type="text"
-                id="project_name"
-                name="project_name"
-                value={formData.project_name}
-                onChange={handleFormChange}
-                required
-                className="gc-input"
-                placeholder="e.g., Downtown Office Renovation"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="gc-form-group">
-              <label htmlFor="description" className="gc-label">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleFormChange}
-                rows={4}
-                className="gc-textarea"
-                placeholder="Project details, scope, location, sustainability goals..."
-              />
-            </div>
-
-            {/* Deadline & Budget Row */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: 16,
-              }}
-            >
-              <div className="gc-form-group">
-                <label htmlFor="deadline" className="gc-label gc-label-required">
-                  Deadline
-                </label>
-                <input
-                  type="datetime-local"
-                  id="deadline"
-                  name="deadline"
-                  value={formData.deadline}
-                  onChange={handleFormChange}
-                  required
-                  className="gc-input"
-                />
+          {/* Step 1: Project Details */}
+          {currentStep === 1 && (
+            <div className="gc-rfq-step-content">
+              <div style={{ marginBottom: 28 }}>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: 'var(--gc-slate-900)' }}>
+                  Project Details
+                </h1>
+                <p style={{ margin: '8px 0 0 0', color: 'var(--gc-slate-600)', fontSize: 15 }}>
+                  Tell us about your project and sustainability requirements
+                </p>
               </div>
 
-              <div className="gc-form-group">
-                <label htmlFor="budget" className="gc-label">
-                  Budget (USD)
-                </label>
-                <input
-                  type="number"
-                  id="budget"
-                  name="budget"
-                  value={formData.budget}
-                  onChange={handleFormChange}
-                  step="0.01"
-                  className="gc-input"
-                  placeholder="0.00"
-                />
+              <form onSubmit={(e) => { e.preventDefault(); nextStep(); }}>
+                {/* Project Name */}
+                <div className="gc-form-group">
+                  <label htmlFor="project_name" className="gc-label gc-label-required">
+                    Project Name
+                  </label>
+                  <input
+                    type="text"
+                    id="project_name"
+                    name="project_name"
+                    value={formData.project_name}
+                    onChange={handleFormChange}
+                    required
+                    className="gc-input"
+                    placeholder="e.g., Downtown Office Renovation"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="gc-form-group">
+                  <label htmlFor="description" className="gc-label">
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleFormChange}
+                    rows={4}
+                    className="gc-textarea"
+                    placeholder="Project details, scope, location, sustainability goals..."
+                  />
+                </div>
+
+                {/* Location */}
+                <div className="gc-form-group">
+                  <label htmlFor="location" className="gc-label">
+                    Project Location
+                  </label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleFormChange}
+                    className="gc-input"
+                    placeholder="e.g., New York, NY or 10001"
+                  />
+                </div>
+
+                {/* Deadline & Budget Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                  <div className="gc-form-group">
+                    <label htmlFor="deadline" className="gc-label gc-label-required">
+                      Deadline
+                    </label>
+                    <input
+                      type="datetime-local"
+                      id="deadline"
+                      name="deadline"
+                      value={formData.deadline}
+                      onChange={handleFormChange}
+                      required
+                      className="gc-input"
+                    />
+                  </div>
+
+                  <div className="gc-form-group">
+                    <label htmlFor="budget" className="gc-label">
+                      Budget (USD)
+                    </label>
+                    <input
+                      type="number"
+                      id="budget"
+                      name="budget"
+                      value={formData.budget}
+                      onChange={handleFormChange}
+                      step="0.01"
+                      className="gc-input"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {/* Certifications */}
+                <div className="gc-form-group">
+                  <label htmlFor="certifications_required" className="gc-label">
+                    Certifications Required
+                  </label>
+                  <input
+                    type="text"
+                    id="certifications_required"
+                    name="certifications_required"
+                    value={formData.certifications_required}
+                    onChange={handleFormChange}
+                    className="gc-input"
+                    placeholder="e.g., FSC, LEED, EPD, Carbon Neutral"
+                  />
+                </div>
+
+                {/* Navigation */}
+                <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
+                  <button type="submit" className="gc-btn gc-btn-primary" style={{ flex: 1 }}>
+                    Continue to Materials
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18, marginLeft: 6 }}>
+                      <polyline points="9,18 15,12 9,6" />
+                    </svg>
+                  </button>
+                  <button type="button" onClick={() => router.back()} className="gc-btn gc-btn-secondary">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Step 2: Materials */}
+          {currentStep === 2 && (
+            <div className="gc-rfq-step-content">
+              <div style={{ marginBottom: 28 }}>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: 'var(--gc-slate-900)' }}>
+                  Materials
+                </h1>
+                <p style={{ margin: '8px 0 0 0', color: 'var(--gc-slate-600)', fontSize: 15 }}>
+                  Add materials from our catalog or enter them manually
+                </p>
               </div>
-            </div>
 
-            {/* Certifications */}
-            <div className="gc-form-group">
-              <label htmlFor="certifications_required" className="gc-label">
-                Certifications Required
-              </label>
-              <input
-                type="text"
-                id="certifications_required"
-                name="certifications_required"
-                value={formData.certifications_required}
-                onChange={handleFormChange}
-                className="gc-input"
-                placeholder="e.g., FSC, LEED, EPD, Carbon Neutral"
-              />
-            </div>
-
-            <hr className="gc-divider" />
-
-            {/* Materials Section */}
-            <div style={{ marginBottom: 24 }}>
-              <h2
-                style={{
-                  fontSize: 18,
-                  fontWeight: 800,
-                  color: 'var(--gc-slate-900)',
-                  marginBottom: 16,
-                }}
-              >
-                Materials <span style={{ color: '#ef4444' }}>*</span>
-              </h2>
-
+              {/* Materials List */}
               {materials.map((material, index) => (
                 <div
                   key={index}
                   className="gc-card"
-                  style={{
-                    padding: 20,
-                    marginBottom: 16,
-                    background: 'rgba(248, 250, 252, 0.7)',
-                  }}
+                  style={{ padding: 20, marginBottom: 16, background: 'rgba(248, 250, 252, 0.7)' }}
                 >
-                  {/* Material row */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                      gap: 12,
-                    }}
-                  >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
                     <div className="gc-form-group" style={{ marginBottom: 0 }}>
                       <label className="gc-label">Material Name</label>
                       <input
                         type="text"
                         value={material.name}
-                        onChange={(e) =>
-                          handleMaterialChange(index, 'name', e.target.value)
-                        }
+                        onChange={(e) => handleMaterialChange(index, 'name', e.target.value)}
                         className="gc-input"
                         placeholder="e.g., Reclaimed Wood"
                       />
@@ -541,9 +530,7 @@ export default function CreateRFQPage() {
                       <input
                         type="number"
                         value={material.quantity || ''}
-                        onChange={(e) =>
-                          handleMaterialChange(index, 'quantity', e.target.value)
-                        }
+                        onChange={(e) => handleMaterialChange(index, 'quantity', e.target.value)}
                         className="gc-input"
                         placeholder="0"
                         step="0.01"
@@ -554,9 +541,7 @@ export default function CreateRFQPage() {
                       <input
                         type="text"
                         value={material.unit}
-                        onChange={(e) =>
-                          handleMaterialChange(index, 'unit', e.target.value)
-                        }
+                        onChange={(e) => handleMaterialChange(index, 'unit', e.target.value)}
                         className="gc-input"
                         placeholder="e.g., m², kg"
                       />
@@ -569,9 +554,7 @@ export default function CreateRFQPage() {
                     <input
                       type="text"
                       value={material.specification || ''}
-                      onChange={(e) =>
-                        handleMaterialChange(index, 'specification', e.target.value)
-                      }
+                      onChange={(e) => handleMaterialChange(index, 'specification', e.target.value)}
                       className="gc-input"
                       placeholder="e.g., 2x4 Grade A, 10mm thickness"
                     />
@@ -604,111 +587,286 @@ export default function CreateRFQPage() {
                 type="button"
                 onClick={addMaterial}
                 className="gc-btn gc-btn-ghost"
-                style={{
-                  border: '1px dashed var(--gc-slate-300)',
-                  width: '100%',
-                }}
+                style={{ border: '1px dashed var(--gc-slate-300)', width: '100%', marginBottom: 16 }}
               >
                 + Add Material
               </button>
-            </div>
 
-            <hr className="gc-divider" />
-
-            {/* Deposit Info Banner */}
-            <div
-              style={{
-                padding: 16,
-                background: 'linear-gradient(135deg, var(--gc-emerald-50) 0%, rgba(209, 250, 229, 0.5) 100%)',
-                border: '1px solid var(--gc-emerald-200)',
-                borderRadius: 'var(--gc-radius)',
-                marginBottom: 24,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 'var(--gc-radius-sm)',
-                    background: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                    flexShrink: 0,
-                  }}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ width: 18, height: 18, color: 'var(--gc-emerald-600)' }}
+              {/* Browse Catalog Link */}
+              <div
+                style={{
+                  padding: 16,
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(20, 184, 166, 0.03) 100%)',
+                  border: '1px solid var(--gc-emerald-200)',
+                  borderRadius: 'var(--gc-radius)',
+                  marginBottom: 24,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 'var(--gc-radius-sm)',
+                      background: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                    }}
                   >
-                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                    <line x1="1" y1="10" x2="23" y2="10" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 700, color: 'var(--gc-slate-900)' }}>
-                    Refundable $50 Deposit Required
-                  </h3>
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--gc-slate-600)', lineHeight: 1.5 }}>
-                    A small deposit confirms your intent and unlocks responses from verified, pre-qualified suppliers. Fully refundable if no suitable quotes are received.
-                  </p>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18, color: 'var(--gc-emerald-600)' }}>
+                      <rect x="3" y="3" width="7" height="7" />
+                      <rect x="14" y="3" width="7" height="7" />
+                      <rect x="14" y="14" width="7" height="7" />
+                      <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--gc-slate-800)' }}>
+                      Browse Our Catalog
+                    </p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--gc-slate-600)' }}>
+                      Select from 10,000+ verified sustainable materials
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => window.open('/catalog', '_blank')}
+                    className="gc-btn gc-btn-ghost"
+                    style={{ fontSize: 13 }}
+                  >
+                    Browse
+                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* Submit Buttons */}
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                type="submit"
-                disabled={loading}
-                className="gc-btn gc-btn-primary"
-                style={{ flex: 1, padding: '0.85rem 1rem', fontSize: 15 }}
+              {/* Navigation */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button type="button" onClick={prevStep} className="gc-btn gc-btn-secondary">
+                  Back
+                </button>
+                <button type="button" onClick={nextStep} className="gc-btn gc-btn-primary" style={{ flex: 1 }}>
+                  Continue to Verification
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18, marginLeft: 6 }}>
+                    <polyline points="9,18 15,12 9,6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: LinkedIn Verification */}
+          {currentStep === 3 && (
+            <div className="gc-rfq-step-content">
+              <LinkedInVerificationGate
+                isVerified={isLinkedInVerified}
+                onContinueAction={nextStep}
+              />
+
+              {/* Back button if verified */}
+              {isLinkedInVerified && (
+                <div style={{ textAlign: 'center', marginTop: 16 }}>
+                  <button type="button" onClick={prevStep} className="gc-btn gc-btn-ghost">
+                    ← Back to Materials
+                  </button>
+                </div>
+              )}
+
+              {/* Back button if not verified */}
+              {!isLinkedInVerified && (
+                <div style={{ textAlign: 'center', marginTop: 24 }}>
+                  <button type="button" onClick={prevStep} className="gc-btn gc-btn-ghost">
+                    ← Back to Materials
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Deposit Payment */}
+          {currentStep === 4 && (
+            <div className="gc-rfq-step-content">
+              <div style={{ marginBottom: 28, textAlign: 'center' }}>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: 'var(--gc-slate-900)' }}>
+                  Secure Your RFQ
+                </h1>
+                <p style={{ margin: '8px 0 0 0', color: 'var(--gc-slate-600)', fontSize: 15 }}>
+                  A refundable ${DEFAULT_DEPOSIT_AMOUNT} deposit confirms your intent and unlocks verified suppliers
+                </p>
+              </div>
+
+              <DepositPayment
+                token={token}
+                onSuccess={handleDepositSuccess}
+                onBack={prevStep}
+                amount={DEFAULT_DEPOSIT_AMOUNT}
+              />
+            </div>
+          )}
+
+          {/* Step 5: Review & Submit */}
+          {currentStep === 5 && (
+            <div className="gc-rfq-step-content">
+              <div style={{ marginBottom: 28 }}>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: 'var(--gc-slate-900)' }}>
+                  Review & Submit
+                </h1>
+                <p style={{ margin: '8px 0 0 0', color: 'var(--gc-slate-600)', fontSize: 15 }}>
+                  Confirm your RFQ details before submitting to suppliers
+                </p>
+              </div>
+
+              {/* Summary Card */}
+              <div className="gc-card" style={{ padding: 24, background: 'var(--gc-slate-50)', marginBottom: 24 }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700, color: 'var(--gc-slate-800)' }}>
+                  RFQ Summary
+                </h3>
+
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, color: 'var(--gc-slate-600)' }}>Project Name</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--gc-slate-900)' }}>{formData.project_name}</span>
+                  </div>
+
+                  {formData.location && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 14, color: 'var(--gc-slate-600)' }}>Location</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--gc-slate-900)' }}>{formData.location}</span>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, color: 'var(--gc-slate-600)' }}>Deadline</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--gc-slate-900)' }}>
+                      {formData.deadline ? new Date(formData.deadline).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      }) : 'Not specified'}
+                    </span>
+                  </div>
+
+                  {formData.budget && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 14, color: 'var(--gc-slate-600)' }}>Budget</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--gc-slate-900)' }}>
+                        ${parseFloat(formData.budget).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, color: 'var(--gc-slate-600)' }}>Materials</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--gc-slate-900)' }}>
+                      {validMaterialsCount} item{validMaterialsCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {formData.certifications_required && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 14, color: 'var(--gc-slate-600)' }}>Certifications</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--gc-slate-900)' }}>
+                        {formData.certifications_required}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--gc-slate-200)' }} />
+
+                {/* Materials List */}
+                <h4 style={{ margin: '0 0 12px 0', fontSize: 14, fontWeight: 700, color: 'var(--gc-slate-700)' }}>
+                  Materials Requested
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {materials.filter(m => m.name.trim()).map((m, i) => (
+                    <li key={i} style={{ fontSize: 13, color: 'var(--gc-slate-700)', marginBottom: 4 }}>
+                      {m.name} - {m.quantity} {m.unit}
+                      {m.specification && <span style={{ color: 'var(--gc-slate-500)' }}> ({m.specification})</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Deposit Confirmation */}
+              <div
+                style={{
+                  padding: 16,
+                  background: 'rgba(236, 253, 245, 0.7)',
+                  border: '1px solid var(--gc-emerald-200)',
+                  borderRadius: 'var(--gc-radius)',
+                  marginBottom: 24,
+                }}
               >
-                {loading ? (
-                  <>
-                    <span className="gc-spinner" style={{ width: 18, height: 18 }} />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    Continue to Checkout
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{ width: 18, height: 18, marginLeft: 4 }}
-                    >
-                      <polyline points="9,18 15,12 9,6" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: 'var(--gc-emerald-500)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" style={{ width: 18, height: 18 }}>
+                      <polyline points="20,6 9,17 4,12" />
                     </svg>
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="gc-btn gc-btn-secondary"
-                style={{ padding: '0.85rem 1.5rem', fontSize: 15 }}
-              >
-                Cancel
-              </button>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--gc-emerald-700)' }}>
+                      Deposit Paid: ${(depositAmount / 100).toFixed(2)}
+                    </p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--gc-slate-600)' }}>
+                      Refundable if no suitable quotes received
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trust Signals */}
+              <CheckoutTrustSignals variant="horizontal" showAnimation={false} />
+
+              {/* Navigation */}
+              <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
+                <button type="button" onClick={() => goToStep(4)} className="gc-btn gc-btn-secondary">
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitRFQ}
+                  disabled={loading}
+                  className="gc-btn gc-btn-primary"
+                  style={{ flex: 1 }}
+                >
+                  {loading ? (
+                    <>
+                      <span className="gc-spinner" style={{ width: 18, height: 18 }} />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      Submit RFQ
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18, marginLeft: 6 }}>
+                        <polyline points="9,18 15,12 9,6" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-          </form>
+          )}
         </div>
 
-        {/* Trust Signal Preview */}
-        <div style={{ marginTop: 24 }}>
-          <CheckoutTrustSignals variant="horizontal" showAnimation={false} />
-        </div>
+        {/* Trust Signal Footer */}
+        {currentStep < 5 && (
+          <div style={{ marginTop: 24 }}>
+            <CheckoutTrustSignals variant="horizontal" showAnimation={false} />
+          </div>
+        )}
       </div>
     </div>
   )
