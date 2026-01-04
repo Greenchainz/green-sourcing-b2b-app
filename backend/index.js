@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth');
 const rfqRoutes = require('./routes/rfqs');
 const shadowSupplierRoutes = require('./routes/shadow-suppliers');
 const aiGatewayRoutes = require('./routes/ai-gateway');
+const buyerVerificationRoutes = require('./routes/buyerVerification');
 
 // AI Gateway
 const aiGateway = require('./services/ai-gateway');
@@ -146,6 +147,7 @@ async function start() {
     app.use('/api/v1/ai', documentAIRoutes);
     app.use('/api/v1/auth', authRoutes);
     app.use('/api/v1/rfqs', rfqRoutes);
+    app.use('/api/v1/verification', buyerVerificationRoutes);
     app.use('/api/v1/ai-gateway', aiGatewayRoutes);
     
     // Initialize AI Gateway
