@@ -892,13 +892,15 @@ router.get('/products/search', authenticateRevitPlugin, requirePluginRegistratio
     try {
         const { q, category, limit = 20 } = req.query;
 
-        if (!q || q.length < 2) {
+        if (typeof q !== 'string' || q.trim().length < 2) {
             return res.status(400).json({
                 error: 'INVALID_QUERY',
                 message: 'Search query must be at least 2 characters',
                 code: 'REVIT_SEARCH_400'
             });
         }
+
+        const searchQuery = q.trim();
 
         let query = `
             SELECT p.ProductID, p.ProductName, p.Description, p.SKU,
@@ -914,15 +916,17 @@ router.get('/products/search', authenticateRevitPlugin, requirePluginRegistratio
             LEFT JOIN Product_EPDs e ON p.ProductID = e.ProductID
             WHERE (p.ProductName ILIKE $1 OR p.Description ILIKE $1)
         `;
-        const params = [`%${q}%`];
+        const params = [`%${searchQuery}%`];
 
         if (category) {
             query += ` AND c.CategoryName ILIKE $${params.length + 1}`;
             params.push(`%${category}%`);
         }
 
+        const parsedLimit = parseInt(limit, 10);
+        const safeLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 20;
         query += ` ORDER BY p.ProductName LIMIT $${params.length + 1}`;
-        params.push(parseInt(limit));
+        params.push(safeLimit);
 
         const result = await pool.query(query, params);
 
