@@ -12,6 +12,13 @@
  * - Log all calls with redacted inputs for compliance
  * - Cache safe workflow results (compliance, alternatives)
  * - Intercom draft message generation with gated sending
+ * 
+ * Predefined Workflows:
+ * - material-alternative: Suggest sustainable alternatives (Free tier)
+ * - rfq-scorer: Score RFQ matches (Standard/Pro tier)
+ * - outreach-draft: Draft Intercom messages (Premium/Enterprise tier)
+ * - compliance-check: Verify certification validity (Standard/Pro tier)
+ * - carbon-estimator: Estimate project carbon footprint (Free tier)
  */
 
 const agentGateway = require('./agentGateway');
@@ -28,6 +35,9 @@ module.exports = {
     // Execute a workflow (convenience export)
     execute: agentGateway.execute,
     
+    // Execute workflow with explicit entitlements check
+    executeWorkflow: agentGateway.executeWorkflow,
+    
     // List workflows available to a user
     listWorkflows: agentGateway.listAvailableWorkflows,
     
@@ -36,6 +46,10 @@ module.exports = {
     
     // Error class
     GatewayError: agentGateway.GatewayError,
+    
+    // Azure AI Foundry client management
+    initializeFoundryClient: agentGateway.initializeFoundryClient,
+    getFallbackResponse: agentGateway.getFallbackResponse,
     
     // Sub-modules for advanced usage
     entitlements,
@@ -52,17 +66,31 @@ module.exports = {
         console.log('🤖 Initializing AI Gateway...');
         
         try {
-            // Refresh workflow registry cache
-            const workflowCount = await workflowRegistry.refreshCache();
-            console.log(`  ✅ Loaded ${workflowCount} workflows`);
+            // 1. Initialize Azure AI Foundry client
+            const foundryStatus = await agentGateway.initializeFoundryClient();
+            if (foundryStatus.initialized) {
+                console.log('  ✅ Azure AI Foundry client ready');
+            } else if (foundryStatus.fallbackEnabled) {
+                console.log('  ⚠️  Azure AI Foundry unavailable - fallback mode enabled');
+            }
             
-            // Clean up expired cache entries
+            // 2. Seed predefined workflows if needed
+            const seededCount = await workflowRegistry.seedPredefinedWorkflows();
+            if (seededCount > 0) {
+                console.log(`  ✅ Seeded ${seededCount} new workflow(s)`);
+            }
+            
+            // 3. Refresh workflow registry cache
+            const workflowCount = await workflowRegistry.refreshCache();
+            console.log(`  ✅ Loaded ${workflowCount} workflows into cache`);
+            
+            // 4. Clean up expired cache entries
             const cleanedEntries = await workflowCache.cleanup();
             if (cleanedEntries > 0) {
                 console.log(`  🧹 Cleaned ${cleanedEntries} expired cache entries`);
             }
             
-            // Verify database tables exist
+            // 5. Verify database connection
             const health = await agentGateway.getHealth();
             if (health.checks.database) {
                 console.log('  ✅ Database connection verified');
@@ -81,7 +109,7 @@ module.exports = {
     /**
      * Quick execution helper with automatic context
      * @example
-     * const result = await aiGateway.quick('compliance-checker', input, req);
+     * const result = await aiGateway.quick('compliance-check', input, req);
      */
     async quick(workflowName, input, req) {
         if (!req.user?.id) {
@@ -98,5 +126,39 @@ module.exports = {
                 userAgent: req.headers['user-agent']
             }
         });
+    },
+    
+    /**
+     * Check if user can access a specific workflow
+     * @example
+     * const canAccess = await aiGateway.canAccessWorkflow(userId, 'rfq-scorer');
+     */
+    async canAccessWorkflow(userId, workflowName) {
+        const userTier = await entitlements.getUserTier(userId);
+        const validation = await workflowRegistry.validateWorkflow(workflowName, userTier);
+        return {
+            allowed: validation.valid,
+            userTier,
+            requiredTier: validation.requiredTier,
+            error: validation.error
+        };
+    },
+    
+    /**
+     * Get user's remaining quota
+     * @example
+     * const quota = await aiGateway.getRemainingQuota(userId);
+     */
+    async getRemainingQuota(userId) {
+        const ent = await entitlements.getEntitlements(userId);
+        return {
+            tier: ent.tier,
+            callsRemaining: ent.quota.remaining,
+            callsUsed: ent.quota.callsUsed,
+            callsLimit: ent.quota.callsLimit,
+            tokensUsed: ent.quota.tokensUsed,
+            tokensLimit: ent.quota.tokensLimit,
+            periodEndsAt: ent.quota.periodEndsAt
+        };
     }
 };

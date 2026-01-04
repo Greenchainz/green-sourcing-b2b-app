@@ -10,6 +10,15 @@ const router = express.Router();
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const aiGateway = require('../services/ai-gateway');
 const monitoring = require('../services/azure/monitoring');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for expensive AI workflow routes
+const aiWorkflowLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 /**
  * GET /api/v1/ai-gateway/health
@@ -115,6 +124,438 @@ router.post('/execute', authenticateToken, async (req, res) => {
         });
     }
 });
+
+// ============================================
+// WORKFLOW-SPECIFIC ENDPOINTS
+// ============================================
+
+/**
+ * POST /api/v1/ai-gateway/material-alternatives
+ * Get sustainable alternatives for a material
+ * 
+ * Input:
+ * - materialId: string (optional) - ID of material in catalog
+ * - materialName: string - Name of the material
+ * - category: string (optional) - Material category
+ * - specifications: object (optional) - Current material specs
+ * - projectRequirements: object (optional) - Project-specific requirements
+ * - region: string (optional) - Geographic region for availability
+ * - quantity: string (optional) - Quantity needed
+ * 
+ * Output:
+ * - alternatives: array of top 5 alternatives with sustainability comparison
+ */
+router.post('/material-alternatives', aiWorkflowLimiter, authenticateToken, async (req, res) => {
+    try {
+        const { 
+            materialId, 
+            materialName,
+            category,
+            specifications,
+            projectRequirements,
+            region,
+            quantity
+        } = req.body;
+
+        // Validate input
+        if (!materialId && !materialName) {
+            return res.status(400).json({ 
+                error: 'Either materialId or materialName is required' 
+            });
+        }
+
+        // If materialId provided, look up material details
+        let material = { name: materialName, category, specifications };
+        if (materialId) {
+            try {
+                const { pool } = require('../db');
+                const materialResult = await pool.query(`
+                    SELECT m.MaterialID, m.Name, m.Category, m.Description,
+                           m.Manufacturer, m.CarbonFootprint, m.RecycledContent,
+                           m.SustainabilityScore, m.Certifications
+                    FROM Materials m
+                    WHERE m.MaterialID = $1
+                `, [materialId]);
+
+                if (materialResult.rows.length > 0) {
+                    const mat = materialResult.rows[0];
+                    material = {
+                        id: mat.materialid,
+                        name: mat.name || materialName,
+                        category: mat.category || category,
+                        description: mat.description,
+                        manufacturer: mat.manufacturer,
+                        currentSpecs: {
+                            carbonFootprint: mat.carbonfootprint,
+                            recycledContent: mat.recycledcontent,
+                            sustainabilityScore: mat.sustainabilityscore,
+                            certifications: mat.certifications
+                        },
+                        specifications
+                    };
+                }
+            } catch (dbError) {
+                console.warn('Could not fetch material details:', dbError.message);
+                // Continue with provided data
+            }
+        }
+
+        // Execute the material-alternative workflow
+        const result = await aiGateway.execute({
+            workflowName: 'material-alternative',
+            input: {
+                material: material.name,
+                materialId: material.id,
+                category: material.category,
+                currentSpecs: material.currentSpecs,
+                specifications: material.specifications,
+                requirements: projectRequirements,
+                region: region || 'Global',
+                quantity
+            },
+            userId: req.user.id,
+            context: {
+                sessionId: req.session?.id,
+                ipAddress: req.ip || req.headers['x-forwarded-for']?.split(',')[0],
+                userAgent: req.headers['user-agent']
+            }
+        });
+
+        // Format response with top 5 alternatives
+        let alternatives = [];
+        if (result.data?.alternatives) {
+            alternatives = result.data.alternatives.slice(0, 5);
+        } else if (Array.isArray(result.data)) {
+            alternatives = result.data.slice(0, 5);
+        }
+
+        // Add comparison data if we have original material info
+        if (material.currentSpecs?.carbonFootprint) {
+            alternatives = alternatives.map(alt => ({
+                ...alt,
+                comparison: {
+                    carbonReduction: alt.carbonFootprint 
+                        ? ((material.currentSpecs.carbonFootprint - alt.carbonFootprint) / material.currentSpecs.carbonFootprint * 100).toFixed(1) + '%'
+                        : null,
+                    sustainabilityImprovement: alt.sustainabilityScore && material.currentSpecs.sustainabilityScore
+                        ? alt.sustainabilityScore - material.currentSpecs.sustainabilityScore
+                        : null
+                }
+            }));
+        }
+
+        res.json({
+            success: true,
+            originalMaterial: {
+                id: material.id,
+                name: material.name,
+                category: material.category,
+                currentSpecs: material.currentSpecs
+            },
+            alternatives,
+            count: alternatives.length,
+            meta: {
+                workflowId: result.meta?.workflowId,
+                cached: result.meta?.cached || false,
+                latencyMs: result.meta?.latencyMs,
+                quotaRemaining: result.meta?.quotaRemaining,
+                fallback: result.data?.fallback || false
+            }
+        });
+
+    } catch (error) {
+        console.error('Material alternatives error:', error);
+        
+        if (error.name === 'GatewayError') {
+            const statusCode = getErrorStatusCode(error.code);
+            return res.status(statusCode).json({
+                success: false,
+                error: error.message,
+                code: error.code,
+                meta: error.meta
+            });
+        }
+
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to get material alternatives',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * POST /api/v1/ai-gateway/carbon-estimate
+ * Estimate carbon footprint for a project or material list
+ */
+router.post('/carbon-estimate', authenticateToken, async (req, res) => {
+    try {
+        const { materials, projectDetails, transportDistance, region } = req.body;
+
+        if (!materials && !projectDetails) {
+            return res.status(400).json({ 
+                error: 'Either materials array or projectDetails is required' 
+            });
+        }
+
+        const result = await aiGateway.execute({
+            workflowName: 'carbon-estimator',
+            input: {
+                materials,
+                projectDetails,
+                transportDistance,
+                region
+            },
+            userId: req.user.id,
+            context: {
+                sessionId: req.session?.id,
+                ipAddress: req.ip || req.headers['x-forwarded-for']?.split(',')[0],
+                userAgent: req.headers['user-agent']
+            }
+        });
+
+        res.json({
+            success: true,
+            ...result.data,
+            meta: result.meta
+        });
+
+    } catch (error) {
+        console.error('Carbon estimate error:', error);
+        
+        if (error.name === 'GatewayError') {
+            const statusCode = getErrorStatusCode(error.code);
+            return res.status(statusCode).json({
+                success: false,
+                error: error.message,
+                code: error.code,
+                meta: error.meta
+            });
+        }
+
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to estimate carbon footprint',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * POST /api/v1/ai-gateway/compliance-check
+ * Check material/product compliance with sustainability standards
+ */
+router.post('/compliance-check', authenticateToken, async (req, res) => {
+    try {
+        const { materialId, materialName, certifications, standards, context } = req.body;
+
+        if (!materialName && !materialId) {
+            return res.status(400).json({ 
+                error: 'Either materialId or materialName is required' 
+            });
+        }
+
+        const result = await aiGateway.execute({
+            workflowName: 'compliance-check',
+            input: {
+                materialId,
+                material: materialName,
+                certifications: certifications || [],
+                standards: standards || ['LEED v4.1', 'BREEAM'],
+                context
+            },
+            userId: req.user.id,
+            context: {
+                sessionId: req.session?.id,
+                ipAddress: req.ip || req.headers['x-forwarded-for']?.split(',')[0],
+                userAgent: req.headers['user-agent']
+            }
+        });
+
+        res.json({
+            success: true,
+            ...result.data,
+            meta: result.meta
+        });
+
+    } catch (error) {
+        console.error('Compliance check error:', error);
+        
+        if (error.name === 'GatewayError') {
+            const statusCode = getErrorStatusCode(error.code);
+            return res.status(statusCode).json({
+                success: false,
+                error: error.message,
+                code: error.code,
+                meta: error.meta
+            });
+        }
+
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to check compliance',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * POST /api/v1/ai-gateway/rfq-score
+ * Score and rank RFQ supplier matches
+ * Requires: Standard tier (pro) or higher
+ */
+router.post('/rfq-score', authenticateToken, async (req, res) => {
+    try {
+        const { rfqId, requirements, suppliers, priorities } = req.body;
+
+        if (!requirements && !rfqId) {
+            return res.status(400).json({ 
+                error: 'Either rfqId or requirements object is required' 
+            });
+        }
+
+        // If rfqId provided, fetch RFQ details
+        let rfqRequirements = requirements;
+        if (rfqId && !requirements) {
+            try {
+                const { pool } = require('../db');
+                const rfqResult = await pool.query(`
+                    SELECT Title, Description, ProjectLocation, MaterialCategory,
+                           QuantityNeeded, QualityRequirements, SustainabilityRequirements,
+                           BudgetRange, Deadline
+                    FROM RFQs WHERE RFQID = $1
+                `, [rfqId]);
+
+                if (rfqResult.rows.length > 0) {
+                    rfqRequirements = rfqResult.rows[0];
+                }
+            } catch (dbError) {
+                console.warn('Could not fetch RFQ details:', dbError.message);
+            }
+        }
+
+        const result = await aiGateway.execute({
+            workflowName: 'rfq-scorer',
+            input: {
+                rfqId,
+                requirements: rfqRequirements,
+                suppliers: suppliers || [],
+                priorities: priorities || {
+                    sustainability: 0.3,
+                    price: 0.25,
+                    quality: 0.25,
+                    delivery: 0.2
+                }
+            },
+            userId: req.user.id,
+            context: {
+                sessionId: req.session?.id,
+                ipAddress: req.ip || req.headers['x-forwarded-for']?.split(',')[0],
+                userAgent: req.headers['user-agent']
+            }
+        });
+
+        res.json({
+            success: true,
+            rfqId,
+            ...result.data,
+            meta: result.meta
+        });
+
+    } catch (error) {
+        console.error('RFQ score error:', error);
+        
+        if (error.name === 'GatewayError') {
+            const statusCode = getErrorStatusCode(error.code);
+            return res.status(statusCode).json({
+                success: false,
+                error: error.message,
+                code: error.code,
+                meta: error.meta
+            });
+        }
+
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to score RFQ matches',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * POST /api/v1/ai-gateway/draft-outreach
+ * Draft an Intercom outreach message for a supplier
+ * Requires: Premium tier (enterprise) for most templates
+ */
+router.post('/draft-outreach', authenticateToken, async (req, res) => {
+    try {
+        const { supplierId, rfqId, template, customData, scheduledAt, priority } = req.body;
+
+        if (!supplierId) {
+            return res.status(400).json({ error: 'supplierId is required' });
+        }
+
+        if (!template) {
+            return res.status(400).json({ 
+                error: 'template is required',
+                availableTemplates: Object.keys(aiGateway.intercomSender.DRAFT_TEMPLATES)
+            });
+        }
+
+        const result = await aiGateway.intercomSender.draftMessage(
+            parseInt(supplierId),
+            rfqId ? parseInt(rfqId) : null,
+            template,
+            {
+                createdByUserId: req.user.id,
+                customData,
+                scheduledAt,
+                priority
+            }
+        );
+
+        if (!result.success) {
+            const statusCode = result.error === 'TIER_INSUFFICIENT' ? 403 : 400;
+            return res.status(statusCode).json(result);
+        }
+
+        res.status(201).json(result);
+
+    } catch (error) {
+        console.error('Draft outreach error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to draft outreach message',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * GET /api/v1/ai-gateway/templates
+ * Get available message templates for user's tier
+ */
+router.get('/templates', authenticateToken, async (req, res) => {
+    try {
+        const userTier = await aiGateway.entitlements.getUserTier(req.user.id);
+        const templates = aiGateway.intercomSender.getAvailableTemplates(userTier);
+
+        res.json({
+            success: true,
+            tier: userTier,
+            templates,
+            count: templates.length
+        });
+    } catch (error) {
+        console.error('Error getting templates:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// STANDARD ENDPOINTS
+// ============================================
 
 /**
  * GET /api/v1/ai-gateway/history

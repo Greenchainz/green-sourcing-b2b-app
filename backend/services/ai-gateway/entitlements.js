@@ -9,12 +9,36 @@ const { pool } = require('../../db');
 const monitoring = require('../azure/monitoring');
 
 // Tier hierarchy (higher number = more access)
+// Note: "Standard" tier = "pro", "Premium" tier = "enterprise"
 const TIER_LEVELS = {
     free: 1,
+    standard: 2,  // Alias for pro
     pro: 2,
+    premium: 3,   // Alias for enterprise
     enterprise: 3,
     admin: 4
 };
+
+// Tier name normalization (for display and consistency)
+const TIER_DISPLAY_NAMES = {
+    free: 'Free',
+    pro: 'Standard',
+    standard: 'Standard',
+    enterprise: 'Premium',
+    premium: 'Premium',
+    admin: 'Admin'
+};
+
+/**
+ * Normalize tier name to internal format
+ */
+function normalizeTier(tier) {
+    const normalized = (tier || 'free').toLowerCase();
+    // Map aliases to internal names
+    if (normalized === 'standard') return 'pro';
+    if (normalized === 'premium') return 'enterprise';
+    return normalized;
+}
 
 // Default quotas per tier (per billing period - monthly)
 const DEFAULT_QUOTAS = {
@@ -341,8 +365,10 @@ async function canSendIntercomMessages(userId) {
 
 module.exports = {
     TIER_LEVELS,
+    TIER_DISPLAY_NAMES,
     DEFAULT_QUOTAS,
     TIER_FEATURES,
+    normalizeTier,
     getUserTier,
     canAccessWorkflow,
     getWorkflowRateLimit,
