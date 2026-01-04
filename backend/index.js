@@ -14,6 +14,7 @@ const rfqSimulatorRoutes = require('./routes/rfq-simulator');
 const authRoutes = require('./routes/auth');
 const rfqRoutes = require('./routes/rfqs');
 const revitRoutes = require('./routes/revit');
+const scoringRoutes = require('./routes/scoring');
 
 // Middleware
 const rateLimit = require('./middleware/rateLimit');
@@ -140,6 +141,7 @@ async function start() {
     app.use('/api/v1/ai', documentAIRoutes);
     app.use('/api/v1/auth', authRoutes);
     app.use('/api/v1/rfqs', rfqRoutes);
+    app.use('/api/v1/scoring', scoringRoutes);
 
     // Integration APIs
     // Revit Integration - Azure Entra ID auth, project/material sync
