@@ -19,6 +19,51 @@ const router = express.Router();
 const catalogService = require('../services/catalog');
 const { authenticateToken } = require('../middleware/auth');
 
+// Shadow supplier visibility service for anonymization
+let shadowVisibility;
+try {
+    shadowVisibility = require('../services/shadow/visibility');
+} catch (e) {
+    // Shadow module may not be available in all environments
+    shadowVisibility = null;
+}
+
+/**
+ * Anonymize shadow supplier data in material response
+ * Removes identifying supplier information for unclaimed shadow suppliers
+ * 
+ * @param {Object} material - Material object with supplier data
+ * @returns {Object} - Material with anonymized supplier if needed
+ */
+function anonymizeShadowSupplier(material) {
+    if (!material || !material.supplier) {
+        return material;
+    }
+    
+    // Check if this is a shadow/scraped supplier that needs anonymization
+    // Shadow suppliers have tier='scraped' or come from scraped_supplier_data
+    const supplier = material.supplier;
+    
+    // If supplier has a shadow flag or is not claimed, anonymize
+    if (supplier.isShadow || supplier.tier === 'scraped') {
+        return {
+            ...material,
+            supplier: {
+                id: null, // Hide real ID
+                name: 'Verified Supplier', // Generic name
+                isAnonymized: true,
+                // Keep non-identifying sustainability data
+                bCorpScore: supplier.bCorpScore,
+                certificationCount: supplier.certificationCount
+            },
+            // Add note about why supplier is hidden
+            supplierNote: 'Supplier identity will be revealed upon RFQ submission'
+        };
+    }
+    
+    return material;
+}
+
 // ============================================
 // PUBLIC ROUTES (No auth required)
 // ============================================
@@ -87,13 +132,16 @@ router.get('/materials', async (req, res) => {
  * 
  * Get detailed material information including:
  * - Full product details
- * - Supplier information
+ * - Supplier information (anonymized for shadow suppliers)
  * - All certifications
  * - EPD data
  * - C2C certification
  * - LEED credits
  * - Materials composition
  * - Sustainability score breakdown
+ * 
+ * Note: Shadow suppliers are anonymized until they claim their profile
+ * or until an RFQ is submitted.
  */
 router.get('/materials/:materialId', async (req, res) => {
     try {
@@ -106,7 +154,7 @@ router.get('/materials/:materialId', async (req, res) => {
             });
         }
 
-        const material = await catalogService.getMaterialById(parseInt(materialId));
+        let material = await catalogService.getMaterialById(parseInt(materialId));
 
         if (!material) {
             return res.status(404).json({
@@ -114,6 +162,9 @@ router.get('/materials/:materialId', async (req, res) => {
                 message: `No material found with ID ${materialId}`
             });
         }
+
+        // Anonymize shadow supplier data for public responses
+        material = anonymizeShadowSupplier(material);
 
         res.json(material);
     } catch (error) {
@@ -232,6 +283,8 @@ router.get('/certifications', async (req, res) => {
  * - Carbon footprint
  * - Recommended choice
  * 
+ * Note: Shadow suppliers are anonymized in comparison results.
+ * 
  * Request Body:
  * {
  *   materialIds: [1, 2, 3] // Array of 2-5 material IDs
@@ -280,6 +333,22 @@ router.post('/compare', async (req, res) => {
         }
 
         const result = await catalogService.compareMaterials(validIds);
+
+        // Anonymize shadow suppliers in comparison results
+        if (result.materials && Array.isArray(result.materials)) {
+            result.materials = result.materials.map(material => {
+                // Check if supplier is a shadow/scraped supplier
+                if (material.supplierTier === 'scraped' || material.isShadowSupplier) {
+                    return {
+                        ...material,
+                        supplierName: 'Verified Supplier',
+                        supplierId: null,
+                        isAnonymized: true
+                    };
+                }
+                return material;
+            });
+        }
 
         res.json(result);
     } catch (error) {
