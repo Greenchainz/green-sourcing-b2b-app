@@ -9,11 +9,17 @@ require('dotenv').config();
 // Routes
 const uploadRoutes = require('./routes/uploads');
 const documentAIRoutes = require('./routes/documentAI');
-const authSyncRoutes = require('./routes/auth-sync');
+// const authSyncRoutes = require('./routes/auth-sync'); // TODO: Implement auth-sync routes
 const rfqSimulatorRoutes = require('./routes/rfq-simulator');
 const authRoutes = require('./routes/auth');
 const rfqRoutes = require('./routes/rfqs');
 const shadowSupplierRoutes = require('./routes/shadow-suppliers');
+const aiGatewayRoutes = require('./routes/ai-gateway');
+
+// AI Gateway
+const aiGateway = require('./services/ai-gateway');
+const revitRoutes = require('./routes/revit');
+const scoringRoutes = require('./routes/scoring');
 
 // Middleware
 const rateLimit = require('./middleware/rateLimit');
@@ -140,6 +146,17 @@ async function start() {
     app.use('/api/v1/ai', documentAIRoutes);
     app.use('/api/v1/auth', authRoutes);
     app.use('/api/v1/rfqs', rfqRoutes);
+    app.use('/api/v1/ai-gateway', aiGatewayRoutes);
+    
+    // Initialize AI Gateway
+    aiGateway.initialize().catch(err => {
+        console.warn('⚠️  AI Gateway initialization warning:', err.message);
+    });
+    app.use('/api/v1/scoring', scoringRoutes);
+
+    // Integration APIs
+    // Revit Integration - Azure Entra ID auth, project/material sync
+    app.use('/api/integrations/revit/v1', revitRoutes);
 
     // Internal API routes (protected by INTERNAL_API_KEY)
     // RFQ Simulator - distribution engine, queue management, metrics

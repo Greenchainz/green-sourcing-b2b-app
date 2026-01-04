@@ -1,19 +1,71 @@
 const { client } = require('./index');
 const { pool } = require('../../db');
+const entitlements = require('../entitlements');
 
-// Check if user is eligible for outbound messaging (Pro or Enterprise)
-async function checkOutboundEligibility(userId) {
+/**
+ * Check if user is eligible for outbound messaging.
+ * Uses the entitlements service for tier-based access control.
+ * Supports both user IDs and supplier IDs.
+ * 
+ * @param {string|number} userId - User or Supplier ID
+ * @param {object} options - Options
+ * @param {boolean} options.isSupplier - If true, treat ID as supplier ID (default: false)
+ * @returns {Promise<{eligible: boolean, reason?: string, remaining?: number}>}
+ */
+async function checkOutboundEligibility(userId, options = {}) {
+  const { isSupplier = false } = options;
+  
   try {
-    const result = await pool.query('SELECT Tier FROM Users WHERE UserID = $1', [userId]);
-    if (result.rows.length === 0) return false;
-
-    const tier = result.rows[0].tier;
-    // If Tier is null/undefined, default to false.
-    return tier === 'pro' || tier === 'enterprise';
+    let supplierId = userId;
+    
+    // If not a supplier ID, look up the supplier ID from user
+    if (!isSupplier) {
+      const result = await pool.query(
+        `SELECT s.SupplierID 
+         FROM Users u 
+         JOIN Suppliers s ON u.CompanyID = s.CompanyID 
+         WHERE u.UserID = $1`,
+        [userId]
+      );
+      
+      if (result.rows.length === 0) {
+        // Fallback to legacy check for non-supplier users
+        const userResult = await pool.query('SELECT Tier FROM Users WHERE UserID = $1', [userId]);
+        if (userResult.rows.length === 0) {
+          return { eligible: false, reason: 'User not found' };
+        }
+        const tier = userResult.rows[0].tier;
+        const eligible = tier === 'pro' || tier === 'enterprise' || tier === 'standard' || tier === 'premium';
+        return { 
+          eligible, 
+          reason: eligible ? undefined : 'Upgrade to Standard or Premium tier for outbound messaging'
+        };
+      }
+      
+      supplierId = result.rows[0].supplierid;
+    }
+    
+    // Use entitlements service for the check
+    const canSend = await entitlements.canOutbound(supplierId);
+    
+    return {
+      eligible: canSend.allowed,
+      reason: canSend.reason,
+      remaining: canSend.remaining
+    };
   } catch (error) {
     console.error(`Error checking eligibility for user ${userId}:`, error.message);
-    return false;
+    return { eligible: false, reason: 'Error checking eligibility' };
   }
+}
+
+/**
+ * Legacy wrapper for backward compatibility
+ * @deprecated Use checkOutboundEligibility with options instead
+ */
+async function checkOutboundEligibilityLegacy(userId) {
+  const result = await checkOutboundEligibility(userId);
+  return result.eligible;
 }
 
 async function trackMessageSent(userId, messageType) {
@@ -42,13 +94,24 @@ async function getAdminId() {
 }
 
 async function sendMessage(userId, message, options = {}) {
-  const { bypassEligibility = false, messageType = 'outbound_message' } = options;
+  const { 
+    bypassEligibility = false, 
+    messageType = 'outbound_message',
+    isSupplier = false,
+    supplierId = null
+  } = options;
+
+  let effectiveSupplierId = supplierId;
 
   if (!bypassEligibility) {
-    const isEligible = await checkOutboundEligibility(userId);
-    if (!isEligible) {
-      console.warn(`User ${userId} is not eligible for outbound messages.`);
-      return null;
+    const eligibility = await checkOutboundEligibility(userId, { isSupplier });
+    if (!eligibility.eligible) {
+      console.warn(`User ${userId} is not eligible for outbound messages: ${eligibility.reason}`);
+      return { 
+        success: false, 
+        error: eligibility.reason,
+        remaining: eligibility.remaining 
+      };
     }
   }
 
@@ -69,7 +132,12 @@ async function sendMessage(userId, message, options = {}) {
 
     await trackMessageSent(userId, messageType);
 
-    return result;
+    // Track outbound usage for quota enforcement
+    if (!bypassEligibility && effectiveSupplierId) {
+      await entitlements.incrementOutboundUsage(effectiveSupplierId, result?.id);
+    }
+
+    return { success: true, result };
   } catch (error) {
     console.error(`Error sending message to user ${userId}:`, error.message);
     throw error;
@@ -108,6 +176,7 @@ async function sendQuoteUpdate(buyerId, quoteData) {
 module.exports = {
   sendMessage,
   checkOutboundEligibility,
+  checkOutboundEligibilityLegacy,
   sendRFQNotification,
   sendQuoteUpdate,
   trackMessageSent
