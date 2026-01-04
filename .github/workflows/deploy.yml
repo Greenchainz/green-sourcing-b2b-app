@@ -1,8 +1,11 @@
-name: Deploy to Azure Container Apps
+name: (Legacy) Deploy to Azure Container Apps
 
+# NOTE: This workflow is intentionally disabled.
+# Use .github/workflows/azure-deploy.yml instead, which deploys:
+# - Backend -> greenchainz-container
+# - Frontend -> greenchainz-frontend
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   id-token: write

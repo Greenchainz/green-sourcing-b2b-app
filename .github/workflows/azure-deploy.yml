@@ -151,6 +151,9 @@ jobs:
       (github.event_name == 'push' && needs.changes.outputs.backend == 'true')
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
+
+    outputs:
+      backend_url: ${{ steps.verify.outputs.backend_url }}
     
     steps:
       - uses: actions/checkout@v4
@@ -223,6 +226,7 @@ jobs:
             --query "{targetPort: targetPort, external: external, transport: transport}" -o table
       
       - name: Verify Backend Deployment
+        id: verify
         run: |
           RESOURCE_GROUP="${{ needs.setup.outputs.resource_group }}"
           BACKEND_APP="${{ needs.setup.outputs.backend_app }}"
@@ -243,6 +247,8 @@ jobs:
             echo "❌ Backend health check failed with status $HTTP_STATUS"
             exit 1
           fi
+
+          echo "backend_url=https://${BACKEND_URL}" >> $GITHUB_OUTPUT
           
           echo "✅ Backend deployed successfully to https://${BACKEND_URL}"
           echo ""
@@ -263,6 +269,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
+
+    outputs:
+      frontend_url: ${{ steps.verify.outputs.frontend_url }}
     
     steps:
       - uses: actions/checkout@v4
@@ -370,6 +379,7 @@ jobs:
           fi
       
       - name: Verify Frontend Deployment
+        id: verify
         run: |
           RESOURCE_GROUP="${{ needs.setup.outputs.resource_group }}"
           FRONTEND_APP="${{ needs.setup.outputs.frontend_app }}"
@@ -389,6 +399,8 @@ jobs:
             echo "❌ Frontend health check failed with status $HTTP_STATUS"
             exit 1
           fi
+
+          echo "frontend_url=https://${FRONTEND_URL}" >> $GITHUB_OUTPUT
           
           echo "✅ Frontend deployed successfully to https://${FRONTEND_URL}"
 
@@ -405,6 +417,16 @@ jobs:
           ENV="${{ needs.setup.outputs.environment }}"
           BACKEND_APP="${{ needs.setup.outputs.backend_app }}"
           FRONTEND_APP="${{ needs.setup.outputs.frontend_app }}"
+
+          BACKEND_URL="${{ needs.deploy-backend.outputs.backend_url }}"
+          FRONTEND_URL="${{ needs.deploy-frontend.outputs.frontend_url }}"
+
+          if [ -z "$BACKEND_URL" ]; then
+            BACKEND_URL="(not deployed in this run)"
+          fi
+          if [ -z "$FRONTEND_URL" ]; then
+            FRONTEND_URL="(not deployed in this run)"
+          fi
           
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -419,8 +441,12 @@ jobs:
           echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 URLs" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend: https://${BACKEND_APP}.eastus.azurecontainerapps.io" >> $GITHUB_STEP_SUMMARY
-          echo "- Frontend: https://${FRONTEND_APP}.eastus.azurecontainerapps.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: ${BACKEND_URL}" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: ${FRONTEND_URL}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Webhook Endpoints" >> $GITHUB_STEP_SUMMARY
-          echo "- Stripe: https://${BACKEND_APP}.eastus.azurecontainerapps.io/api/webhooks/stripe" >> $GITHUB_STEP_SUMMARY
+          if [[ "$BACKEND_URL" == https://* ]]; then
+            echo "- Stripe: ${BACKEND_URL}/api/webhooks/stripe" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Stripe: (backend not deployed in this run)" >> $GITHUB_STEP_SUMMARY
+          fi
