@@ -2,6 +2,7 @@
 # GreenChainz Azure Container Apps Deploy Pipeline
 # =============================================================================
 # Deploys frontend (Next.js) and backend (Node.js) to Azure Container Apps.
+# Supports staging and production environments with separate resources.
 #
 # Required GitHub Secrets:
 #   - AZURE_CREDENTIALS       : Azure Service Principal JSON (az ad sp create-for-rbac output)
@@ -11,10 +12,18 @@
 #   - NEXT_PUBLIC_AZURE_CLIENT_ID   : Azure AD app client ID (for frontend auth)
 #
 # Required Key Vault Secrets (in greenchianz-vault):
-#   - postgres-password       : Database password
-#   - jwt-secret              : JWT signing secret
-#   - session-secret          : Express session secret
-#   - redis-password          : Azure Redis Cache password
+#   - postgres-password         : Database password
+#   - jwt-secret                : JWT signing secret
+#   - session-secret            : Express session secret
+#   - redis-password            : Azure Redis Cache password
+#   - stripe-secret-key         : Stripe API secret key
+#   - stripe-webhook-secret     : Stripe webhook signing secret
+#   - linkedin-client-id        : LinkedIn OAuth client ID
+#   - linkedin-client-secret    : LinkedIn OAuth client secret
+#
+# Webhook Endpoints:
+#   - Production: https://greenchainz-container.eastus.azurecontainerapps.io/api/webhooks/stripe
+#   - Staging: https://greenchainz-container-staging.eastus.azurecontainerapps.io/api/webhooks/stripe
 # =============================================================================
 
 name: Azure Container Apps Deploy
@@ -24,7 +33,9 @@ permissions:
 
 on:
   push:
-    branches: [main]
+    branches: 
+      - main        # Production deployments
+      - staging     # Staging deployments
     paths:
       - 'backend/**'
       - 'app/**'
@@ -47,15 +58,62 @@ on:
           - all
           - backend
           - frontend
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 env:
   REGISTRY: acrgreenchainzprod916.azurecr.io
-  RESOURCE_GROUP: rg-greenchainz-prod-container
-  BACKEND_APP: greenchainz-container
-  FRONTEND_APP: greenchainz-frontend
-  CONTAINER_ENV: cae-greenchainz-env
 
 jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Determine environment and set configuration
+  # ─────────────────────────────────────────────────────────────────────────────
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      resource_group: ${{ steps.env.outputs.resource_group }}
+      backend_app: ${{ steps.env.outputs.backend_app }}
+      frontend_app: ${{ steps.env.outputs.frontend_app }}
+      container_env: ${{ steps.env.outputs.container_env }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          # Determine environment based on trigger
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENV="production"
+          elif [ "${{ github.ref }}" == "refs/heads/staging" ]; then
+            ENV="staging"
+          else
+            ENV="staging"
+          fi
+          
+          echo "environment=${ENV}" >> $GITHUB_OUTPUT
+          
+          # Set environment-specific resources
+          if [ "$ENV" == "production" ]; then
+            echo "resource_group=rg-greenchainz-prod-container" >> $GITHUB_OUTPUT
+            echo "backend_app=greenchainz-container" >> $GITHUB_OUTPUT
+            echo "frontend_app=greenchainz-frontend" >> $GITHUB_OUTPUT
+            echo "container_env=cae-greenchainz-env" >> $GITHUB_OUTPUT
+          else
+            echo "resource_group=rg-greenchainz-staging-container" >> $GITHUB_OUTPUT
+            echo "backend_app=greenchainz-container-staging" >> $GITHUB_OUTPUT
+            echo "frontend_app=greenchainz-frontend-staging" >> $GITHUB_OUTPUT
+            echo "container_env=cae-greenchainz-staging-env" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "🎯 Deploying to: ${ENV}"
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Detect which components changed (for push events)
   # ─────────────────────────────────────────────────────────────────────────────
@@ -87,12 +145,12 @@ jobs:
   # Build and deploy backend
   # ─────────────────────────────────────────────────────────────────────────────
   deploy-backend:
-    needs: changes
+    needs: [setup, changes]
     if: |
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'all' || github.event.inputs.deploy_target == 'backend')) ||
       (github.event_name == 'push' && needs.changes.outputs.backend == 'true')
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ needs.setup.outputs.environment }}
     
     steps:
       - uses: actions/checkout@v4
@@ -115,7 +173,7 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/greenchainz-backend:${{ github.sha }}
-            ${{ env.REGISTRY }}/greenchainz-backend:latest
+            ${{ env.REGISTRY }}/greenchainz-backend:${{ needs.setup.outputs.environment }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
@@ -126,19 +184,56 @@ jobs:
       
       - name: Deploy Backend to Container Apps
         run: |
-          az containerapp update \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY }}/greenchainz-backend:${{ github.sha }}
+          RESOURCE_GROUP="${{ needs.setup.outputs.resource_group }}"
+          BACKEND_APP="${{ needs.setup.outputs.backend_app }}"
+          CONTAINER_ENV="${{ needs.setup.outputs.container_env }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+          
+          echo "📦 Deploying backend to ${ENV} environment..."
+          
+          # Check if app exists
+          if az containerapp show --name "$BACKEND_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+            echo "📦 Updating existing backend app..."
+            az containerapp update \
+              --name "$BACKEND_APP" \
+              --resource-group "$RESOURCE_GROUP" \
+              --image ${{ env.REGISTRY }}/greenchainz-backend:${{ github.sha }}
+          else
+            echo "🆕 Creating new backend app..."
+            az containerapp create \
+              --name "$BACKEND_APP" \
+              --resource-group "$RESOURCE_GROUP" \
+              --environment "$CONTAINER_ENV" \
+              --image ${{ env.REGISTRY }}/greenchainz-backend:${{ github.sha }} \
+              --target-port 3001 \
+              --ingress external \
+              --min-replicas 1 \
+              --max-replicas 10 \
+              --cpu 0.5 \
+              --memory 1Gi \
+              --registry-server ${{ env.REGISTRY }} \
+              --registry-identity system
+          fi
+          
+          # Ensure Stripe webhook endpoint is accessible
+          echo "🔗 Verifying ingress configuration for webhook endpoints..."
+          az containerapp ingress show \
+            --name "$BACKEND_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "{targetPort: targetPort, external: external, transport: transport}" -o table
       
       - name: Verify Backend Deployment
         run: |
+          RESOURCE_GROUP="${{ needs.setup.outputs.resource_group }}"
+          BACKEND_APP="${{ needs.setup.outputs.backend_app }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+          
           echo "⏳ Waiting for backend to stabilize..."
           sleep 30
           
           BACKEND_URL=$(az containerapp show \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$BACKEND_APP" \
+            --resource-group "$RESOURCE_GROUP" \
             --query "properties.configuration.ingress.fqdn" -o tsv)
           
           echo "🔍 Health check: https://${BACKEND_URL}/health"
@@ -150,12 +245,15 @@ jobs:
           fi
           
           echo "✅ Backend deployed successfully to https://${BACKEND_URL}"
+          echo ""
+          echo "📌 Webhook Endpoints:"
+          echo "   Stripe: https://${BACKEND_URL}/api/webhooks/stripe"
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Build and deploy frontend
   # ─────────────────────────────────────────────────────────────────────────────
   deploy-frontend:
-    needs: [changes, deploy-backend]
+    needs: [setup, changes, deploy-backend]
     if: |
       always() &&
       (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') &&
@@ -164,7 +262,7 @@ jobs:
         (github.event_name == 'push' && needs.changes.outputs.frontend == 'true')
       )
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ needs.setup.outputs.environment }}
     
     steps:
       - uses: actions/checkout@v4
@@ -184,13 +282,21 @@ jobs:
       - name: Get Backend URL
         id: backend-url
         run: |
+          RESOURCE_GROUP="${{ needs.setup.outputs.resource_group }}"
+          BACKEND_APP="${{ needs.setup.outputs.backend_app }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+          
           BACKEND_FQDN=$(az containerapp show \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$BACKEND_APP" \
+            --resource-group "$RESOURCE_GROUP" \
             --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
           
           if [ -z "$BACKEND_FQDN" ]; then
-            BACKEND_FQDN="greenchainz-container.eastus.azurecontainerapps.io"
+            if [ "$ENV" == "production" ]; then
+              BACKEND_FQDN="greenchainz-container.eastus.azurecontainerapps.io"
+            else
+              BACKEND_FQDN="greenchainz-container-staging.eastus.azurecontainerapps.io"
+            fi
           fi
           
           echo "url=https://${BACKEND_FQDN}" >> $GITHUB_OUTPUT
@@ -211,21 +317,31 @@ jobs:
             NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           tags: |
             ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }}
-            ${{ env.REGISTRY }}/greenchainz-frontend:latest
+            ${{ env.REGISTRY }}/greenchainz-frontend:${{ needs.setup.outputs.environment }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
       - name: Deploy Frontend to Container Apps
         run: |
+          RESOURCE_GROUP="${{ needs.setup.outputs.resource_group }}"
+          FRONTEND_APP="${{ needs.setup.outputs.frontend_app }}"
+          CONTAINER_ENV="${{ needs.setup.outputs.container_env }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+          
+          NODE_ENV_VALUE="production"
+          if [ "$ENV" == "staging" ]; then
+            NODE_ENV_VALUE="staging"
+          fi
+          
           # Check if frontend app exists
-          if az containerapp show --name ${{ env.FRONTEND_APP }} --resource-group ${{ env.RESOURCE_GROUP }} &>/dev/null; then
+          if az containerapp show --name "$FRONTEND_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
             echo "📦 Updating existing frontend app..."
             az containerapp update \
-              --name ${{ env.FRONTEND_APP }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --name "$FRONTEND_APP" \
+              --resource-group "$RESOURCE_GROUP" \
               --image ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }} \
               --set-env-vars \
-                NODE_ENV=production \
+                NODE_ENV=$NODE_ENV_VALUE \
                 PORT=3000 \
                 NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }} \
                 NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
@@ -233,9 +349,9 @@ jobs:
           else
             echo "🆕 Creating new frontend app..."
             az containerapp create \
-              --name ${{ env.FRONTEND_APP }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
-              --environment ${{ env.CONTAINER_ENV }} \
+              --name "$FRONTEND_APP" \
+              --resource-group "$RESOURCE_GROUP" \
+              --environment "$CONTAINER_ENV" \
               --image ${{ env.REGISTRY }}/greenchainz-frontend:${{ github.sha }} \
               --target-port 3000 \
               --ingress external \
@@ -246,7 +362,7 @@ jobs:
               --registry-server ${{ env.REGISTRY }} \
               --registry-identity system \
               --env-vars \
-                NODE_ENV=production \
+                NODE_ENV=$NODE_ENV_VALUE \
                 PORT=3000 \
                 NEXT_PUBLIC_BACKEND_URL=${{ steps.backend-url.outputs.url }} \
                 NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
@@ -255,12 +371,15 @@ jobs:
       
       - name: Verify Frontend Deployment
         run: |
+          RESOURCE_GROUP="${{ needs.setup.outputs.resource_group }}"
+          FRONTEND_APP="${{ needs.setup.outputs.frontend_app }}"
+          
           echo "⏳ Waiting for frontend to stabilize..."
           sleep 30
           
           FRONTEND_URL=$(az containerapp show \
-            --name ${{ env.FRONTEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$FRONTEND_APP" \
+            --resource-group "$RESOURCE_GROUP" \
             --query "properties.configuration.ingress.fqdn" -o tsv)
           
           echo "🔍 Health check: https://${FRONTEND_URL}/"
@@ -277,13 +396,19 @@ jobs:
   # Deployment summary
   # ─────────────────────────────────────────────────────────────────────────────
   summary:
-    needs: [deploy-backend, deploy-frontend]
+    needs: [setup, deploy-backend, deploy-frontend]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Deployment Summary
         run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          BACKEND_APP="${{ needs.setup.outputs.backend_app }}"
+          FRONTEND_APP="${{ needs.setup.outputs.frontend_app }}"
+          
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** \`${ENV}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
@@ -294,5 +419,8 @@ jobs:
           echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 URLs" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend: https://greenchainz-container.eastus.azurecontainerapps.io" >> $GITHUB_STEP_SUMMARY
-          echo "- Frontend: https://greenchainz-frontend.eastus.azurecontainerapps.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: https://${BACKEND_APP}.eastus.azurecontainerapps.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: https://${FRONTEND_APP}.eastus.azurecontainerapps.io" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Webhook Endpoints" >> $GITHUB_STEP_SUMMARY
+          echo "- Stripe: https://${BACKEND_APP}.eastus.azurecontainerapps.io/api/webhooks/stripe" >> $GITHUB_STEP_SUMMARY
