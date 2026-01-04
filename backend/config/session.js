@@ -1,35 +1,59 @@
 // backend/config/session.js
+//
+// IMPORTANT: This file is now DEPRECATED for direct import.
+// Use middleware/session.js instead, which properly handles Redis connection
+// and validates secrets in production.
+//
+// This file is kept for backwards compatibility but should not be used directly.
 
 const session = require('express-session');
 const RedisStore = require('connect-redis').default;
 const { createClient } = require('redis');
 const { COOKIE_NAMES, EXPIRATION, isProduction } = require('./cookieConfig');
+const { requireEnv, getEnvOrFallback } = require('./validateEnv');
 
-// Initialize Redis client
-// Using AZURE_REDIS_CONNECTION_STRING as requested.
-// Note: Redis client usually expects a URL or config object.
-// If connection string is a URL (rediss://...), createClient({ url: ... }) works.
-const redisClient = createClient({
-  url: process.env.AZURE_REDIS_CONNECTION_STRING,
-  socket: {
+// ============================================
+// COOKIE_SECRET: Required in production, fallback only for dev
+// ============================================
+// SECURITY: No fallback in production - will throw if missing
+const cookieSecret = isProduction
+  ? requireEnv('COOKIE_SECRET', { minLength: 32, description: 'Cookie encryption key' })
+  : getEnvOrFallback('COOKIE_SECRET', 'dev-only-cookie-secret-not-for-production', { minLength: 16 });
+
+// ============================================
+// Redis Client (Optional - only if connection string provided)
+// ============================================
+let redisClient = null;
+
+// Only initialize Redis if connection string is provided
+if (process.env.AZURE_REDIS_CONNECTION_STRING) {
+  redisClient = createClient({
+    url: process.env.AZURE_REDIS_CONNECTION_STRING,
+    socket: {
       tls: isProduction, // Azure Redis typically requires TLS
       rejectUnauthorized: isProduction // In production we should verify certs
-  }
-});
+    }
+  });
 
-redisClient.on('error', (err) => console.error('Redis Client Error', err));
-redisClient.on('connect', () => console.log('Redis Client Connected'));
+  redisClient.on('error', (err) => console.error('Redis Client Error', err));
+  redisClient.on('connect', () => console.log('Redis Client Connected'));
 
-// Connect to Redis (async)
-redisClient.connect().catch(console.error);
+  // Connect to Redis (async)
+  redisClient.connect().catch(console.error);
+}
 
+// ============================================
+// Session Configuration
+// ============================================
 const sessionConfig = {
-  store: new RedisStore({
-    client: redisClient,
-    prefix: 'gc_sess:',
-  }),
+  store: redisClient
+    ? new RedisStore({
+        client: redisClient,
+        prefix: 'gc_sess:',
+      })
+    : undefined, // Falls back to MemoryStore if no Redis
   name: COOKIE_NAMES.SESSION,
-  secret: process.env.COOKIE_SECRET || 'default-secret-change-me',
+  secret: cookieSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -40,6 +64,12 @@ const sessionConfig = {
     domain: process.env.COOKIE_DOMAIN,
   },
 };
+
+// Log warning if MemoryStore is used
+if (!redisClient && isProduction) {
+  console.warn('⚠️  WARNING: Using MemoryStore for sessions in production. This is not recommended.');
+  console.warn('   Configure AZURE_REDIS_CONNECTION_STRING for production-ready sessions.');
+}
 
 // Middleware wrapper to handle dynamic maxAge for "remember me" if needed,
 // or just export the session middleware directly.
