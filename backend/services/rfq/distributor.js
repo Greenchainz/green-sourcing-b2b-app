@@ -1,8 +1,8 @@
 const { pool } = require('../../db');
 const { findMatchingSuppliers } = require('./matcher');
-const { createDistributionWaves } = require('./waves');
-const entitlements = require('../entitlements');
 const { createDistributionWaves, isShadowTier, ACCESS_LEVELS } = require('./waves');
+const entitlements = require('../entitlements');
+const { canDistributeRFQ } = require('../linkedinVerification');
 
 /**
  * Calculates the Haversine distance between two points in kilometers.
@@ -147,7 +147,7 @@ function calculatePriorityScore(supplier, rfq, metrics, verification, supplierEn
  * @returns {Promise<{success: boolean, supplierCount: number, shadowCount: number, waveBreakdown: object, error?: string}>}
  */
 async function distributeRFQ(rfqId, options = {}) {
-    const { useEntitlements = true, enforceQuotas = true } = options;
+    const { useEntitlements = true, enforceQuotas = true, buyerId = null, skipVerification = false } = options;
 
     if (!rfqId) {
         console.error('distributeRFQ called without rfqId');
@@ -157,6 +157,36 @@ async function distributeRFQ(rfqId, options = {}) {
     const client = await pool.connect();
     try {
         console.log(`[RFQ Distribution] Starting distribution for RFQ ${rfqId}`);
+
+        // Buyer Verification Gate: Require LinkedIn + deposit verification before distribution
+        if (!skipVerification && buyerId) {
+            const { canDistribute, missing, error } = await canDistributeRFQ(buyerId);
+            
+            if (error) {
+                console.error(`[RFQ Distribution] Verification check failed for buyer ${buyerId}:`, error);
+                return { 
+                    success: false, 
+                    supplierCount: 0, 
+                    shadowCount: 0, 
+                    waveBreakdown: {}, 
+                    error: 'Buyer verification check failed' 
+                };
+            }
+
+            if (!canDistribute) {
+                console.log(`[RFQ Distribution] Buyer ${buyerId} blocked - missing verifications: ${missing.join(', ')}`);
+                return { 
+                    success: false, 
+                    supplierCount: 0, 
+                    shadowCount: 0, 
+                    waveBreakdown: {}, 
+                    error: `Buyer verification required: ${missing.join(', ')}`,
+                    missingVerifications: missing
+                };
+            }
+            
+            console.log(`[RFQ Distribution] Buyer ${buyerId} verified for distribution`);
+        }
 
         // 1. Find Matching Suppliers
         let candidates = await findMatchingSuppliers(rfqId);
@@ -202,21 +232,15 @@ async function distributeRFQ(rfqId, options = {}) {
             entitlementResults.forEach(([id, ent]) => entitlementsMap.set(id, ent));
         }
 
-        // 5. Calculate Priority Scores (now with entitlements)
-        candidates = candidates.map(s => {
-            const metrics = metricsMap.get(s.id) || {};
-            const verification = verifyMap.get(s.id) || {};
-            const supplierEntitlements = entitlementsMap.get(s.id) || null;
-            const priorityScore = calculatePriorityScore(s, rfq, metrics, verification, supplierEntitlements);
-            return { ...s, metrics, verification, entitlements: supplierEntitlements, priorityScore };
-        // 4. Calculate Priority Scores and categorize by tier
+        // 5. Calculate Priority Scores and categorize by tier
         let fullAccessCount = 0;
         let shadowAccessCount = 0;
         
         candidates = candidates.map(s => {
             const metrics = metricsMap.get(s.id) || {};
             const verification = verifyMap.get(s.id) || {};
-            const priorityScore = calculatePriorityScore(s, rfq, metrics, verification);
+            const supplierEntitlements = entitlementsMap.get(s.id) || null;
+            const priorityScore = calculatePriorityScore(s, rfq, metrics, verification, supplierEntitlements);
             const isShadow = isShadowTier(s.tier);
             
             if (isShadow) {
@@ -225,25 +249,21 @@ async function distributeRFQ(rfqId, options = {}) {
                 fullAccessCount++;
             }
             
-            return { ...s, metrics, verification, priorityScore, isShadow };
+            return { ...s, metrics, verification, entitlements: supplierEntitlements, priorityScore, isShadow };
         });
 
         // Sort by Priority Score Descending (within tier groups)
         candidates.sort((a, b) => b.priorityScore - a.priorityScore);
 
-        console.log(`Ranked ${candidates.length} suppliers for RFQ ${rfqId}`);
-
-        // 6. Create Distribution Waves (with entitlements-based wave assignment)
-        const waveResult = await createDistributionWaves(rfqId, candidates, { 
-            useEntitlements, 
-            enforceQuotas 
-        });
         console.log(`[RFQ Distribution] Ranked ${candidates.length} suppliers for RFQ ${rfqId}:`);
         console.log(`  - Full access eligible: ${fullAccessCount}`);
         console.log(`  - Shadow/outreach only: ${shadowAccessCount}`);
 
-        // 5. Create Distribution Waves with tiered access
-        const waveResult = await createDistributionWaves(rfqId, candidates);
+        // 6. Create Distribution Waves with tiered access
+        const waveResult = await createDistributionWaves(rfqId, candidates, { 
+            useEntitlements, 
+            enforceQuotas 
+        });
 
         if (!waveResult.success) {
             console.error(`[RFQ Distribution] Failed to create waves for RFQ ${rfqId}: ${waveResult.error}`);
@@ -263,7 +283,7 @@ async function distributeRFQ(rfqId, options = {}) {
         return { 
             success: true, 
             supplierCount: waveResult.count,
-            skippedQuota: waveResult.skippedQuota || 0
+            skippedQuota: waveResult.skippedQuota || 0,
             shadowCount: waveResult.shadowCount,
             waveBreakdown: waveResult.waveBreakdown || {}
         };
