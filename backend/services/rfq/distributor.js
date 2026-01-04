@@ -1,7 +1,6 @@
 const { pool } = require('../../db');
 const { findMatchingSuppliers } = require('./matcher');
 const { createDistributionWaves } = require('./waves');
-const { updateResponseMetrics } = require('./metrics');
 
 /**
  * Calculates the Haversine distance between two points in kilometers.
@@ -27,6 +26,21 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 /**
+ * Safely parse project_details which may be a string or object.
+ * @param {string|object} projectDetails
+ * @returns {object}
+ */
+function parseProjectDetails(projectDetails) {
+    if (!projectDetails) return {};
+    if (typeof projectDetails === 'object') return projectDetails;
+    try {
+        return JSON.parse(projectDetails);
+    } catch (e) {
+        return {};
+    }
+}
+
+/**
  * Calculates priority score for a supplier.
  * @param {object} supplier - Supplier object with metrics and tier.
  * @param {object} rfq - RFQ object (for location).
@@ -36,24 +50,21 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
  */
 function calculatePriorityScore(supplier, rfq, metrics, verification) {
     // 1. Distance Score (30%)
-    // Lower distance is better. Let's say < 50km is 100, > 500km is 0.
-    let distanceScore = 0;
-    // Assuming RFQ might have project location. If not, we skip or default.
-    // RFQ schema has project_details which might contain location or we use buyer location?
-    // Let's assume rfq has latitude/longitude or we can't calculate.
-    // Ideally RFQ or Project has location. Let's assume we pass it or it's on RFQ.
-    // If not available, we give a neutral score.
+    // Lower distance is better. < 50km = 100, > 500km = 0.
+    let distanceScore = 50; // Default neutral score
 
-    if (supplier.latitude && supplier.longitude && rfq.project_details && rfq.project_details.latitude) {
+    const projectDetails = parseProjectDetails(rfq?.project_details);
+    
+    if (supplier.latitude && supplier.longitude && projectDetails.latitude && projectDetails.longitude) {
         const dist = haversineDistance(
             supplier.latitude, supplier.longitude,
-            rfq.project_details.latitude, rfq.project_details.longitude
+            projectDetails.latitude, projectDetails.longitude
         );
-        if (dist <= 50) distanceScore = 100;
-        else if (dist >= 500) distanceScore = 0;
-        else distanceScore = 100 - ((dist - 50) / 450) * 100;
-    } else {
-        distanceScore = 50; // Neutral
+        if (dist !== null) {
+            if (dist <= 50) distanceScore = 100;
+            else if (dist >= 500) distanceScore = 0;
+            else distanceScore = 100 - ((dist - 50) / 450) * 100;
+        }
     }
 
     // 2. Tier Level (25%)
@@ -64,69 +75,84 @@ function calculatePriorityScore(supplier, rfq, metrics, verification) {
         'free': 25,
         'scraped': 0
     };
-    const tierScore = tiers[(supplier.tier || 'free').toLowerCase()] || 25;
+    const tierScore = tiers[(supplier.tier || 'free').toLowerCase()] ?? 25;
 
     // 3. Response Rate (20%)
-    const responseRate = metrics ? parseFloat(metrics.response_rate) : 0;
-    const responseScore = responseRate; // 0-100 already
+    const responseRate = metrics?.response_rate ? parseFloat(metrics.response_rate) : 0;
+    const responseScore = Math.min(Math.max(responseRate, 0), 100); // Clamp 0-100
 
     // 4. Match Score (15%)
-    // Passed in supplier object from matcher
     const matchScore = supplier.matchScore || 0;
 
     // 5. Verification Score (10%)
-    const verificationScore = verification ? verification.verification_score : 0;
+    const verificationScore = verification?.verification_score || 0;
 
     // Weighted Sum
     const totalScore =
         (distanceScore * 0.30) +
-        // Formula in prompt: "Tier level: 25% weight"
         (tierScore * 0.25) +
         (responseScore * 0.20) +
         (matchScore * 0.15) +
         (verificationScore * 0.10);
 
-    return totalScore;
+    return Math.round(totalScore * 100) / 100; // Round to 2 decimal places
 }
 
 /**
  * Main distribution function.
+ * Creates distribution waves for matching suppliers.
+ * 
  * @param {string} rfqId - The UUID of the RFQ.
+ * @returns {Promise<{success: boolean, supplierCount: number, error?: string}>}
  */
 async function distributeRFQ(rfqId) {
+    if (!rfqId) {
+        console.error('distributeRFQ called without rfqId');
+        return { success: false, supplierCount: 0, error: 'Missing rfqId' };
+    }
+
     const client = await pool.connect();
     try {
         console.log(`Starting distribution for RFQ ${rfqId}`);
 
         // 1. Find Matching Suppliers
         let candidates = await findMatchingSuppliers(rfqId);
-        if (candidates.length === 0) {
-            console.log('No matching suppliers found.');
-            return;
+        if (!candidates || candidates.length === 0) {
+            console.log(`No matching suppliers found for RFQ ${rfqId}.`);
+            return { success: true, supplierCount: 0 };
         }
 
-        // 2. Fetch Additional Data (Metrics & Verification) for Candidates
-        // Use a loop or IN query. For simplicity, loop.
-        for (const supplier of candidates) {
-            // Get Metrics
-            const metricsRes = await client.query('SELECT * FROM "Supplier_Response_Metrics" WHERE supplier_id = $1', [supplier.id]);
-            supplier.metrics = metricsRes.rows[0] || {};
-
-            // Get Verification
-            const verifyRes = await client.query('SELECT * FROM "Supplier_Verification_Scores" WHERE supplier_id = $1', [supplier.id]);
-            supplier.verification = verifyRes.rows[0] || {};
-
-            // Get RFQ details for distance calc (if needed inside calculation)
-            // findMatchingSuppliers doesn't return RFQ object, so fetch it once.
-        }
-
+        // 2. Fetch RFQ details
         const rfqRes = await client.query('SELECT * FROM rfqs WHERE id = $1', [rfqId]);
+        if (rfqRes.rows.length === 0) {
+            console.error(`RFQ ${rfqId} not found during distribution.`);
+            return { success: false, supplierCount: 0, error: 'RFQ not found' };
+        }
         const rfq = rfqRes.rows[0];
 
-        // 3. Calculate Priority Scores
+        // 3. Fetch Additional Data (Metrics & Verification) for Candidates in batch
+        const supplierIds = candidates.map(s => s.id);
+        
+        // Batch fetch metrics
+        const metricsRes = await client.query(
+            `SELECT * FROM "Supplier_Response_Metrics" WHERE supplier_id = ANY($1)`,
+            [supplierIds]
+        );
+        const metricsMap = new Map(metricsRes.rows.map(m => [m.supplier_id, m]));
+
+        // Batch fetch verification scores
+        const verifyRes = await client.query(
+            `SELECT * FROM "Supplier_Verification_Scores" WHERE supplier_id = ANY($1)`,
+            [supplierIds]
+        );
+        const verifyMap = new Map(verifyRes.rows.map(v => [v.supplier_id, v]));
+
+        // 4. Calculate Priority Scores
         candidates = candidates.map(s => {
-            const score = calculatePriorityScore(s, rfq, s.metrics, s.verification);
-            return { ...s, priorityScore: score };
+            const metrics = metricsMap.get(s.id) || {};
+            const verification = verifyMap.get(s.id) || {};
+            const priorityScore = calculatePriorityScore(s, rfq, metrics, verification);
+            return { ...s, metrics, verification, priorityScore };
         });
 
         // Sort by Priority Score Descending
@@ -134,25 +160,23 @@ async function distributeRFQ(rfqId) {
 
         console.log(`Ranked ${candidates.length} suppliers for RFQ ${rfqId}`);
 
-        // 4. Create Distribution Waves
+        // 5. Create Distribution Waves
         await createDistributionWaves(rfqId, candidates);
 
-        // 5. Trigger Initial Notifications (for Wave 1)
-        // This might be done by a separate job runner that checks the queue,
-        // but we can trigger immediate ones here if their start time is now.
-        // For MVP, we'll let a cron job or similar handle "NotifiedAt" updates based on VisibleAt.
-        // But the prompt asks for "notifySupplier" in notifications.js.
-        // We assume an external process calls notifySupplier based on queue.
+        console.log(`Distribution waves created for RFQ ${rfqId}.`);
 
-        console.log('Distribution waves created.');
+        return { success: true, supplierCount: candidates.length };
 
     } catch (err) {
-        console.error('Error distributing RFQ:', err);
+        console.error(`Error distributing RFQ ${rfqId}:`, err);
+        return { success: false, supplierCount: 0, error: err.message };
     } finally {
         client.release();
     }
 }
 
 module.exports = {
-    distributeRFQ
+    distributeRFQ,
+    calculatePriorityScore,
+    haversineDistance
 };

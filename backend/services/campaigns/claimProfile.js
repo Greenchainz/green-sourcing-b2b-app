@@ -1,21 +1,34 @@
 const crypto = require('crypto');
 const { pool } = require('../../db');
 
-// Function to create a secure random token
+/**
+ * Generate a secure claim token for a scraped supplier.
+ * @param {string} scrapedSupplierId - The UUID of the scraped supplier.
+ * @returns {string} A 64-character hex token.
+ */
 function generateClaimToken(scrapedSupplierId) {
     // Generate a random 32-byte hex string
     const token = crypto.randomBytes(32).toString('hex');
-    // We could store it here, but typically this is called before saving to DB
-    // For now just return the token
     return token;
 }
 
-// Function to verify and get supplier data based on the token
+/**
+ * Validate a claim token and return the supplier data.
+ * Uses lowercase table names per canonical schema (azure_postgres_rfq_simulator.sql).
+ * 
+ * @param {string} token - The claim token to validate.
+ * @returns {Promise<{valid: boolean, message?: string, supplier?: object}>}
+ */
 async function validateClaimToken(token) {
+    if (!token || typeof token !== 'string') {
+        return { valid: false, message: 'Invalid token format.' };
+    }
+
     try {
+        // Uses lowercase table name per canonical schema
         const query = `
             SELECT id, company_name, email, claimed_status
-            FROM Scraped_Supplier_Data
+            FROM scraped_supplier_data
             WHERE claim_token = $1 AND claimed_status = 'unclaimed'
         `;
         const result = await pool.query(query, [token]);
@@ -27,20 +40,32 @@ async function validateClaimToken(token) {
         return { valid: true, supplier: result.rows[0] };
     } catch (error) {
         console.error('Error validating claim token:', error);
-        throw error;
+        return { valid: false, message: 'Validation error.' };
     }
 }
 
-// Function to link scraped data to a new user
+/**
+ * Process a claim request to link scraped data to a new user.
+ * Uses lowercase table names per canonical schema.
+ * 
+ * @param {string} token - The claim token.
+ * @param {object} userData - User data containing newSupplierId.
+ * @returns {Promise<{success: boolean, message?: string, scrapedSupplierId?: string}>}
+ */
 async function processClaimRequest(token, userData) {
+    if (!token) {
+        return { success: false, message: 'Missing token' };
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        // 1. Verify token again (double check within transaction)
+        // 1. Verify token again within transaction (uses FOR UPDATE for locking)
+        // Uses lowercase table name per canonical schema
         const checkQuery = `
             SELECT id, company_name, email
-            FROM Scraped_Supplier_Data
+            FROM scraped_supplier_data
             WHERE claim_token = $1 AND claimed_status = 'unclaimed'
             FOR UPDATE
         `;
@@ -53,19 +78,10 @@ async function processClaimRequest(token, userData) {
 
         const scrapedSupplier = checkResult.rows[0];
 
-        // 2. Create new user in users table if not exists (or user data provided)
-        // Note: userData should come from the registration form where they provided password etc.
-        // Assuming userData contains { email, passwordHash, ... } or user is already created and we are linking.
-        // The prompt says "Link scraped data to new user", implying new user creation or mapping.
-        // Let's assume the user is already created in the auth system and we have their newSupplierId
-        // OR we are returning data for the frontend to pre-fill.
-
-        // However, the function signature `processClaimRequest(token, userData)` suggests we are doing the linking.
-        // Let's assume `userData` has `newSupplierId`.
-
+        // 2. Validate user data
         if (!userData || !userData.newSupplierId) {
-             await client.query('ROLLBACK');
-             return { success: false, message: 'Missing new user ID' };
+            await client.query('ROLLBACK');
+            return { success: false, message: 'Missing new user ID' };
         }
 
         const newSupplierId = userData.newSupplierId;
@@ -79,16 +95,27 @@ async function processClaimRequest(token, userData) {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error processing claim request:', error);
-        throw error;
+        return { success: false, message: 'Processing error.' };
     } finally {
         client.release();
     }
 }
 
-// Function to update Scraped_Supplier_Data status
+/**
+ * Mark a scraped supplier as claimed by a user.
+ * Uses lowercase table names per canonical schema.
+ * 
+ * @param {string} scrapedSupplierId - The UUID of the scraped supplier.
+ * @param {string} newSupplierId - The UUID of the claiming user/supplier.
+ * @param {object} client - Optional database client for transaction.
+ * @returns {Promise<boolean>}
+ */
 async function markAsClaimed(scrapedSupplierId, newSupplierId, client) {
+    if (!scrapedSupplierId || !newSupplierId) return false;
+
+    // Uses lowercase table name per canonical schema
     const query = `
-        UPDATE Scraped_Supplier_Data
+        UPDATE scraped_supplier_data
         SET claimed_status = 'claimed',
             claimed_by_user_id = $2,
             claimed_at = NOW()
@@ -97,6 +124,7 @@ async function markAsClaimed(scrapedSupplierId, newSupplierId, client) {
     // Use provided client if transaction, otherwise pool
     const db = client || pool;
     await db.query(query, [scrapedSupplierId, newSupplierId]);
+    return true;
 }
 
 module.exports = {
