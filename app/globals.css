@@ -139,8 +139,8 @@ body {
   top: 0;
   z-index: 50;
   background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border-bottom: 1px solid var(--gc-glass-border);
   transition: background var(--gc-duration) var(--gc-ease),
               box-shadow var(--gc-duration) var(--gc-ease);
@@ -305,8 +305,8 @@ body {
 /* ---------- Cards (Glassmorphic) ---------- */
 .gc-card {
   background: var(--gc-glass);
-  backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid var(--gc-glass-border);
   border-radius: var(--gc-radius-xl);
   box-shadow: var(--gc-glass-shadow);
@@ -334,8 +334,8 @@ body {
   border-radius: var(--gc-radius-xl);
   border: 1px solid var(--gc-glass-border);
   background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
   box-shadow: 0 10px 35px rgba(2, 44, 34, 0.08);
   overflow: hidden;
   transition: box-shadow var(--gc-duration-slow) var(--gc-ease);
@@ -679,8 +679,8 @@ body {
 /* ---------- Checkout Trust Signals ---------- */
 .gc-checkout-trust {
   background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
   border: 1px solid var(--gc-glass-border);
   border-radius: var(--gc-radius-xl);
   padding: 1.25rem;
