@@ -10,6 +10,15 @@ const router = express.Router();
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const aiGateway = require('../services/ai-gateway');
 const monitoring = require('../services/azure/monitoring');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for expensive AI workflow routes
+const aiWorkflowLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 /**
  * GET /api/v1/ai-gateway/health
@@ -136,7 +145,7 @@ router.post('/execute', authenticateToken, async (req, res) => {
  * Output:
  * - alternatives: array of top 5 alternatives with sustainability comparison
  */
-router.post('/material-alternatives', authenticateToken, async (req, res) => {
+router.post('/material-alternatives', aiWorkflowLimiter, authenticateToken, async (req, res) => {
     try {
         const { 
             materialId, 
