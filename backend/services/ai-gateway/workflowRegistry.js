@@ -8,6 +8,120 @@
 const { pool } = require('../../db');
 const monitoring = require('../azure/monitoring');
 
+// ============================================
+// PREDEFINED WORKFLOWS
+// ============================================
+// These are the core workflows available in the AI Gateway.
+// They are seeded on startup if not already present.
+
+const PREDEFINED_WORKFLOWS = [
+    {
+        name: 'material-alternative',
+        version: '1.0.0',
+        description: 'Suggest sustainable alternatives for construction materials based on certifications, carbon footprint, and regional availability',
+        workflowType: 'alternatives',
+        azureDeploymentName: 'gpt-4o',
+        isCacheable: true,
+        cacheTTLSeconds: 7200, // 2 hours
+        safetyLevel: 'standard',
+        minimumTier: 'free',
+        freeTierLimit: 20,
+        proTierLimit: 200,
+        enterpriseTierLimit: 2000
+    },
+    {
+        name: 'rfq-scorer',
+        version: '1.0.0',
+        description: 'Score and rank RFQ matches based on supplier fit, sustainability credentials, pricing competitiveness, and delivery capabilities',
+        workflowType: 'rfq_assist',
+        azureDeploymentName: 'gpt-4o',
+        isCacheable: false,
+        cacheTTLSeconds: 0,
+        safetyLevel: 'standard',
+        minimumTier: 'pro', // Standard tier = pro
+        freeTierLimit: 0,
+        proTierLimit: 100,
+        enterpriseTierLimit: 1000
+    },
+    {
+        name: 'outreach-draft',
+        version: '1.0.0',
+        description: 'Draft personalized Intercom outreach messages for supplier engagement, claim reminders, and RFQ follow-ups',
+        workflowType: 'outreach',
+        azureDeploymentName: 'gpt-4o',
+        isCacheable: false,
+        cacheTTLSeconds: 0,
+        safetyLevel: 'sensitive', // Contains personalization data
+        minimumTier: 'enterprise', // Premium tier = enterprise
+        freeTierLimit: 0,
+        proTierLimit: 0,
+        enterpriseTierLimit: 500
+    },
+    {
+        name: 'compliance-check',
+        version: '1.0.0',
+        description: 'Verify certification validity, check expiration dates, and validate against LEED/BREEAM/WELL requirements',
+        workflowType: 'compliance',
+        azureDeploymentName: 'gpt-4o',
+        isCacheable: true,
+        cacheTTLSeconds: 86400, // 24 hours - certifications don't change often
+        safetyLevel: 'standard',
+        minimumTier: 'pro', // Standard tier = pro
+        freeTierLimit: 5,
+        proTierLimit: 150,
+        enterpriseTierLimit: 1500
+    },
+    {
+        name: 'carbon-estimator',
+        version: '1.0.0',
+        description: 'Estimate project carbon footprint based on material quantities, transportation, and regional grid factors using EC3 methodology',
+        workflowType: 'carbon',
+        azureDeploymentName: 'gpt-4o',
+        isCacheable: true,
+        cacheTTLSeconds: 3600, // 1 hour
+        safetyLevel: 'standard',
+        minimumTier: 'free',
+        freeTierLimit: 15,
+        proTierLimit: 150,
+        enterpriseTierLimit: 1500
+    }
+];
+
+/**
+ * Get predefined workflow definitions
+ */
+function getPredefinedWorkflows() {
+    return PREDEFINED_WORKFLOWS;
+}
+
+/**
+ * Seed predefined workflows into database (if not exists)
+ * Called during gateway initialization
+ */
+async function seedPredefinedWorkflows() {
+    let seededCount = 0;
+    
+    for (const workflow of PREDEFINED_WORKFLOWS) {
+        try {
+            // Check if workflow exists
+            const existing = await pool.query(
+                'SELECT WorkflowID FROM AI_Workflows WHERE LOWER(Name) = LOWER($1) AND Version = $2',
+                [workflow.name, workflow.version]
+            );
+            
+            if (existing.rows.length === 0) {
+                await registerWorkflow(workflow);
+                seededCount++;
+                console.log(`  ✅ Seeded workflow: ${workflow.name} v${workflow.version}`);
+            }
+        } catch (error) {
+            console.warn(`  ⚠️  Failed to seed workflow ${workflow.name}:`, error.message);
+        }
+    }
+    
+    return seededCount;
+}
+
 // In-memory cache for fast lookups (refreshed periodically)
 let workflowCache = new Map();
 let lastCacheRefresh = 0;
@@ -293,5 +407,9 @@ module.exports = {
     deactivateWorkflow,
     getWorkflowTypes,
     validateWorkflow,
-    refreshCache
+    refreshCache,
+    // New exports for predefined workflows
+    getPredefinedWorkflows,
+    seedPredefinedWorkflows,
+    PREDEFINED_WORKFLOWS
 };

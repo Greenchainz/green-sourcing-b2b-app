@@ -16,8 +16,95 @@ const {
     getUserTier, 
     isLegalGuardian, 
     canSendIntercomMessages,
-    TIER_FEATURES 
+    TIER_FEATURES,
+    TIER_LEVELS
 } = require('./entitlements');
+
+// ============================================
+// MESSAGE TEMPLATES FOR AI DRAFTING
+// ============================================
+
+const DRAFT_TEMPLATES = {
+    // RFQ-related templates
+    rfq_new_opportunity: {
+        name: 'New RFQ Opportunity',
+        description: 'Notify supplier of a new RFQ matching their profile',
+        requiredTier: 'enterprise',
+        placeholders: ['supplierName', 'rfqTitle', 'projectLocation', 'deadline', 'estimatedValue']
+    },
+    rfq_follow_up: {
+        name: 'RFQ Follow-up',
+        description: 'Follow up on an RFQ that hasn\'t received a response',
+        requiredTier: 'pro',
+        placeholders: ['supplierName', 'rfqTitle', 'daysWaiting', 'deadline']
+    },
+    rfq_awarded: {
+        name: 'RFQ Award Notification',
+        description: 'Notify supplier they\'ve been awarded an RFQ',
+        requiredTier: 'pro',
+        placeholders: ['supplierName', 'rfqTitle', 'buyerName', 'nextSteps']
+    },
+    rfq_not_selected: {
+        name: 'RFQ Not Selected',
+        description: 'Professional notification that supplier was not selected',
+        requiredTier: 'enterprise',
+        placeholders: ['supplierName', 'rfqTitle', 'reason', 'encouragement']
+    },
+    
+    // Claim and onboarding templates
+    claim_profile: {
+        name: 'Claim Your Profile',
+        description: 'Invite shadow supplier to claim their profile',
+        requiredTier: 'enterprise',
+        placeholders: ['supplierName', 'companyName', 'claimUrl', 'benefits']
+    },
+    certification_expiring: {
+        name: 'Certification Expiring',
+        description: 'Remind supplier of expiring certification',
+        requiredTier: 'pro',
+        placeholders: ['supplierName', 'certificationName', 'expirationDate', 'renewalUrl']
+    },
+    welcome_new_supplier: {
+        name: 'Welcome New Supplier',
+        description: 'Welcome message for newly registered suppliers',
+        requiredTier: 'enterprise',
+        placeholders: ['supplierName', 'companyName', 'dashboardUrl', 'supportContact']
+    },
+    
+    // Engagement templates
+    reactivation: {
+        name: 'Reactivation Outreach',
+        description: 'Re-engage inactive suppliers',
+        requiredTier: 'enterprise',
+        placeholders: ['supplierName', 'lastActivity', 'newFeatures', 'incentive']
+    },
+    upsell_premium: {
+        name: 'Upgrade to Premium',
+        description: 'Suggest premium tier upgrade based on activity',
+        requiredTier: 'enterprise',
+        placeholders: ['supplierName', 'currentTier', 'benefits', 'upgradeUrl']
+    }
+};
+
+/**
+ * Get available templates for a user's tier
+ */
+function getAvailableTemplates(userTier) {
+    const userLevel = TIER_LEVELS[userTier] || 1;
+    const available = [];
+    
+    for (const [key, template] of Object.entries(DRAFT_TEMPLATES)) {
+        const requiredLevel = TIER_LEVELS[template.requiredTier] || 1;
+        if (userLevel >= requiredLevel) {
+            available.push({
+                id: key,
+                ...template
+            });
+        }
+    }
+    
+    return available;
+}
 
 // Message type configurations
 const MESSAGE_CONFIGS = {
@@ -62,6 +149,304 @@ const MESSAGE_CONFIGS = {
         allowedTiers: ['enterprise', 'admin']
     }
 };
+
+// ============================================
+// DRAFT MESSAGE GENERATION
+// ============================================
+
+/**
+ * Draft a message for a supplier related to an RFQ
+ * 
+ * Premium tier-gated (Enterprise only for most templates)
+ * Drafts are queued for review before sending
+ * 
+ * @param {number} supplierId - Target supplier user ID
+ * @param {number} rfqId - Related RFQ ID (can be null for non-RFQ messages)
+ * @param {string} template - Template ID from DRAFT_TEMPLATES
+ * @param {Object} options - Additional options
+ * @returns {Object} Draft object with status and content
+ */
+async function draftMessage(supplierId, rfqId, template, options = {}) {
+    const {
+        createdByUserId,
+        customData = {},
+        scheduledAt = null,
+        priority = 'normal'
+    } = options;
+
+    if (!createdByUserId) {
+        throw new Error('createdByUserId is required');
+    }
+
+    try {
+        // 1. Check template exists
+        const templateConfig = DRAFT_TEMPLATES[template];
+        if (!templateConfig) {
+            throw new Error(`Unknown template: ${template}. Available: ${Object.keys(DRAFT_TEMPLATES).join(', ')}`);
+        }
+
+        // 2. Check user tier (Premium gate)
+        const userTier = await getUserTier(createdByUserId);
+        const userLevel = TIER_LEVELS[userTier] || 1;
+        const requiredLevel = TIER_LEVELS[templateConfig.requiredTier] || 1;
+
+        if (userLevel < requiredLevel) {
+            return {
+                success: false,
+                error: 'TIER_INSUFFICIENT',
+                message: `Template '${template}' requires ${templateConfig.requiredTier} tier or higher`,
+                requiredTier: templateConfig.requiredTier,
+                currentTier: userTier
+            };
+        }
+
+        // 3. Check if Premium tier can send (enterprise = Premium)
+        if (!TIER_FEATURES[userTier]?.canSendIntercomDrafts && userTier !== 'admin') {
+            return {
+                success: false,
+                error: 'SEND_NOT_ALLOWED',
+                message: 'Your tier does not allow sending Intercom messages. Upgrade to Premium for this feature.',
+                currentTier: userTier
+            };
+        }
+
+        // 4. Get supplier and RFQ details for personalization
+        const [supplierResult, rfqResult] = await Promise.all([
+            pool.query(`
+                SELECT u.UserID, u.Email, u.FirstName, u.LastName, 
+                       s.CompanyName, s.Tier as SupplierTier
+                FROM Users u
+                LEFT JOIN Suppliers s ON u.UserID = s.UserID
+                WHERE u.UserID = $1
+            `, [supplierId]),
+            rfqId ? pool.query(`
+                SELECT r.RFQID, r.Title, r.Description, r.ProjectLocation,
+                       r.Deadline, r.EstimatedValue, r.Status,
+                       u.FirstName as BuyerFirstName, u.LastName as BuyerLastName
+                FROM RFQs r
+                LEFT JOIN Users u ON r.BuyerUserID = u.UserID
+                WHERE r.RFQID = $1
+            `, [rfqId]) : Promise.resolve({ rows: [] })
+        ]);
+
+        if (supplierResult.rows.length === 0) {
+            throw new Error(`Supplier not found: ${supplierId}`);
+        }
+
+        const supplier = supplierResult.rows[0];
+        const rfq = rfqResult.rows[0] || null;
+
+        // 5. Check opt-out status
+        const optOutStatus = await checkOptOut(supplierId, supplier.email);
+        if (optOutStatus.optedOut || optOutStatus.optOutAIMessages) {
+            return {
+                success: false,
+                error: 'OPTED_OUT',
+                message: 'Supplier has opted out of AI-generated messages',
+                supplierId
+            };
+        }
+
+        // 6. Build personalization data
+        const personalizationData = {
+            supplierName: `${supplier.firstname || ''} ${supplier.lastname || ''}`.trim() || supplier.companyname || 'there',
+            companyName: supplier.companyname || 'Your Company',
+            supplierTier: supplier.suppliertier || 'free',
+            ...(rfq && {
+                rfqTitle: rfq.title,
+                rfqDescription: rfq.description,
+                projectLocation: rfq.projectlocation,
+                deadline: rfq.deadline ? new Date(rfq.deadline).toLocaleDateString() : 'Not specified',
+                estimatedValue: rfq.estimatedvalue ? `$${rfq.estimatedvalue.toLocaleString()}` : 'Not disclosed',
+                buyerName: `${rfq.buyerfirstname || ''} ${rfq.buyerlastname || ''}`.trim() || 'the buyer'
+            }),
+            ...customData
+        };
+
+        // 7. Generate AI draft content using the outreach-draft workflow
+        let draftContent;
+        try {
+            // Import agentGateway dynamically to avoid circular dependency
+            const agentGateway = require('./agentGateway');
+            
+            const aiResult = await agentGateway.execute({
+                workflowName: 'outreach-draft',
+                input: {
+                    template,
+                    recipientContext: {
+                        name: personalizationData.supplierName,
+                        company: personalizationData.companyName,
+                        tier: personalizationData.supplierTier
+                    },
+                    rfqContext: rfq ? {
+                        title: rfq.title,
+                        location: rfq.projectlocation,
+                        deadline: personalizationData.deadline,
+                        value: personalizationData.estimatedValue
+                    } : null,
+                    templateConfig: {
+                        name: templateConfig.name,
+                        description: templateConfig.description
+                    },
+                    customData
+                },
+                userId: createdByUserId,
+                context: { source: 'draftMessage' }
+            });
+
+            draftContent = aiResult.data;
+        } catch (aiError) {
+            console.warn('AI draft generation failed, using template fallback:', aiError.message);
+            
+            // Fallback: Generate basic template content
+            draftContent = generateFallbackDraft(template, personalizationData);
+        }
+
+        // 8. Create the draft in database (queued for review)
+        const messageType = getMessageTypeFromTemplate(template);
+        const requiresApproval = MESSAGE_CONFIGS[messageType]?.requiresApproval ?? true;
+
+        const draft = await createDraft({
+            workflowId: null, // Will be set when AI generates
+            createdByUserId,
+            targetUserId: supplierId,
+            messageType,
+            subject: draftContent.subject || templateConfig.name,
+            body: draftContent.body || draftContent.message || JSON.stringify(draftContent),
+            sequenceOrder: 1,
+            sequenceTotal: 1,
+            personalizationData: {
+                ...personalizationData,
+                template,
+                rfqId,
+                priority
+            },
+            scheduledAt
+        });
+
+        monitoring.trackEvent('IntercomDraft_Generated', {
+            template,
+            supplierId: String(supplierId),
+            rfqId: rfqId ? String(rfqId) : 'none',
+            userTier,
+            requiresApproval: String(requiresApproval)
+        });
+
+        return {
+            success: true,
+            draft: {
+                id: draft.draftid,
+                status: draft.status,
+                subject: draft.subject,
+                body: draft.body,
+                targetUserId: supplierId,
+                rfqId,
+                template,
+                requiresApproval,
+                scheduledAt: draft.scheduledat,
+                createdAt: draft.createdat
+            },
+            message: requiresApproval 
+                ? 'Draft created and queued for Legal Guardian approval'
+                : 'Draft created and ready to send'
+        };
+
+    } catch (error) {
+        console.error('Error drafting message:', error.message);
+        monitoring.trackException(error, { 
+            context: 'draftMessage', 
+            template, 
+            supplierId: String(supplierId) 
+        });
+        throw error;
+    }
+}
+
+/**
+ * Generate fallback draft when AI is unavailable
+ */
+function generateFallbackDraft(template, data) {
+    const templates = {
+        rfq_new_opportunity: {
+            subject: `New RFQ Opportunity: ${data.rfqTitle || 'Project'}`,
+            body: `Hi ${data.supplierName},\n\nWe have a new RFQ that matches your profile: "${data.rfqTitle || 'New Project'}".\n\nLocation: ${data.projectLocation || 'See details'}\nDeadline: ${data.deadline || 'See details'}\n\nLog in to your GreenChainz dashboard to view details and submit your quote.\n\nBest regards,\nThe GreenChainz Team`
+        },
+        rfq_follow_up: {
+            subject: `Following up on: ${data.rfqTitle || 'RFQ'}`,
+            body: `Hi ${data.supplierName},\n\nWe noticed you haven't responded to the RFQ "${data.rfqTitle || 'recent opportunity'}" yet.\n\nThe deadline is approaching${data.deadline ? ` on ${data.deadline}` : ''}. Don't miss this opportunity!\n\nBest regards,\nThe GreenChainz Team`
+        },
+        claim_profile: {
+            subject: 'Claim Your GreenChainz Supplier Profile',
+            body: `Hi ${data.supplierName},\n\nYour company "${data.companyName}" has been listed on GreenChainz! Claim your profile to:\n\n• Respond to RFQs directly\n• Showcase your sustainability certifications\n• Connect with architects and buyers\n\nVisit GreenChainz to get started.\n\nBest regards,\nThe GreenChainz Team`
+        },
+        default: {
+            subject: 'Message from GreenChainz',
+            body: `Hi ${data.supplierName},\n\nWe have an update for you on GreenChainz. Please log in to your dashboard for details.\n\nBest regards,\nThe GreenChainz Team`
+        }
+    };
+
+    return templates[template] || templates.default;
+}
+
+/**
+ * Map template to message type
+ */
+function getMessageTypeFromTemplate(template) {
+    const mapping = {
+        rfq_new_opportunity: 'rfq_follow_up',
+        rfq_follow_up: 'rfq_follow_up',
+        rfq_awarded: 'rfq_follow_up',
+        rfq_not_selected: 'single',
+        claim_profile: 'onboarding',
+        certification_expiring: 'certification_reminder',
+        welcome_new_supplier: 'onboarding',
+        reactivation: 'reactivation',
+        upsell_premium: 'upsell'
+    };
+    return mapping[template] || 'single';
+}
+
+/**
+ * Get a draft by ID with full details
+ */
+async function getDraftById(draftId, userId) {
+    try {
+        const result = await pool.query(`
+            SELECT d.*, 
+                   u_target.Email as target_email,
+                   u_target.FirstName as target_first_name,
+                   u_target.LastName as target_last_name,
+                   u_approver.Email as approver_email,
+                   w.Name as workflow_name
+            FROM Intercom_Drafts d
+            LEFT JOIN Users u_target ON d.TargetUserID = u_target.UserID
+            LEFT JOIN Users u_approver ON d.LegalApprovedByUserID = u_approver.UserID
+            LEFT JOIN AI_Workflows w ON d.WorkflowID = w.WorkflowID
+            WHERE d.DraftID = $1
+        `, [draftId]);
+
+        if (result.rows.length === 0) {
+            return null;
+        }
+
+        const draft = result.rows[0];
+        
+        // Check access permission
+        const userTier = await getUserTier(userId);
+        const isCreator = draft.createdbyuserid === userId;
+        const isGuardian = await isLegalGuardian(userId);
+        const isAdmin = userTier === 'admin';
+
+        if (!isCreator && !isGuardian && !isAdmin) {
+            throw new Error('Access denied to this draft');
+        }
+
+        return draft;
+    } catch (error) {
+        console.error('Error getting draft:', error.message);
+        throw error;
+    }
+}
 
 /**
  * Check if target user has opted out of AI messages
@@ -587,15 +972,32 @@ async function processScheduledDrafts() {
 }
 
 module.exports = {
+    // Configuration
     MESSAGE_CONFIGS,
+    DRAFT_TEMPLATES,
+    
+    // Template helpers
+    getAvailableTemplates,
+    
+    // Draft message generation (Premium tier-gated)
+    draftMessage,
+    getDraftById,
+    
+    // Opt-out management
     checkOptOut,
+    registerOptOut,
+    
+    // Draft lifecycle
     createDraft,
     submitForApproval,
     approveDraft,
     rejectDraft,
     sendDraft,
+    
+    // Queries
     getPendingApprovals,
     getDraftHistory,
-    registerOptOut,
+    
+    // Scheduler
     processScheduledDrafts
 };

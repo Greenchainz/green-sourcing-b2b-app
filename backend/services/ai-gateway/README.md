@@ -65,6 +65,18 @@ Central hub for routing calls to Azure AI Foundry agents/workflows with tier-bas
 
 ## Available Workflows
 
+### Core Workflows (Auto-seeded)
+
+| Workflow | Type | Cacheable | Min Tier | Description |
+|----------|------|-----------|----------|-------------|
+| `material-alternative` | alternatives | ✅ | Free | Suggest sustainable alternatives with certifications and carbon comparison |
+| `carbon-estimator` | carbon | ✅ | Free | Estimate project carbon footprint using EC3 methodology |
+| `compliance-check` | compliance | ✅ | Standard (pro) | Verify certification validity and LEED/BREEAM compliance |
+| `rfq-scorer` | rfq_assist | ❌ | Standard (pro) | Score and rank RFQ supplier matches |
+| `outreach-draft` | outreach | ❌ | Premium (enterprise) | Draft personalized Intercom outreach messages |
+
+### Legacy/Additional Workflows
+
 | Workflow | Type | Cacheable | Min Tier | Description |
 |----------|------|-----------|----------|-------------|
 | `compliance-checker` | compliance | ✅ | free | Check LEED/BREEAM/WELL compliance |
@@ -76,16 +88,144 @@ Central hub for routing calls to Azure AI Foundry agents/workflows with tier-bas
 | `supplier-outreach` | custom | ❌ | enterprise | Generate outreach messages |
 | `market-insights` | custom | ✅ | enterprise | Market trends analysis |
 
+### Tier Mapping
+- **Free** = Free tier (basic access)
+- **Standard** = Pro tier (professional features)
+- **Premium** = Enterprise tier (full access)
+
 ## API Endpoints
 
-### Workflow Execution
+### Material Alternatives (Free Tier)
+
+```http
+POST /api/v1/ai-gateway/material-alternatives
+Authorization: Bearer <token>
+
+{
+  "materialId": "12345",           // optional - lookup from catalog
+  "materialName": "Portland Cement",
+  "category": "Concrete & Cement",
+  "specifications": { ... },       // optional
+  "projectRequirements": {         // optional
+    "strength": "40 MPa",
+    "leedTarget": "Gold"
+  },
+  "region": "US-West",
+  "quantity": "500 tons"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "originalMaterial": {
+    "id": "12345",
+    "name": "Portland Cement",
+    "category": "Concrete & Cement",
+    "currentSpecs": { ... }
+  },
+  "alternatives": [
+    {
+      "name": "LC3 Cement",
+      "manufacturer": "Holcim",
+      "sustainabilityScore": 85,
+      "certifications": ["EPD", "Cradle to Cradle Silver"],
+      "carbonFootprint": 450,
+      "comparison": {
+        "carbonReduction": "40%",
+        "sustainabilityImprovement": 25
+      }
+    }
+    // ... up to 5 alternatives
+  ],
+  "count": 5,
+  "meta": { ... }
+}
+```
+
+### Carbon Estimate (Free Tier)
+
+```http
+POST /api/v1/ai-gateway/carbon-estimate
+Authorization: Bearer <token>
+
+{
+  "materials": [
+    { "name": "Concrete", "quantity": 1000, "unit": "m3" },
+    { "name": "Steel Rebar", "quantity": 50, "unit": "tons" }
+  ],
+  "projectDetails": { ... },
+  "transportDistance": 150,
+  "region": "US-West"
+}
+```
+
+### Compliance Check (Standard/Pro Tier)
+
+```http
+POST /api/v1/ai-gateway/compliance-check
+Authorization: Bearer <token>
+
+{
+  "materialId": "12345",
+  "materialName": "FSC-Certified Plywood",
+  "certifications": ["FSC", "EPD"],
+  "standards": ["LEED v4.1", "BREEAM"],
+  "context": "Office building project"
+}
+```
+
+### RFQ Score (Standard/Pro Tier)
+
+```http
+POST /api/v1/ai-gateway/rfq-score
+Authorization: Bearer <token>
+
+{
+  "rfqId": 456,                    // or provide requirements directly
+  "requirements": { ... },
+  "suppliers": [...],
+  "priorities": {
+    "sustainability": 0.3,
+    "price": 0.25,
+    "quality": 0.25,
+    "delivery": 0.2
+  }
+}
+```
+
+### Draft Outreach (Premium/Enterprise Tier)
+
+```http
+POST /api/v1/ai-gateway/draft-outreach
+Authorization: Bearer <token>
+
+{
+  "supplierId": 789,
+  "rfqId": 456,                    // optional
+  "template": "rfq_new_opportunity",
+  "customData": { ... },           // optional
+  "scheduledAt": "2026-01-10T09:00:00Z",  // optional
+  "priority": "high"               // optional
+}
+```
+
+### Get Available Templates
+
+```http
+GET /api/v1/ai-gateway/templates
+Authorization: Bearer <token>
+```
+
+### Generic Workflow Execution
 
 ```http
 POST /api/v1/ai-gateway/execute
 Authorization: Bearer <token>
 
 {
-  "workflowName": "compliance-checker",
+  "workflowName": "compliance-check",
   "version": "1.0.0",  // optional
   "input": {
     "material": "Cross-Laminated Timber",
@@ -103,7 +243,7 @@ Response:
   },
   "meta": {
     "workflowId": 1,
-    "workflowName": "compliance-checker",
+    "workflowName": "compliance-check",
     "version": "1.0.0",
     "cached": false,
     "latencyMs": 1234,
