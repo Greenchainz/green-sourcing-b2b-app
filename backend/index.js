@@ -13,6 +13,7 @@ const authSyncRoutes = require('./routes/auth-sync');
 const rfqSimulatorRoutes = require('./routes/rfq-simulator');
 const authRoutes = require('./routes/auth');
 const rfqRoutes = require('./routes/rfqs');
+const revitRoutes = require('./routes/revit');
 const scoringRoutes = require('./routes/scoring');
 
 // Middleware
@@ -141,6 +142,10 @@ async function start() {
     app.use('/api/v1/auth', authRoutes);
     app.use('/api/v1/rfqs', rfqRoutes);
     app.use('/api/v1/scoring', scoringRoutes);
+
+    // Integration APIs
+    // Revit Integration - Azure Entra ID auth, project/material sync
+    app.use('/api/integrations/revit/v1', revitRoutes);
 
     // Internal API routes (protected by INTERNAL_API_KEY)
     // RFQ Simulator - distribution engine, queue management, metrics
