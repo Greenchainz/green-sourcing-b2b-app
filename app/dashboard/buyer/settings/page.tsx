@@ -34,16 +34,22 @@ export default function BuyerSettings() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="gc-label">Organization</label>
+                <label className="gc-label" htmlFor="organization">
+                  Organization
+                </label>
                 <input
+                  id="organization"
                   type="text"
                   className="gc-input"
                   defaultValue="Green Build Architects LLC"
                 />
               </div>
               <div>
-                <label className="gc-label">Email Address</label>
+                <label className="gc-label" htmlFor="email">
+                  Email Address
+                </label>
                 <input
+                  id="email"
                   type="email"
                   className="gc-input"
                   defaultValue="john.doe@example.com"
