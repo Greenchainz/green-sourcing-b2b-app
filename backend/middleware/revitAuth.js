@@ -14,6 +14,7 @@
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 const { pool } = require('../db');
+const redis = require('../services/azure/redis');
 
 // Azure Entra ID configuration
 const AZURE_TENANT_ID = process.env.AZURE_TENANT_ID || 'common';
@@ -346,9 +347,124 @@ async function requireActiveSession(req, res, next) {
     }
 }
 
+/**
+ * Revit API Rate Limiting Configuration
+ * 100 requests per minute per session
+ */
+const REVIT_RATE_LIMIT = {
+    windowSeconds: 60,
+    maxRequests: 100
+};
+
+/**
+ * Middleware: Revit-specific rate limiting
+ * Rate limits based on session token (100 req/min per session)
+ * Falls back to plugin instance ID if no session
+ */
+async function revitRateLimit(req, res, next) {
+    // Skip if Redis not connected (fail open)
+    if (!redis.isConnected()) {
+        return next();
+    }
+
+    try {
+        // Determine the rate limit key - prefer session token, fallback to plugin instance
+        let identifier;
+        
+        if (req.revitAuth?.session?.id) {
+            identifier = `revit:session:${req.revitAuth.session.id}`;
+        } else if (req.headers['x-session-token']) {
+            identifier = `revit:session:${req.headers['x-session-token']}`;
+        } else if (req.revitAuth?.registration?.id) {
+            identifier = `revit:reg:${req.revitAuth.registration.id}`;
+        } else if (req.headers['x-plugin-instance-id']) {
+            identifier = `revit:plugin:${req.headers['x-plugin-instance-id']}`;
+        } else {
+            // Fallback to IP
+            identifier = `revit:ip:${req.ip || req.connection?.remoteAddress}`;
+        }
+
+        const result = await redis.rateLimit(
+            identifier, 
+            REVIT_RATE_LIMIT.maxRequests, 
+            REVIT_RATE_LIMIT.windowSeconds
+        );
+
+        // Set rate limit headers
+        res.set('X-RateLimit-Limit', REVIT_RATE_LIMIT.maxRequests);
+        res.set('X-RateLimit-Remaining', result.remaining);
+        res.set('X-RateLimit-Reset', Math.ceil(Date.now() / 1000) + result.resetIn);
+
+        if (!result.allowed) {
+            res.set('Retry-After', result.resetIn);
+            return res.status(429).json({
+                error: 'RATE_LIMIT_EXCEEDED',
+                message: 'Revit API rate limit exceeded (100 requests/minute)',
+                code: 'REVIT_RATE_429',
+                retryAfter: result.resetIn
+            });
+        }
+
+        next();
+    } catch (error) {
+        // Fail open on errors
+        console.warn('[RevitAuth] Rate limit check failed:', error.message);
+        next();
+    }
+}
+
+/**
+ * Create rate limiter with custom configuration
+ * @param {Object} options - Custom rate limit options
+ * @param {number} options.maxRequests - Max requests per window (default: 100)
+ * @param {number} options.windowSeconds - Window size in seconds (default: 60)
+ */
+function createRevitRateLimiter(options = {}) {
+    const config = {
+        windowSeconds: options.windowSeconds || REVIT_RATE_LIMIT.windowSeconds,
+        maxRequests: options.maxRequests || REVIT_RATE_LIMIT.maxRequests
+    };
+
+    return async (req, res, next) => {
+        if (!redis.isConnected()) {
+            return next();
+        }
+
+        try {
+            const identifier = req.revitAuth?.session?.id 
+                ? `revit:session:${req.revitAuth.session.id}`
+                : `revit:plugin:${req.headers['x-plugin-instance-id'] || req.ip}`;
+
+            const result = await redis.rateLimit(identifier, config.maxRequests, config.windowSeconds);
+
+            res.set('X-RateLimit-Limit', config.maxRequests);
+            res.set('X-RateLimit-Remaining', result.remaining);
+            res.set('X-RateLimit-Reset', Math.ceil(Date.now() / 1000) + result.resetIn);
+
+            if (!result.allowed) {
+                res.set('Retry-After', result.resetIn);
+                return res.status(429).json({
+                    error: 'RATE_LIMIT_EXCEEDED',
+                    message: `Rate limit exceeded (${config.maxRequests} requests/${config.windowSeconds}s)`,
+                    code: 'REVIT_RATE_429',
+                    retryAfter: result.resetIn
+                });
+            }
+
+            next();
+        } catch (error) {
+            console.warn('[RevitAuth] Rate limit check failed:', error.message);
+            next();
+        }
+    };
+}
+
 module.exports = {
     authenticateRevitPlugin,
     requirePluginRegistration,
     requireActiveSession,
-    verifyAzureToken
+    verifyAzureToken,
+    revitRateLimit,
+    createRevitRateLimiter,
+    REVIT_RATE_LIMIT
 };

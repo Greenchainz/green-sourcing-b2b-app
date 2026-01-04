@@ -19,8 +19,15 @@ const { pool } = require('../db');
 const {
     authenticateRevitPlugin,
     requirePluginRegistration,
-    requireActiveSession
+    requireActiveSession,
+    revitRateLimit,
+    createRevitRateLimiter
 } = require('../middleware/revitAuth');
+const { searchMaterials, getMaterialById } = require('../services/catalog/search');
+const aiGateway = require('../services/ai-gateway');
+
+// Custom rate limiter for sync operations (more restrictive: 10 req/min)
+const syncRateLimiter = createRevitRateLimiter({ maxRequests: 10, windowSeconds: 60 });
 
 // ============================================
 // API VERSION & INFO
@@ -33,10 +40,15 @@ const {
 router.get('/', (req, res) => {
     res.json({
         api: 'GreenChainz Revit Integration API',
-        version: '1.0.0',
+        version: '1.1.0',
         status: 'operational',
         auth: 'Azure Entra ID',
         documentation: '/api/integrations/revit/v1/docs',
+        rateLimit: {
+            requests: 100,
+            window: '1 minute',
+            per: 'session'
+        },
         endpoints: {
             register: 'POST /register',
             session: {
@@ -52,7 +64,12 @@ router.get('/', (req, res) => {
             materials: {
                 list: 'GET /projects/:projectId/materials',
                 sync: 'POST /projects/:projectId/materials/sync',
-                map: 'POST /materials/:mappingId/map'
+                map: 'POST /materials/:mappingId/map',
+                alternatives: 'POST /materials/:mappingId/alternatives',
+                batchMatch: 'POST /materials/batch-match'
+            },
+            catalog: {
+                search: 'GET /catalog/search'
             },
             products: {
                 search: 'GET /products/search',
@@ -81,7 +98,7 @@ router.get('/contract', (req, res) => {
  * POST /api/integrations/revit/v1/register
  * Register a new Revit plugin instance
  */
-router.post('/register', authenticateRevitPlugin, async (req, res) => {
+router.post('/register', authenticateRevitPlugin, revitRateLimit, async (req, res) => {
     try {
         const { pluginInstanceId, revitVersion, pluginVersion, machineName } = req.body;
 
@@ -164,7 +181,7 @@ router.post('/register', authenticateRevitPlugin, async (req, res) => {
  * DELETE /api/integrations/revit/v1/register/:pluginInstanceId
  * Deactivate a plugin registration
  */
-router.delete('/register/:pluginInstanceId', authenticateRevitPlugin, async (req, res) => {
+router.delete('/register/:pluginInstanceId', authenticateRevitPlugin, revitRateLimit, async (req, res) => {
     try {
         const { pluginInstanceId } = req.params;
         const { azureObjectId } = req.revitAuth;
@@ -207,7 +224,7 @@ router.delete('/register/:pluginInstanceId', authenticateRevitPlugin, async (req
  * POST /api/integrations/revit/v1/sessions
  * Start a new sync session
  */
-router.post('/sessions', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.post('/sessions', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { projectFileHash, projectName, projectPath } = req.body;
         const { user, registration } = req.revitAuth;
@@ -266,7 +283,7 @@ router.post('/sessions', authenticateRevitPlugin, requirePluginRegistration, asy
  * DELETE /api/integrations/revit/v1/sessions/:sessionToken
  * End a session
  */
-router.delete('/sessions/:sessionToken', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.delete('/sessions/:sessionToken', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { sessionToken } = req.params;
         const { registration, user } = req.revitAuth;
@@ -314,7 +331,7 @@ router.delete('/sessions/:sessionToken', authenticateRevitPlugin, requirePluginR
  * POST /api/integrations/revit/v1/sessions/:sessionToken/heartbeat
  * Keep session alive
  */
-router.post('/sessions/:sessionToken/heartbeat', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.post('/sessions/:sessionToken/heartbeat', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { sessionToken } = req.params;
         const { registration } = req.revitAuth;
@@ -357,7 +374,7 @@ router.post('/sessions/:sessionToken/heartbeat', authenticateRevitPlugin, requir
  * GET /api/integrations/revit/v1/projects
  * List user's Revit projects
  */
-router.get('/projects', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.get('/projects', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { user } = req.revitAuth;
         const { limit = 50, offset = 0, status } = req.query;
@@ -409,7 +426,7 @@ router.get('/projects', authenticateRevitPlugin, requirePluginRegistration, asyn
  * POST /api/integrations/revit/v1/projects
  * Create or update a project from Revit
  */
-router.post('/projects', authenticateRevitPlugin, requirePluginRegistration, requireActiveSession, async (req, res) => {
+router.post('/projects', authenticateRevitPlugin, requirePluginRegistration, requireActiveSession, revitRateLimit, async (req, res) => {
     try {
         const { user, session } = req.revitAuth;
         const {
@@ -480,7 +497,7 @@ router.post('/projects', authenticateRevitPlugin, requirePluginRegistration, req
  * GET /api/integrations/revit/v1/projects/:projectId/score
  * Get sustainability score for a project
  */
-router.get('/projects/:projectId/score', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.get('/projects/:projectId/score', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { projectId } = req.params;
         const { user } = req.revitAuth;
@@ -574,7 +591,7 @@ router.get('/projects/:projectId/score', authenticateRevitPlugin, requirePluginR
  * GET /api/integrations/revit/v1/projects/:projectId/materials
  * Get materials for a project
  */
-router.get('/projects/:projectId/materials', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.get('/projects/:projectId/materials', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { projectId } = req.params;
         const { user } = req.revitAuth;
@@ -646,7 +663,7 @@ router.get('/projects/:projectId/materials', authenticateRevitPlugin, requirePlu
  * POST /api/integrations/revit/v1/projects/:projectId/materials/sync
  * Sync materials from Revit to GreenChainz
  */
-router.post('/projects/:projectId/materials/sync', authenticateRevitPlugin, requirePluginRegistration, requireActiveSession, async (req, res) => {
+router.post('/projects/:projectId/materials/sync', authenticateRevitPlugin, requirePluginRegistration, requireActiveSession, syncRateLimiter, async (req, res) => {
     try {
         const { projectId } = req.params;
         const { user, session } = req.revitAuth;
@@ -769,7 +786,7 @@ router.post('/projects/:projectId/materials/sync', authenticateRevitPlugin, requ
  * POST /api/integrations/revit/v1/materials/:mappingId/map
  * Map a Revit material to a GreenChainz product
  */
-router.post('/materials/:mappingId/map', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.post('/materials/:mappingId/map', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { mappingId } = req.params;
         const { user } = req.revitAuth;
@@ -871,7 +888,7 @@ router.post('/materials/:mappingId/map', authenticateRevitPlugin, requirePluginR
  * GET /api/integrations/revit/v1/products/search
  * Search GreenChainz products for material matching
  */
-router.get('/products/search', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.get('/products/search', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { q, category, limit = 20 } = req.query;
 
@@ -939,7 +956,7 @@ router.get('/products/search', authenticateRevitPlugin, requirePluginRegistratio
  * POST /api/integrations/revit/v1/products/match
  * Auto-match Revit materials to GreenChainz products
  */
-router.post('/products/match', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.post('/products/match', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { materialNames } = req.body;
 
@@ -993,6 +1010,523 @@ router.post('/products/match', authenticateRevitPlugin, requirePluginRegistratio
 });
 
 // ============================================
+// CATALOG SEARCH (Optimized for Revit)
+// ============================================
+
+/**
+ * GET /api/integrations/revit/v1/catalog/search
+ * Search GreenChainz catalog with sustainability scores
+ * Optimized for Revit plugin - lighter payload
+ */
+router.get('/catalog/search', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
+    try {
+        const { 
+            q, 
+            category, 
+            certifications, 
+            minScore, 
+            limit = 20, 
+            offset = 0,
+            sortBy = 'score'
+        } = req.query;
+
+        // Parse certifications if passed as comma-separated string
+        let certArray = [];
+        if (certifications) {
+            certArray = typeof certifications === 'string' 
+                ? certifications.split(',').map(c => c.trim()).filter(Boolean)
+                : certifications;
+        }
+
+        // Use the catalog search service
+        const searchResult = await searchMaterials({
+            query: q || '',
+            category,
+            certifications: certArray,
+            minScore: minScore ? parseInt(minScore) : null,
+            limit: Math.min(parseInt(limit) || 20, 50), // Cap at 50 for Revit
+            offset: parseInt(offset) || 0,
+            sortBy: sortBy || 'score'
+        });
+
+        // Transform to lighter payload optimized for Revit plugin
+        const materials = searchResult.materials.map(m => ({
+            id: m.id,
+            name: m.name,
+            sku: m.sku,
+            category: m.category?.name || null,
+            supplier: m.supplier?.name || null,
+            sustainabilityScore: m.sustainabilityScore || 0,
+            certifications: m.certifications || [],
+            certificationCount: m.certificationCount || 0,
+            unitPrice: m.unitPrice,
+            currency: m.currency,
+            tier: m.recommendationTier || 'unscored'
+        }));
+
+        res.json({
+            success: true,
+            materials,
+            total: searchResult.total,
+            pagination: {
+                limit: searchResult.pagination.limit,
+                offset: searchResult.pagination.offset,
+                hasMore: searchResult.pagination.hasMore,
+                page: searchResult.pagination.page,
+                totalPages: searchResult.pagination.totalPages
+            },
+            query: q || null
+        });
+    } catch (error) {
+        console.error('[Revit API] Catalog search error:', error);
+        res.status(500).json({
+            error: 'CATALOG_SEARCH_FAILED',
+            message: 'Failed to search catalog',
+            code: 'REVIT_CATALOG_500'
+        });
+    }
+});
+
+/**
+ * GET /api/integrations/revit/v1/catalog/:materialId
+ * Get material details by ID (lightweight for Revit)
+ */
+router.get('/catalog/:materialId', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
+    try {
+        const { materialId } = req.params;
+
+        const material = await getMaterialById(materialId);
+
+        if (!material) {
+            return res.status(404).json({
+                error: 'MATERIAL_NOT_FOUND',
+                message: 'Material not found in catalog',
+                code: 'REVIT_CATALOG_404'
+            });
+        }
+
+        // Return lightweight version for Revit
+        res.json({
+            success: true,
+            material: {
+                id: material.id,
+                name: material.name,
+                description: material.description,
+                sku: material.sku,
+                category: material.category,
+                supplier: {
+                    id: material.supplier?.id,
+                    name: material.supplier?.name
+                },
+                sustainability: {
+                    score: material.sustainability?.score || 0,
+                    tier: material.sustainability?.tier,
+                    whyRecommended: material.sustainability?.whyRecommended
+                },
+                certifications: (material.certifications || []).map(c => ({
+                    name: c.name,
+                    certifyingBody: c.certifyingBody,
+                    status: c.status
+                })),
+                epd: (material.epd || []).slice(0, 1).map(e => ({
+                    epdNumber: e.epdNumber,
+                    globalWarmingPotential: e.globalWarmingPotential,
+                    declaredUnit: e.declaredUnit
+                }))[0] || null,
+                leedCredits: material.leedCredits?.length || 0,
+                unitPrice: material.unitPrice,
+                currency: material.currency
+            }
+        });
+    } catch (error) {
+        console.error('[Revit API] Catalog get error:', error);
+        res.status(500).json({
+            error: 'CATALOG_GET_FAILED',
+            message: 'Failed to get material details',
+            code: 'REVIT_CATALOG_500'
+        });
+    }
+});
+
+// ============================================
+// MATERIAL ALTERNATIVES (AI-Powered)
+// ============================================
+
+/**
+ * POST /api/integrations/revit/v1/materials/:mappingId/alternatives
+ * Get AI-powered sustainable alternatives for a mapped material
+ * Returns top 5 alternatives with score comparison
+ */
+router.post('/materials/:mappingId/alternatives', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
+    try {
+        const { mappingId } = req.params;
+        const { user } = req.revitAuth;
+        const { 
+            maxAlternatives = 5,
+            prioritize = 'sustainability' // 'sustainability', 'carbon', 'cost', 'availability'
+        } = req.body;
+
+        // Get the material mapping details
+        const mappingResult = await pool.query(
+            `SELECT m.*, p.ProjectID, proj.UserID,
+                    prod.ProductName, prod.CategoryID, prod.SupplierID,
+                    pc.CategoryName
+             FROM Revit_Material_Mappings m
+             LEFT JOIN Revit_Projects proj ON m.ProjectID = proj.ProjectID
+             LEFT JOIN Products prod ON m.GCProductID = prod.ProductID
+             LEFT JOIN Product_Categories pc ON prod.CategoryID = pc.CategoryID
+             WHERE m.MappingID = $1`,
+            [mappingId]
+        );
+
+        if (mappingResult.rows.length === 0) {
+            return res.status(404).json({
+                error: 'MAPPING_NOT_FOUND',
+                message: 'Material mapping not found',
+                code: 'REVIT_ALT_404'
+            });
+        }
+
+        const mapping = mappingResult.rows[0];
+
+        // Verify ownership
+        if (mapping.userid !== user.id) {
+            return res.status(403).json({
+                error: 'FORBIDDEN',
+                message: 'Not authorized to access this material',
+                code: 'REVIT_ALT_403'
+            });
+        }
+
+        // Prepare context for AI Gateway
+        const materialContext = {
+            materialName: mapping.revitmaterialname,
+            mappedProductName: mapping.productname,
+            category: mapping.categoryname || mapping.revitmaterialcategory,
+            currentScore: mapping.embodiedcarbonkgco2e,
+            currentEPD: mapping.epdnumber,
+            currentFSC: mapping.fsccertified,
+            prioritize,
+            maxAlternatives: Math.min(maxAlternatives, 5)
+        };
+
+        let aiAlternatives = [];
+        let aiError = null;
+
+        // Try to get AI-powered alternatives
+        try {
+            const aiResult = await aiGateway.execute({
+                workflowName: 'sustainable-alternatives',
+                input: {
+                    query: `Find ${maxAlternatives} sustainable alternatives for: ${mapping.revitmaterialname}. 
+                            Category: ${materialContext.category || 'Unknown'}. 
+                            Current product: ${mapping.productname || 'Not mapped'}.
+                            Prioritize: ${prioritize}.
+                            Return JSON array with: name, category, estimatedCarbonReduction, certifications, reason.`,
+                    context: materialContext
+                },
+                userId: user.id,
+                context: {
+                    source: 'revit-plugin',
+                    mappingId
+                }
+            });
+
+            if (aiResult.success && aiResult.data) {
+                // Parse AI response
+                if (Array.isArray(aiResult.data)) {
+                    aiAlternatives = aiResult.data;
+                } else if (aiResult.data.alternatives) {
+                    aiAlternatives = aiResult.data.alternatives;
+                } else if (aiResult.data.response) {
+                    // Try to parse JSON from response text
+                    try {
+                        const parsed = JSON.parse(aiResult.data.response);
+                        aiAlternatives = Array.isArray(parsed) ? parsed : (parsed.alternatives || []);
+                    } catch (e) {
+                        // AI returned text, not JSON
+                    }
+                }
+            }
+        } catch (aiErr) {
+            console.warn('[Revit API] AI alternatives failed:', aiErr.message);
+            aiError = aiErr.message;
+        }
+
+        // Also search catalog for alternatives in same category
+        let catalogAlternatives = [];
+        if (mapping.categoryid || mapping.categoryname) {
+            try {
+                const catalogResult = await searchMaterials({
+                    category: mapping.categoryid || mapping.categoryname,
+                    minScore: mapping.sustainabilityscore || 50,
+                    limit: 10,
+                    sortBy: 'score'
+                });
+
+                // Filter out the current product and format
+                catalogAlternatives = catalogResult.materials
+                    .filter(m => m.id !== mapping.gcproductid)
+                    .slice(0, 5)
+                    .map(m => ({
+                        id: m.id,
+                        name: m.name,
+                        category: m.category?.name,
+                        supplier: m.supplier?.name,
+                        sustainabilityScore: m.sustainabilityScore,
+                        certifications: m.certifications || [],
+                        source: 'catalog'
+                    }));
+            } catch (catErr) {
+                console.warn('[Revit API] Catalog alternatives search failed:', catErr.message);
+            }
+        }
+
+        // Combine and rank alternatives
+        const alternatives = [];
+        
+        // Add AI suggestions first
+        aiAlternatives.slice(0, maxAlternatives).forEach((alt, idx) => {
+            alternatives.push({
+                rank: idx + 1,
+                name: alt.name || alt.productName,
+                category: alt.category,
+                estimatedCarbonReduction: alt.estimatedCarbonReduction || alt.carbonReduction,
+                certifications: alt.certifications || [],
+                reason: alt.reason || alt.whyBetter,
+                sustainabilityScore: alt.sustainabilityScore || alt.score,
+                source: 'ai'
+            });
+        });
+
+        // Fill remaining slots with catalog alternatives
+        catalogAlternatives.forEach(alt => {
+            if (alternatives.length < maxAlternatives) {
+                const scoreImprovement = mapping.sustainabilityscore 
+                    ? ((alt.sustainabilityScore - mapping.sustainabilityscore) / mapping.sustainabilityscore * 100).toFixed(1)
+                    : null;
+                
+                alternatives.push({
+                    rank: alternatives.length + 1,
+                    id: alt.id,
+                    name: alt.name,
+                    category: alt.category,
+                    supplier: alt.supplier,
+                    sustainabilityScore: alt.sustainabilityScore,
+                    scoreImprovement: scoreImprovement ? `+${scoreImprovement}%` : null,
+                    certifications: alt.certifications,
+                    source: 'catalog'
+                });
+            }
+        });
+
+        // Calculate comparison with current material
+        const comparison = {
+            currentMaterial: {
+                name: mapping.revitmaterialname,
+                mappedProduct: mapping.productname,
+                sustainabilityScore: mapping.sustainabilityscore || null,
+                embodiedCarbonKg: mapping.embodiedcarbonkgco2e ? parseFloat(mapping.embodiedcarbonkgco2e) : null,
+                fscCertified: mapping.fsccertified,
+                hasEPD: !!mapping.epdnumber
+            },
+            bestAlternative: alternatives[0] || null,
+            totalAlternatives: alternatives.length,
+            aiPowered: aiAlternatives.length > 0
+        };
+
+        res.json({
+            success: true,
+            mappingId: parseInt(mappingId),
+            alternatives,
+            comparison,
+            aiStatus: aiError ? { error: aiError, fallback: 'catalog' } : 'ok'
+        });
+
+    } catch (error) {
+        console.error('[Revit API] Alternatives error:', error);
+        res.status(500).json({
+            error: 'ALTERNATIVES_FAILED',
+            message: 'Failed to get material alternatives',
+            code: 'REVIT_ALT_500'
+        });
+    }
+});
+
+// ============================================
+// BATCH MATERIAL MATCHING
+// ============================================
+
+/**
+ * POST /api/integrations/revit/v1/materials/batch-match
+ * Batch match Revit material names to catalog products
+ * Returns best matches with confidence scores
+ */
+router.post('/materials/batch-match', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
+    try {
+        const { materials } = req.body;
+
+        if (!materials || !Array.isArray(materials) || materials.length === 0) {
+            return res.status(400).json({
+                error: 'INVALID_REQUEST',
+                message: 'materials array is required and must not be empty',
+                code: 'REVIT_BATCH_400'
+            });
+        }
+
+        // Limit batch size to prevent abuse
+        const MAX_BATCH_SIZE = 100;
+        if (materials.length > MAX_BATCH_SIZE) {
+            return res.status(400).json({
+                error: 'BATCH_TOO_LARGE',
+                message: `Maximum batch size is ${MAX_BATCH_SIZE} materials`,
+                code: 'REVIT_BATCH_400'
+            });
+        }
+
+        const matches = [];
+        const stats = {
+            total: materials.length,
+            matched: 0,
+            highConfidence: 0,
+            lowConfidence: 0,
+            noMatch: 0
+        };
+
+        // Process each material
+        for (const material of materials) {
+            const materialName = typeof material === 'string' ? material : material.name;
+            const materialCategory = typeof material === 'object' ? material.category : null;
+            const materialId = typeof material === 'object' ? material.revitMaterialId : null;
+
+            if (!materialName) {
+                matches.push({
+                    input: material,
+                    matched: false,
+                    error: 'Missing material name'
+                });
+                stats.noMatch++;
+                continue;
+            }
+
+            try {
+                // Search for matches using similarity
+                let query = `
+                    SELECT p."ProductID", p."ProductName", p."Description", p."SKU",
+                           pc."CategoryName",
+                           cp."CompanyName" as supplier_name,
+                           mss.total_score as sustainability_score,
+                           mss.recommendation_tier,
+                           similarity(p."ProductName", $1) as name_similarity,
+                           similarity(COALESCE(p."Description", ''), $1) as desc_similarity,
+                           -- Boost score for category match
+                           CASE WHEN pc."CategoryName" ILIKE $2 THEN 0.2 ELSE 0 END as category_boost
+                    FROM Products p
+                    LEFT JOIN Product_Categories pc ON p."CategoryID" = pc."CategoryID"
+                    LEFT JOIN Suppliers s ON p."SupplierID" = s."SupplierID"
+                    LEFT JOIN Companies cp ON s."CompanyID" = cp."CompanyID"
+                    LEFT JOIN material_sustainability_scores mss 
+                        ON mss.entity_type = 'product' AND mss.entity_id = p."ProductID"::text
+                    WHERE p."ProductName" ILIKE $3 
+                       OR p."Description" ILIKE $3
+                       OR similarity(p."ProductName", $1) > 0.2
+                    ORDER BY (similarity(p."ProductName", $1) + 
+                              similarity(COALESCE(p."Description", ''), $1) * 0.3 +
+                              CASE WHEN pc."CategoryName" ILIKE $2 THEN 0.2 ELSE 0 END) DESC
+                    LIMIT 3
+                `;
+
+                const searchTerm = `%${materialName}%`;
+                const categoryTerm = materialCategory ? `%${materialCategory}%` : '%';
+
+                const result = await pool.query(query, [materialName, categoryTerm, searchTerm]);
+
+                if (result.rows.length === 0) {
+                    matches.push({
+                        input: { name: materialName, revitMaterialId: materialId },
+                        matched: false,
+                        suggestions: []
+                    });
+                    stats.noMatch++;
+                } else {
+                    const suggestions = result.rows.map((row, idx) => {
+                        // Calculate confidence score (0-1)
+                        const nameSim = parseFloat(row.name_similarity) || 0;
+                        const descSim = parseFloat(row.desc_similarity) || 0;
+                        const catBoost = parseFloat(row.category_boost) || 0;
+                        const confidence = Math.min(1, nameSim + (descSim * 0.3) + catBoost);
+
+                        return {
+                            rank: idx + 1,
+                            productId: row.ProductID,
+                            productName: row.ProductName,
+                            category: row.CategoryName,
+                            supplier: row.supplier_name,
+                            sustainabilityScore: parseInt(row.sustainability_score) || 0,
+                            tier: row.recommendation_tier,
+                            confidence: Math.round(confidence * 100) / 100,
+                            confidenceLevel: confidence >= 0.7 ? 'high' : 
+                                            confidence >= 0.4 ? 'medium' : 'low'
+                        };
+                    });
+
+                    const bestMatch = suggestions[0];
+                    const matched = bestMatch.confidence >= 0.3;
+
+                    matches.push({
+                        input: { name: materialName, revitMaterialId: materialId },
+                        matched,
+                        bestMatch: matched ? bestMatch : null,
+                        suggestions: suggestions.slice(0, 3),
+                        confidence: bestMatch.confidence,
+                        confidenceLevel: bestMatch.confidenceLevel
+                    });
+
+                    if (matched) {
+                        stats.matched++;
+                        if (bestMatch.confidence >= 0.7) {
+                            stats.highConfidence++;
+                        } else {
+                            stats.lowConfidence++;
+                        }
+                    } else {
+                        stats.noMatch++;
+                    }
+                }
+            } catch (matchError) {
+                console.warn('[Revit API] Match error for:', materialName, matchError.message);
+                matches.push({
+                    input: { name: materialName, revitMaterialId: materialId },
+                    matched: false,
+                    error: 'Match failed'
+                });
+                stats.noMatch++;
+            }
+        }
+
+        res.json({
+            success: true,
+            matches,
+            stats,
+            summary: {
+                matchRate: `${Math.round(stats.matched / stats.total * 100)}%`,
+                highConfidenceRate: stats.matched > 0 
+                    ? `${Math.round(stats.highConfidence / stats.matched * 100)}%` 
+                    : '0%'
+            }
+        });
+
+    } catch (error) {
+        console.error('[Revit API] Batch match error:', error);
+        res.status(500).json({
+            error: 'BATCH_MATCH_FAILED',
+            message: 'Failed to batch match materials',
+            code: 'REVIT_BATCH_500'
+        });
+    }
+});
+
+// ============================================
 // RFQ GENERATION
 // ============================================
 
@@ -1000,7 +1534,7 @@ router.post('/products/match', authenticateRevitPlugin, requirePluginRegistratio
  * POST /api/integrations/revit/v1/rfq
  * Create RFQ from Revit project materials
  */
-router.post('/rfq', authenticateRevitPlugin, requirePluginRegistration, async (req, res) => {
+router.post('/rfq', authenticateRevitPlugin, requirePluginRegistration, revitRateLimit, async (req, res) => {
     try {
         const { user } = req.revitAuth;
         const { projectId, materialMappingIds, message, deadline } = req.body;
