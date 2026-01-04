@@ -1,7 +1,24 @@
 const { pool } = require('../../db');
+const entitlements = require('../entitlements');
 
 /**
  * Wave configuration: maps tiers to wave numbers and delays.
+ * Wave 1 (0 min): Premium - immediate access
+ * Wave 2 (15 min): Standard - slight delay
+ * Wave 3 (30 min): Free - standard delay
+ * Wave 4 (2 hours): Scraped/Legacy - significant delay
+ * 
+ * NOTE: This is the fallback config. Prefer using the entitlements service
+ * which reads from the database for accurate tier-based wave assignment.
+ */
+const WAVE_CONFIG = {
+    premium: { wave: 1, delayMinutes: 0 },
+    enterprise: { wave: 1, delayMinutes: 0 },
+    standard: { wave: 2, delayMinutes: 15 },
+    pro: { wave: 2, delayMinutes: 15 },
+    claimed: { wave: 3, delayMinutes: 30 },
+    free: { wave: 3, delayMinutes: 30 },
+    scraped: { wave: 4, delayMinutes: 120 }
  * 
  * Tiered Access Policy:
  * Wave 1 (0 min): Premium (enterprise) - immediate access, full RFQ listing
@@ -95,6 +112,8 @@ const DEFAULT_EXPIRY_HOURS = 48;
 const SHADOW_OUTREACH_EXPIRY_HOURS = 24;
 
 /**
+ * Gets wave configuration for a supplier tier (legacy fallback).
+ * Prefer getWaveConfigFromEntitlements for new code.
  * Gets wave configuration for a supplier tier.
  * Returns full wave config including audit fields.
  * 
@@ -107,6 +126,27 @@ function getWaveConfig(tier) {
 }
 
 /**
+ * Gets wave configuration from entitlements service (preferred).
+ * Falls back to static config if entitlements lookup fails.
+ * @param {string} supplierId - Supplier ID
+ * @returns {Promise<{wave: number, delayMinutes: number, tierCode: string}>}
+ */
+async function getWaveConfigFromEntitlements(supplierId) {
+    try {
+        const priority = await entitlements.getRfqPriority(supplierId);
+        return {
+            wave: priority.waveNumber,
+            delayMinutes: priority.delayMinutes,
+            tierCode: priority.tierCode
+        };
+    } catch (error) {
+        console.warn(`Failed to get entitlements for supplier ${supplierId}, using fallback:`, error.message);
+        return { ...WAVE_CONFIG.free, tierCode: 'free' };
+    }
+}
+
+/**
+ * Inserts an entry into the RFQ distribution queue.
  * Checks if a supplier tier is a shadow tier (outreach only).
  * Shadow suppliers receive claim/upgrade prompts, not full RFQ listings.
  * 
@@ -236,18 +276,30 @@ async function insertShadowOutreachEntry(client, rfqId, supplierId, auditData = 
  * Shadow suppliers are handled separately and receive outreach prompts
  * to claim their profile, rather than full RFQ access.
  * 
+ * Now uses the entitlements service to determine wave placement based on
+ * subscription tier (Free/Standard/Premium) for accurate priority timing.
+ * Also checks and enforces RFQ quotas per tier.
+ * 
  * @param {string} rfqId - The RFQ UUID.
  * @param {Array} suppliers - List of suppliers with 'tier' and 'id' properties.
+ * @param {object} options - Optional settings
+ * @param {boolean} options.useEntitlements - Use entitlements service (default: true)
+ * @param {boolean} options.enforceQuotas - Enforce RFQ quotas (default: true)
+ * @returns {Promise<{success: boolean, count: number, skippedQuota: number, error?: string}>}
  * @returns {Promise<{success: boolean, count: number, shadowCount: number, auditLog: Array, error?: string}>}
  */
-async function createDistributionWaves(rfqId, suppliers) {
+async function createDistributionWaves(rfqId, suppliers, options = {}) {
+    const { useEntitlements = true, enforceQuotas = true } = options;
+
     if (!rfqId) {
         console.error('createDistributionWaves called without rfqId');
+        return { success: false, count: 0, skippedQuota: 0, error: 'Missing rfqId' };
         return { success: false, count: 0, shadowCount: 0, auditLog: [], error: 'Missing rfqId' };
     }
 
     if (!Array.isArray(suppliers) || suppliers.length === 0) {
         console.log(`No suppliers to distribute for RFQ ${rfqId}`);
+        return { success: true, count: 0, skippedQuota: 0 };
         return { success: true, count: 0, shadowCount: 0, auditLog: [] };
     }
 
@@ -257,6 +309,7 @@ async function createDistributionWaves(rfqId, suppliers) {
 
         const now = new Date();
         let insertedCount = 0;
+        let skippedQuota = 0;
         let shadowCount = 0;
         const auditLog = [];
 
@@ -274,6 +327,41 @@ async function createDistributionWaves(rfqId, suppliers) {
                 continue;
             }
 
+            let config;
+            let canReceive = true;
+
+            if (useEntitlements) {
+                // Use entitlements service for accurate tier-based wave config
+                config = await getWaveConfigFromEntitlements(supplier.id);
+
+                // Check if supplier can receive more RFQs (quota check)
+                if (enforceQuotas) {
+                    const quotaCheck = await entitlements.canReceiveRfq(supplier.id);
+                    if (!quotaCheck.allowed) {
+                        console.log(`Skipping supplier ${supplier.id} - quota exceeded: ${quotaCheck.reason}`);
+                        skippedQuota++;
+                        canReceive = false;
+                    }
+                }
+            } else {
+                // Fallback to legacy tier-based config
+                config = getWaveConfig(supplier.tier);
+            }
+
+            if (!canReceive) continue;
+
+            waveGroups[config.wave]++;
+
+            const visibleAt = new Date(now.getTime() + config.delayMinutes * 60 * 1000);
+            const expiresAt = new Date(visibleAt.getTime() + DEFAULT_EXPIRY_HOURS * 60 * 60 * 1000);
+
+            await insertQueueEntry(client, rfqId, supplier.id, config.wave, visibleAt, expiresAt);
+            insertedCount++;
+
+            // Track RFQ usage if enforcing quotas
+            if (useEntitlements && enforceQuotas) {
+                await entitlements.incrementRfqUsage(supplier.id, rfqId);
+            }
             const config = getWaveConfig(supplier.tier);
             const auditData = generateWaveAudit(supplier, config, now);
             
@@ -310,6 +398,12 @@ async function createDistributionWaves(rfqId, suppliers) {
 
         await client.query('COMMIT');
         
+        console.log(`Created waves for RFQ ${rfqId}: ` +
+            `Wave1=${waveGroups[1]}, Wave2=${waveGroups[2]}, ` +
+            `Wave3=${waveGroups[3]}, Wave4=${waveGroups[4]}, ` +
+            `Total=${insertedCount}, SkippedQuota=${skippedQuota}`);
+
+        return { success: true, count: insertedCount, skippedQuota };
         // Detailed logging for monitoring and debugging
         console.log(`[RFQ Distribution] RFQ ${rfqId}:`);
         console.log(`  Wave 1 (Premium): ${waveGroups[1].count} suppliers - immediate access`);
@@ -334,6 +428,7 @@ async function createDistributionWaves(rfqId, suppliers) {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error(`Error creating distribution waves for RFQ ${rfqId}:`, err);
+        return { success: false, count: 0, skippedQuota: 0, error: err.message };
         return { success: false, count: 0, shadowCount: 0, auditLog: [], error: err.message };
     } finally {
         client.release();
@@ -503,6 +598,8 @@ module.exports = {
     getPendingShadowOutreach,
     getWaveDistributionStats,
     getWaveConfig,
+    getWaveConfigFromEntitlements,
+    WAVE_CONFIG
     isShadowTier,
     generateWaveAudit,
     WAVE_CONFIG,
