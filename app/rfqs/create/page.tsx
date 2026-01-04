@@ -222,27 +222,11 @@ export default function CreateRFQPage() {
   // Success State
   if (createdRfqId) {
     return (
-      <div className="gc-page" style={{ padding: "48px 0" }}>
-        <div className="gc-container" style={{ maxWidth: 600 }}>
-          <div
-            className="gc-card gc-animate-scale-in"
-            style={{ padding: 40, textAlign: "center" }}
-          >
+      <div className="gc-page py-12">
+        <div className="gc-container max-w-[600px]">
+          <div className="gc-card gc-animate-scale-in p-10 text-center">
             {/* Success Icon */}
-            <div
-              style={{
-                width: 72,
-                height: 72,
-                margin: "0 auto 24px",
-                borderRadius: "50%",
-                background:
-                  "linear-gradient(135deg, var(--gc-emerald-500) 0%, var(--gc-teal-500) 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 12px 30px rgba(16, 185, 129, 0.3)",
-              }}
-            >
+            <div className="w-[72px] h-[72px] mx-auto mb-6 rounded-full bg-gradient-to-br from-[var(--gc-emerald-500)] to-[var(--gc-teal-500)] flex items-center justify-center shadow-[0_12px_30px_rgba(16,185,129,0.3)]">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -250,54 +234,25 @@ export default function CreateRFQPage() {
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                style={{ width: 36, height: 36 }}
+                className="w-9 h-9"
               >
                 <polyline points="20,6 9,17 4,12" />
               </svg>
             </div>
 
-            <h1
-              style={{
-                margin: "0 0 12px 0",
-                fontSize: 28,
-                fontWeight: 900,
-                color: "var(--gc-slate-900)",
-              }}
-            >
+            <h1 className="m-0 mb-3 text-[28px] font-black text-[var(--gc-slate-900)]">
               RFQ Submitted Successfully!
             </h1>
 
-            <p
-              style={{
-                margin: "0 0 24px 0",
-                fontSize: 16,
-                color: "var(--gc-slate-600)",
-                lineHeight: 1.6,
-              }}
-            >
+            <p className="m-0 mb-6 text-base text-[var(--gc-slate-600)] leading-relaxed">
               Your request for <strong>{formData.project_name}</strong> has been
               sent to verified suppliers. Expect responses within 48-72 hours.
             </p>
 
             {/* Deposit Confirmation */}
             {depositAmount > 0 && (
-              <div
-                style={{
-                  padding: 16,
-                  background: "rgba(236, 253, 245, 0.7)",
-                  border: "1px solid var(--gc-emerald-200)",
-                  borderRadius: "var(--gc-radius)",
-                  marginBottom: 24,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                  }}
-                >
+              <div className="p-4 bg-[rgba(236,253,245,0.7)] border border-[var(--gc-emerald-200)] rounded-[var(--gc-radius)] mb-6">
+                <div className="flex items-center justify-center gap-2">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -305,22 +260,12 @@ export default function CreateRFQPage() {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{
-                      width: 18,
-                      height: 18,
-                      color: "var(--gc-emerald-600)",
-                    }}
+                    className="w-[18px] h-[18px] text-[var(--gc-emerald-600)]"
                   >
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
-                  <span
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "var(--gc-emerald-700)",
-                    }}
-                  >
+                  <span className="text-sm font-bold text-[var(--gc-emerald-700)]">
                     Deposit of ${(depositAmount / 100).toFixed(2)} confirmed
                   </span>
                 </div>
@@ -356,21 +301,14 @@ export default function CreateRFQPage() {
             />
 
             {/* View RFQ Button */}
-            <div style={{ marginTop: 28 }}>
+            <div className="mt-7">
               <button
                 onClick={() => router.push(`/rfqs/${createdRfqId}`)}
-                className="gc-btn gc-btn-primary"
-                style={{ padding: "0.85rem 2rem", fontSize: 15 }}
+                className="gc-btn gc-btn-primary px-8 py-[0.85rem] text-[15px]"
               >
                 View Your RFQ
               </button>
-              <p
-                style={{
-                  marginTop: 12,
-                  fontSize: 13,
-                  color: "var(--gc-slate-500)",
-                }}
-              >
+              <p className="mt-3 text-[13px] text-[var(--gc-slate-500)]">
                 Redirecting automatically in a few seconds...
               </p>
             </div>
@@ -381,10 +319,10 @@ export default function CreateRFQPage() {
   }
 
   return (
-    <div className="gc-page" style={{ padding: "32px 0 48px 0" }}>
-      <div className="gc-container" style={{ maxWidth: 800 }}>
+    <div className="gc-page py-8 pb-12">
+      <div className="gc-container max-w-[800px]">
         {/* Trust Badges */}
-        <div style={{ marginBottom: 20 }}>
+        <div className="mb-5">
           <TrustBadges variant="compact" size="sm" />
         </div>
 
@@ -413,38 +351,18 @@ export default function CreateRFQPage() {
         />
 
         {/* Main Form Card */}
-        <div className="gc-card gc-animate-fade-in" style={{ padding: 32 }}>
+        <div className="gc-card gc-animate-fade-in p-8">
           {/* Error Message */}
-          {error && (
-            <div
-              className="gc-alert gc-alert-error"
-              style={{ marginBottom: 24 }}
-            >
-              {error}
-            </div>
-          )}
+          {error && <div className="gc-alert gc-alert-error mb-6">{error}</div>}
 
           {/* Step 1: Project Details */}
           {currentStep === 1 && (
             <div className="gc-rfq-step-content">
-              <div style={{ marginBottom: 28 }}>
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: 24,
-                    fontWeight: 900,
-                    color: "var(--gc-slate-900)",
-                  }}
-                >
+              <div className="mb-7">
+                <h1 className="m-0 text-2xl font-black text-[var(--gc-slate-900)]">
                   Project Details
                 </h1>
-                <p
-                  style={{
-                    margin: "8px 0 0 0",
-                    color: "var(--gc-slate-600)",
-                    fontSize: 15,
-                  }}
-                >
+                <p className="m-0 mt-2 text-[15px] text-[var(--gc-slate-600)]">
                   Tell us about your project and sustainability requirements
                 </p>
               </div>
@@ -508,13 +426,8 @@ export default function CreateRFQPage() {
                 </div>
 
                 {/* Deadline & Budget Row */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: 16,
-                  }}
-                >
+                {/* Deadline & Budget Row */}
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
                   <div className="gc-form-group">
                     <label
                       htmlFor="deadline"
@@ -567,11 +480,10 @@ export default function CreateRFQPage() {
                 </div>
 
                 {/* Navigation */}
-                <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
+                <div className="flex gap-3 mt-7">
                   <button
                     type="submit"
-                    className="gc-btn gc-btn-primary"
-                    style={{ flex: 1 }}
+                    className="gc-btn gc-btn-primary flex-1"
                   >
                     Continue to Materials
                     <svg
@@ -579,7 +491,7 @@ export default function CreateRFQPage() {
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
-                      style={{ width: 18, height: 18, marginLeft: 6 }}
+                      className="w-[18px] h-[18px] ml-1.5"
                     >
                       <polyline points="9,18 15,12 9,6" />
                     </svg>
@@ -599,24 +511,11 @@ export default function CreateRFQPage() {
           {/* Step 2: Materials */}
           {currentStep === 2 && (
             <div className="gc-rfq-step-content">
-              <div style={{ marginBottom: 28 }}>
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: 24,
-                    fontWeight: 900,
-                    color: "var(--gc-slate-900)",
-                  }}
-                >
+              <div className="mb-7">
+                <h1 className="m-0 text-2xl font-black text-[var(--gc-slate-900)]">
                   Materials
                 </h1>
-                <p
-                  style={{
-                    margin: "8px 0 0 0",
-                    color: "var(--gc-slate-600)",
-                    fontSize: 15,
-                  }}
-                >
+                <p className="m-0 mt-2 text-[15px] text-[var(--gc-slate-600)]">
                   Add materials from our catalog or enter them manually
                 </p>
               </div>
@@ -625,22 +524,10 @@ export default function CreateRFQPage() {
               {materials.map((material, index) => (
                 <div
                   key={index}
-                  className="gc-card"
-                  style={{
-                    padding: 20,
-                    marginBottom: 16,
-                    background: "rgba(248, 250, 252, 0.7)",
-                  }}
+                  className="gc-card p-5 mb-4 bg-[rgba(248,250,252,0.7)]"
                 >
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fit, minmax(140px, 1fr))",
-                      gap: 12,
-                    }}
-                  >
-                    <div className="gc-form-group" style={{ marginBottom: 0 }}>
+                  <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(140px,1fr))]">
+                    <div className="gc-form-group mb-0">
                       <label className="gc-label">Material Name</label>
                       <input
                         type="text"
@@ -652,7 +539,7 @@ export default function CreateRFQPage() {
                         placeholder="e.g., Reclaimed Wood"
                       />
                     </div>
-                    <div className="gc-form-group" style={{ marginBottom: 0 }}>
+                    <div className="gc-form-group mb-0">
                       <label className="gc-label">Quantity</label>
                       <input
                         type="number"
@@ -669,7 +556,7 @@ export default function CreateRFQPage() {
                         step="0.01"
                       />
                     </div>
-                    <div className="gc-form-group" style={{ marginBottom: 0 }}>
+                    <div className="gc-form-group mb-0">
                       <label className="gc-label">Unit</label>
                       <input
                         type="text"
@@ -684,10 +571,7 @@ export default function CreateRFQPage() {
                   </div>
 
                   {/* Specification */}
-                  <div
-                    className="gc-form-group"
-                    style={{ marginTop: 12, marginBottom: 0 }}
-                  >
+                  <div className="gc-form-group mt-3 mb-0">
                     <label className="gc-label">Specification</label>
                     <input
                       type="text"
@@ -709,16 +593,7 @@ export default function CreateRFQPage() {
                     <button
                       type="button"
                       onClick={() => removeMaterial(index)}
-                      style={{
-                        marginTop: 12,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#dc2626",
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                      }}
+                      className="mt-3 text-[13px] font-semibold text-red-600 bg-transparent border-0 cursor-pointer p-0"
                     >
                       − Remove Material
                     </button>
@@ -730,50 +605,21 @@ export default function CreateRFQPage() {
               <button
                 type="button"
                 onClick={addMaterial}
-                className="gc-btn gc-btn-ghost"
-                style={{
-                  border: "1px dashed var(--gc-slate-300)",
-                  width: "100%",
-                  marginBottom: 16,
-                }}
+                className="gc-btn gc-btn-ghost w-full mb-4 border border-dashed border-[var(--gc-slate-300)]"
               >
                 + Add Material
               </button>
 
               {/* Browse Catalog Link */}
-              <div
-                style={{
-                  padding: 16,
-                  background:
-                    "linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(20, 184, 166, 0.03) 100%)",
-                  border: "1px solid var(--gc-emerald-200)",
-                  borderRadius: "var(--gc-radius)",
-                  marginBottom: 24,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "var(--gc-radius-sm)",
-                      background: "white",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-                    }}
-                  >
+              <div className="p-4 bg-[linear-gradient(135deg,rgba(16,185,129,0.05)_0%,rgba(20,184,166,0.03)_100%)] border border-[var(--gc-emerald-200)] rounded-[var(--gc-radius)] mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-[var(--gc-radius-sm)] bg-white flex items-center justify-center shadow-sm">
                     <svg
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
-                      style={{
-                        width: 18,
-                        height: 18,
-                        color: "var(--gc-emerald-600)",
-                      }}
+                      className="w-[18px] h-[18px] text-[var(--gc-emerald-600)]"
                     >
                       <rect x="3" y="3" width="7" height="7" />
                       <rect x="14" y="3" width="7" height="7" />
@@ -781,24 +627,11 @@ export default function CreateRFQPage() {
                       <rect x="3" y="14" width="7" height="7" />
                     </svg>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "var(--gc-slate-800)",
-                      }}
-                    >
+                  <div className="flex-1">
+                    <p className="m-0 text-sm font-semibold text-[var(--gc-slate-800)]">
                       Browse Our Catalog
                     </p>
-                    <p
-                      style={{
-                        margin: "2px 0 0 0",
-                        fontSize: 12,
-                        color: "var(--gc-slate-600)",
-                      }}
-                    >
+                    <p className="m-0 mt-0.5 text-xs text-[var(--gc-slate-600)]">
                       Select from 10,000+ verified sustainable materials
                     </p>
                   </div>
@@ -807,8 +640,7 @@ export default function CreateRFQPage() {
                     onClick={() =>
                       window.open("/catalog", "_blank", "noopener,noreferrer")
                     }
-                    className="gc-btn gc-btn-ghost"
-                    style={{ fontSize: 13 }}
+                    className="gc-btn gc-btn-ghost text-[13px]"
                   >
                     Browse
                   </button>
@@ -816,7 +648,7 @@ export default function CreateRFQPage() {
               </div>
 
               {/* Navigation */}
-              <div style={{ display: "flex", gap: 12 }}>
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={prevStep}
@@ -827,8 +659,7 @@ export default function CreateRFQPage() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="gc-btn gc-btn-primary"
-                  style={{ flex: 1 }}
+                  className="gc-btn gc-btn-primary flex-1"
                 >
                   Continue to Verification
                   <svg
@@ -836,7 +667,7 @@ export default function CreateRFQPage() {
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
-                    style={{ width: 18, height: 18, marginLeft: 6 }}
+                    className="w-[18px] h-[18px] ml-1.5"
                   >
                     <polyline points="9,18 15,12 9,6" />
                   </svg>
@@ -855,7 +686,7 @@ export default function CreateRFQPage() {
 
               {/* Back button if verified */}
               {isLinkedInVerified && (
-                <div style={{ textAlign: "center", marginTop: 16 }}>
+                <div className="text-center mt-4">
                   <button
                     type="button"
                     onClick={prevStep}
@@ -868,7 +699,7 @@ export default function CreateRFQPage() {
 
               {/* Back button if not verified */}
               {!isLinkedInVerified && (
-                <div style={{ textAlign: "center", marginTop: 24 }}>
+                <div className="text-center mt-6">
                   <button
                     type="button"
                     onClick={prevStep}
@@ -884,24 +715,11 @@ export default function CreateRFQPage() {
           {/* Step 4: Deposit Payment */}
           {currentStep === 4 && (
             <div className="gc-rfq-step-content">
-              <div style={{ marginBottom: 28, textAlign: "center" }}>
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: 24,
-                    fontWeight: 900,
-                    color: "var(--gc-slate-900)",
-                  }}
-                >
+              <div className="mb-7 text-center">
+                <h1 className="m-0 text-2xl font-black text-[var(--gc-slate-900)]">
                   Secure Your RFQ
                 </h1>
-                <p
-                  style={{
-                    margin: "8px 0 0 0",
-                    color: "var(--gc-slate-600)",
-                    fontSize: 15,
-                  }}
-                >
+                <p className="m-0 mt-2 text-[15px] text-[var(--gc-slate-600)]">
                   A refundable ${DEFAULT_DEPOSIT_AMOUNT} deposit confirms your
                   intent and unlocks verified suppliers
                 </p>
@@ -919,107 +737,47 @@ export default function CreateRFQPage() {
           {/* Step 5: Review & Submit */}
           {currentStep === 5 && (
             <div className="gc-rfq-step-content">
-              <div style={{ marginBottom: 28 }}>
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: 24,
-                    fontWeight: 900,
-                    color: "var(--gc-slate-900)",
-                  }}
-                >
+              <div className="mb-7">
+                <h1 className="m-0 text-2xl font-black text-[var(--gc-slate-900)]">
                   Review & Submit
                 </h1>
-                <p
-                  style={{
-                    margin: "8px 0 0 0",
-                    color: "var(--gc-slate-600)",
-                    fontSize: 15,
-                  }}
-                >
+                <p className="m-0 mt-2 text-[15px] text-[var(--gc-slate-600)]">
                   Confirm your RFQ details before submitting to suppliers
                 </p>
               </div>
 
               {/* Summary Card */}
-              <div
-                className="gc-card"
-                style={{
-                  padding: 24,
-                  background: "var(--gc-slate-50)",
-                  marginBottom: 24,
-                }}
-              >
-                <h3
-                  style={{
-                    margin: "0 0 16px 0",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: "var(--gc-slate-800)",
-                  }}
-                >
+              <div className="gc-card p-6 bg-[var(--gc-slate-50)] mb-6">
+                <h3 className="m-0 mb-4 text-base font-bold text-[var(--gc-slate-800)]">
                   RFQ Summary
                 </h3>
 
-                <div style={{ display: "grid", gap: 12 }}>
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span
-                      style={{ fontSize: 14, color: "var(--gc-slate-600)" }}
-                    >
+                <div className="grid gap-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-[var(--gc-slate-600)]">
                       Project Name
                     </span>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "var(--gc-slate-900)",
-                      }}
-                    >
+                    <span className="text-sm font-semibold text-[var(--gc-slate-900)]">
                       {formData.project_name}
                     </span>
                   </div>
 
                   {formData.location && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span
-                        style={{ fontSize: 14, color: "var(--gc-slate-600)" }}
-                      >
+                    <div className="flex justify-between">
+                      <span className="text-sm text-[var(--gc-slate-600)]">
                         Location
                       </span>
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: "var(--gc-slate-900)",
-                        }}
-                      >
+                      <span className="text-sm font-semibold text-[var(--gc-slate-900)]">
                         {formData.location}
                       </span>
                     </div>
                   )}
 
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span
-                      style={{ fontSize: 14, color: "var(--gc-slate-600)" }}
-                    >
+                  <div className="flex justify-between">
+                    <span className="text-sm text-[var(--gc-slate-600)]">
                       Deadline
                     </span>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "var(--gc-slate-900)",
-                      }}
-                    >
+                    <span className="text-sm font-semibold text-[var(--gc-slate-900)]">
                       {formData.deadline
                         ? new Date(formData.deadline).toLocaleDateString(
                             "en-US",
@@ -1035,108 +793,55 @@ export default function CreateRFQPage() {
                   </div>
 
                   {formData.budget && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span
-                        style={{ fontSize: 14, color: "var(--gc-slate-600)" }}
-                      >
+                    <div className="flex justify-between">
+                      <span className="text-sm text-[var(--gc-slate-600)]">
                         Budget
                       </span>
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: "var(--gc-slate-900)",
-                        }}
-                      >
+                      <span className="text-sm font-semibold text-[var(--gc-slate-900)]">
                         ${parseFloat(formData.budget).toLocaleString()}
                       </span>
                     </div>
                   )}
 
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span
-                      style={{ fontSize: 14, color: "var(--gc-slate-600)" }}
-                    >
+                  <div className="flex justify-between">
+                    <span className="text-sm text-[var(--gc-slate-600)]">
                       Materials
                     </span>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "var(--gc-slate-900)",
-                      }}
-                    >
+                    <span className="text-sm font-semibold text-[var(--gc-slate-900)]">
                       {validMaterialsCount} item
                       {validMaterialsCount !== 1 ? "s" : ""}
                     </span>
                   </div>
 
                   {formData.certifications_required && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span
-                        style={{ fontSize: 14, color: "var(--gc-slate-600)" }}
-                      >
+                    <div className="flex justify-between">
+                      <span className="text-sm text-[var(--gc-slate-600)]">
                         Certifications
                       </span>
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: "var(--gc-slate-900)",
-                        }}
-                      >
+                      <span className="text-sm font-semibold text-[var(--gc-slate-900)]">
                         {formData.certifications_required}
                       </span>
                     </div>
                   )}
                 </div>
 
-                <hr
-                  style={{
-                    margin: "16px 0",
-                    border: "none",
-                    borderTop: "1px solid var(--gc-slate-200)",
-                  }}
-                />
+                <hr className="my-4 border-0 border-t border-[var(--gc-slate-200)]" />
 
                 {/* Materials List */}
-                <h4
-                  style={{
-                    margin: "0 0 12px 0",
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: "var(--gc-slate-700)",
-                  }}
-                >
+                <h4 className="m-0 mb-3 text-sm font-bold text-[var(--gc-slate-700)]">
                   Materials Requested
                 </h4>
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                <ul className="m-0 pl-5">
                   {materials
                     .filter((m) => m.name.trim())
                     .map((m, i) => (
                       <li
                         key={i}
-                        style={{
-                          fontSize: 13,
-                          color: "var(--gc-slate-700)",
-                          marginBottom: 4,
-                        }}
+                        className="text-[13px] text-[var(--gc-slate-700)] mb-1"
                       >
                         {m.name} - {m.quantity} {m.unit}
                         {m.specification && (
-                          <span style={{ color: "var(--gc-slate-500)" }}>
+                          <span className="text-[var(--gc-slate-500)]">
                             {" "}
                             ({m.specification})
                           </span>
@@ -1147,55 +852,24 @@ export default function CreateRFQPage() {
               </div>
 
               {/* Deposit Confirmation */}
-              <div
-                style={{
-                  padding: 16,
-                  background: "rgba(236, 253, 245, 0.7)",
-                  border: "1px solid var(--gc-emerald-200)",
-                  borderRadius: "var(--gc-radius)",
-                  marginBottom: 24,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      background: "var(--gc-emerald-500)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+              <div className="p-4 bg-[rgba(236,253,245,0.7)] border border-[var(--gc-emerald-200)] rounded-[var(--gc-radius)] mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[var(--gc-emerald-500)] flex items-center justify-center">
                     <svg
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="white"
                       strokeWidth="3"
-                      style={{ width: 18, height: 18 }}
+                      className="w-[18px] h-[18px]"
                     >
                       <polyline points="20,6 9,17 4,12" />
                     </svg>
                   </div>
                   <div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "var(--gc-emerald-700)",
-                      }}
-                    >
+                    <p className="m-0 text-sm font-bold text-[var(--gc-emerald-700)]">
                       Deposit Paid: ${(depositAmount / 100).toFixed(2)}
                     </p>
-                    <p
-                      style={{
-                        margin: "2px 0 0 0",
-                        fontSize: 12,
-                        color: "var(--gc-slate-600)",
-                      }}
-                    >
+                    <p className="m-0 mt-0.5 text-xs text-[var(--gc-slate-600)]">
                       Refundable if no suitable quotes received
                     </p>
                   </div>
@@ -1209,7 +883,7 @@ export default function CreateRFQPage() {
               />
 
               {/* Navigation */}
-              <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
+              <div className="flex gap-3 mt-7">
                 <button
                   type="button"
                   onClick={() => goToStep(4)}
@@ -1221,15 +895,11 @@ export default function CreateRFQPage() {
                   type="button"
                   onClick={handleSubmitRFQ}
                   disabled={loading}
-                  className="gc-btn gc-btn-primary"
-                  style={{ flex: 1 }}
+                  className="gc-btn gc-btn-primary flex-1"
                 >
                   {loading ? (
                     <>
-                      <span
-                        className="gc-spinner"
-                        style={{ width: 18, height: 18 }}
-                      />
+                      <span className="gc-spinner w-[18px] h-[18px]" />
                       Submitting...
                     </>
                   ) : (
@@ -1240,7 +910,7 @@ export default function CreateRFQPage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
-                        style={{ width: 18, height: 18, marginLeft: 6 }}
+                        className="w-[18px] h-[18px] ml-1.5"
                       >
                         <polyline points="9,18 15,12 9,6" />
                       </svg>
@@ -1254,7 +924,7 @@ export default function CreateRFQPage() {
 
         {/* Trust Signal Footer */}
         {currentStep < 5 && (
-          <div style={{ marginTop: 24 }}>
+          <div className="mt-6">
             <CheckoutTrustSignals variant="horizontal" showAnimation={false} />
           </div>
         )}
