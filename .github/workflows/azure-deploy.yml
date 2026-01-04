@@ -1,4 +1,23 @@
-name: Build and Deploy to Azure
+# =============================================================================
+# GreenChainz Azure Container Apps Deploy Pipeline
+# =============================================================================
+# Deploys frontend (Next.js) and backend (Node.js) to Azure Container Apps.
+#
+# Required GitHub Secrets:
+#   - AZURE_CREDENTIALS       : Azure Service Principal JSON (az ad sp create-for-rbac output)
+#   - ACR_USERNAME            : Azure Container Registry username
+#   - ACR_PASSWORD            : Azure Container Registry password
+#   - NEXT_PUBLIC_AZURE_TENANT      : Azure AD tenant (e.g., greenchainz2025.onmicrosoft.com)
+#   - NEXT_PUBLIC_AZURE_CLIENT_ID   : Azure AD app client ID (for frontend auth)
+#
+# Required Key Vault Secrets (in greenchianz-vault):
+#   - postgres-password       : Database password
+#   - jwt-secret              : JWT signing secret
+#   - session-secret          : Express session secret
+#   - redis-password          : Azure Redis Cache password
+# =============================================================================
+
+name: Azure Container Apps Deploy
 
 permissions:
   contents: read
@@ -15,7 +34,6 @@ on:
       - 'Dockerfile'
       - 'next.config.js'
       - 'package.json'
-      - 'package-lock.json'
       - 'database-schemas/**'
       - '.github/workflows/azure-deploy.yml'
   workflow_dispatch:
@@ -38,7 +56,9 @@ env:
   CONTAINER_ENV: cae-greenchainz-env
 
 jobs:
-  # Detect which components changed
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Detect which components changed (for push events)
+  # ─────────────────────────────────────────────────────────────────────────────
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -62,13 +82,14 @@ jobs:
               - 'Dockerfile'
               - 'next.config.js'
               - 'package.json'
-              - 'package-lock.json'
 
+  # ─────────────────────────────────────────────────────────────────────────────
   # Build and deploy backend
+  # ─────────────────────────────────────────────────────────────────────────────
   deploy-backend:
     needs: changes
     if: |
-      github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'all' || github.event.inputs.deploy_target == 'backend') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'all' || github.event.inputs.deploy_target == 'backend')) ||
       (github.event_name == 'push' && needs.changes.outputs.backend == 'true')
     runs-on: ubuntu-latest
     environment: production
@@ -86,7 +107,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
-      - name: Build and push backend
+      - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -112,17 +133,16 @@ jobs:
       
       - name: Verify Backend Deployment
         run: |
-          # Wait for deployment to complete
+          echo "⏳ Waiting for backend to stabilize..."
           sleep 30
           
-          # Get the app URL
           BACKEND_URL=$(az containerapp show \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query "properties.configuration.ingress.fqdn" -o tsv)
           
-          # Health check
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${BACKEND_URL}/health)
+          echo "🔍 Health check: https://${BACKEND_URL}/health"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://${BACKEND_URL}/health")
           
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "❌ Backend health check failed with status $HTTP_STATUS"
@@ -131,7 +151,9 @@ jobs:
           
           echo "✅ Backend deployed successfully to https://${BACKEND_URL}"
 
+  # ─────────────────────────────────────────────────────────────────────────────
   # Build and deploy frontend
+  # ─────────────────────────────────────────────────────────────────────────────
   deploy-frontend:
     needs: [changes, deploy-backend]
     if: |
@@ -162,16 +184,22 @@ jobs:
       - name: Get Backend URL
         id: backend-url
         run: |
-          BACKEND_URL=$(az containerapp show \
+          BACKEND_FQDN=$(az containerapp show \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "greenchainz-container.eastus.azurecontainerapps.io")
-          echo "url=https://${BACKEND_URL}" >> $GITHUB_OUTPUT
+            --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
+          
+          if [ -z "$BACKEND_FQDN" ]; then
+            BACKEND_FQDN="greenchainz-container.eastus.azurecontainerapps.io"
+          fi
+          
+          echo "url=https://${BACKEND_FQDN}" >> $GITHUB_OUTPUT
+          echo "📡 Backend URL: https://${BACKEND_FQDN}"
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
-      - name: Build and push frontend
+      - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -191,7 +219,7 @@ jobs:
         run: |
           # Check if frontend app exists
           if az containerapp show --name ${{ env.FRONTEND_APP }} --resource-group ${{ env.RESOURCE_GROUP }} &>/dev/null; then
-            # Update existing app
+            echo "📦 Updating existing frontend app..."
             az containerapp update \
               --name ${{ env.FRONTEND_APP }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -203,7 +231,7 @@ jobs:
                 NEXT_PUBLIC_AZURE_TENANT=${{ secrets.NEXT_PUBLIC_AZURE_TENANT }} \
                 NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
           else
-            # Create new app
+            echo "🆕 Creating new frontend app..."
             az containerapp create \
               --name ${{ env.FRONTEND_APP }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -227,6 +255,7 @@ jobs:
       
       - name: Verify Frontend Deployment
         run: |
+          echo "⏳ Waiting for frontend to stabilize..."
           sleep 30
           
           FRONTEND_URL=$(az containerapp show \
@@ -234,7 +263,8 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query "properties.configuration.ingress.fqdn" -o tsv)
           
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${FRONTEND_URL}/)
+          echo "🔍 Health check: https://${FRONTEND_URL}/"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://${FRONTEND_URL}/")
           
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "❌ Frontend health check failed with status $HTTP_STATUS"
@@ -243,20 +273,26 @@ jobs:
           
           echo "✅ Frontend deployed successfully to https://${FRONTEND_URL}"
 
-  # Post-deployment notification
-  notify:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Deployment summary
+  # ─────────────────────────────────────────────────────────────────────────────
+  summary:
     needs: [deploy-backend, deploy-frontend]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Deployment Summary
         run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Backend | ${{ needs.deploy-backend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend | ${{ needs.deploy-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: https://greenchainz-container.eastus.azurecontainerapps.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: https://greenchainz-frontend.eastus.azurecontainerapps.io" >> $GITHUB_STEP_SUMMARY
