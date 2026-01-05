@@ -33,13 +33,13 @@ export default function Home() {
         {/* CTA Buttons */}
         <div className="gc-animate-fade-in gc-stagger-2 flex justify-center gap-3.5 flex-wrap mb-9">
           <Link
-            href="/signup?type=supplier"
+            href="/login?type=supplier"
             className="gc-btn gc-btn-primary py-4 px-6 text-base"
           >
             Join as Supplier
           </Link>
           <Link
-            href="/signup?type=architect"
+            href="/login?type=architect"
             className="gc-btn gc-btn-secondary py-4 px-6 text-base"
           >
             Join as Architect

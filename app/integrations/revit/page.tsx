@@ -425,7 +425,7 @@ export default function RevitIntegrationPage() {
               Join our waitlist to be notified when the Revit add-in is available.
             </p>
             <Link
-              href="/signup?source=revit-integration"
+              href="/login?source=revit-integration"
               className="gc-btn gc-btn-primary"
               style={{ padding: '0.75rem 1.25rem', fontSize: 14 }}
             >

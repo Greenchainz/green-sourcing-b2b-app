@@ -43,7 +43,7 @@ export default function SiteHeader() {
             <Link href="/login" className="gc-link">
               Log in
             </Link>
-            <Link href="/signup" className="gc-btn gc-btn-primary">
+            <Link href="/login" className="gc-btn gc-btn-primary">
               Get Started
             </Link>
           </nav>

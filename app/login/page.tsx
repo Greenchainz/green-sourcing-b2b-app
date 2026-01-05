@@ -22,9 +22,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated() && user) {
       const redirectTo =
-        user.role === "supplier"
-          ? "/supplier/dashboard"
-          : "/architect/dashboard";
+        user.role === "supplier" ? "/dashboard" : "/dashboard/buyer";
       router.push(redirectTo);
     }
   }, [isAuthenticated, user, router]);
