@@ -85,23 +85,29 @@ export const useAuth = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const backendUrl = backendUrlOverride || get().backendUrl || DEFAULT_BACKEND_URL;
+          // Use same-origin API proxy to avoid cross-origin browser failures.
+          // The proxy forwards to BACKEND_URL server-side.
+          const proxyHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (backendUrl) proxyHeaders['x-backend-url'] = backendUrl;
+
           // 1) Exchange code -> ID token via backend (keeps client_secret server-side)
-          const exchange = await fetch(`${backendUrl}/api/v1/auth/azure-token-exchange`, {
+          const exchange = await fetch(`/api/auth/azure-token-exchange`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: proxyHeaders,
             body: JSON.stringify({ code, redirectUri }),
           });
 
           if (!exchange.ok) {
-            throw new Error('Token exchange failed');
+            const details = await exchange.text().catch(() => '');
+            throw new Error(details ? `Token exchange failed: ${details}` : 'Token exchange failed');
           }
 
           const tokenData = await exchange.json();
 
           // 2) Create/lookup user + mint our JWT
-          const response = await fetch(`${backendUrl}/api/v1/auth/azure-callback`, {
+          const response = await fetch(`/api/auth/azure-callback`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: proxyHeaders,
             body: JSON.stringify({
               code,
               email: tokenData.email,
@@ -112,7 +118,8 @@ export const useAuth = create<AuthState>()(
           });
 
           if (!response.ok) {
-            throw new Error('Authentication failed');
+            const details = await response.text().catch(() => '');
+            throw new Error(details ? `Authentication failed: ${details}` : 'Authentication failed');
           }
 
           const data = await response.json();
