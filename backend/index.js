@@ -46,9 +46,28 @@ async function start() {
   const sessionMiddleware = buildSessionMiddleware({ redisClient });
 
   // Security & Basic Middleware
+  const defaultAllowedOrigins = ["http://localhost:3000", "http://localhost:5173"];
+  const configuredOriginsRaw =
+    process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "";
+  const configuredAllowedOrigins = configuredOriginsRaw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const allowedOrigins = new Set([
+    ...defaultAllowedOrigins,
+    ...configuredAllowedOrigins,
+  ]);
+
   app.use(
     cors({
-      origin: process.env.FRONTEND_URL || "http://localhost:3000", // Default to Next.js port
+      origin: (origin, callback) => {
+        // Allow same-origin, server-to-server, and health checks with no Origin header
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.has(origin)) return callback(null, true);
+
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+      },
       credentials: true,
     })
   );
@@ -69,6 +88,26 @@ async function start() {
   // ============================================
   // HEALTH & READINESS ENDPOINTS
   // ============================================
+
+  // Root route: browsers hitting the API app should be redirected to the frontend
+  app.get("/", (req, res) => {
+    const configuredOriginsRaw =
+      process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "";
+    const preferredFrontendUrl = configuredOriginsRaw
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)[0];
+
+    if (preferredFrontendUrl) {
+      return res.redirect(302, preferredFrontendUrl.replace(/\/$/, ""));
+    }
+
+    return res.status(200).json({
+      status: "ok",
+      service: "greenchainz-backend",
+      message: "API server is running. Use /api/v1/* endpoints.",
+    });
+  });
 
   /**
    * Health Check - Basic liveness probe
