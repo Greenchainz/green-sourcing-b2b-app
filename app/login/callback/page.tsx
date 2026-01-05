@@ -4,21 +4,37 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 
-const AZURE_TENANT = process.env.NEXT_PUBLIC_AZURE_TENANT || 'greenchainz2025.onmicrosoft.com';
-const AZURE_CLIENT_ID = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || '';
-const AZURE_REDIRECT_URI = process.env.NEXT_PUBLIC_AZURE_REDIRECT_URI || `${typeof window !== 'undefined' ? window.location.origin : ''}/login/callback`;
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+type PublicConfig = {
+  origin?: string;
+  backendUrl?: string;
+  azureTenant?: string;
+  azureClientId?: string;
+  redirectUri?: string;
+};
 
 function CallbackPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { handleAzureCallback } = useAuth();
+  const { handleAzureCallback, setBackendUrl } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
+  const [publicConfig, setPublicConfig] = useState<PublicConfig | null>(null);
 
   useEffect(() => {
     const processCallback = async () => {
       try {
+        // Load runtime config first so redirectUri + backendUrl are correct.
+        const configRes = await fetch('/api/public-config', { cache: 'no-store' });
+        if (!configRes.ok) {
+          throw new Error('Failed to load sign-in configuration');
+        }
+        const config = (await configRes.json()) as PublicConfig;
+        setPublicConfig(config);
+
+        if (config.backendUrl) {
+          setBackendUrl(config.backendUrl);
+        }
+
         // Get auth code and state from URL
         const code = searchParams.get('code');
         const state = searchParams.get('state');
@@ -35,7 +51,10 @@ function CallbackPageInner() {
 
         // Sign user in via our backend.
         // Backend performs the secure code exchange using AZURE_CLIENT_SECRET.
-        await handleAzureCallback(code, AZURE_REDIRECT_URI);
+        const redirectUri =
+          config.redirectUri || `${window.location.origin}/login/callback`;
+
+        await handleAzureCallback(code, redirectUri, config.backendUrl);
 
         // Clear session storage
         sessionStorage.removeItem('oauth_state');

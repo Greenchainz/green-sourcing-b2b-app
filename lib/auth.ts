@@ -16,6 +16,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   refreshToken: string | null;
+  backendUrl: string;
   isLoading: boolean;
   error: string | null;
 
@@ -23,6 +24,7 @@ interface AuthState {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setRefreshToken: (token: string | null) => void;
+  setBackendUrl: (url: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
@@ -30,6 +32,8 @@ interface AuthState {
   handleAzureCallback: (
     code: string,
     redirectUri: string
+    ,
+    backendUrlOverride?: string
   ) => Promise<void>;
   refreshAccessToken: () => Promise<void>;
   updateRole: (newRole: 'architect' | 'supplier') => Promise<void>;
@@ -42,6 +46,7 @@ interface AuthState {
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 function mirrorJwtTokenToLocalStorage(token: string | null) {
   // Some older pages expect this key; keep it in sync.
@@ -60,6 +65,7 @@ export const useAuth = create<AuthState>()(
       user: null,
       token: null,
       refreshToken: null,
+      backendUrl: DEFAULT_BACKEND_URL,
       isLoading: false,
       error: null,
 
@@ -70,15 +76,17 @@ export const useAuth = create<AuthState>()(
         set({ token });
       },
       setRefreshToken: (refreshToken) => set({ refreshToken }),
+      setBackendUrl: (backendUrl) => set({ backendUrl }),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
 
       // Exchange Azure auth code for JWT tokens
-      handleAzureCallback: async (code, redirectUri) => {
+      handleAzureCallback: async (code, redirectUri, backendUrlOverride) => {
         set({ isLoading: true, error: null });
         try {
+          const backendUrl = backendUrlOverride || get().backendUrl || DEFAULT_BACKEND_URL;
           // 1) Exchange code -> ID token via backend (keeps client_secret server-side)
-          const exchange = await fetch(`${BACKEND_URL}/api/v1/auth/azure-token-exchange`, {
+          const exchange = await fetch(`${backendUrl}/api/v1/auth/azure-token-exchange`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code, redirectUri }),
@@ -91,7 +99,7 @@ export const useAuth = create<AuthState>()(
           const tokenData = await exchange.json();
 
           // 2) Create/lookup user + mint our JWT
-          const response = await fetch(`${BACKEND_URL}/api/v1/auth/azure-callback`, {
+          const response = await fetch(`${backendUrl}/api/v1/auth/azure-callback`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -140,7 +148,8 @@ export const useAuth = create<AuthState>()(
         }
 
         try {
-          const response = await fetch(`${BACKEND_URL}/api/v1/auth/refresh`, {
+          const backendUrl = get().backendUrl || DEFAULT_BACKEND_URL;
+          const response = await fetch(`${backendUrl}/api/v1/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken }),
@@ -172,7 +181,8 @@ export const useAuth = create<AuthState>()(
 
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${BACKEND_URL}/api/v1/auth/role`, {
+          const backendUrl = get().backendUrl || DEFAULT_BACKEND_URL;
+          const response = await fetch(`${backendUrl}/api/v1/auth/role`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',

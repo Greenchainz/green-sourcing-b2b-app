@@ -13,10 +13,43 @@ const AZURE_REDIRECT_URI =
   process.env.NEXT_PUBLIC_AZURE_REDIRECT_URI ||
   `${typeof window !== "undefined" ? window.location.origin : ""}/login/callback`;
 
+type PublicConfig = {
+  origin?: string;
+  backendUrl?: string;
+  azureTenant?: string;
+  azureClientId?: string;
+  redirectUri?: string;
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, error } = useAuth();
   const [isInitializing, setIsInitializing] = useState(false);
+  const [publicConfig, setPublicConfig] = useState<PublicConfig | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let canceled = false;
+
+    const loadConfig = async () => {
+      try {
+        const res = await fetch("/api/public-config", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to load sign-in configuration");
+        const data = (await res.json()) as PublicConfig;
+        if (!canceled) setPublicConfig(data);
+      } catch (e) {
+        if (!canceled) {
+          const message = e instanceof Error ? e.message : "Failed to load configuration";
+          setConfigError(message);
+        }
+      }
+    };
+
+    loadConfig();
+    return () => {
+      canceled = true;
+    };
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -30,6 +63,18 @@ export default function LoginPage() {
   const initiateAzureLogin = () => {
     setIsInitializing(true);
 
+    const azureTenant = publicConfig?.azureTenant || AZURE_TENANT;
+    const azureClientId = publicConfig?.azureClientId || AZURE_CLIENT_ID;
+    const redirectUri = publicConfig?.redirectUri || AZURE_REDIRECT_URI;
+
+    if (!azureClientId) {
+      setIsInitializing(false);
+      setConfigError(
+        "Missing Azure Client ID. Set AZURE_CLIENT_ID (or NEXT_PUBLIC_AZURE_CLIENT_ID) on the frontend container app."
+      );
+      return;
+    }
+
     const state = Math.random().toString(36).substring(7);
     const nonce = Math.random().toString(36).substring(7);
 
@@ -38,12 +83,12 @@ export default function LoginPage() {
     sessionStorage.setItem("oauth_nonce", nonce);
 
     const authorizeUrl = new URL(
-      `https://login.microsoftonline.com/${AZURE_TENANT}/oauth2/v2.0/authorize`
+      `https://login.microsoftonline.com/${azureTenant}/oauth2/v2.0/authorize`
     );
 
-    authorizeUrl.searchParams.append("client_id", AZURE_CLIENT_ID);
+    authorizeUrl.searchParams.append("client_id", azureClientId);
     authorizeUrl.searchParams.append("response_type", "code");
-    authorizeUrl.searchParams.append("redirect_uri", AZURE_REDIRECT_URI);
+    authorizeUrl.searchParams.append("redirect_uri", redirectUri);
     authorizeUrl.searchParams.append("scope", "openid profile email");
     authorizeUrl.searchParams.append("state", state);
     authorizeUrl.searchParams.append("nonce", nonce);
@@ -84,7 +129,9 @@ export default function LoginPage() {
           </div>
 
           {/* Error Message */}
-          {error && <div className="gc-alert gc-alert-error mb-5">{error}</div>}
+          {(error || configError) && (
+            <div className="gc-alert gc-alert-error mb-5">{error || configError}</div>
+          )}
 
           {/* Loading State */}
           {isLoading || isInitializing ? (
