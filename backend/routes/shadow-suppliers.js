@@ -16,29 +16,11 @@ const express = require('express');
 const router = express.Router();
 const shadowService = require('../services/shadow');
 const { claimFlow, catalog, ingestion, visibility } = shadowService;
+const internalApiKeyMiddleware = require('../middleware/internalKey');
 
 // ============================================
 // MIDDLEWARE
 // ============================================
-
-/**
- * Validate internal API key for admin operations
- */
-const internalApiKeyMiddleware = (req, res, next) => {
-    const apiKey = req.headers['x-internal-api-key'];
-    const expectedKey = process.env.INTERNAL_API_KEY;
-    
-    if (!expectedKey) {
-        console.warn('INTERNAL_API_KEY not configured');
-        return res.status(500).json({ error: 'Server configuration error' });
-    }
-    
-    if (apiKey !== expectedKey) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    next();
-};
 
 /**
  * Extract client IP for audit logging

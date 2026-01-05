@@ -4,58 +4,7 @@ const { pool } = require('../db');
 const { distributeRFQ } = require('../services/rfq/distributor');
 const { updateResponseMetrics } = require('../services/rfq/metrics');
 const rateLimit = require('../middleware/rateLimit');
-const crypto = require('crypto');
-
-// ============================================
-// INTERNAL KEY PROTECTION MIDDLEWARE
-// ============================================
-
-/**
- * Require internal API key for all simulator endpoints.
- * In production, INTERNAL_API_KEY must be set.
- * Uses timing-safe comparison to prevent timing attacks.
- */
-function requireInternalKey(req, res, next) {
-  const requiredKey = process.env.INTERNAL_API_KEY;
-  
-  // In production, always require the key
-  if (process.env.NODE_ENV === 'production' && !requiredKey) {
-    console.error('INTERNAL_API_KEY is not set in production');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-  
-  // If no key configured (dev mode), allow through with warning
-  if (!requiredKey) {
-    if (process.env.NODE_ENV !== 'test') {
-      console.warn('WARNING: INTERNAL_API_KEY not set. Simulator endpoints unprotected.');
-    }
-    return next();
-  }
-  
-  const providedKey = req.header('x-internal-key');
-  
-  if (!providedKey) {
-    return res.status(401).json({ error: 'Unauthorized: Missing internal key' });
-  }
-  
-  // Use timing-safe comparison to prevent timing attacks
-  try {
-    const requiredBuffer = Buffer.from(requiredKey, 'utf8');
-    const providedBuffer = Buffer.from(providedKey, 'utf8');
-    
-    if (requiredBuffer.length !== providedBuffer.length) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid internal key' });
-    }
-    
-    if (!crypto.timingSafeEqual(requiredBuffer, providedBuffer)) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid internal key' });
-    }
-  } catch (e) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid internal key' });
-  }
-  
-  return next();
-}
+const requireInternalKey = require('../middleware/internalKey');
 
 // Apply internal key protection to all routes
 router.use(requireInternalKey);

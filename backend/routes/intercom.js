@@ -17,37 +17,11 @@ const router = express.Router();
 const messaging = require('../services/intercom/messaging');
 const contacts = require('../services/intercom/contacts');
 const { handleWebhook } = require('../services/intercom/webhooks');
+const internalApiKeyMiddleware = require('../middleware/internalKey');
 
 // ============================================
 // MIDDLEWARE
 // ============================================
-
-/**
- * Validate internal API key for all internal operations.
- * Blocks requests without valid INTERNAL_API_KEY header.
- */
-const internalApiKeyMiddleware = (req, res, next) => {
-    const apiKey = req.headers['x-internal-api-key'];
-    const expectedKey = process.env.INTERNAL_API_KEY;
-    
-    if (!expectedKey) {
-        console.error('[Intercom Routes] INTERNAL_API_KEY not configured');
-        return res.status(500).json({ 
-            success: false, 
-            error: 'Server configuration error' 
-        });
-    }
-    
-    if (apiKey !== expectedKey) {
-        console.warn('[Intercom Routes] Unauthorized request - invalid API key');
-        return res.status(401).json({ 
-            success: false, 
-            error: 'Unauthorized' 
-        });
-    }
-    
-    next();
-};
 
 /**
  * Request logging middleware for audit trail

@@ -57,7 +57,8 @@ async function start() {
   app.use(cookieParser());
   app.use(sessionMiddleware);
 
-  // Lusca (Security)
+  // Security Headers (Helmet + Lusca)
+  app.use(helmet());
   app.use(lusca.xframe("SAMEORIGIN"));
   app.use(lusca.xssProtection(true));
 
