@@ -1,6 +1,8 @@
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 function getOriginFromHeaders(): string {
     const headerList = headers()
     const forwardedProto = headerList.get('x-forwarded-proto')
@@ -27,11 +29,18 @@ export async function GET() {
 
     const redirectUri = origin ? `${origin}/login/callback` : ''
 
-    return NextResponse.json({
-        origin,
-        backendUrl,
-        azureTenant,
-        azureClientId,
-        redirectUri,
-    })
+    return NextResponse.json(
+        {
+            origin,
+            backendUrl,
+            azureTenant,
+            azureClientId,
+            redirectUri,
+        },
+        {
+            headers: {
+                'Cache-Control': 'no-store, max-age=0',
+            },
+        }
+    )
 }
