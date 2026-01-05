@@ -23,6 +23,28 @@ function CallbackClientInner() {
     useEffect(() => {
         const processCallback = async () => {
             try {
+                // If Azure returned an error, surface it immediately.
+                // Example: ?error=access_denied&error_description=...
+                const oauthError = searchParams.get('error');
+                if (oauthError) {
+                    const oauthErrorDescription = searchParams.get('error_description');
+                    const oauthErrorCodes = searchParams.get('error_codes');
+                    const oauthTraceId = searchParams.get('trace_id');
+                    const oauthCorrelationId = searchParams.get('correlation_id');
+
+                    const parts: string[] = [`Azure sign-in failed: ${oauthError}`];
+                    if (oauthErrorDescription) {
+                        parts.push(decodeURIComponent(oauthErrorDescription));
+                    }
+                    if (oauthErrorCodes) parts.push(`error_codes: ${oauthErrorCodes}`);
+                    if (oauthCorrelationId) parts.push(`correlation_id: ${oauthCorrelationId}`);
+                    if (oauthTraceId) parts.push(`trace_id: ${oauthTraceId}`);
+
+                    setError(parts.join('\n'));
+                    setIsProcessing(false);
+                    return;
+                }
+
                 // Load runtime config first so redirectUri + backendUrl are correct.
                 const configRes = await fetch('/api/public-config', { cache: 'no-store' });
                 if (!configRes.ok) {
@@ -42,7 +64,9 @@ function CallbackClientInner() {
 
                 // Validate state for CSRF protection
                 if (!state || !sessionState || state !== sessionState) {
-                    throw new Error('Invalid state parameter - possible CSRF attack');
+                    throw new Error(
+                        'Sign-in session expired or invalid state returned. Please try signing in again.'
+                    );
                 }
 
                 if (!code) {
@@ -70,7 +94,7 @@ function CallbackClientInner() {
         };
 
         processCallback();
-    }, [searchParams, handleAzureCallback, router]);
+    }, [searchParams, handleAzureCallback, router, setBackendUrl]);
 
     if (isProcessing) {
         return (
