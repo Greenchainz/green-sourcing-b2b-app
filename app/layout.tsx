@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import SiteHeader from './components/SiteHeader'
 import Footer from './components/Footer'
+import IntercomWidget from './components/IntercomWidget'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -92,6 +93,7 @@ export default function RootLayout({
           <SiteHeader />
           <main className="gc-main">{children}</main>
           <Footer />
+          <IntercomWidget />
         </div>
       </body>
     </html>
