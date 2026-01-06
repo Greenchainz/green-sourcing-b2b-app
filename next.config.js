@@ -39,6 +39,10 @@ const nextConfig = {
           {
             key: 'X-Permitted-Cross-Domain-Policies',
             value: 'none'
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com https://static.zohocdn.com; img-src 'self' data: https:; connect-src 'self' https:; frame-src https://js.stripe.com https://m.stripe.network"
           }
         ]
       }
