@@ -68,6 +68,13 @@ properties:
       - name: redis-connection-string
         keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/Redis-ConnectionString
         identity: system
+      # Intercom & Internal API
+      - name: intercom-token
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/intercom-token
+        identity: system
+      - name: internal-api-key
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/internal-api-key
+        identity: system
 
   template:
     containers:
@@ -169,6 +176,14 @@ properties:
             secretRef: azure-client-secret
           - name: AZURE_TENANT_ID
             secretRef: azure-tenant-id
+
+          # ─────────────────────────────────────────────────────────────
+          # Intercom & Internal API
+          # ─────────────────────────────────────────────────────────────
+          - name: INTERCOM_ACCESS_TOKEN
+            secretRef: intercom-token
+          - name: INTERNAL_API_KEY
+            secretRef: internal-api-key
           
           # ─────────────────────────────────────────────────────────────
           # Azure Services

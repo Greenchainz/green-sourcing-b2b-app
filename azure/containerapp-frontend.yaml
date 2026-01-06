@@ -6,6 +6,11 @@ properties:
   
   configuration:
     activeRevisionsMode: Single
+    secrets:
+      - name: next-public-intercom-app-id
+        # Use Key Vault secret name in lowercase with dashes
+        # Ensure the system-assigned identity has 'Key Vault Secrets User' on this vault
+        keyVaultUri: https://Greenchainz-vault-2026.vault.azure.net/secrets/next-public-intercom-app-id
     ingress:
       external: true
       targetPort: 3000
@@ -39,6 +44,8 @@ properties:
             value: greenchainz2025.onmicrosoft.com
           - name: NEXT_PUBLIC_AZURE_CLIENT_ID
             value: "479e2a01-70ab-4df9-baa4-560d317c3423"
+          - name: NEXT_PUBLIC_INTERCOM_APP_ID
+            secretRef: next-public-intercom-app-id
         
         # ─────────────────────────────────────────────────────────────
         # Health Probes (use root path for Next.js)
