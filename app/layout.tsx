@@ -40,10 +40,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/brand/logo-icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/brand/logo-icon.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: '/apple-touch-icon.png',
+    apple: '/brand/logo-icon.png',
+    shortcut: '/brand/logo-icon.png',
   },
   appleWebApp: {
     capable: true,
