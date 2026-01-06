@@ -72,7 +72,7 @@ properties:
   template:
     containers:
       - name: greenchainz-backend
-        image: acrgreenchainzprod916.azurecr.io/greenchainz-backend:latest
+        image: acrgreenchainzprod916.azurecr.io/greenchainz-backend:v20260106-020856
         resources:
           cpu: 0.5
           memory: 1Gi
