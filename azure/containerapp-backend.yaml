@@ -64,6 +64,16 @@ properties:
       - name: linkedin-client-secret
         keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/linkedin-client-secret
         identity: system
+      # Azure AD Authentication
+      - name: azure-client-id
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/AzureAD-ClientId
+        identity: system
+      - name: azure-client-secret
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/AzureAD-ClientSecret
+        identity: system
+      - name: azure-tenant-id
+        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/AzureAD-TenantId
+        identity: system
 
   template:
     containers:
@@ -157,6 +167,16 @@ properties:
             secretRef: linkedin-client-id
           - name: LINKEDIN_CLIENT_SECRET
             secretRef: linkedin-client-secret
+          
+          # ─────────────────────────────────────────────────────────────
+          # Azure AD Authentication
+          # ─────────────────────────────────────────────────────────────
+          - name: AZURE_CLIENT_ID
+            secretRef: azure-client-id
+          - name: AZURE_CLIENT_SECRET
+            secretRef: azure-client-secret
+          - name: AZURE_TENANT_ID
+            secretRef: azure-tenant-id
           
           # ─────────────────────────────────────────────────────────────
           # Azure Services

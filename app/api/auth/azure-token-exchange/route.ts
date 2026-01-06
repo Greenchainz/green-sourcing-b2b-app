@@ -16,11 +16,14 @@ function resolveBackendUrl(req: Request): string {
 
     const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
     const isAzureContainerApps = url.hostname.endsWith('.azurecontainerapps.io')
+    const isProductionDomain = url.hostname === 'greenchainz.com' ||
+        url.hostname === 'www.greenchainz.com' ||
+        url.hostname === 'api.greenchainz.com'
 
     const protocolOk = isLocalhost ? url.protocol === 'http:' || url.protocol === 'https:' : url.protocol === 'https:'
     if (!protocolOk) return ''
 
-    if (!(isLocalhost || isAzureContainerApps)) return ''
+    if (!(isLocalhost || isAzureContainerApps || isProductionDomain)) return ''
 
     return url.origin
 }
