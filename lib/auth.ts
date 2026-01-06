@@ -33,7 +33,8 @@ interface AuthState {
     code: string,
     redirectUri: string
     ,
-    backendUrlOverride?: string
+    backendUrlOverride?: string,
+    onStep?: (message: string) => void
   ) => Promise<void>;
   refreshAccessToken: () => Promise<void>;
   updateRole: (newRole: 'architect' | 'supplier') => Promise<void>;
@@ -81,7 +82,7 @@ export const useAuth = create<AuthState>()(
       setError: (error) => set({ error }),
 
       // Exchange Azure auth code for JWT tokens
-      handleAzureCallback: async (code, redirectUri, backendUrlOverride) => {
+      handleAzureCallback: async (code, redirectUri, backendUrlOverride, onStep) => {
         set({ isLoading: true, error: null });
         try {
           const backendUrl = backendUrlOverride || get().backendUrl || DEFAULT_BACKEND_URL;
@@ -91,6 +92,7 @@ export const useAuth = create<AuthState>()(
           if (backendUrl) proxyHeaders['x-backend-url'] = backendUrl;
 
           // 1) Exchange code -> ID token via backend (keeps client_secret server-side)
+          onStep?.(`[1/3] Exchanging code with Azure via backend...`);
           const exchange = await fetch(`/api/auth/azure-token-exchange`, {
             method: 'POST',
             headers: proxyHeaders,
@@ -99,12 +101,15 @@ export const useAuth = create<AuthState>()(
 
           if (!exchange.ok) {
             const details = await exchange.text().catch(() => '');
+            onStep?.(`Token exchange failed (status ${exchange.status}).`);
             throw new Error(details ? `Token exchange failed: ${details}` : 'Token exchange failed');
           }
 
+          onStep?.(`[2/3] Token exchange OK (status ${exchange.status}). Parsing response...`);
           const tokenData = await exchange.json();
 
           // 2) Create/lookup user + mint our JWT
+          onStep?.(`[3/3] Finalizing sign-in on backend...`);
           const response = await fetch(`/api/auth/azure-callback`, {
             method: 'POST',
             headers: proxyHeaders,
@@ -119,9 +124,11 @@ export const useAuth = create<AuthState>()(
 
           if (!response.ok) {
             const details = await response.text().catch(() => '');
+            onStep?.(`Backend callback failed (status ${response.status}).`);
             throw new Error(details ? `Authentication failed: ${details}` : 'Authentication failed');
           }
 
+          onStep?.(`Backend callback OK (status ${response.status}). Creating session...`);
           const data = await response.json();
 
           // Keep jwt_token in sync for any legacy callers.
@@ -139,6 +146,7 @@ export const useAuth = create<AuthState>()(
             refreshToken: data.refreshToken,
             isLoading: false,
           });
+          onStep?.(`Sign-in complete. Redirecting...`);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
           set({ error: errorMessage, isLoading: false });

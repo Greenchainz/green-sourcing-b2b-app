@@ -19,6 +19,9 @@ function CallbackClientInner() {
     const [error, setError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(true);
     const [, setPublicConfig] = useState<PublicConfig | null>(null);
+    const debug = process.env.NEXT_PUBLIC_AUTH_DEBUG === 'true';
+    const [steps, setSteps] = useState<string[]>([]);
+    const pushStep = (msg: string) => setSteps((prev) => [...prev, msg]);
 
     useEffect(() => {
         const processCallback = async () => {
@@ -46,21 +49,30 @@ function CallbackClientInner() {
                 }
 
                 // Load runtime config first so redirectUri + backendUrl are correct.
+                if (debug) console.info('[Auth] Loading public config...');
+                pushStep('Loading configuration...');
                 const configRes = await fetch('/api/public-config', { cache: 'no-store' });
                 if (!configRes.ok) {
-                    throw new Error('Failed to load sign-in configuration');
+                    const details = await configRes.text().catch(() => '');
+                    throw new Error(
+                        `Failed to load sign-in configuration (status ${configRes.status}). ${details}`
+                    );
                 }
                 const config = (await configRes.json()) as PublicConfig;
                 setPublicConfig(config);
 
                 if (config.backendUrl) {
+                    if (debug) console.info('[Auth] backendUrl from config:', config.backendUrl);
                     setBackendUrl(config.backendUrl);
+                    pushStep(`Backend URL: ${config.backendUrl}`);
                 }
 
                 // Get auth code and state from URL
                 const code = searchParams.get('code');
                 const state = searchParams.get('state');
                 const sessionState = sessionStorage.getItem('oauth_state');
+                if (debug) console.info('[Auth] code present:', !!code, 'state:', state, 'sessionState:', sessionState);
+                pushStep('Validating sign-in state...');
 
                 // Validate state for CSRF protection
                 if (!state || !sessionState || state !== sessionState) {
@@ -77,8 +89,12 @@ function CallbackClientInner() {
                 // Backend performs the secure code exchange using AZURE_CLIENT_SECRET.
                 const redirectUri =
                     config.redirectUri || `${window.location.origin}/login/callback`;
+                if (debug) console.info('[Auth] Using redirectUri:', redirectUri);
+                pushStep(`Redirect URI: ${redirectUri}`);
 
-                await handleAzureCallback(code, redirectUri, config.backendUrl);
+                if (debug) console.info('[Auth] Exchanging code via backend...');
+                await handleAzureCallback(code, redirectUri, config.backendUrl, (m) => pushStep(m));
+                if (debug) console.info('[Auth] Backend exchange complete; routing home');
 
                 // Clear session storage
                 sessionStorage.removeItem('oauth_state');
@@ -88,6 +104,7 @@ function CallbackClientInner() {
             } catch (err) {
                 const errorMessage =
                     err instanceof Error ? err.message : 'Authentication failed';
+                if (debug) console.error('[Auth] Callback error:', err);
                 setError(errorMessage);
                 setIsProcessing(false);
             }
@@ -105,6 +122,18 @@ function CallbackClientInner() {
                     </div>
                     <h2 className="text-xl font-semibold text-slate-900">Signing you in...</h2>
                     <p className="text-slate-600 text-sm mt-2">Completing authentication</p>
+                    {steps.length > 0 && (
+                        <div className="mt-4 text-left max-w-md mx-auto">
+                            <ul className="text-xs text-slate-600 space-y-1">
+                                {steps.map((s, i) => (
+                                    <li key={i} className="flex items-start gap-2">
+                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 mt-1" />
+                                        <span>{s}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             </div>
         );
