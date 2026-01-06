@@ -35,17 +35,11 @@ properties:
     
     # Required secrets from Key Vault
     secrets:
-      - name: postgres-password
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/postgres-password
-        identity: system
       - name: jwt-secret
         keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/jwt-secret
         identity: system
       - name: cookie-secret
         keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/cookie-secret
-        identity: system
-      - name: redis-password
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/redis-password
         identity: system
       - name: session-secret
         keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/session-secret
@@ -57,13 +51,6 @@ properties:
       - name: stripe-webhook-secret
         keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/stripe-webhook-secret
         identity: system
-      # LinkedIn OAuth integration
-      - name: linkedin-client-id
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/linkedin-client-id
-        identity: system
-      - name: linkedin-client-secret
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/linkedin-client-secret
-        identity: system
       # Azure AD Authentication
       - name: azure-client-id
         keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientId
@@ -73,6 +60,13 @@ properties:
         identity: system
       - name: azure-tenant-id
         keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-TenantId
+        identity: system
+      # Database and Redis URLs (full connection strings)
+      - name: database-url
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/Database-URL
+        identity: system
+      - name: redis-connection-string
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/Redis-ConnectionString
         identity: system
 
   template:
@@ -101,16 +95,19 @@ properties:
           # ─────────────────────────────────────────────────────────────
           # Database Configuration
           # ─────────────────────────────────────────────────────────────
+          - name: DATABASE_URL
+            secretRef: database-url
+          # Legacy vars for backward compatibility (backend may expect these)
           - name: POSTGRES_HOST
-            value: your-postgres-host.postgres.database.azure.com
+            value: "placeholder"
           - name: POSTGRES_PORT
             value: "5432"
           - name: DB_USER
-            value: greenchainz_admin
+            value: "placeholder"
           - name: DB_PASSWORD
-            secretRef: postgres-password
+            value: "placeholder"
           - name: DB_NAME
-            value: greenchainz_prod
+            value: "placeholder"
           - name: POSTGRES_SSL
             value: "true"
           - name: PGPOOL_MAX
@@ -131,12 +128,15 @@ properties:
           # ─────────────────────────────────────────────────────────────
           # Redis Configuration
           # ─────────────────────────────────────────────────────────────
+          - name: REDIS_CONNECTION_STRING
+            secretRef: redis-connection-string
+          # Legacy vars (if backend expects these)
           - name: REDIS_HOST
-            value: greenchainz.redis.cache.windows.net
+            value: "placeholder"
           - name: REDIS_PORT
             value: "6380"
           - name: REDIS_PASSWORD
-            secretRef: redis-password
+            value: "placeholder"
           - name: REDIS_SSL
             value: "true"
           
@@ -159,14 +159,6 @@ properties:
             secretRef: stripe-secret-key
           - name: STRIPE_WEBHOOK_SECRET
             secretRef: stripe-webhook-secret
-          
-          # ─────────────────────────────────────────────────────────────
-          # LinkedIn OAuth Integration
-          # ─────────────────────────────────────────────────────────────
-          - name: LINKEDIN_CLIENT_ID
-            secretRef: linkedin-client-id
-          - name: LINKEDIN_CLIENT_SECRET
-            secretRef: linkedin-client-secret
           
           # ─────────────────────────────────────────────────────────────
           # Azure AD Authentication

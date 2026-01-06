@@ -21,7 +21,6 @@ const REQUIRED_SECRETS = [
   { name: 'JWT_SECRET', minLength: 32, description: 'JWT signing key for auth tokens' },
   { name: 'SESSION_SECRET', minLength: 32, description: 'Express session signing key' },
   { name: 'COOKIE_SECRET', minLength: 32, description: 'Cookie encryption key' },
-  { name: 'DB_PASSWORD', minLength: 12, description: 'PostgreSQL database password' },
   { name: 'STRIPE_SECRET_KEY', minLength: 20, description: 'Stripe API secret key for payments' },
 ];
 
@@ -30,9 +29,7 @@ const REQUIRED_SECRETS = [
 // ============================================
 const REQUIRED_SERVER_CONFIG = [
   { name: 'FRONTEND_URL', description: 'Frontend URL for CORS and redirects' },
-  { name: 'POSTGRES_HOST', description: 'PostgreSQL database host' },
-  { name: 'DB_USER', description: 'PostgreSQL database username' },
-  { name: 'DB_NAME', description: 'PostgreSQL database name' },
+  { name: 'DATABASE_URL', description: 'PostgreSQL connection string' },
 ];
 
 // ============================================
