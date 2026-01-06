@@ -31,7 +31,14 @@ function resolveBackendUrl(req: Request): string {
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
-    const backendUrl = resolveBackendUrl(req)
+    let backendUrl = resolveBackendUrl(req)
+
+    // In Docker/Container environments, localhost refers to the container itself.
+    // Use the internal service name if provided.
+    if (process.env.INTERNAL_BACKEND_URL) {
+        backendUrl = process.env.INTERNAL_BACKEND_URL;
+    }
+
     if (!backendUrl) {
         return NextResponse.json(
             { error: 'Missing or invalid BACKEND_URL for auth proxy' },
@@ -47,19 +54,28 @@ export async function POST(req: Request) {
         )
     }
 
-    const upstream = await fetch(`${backendUrl}/api/v1/auth/azure-token-exchange`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        cache: 'no-store',
-    })
+    try {
+        const upstream = await fetch(`${backendUrl}/api/v1/auth/azure-token-exchange`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            cache: 'no-store',
+            signal: AbortSignal.timeout(10000)
+        })
 
-    const text = await upstream.text()
-    return new NextResponse(text, {
-        status: upstream.status,
-        headers: {
-            'Content-Type': upstream.headers.get('content-type') || 'application/json',
-            'Cache-Control': 'no-store, max-age=0',
-        },
-    })
+        const text = await upstream.text()
+        return new NextResponse(text, {
+            status: upstream.status,
+            headers: {
+                'Content-Type': upstream.headers.get('content-type') || 'application/json',
+                'Cache-Control': 'no-store, max-age=0',
+            },
+        })
+    } catch (error) {
+        console.error('Proxy Error:', error);
+        return NextResponse.json(
+            { error: `Failed to connect to backend: ${error instanceof Error ? error.message : 'Unknown error'}` },
+            { status: 502, headers: { 'Cache-Control': 'no-store, max-age=0' } }
+        )
+    }
 }
