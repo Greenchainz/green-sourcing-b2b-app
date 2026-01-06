@@ -2,7 +2,7 @@
 # Deploy with: az containerapp create --resource-group rg-greenchainz-prod-container --yaml azure/containerapp-backend.yaml
 
 properties:
-  managedEnvironmentId: /subscriptions/{subscription-id}/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.App/managedEnvironments/cae-greenchainz-env
+  managedEnvironmentId: /subscriptions/f9164e8d-d74d-43ea-98d4-b0466b3ef8b8/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.App/managedEnvironments/cae-greenchainz-env
   
   configuration:
     activeRevisionsMode: Single
@@ -36,43 +36,43 @@ properties:
     # Required secrets from Key Vault
     secrets:
       - name: postgres-password
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/postgres-password
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/postgres-password
         identity: system
       - name: jwt-secret
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/jwt-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/jwt-secret
         identity: system
       - name: cookie-secret
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/cookie-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/cookie-secret
         identity: system
       - name: redis-password
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/redis-password
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/redis-password
         identity: system
       - name: session-secret
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/session-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/session-secret
         identity: system
       # Stripe payment integration
       - name: stripe-secret-key
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/stripe-secret-key
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/stripe-secret-key
         identity: system
       - name: stripe-webhook-secret
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/stripe-webhook-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/stripe-webhook-secret
         identity: system
       # LinkedIn OAuth integration
       - name: linkedin-client-id
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/linkedin-client-id
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/linkedin-client-id
         identity: system
       - name: linkedin-client-secret
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/linkedin-client-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/linkedin-client-secret
         identity: system
       # Azure AD Authentication
       - name: azure-client-id
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/AzureAD-ClientId
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientId
         identity: system
       - name: azure-client-secret
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/AzureAD-ClientSecret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientSecret
         identity: system
       - name: azure-tenant-id
-        keyVaultUrl: https://greenchianz-vault.vault.azure.net/secrets/AzureAD-TenantId
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-TenantId
         identity: system
 
   template:
