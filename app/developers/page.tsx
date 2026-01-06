@@ -51,5 +51,6 @@ export default function DevelopersPage() {
                     <Link href="/contact" className="gc-btn gc-btn-primary">Request API Access</Link>
                 </div>
             </div>
-            )
+        </div>
+    )
 }
