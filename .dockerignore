@@ -30,11 +30,4 @@ Thumbs.db
 **/__tests__
 playwright-report
 
-# Backend code is not needed to build/run the Next.js frontend image
-backend
-azure-functions
-sda-connector
-
-database-schemas
-
 docs
