@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:type="TaskPaneApp">
+  <Id>12345678-1234-1234-1234-123456789012</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>GreenChainz</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  
+  <!-- Display name visible in Excel Ribbon -->
+  <DisplayName DefaultValue="GreenChainz Carbon Audit"/>
+  
+  <!-- Description shown in Office Store -->
+  <Description DefaultValue="Audit your Bill of Materials for embodied carbon, health hazards, and sustainability certifications directly in Excel. Real-time EPD data powered by Building Transparency (EC3)."/>
+  
+  <!-- Specify Office apps this add-in supports -->
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  
+  <!-- Task Pane Entry Point -->
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://greenchainz.com/excel-addin"/>
+  </DefaultSettings>
+  
+  <!-- Permissions -->
+  <Permissions>ReadWriteDocument</Permissions>
+  
+  <!-- Office Store Details -->
+  <AppDomains>
+    <AppDomain>https://greenchainz.com</AppDomain>
+    <AppDomain>https://api.greenchainz.com</AppDomain>
+  </AppDomains>
+</OfficeApp>
