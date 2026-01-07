@@ -34,7 +34,7 @@ ALTER TABLE Users ADD COLUMN IF NOT EXISTS azure_id VARCHAR(255) UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_users_azure_id ON Users(azure_id);
 
 -- ============================================
--- PART 2: Add lowercase alias columns to Users
+-- PART 3: Add lowercase alias columns to Users
 -- ============================================
 
 -- The backend auth code expects lowercase column names with underscores.
@@ -60,7 +60,7 @@ UPDATE Users SET last_name = LastName WHERE last_name IS NULL AND LastName IS NO
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
 
 -- ============================================
--- PART 3: Create RefreshTokens table
+-- PART 4: Create RefreshTokens table
 -- ============================================
 
 -- The refresh tokens table stores JWT refresh tokens for session management.
@@ -80,7 +80,7 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON RefreshTokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON RefreshTokens(expires_at);
 
 -- ============================================
--- PART 4: Create a trigger to keep id in sync with UserID
+-- PART 5: Create a trigger to keep id in sync with UserID
 -- ============================================
 
 -- Create or replace function to sync id with UserID
@@ -102,7 +102,7 @@ CREATE TRIGGER trigger_sync_user_id
     EXECUTE FUNCTION sync_user_id();
 
 -- ============================================
--- PART 5: Create function to sync name columns
+-- PART 6: Create function to sync name columns
 -- ============================================
 
 -- Create or replace function to sync name columns
