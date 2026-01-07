@@ -39,9 +39,28 @@ import { useEffect } from "react";
 
 function App() {
   useEffect(() => {
-    Intercom({
-      app_id: import.meta.env.VITE_INTERCOM_APP_ID || "w0p2831g", // Fallback or env
-    });
+    const appId = import.meta.env.VITE_INTERCOM_APP_ID || "w0p2831g";
+
+    if (!appId) {
+      console.warn(
+        "Intercom app_id is not configured; skipping Intercom initialization."
+      );
+      return;
+    }
+
+    try {
+      const result = Intercom({
+        app_id: appId, // Fallback or env
+      });
+
+      if (result && typeof (result as any).catch === "function") {
+        (result as any).catch((error: unknown) => {
+          console.error("Intercom initialization failed (async):", error);
+        });
+      }
+    } catch (error) {
+      console.error("Intercom initialization threw an error:", error);
+    }
   }, []);
 
   return (
