@@ -9,6 +9,12 @@ const express = require("express");
 const router = express.Router();
 const { authenticateToken } = require("../middleware/auth");
 const subscriptionService = require("../services/payments/subscriptions");
+const rateLimit = require("express-rate-limit");
+
+const subscriptionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs for subscription routes
+});
 
 // Middleware to ensure user is a supplier
 const requireSupplier = (req, res, next) => {
@@ -23,7 +29,7 @@ const requireSupplier = (req, res, next) => {
  * Create a checkout session for upgrading tier
  * Body: { tier: 'standard'|'premium', interval: 'month'|'year' }
  */
-router.post("/checkout", authenticateToken, requireSupplier, async (req, res) => {
+router.post("/checkout", subscriptionLimiter, authenticateToken, requireSupplier, async (req, res) => {
   try {
     const { tier, interval } = req.body;
     // Look up supplier ID if req.user.userId is a User ID (not Supplier ID)
@@ -48,7 +54,7 @@ router.post("/checkout", authenticateToken, requireSupplier, async (req, res) =>
  * POST /portal
  * Get Stripe Billing Portal URL
  */
-router.post("/portal", authenticateToken, requireSupplier, async (req, res) => {
+router.post("/portal", subscriptionLimiter, authenticateToken, requireSupplier, async (req, res) => {
   try {
     const idToUse = req.user.supplierId || req.user.userId;
     const session =
@@ -64,7 +70,7 @@ router.post("/portal", authenticateToken, requireSupplier, async (req, res) => {
  * GET /status
  * Get current subscription status
  */
-router.get("/status", authenticateToken, requireSupplier, async (req, res) => {
+router.get("/status", subscriptionLimiter, authenticateToken, requireSupplier, async (req, res) => {
   try {
     const idToUse = req.user.supplierId || req.user.userId;
     const status = await subscriptionService.getSubscriptionStatus(idToUse);
@@ -79,7 +85,7 @@ router.get("/status", authenticateToken, requireSupplier, async (req, res) => {
  * POST /sync
  * Manually sync subscription status (e.g. after return from checkout)
  */
-router.post("/sync", authenticateToken, requireSupplier, async (req, res) => {
+router.post("/sync", subscriptionLimiter, authenticateToken, requireSupplier, async (req, res) => {
   try {
     const idToUse = req.user.supplierId || req.user.userId;
     const result = await subscriptionService.syncSubscriptionStatus(idToUse);
