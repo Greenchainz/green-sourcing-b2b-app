@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const { pool } = require('../index');
+const { pool } = require('../db');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const { requireEnv } = require('../config/validateEnv');
