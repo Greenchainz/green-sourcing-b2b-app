@@ -1,177 +1,224 @@
-import TrustBadges from "./components/TrustBadges";
 import Link from "next/link";
-
-const STATS = [
-  { value: "50+", label: "Verified Suppliers" },
-  { value: "Fast", label: "RFQ Distribution" },
-  { value: "24/7", label: "Verification Checks" },
-] as const;
+import { ArrowRight, FileSpreadsheet, Chrome, Box } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="gc-page">
-      <div className="gc-container py-16 pb-20">
-        {/* Hero Section */}
-        <section className="text-center mb-12">
-          <h1 className="gc-hero-title gc-animate-fade-in">
-            <span className="text-[var(--gc-slate-900)] font-black">
-              The Trust Layer
-            </span>
-            <br />
-            <span className="font-black text-transparent bg-clip-text bg-gradient-to-br from-[var(--gc-emerald-600)] to-[var(--gc-teal-600)]">
-              for Sustainable Commerce
-            </span>
-          </h1>
-
-          <p className="gc-hero-subtitle gc-animate-fade-in gc-stagger-1 mt-5 mb-0">
-            Connect verified suppliers with architects &amp; builders. Automated
-            certification verification. Real-time material sourcing powered by
-            LEED, EPD, FSC, and more.
-          </p>
-        </section>
-
-        {/* CTA Buttons */}
-        <div className="gc-animate-fade-in gc-stagger-2 flex justify-center gap-3.5 flex-wrap mb-9">
+    <div className="min-h-screen bg-slate-50">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-[#1a3f3a] via-[#2d5a52] to-[#1a3f3a] text-white py-20 px-6 text-center">
+        <h1 className="text-5xl md:text-6xl font-black mb-6">
+          Stop Searching.<br />Start Auditing.
+        </h1>
+        <p className="text-xl md:text-2xl max-w-3xl mx-auto mb-10 text-slate-200 leading-relaxed">
+          GreenChainz is a suite of AI-powered tools that plug directly into
+          Excel, Revit, and your browser to automate your sustainability compliance.
+        </p>
+        <p className="text-lg text-slate-300 mb-10">
+          Don't change your workflow. We just make it green.
+        </p>
+        <div className="flex justify-center gap-4 flex-wrap">
           <Link
-            href="/login?type=supplier"
-            className="gc-btn gc-btn-primary py-4 px-6 text-base"
+            href="/signup"
+            className="bg-[#2db648] hover:bg-green-600 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105"
           >
-            Join as Supplier
+            Get the Toolkit (Free)
           </Link>
           <Link
-            href="/login?type=architect"
-            className="gc-btn gc-btn-secondary py-4 px-6 text-base"
+            href="#tools"
+            className="border-2 border-white hover:bg-white hover:text-slate-900 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all"
           >
-            Join as Architect
+            See the Tools
           </Link>
         </div>
+      </section>
 
-        {/* Trust Badges */}
-        <div className="gc-animate-fade-in gc-stagger-3 max-w-5xl mx-auto mb-8">
-          <TrustBadges variant="full" size="md" />
-        </div>
-
-        {/* Stats Grid */}
-        <div className="gc-animate-fade-in gc-stagger-4 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 max-w-[800px] mx-auto">
-          {STATS.map((stat) => (
-            <div key={stat.label} className="gc-card gc-card-hover gc-stat">
-              <div className="gc-stat-value">{stat.value}</div>
-              <div className="gc-stat-label">{stat.label}</div>
-            </div>
-          ))}
-        </div>
+      {/* Tools Section */}
+      <section id="tools" className="py-20 px-6 max-w-7xl mx-auto">
+        <h2 className="text-4xl md:text-5xl font-black text-center mb-4 text-slate-900">
+          Choose Your Weapon
+        </h2>
+        <p className="text-center text-slate-600 text-lg mb-16 max-w-2xl mx-auto">
+          Each tool brings sustainability intelligence directly into the software
+          you already use—no new workflows, no learning curve.
+        </p>
 
         {/* Features Section */}
         <section className="mt-20">
           <h2 className="text-center text-[clamp(1.5rem,4vw,2rem)] font-extrabold text-[var(--gc-slate-900)] mb-3">
             Why GreenChainz?
           </h2>
-          <p className="text-center text-[var(--gc-slate-600)] max-w-2xl mx-auto mb-10 leading-[1.7]">
-            We&apos;re building the infrastructure for sustainable
-            procurement—connecting data, certifications, and suppliers in one
-            seamless platform.
-          </p>
+          {/* Tools Grid */}
+          <div className="grid md:grid-cols-3 gap-8">
 
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 max-w-5xl mx-auto">
-            {[
-              {
-                icon: (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-7 h-7"
-                  >
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    <path d="m9 12 2 2 4-4" />
-                  </svg>
-                ),
-                title: "Verified Certifications",
-                desc: "Every supplier is validated against LEED, FSC, EPD, and other gold-standard certifications.",
-              },
-              {
-                icon: (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-7 h-7"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
-                  </svg>
-                ),
-                title: "Fast RFQ Distribution",
-                desc: "Location-based matching delivers your RFQs to the right suppliers—fast and efficiently.",
-              },
-              {
-                icon: (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-7 h-7"
-                  >
-                    <path d="M3 3v18h18" />
-                    <path d="m19 9-5 5-4-4-3 3" />
-                  </svg>
-                ),
-                title: "Sustainability Scoring",
-                desc: "Real-time dashboards show project-level LEED points, carbon footprint, and EPD metrics.",
-              },
-            ].map((feature) => (
-              <div key={feature.title} className="gc-card gc-card-hover p-6">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--gc-emerald-100)] to-[var(--gc-teal-100)] flex items-center justify-center text-[var(--gc-emerald-700)] mb-4">
-                  {feature.icon}
-                </div>
-                <h3 className="text-lg font-extrabold text-[var(--gc-slate-900)] mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-[var(--gc-slate-600)] leading-[1.6] m-0">
-                  {feature.desc}
+            {/* Tool 1: Excel Carbon Audit */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-slate-100">
+              <div className="bg-green-100 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
+                <FileSpreadsheet className="w-8 h-8 text-green-700" />
+              </div>
+              <h3 className="text-2xl font-black mb-3 text-slate-900">Excel Audit</h3>
+              <p className="text-slate-600 mb-6 text-base leading-relaxed">
+                Upload your Bill of Materials (BOM). Our AI matches generic product names
+                to verified low-carbon alternatives and identifies health hazards instantly.
+              </p>
+              <div className="space-y-2 mb-6 text-sm text-slate-700">
+                <p className="flex items-center gap-2">
+                  <span className="text-green-600">✓</span> Embodied carbon (kgCO2e)
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="text-green-600">✓</span> Health grade &amp; toxins
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="text-green-600">✓</span> Red List certifications
                 </p>
               </div>
-            ))}
+              <Link href="/excel-addin" className="text-green-700 font-bold flex items-center gap-2 hover:gap-3 transition-all">
+                Launch Audit <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Tool 2: Chrome Extension */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-slate-100">
+              <div className="bg-blue-100 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
+                <Chrome className="w-8 h-8 text-blue-700" />
+              </div>
+              <h3 className="text-2xl font-black mb-3 text-slate-900">Sweets Interceptor</h3>
+              <p className="text-slate-600 mb-6 text-base leading-relaxed">
+                Browsing Sweets, Material Bank, or supplier specs? We overlay real-time
+                sustainability data and flag high-carbon materials directly on their site.
+              </p>
+              <div className="space-y-2 mb-6 text-sm text-slate-700">
+                <p className="flex items-center gap-2">
+                  <span className="text-blue-600">✓</span> Real-time EPD lookups
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="text-blue-600">✓</span> Price + carbon comparison
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="text-blue-600">✓</span> Green alternative suggestions
+                </p>
+              </div>
+              <Link href="/chrome-extension" className="text-blue-700 font-bold flex items-center gap-2 hover:gap-3 transition-all">
+                Install Extension <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Tool 3: Revit Plugin */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-slate-100">
+              <div className="bg-purple-100 w-16 h-16 rounded-xl flex items-center justify-center mb-6">
+                <Box className="w-8 h-8 text-purple-700" />
+              </div>
+              <h3 className="text-2xl font-black mb-3 text-slate-900">Revit Compliance</h3>
+              <p className="text-slate-600 mb-6 text-base leading-relaxed">
+                The "Spellchecker" for LEED. Scan your 3D model in real-time to identify
+                missing EPDs, high-carbon materials, and LEED-ineligible products.
+              </p>
+              <div className="space-y-2 mb-6 text-sm text-slate-700">
+                <p className="flex items-center gap-2">
+                  <span className="text-purple-600">✓</span> Real-time model scanning
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="text-purple-600">✓</span> LEED point calculations
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="text-purple-600">✓</span> Bulk material replacement
+                </p>
+              </div>
+              <Link href="/revit-plugin" className="text-purple-700 font-bold flex items-center gap-2 hover:gap-3 transition-all">
+                Download Plugin <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
           </div>
         </section>
 
-        {/* CTA Banner */}
-        <section className="gc-card mt-20 py-12 px-8 text-center bg-gradient-to-br from-[rgba(16,185,129,0.08)] to-[rgba(20,184,166,0.06)]">
-          <h2 className="text-[clamp(1.5rem,4vw,2rem)] font-extrabold text-[var(--gc-slate-900)] mb-3">
-            Ready to streamline your sourcing?
-          </h2>
-          <p className="text-[var(--gc-slate-600)] max-w-[520px] mx-auto mb-6 leading-[1.7]">
-            Join architects and suppliers who trust GreenChainz for verified,
-            sustainable materials.
-          </p>
-          <div className="flex justify-center gap-3 flex-wrap">
+        {/* How It Works Section */}
+        <section className="bg-white py-20 px-6">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-4xl font-black text-center mb-16 text-slate-900">
+              How It Works (The Magic Behind the Scenes)
+            </h2>
+
+            <div className="space-y-12">
+              {[
+                {
+                  step: 1,
+                  title: "You Select Materials",
+                  desc: "Copy/paste your material list into Excel, browse Sweets, or load your Revit model.",
+                },
+                {
+                  step: 2,
+                  title: "Azure AI Matches Data",
+                  desc: "Our LLM cleans messy supplier names and fuzzy matches them against 50K+ EPD products.",
+                },
+                {
+                  step: 3,
+                  title: "Real-Time Certification Lookup",
+                  desc: "We pull live data from Building Transparency, HPD, Declare, FSC, and other databases.",
+                },
+                {
+                  step: 4,
+                  title: "Actionable Insights Appear",
+                  desc: "Carbon scores, health grades, and green alternatives pop up instantly—no waiting.",
+                },
+              ].map((item) => (
+                <div key={item.step} className="flex gap-8 items-start">
+                  <div className="flex-shrink-0">
+                    <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-600 text-white font-black text-lg">
+                      {item.step}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">{item.title}</h3>
+                    <p className="text-slate-600 text-base leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Data Sources Banner */}
+        <section className="bg-gradient-to-r from-slate-900 to-slate-800 text-white py-16 px-6">
+          <div className="max-w-5xl mx-auto text-center">
+            <h2 className="text-3xl font-black mb-6">Powered by the Best Data Sources</h2>
+            <p className="text-slate-200 mb-10 text-lg">
+              We aggregate EPD data from Building Transparency (EC3), HPD databases,
+              FSC, LEED, and more. Always fresh. Always verified.
+            </p>
+            <div className="grid md:grid-cols-4 gap-6 text-sm">
+              <div><p className="font-bold">Building Transparency</p><p className="text-slate-400">EC3 Platform</p></div>
+              <div><p className="font-bold">Health Data</p><p className="text-slate-400">HPD + Declare</p></div>
+              <div><p className="font-bold">Certifications</p><p className="text-slate-400">FSC, GOTS, C2C</p></div>
+              <div><p className="font-bold">Compliance</p><p className="text-slate-400">LEED + Living Building</p></div>
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="py-20 px-6">
+          <div className="max-w-4xl mx-auto text-center bg-green-50 p-12 rounded-2xl border-2 border-green-200">
+            <h2 className="text-3xl font-black text-slate-900 mb-4">
+              Ready to Build Green (For Real)?
+            </h2>
+            <p className="text-slate-600 mb-8 text-lg">
+              Start with a free account. No credit card. Pick your tool. Audit your materials.
+            </p>
             <Link
-              href="/rfqs/create"
-              className="gc-btn gc-btn-primary py-3.5 px-5.5 text-[15px]"
+              href="/signup"
+              className="inline-block bg-green-600 hover:bg-green-700 text-white px-10 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105"
             >
-              Create Your First RFQ
-            </Link>
-            <Link
-              href="/how-it-works"
-              className="gc-btn gc-btn-ghost py-3.5 px-5.5 text-[15px]"
-            >
-              Learn More →
+              Get Started Free
             </Link>
           </div>
         </section>
-      </div>
     </div>
+  );
+}
+              Learn More →
+            </Link >
+          </div >
+        </section >
+      </div >
+    </div >
   );
 }
