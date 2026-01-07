@@ -69,7 +69,7 @@ jobs:
             "AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
             "AZURE_SQL_SERVER=${{ secrets.AZURE_SQL_SERVER }}" \
             "AZURE_SQL_USER=${{ secrets.AZURE_SQL_USER }}" \
-            "AZURE_SQL_PASSWORD=${{ secrets['AZURE_SQL_PASSWORD'] }}" \
+            "AZURE_SQL_PASSWORD=${{ secrets.AZURE_SQL_PWD }}" \
             "AZURE_SQL_DATABASE=${{ secrets.AZURE_SQL_DATABASE }}" \
             "AZURE_DOC_INTEL_ENDPOINT=${{ secrets.AZURE_DOC_INTEL_ENDPOINT }}" \
             "AZURE_DOC_INTEL_KEY=${{ secrets.AZURE_DOC_INTEL_KEY }}" \
