@@ -1,40 +1,49 @@
 // frontend/src/App.tsx
-import './App.css';
-import { Routes, Route } from 'react-router-dom';
-import ErrorBoundary from './components/ErrorBoundary';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import AuthCallback from './pages/AuthCallback';
-import { LandingPage } from './pages/LandingPage';
-import BuyerDashboard from './pages/BuyerDashboard';
-import { ArchitectSurvey } from './components/ArchitectSurvey';
-import Features from './pages/Features';
-import Contact from './pages/Contact';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
-import SupplierAgreement from './pages/SupplierAgreement';
-import Unauthorized from './pages/Unauthorized';
-import RFQHistoryPage from './pages/RFQHistoryPage';
-import Layout from './components/Layout';
-import Charter175 from './pages/Charter175';
-import SearchPage from './pages/SearchPage';
+import "./App.css";
+import { Routes, Route } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import AuthCallback from "./pages/AuthCallback";
+import { LandingPage } from "./pages/LandingPage";
+import BuyerDashboard from "./pages/BuyerDashboard";
+import { ArchitectSurvey } from "./components/ArchitectSurvey";
+import Features from "./pages/Features";
+import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import SupplierAgreement from "./pages/SupplierAgreement";
+import Unauthorized from "./pages/Unauthorized";
+import RFQHistoryPage from "./pages/RFQHistoryPage";
+import Layout from "./components/Layout";
+import Charter175 from "./pages/Charter175";
+import SearchPage from "./pages/SearchPage";
 
-import ProductDetailPage from './pages/ProductDetailPage';
-import SupplierProfilePage from './pages/SupplierProfilePage';
+import ProductDetailPage from "./pages/ProductDetailPage";
+import SupplierProfilePage from "./pages/SupplierProfilePage";
 
-import SupplierProfile from './pages/SupplierProfile';
+import SupplierProfile from "./pages/SupplierProfile";
 
-import SupplierDashboard from './pages/SupplierDashboard/index';
-import ProductsPage from './pages/SupplierDashboard/ProductsPage';
-import AddProductPage from './pages/SupplierDashboard/AddProductPage';
-import EditProductPage from './pages/SupplierDashboard/EditProductPage';
-import AdminDashboard from './pages/Admin';
-import ContentModerationPage from './pages/Admin/ContentModerationPage';
-import { ProjectProvider } from './context/ProjectContext';
-import Projects from './pages/BuyerDashboard/Projects';
-import ProjectDetail from './pages/BuyerDashboard/ProjectDetail';
+import SupplierDashboard from "./pages/SupplierDashboard/index";
+import ProductsPage from "./pages/SupplierDashboard/ProductsPage";
+import AddProductPage from "./pages/SupplierDashboard/AddProductPage";
+import EditProductPage from "./pages/SupplierDashboard/EditProductPage";
+import AdminDashboard from "./pages/Admin";
+import ContentModerationPage from "./pages/Admin/ContentModerationPage";
+import { ProjectProvider } from "./context/ProjectContext";
+import Projects from "./pages/BuyerDashboard/Projects";
+import ProjectDetail from "./pages/BuyerDashboard/ProjectDetail";
+
+import Intercom from "@intercom/messenger-js-sdk";
+import { useEffect } from "react";
 
 function App() {
+  useEffect(() => {
+    Intercom({
+      app_id: import.meta.env.VITE_INTERCOM_APP_ID || "w0p2831g", // Fallback or env
+    });
+  }, []);
+
   return (
     <ErrorBoundary>
       <ProjectProvider>
@@ -55,7 +64,10 @@ function App() {
             <Route path="supplier/:id" element={<SupplierProfilePage />} />
             <Route path="suppliers/:id" element={<SupplierProfile />} />
             <Route path="dashboard/buyer/projects" element={<Projects />} />
-            <Route path="dashboard/buyer/projects/:projectId" element={<ProjectDetail />} />
+            <Route
+              path="dashboard/buyer/projects/:projectId"
+              element={<ProjectDetail />}
+            />
           </Route>
 
           {/* Standalone Routes (no main Layout) */}
@@ -65,14 +77,23 @@ function App() {
 
           {/* Supplier Dashboard Routes */}
           <Route path="/dashboard/supplier" element={<SupplierDashboard />} />
-          <Route path="/dashboard/supplier/products" element={<ProductsPage />} />
-          <Route path="/dashboard/supplier/products/new" element={<AddProductPage />} />
-          <Route path="/dashboard/supplier/products/:id/edit" element={<EditProductPage />} />
-          
+          <Route
+            path="/dashboard/supplier/products"
+            element={<ProductsPage />}
+          />
+          <Route
+            path="/dashboard/supplier/products/new"
+            element={<AddProductPage />}
+          />
+          <Route
+            path="/dashboard/supplier/products/:id/edit"
+            element={<EditProductPage />}
+          />
+
           {/* Buyer Dashboard */}
           <Route path="/dashboard/buyer" element={<BuyerDashboard />} />
           <Route path="/rfq-history" element={<RFQHistoryPage />} />
-          
+
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/content" element={<ContentModerationPage />} />

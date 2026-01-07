@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@intercom/messenger-js-sdk": "^0.0.18",
     "@supabase/supabase-js": "^2.80.0",
     "axios": "^1.13.1",
     "postcss": "^8.5.6",
