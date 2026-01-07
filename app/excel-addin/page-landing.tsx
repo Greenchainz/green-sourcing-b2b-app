@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileSpreadsheet, Download, CheckCircle } from "lucide-react";
+import { FileSpreadsheet, CheckCircle } from "lucide-react";
 
 export default function ExcelAuditPage() {
     return (
