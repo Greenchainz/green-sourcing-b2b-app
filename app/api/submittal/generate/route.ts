@@ -1,10 +1,5 @@
-import { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { Readable } from "node:stream";
-import sql from "mssql";
-import { DocumentAnalysisClient, AzureKeyCredential } from "@azure/ai-form-recognizer";
-import { OpenAIClient, AzureKeyCredential as AOKey } from "@azure/openai";
+import { NextRequest, NextResponse } from "next/server";
+import { generateSubmittalPackage } from "@/lib/agents/submittal-generator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
