@@ -2,7 +2,32 @@
 
 ## 🔧 Issues Fixed
 
-### 1. **Backend URL Resolution Too Strict**
+### 1. **Database Schema Mismatch** (NEW - January 2026)
+**Problem:** The backend auth code expected different column names and tables than what existed in the database schema.
+
+**Root Causes:**
+- Auth code expects lowercase columns (`id`, `first_name`, `azure_id`) but schema used PascalCase (`UserID`, `FirstName`)
+- Missing `azure_id` column for Azure AD user identity
+- Missing `RefreshTokens` table for session management
+- Role constraint only allowed 'Admin', 'Buyer', 'Supplier' but auth code uses 'architect', 'supplier'
+
+**Fix:**
+- Created database migration: `database-schemas/migrations/20260107_000000_add_azure_auth_columns.sql`
+- Adds `id`, `first_name`, `last_name`, `azure_id`, `last_login` columns to Users table
+- Creates `RefreshTokens` table with proper foreign key to Users
+- Updates role constraint to allow 'architect' and 'supplier' values
+- Adds triggers to keep lowercase columns in sync with PascalCase columns
+
+**How to apply the fix:**
+```bash
+# Run the migration against your database
+docker exec -i greenchainz-db psql -U user -d greenchainz_dev < database-schemas/migrations/20260107_000000_add_azure_auth_columns.sql
+
+# Or if running PostgreSQL locally
+psql -U postgres -d greenchainz_dev -f database-schemas/migrations/20260107_000000_add_azure_auth_columns.sql
+```
+
+### 2. **Backend URL Resolution Too Strict**
 **Problem:** The backend URL resolution function was rejecting valid URLs in development environments.
 
 **Fix:**
@@ -81,6 +106,17 @@ NEXT_PUBLIC_AUTH_DEBUG=true
 This will show detailed step-by-step logging in the browser console.
 
 ## 🐛 Common Issues & Solutions
+
+### Issue: "Database error" or "column does not exist"
+**Solution:**
+Run the database migration to add required auth columns:
+```bash
+# Docker
+docker exec -i greenchainz-db psql -U user -d greenchainz_dev < database-schemas/migrations/20260107_000000_add_azure_auth_columns.sql
+
+# Local PostgreSQL
+psql -U postgres -d greenchainz_dev -f database-schemas/migrations/20260107_000000_add_azure_auth_columns.sql
+```
 
 ### Issue: "Cannot connect to backend service"
 **Solution:**
