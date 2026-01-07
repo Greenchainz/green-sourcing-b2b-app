@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import sql from "mssql";
 
 /**
  * Excel Batch Audit API
@@ -8,9 +8,15 @@ import { createClient } from "@/lib/supabase/server";
  * and returns carbon/health data for each material.
  * 
  * Workflow:
- * 1. Check Supabase for cached product data
+ * 1. Check Azure SQL for cached product data
  * 2. If missing, trigger the scraper agent to find EPD data live
  * 3. Return health grade (A/C/F) and carbon score
+ * 
+ * Environment Variables Required:
+ * - AZURE_SQL_SERVER: SQL server name
+ * - AZURE_SQL_DATABASE: Database name
+ * - AZURE_SQL_USER: Database user
+ * - AZURE_SQL_PASSWORD: Database password
  */
 
 interface AuditResult {
@@ -24,6 +30,32 @@ interface AuditResult {
     error?: string;
 }
 
+// Azure SQL Connection Pool (singleton)
+let pool: sql.ConnectionPool | null = null;
+
+async function getAzureSQLPool(): Promise<sql.ConnectionPool> {
+    if (pool) return pool;
+
+    pool = new sql.ConnectionPool({
+        server: process.env.AZURE_SQL_SERVER || "",
+        database: process.env.AZURE_SQL_DATABASE || "",
+        authentication: {
+            type: "default",
+            options: {
+                userName: process.env.AZURE_SQL_USER || "",
+                password: process.env.AZURE_SQL_PASSWORD || "",
+            },
+        },
+        options: {
+            encrypt: true,
+            trustServerCertificate: false,
+        },
+    });
+
+    await pool.connect();
+    return pool;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const { materials } = await request.json();
@@ -35,7 +67,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const supabase = createClient();
+        const pool = await getAzureSQLPool();
         const results: AuditResult[] = [];
 
         // Batch lookup: try to find all materials in database first
@@ -51,20 +83,22 @@ export async function POST(request: NextRequest) {
             }
 
             try {
-                // 1. Search Supabase for existing product data
-                // This assumes you have a 'products' table with columns:
+                // 1. Query Azure SQL for existing product data
+                // Expected table: [Products] with columns:
                 // - name, gwp_per_unit, health_grade, red_list_status, certifications, has_epd
 
-                const { data: product, error: dbError } = await supabase
-                    .from("products")
-                    .select(
-                        "name, gwp_per_unit, health_grade, red_list_status, certifications, has_epd"
-                    )
-                    .ilike("name", `%${cleanName}%`)
-                    .limit(1)
-                    .maybeSingle();
+                const request = pool.request();
+                request.input("materialName", sql.VarChar, `%${cleanName}%`);
 
-                if (product) {
+                const result = await request.query(
+                    `SELECT TOP 1 name, gwp_per_unit, health_grade, red_list_status, certifications, has_epd
+                     FROM Products
+                     WHERE LOWER(name) LIKE LOWER(@materialName)`
+                );
+
+                if (result.recordset && result.recordset.length > 0) {
+                    const product = result.recordset[0];
+
                     // Found in database - return cached result
                     results.push({
                         original: materialName,
@@ -73,14 +107,16 @@ export async function POST(request: NextRequest) {
                         red_list_status: product.red_list_status || "None",
                         verified: product.has_epd,
                         alternative_name: product.name,
-                        certifications: product.certifications || [],
+                        certifications: product.certifications
+                            ? product.certifications.split(",")
+                            : [],
                     });
                 } else {
                     // 2. Not found - trigger scraper agent for live lookup
                     // This calls your existing scraper infrastructure
 
                     const scraperResponse = await fetch(
-                        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/scrape/suppliers`,
+                        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/scrape/suppliers`,
                         {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
