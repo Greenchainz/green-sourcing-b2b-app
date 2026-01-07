@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface User {
   id: string;
   email: string;
   firstName?: string | null;
   lastName?: string | null;
-  role: 'architect' | 'supplier';
+  role: "architect" | "supplier";
 }
 
 interface AuthState {
@@ -31,12 +31,12 @@ interface AuthState {
   // Auth methods
   handleAzureCallback: (
     code: string,
-    redirectUri: string
-    ,
-    backendUrlOverride?: string
+    redirectUri: string,
+    backendUrlOverride?: string,
+    onStep?: (message: string) => void
   ) => Promise<void>;
   refreshAccessToken: () => Promise<void>;
-  updateRole: (newRole: 'architect' | 'supplier') => Promise<void>;
+  updateRole: (newRole: "architect" | "supplier") => Promise<void>;
   logout: () => Promise<void>;
 
   // Utilities
@@ -45,14 +45,16 @@ interface AuthState {
   clearAuth: () => void;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const DEFAULT_BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
 function mirrorJwtTokenToLocalStorage(token: string | null) {
   // Some older pages expect this key; keep it in sync.
   try {
-    if (token) localStorage.setItem('jwt_token', token);
-    else localStorage.removeItem('jwt_token');
+    if (token) localStorage.setItem("jwt_token", token);
+    else localStorage.removeItem("jwt_token");
   } catch {
     // ignore (SSR / storage blocked)
   }
@@ -81,32 +83,70 @@ export const useAuth = create<AuthState>()(
       setError: (error) => set({ error }),
 
       // Exchange Azure auth code for JWT tokens
-      handleAzureCallback: async (code, redirectUri, backendUrlOverride) => {
+      handleAzureCallback: async (
+        code,
+        redirectUri,
+        backendUrlOverride,
+        onStep
+      ) => {
         set({ isLoading: true, error: null });
         try {
-          const backendUrl = backendUrlOverride || get().backendUrl || DEFAULT_BACKEND_URL;
+          const backendUrl =
+            backendUrlOverride || get().backendUrl || DEFAULT_BACKEND_URL;
           // Use same-origin API proxy to avoid cross-origin browser failures.
           // The proxy forwards to BACKEND_URL server-side.
-          const proxyHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-          if (backendUrl) proxyHeaders['x-backend-url'] = backendUrl;
+          const proxyHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+          if (backendUrl) proxyHeaders["x-backend-url"] = backendUrl;
 
           // 1) Exchange code -> ID token via backend (keeps client_secret server-side)
+          onStep?.(`[1/3] Exchanging code with Azure via backend...`);
           const exchange = await fetch(`/api/auth/azure-token-exchange`, {
-            method: 'POST',
+            method: "POST",
             headers: proxyHeaders,
             body: JSON.stringify({ code, redirectUri }),
           });
 
           if (!exchange.ok) {
-            const details = await exchange.text().catch(() => '');
-            throw new Error(details ? `Token exchange failed: ${details}` : 'Token exchange failed');
+            let details = "";
+            try {
+              const errorJson = await exchange.json();
+              details =
+                errorJson.error ||
+                errorJson.details ||
+                JSON.stringify(errorJson);
+            } catch {
+              details = await exchange.text().catch(() => "");
+            }
+
+            onStep?.(`Token exchange failed (status ${exchange.status}).`);
+
+            // Provide helpful error messages
+            if (exchange.status === 502) {
+              throw new Error(
+                `Backend service unavailable. ` +
+                  `Please ensure the backend is running at ${backendUrl}. ` +
+                  `Details: ${details || "Connection failed"}`
+              );
+            }
+
+            throw new Error(
+              details
+                ? `Token exchange failed: ${details}`
+                : `Token exchange failed (HTTP ${exchange.status})`
+            );
           }
 
+          onStep?.(
+            `[2/3] Token exchange OK (status ${exchange.status}). Parsing response...`
+          );
           const tokenData = await exchange.json();
 
           // 2) Create/lookup user + mint our JWT
+          onStep?.(`[3/3] Finalizing sign-in on backend...`);
           const response = await fetch(`/api/auth/azure-callback`, {
-            method: 'POST',
+            method: "POST",
             headers: proxyHeaders,
             body: JSON.stringify({
               code,
@@ -118,10 +158,38 @@ export const useAuth = create<AuthState>()(
           });
 
           if (!response.ok) {
-            const details = await response.text().catch(() => '');
-            throw new Error(details ? `Authentication failed: ${details}` : 'Authentication failed');
+            let details = "";
+            try {
+              const errorJson = await response.json();
+              details =
+                errorJson.error ||
+                errorJson.details ||
+                JSON.stringify(errorJson);
+            } catch {
+              details = await response.text().catch(() => "");
+            }
+
+            onStep?.(`Backend callback failed (status ${response.status}).`);
+
+            // Provide helpful error messages
+            if (response.status === 502) {
+              throw new Error(
+                `Backend service unavailable. ` +
+                  `Please ensure the backend is running at ${backendUrl}. ` +
+                  `Details: ${details || "Connection failed"}`
+              );
+            }
+
+            throw new Error(
+              details
+                ? `Authentication failed: ${details}`
+                : `Authentication failed (HTTP ${response.status})`
+            );
           }
 
+          onStep?.(
+            `Backend callback OK (status ${response.status}). Creating session...`
+          );
           const data = await response.json();
 
           // Keep jwt_token in sync for any legacy callers.
@@ -139,8 +207,10 @@ export const useAuth = create<AuthState>()(
             refreshToken: data.refreshToken,
             isLoading: false,
           });
+          onStep?.(`Sign-in complete. Redirecting...`);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+          const errorMessage =
+            error instanceof Error ? error.message : "Authentication failed";
           set({ error: errorMessage, isLoading: false });
           throw error;
         }
@@ -150,15 +220,15 @@ export const useAuth = create<AuthState>()(
       refreshAccessToken: async () => {
         const refreshToken = get().refreshToken;
         if (!refreshToken) {
-          set({ error: 'No refresh token available' });
+          set({ error: "No refresh token available" });
           return;
         }
 
         try {
           const backendUrl = get().backendUrl || DEFAULT_BACKEND_URL;
           const response = await fetch(`${backendUrl}/api/v1/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ refreshToken }),
           });
 
@@ -166,14 +236,15 @@ export const useAuth = create<AuthState>()(
             // Refresh failed, clear auth
             mirrorJwtTokenToLocalStorage(null);
             set({ token: null, refreshToken: null, user: null });
-            throw new Error('Token refresh failed');
+            throw new Error("Token refresh failed");
           }
 
           const data = await response.json();
           mirrorJwtTokenToLocalStorage(data.token ?? null);
           set({ token: data.token, error: null });
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Token refresh failed';
+          const errorMessage =
+            error instanceof Error ? error.message : "Token refresh failed";
           set({ error: errorMessage });
           throw error;
         }
@@ -183,23 +254,23 @@ export const useAuth = create<AuthState>()(
       updateRole: async (newRole) => {
         const { token } = get();
         if (!token) {
-          throw new Error('Not authenticated');
+          throw new Error("Not authenticated");
         }
 
         set({ isLoading: true, error: null });
         try {
           const backendUrl = get().backendUrl || DEFAULT_BACKEND_URL;
           const response = await fetch(`${backendUrl}/api/v1/auth/role`, {
-            method: 'PATCH',
+            method: "PATCH",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ role: newRole }),
           });
 
           if (!response.ok) {
-            throw new Error('Failed to update role');
+            throw new Error("Failed to update role");
           }
 
           const data = await response.json();
@@ -213,7 +284,8 @@ export const useAuth = create<AuthState>()(
             isLoading: false,
           });
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Role update failed';
+          const errorMessage =
+            error instanceof Error ? error.message : "Role update failed";
           set({ error: errorMessage, isLoading: false });
           throw error;
         }
@@ -225,7 +297,7 @@ export const useAuth = create<AuthState>()(
         if (token) {
           try {
             await fetch(`${BACKEND_URL}/api/v1/auth/logout`, {
-              method: 'POST',
+              method: "POST",
               headers: {
                 Authorization: `Bearer ${token}`,
               },
@@ -247,7 +319,7 @@ export const useAuth = create<AuthState>()(
       // Get Authorization header for API calls
       getAuthHeader: (): Record<string, string> => {
         const token = get().token;
-        return { Authorization: token ? `Bearer ${token}` : '' };
+        return { Authorization: token ? `Bearer ${token}` : "" };
       },
 
       // Clear all auth state
@@ -263,7 +335,7 @@ export const useAuth = create<AuthState>()(
       },
     }),
     {
-      name: 'greenchainz-auth', // LocalStorage key
+      name: "greenchainz-auth", // LocalStorage key
       partialize: (state) => ({
         // Only persist these fields
         user: state.user,
@@ -273,4 +345,3 @@ export const useAuth = create<AuthState>()(
     }
   )
 );
-

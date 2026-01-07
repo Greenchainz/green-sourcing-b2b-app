@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import Script from 'next/script'
 import './globals.css'
 import SiteHeader from './components/SiteHeader'
 import Footer from './components/Footer'
+import IntercomWidget from './components/IntercomWidget'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -88,10 +90,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body>
+        {/* Ketch CMP boot script (global) */}
+        <Script id="ketch-stub" strategy="beforeInteractive">
+          {`!function(){window.semaphore=window.semaphore||[],window.ketch=function(){window.semaphore.push(arguments)}}();`}
+        </Script>
+        <Script id="ketch-boot" strategy="beforeInteractive" src="https://global.ketchcdn.com/web/v3/config/greenchainz/website_smart_tag/boot.js" />
         <div className="gc-shell">
           <SiteHeader />
           <main className="gc-main">{children}</main>
           <Footer />
+          <IntercomWidget />
         </div>
       </body>
     </html>

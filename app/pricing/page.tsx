@@ -71,5 +71,6 @@ export default function PricingPage() {
                     <Link href="/contact" className="text-emerald-600 hover:text-emerald-700 font-semibold">Have questions? Contact our sales team →</Link>
                 </div>
             </div>
-            )
+        </div>
+    )
 }

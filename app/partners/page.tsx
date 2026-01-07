@@ -56,5 +56,6 @@ export default function PartnersPage() {
                     <Link href="/contact" className="gc-btn gc-btn-primary">Contact Partnerships Team</Link>
                 </div>
             </div>
-            )
+        </div>
+    )
 }

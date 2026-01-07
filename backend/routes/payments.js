@@ -20,7 +20,7 @@ const linkedinService = require('../services/payments/linkedin');
 const { getEnvOrFallback } = require('../config/validateEnv');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-const JWT_SECRET = getEnvOrFallback('JWT_SECRET', 'dev-secret-key', { minLength: 16 });
+const JWT_SECRET = getEnvOrFallback('JWT_SECRET', 'dev-secret-key', { minLength: 32 });
 
 // ============================================
 // RATE LIMITERS

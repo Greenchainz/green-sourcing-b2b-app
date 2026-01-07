@@ -38,5 +38,6 @@ export default function HowItWorksPage() {
                     </div>
                 </div>
             </div>
-            )
+        </div>
+    )
 }

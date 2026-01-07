@@ -1,0 +1,39 @@
+name: Deploy Backend and Frontend
+
+on:
+  push:
+    branches:
+      - main  # or production, depending on your branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      # Login to Azure
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      # Build and deploy BACKEND
+      - name: Build and deploy Backend
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ github.workspace }}/backend  # your backend folder
+          acrName: acrgreenchainzprod916
+          containerAppName: greenchainz-container
+          resourceGroup: rg-greenchainz-prod-container
+          imageToBuild: greenchainz-backend:${{ github.sha }}
+      
+      # Build and deploy FRONTEND
+      - name: Build and deploy Frontend
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ github.workspace }}  # Root directory (contains frontend Dockerfile)
+          acrName: acrgreenchainzprod916
+          containerAppName: greenchainz-frontend
+          resourceGroup: rg-greenchainz-prod-container
+          imageToBuild: greenchainz-frontend:${{ github.sha }}
