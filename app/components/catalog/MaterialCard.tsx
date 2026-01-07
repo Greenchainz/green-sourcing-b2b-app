@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { CertificationBadgeGroup, type CertificationType } from './CertificationBadge'
@@ -45,6 +46,7 @@ export default function MaterialCard({
   animationIndex = 0,
   className = '',
 }: MaterialCardProps) {
+  const [isFocused, setIsFocused] = useState(false)
   const staggerClass = `gc-stagger-${Math.min((animationIndex % 5) + 1, 5)}`
 
   return (
@@ -100,7 +102,10 @@ export default function MaterialCard({
             border: isSelected ? 'none' : '1px solid var(--gc-slate-200)',
             cursor: 'pointer',
             transition: 'all var(--gc-duration) var(--gc-ease)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+            boxShadow: isFocused
+              ? '0 0 0 3px rgba(16, 185, 129, 0.35)'
+              : '0 2px 8px rgba(0, 0, 0, 0.08)',
+            outline: isFocused ? 'none' : undefined,
           }}
           title={isSelected ? 'Remove from comparison' : 'Add to comparison'}
         >
@@ -108,6 +113,8 @@ export default function MaterialCard({
             type="checkbox"
             checked={isSelected}
             onChange={(e) => onCompareToggle?.(material.id, e.target.checked)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             style={{
               position: 'absolute',
               opacity: 0,
