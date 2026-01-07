@@ -12,12 +12,6 @@ export function LandingPage() {
           <Logo height={32} showText={true} />
           <nav className="flex items-center gap-8">
             <Link
-              to="/features"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900"
-            >
-              Features
-            </Link>
-            <Link
               to="/login"
               className="text-sm font-medium text-gray-600 hover:text-gray-900"
             >
