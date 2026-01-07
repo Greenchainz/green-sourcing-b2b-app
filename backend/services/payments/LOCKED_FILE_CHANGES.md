@@ -121,8 +121,8 @@ Add these to your `.env` or Azure Key Vault:
 
 ```bash
 # Stripe Configuration
-STRIPE_SECRET_KEY=sk_test_...       # or sk_live_... for production
-STRIPE_WEBHOOK_SECRET=whsec_...     # From Stripe Dashboard > Webhooks
+STRIPE_SECRET_KEY=sk_test_EXAMPLE   # or sk_live_... for production
+STRIPE_WEBHOOK_SECRET=whsec_EXAMPLE # From Stripe Dashboard > Webhooks
 RFQ_DEPOSIT_AMOUNT_CENTS=2500       # Optional: defaults to $25.00
 
 # LinkedIn OAuth Configuration
