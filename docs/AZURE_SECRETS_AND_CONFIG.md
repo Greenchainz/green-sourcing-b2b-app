@@ -375,16 +375,19 @@ Azure Portal → Application Insights
 For `JWT_SECRET`, `SESSION_SECRET`, `COOKIE_SECRET`:
 
 1. **Generate new secret:**
+
    ```bash
    NEW_SECRET=$(openssl rand -base64 48)
    ```
 
 2. **Update Key Vault:**
+
    ```bash
    az keyvault secret set --vault-name greenchainz-vault --name jwt-secret --value "$NEW_SECRET"
    ```
 
 3. **Restart Container App:**
+
    ```bash
    az containerapp revision restart --name greenchainz-backend --resource-group rg-greenchainz
    ```
@@ -429,6 +432,7 @@ For `JWT_SECRET`, `SESSION_SECRET`, `COOKIE_SECRET`:
 **Error:** `Failed to retrieve secret: Access denied`
 
 **Solution:**
+
 1. Verify managed identity is enabled on Container App
 2. Check Key Vault access policies include the Container App's identity
 3. Ensure the identity has `Get` and `List` permissions
@@ -448,6 +452,7 @@ For `JWT_SECRET`, `SESSION_SECRET`, `COOKIE_SECRET`:
 **Error:** `Redis Client Error: ECONNREFUSED`
 
 **Solution:**
+
 1. Verify `REDIS_HOST` is correct
 2. Ensure `REDIS_SSL=true` for Azure Redis
 3. Check firewall allows Container App access

@@ -330,3 +330,4 @@ export async function generateSubmittalPackage(file: File) {
         console.error("❌ Submittal generation failed:", error);
         throw error;
     }
+}
