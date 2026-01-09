@@ -6,7 +6,7 @@
  */
 
 import { BlobServiceClient } from "@azure/storage-blob";
-import sql from "mssql";
+import * as sql from "mssql";
 
 // ============================================================================
 // AZURE BLOB STORAGE (File uploads, PDFs, EPDs)
@@ -94,11 +94,16 @@ export async function getAzureSQLPool(): Promise<sql.ConnectionPool> {
 }
 
 /**
+ * Type for SQL query parameters
+ */
+export type SqlParameterValue = string | number | boolean | Date | null | undefined;
+
+/**
  * Execute parameterized query against Azure SQL
  */
 export async function runQuery<T>(
     query: string,
-    params?: Record<string, any>
+    params?: Record<string, SqlParameterValue>
 ): Promise<T[]> {
     try {
         const pool = await getAzureSQLPool();
@@ -124,7 +129,7 @@ export async function runQuery<T>(
  */
 export async function runQueryOne<T>(
     query: string,
-    params?: Record<string, any>
+    params?: Record<string, SqlParameterValue>
 ): Promise<T | null> {
     const results = await runQuery<T>(query, params);
     return results.length > 0 ? results[0] : null;
@@ -135,7 +140,7 @@ export async function runQueryOne<T>(
  */
 export async function runScalar<T>(
     query: string,
-    params?: Record<string, any>
+    params?: Record<string, SqlParameterValue>
 ): Promise<T | null> {
     const result = await runQueryOne<Record<string, T>>(query, params);
     if (!result) return null;
