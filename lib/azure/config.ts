@@ -11,18 +11,28 @@ import sql from "mssql";
 // ============================================================================
 // AZURE BLOB STORAGE (File uploads, PDFs, EPDs)
 // ============================================================================
-const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-if (!connectionString) {
-    throw new Error("Missing AZURE_STORAGE_CONNECTION_STRING");
-}
+let blobService: BlobServiceClient | null = null;
 
-export const blobService = BlobServiceClient.fromConnectionString(connectionString);
+/**
+ * Get or create blob service client (lazy initialization)
+ */
+export function getBlobServiceClient(): BlobServiceClient {
+    if (!blobService) {
+        const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+        if (!connectionString) {
+            throw new Error("Missing AZURE_STORAGE_CONNECTION_STRING environment variable");
+        }
+        blobService = BlobServiceClient.fromConnectionString(connectionString);
+    }
+    return blobService;
+}
 
 /**
  * Get or create a blob container
  */
 export async function getBlobContainer(containerName: string) {
-    const containerClient = blobService.getContainerClient(containerName);
+    const service = getBlobServiceClient();
+    const containerClient = service.getContainerClient(containerName);
     await containerClient.createIfNotExists({ access: "container" });
     return containerClient;
 }
