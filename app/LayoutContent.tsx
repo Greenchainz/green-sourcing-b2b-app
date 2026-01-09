@@ -13,7 +13,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
       <SiteHeader />
       <main className="gc-main">{children}</main>
       <Footer />
-      {!loading && <IntercomWidget user={user || undefined} />}
+      {!loading && <IntercomWidget user={user ?? undefined} />}
     </div>
   )
 }
