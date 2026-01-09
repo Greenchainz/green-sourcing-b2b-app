@@ -11,7 +11,7 @@
 
 import { uploadFileToBlob, runQuery } from "@/lib/azure/config";
 import { DocumentAnalysisClient, AzureKeyCredential } from "@azure/ai-form-recognizer";
-import { OpenAIClient, AzureKeyCredential as AOKey } from "@azure/openai";
+import { AzureOpenAI } from "openai";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export interface SpecRequirements {
@@ -89,7 +89,12 @@ export async function extractRequirementsWithOpenAI(
         throw new Error("Missing Azure OpenAI credentials");
     }
 
-    const client = new OpenAIClient(endpoint, new AOKey(key));
+    const client = new AzureOpenAI({
+        endpoint,
+        apiKey: key,
+        apiVersion: "2024-08-01-preview",
+        deployment
+    });
 
     const systemPrompt = `You are a construction spec analyzer. Extract material requirements from architectural specs.
 Return strict JSON with these fields:
@@ -102,10 +107,13 @@ Return strict JSON with these fields:
     const userPrompt = `Analyze this spec excerpt and extract criteria as JSON:\n\n${specText.substring(0, 6000)}`;
 
     try {
-        const response = await client.getChatCompletions(deployment, [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-        ]);
+        const response = await client.chat.completions.create({
+            model: deployment,
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+            ],
+        });
 
         const content = response.choices?.[0]?.message?.content ?? "{}";
         let parsed = JSON.parse(content);
