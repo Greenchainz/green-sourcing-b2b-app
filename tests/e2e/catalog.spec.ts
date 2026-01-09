@@ -1,16 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 test.describe('Material Catalog', () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }: { page: Page }) => {
         await page.goto('/catalog');
     });
 
-    test('should load catalog page successfully', async ({ page }) => {
+    test('should load catalog page successfully', async ({ page }: { page: Page }) => {
         await expect(page).toHaveTitle(/Catalog/);
         await expect(page.getByRole('heading', { name: 'Sustainable Materials' })).toBeVisible();
     });
 
-    test('should filter materials by category', async ({ page }) => {
+    test('should filter materials by category', async ({ page }: { page: Page }) => {
         // Assuming a filter sidebar or dropdown exists
         await page.getByLabel('Category').selectOption('Steel');
         // Wait for list to update - utilizing network idle or specific element appearance
@@ -18,7 +18,7 @@ test.describe('Material Catalog', () => {
         await expect(page.getByText('Concrete')).not.toBeVisible();
     });
 
-    test('should search for materials', async ({ page }) => {
+    test('should search for materials', async ({ page }: { page: Page }) => {
         const searchBox = page.getByPlaceholder('Search materials...');
         await searchBox.fill('Insulation');
         await searchBox.press('Enter');
@@ -26,7 +26,7 @@ test.describe('Material Catalog', () => {
         await expect(page.getByText('Bio-based Insulation')).toBeVisible();
     });
 
-    test('should view material details', async ({ page }) => {
+    test('should view material details', async ({ page }: { page: Page }) => {
         // Click on first product card
         await page.locator('.gc-card').first().click();
 
@@ -36,7 +36,7 @@ test.describe('Material Catalog', () => {
         await expect(page.getByText('Carbon Footprint')).toBeVisible();
     });
 
-    test('should add items to compare tray', async ({ page }) => {
+    test('should add items to compare tray', async ({ page }: { page: Page }) => {
         // Hover over first card and click compare
         await page.locator('.gc-card').first().hover();
         await page.getByRole('button', { name: 'Compare' }).first().click();
