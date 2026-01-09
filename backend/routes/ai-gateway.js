@@ -280,7 +280,7 @@ router.post('/material-alternatives', aiWorkflowLimiter, authenticateToken, asyn
  * POST /api/v1/ai-gateway/carbon-estimate
  * Estimate carbon footprint for a project or material list
  */
-router.post('/carbon-estimate', authenticateToken, aiRateLimit, async (req, res) => {
+router.post('/carbon-estimate', aiRateLimit, authenticateToken, async (req, res) => {
     try {
         const { materials, projectDetails, transportDistance, region } = req.body;
 
