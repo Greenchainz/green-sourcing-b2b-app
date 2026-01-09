@@ -61,7 +61,7 @@ export async function uploadFileToBlob(
 const sqlConfig: sql.config = {
     user: process.env.AZURE_SQL_USER,
     password: process.env.AZURE_SQL_PASSWORD,
-    server: process.env.AZURE_SQL_SERVER, // e.g., 'greenchainz.database.windows.net'
+    server: process.env.AZURE_SQL_SERVER || '', // e.g., 'greenchainz.database.windows.net'
     database: process.env.AZURE_SQL_DATABASE,
     pool: {
         max: 10,
