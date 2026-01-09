@@ -126,14 +126,16 @@ export default function DashboardPage() {
             ].map((stat, index) => (
               <div
                 key={stat.label}
-                className="gc-card gc-animate-fade-in"
+                className="gc-card gc-card-hover gc-animate-fade-in"
                 style={{
                   padding: '1.25rem',
                   textAlign: 'center',
                   animationDelay: `${index * 0.05}s`,
+                  cursor: 'pointer',
                 }}
               >
                 <div
+                  className="transition-transform duration-300 hover:scale-110"
                   style={{
                     width: 40,
                     height: 40,
@@ -145,6 +147,9 @@ export default function DashboardPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    boxShadow: stat.highlight
+                      ? '0 4px 12px rgba(217, 119, 6, 0.2)'
+                      : '0 4px 12px rgba(16, 185, 129, 0.2)',
                   }}
                 >
                   {stat.icon === 'inbox' && (
