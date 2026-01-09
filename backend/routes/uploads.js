@@ -256,7 +256,17 @@ router.get('/sas/:blobName(*)',
     uploadRateLimit,
     async (req, res) => {
         try {
-            const expiresInMinutes = parseInt(req.query.expires) || 60;
+            let expiresInMinutes = 60;
+            const expiresParam = req.query.expires;
+
+            // Ensure expires is a single string value and a valid positive integer
+            if (typeof expiresParam === 'string' && !Array.isArray(expiresParam)) {
+                const parsed = Number.parseInt(expiresParam, 10);
+                if (Number.isFinite(parsed) && parsed > 0 && parsed <= 1440) {
+                    expiresInMinutes = parsed;
+                }
+            }
+
             const sasUrl = await storage.getSasUrl(req.params.blobName, expiresInMinutes);
             
             if (!sasUrl) {
