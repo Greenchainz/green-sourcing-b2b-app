@@ -12,6 +12,7 @@ const documentAIRoutes = require("./routes/documentAI");
 // const authSyncRoutes = require('./routes/auth-sync'); // TODO: Implement auth-sync routes
 const rfqSimulatorRoutes = require("./routes/rfq-simulator");
 const authRoutes = require("./routes/auth");
+const oauthRoutes = require("./routes/oauth");
 const rfqRoutes = require("./routes/rfqs");
 const shadowSupplierRoutes = require("./routes/shadow-suppliers");
 const aiGatewayRoutes = require("./routes/ai-gateway");
@@ -356,6 +357,7 @@ async function start() {
   app.use("/api/v1/uploads", uploadRoutes);
   app.use("/api/v1/ai", documentAIRoutes);
   app.use("/api/v1/auth", authRoutes);
+  app.use("/auth", oauthRoutes);
   app.use("/api/v1/rfqs", rfqRoutes);
   app.use("/api/v1/verification", buyerVerificationRoutes);
   app.use("/api/v1/ai-gateway", aiGatewayRoutes);
