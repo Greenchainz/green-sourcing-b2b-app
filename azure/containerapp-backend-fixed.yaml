@@ -1,0 +1,144 @@
+properties:
+  managedEnvironmentId: /subscriptions/f9164e8d-d74d-43ea-98d4-b0466b3ef8b8/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.App/managedEnvironments/cae-greenchainz-env
+  
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: true
+      targetPort: 3001
+      transport: http
+      allowInsecure: false
+      traffic:
+        - latestRevision: true
+          weight: 100
+      corsPolicy:
+        allowedOrigins:
+          - "https://greenchainz-frontend.azurecontainerapps.io"
+          - "https://greenchainz.com"
+          - "https://www.greenchainz.com"
+        allowedMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        allowedHeaders:
+          - "*"
+        allowCredentials: true
+    
+    registries:
+      - server: acrgreenchainzprod916.azurecr.io
+        identity: system
+    
+    secrets:
+      - name: jwt-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/jwt-secret
+        identity: system
+      - name: cookie-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/cookie-secret
+        identity: system
+      - name: session-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/session-secret
+        identity: system
+      - name: stripe-secret-key
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/stripe-secret-key
+        identity: system
+      - name: stripe-webhook-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/stripe-webhook-secret
+        identity: system
+      - name: azure-client-id
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientId
+        identity: system
+      - name: azure-client-secret
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientSecret
+        identity: system
+      - name: azure-tenant-id
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-TenantId
+        identity: system
+      - name: database-url
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/Database-URL
+        identity: system
+      - name: redis-connection-string
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/Redis-ConnectionString
+        identity: system
+
+  template:
+    containers:
+      - name: greenchainz-backend
+        image: acrgreenchainzprod916.azurecr.io/greenchainz-backend:latest
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        
+        env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "3001"
+          - name: FRONTEND_URL
+            value: https://greenchainz-frontend.azurecontainerapps.io
+          - name: DATABASE_URL
+            secretRef: database-url
+          - name: JWT_SECRET
+            secretRef: jwt-secret
+          - name: SESSION_SECRET
+            secretRef: session-secret
+          - name: COOKIE_SECRET
+            secretRef: cookie-secret
+          - name: REDIS_CONNECTION_STRING
+            secretRef: redis-connection-string
+          - name: FEATURE_REDIS_CACHING
+            value: "true"
+          - name: FEATURE_AZURE_MONITORING
+            value: "false"
+          - name: FEATURE_AI_DOCUMENT_ANALYSIS
+            value: "false"
+          - name: NOTIFICATIONS_ENABLED
+            value: "false"
+          - name: STRIPE_SECRET_KEY
+            secretRef: stripe-secret-key
+          - name: STRIPE_WEBHOOK_SECRET
+            secretRef: stripe-webhook-secret
+          - name: AZURE_CLIENT_ID
+            secretRef: azure-client-id
+          - name: AZURE_CLIENT_SECRET
+            secretRef: azure-client-secret
+          - name: AZURE_TENANT_ID
+            secretRef: azure-tenant-id
+        
+        probes:
+          - type: liveness
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          
+          - type: readiness
+            httpGet:
+              path: /ready
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          
+          - type: startup
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+
+    scale:
+      minReplicas: 1
+      maxReplicas: 10
+      rules:
+        - name: http-scale
+          http:
+            metadata:
+              concurrentRequests: "50"
+
+  identity:
+    type: SystemAssigned
