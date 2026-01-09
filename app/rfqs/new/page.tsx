@@ -1,40 +1,26 @@
-'use client'
+"use client";
 
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function NewRFQPage() {
-  const router = useRouter()
+  const router = useRouter();
 
   useEffect(() => {
     // Canonical RFQ creation route
-    router.replace('/rfqs/create')
-  }, [router])
+    router.replace("/rfqs/create");
+  }, [router]);
 
   return (
-    <div className="gc-page" style={{ padding: 48 }}>
-      <div className="gc-container" style={{ maxWidth: 480 }}>
-        <div
-          className="gc-card gc-animate-fade-in"
-          style={{
-            padding: 32,
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+    <div className="gc-page gc-rfq-page--centered">
+      <div className="gc-container gc-rfq-container--narrow">
+        <div className="gc-card gc-animate-fade-in gc-card-padding-lg gc-text-center">
+          <div className="gc-loading-center gc-spacing-bottom-sm">
             <div className="gc-spinner" />
           </div>
-          <p
-            style={{
-              margin: 0,
-              color: 'var(--gc-slate-600)',
-              fontSize: 14,
-            }}
-          >
-            Redirecting to RFQ creation…
-          </p>
+          <p className="gc-redirect-text">Redirecting to RFQ creation…</p>
         </div>
       </div>
     </div>
-  )
+  );
 }

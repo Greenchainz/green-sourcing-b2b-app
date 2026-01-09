@@ -27,17 +27,38 @@ async function createPostgresRole() {
         // Run SQL commands
         const client = await pool.connect();
         try {
+            // Create the azure_ad_user role if it doesn't exist
+            console.log('Ensuring azure_ad_user role exists...');
+            try {
+                await client.query(`CREATE ROLE "azure_ad_user"`);
+                console.log('  Created azure_ad_user role');
+            } catch (e) {
+                if (e.message.includes('already exists')) {
+                    console.log('  azure_ad_user role already exists');
+                } else {
+                    throw e;
+                }
+            }
+
             console.log('Creating role for managed identity...');
-            await client.query(
-                `CREATE ROLE "greenchainz-container" WITH LOGIN PASSWORD 'token' IN ROLE azure_ad_user`
-            );
+            try {
+                await client.query(
+                    `CREATE ROLE "greenchainz-container" WITH LOGIN PASSWORD 'token' IN ROLE azure_ad_user`
+                );
+            } catch (e) {
+                if (e.message.includes('already exists')) {
+                    console.log('  Role greenchainz-container already exists');
+                } else {
+                    throw e;
+                }
+            }
 
             console.log('Granting database privileges...');
             await client.query(
                 `GRANT ALL PRIVILEGES ON DATABASE postgres TO "greenchainz-container"`
             );
 
-            console.log('✅ PostgreSQL role created successfully!');
+            console.log('✅ PostgreSQL role created/configured successfully!');
         } finally {
             client.release();
         }
