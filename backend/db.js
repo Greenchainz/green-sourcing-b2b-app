@@ -41,8 +41,47 @@ if (connectionString) {
     };
 }
 
+// Determine if we should use Azure AD (Entra) token authentication.
+// Priority:
+// 1) Explicit opt-in via AZURE_POSTGRES_AAD=true or POSTGRES_AUTH=aad|azure_ad
+// 2) Implicit when connecting to Azure Postgres and no password is configured
+const isAzurePostgresHost = (() => {
+    try {
+        if (baseConfig && baseConfig.host) return /postgres\.database\.azure\.com/i.test(baseConfig.host);
+        if (connectionString) return /postgres\.database\.azure\.com/i.test(connectionString);
+        return false;
+    } catch (_) { return false; }
+})();
+
+const explicitAad = (process.env.AZURE_POSTGRES_AAD || '').toLowerCase() === 'true'
+    || (process.env.POSTGRES_AUTH || '').toLowerCase() === 'aad'
+    || (process.env.POSTGRES_AUTH || '').toLowerCase() === 'azure_ad';
+
+const hasExplicitPassword = !!(
+    (baseConfig && baseConfig.password)
+    || process.env.DB_PASSWORD
+    || process.env.POSTGRES_PASSWORD
+);
+
+let passwordProvider;
+if ((explicitAad || (isAzurePostgresHost && !hasExplicitPassword)) && process.env.NODE_ENV === 'production') {
+    // Lazy import to avoid cost in local dev when not needed
+    const { DefaultAzureCredential } = require('@azure/identity');
+    const credential = new DefaultAzureCredential();
+    const scope = 'https://ossrdbms-aad.database.windows.net/.default';
+    passwordProvider = async () => {
+        const token = await credential.getToken(scope);
+        if (!token || !token.token) {
+            throw new Error('Failed to acquire Azure AD access token for PostgreSQL');
+        }
+        return token.token;
+    };
+}
+
 const config = {
     ...baseConfig,
+    // If AAD is enabled, supply dynamic password function for token per-connection
+    ...(passwordProvider ? { password: passwordProvider } : {}),
     // Optimized pool settings for better performance
     max: Number(process.env.PGPOOL_MAX || 20),
     min: Number(process.env.PGPOOL_MIN || 2),
@@ -64,7 +103,8 @@ if (process.env.NODE_ENV === 'development') {
         database: config.database,
         ssl: config.ssl ? 'enabled' : 'disabled',
         poolMax: config.max,
-        poolMin: config.min
+        poolMin: config.min,
+        auth: passwordProvider ? 'azure-ad-token' : (hasExplicitPassword ? 'password' : 'unspecified')
     });
 }
 

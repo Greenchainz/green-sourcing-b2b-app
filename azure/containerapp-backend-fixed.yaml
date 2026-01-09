@@ -75,6 +75,8 @@ properties:
             value: production
           - name: PORT
             value: "3001"
+          - name: AZURE_POSTGRES_AAD
+            value: "true"
           - name: FRONTEND_URL
             value: https://greenchainz-frontend.azurecontainerapps.io
           - name: DATABASE_URL
