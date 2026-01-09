@@ -184,7 +184,7 @@ async function start() {
       }
 
       // Determine overall health
-      const hasCriticalErrors = diagnostics.errors.filter(e => 
+      const hasCriticalErrors = diagnostics.errors.filter(e =>
         e.includes('Database') || e.includes('required env var')
       ).length > 0;
 
