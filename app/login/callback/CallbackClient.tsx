@@ -75,7 +75,6 @@ function CallbackClientInner() {
         // If Azure returned an error, surface it immediately.
         // Example: ?error=access_denied&error_description=...
         const oauthError = searchParams.get("error");
-        const oauthError = searchParams.get("error");
         if (oauthError) {
           const oauthErrorDescription = searchParams.get("error_description");
           const oauthErrorCodes = searchParams.get("error_codes");
