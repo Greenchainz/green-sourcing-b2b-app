@@ -1,6 +1,7 @@
 properties:
   configuration:
+    activeRevisionsMode: Single
     ingress:
       traffic:
-        - revisionName: greenchainz-container--0000024
+        - latestRevision: true
           weight: 100
