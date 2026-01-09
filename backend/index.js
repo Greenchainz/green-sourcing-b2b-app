@@ -12,6 +12,7 @@ const documentAIRoutes = require("./routes/documentAI");
 // const authSyncRoutes = require('./routes/auth-sync'); // TODO: Implement auth-sync routes
 const rfqSimulatorRoutes = require("./routes/rfq-simulator");
 const authRoutes = require("./routes/auth");
+const oauthRoutes = require("./routes/oauth");
 const rfqRoutes = require("./routes/rfqs");
 const shadowSupplierRoutes = require("./routes/shadow-suppliers");
 const aiGatewayRoutes = require("./routes/ai-gateway");
@@ -30,6 +31,7 @@ const { validateRequiredEnv } = require("./config/validateEnv");
 const { buildSessionMiddleware } = require("./middleware/session");
 const redisCache = require("./services/azure/redis");
 const { pool } = require("./db");
+const passport = require("./config/passport");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -77,6 +79,10 @@ async function start() {
   app.use(cookieParser());
   app.use(sessionMiddleware);
 
+  // Initialize Passport for OAuth
+  app.use(passport.initialize());
+  app.use(passport.session());
+
   // Security Headers (Helmet + Lusca)
   app.use(helmet());
   app.use(lusca.xframe("SAMEORIGIN"));
@@ -90,9 +96,10 @@ async function start() {
       httpOnly: true,
       sameSite: 'strict'
     },
-    // Exclude external webhooks and health checks from CSRF
+    // Exclude external webhooks, OAuth callbacks, and health checks from CSRF
     excludePathPrefixes: [
       '/api/webhooks',
+      '/auth',
       '/health',
       '/ready',
       '/diagnose'
@@ -356,6 +363,7 @@ async function start() {
   app.use("/api/v1/uploads", uploadRoutes);
   app.use("/api/v1/ai", documentAIRoutes);
   app.use("/api/v1/auth", authRoutes);
+  app.use("/auth", oauthRoutes);
   app.use("/api/v1/rfqs", rfqRoutes);
   app.use("/api/v1/verification", buyerVerificationRoutes);
   app.use("/api/v1/ai-gateway", aiGatewayRoutes);

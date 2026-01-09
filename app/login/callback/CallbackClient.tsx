@@ -15,7 +15,7 @@ type PublicConfig = {
 function CallbackClientInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { handleAzureCallback, setBackendUrl } = useAuth();
+  const { handleAzureCallback, setBackendUrl, setToken, setRefreshToken, setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
   const [, setPublicConfig] = useState<PublicConfig | null>(null);
@@ -26,6 +26,52 @@ function CallbackClientInner() {
   useEffect(() => {
     const processCallback = async () => {
       try {
+        // Check for OAuth provider callbacks (Google, LinkedIn)
+        const provider = searchParams.get("provider");
+        const token = searchParams.get("token");
+        const refreshToken = searchParams.get("refresh_token");
+
+        if (provider && token && (provider === 'google' || provider === 'linkedin')) {
+          pushStep(`Processing ${provider} OAuth callback...`);
+          
+          // Set tokens in auth store
+          setToken(token);
+          if (refreshToken) {
+            setRefreshToken(refreshToken);
+          }
+
+          // Fetch user data from backend
+          pushStep("Fetching user profile...");
+          try {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+            const userResponse = await fetch(`${backendUrl}/api/v1/auth/me`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+
+            if (!userResponse.ok) {
+              throw new Error('Failed to fetch user data');
+            }
+
+            const userData = await userResponse.json();
+            setUser(userData.user);
+
+            pushStep("Sign-in successful! Redirecting...");
+            
+            // Redirect to dashboard based on role
+            setTimeout(() => {
+              const redirectTo = userData.user.role === "supplier" ? "/dashboard" : "/dashboard/buyer";
+              router.push(redirectTo);
+            }, 500);
+            
+            return;
+          } catch (fetchError) {
+            console.error('Error fetching user data:', fetchError);
+            throw new Error('Failed to complete authentication. Please try again.');
+          }
+        }
+
         // If Azure returned an error, surface it immediately.
         // Example: ?error=access_denied&error_description=...
         const oauthError = searchParams.get("error");
