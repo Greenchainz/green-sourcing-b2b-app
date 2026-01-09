@@ -22,7 +22,11 @@ async function createPostgresRole() {
             ssl: {
                 rejectUnauthorized: false
             }
+        });
 
+        // Run SQL commands
+        const client = await pool.connect();
+        try {
             console.log('Creating role for managed identity...');
             await client.query(
                 `CREATE ROLE "greenchainz-container" WITH LOGIN PASSWORD 'token' IN ROLE azure_ad_user`
