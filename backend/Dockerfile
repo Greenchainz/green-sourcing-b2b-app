@@ -12,7 +12,7 @@ COPY backend/package*.json ./
 RUN npm install
 
 # Copy ALL backend source code (including subdirectories)
-COPY backend/. .
+COPY . .
 
 # Copy database schemas
 COPY database-schemas ./database-schemas
