@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "mssql";
 
 /**
- * Excel Batch Audit API
+ * Excel Batch Audit API (Migrated from Azure SQL to Postgres)
  * 
  * This endpoint receives a batch of material names from the Excel Add-in
  * and returns carbon/health data for each material.
  * 
  * Workflow:
- * 1. Check Azure SQL for cached product data
+ * 1. Check Backend API/Postgres for cached product data (Not fully implemented in this migration stub)
  * 2. If missing, trigger the scraper agent to find EPD data live
  * 3. Return health grade (A/C/F) and carbon score
  * 
- * Environment Variables Required:
- * - AZURE_SQL_SERVER: SQL server name
- * - AZURE_SQL_DATABASE: Database name
- * - AZURE_SQL_USER: Database user
- * - AZURE_SQL_PASSWORD: Database password
+ * Note: This endpoint was migrated from 'mssql' (SQL Server) to align with the Postgres migration.
+ * The direct SQL connection has been removed in favor of a future API call to the backend service.
  */
 
 interface AuditResult {
@@ -30,32 +26,6 @@ interface AuditResult {
     error?: string;
 }
 
-// Azure SQL Connection Pool (singleton)
-let pool: sql.ConnectionPool | null = null;
-
-async function getAzureSQLPool(): Promise<sql.ConnectionPool> {
-    if (pool) return pool;
-
-    pool = new sql.ConnectionPool({
-        server: process.env.AZURE_SQL_SERVER || "",
-        database: process.env.AZURE_SQL_DATABASE || "",
-        authentication: {
-            type: "default",
-            options: {
-                userName: process.env.AZURE_SQL_USER || "",
-                password: process.env.AZURE_SQL_PASSWORD || "",
-            },
-        },
-        options: {
-            encrypt: true,
-            trustServerCertificate: false,
-        },
-    });
-
-    await pool.connect();
-    return pool;
-}
-
 export async function POST(request: NextRequest) {
     try {
         const { materials } = await request.json();
@@ -67,10 +37,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const pool = await getAzureSQLPool();
         const results: AuditResult[] = [];
 
-        // Batch lookup: try to find all materials in database first
+        // Batch lookup
         for (const materialName of materials) {
             const cleanName = String(materialName).toLowerCase().trim();
 
@@ -83,75 +52,51 @@ export async function POST(request: NextRequest) {
             }
 
             try {
-                // 1. Query Azure SQL for existing product data
-                // Expected table: [Products] with columns:
-                // - name, gwp_per_unit, health_grade, red_list_status, certifications, has_epd
+                // TODO: Replace this with a call to the Backend API (GET /api/v1/products/search)
+                // or use a direct Postgres query if you share the DB connection.
+                // For now, we default to the Scraper Agent which handles live lookups.
 
-                const request = pool.request();
-                request.input("materialName", sql.VarChar, `%${cleanName}%`);
+                // MIGRATION NOTE: The direct MSSQL query was removed here.
+                // We proceed directly to the scraper fallback.
 
-                const result = await request.query(
-                    `SELECT TOP 1 name, gwp_per_unit, health_grade, red_list_status, certifications, has_epd
-                     FROM Products
-                     WHERE LOWER(name) LIKE LOWER(@materialName)`
+                // 2. Trigger scraper agent for live lookup
+                const scraperResponse = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/scrape/suppliers`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            material_name: materialName,
+                            search_type: "epddb", // Search EPD databases like EC3
+                            extract_fields: [
+                                "gwp_per_unit",
+                                "health_grade",
+                                "red_list_status",
+                                "certifications",
+                            ],
+                        }),
+                    }
                 );
 
-                if (result.recordset && result.recordset.length > 0) {
-                    const product = result.recordset[0];
-
-                    // Found in database - return cached result
+                if (scraperResponse.ok) {
+                    const scrapedData = await scraperResponse.json();
                     results.push({
                         original: materialName,
-                        carbon_score: product.gwp_per_unit,
-                        health_grade: product.health_grade || "F",
-                        red_list_status: product.red_list_status || "None",
-                        verified: product.has_epd,
-                        alternative_name: product.name,
-                        certifications: product.certifications
-                            ? product.certifications.split(",")
-                            : [],
+                        carbon_score: scrapedData.gwp_per_unit,
+                        health_grade: scrapedData.health_grade || "F",
+                        red_list_status: scrapedData.red_list_status || "None",
+                        verified: !!scrapedData.epd_found,
+                        alternative_name: scrapedData.matched_product_name,
+                        certifications: scrapedData.certifications || [],
                     });
                 } else {
-                    // 2. Not found - trigger scraper agent for live lookup
-                    // This calls your existing scraper infrastructure
-
-                    const scraperResponse = await fetch(
-                        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/scrape/suppliers`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                material_name: materialName,
-                                search_type: "epddb", // Search EPD databases like EC3
-                                extract_fields: [
-                                    "gwp_per_unit",
-                                    "health_grade",
-                                    "red_list_status",
-                                    "certifications",
-                                ],
-                            }),
-                        }
-                    );
-
-                    if (scraperResponse.ok) {
-                        const scrapedData = await scraperResponse.json();
-                        results.push({
-                            original: materialName,
-                            carbon_score: scrapedData.gwp_per_unit,
-                            health_grade: scrapedData.health_grade || "F",
-                            red_list_status: scrapedData.red_list_status || "None",
-                            verified: !!scrapedData.epd_found,
-                            alternative_name: scrapedData.matched_product_name,
-                            certifications: scrapedData.certifications || [],
-                        });
-                    } else {
-                        // Scraper failed or timed out - return "not found"
-                        results.push({
-                            original: materialName,
-                            error: "No EPD data found in EC3 database",
-                        });
-                    }
+                    // Scraper failed or timed out - return "not found"
+                    results.push({
+                        original: materialName,
+                        error: "No EPD data found in EC3 database",
+                    });
                 }
+
             } catch (itemError) {
                 results.push({
                     original: materialName,

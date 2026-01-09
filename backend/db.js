@@ -36,7 +36,7 @@ if (connectionString) {
         host: process.env.POSTGRES_HOST || process.env.DATABASE_HOST || 'localhost',
         port: Number(process.env.POSTGRES_PORT || process.env.DATABASE_PORT || 5432),
         user: process.env.DB_USER || process.env.POSTGRES_USER || process.env.DATABASE_USER || 'user',
-        password: process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || process.env.DATABASE_PASSWORD || 'password',
+        password: process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || process.env.DATABASE_PASSWORD,
         database: process.env.DB_NAME || process.env.POSTGRES_DB || process.env.DATABASE_NAME || 'greenchainz_dev'
     };
 }
