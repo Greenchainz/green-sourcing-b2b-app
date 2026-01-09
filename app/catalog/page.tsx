@@ -368,12 +368,16 @@ export default function CatalogPage() {
 
   return (
     <div className="gc-page">
-      {/* Page Header */}
+      {/* Premium Page Header with Glass Effect */}
       <div
+        className="card-glass border-b-0 animate-fade-in"
         style={{
           borderBottom: '1px solid var(--gc-glass-border)',
           background: 'rgba(255, 255, 255, 0.7)',
           backdropFilter: 'blur(12px)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
         }}
       >
         <div className="gc-container" style={{ padding: '1.5rem 1rem' }}>
@@ -384,7 +388,7 @@ export default function CatalogPage() {
               gap: '1rem',
             }}
           >
-            <div>
+            <div className="animate-fade-in-up">
               <h1
                 style={{
                   margin: 0,
@@ -393,7 +397,7 @@ export default function CatalogPage() {
                   color: 'var(--gc-slate-900)',
                 }}
               >
-                Material Catalog
+                Material <span className="text-gradient">Catalog</span>
               </h1>
               <p
                 style={{
