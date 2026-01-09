@@ -2,6 +2,7 @@ const { client } = require('./index');
 const { pool } = require('../../db');
 const entitlements = require('../entitlements');
 const templates = require('./templates');
+const { sanitizeForLog } = require('../../utils/sanitize');
 
 /**
  * Check if user is eligible for outbound messaging.
@@ -55,7 +56,7 @@ async function checkOutboundEligibility(userId, options = {}) {
       remaining: canSend.remaining
     };
   } catch (error) {
-    console.error(`Error checking eligibility for user ${userId}:`, error.message);
+    console.error('Error checking eligibility for user:', sanitizeForLog(userId), 'Error:', error.message);
     return { eligible: false, reason: 'Error checking eligibility' };
   }
 }
@@ -140,7 +141,7 @@ async function sendMessage(userId, message, options = {}) {
 
     return { success: true, result };
   } catch (error) {
-    console.error(`Error sending message to user ${userId}:`, error.message);
+    console.error('Error sending message to user:', sanitizeForLog(userId), 'Error:', error.message);
     throw error;
   }
 }
@@ -234,12 +235,12 @@ async function sendRfqNotification(supplierId, rfqId, waveNumber) {
     });
 
     if (result.success) {
-      console.log(`[Intercom] RFQ notification sent to supplier ${supplierId} for RFQ ${rfqId} (Wave ${waveNumber})`);
+      console.log('[Intercom] RFQ notification sent to supplier:', sanitizeForLog(supplierId), 'RFQ:', sanitizeForLog(rfqId), 'Wave:', sanitizeForLog(waveNumber));
     }
 
     return result;
   } catch (error) {
-    console.error(`Error sending RFQ notification to supplier ${supplierId}:`, error.message);
+    console.error('Error sending RFQ notification to supplier:', sanitizeForLog(supplierId), 'Error:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -343,7 +344,7 @@ async function sendClaimPrompt(shadowSupplierId, rfqId) {
 
     return result;
   } catch (error) {
-    console.error(`Error sending claim prompt to shadow supplier ${shadowSupplierId}:`, error.message);
+    console.error('Error sending claim prompt to shadow supplier:', sanitizeForLog(shadowSupplierId), 'Error:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -451,7 +452,7 @@ async function sendQuoteReceived(architectId, rfqId, supplierId) {
 
     return sendResult;
   } catch (error) {
-    console.error(`Error sending quote received notification to architect ${architectId}:`, error.message);
+    console.error('Error sending quote received notification to architect:', sanitizeForLog(architectId), 'Error:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -503,7 +504,7 @@ async function sendDepositVerified(buyerId, depositData) {
 
     return result;
   } catch (error) {
-    console.error(`Error sending deposit verified notification to buyer ${buyerId}:`, error.message);
+    console.error('Error sending deposit verified notification to buyer:', sanitizeForLog(buyerId), 'Error:', error.message);
     return { success: false, error: error.message };
   }
 }

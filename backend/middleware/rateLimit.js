@@ -123,6 +123,38 @@ const rateLimiters = {
         windowSeconds: 60,
         maxRequests: 200,
         keyGenerator: (req) => `admin:${req.user?.userId}`
+    }),
+    
+    // Health check endpoints (200 per minute)
+    health: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 200,
+        keyGenerator: (req) => `health:${req.ip}`,
+        message: 'Health check rate limit exceeded.'
+    }),
+    
+    // AI operations (stricter limit - 20 per 15 minutes)
+    ai: rateLimitMiddleware({
+        windowSeconds: 900, // 15 minutes
+        maxRequests: 20,
+        keyGenerator: (req) => `ai:${req.user?.userId || req.ip}`,
+        message: 'AI operation rate limit exceeded. Please wait before making more requests.'
+    }),
+    
+    // Webhook endpoints (100 per minute per IP)
+    webhook: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 100,
+        keyGenerator: (req) => `webhook:${req.ip}`,
+        message: 'Webhook rate limit exceeded.'
+    }),
+    
+    // Revit integration (30 per minute)
+    revit: rateLimitMiddleware({
+        windowSeconds: 60,
+        maxRequests: 30,
+        keyGenerator: (req) => `revit:${req.user?.userId || req.ip}`,
+        message: 'Revit integration rate limit exceeded.'
     })
 };
 

@@ -10,15 +10,7 @@ const router = express.Router();
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const aiGateway = require('../services/ai-gateway');
 const monitoring = require('../services/azure/monitoring');
-const rateLimit = require('express-rate-limit');
-
-// Rate limiter for expensive AI workflow routes
-const aiWorkflowLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
+const { ai: aiRateLimit } = require('../middleware/rateLimit');
 
 /**
  * GET /api/v1/ai-gateway/health
@@ -288,7 +280,7 @@ router.post('/material-alternatives', aiWorkflowLimiter, authenticateToken, asyn
  * POST /api/v1/ai-gateway/carbon-estimate
  * Estimate carbon footprint for a project or material list
  */
-router.post('/carbon-estimate', authenticateToken, async (req, res) => {
+router.post('/carbon-estimate', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { materials, projectDetails, transportDistance, region } = req.body;
 
@@ -345,7 +337,7 @@ router.post('/carbon-estimate', authenticateToken, async (req, res) => {
  * POST /api/v1/ai-gateway/compliance-check
  * Check material/product compliance with sustainability standards
  */
-router.post('/compliance-check', authenticateToken, async (req, res) => {
+router.post('/compliance-check', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { materialId, materialName, certifications, standards, context } = req.body;
 
@@ -404,7 +396,7 @@ router.post('/compliance-check', authenticateToken, async (req, res) => {
  * Score and rank RFQ supplier matches
  * Requires: Standard tier (pro) or higher
  */
-router.post('/rfq-score', authenticateToken, async (req, res) => {
+router.post('/rfq-score', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { rfqId, requirements, suppliers, priorities } = req.body;
 
@@ -488,7 +480,7 @@ router.post('/rfq-score', authenticateToken, async (req, res) => {
  * Draft an Intercom outreach message for a supplier
  * Requires: Premium tier (enterprise) for most templates
  */
-router.post('/draft-outreach', authenticateToken, async (req, res) => {
+router.post('/draft-outreach', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { supplierId, rfqId, template, customData, scheduledAt, priority } = req.body;
 
@@ -536,7 +528,7 @@ router.post('/draft-outreach', authenticateToken, async (req, res) => {
  * GET /api/v1/ai-gateway/templates
  * Get available message templates for user's tier
  */
-router.get('/templates', authenticateToken, async (req, res) => {
+router.get('/templates', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const userTier = await aiGateway.entitlements.getUserTier(req.user.id);
         const templates = aiGateway.intercomSender.getAvailableTemplates(userTier);
