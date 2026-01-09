@@ -342,7 +342,7 @@ async function start() {
    * This token must be included in state-changing requests (POST, PUT, DELETE)
    */
   const { authenticateToken } = require("./middleware/auth");
-  app.get("/api/v1/csrf-token", authenticateToken, (req, res) => {
+  app.get("/api/v1/csrf-token", rateLimit.general, authenticateToken, (req, res) => {
     res.json({ 
       csrfToken: res.locals._csrf || req.csrfToken?.() || 'token-unavailable'
     });
