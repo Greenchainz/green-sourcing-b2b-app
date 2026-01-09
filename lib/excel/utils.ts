@@ -6,16 +6,30 @@
  */
 
 export interface ExcelRange {
-    values: any[][];
+    values: unknown[][];
     rowCount: number;
     columnCount: number;
     address: string;
 }
 
+export interface ExcelRangeObject {
+    values: unknown[][];
+    rowCount: number;
+    columnCount: number;
+    load(properties: string): void;
+    getOffsetRange(rowOffset: number, columnOffset: number): ExcelRangeObject;
+    getResizedRange(deltaRows: number, deltaColumns: number): ExcelRangeObject;
+    format: {
+        font: { size: number };
+        autofitColumns(): void;
+    };
+}
+
 export interface ExcelSyncContext {
     workbook: {
-        getSelectedRange(): any;
+        getSelectedRange(): ExcelRangeObject;
     };
+    sync(): Promise<void>;
 }
 
 /**
@@ -40,9 +54,9 @@ export async function getSelectedMaterials(): Promise<string[]> {
 
                 // Extract single column (assumes user selected a column)
                 const materials = range.values
-                    .map((row: any[]) => row[0])
-                    .filter((item: any) => item && String(item).trim().length > 0)
-                    .map((item: any) => String(item).trim());
+                    .map((row: unknown[]) => row[0])
+                    .filter((item: unknown) => item && String(item).trim().length > 0)
+                    .map((item: unknown) => String(item).trim());
 
                 resolve(materials);
             } catch (error) {
@@ -52,10 +66,16 @@ export async function getSelectedMaterials(): Promise<string[]> {
     });
 }
 
+export interface AuditResult {
+    carbon_score?: number;
+    health_grade?: string;
+    red_list_status?: string;
+}
+
 /**
  * Write audit results back to Excel (3 columns to the right of selection)
  */
-export async function writeAuditResults(results: any[]): Promise<void> {
+export async function writeAuditResults(results: AuditResult[]): Promise<void> {
     if (!window.Excel) {
         throw new Error("Excel.js library not loaded");
     }
@@ -73,7 +93,7 @@ export async function writeAuditResults(results: any[]): Promise<void> {
                     .getResizedRange(range.rowCount - 1, 3);
 
                 // Format results for Excel
-                const writeValues = results.map((item: any) => [
+                const writeValues = results.map((item: AuditResult) => [
                     item.carbon_score?.toFixed(1) ?? "N/A", // Carbon (kgCO2e)
                     getHealthGradeEmoji(item.health_grade), // Health Grade
                     getComplianceStatus(item.red_list_status), // Compliance
@@ -129,7 +149,9 @@ function getComplianceStatus(status?: string): string {
  */
 declare global {
     interface Window {
-        Excel?: any;
-        Office?: any;
+        Excel?: {
+            run<T>(callback: (context: ExcelSyncContext) => Promise<T>): Promise<T>;
+        };
+        Office?: unknown;
     }
 }

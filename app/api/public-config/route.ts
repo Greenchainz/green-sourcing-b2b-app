@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-function getOriginFromHeaders(): string {
-    const headerList = headers()
+async function getOriginFromHeaders(): Promise<string> {
+    const headerList = await headers()
     const forwardedProto = headerList.get('x-forwarded-proto')
     const forwardedHost = headerList.get('x-forwarded-host')
     const host = forwardedHost || headerList.get('host')
@@ -16,7 +16,7 @@ function getOriginFromHeaders(): string {
 }
 
 export async function GET() {
-    const origin = getOriginFromHeaders()
+    const origin = await getOriginFromHeaders()
 
     const backendUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || ''
