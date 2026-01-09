@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Logo from "../components/Logo";
 import WhySection from "../components/LandingPage/WhySection";
-import Footer from "../components/Footer";
+import Footer from "../../app/components/Footer";
 
 export function LandingPage() {
   return (
