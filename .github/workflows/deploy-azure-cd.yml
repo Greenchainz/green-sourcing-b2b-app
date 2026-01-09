@@ -47,15 +47,14 @@ jobs:
             --resource-group ${{ vars.RESOURCE_GROUP }} \
             --image ${{ steps.acr.outputs.login_server }}/greenchainz-frontend:${{ github.sha }}
       
-            - name: Build and Push Backend Image
-            run: |
-              az acr build \
-                --registry ${{ vars.CONTAINER_REGISTRY }} \
-                --image greenchainz-backend:${{ github.sha }} \
-                --image greenchainz-backend:latest \
-                --file backend/Dockerfile \
-                backend/
-          
+      - name: Build and Push Backend Image
+        run: |
+          az acr build \
+            --registry ${{ vars.CONTAINER_REGISTRY }} \
+            --image greenchainz-backend:${{ github.sha }} \
+            --image greenchainz-backend:latest \
+            --file backend/Dockerfile \
+            backend/
       
       - name: Deploy Backend Container App
         run: |
