@@ -111,27 +111,158 @@ async function start() {
   });
 
   /**
-   * Health Check - Basic liveness probe
-   * Returns 200 if the server is running
+   * Health Check - Basic liveness probe with full diagnostics
+   * Returns 200 if the server is running, 503 if critical services unavailable
+   * Includes diagnostic info to help troubleshoot deployment issues
    */
   app.get("/health", async (req, res) => {
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      nodeVersion: process.version,
+      environment: process.env.NODE_ENV,
+      services: {},
+      envVars: {
+        required: {},
+        conditional: {},
+      },
+      errors: [],
+    };
+
     try {
-      const redisStatus = redisClient
-        ? await redisCache.pingSafe()
-        : "not_configured";
-      res.json({
-        status: "ok",
-        timestamp: new Date().toISOString(),
-        redis: redisStatus,
-        uptime: process.uptime(),
+      // Check critical environment variables
+      const requiredEnvVars = ['JWT_SECRET', 'SESSION_SECRET', 'COOKIE_SECRET', 'FRONTEND_URL', 'DATABASE_URL'];
+      for (const envVar of requiredEnvVars) {
+        diagnostics.envVars.required[envVar] = {
+          set: !!process.env[envVar],
+          length: process.env[envVar]?.length || 0,
+        };
+        if (!process.env[envVar]) {
+          diagnostics.errors.push(`Missing required env var: ${envVar}`);
+        }
+      }
+
+      // Check optional/conditional env vars
+      const conditionalEnvVars = ['REDIS_HOST', 'REDIS_PASSWORD', 'AZURE_CLIENT_ID', 'DATABASE_URL'];
+      for (const envVar of conditionalEnvVars) {
+        diagnostics.envVars.conditional[envVar] = !!process.env[envVar];
+      }
+
+      // Check database connection
+      try {
+        const dbResult = await pool.query("SELECT 1");
+        diagnostics.services.database = {
+          status: "connected",
+          timestamp: new Date().toISOString(),
+        };
+      } catch (dbErr) {
+        diagnostics.services.database = {
+          status: "failed",
+          error: dbErr.message,
+          code: dbErr.code,
+        };
+        diagnostics.errors.push(`Database connection failed: ${dbErr.message}`);
+      }
+
+      // Check Redis if configured
+      if (redisClient) {
+        try {
+          const redisPing = await redisCache.pingSafe();
+          diagnostics.services.redis = {
+            status: "connected",
+            ping: redisPing,
+          };
+        } catch (redisErr) {
+          diagnostics.services.redis = {
+            status: "failed",
+            error: redisErr.message,
+          };
+          diagnostics.errors.push(`Redis connection failed: ${redisErr.message}`);
+        }
+      } else {
+        diagnostics.services.redis = { status: "not_configured" };
+      }
+
+      // Determine overall health
+      const hasCriticalErrors = diagnostics.errors.filter(e =>
+        e.includes('Database') || e.includes('required env var')
+      ).length > 0;
+
+      res.status(hasCriticalErrors ? 503 : 200).json({
+        status: hasCriticalErrors ? "unhealthy" : "healthy",
+        ...diagnostics,
       });
     } catch (e) {
+      diagnostics.errors.push(`Health check error: ${e.message}`);
       res.status(503).json({
-        status: "degraded",
-        timestamp: new Date().toISOString(),
-        error: e.message,
+        status: "unhealthy",
+        ...diagnostics,
       });
     }
+  });
+
+  /**
+   * Diagnostic endpoint - Simple text output for quick troubleshooting
+   * Shows what's missing in plain English
+   */
+  app.get("/diagnose", async (req, res) => {
+    const lines = [];
+    lines.push("=== GreenChainz Backend Diagnostics ===");
+    lines.push(`Timestamp: ${new Date().toISOString()}`);
+    lines.push(`Node.js: ${process.version}`);
+    lines.push(`Environment: ${process.env.NODE_ENV}`);
+    lines.push(`Uptime: ${Math.round(process.uptime())}s`);
+    lines.push("");
+
+    lines.push("REQUIRED ENVIRONMENT VARIABLES:");
+    const requiredVars = ['JWT_SECRET', 'SESSION_SECRET', 'COOKIE_SECRET', 'FRONTEND_URL', 'DATABASE_URL'];
+    for (const v of requiredVars) {
+      const isSet = !!process.env[v];
+      lines.push(`  ${isSet ? '✅' : '❌'} ${v}`);
+    }
+    lines.push("");
+
+    lines.push("OPTIONAL ENVIRONMENT VARIABLES:");
+    const optionalVars = ['REDIS_HOST', 'REDIS_PASSWORD', 'AZURE_CLIENT_ID', 'AZURE_TENANT_ID'];
+    for (const v of optionalVars) {
+      const isSet = !!process.env[v];
+      lines.push(`  ${isSet ? '✅' : '⚫'} ${v}`);
+    }
+    lines.push("");
+
+    lines.push("SERVICES:");
+    // Test database
+    try {
+      await pool.query("SELECT 1");
+      lines.push("  ✅ Database (PostgreSQL): Connected");
+    } catch (e) {
+      lines.push(`  ❌ Database (PostgreSQL): ${e.message}`);
+      lines.push(`     Connection string: ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'}`);
+    }
+
+    // Test Redis
+    if (redisClient) {
+      try {
+        await redisCache.pingSafe();
+        lines.push("  ✅ Redis Cache: Connected");
+      } catch (e) {
+        lines.push(`  ❌ Redis Cache: ${e.message}`);
+      }
+    } else {
+      lines.push("  ⚫ Redis Cache: Not configured");
+    }
+
+    lines.push("");
+    lines.push("KEY VAULT SECRETS STATUS:");
+    const secrets = ['AzureAD-ClientId', 'AzureAD-ClientSecret', 'AzureAD-TenantId', 'jwt-secret', 'cookie-secret', 'session-secret', 'Database-URL', 'Redis-ConnectionString'];
+    for (const s of secrets) {
+      // We can't actually check Key Vault from here, but we can check if derived env var exists
+      const envVarName = s.replace('AzureAD-', 'AZURE_').replace(/-/g, '_').toUpperCase();
+      const isSet = !!process.env[envVarName];
+      lines.push(`  ${isSet ? '✅' : '❌'} ${s} → ${envVarName}`);
+    }
+
+    res.type('text/plain').send(lines.join('\n'));
   });
 
   /**
