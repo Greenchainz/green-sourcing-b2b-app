@@ -19,14 +19,9 @@ async function createPostgresRole() {
             database: 'postgres',
             user: 'founder1@greenchainz.com',
             password: token.token,
-            ssl: 'require',
-        });
-
-        // Run SQL commands
-        const client = await pool.connect();
-        try {
-            console.log('Setting aad_validate_oids_in_tenant...');
-            await client.query('SET aad_validate_oids_in_tenant = off');
+            ssl: {
+                rejectUnauthorized: false
+            }
 
             console.log('Creating role for managed identity...');
             await client.query(
