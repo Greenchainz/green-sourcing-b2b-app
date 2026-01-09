@@ -38,6 +38,6 @@ export default function BlogPage() {
                     <Link href="/contact" className="gc-btn gc-btn-primary">Contact Us</Link>
                 </div>
             </div>
-        );
-    }
+        </div>
+    );
 }
