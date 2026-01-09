@@ -92,8 +92,8 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
                 if (result.rows.length > 0) {
                     user = result.rows[0];
                     await pool.query(
-                        'UPDATE Users SET LastLogin = NOW() WHERE UserID = $1',
-                        [user.userid]
+                        'UPDATE Users SET LastLogin = NOW() WHERE id = $1',
+                        [user.id]
                     );
                 } else {
                     const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
@@ -103,7 +103,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
                         `INSERT INTO Users (Email, FullName, Role, OAuthProvider, OAuthID, CreatedAt, LastLogin)
            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
            RETURNING *`,
-                        [email, name, 'Buyer', 'facebook', profile.id]
+                        [email, name, 'architect', 'facebook', profile.id]
                     );
                     user = result.rows[0];
                 }
@@ -180,8 +180,8 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
                 if (result.rows.length > 0) {
                     user = result.rows[0];
                     await pool.query(
-                        'UPDATE Users SET LastLogin = NOW() WHERE UserID = $1',
-                        [user.userid]
+                        'UPDATE Users SET LastLogin = NOW() WHERE id = $1',
+                        [user.id]
                     );
                 } else {
                     const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
@@ -191,7 +191,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
                         `INSERT INTO Users (Email, FullName, Role, OAuthProvider, OAuthID, CreatedAt, LastLogin)
            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
            RETURNING *`,
-                        [email, name, 'Buyer', 'github', profile.id]
+                        [email, name, 'architect', 'github', profile.id]
                     );
                     user = result.rows[0];
                 }
@@ -224,8 +224,8 @@ if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
                 if (result.rows.length > 0) {
                     user = result.rows[0];
                     await pool.query(
-                        'UPDATE Users SET LastLogin = NOW() WHERE UserID = $1',
-                        [user.userid]
+                        'UPDATE Users SET LastLogin = NOW() WHERE id = $1',
+                        [user.id]
                     );
                 } else {
                     const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
@@ -235,7 +235,7 @@ if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
                         `INSERT INTO Users (Email, FullName, Role, OAuthProvider, OAuthID, CreatedAt, LastLogin)
            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
            RETURNING *`,
-                        [email, name, 'Buyer', 'microsoft', profile.id]
+                        [email, name, 'architect', 'microsoft', profile.id]
                     );
                     user = result.rows[0];
                 }
