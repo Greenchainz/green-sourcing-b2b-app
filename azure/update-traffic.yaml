@@ -1,0 +1,6 @@
+properties:
+  configuration:
+    ingress:
+      traffic:
+        - revisionName: greenchainz-container--0000024
+          weight: 100
