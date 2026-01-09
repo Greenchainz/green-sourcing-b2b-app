@@ -5,17 +5,14 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY backend/package*.json ./
+# Copy package files (from backend/ context)
+COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy ALL backend source code (including subdirectories)
+# Copy ALL backend source code (build context is backend/)
 COPY . .
-
-# Copy database schemas
-COPY database-schemas ./database-schemas
 
 # -----------------
 # Stage 2: Runner
