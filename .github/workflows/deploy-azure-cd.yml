@@ -42,6 +42,7 @@ jobs:
             --build-arg NEXT_PUBLIC_AZURE_TENANT=${{ vars.AZURE_TENANT_ID }} \
             --build-arg NEXT_PUBLIC_AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }} \
             --build-arg NEXT_PUBLIC_AZURE_REDIRECT_URI=https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io/login/callback \
+            --build-arg NEXT_PUBLIC_INTERCOM_APP_ID=${{ secrets.NEXT_PUBLIC_INTERCOM_APP_ID }} \
             .
       
       - name: Deploy Frontend Container App
