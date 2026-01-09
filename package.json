@@ -13,6 +13,7 @@
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.0.0",
     "@azure/openai": "^2.0.0-beta.2",
+    "@azure/storage-blob": "^12.29.1",
     "@intercom/messenger-js-sdk": "^0.0.18",
     "@react-email/components": "^1.0.1",
     "@react-email/render": "^2.0.0",
