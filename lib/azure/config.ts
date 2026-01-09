@@ -6,7 +6,7 @@
  */
 
 import { BlobServiceClient } from "@azure/storage-blob";
-import sql from "mssql";
+import * as sql from "mssql";
 
 // ============================================================================
 // AZURE BLOB STORAGE (File uploads, PDFs, EPDs)
