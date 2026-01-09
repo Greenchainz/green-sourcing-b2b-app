@@ -47,19 +47,15 @@ jobs:
             --resource-group ${{ vars.RESOURCE_GROUP }} \
             --image ${{ steps.acr.outputs.login_server }}/greenchainz-frontend:${{ github.sha }}
       
-      - name: Build and Push Backend Image
-        run: |
-          # Check if backend Dockerfile exists
-          if [ -f "Dockerfile.backend" ]; then
-            az acr build \
-              --registry ${{ vars.CONTAINER_REGISTRY }} \
-              --image greenchainz-backend:${{ github.sha }} \
-              --image greenchainz-backend:latest \
-              --file Dockerfile.backend \
-              .
-          else
-            echo "⚠️ Dockerfile.backend not found, skipping backend build"
-          fi
+            - name: Build and Push Backend Image
+            run: |
+              az acr build \
+                --registry ${{ vars.CONTAINER_REGISTRY }} \
+                --image greenchainz-backend:${{ github.sha }} \
+                --image greenchainz-backend:latest \
+                --file backend/Dockerfile \
+                backend/
+          
       
       - name: Deploy Backend Container App
         run: |
