@@ -19,59 +19,46 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
     try {
-        const form = await req.formData();
-        const file = form.get("file");
-        if (!(file instanceof File)) {
-            return NextResponse.json({ error: "Missing PDF file" }, { status: 400 });
+        const formData = await req.formData();
+        const file = formData.get("file") as File | null;
+
+        if (!file) {
+            return NextResponse.json(
+                { error: "No file uploaded" },
+                { status: 400 }
+            );
         }
 
-        const specText = await extractTextWithADI(file);
-        const criteria = await extractCriteriaWithOpenAI(specText);
-        const matches = await findMatches(criteria);
-        const pdfBytes = await buildPackage(file.name || "Spec.pdf", criteria, matches);
-
-        export async function POST(req: NextRequest) {
-            try {
-                const formData = await req.formData();
-                const file = formData.get("file") as File | null;
-
-                if (!file) {
-                    return NextResponse.json(
-                        { error: "No file uploaded" },
-                        { status: 400 }
-                    );
-                }
-
-                if (!file.name.toLowerCase().endsWith(".pdf")) {
-                    return NextResponse.json(
-                        { error: "Only PDF files are supported" },
-                        { status: 400 }
-                    );
-                }
-
-                console.log(`📄 Processing submittal for: ${file.name}`);
-
-                // Call the Azure-native agent
-                const result = await generateSubmittalPackage(file);
-
-                // Return PDF as binary response
-                return new NextResponse(Buffer.from(result.pdfBytes), {
-                    status: 200,
-                    headers: {
-                        "Content-Type": "application/pdf",
-                        "Content-Disposition": 'attachment; filename="GreenChainz_Submittal.pdf"',
-                        "Cache-Control": "no-cache, no-store, must-revalidate",
-                    },
-                });
-            } catch (error) {
-                console.error("❌ Submittal Generation Error:", error);
-
-                const errorMessage =
-                    error instanceof Error ? error.message : "Internal server error";
-
-                return NextResponse.json(
-                    { error: errorMessage, details: "Check server logs for details" },
-                    { status: 500 }
-                );
-            }
+        if (!file.name.toLowerCase().endsWith(".pdf")) {
+            return NextResponse.json(
+                { error: "Only PDF files are supported" },
+                { status: 400 }
+            );
         }
+
+        console.log(`📄 Processing submittal for: ${file.name}`);
+
+        // Call the Azure-native agent
+        const result = await generateSubmittalPackage(file);
+
+        // Return PDF as binary response
+        return new NextResponse(Buffer.from(result.pdfBytes), {
+            status: 200,
+            headers: {
+                "Content-Type": "application/pdf",
+                "Content-Disposition": 'attachment; filename="GreenChainz_Submittal.pdf"',
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+            },
+        });
+    } catch (error) {
+        console.error("❌ Submittal Generation Error:", error);
+
+        const errorMessage =
+            error instanceof Error ? error.message : "Internal server error";
+
+        return NextResponse.json(
+            { error: errorMessage, details: "Check server logs for details" },
+            { status: 500 }
+        );
+    }
+}
