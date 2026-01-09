@@ -21,6 +21,7 @@ const router = express.Router();
 
 const stripeService = require("../../services/payments/stripe");
 const subscriptionService = require("../../services/payments/subscriptions");
+const { webhook: webhookRateLimit } = require("../../middleware/rateLimit");
 
 // ============================================
 // WEBHOOK ENDPOINT
@@ -42,7 +43,7 @@ const subscriptionService = require("../../services/payments/subscriptions");
  * - 400: Invalid signature or malformed request
  * - 500: Processing error
  */
-router.post("/", async (req, res) => {
+router.post("/", webhookRateLimit, async (req, res) => {
   const signature = req.headers["stripe-signature"];
 
   if (!signature) {

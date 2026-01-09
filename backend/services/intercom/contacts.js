@@ -1,5 +1,6 @@
 const { client, mapUserTierToTags } = require('./index');
 const { pool } = require('../../db');
+const { sanitizeForLog } = require('../../utils/sanitize');
 
 /**
  * Supplier tier to Intercom tag mapping
@@ -30,7 +31,7 @@ async function getContact(userId) {
     return null;
   } catch (error) {
     // If 404 or other error, return null or throw
-    console.error(`Error searching contact for user ${userId}:`, error.message);
+    console.error('Error searching contact for user:', sanitizeForLog(userId), 'Error:', error.message);
     return null;
   }
 }

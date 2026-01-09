@@ -7,6 +7,7 @@
 
 const { pool } = require("../../db");
 const monitoring = require("../azure/monitoring");
+const { sanitizeForLog } = require("../../utils/sanitize");
 
 // Tier hierarchy (higher number = more access)
 // Note: "Standard" tier = "pro", "Premium" tier = "enterprise"
@@ -413,7 +414,7 @@ async function setSupplierTier(supplierId, tier) {
   // a getSupplierTier function, we might not need to do much here.
 
   console.log(
-    `[Entitlements] Tier updated for supplier ${supplierId} to ${tier}`
+    '[Entitlements] Tier updated for supplier:', sanitizeForLog(supplierId), 'to:', sanitizeForLog(tier)
   );
   return true;
 }

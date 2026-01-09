@@ -82,6 +82,23 @@ async function start() {
   app.use(lusca.xframe("SAMEORIGIN"));
   app.use(lusca.xssProtection(true));
 
+  // CSRF Protection - Issue #365
+  app.use(lusca.csrf({
+    cookie: {
+      name: '_csrf',
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'strict'
+    },
+    // Exclude external webhooks and health checks from CSRF
+    excludePathPrefixes: [
+      '/api/webhooks',
+      '/health',
+      '/ready',
+      '/diagnose'
+    ]
+  }));
+
   // Rate Limiting
   if (rateLimit && rateLimit.general) {
     app.use("/api/", rateLimit.general);
@@ -116,7 +133,7 @@ async function start() {
    * Returns 200 if the server is running, 503 if critical services unavailable
    * Includes diagnostic info to help troubleshoot deployment issues
    */
-  app.get("/health", async (req, res) => {
+  app.get("/health", rateLimit.health, async (req, res) => {
     const diagnostics = {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -206,7 +223,7 @@ async function start() {
    * Diagnostic endpoint - Simple text output for quick troubleshooting
    * Shows what's missing in plain English
    */
-  app.get("/diagnose", async (req, res) => {
+  app.get("/diagnose", rateLimit.health, async (req, res) => {
     const lines = [];
     lines.push("=== GreenChainz Backend Diagnostics ===");
     lines.push(`Timestamp: ${new Date().toISOString()}`);
@@ -271,7 +288,7 @@ async function start() {
    * Returns 200 only if all critical dependencies are available
    * Used by orchestrators (K8s, Azure Container Apps) for traffic routing
    */
-  app.get("/ready", async (req, res) => {
+  app.get("/ready", rateLimit.health, async (req, res) => {
     const checks = {
       server: serverReady,
       database: false,
@@ -313,6 +330,22 @@ async function start() {
         error: e.message,
       });
     }
+  });
+
+  // ============================================
+  // CSRF TOKEN ENDPOINT
+  // ============================================
+  
+  /**
+   * GET /api/v1/csrf-token
+   * Get CSRF token for authenticated users
+   * This token must be included in state-changing requests (POST, PUT, DELETE)
+   */
+  const { authenticateToken } = require("./middleware/auth");
+  app.get("/api/v1/csrf-token", rateLimit.general, authenticateToken, (req, res) => {
+    res.json({ 
+      csrfToken: res.locals._csrf || req.csrfToken?.() || 'token-unavailable'
+    });
   });
 
   // ============================================

@@ -10,15 +10,7 @@ const router = express.Router();
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const aiGateway = require('../services/ai-gateway');
 const monitoring = require('../services/azure/monitoring');
-const rateLimit = require('express-rate-limit');
-
-// Rate limiter for expensive AI workflow routes
-const aiWorkflowLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
+const { ai: aiRateLimit, admin: adminRateLimit } = require('../middleware/rateLimit');
 
 /**
  * GET /api/v1/ai-gateway/health
@@ -77,7 +69,7 @@ router.get('/entitlements', authenticateToken, async (req, res) => {
  * - version: string (optional) - Specific version
  * - input: object (required) - Input data for the workflow
  */
-router.post('/execute', authenticateToken, async (req, res) => {
+router.post('/execute', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { workflowName, version, input } = req.body;
 
@@ -288,7 +280,7 @@ router.post('/material-alternatives', aiWorkflowLimiter, authenticateToken, asyn
  * POST /api/v1/ai-gateway/carbon-estimate
  * Estimate carbon footprint for a project or material list
  */
-router.post('/carbon-estimate', authenticateToken, async (req, res) => {
+router.post('/carbon-estimate', aiRateLimit, authenticateToken, async (req, res) => {
     try {
         const { materials, projectDetails, transportDistance, region } = req.body;
 
@@ -345,7 +337,7 @@ router.post('/carbon-estimate', authenticateToken, async (req, res) => {
  * POST /api/v1/ai-gateway/compliance-check
  * Check material/product compliance with sustainability standards
  */
-router.post('/compliance-check', authenticateToken, async (req, res) => {
+router.post('/compliance-check', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { materialId, materialName, certifications, standards, context } = req.body;
 
@@ -404,7 +396,7 @@ router.post('/compliance-check', authenticateToken, async (req, res) => {
  * Score and rank RFQ supplier matches
  * Requires: Standard tier (pro) or higher
  */
-router.post('/rfq-score', authenticateToken, async (req, res) => {
+router.post('/rfq-score', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { rfqId, requirements, suppliers, priorities } = req.body;
 
@@ -488,7 +480,7 @@ router.post('/rfq-score', authenticateToken, async (req, res) => {
  * Draft an Intercom outreach message for a supplier
  * Requires: Premium tier (enterprise) for most templates
  */
-router.post('/draft-outreach', authenticateToken, async (req, res) => {
+router.post('/draft-outreach', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { supplierId, rfqId, template, customData, scheduledAt, priority } = req.body;
 
@@ -536,7 +528,7 @@ router.post('/draft-outreach', authenticateToken, async (req, res) => {
  * GET /api/v1/ai-gateway/templates
  * Get available message templates for user's tier
  */
-router.get('/templates', authenticateToken, async (req, res) => {
+router.get('/templates', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const userTier = await aiGateway.entitlements.getUserTier(req.user.id);
         const templates = aiGateway.intercomSender.getAvailableTemplates(userTier);
@@ -561,7 +553,7 @@ router.get('/templates', authenticateToken, async (req, res) => {
  * GET /api/v1/ai-gateway/history
  * Get user's AI call history
  */
-router.get('/history', authenticateToken, async (req, res) => {
+router.get('/history', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { limit = 50, offset = 0, workflowId, status } = req.query;
 
@@ -587,7 +579,7 @@ router.get('/history', authenticateToken, async (req, res) => {
  * GET /api/v1/ai-gateway/usage
  * Get user's usage statistics
  */
-router.get('/usage', authenticateToken, async (req, res) => {
+router.get('/usage', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const days = Math.min(parseInt(req.query.days) || 30, 90);
         const stats = await aiGateway.callLogger.getUsageStats(req.user.id, days);
@@ -611,7 +603,7 @@ router.get('/usage', authenticateToken, async (req, res) => {
  * POST /api/v1/ai-gateway/drafts
  * Create an Intercom draft message
  */
-router.post('/drafts', authenticateToken, async (req, res) => {
+router.post('/drafts', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const {
             workflowId,
@@ -659,7 +651,7 @@ router.post('/drafts', authenticateToken, async (req, res) => {
  * POST /api/v1/ai-gateway/drafts/:draftId/submit
  * Submit a draft for Legal Guardian approval
  */
-router.post('/drafts/:draftId/submit', authenticateToken, async (req, res) => {
+router.post('/drafts/:draftId/submit', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const draft = await aiGateway.intercomSender.submitForApproval(
             parseInt(req.params.draftId),
@@ -680,7 +672,7 @@ router.post('/drafts/:draftId/submit', authenticateToken, async (req, res) => {
  * GET /api/v1/ai-gateway/drafts/pending
  * Get drafts pending approval (Legal Guardians only)
  */
-router.get('/drafts/pending', authenticateToken, async (req, res) => {
+router.get('/drafts/pending', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const drafts = await aiGateway.intercomSender.getPendingApprovals(req.user.id);
 
@@ -699,7 +691,7 @@ router.get('/drafts/pending', authenticateToken, async (req, res) => {
  * POST /api/v1/ai-gateway/drafts/:draftId/approve
  * Approve a draft (Legal Guardians only)
  */
-router.post('/drafts/:draftId/approve', authenticateToken, async (req, res) => {
+router.post('/drafts/:draftId/approve', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { notes } = req.body;
 
@@ -723,7 +715,7 @@ router.post('/drafts/:draftId/approve', authenticateToken, async (req, res) => {
  * POST /api/v1/ai-gateway/drafts/:draftId/reject
  * Reject a draft (Legal Guardians only)
  */
-router.post('/drafts/:draftId/reject', authenticateToken, async (req, res) => {
+router.post('/drafts/:draftId/reject', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { reason } = req.body;
 
@@ -751,7 +743,7 @@ router.post('/drafts/:draftId/reject', authenticateToken, async (req, res) => {
  * POST /api/v1/ai-gateway/drafts/:draftId/send
  * Send an approved draft (triggers Intercom API)
  */
-router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
+router.post('/drafts/:draftId/send', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const result = await aiGateway.intercomSender.sendDraft(
             parseInt(req.params.draftId)
@@ -771,7 +763,7 @@ router.post('/drafts/:draftId/send', authenticateToken, async (req, res) => {
  * GET /api/v1/ai-gateway/drafts/history
  * Get user's draft history
  */
-router.get('/drafts/history', authenticateToken, async (req, res) => {
+router.get('/drafts/history', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { limit, offset, status } = req.query;
 
@@ -796,7 +788,7 @@ router.get('/drafts/history', authenticateToken, async (req, res) => {
  * POST /api/v1/ai-gateway/opt-out
  * Register opt-out for AI messages
  */
-router.post('/opt-out', authenticateToken, async (req, res) => {
+router.post('/opt-out', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { reason } = req.body;
 
@@ -828,6 +820,7 @@ router.post('/opt-out', authenticateToken, async (req, res) => {
 router.get('/admin/analytics', 
     authenticateToken, 
     authorizeRoles('Admin'),
+    adminRateLimit,
     async (req, res) => {
         try {
             const days = parseInt(req.query.days) || 7;
@@ -857,6 +850,7 @@ router.get('/admin/analytics',
 router.post('/admin/workflows',
     authenticateToken,
     authorizeRoles('Admin'),
+    adminRateLimit,
     async (req, res) => {
         try {
             const workflow = await aiGateway.workflowRegistry.registerWorkflow(req.body);
@@ -879,6 +873,7 @@ router.post('/admin/workflows',
 router.patch('/admin/workflows/:workflowId',
     authenticateToken,
     authorizeRoles('Admin'),
+    adminRateLimit,
     async (req, res) => {
         try {
             const workflow = await aiGateway.workflowRegistry.updateWorkflow(
@@ -904,6 +899,7 @@ router.patch('/admin/workflows/:workflowId',
 router.post('/admin/cache/invalidate',
     authenticateToken,
     authorizeRoles('Admin'),
+    adminRateLimit,
     async (req, res) => {
         try {
             const { workflowId, input } = req.body;
@@ -932,6 +928,7 @@ router.post('/admin/cache/invalidate',
 router.post('/admin/drafts/process-scheduled',
     authenticateToken,
     authorizeRoles('Admin'),
+    adminRateLimit,
     async (req, res) => {
         try {
             const results = await aiGateway.intercomSender.processScheduledDrafts();
