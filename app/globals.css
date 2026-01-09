@@ -74,6 +74,22 @@ body {
   --gc-radius-lg: 1rem;
   --gc-radius-xl: 1.25rem;
   --gc-radius-2xl: 1.5rem;
+
+  /* Premium Gradient Stops */
+  --gradient-forest: linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%);
+  --gradient-ocean: linear-gradient(135deg, #0c4a6e 0%, #0891b2 50%, #06b6d4 100%);
+  --gradient-mint: linear-gradient(135deg, #d1fae9 0%, #a7f3d5 50%, #6ee7c2 100%);
+  --gradient-premium: linear-gradient(135deg, #022c22 0%, #064e3b 25%, #047857 50%, #059669 75%, #10b981 100%);
+  --gradient-hero: linear-gradient(135deg, #064e3b 0%, #065f46 20%, #047857 40%, #059669 60%, #0891b2 80%, #06b6d4 100%);
+  
+  /* Glass Effects */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+  
+  /* Premium Shadows */
+  --shadow-premium: 0 10px 40px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 20px 60px rgba(16, 185, 129, 0.2);
 }
 
 /* ---------- Utility Classes ---------- */
@@ -605,6 +621,126 @@ body {
 .gc-stagger-3 { animation-delay: 0.15s; }
 .gc-stagger-4 { animation-delay: 0.2s; }
 .gc-stagger-5 { animation-delay: 0.25s; }
+
+/* ---------- Premium Button Styles ---------- */
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--gc-emerald-600) 0%, var(--gc-emerald-500) 50%, #06b6d4 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: var(--gc-radius-xl);
+  font-weight: 700;
+  font-size: 1.125rem;
+  border: none;
+  cursor: pointer;
+  transform: translateY(0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(5, 150, 105, 0.35), 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-premium:hover::before {
+  left: 100%;
+}
+
+.btn-premium:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ---------- Premium Card Styles ---------- */
+.card-premium {
+  background: linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%);
+  border-radius: var(--gc-radius-2xl);
+  padding: 2rem;
+  box-shadow: var(--shadow-premium);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  transform: translateY(0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-premium:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Glass Card */
+.card-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--gc-radius-2xl);
+  padding: 2rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-glass:hover {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 12px 48px rgba(16, 185, 129, 0.15);
+  transform: translateY(-4px);
+}
+
+/* ---------- Gradient Text ---------- */
+.text-gradient {
+  background: var(--gradient-premium);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-hero {
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ---------- Premium Input Styles ---------- */
+.input-premium {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(226, 232, 240, 1);
+  border-radius: var(--gc-radius-xl);
+  font-size: 0.9375rem;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+}
+
+.input-premium:focus {
+  border-color: var(--gc-emerald-500);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.input-premium:hover {
+  border-color: rgba(203, 213, 225, 1);
+}
+
+/* ---------- Smooth transitions for all interactive elements ---------- */
+button, a, input, select, textarea {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.2s;
+}
 
 /* ---------- Hero Section Specific ---------- */
 .gc-hero-title {
