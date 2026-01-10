@@ -235,6 +235,7 @@ export default function CreateRFQPage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className="w-9 h-9"
+                aria-hidden="true"
               >
                 <polyline points="20,6 9,17 4,12" />
               </svg>
@@ -353,7 +354,15 @@ export default function CreateRFQPage() {
         {/* Main Form Card */}
         <div className="gc-card gc-animate-fade-in p-8">
           {/* Error Message */}
-          {error && <div className="gc-alert gc-alert-error mb-6">{error}</div>}
+          {error && (
+            <div
+              className="gc-alert gc-alert-error mb-6"
+              role="alert"
+              aria-live="polite"
+            >
+              {error}
+            </div>
+          )}
 
           {/* Step 1: Project Details */}
           {currentStep === 1 && (
@@ -594,6 +603,9 @@ export default function CreateRFQPage() {
                       type="button"
                       onClick={() => removeMaterial(index)}
                       className="mt-3 text-[13px] font-semibold text-red-600 bg-transparent border-0 cursor-pointer p-0"
+                      aria-label={`Remove material ${index + 1}${
+                        material.name ? `: ${material.name}` : ""
+                      }`}
                     >
                       − Remove Material
                     </button>
