@@ -2,13 +2,18 @@
   "name": "green-sourcing-b2b-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.18.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test:e2e": "playwright test",
-    "test:api": "jest backend/tests"
+    "test:api": "jest backend/tests",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.0.0",
