@@ -87,24 +87,26 @@ async function start() {
   app.use(helmet());
   app.use(lusca.xframe("SAMEORIGIN"));
   app.use(lusca.xssProtection(true));
-
-  // CSRF Protection - Issue #365
+  
   app.use(lusca.csrf({
-    cookie: {
-      name: '_csrf',
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      sameSite: 'strict'
-    },
-    // Exclude external webhooks, OAuth callbacks, and health checks from CSRF
-    excludePathPrefixes: [
-      '/api/webhooks',
-      '/auth',
-      '/health',
-      '/ready',
-      '/diagnose'
-    ]
-  }));
+  cookie: {
+    name: '_csrf',
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'strict'
+  },
+  // Exclude external webhooks, OAuth callbacks, and health checks from CSRF
+  excludePathPrefixes: [
+    '/api/webhooks',
+    '/auth',
+    '/api/auth/',         // ← ADD THIS LINE
+    '/health',
+    '/ready',
+    '/diagnose'
+  ]
+}));
+
+
 
   // Rate Limiting
   if (rateLimit && rateLimit.general) {
