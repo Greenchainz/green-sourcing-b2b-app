@@ -154,57 +154,33 @@ async function start() {
   app.use(lusca.xframe("SAMEORIGIN"));
   app.use(lusca.xssProtection(true));
   
-  // CSRF protection - exclude auth routes, webhooks, health checks, and GET requests
-  // Note: GET requests typically don't need CSRF protection (CSRF is for state-changing operations)
+  // CSRF protection - API routes use JWT tokens, so CSRF not needed
+  // Only apply CSRF to non-API routes (if any)
   app.use((req, res, next) => {
-    const excludedPaths = [
-      '/api/webhooks',
-      '/auth',
-      '/api/v1/auth',
-      '/health',
-      '/ready',
-      '/diagnose'
-    ];
-    
-    const isExcluded = excludedPaths.some(path => req.path.startsWith(path));
-    const isGetRequest = req.method === 'GET';
-    const isOptionsRequest = req.method === 'OPTIONS';
-    
-    // Skip CSRF for excluded paths, GET requests, and OPTIONS (preflight)
-    if (isExcluded || isGetRequest || isOptionsRequest) {
+    // Skip CSRF for all API routes (they use JWT authentication, not sessions)
+    // Also skip for health checks and OAuth callbacks
+    if (
+      req.path.startsWith('/api/') ||
+      req.path.startsWith('/auth/') ||
+      req.path === '/health' ||
+      req.path === '/ready' ||
+      req.path === '/diagnose' ||
+      req.method === 'GET' ||      // GET requests don't need CSRF
+      req.method === 'OPTIONS' ||  // Preflight requests
+      req.method === 'HEAD'
+    ) {
       return next();
     }
     
-    // For state-changing methods (POST, PUT, DELETE, PATCH), check CSRF token
-    // But only if not in excluded paths (which we already checked above)
-    next();
-  });
-  
-  // Apply CSRF only to state-changing methods on non-excluded paths
-  // Using a more permissive approach: exclude auth routes entirely
-  const csrfMiddleware = lusca.csrf({
-    cookie: {
-      name: '_csrf',
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      sameSite: 'strict'
-    },
-    excludePathPrefixes: [
-      '/api/webhooks',
-      '/auth',
-      '/api/v1/auth',       // All Azure AD authentication routes
-      '/health',
-      '/ready',
-      '/diagnose'
-    ]
-  });
-  
-  // Only apply CSRF to non-GET requests on non-excluded paths
-  app.use((req, res, next) => {
-    if (req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') {
-      return next();
-    }
-    return csrfMiddleware(req, res, next);
+    // For non-API routes with state-changing methods, apply CSRF
+    return lusca.csrf({
+      cookie: {
+        name: '_csrf',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'strict'
+      }
+    })(req, res, next);
   });
 
 
