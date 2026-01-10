@@ -1,3 +1,4 @@
+
 const { Pool } = require('pg');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(process.cwd(), '.env') });
@@ -12,7 +13,6 @@ function shouldUseSsl() {
     const envFlag = (process.env.POSTGRES_SSL || '').toLowerCase() === 'true';
     const prod = process.env.NODE_ENV === 'production';
     const url = connectionString || '';
-    // Common Azure examples include ?sslmode=require
     const sslModeRequire = /sslmode=require/i.test(url);
     const sslTrue = /ssl=true/i.test(url);
     return envFlag || prod || sslModeRequire || sslTrue;
@@ -28,7 +28,7 @@ if (connectionString) {
         host: requireEnv('POSTGRES_HOST'),
         port: Number(process.env.POSTGRES_PORT || 5432),
         user: requireEnv('DB_USER'),
-        password: requireEnv('DB_PASSWORD', { minLength: 12 }),
+        password: process.env.DB_PASSWORD, // Don't require if using Entra ID
         database: requireEnv('DB_NAME')
     };
 } else {
@@ -42,9 +42,6 @@ if (connectionString) {
 }
 
 // Determine if we should use Azure AD (Entra) token authentication.
-// Priority:
-// 1) Explicit opt-in via AZURE_POSTGRES_AAD=true or POSTGRES_AUTH=aad|azure_ad
-// 2) Implicit when connecting to Azure Postgres and no password is configured
 const isAzurePostgresHost = (() => {
     try {
         if (baseConfig && baseConfig.host) return /postgres\.database\.azure\.com/i.test(baseConfig.host);
@@ -63,72 +60,69 @@ const hasExplicitPassword = !!(
     || process.env.POSTGRES_PASSWORD
 );
 
+const shouldUseEntraId = explicitAad || (isAzurePostgresHost && !hasExplicitPassword);
+
+// Initialize password provider for Azure AD authentication
 let passwordProvider;
-if ((explicitAad || (isAzurePostgresHost && !hasExplicitPassword)) && process.env.NODE_ENV === 'production') {
-    // Lazy import to avoid cost in local dev when not needed
+if (shouldUseEntraId) {
+    console.log('🔐 Using Azure Entra ID authentication for PostgreSQL');
     const { DefaultAzureCredential } = require('@azure/identity');
     const credential = new DefaultAzureCredential();
     const scope = 'https://ossrdbms-aad.database.windows.net/.default';
+    
     passwordProvider = async () => {
-        const token = await credential.getToken(scope);
-        if (!token || !token.token) {
-            throw new Error('Failed to acquire Azure AD access token for PostgreSQL');
+        try {
+            const token = await credential.getToken(scope);
+            if (!token || !token.token) {
+                throw new Error('Failed to acquire Azure AD access token for PostgreSQL');
+            }
+            console.log('✅ Azure AD token acquired for PostgreSQL');
+            return token.token;
+        } catch (error) {
+            console.error('❌ Failed to get Azure AD token:', error.message);
+            throw error;
         }
-        return token.token;
     };
 }
 
+// Build final config
 const config = {
     ...baseConfig,
-    // If AAD is enabled, supply dynamic password function for token per-connection
-    ...(passwordProvider ? { password: passwordProvider } : {}),
-    // Optimized pool settings for better performance
-    max: Number(process.env.PGPOOL_MAX || 20),
-    min: Number(process.env.PGPOOL_MIN || 2),
-    idleTimeoutMillis: Number(process.env.PGPOOL_IDLE || 30000),
-    connectionTimeoutMillis: Number(process.env.PGPOOL_CONNECTION_TIMEOUT || 5000),
-    // Statement timeout to prevent long-running queries from blocking
-    statement_timeout: Number(process.env.PGPOOL_STATEMENT_TIMEOUT || 30000),
-    // SSL is required for Azure Database for PostgreSQL in most environments.
-    ssl: shouldUseSsl() ? { rejectUnauthorized: false } : false
+    ssl: shouldUseSsl() ? { rejectUnauthorized: true } : false,
+    max: Number(process.env.POSTGRES_MAX_CONNECTIONS || 20),
+    idleTimeoutMillis: Number(process.env.POSTGRES_IDLE_TIMEOUT_MS || 30000),
+    connectionTimeoutMillis: Number(process.env.POSTGRES_CONNECTION_TIMEOUT_MS || 10000),
 };
 
-// Log configuration (hide password)
-if (process.env.NODE_ENV === 'development') {
-    console.log('📊 Database Config:', {
-        connectionString: connectionString ? '[set]' : '[not set]',
-        host: config.host,
-        port: config.port,
-        user: config.user,
-        database: config.database,
-        ssl: config.ssl ? 'enabled' : 'disabled',
-        poolMax: config.max,
-        poolMin: config.min,
-        auth: passwordProvider ? 'azure-ad-token' : (hasExplicitPassword ? 'password' : 'unspecified')
+// Create pool with async password provider if using Entra ID
+let pool;
+if (passwordProvider) {
+    // For Azure AD, we need to create a custom pool that refreshes tokens
+    pool = new Pool({
+        ...config,
+        password: async () => {
+            return await passwordProvider();
+        }
     });
+} else {
+    pool = new Pool(config);
 }
 
-const pool = new Pool(config);
+// Log connection info (redact sensitive data)
+console.log('📊 PostgreSQL Pool Configuration:');
+console.log(`   Host: ${baseConfig.host || 'from connection string'}`);
+console.log(`   Database: ${baseConfig.database || 'from connection string'}`);
+console.log(`   User: ${baseConfig.user || 'from connection string'}`);
+console.log(`   SSL: ${shouldUseSsl()}`);
+console.log(`   Auth: ${shouldUseEntraId ? 'Azure Entra ID' : 'Password'}`);
 
-pool.on('error', (err) => {
-    console.error('❌ Unexpected PG client error', err);
-});
-
-pool.on('connect', () => {
-    if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Connection to Postgres established');
+// Test connection on startup
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+        console.error('❌ Database connection test failed:', err.message);
+    } else {
+        console.log('✅ Database connected successfully at', res.rows[0].now);
     }
 });
-
-// Log pool statistics periodically for monitoring (development only)
-if (process.env.NODE_ENV !== 'production') {
-    setInterval(() => {
-        console.log('📈 Pool stats:', {
-            total: pool.totalCount,
-            idle: pool.idleCount,
-            waiting: pool.waitingCount
-        });
-    }, 60000); // Log every minute
-}
 
 module.exports = { pool };
