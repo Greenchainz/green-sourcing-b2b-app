@@ -56,9 +56,18 @@ async function start() {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
+  
+  // Add Azure Container Apps frontend URL pattern (dynamic subdomains)
+  const azureContainerAppsPattern = /^https:\/\/.*\.azurecontainerapps\.io$/;
+  const greenchainzDomains = [
+    "https://greenchainz.com",
+    "https://www.greenchainz.com",
+  ];
+  
   const allowedOrigins = new Set([
     ...defaultAllowedOrigins,
     ...configuredAllowedOrigins,
+    ...greenchainzDomains,
   ]);
 
   app.use(
@@ -67,7 +76,13 @@ async function start() {
         // Allow same-origin, server-to-server, and health checks with no Origin header
         if (!origin) return callback(null, true);
 
+        // Check exact match first
         if (allowedOrigins.has(origin)) return callback(null, true);
+
+        // Allow Azure Container Apps subdomains (for frontend container app)
+        if (azureContainerAppsPattern.test(origin)) {
+          return callback(null, true);
+        }
 
         return callback(new Error(`CORS blocked for origin: ${origin}`));
       },
