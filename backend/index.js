@@ -188,28 +188,29 @@ async function start() {
       '/diagnose'         // Diagnostics (no auth)
     ];
     
+    // Special case: /api/v1/csrf-token NEEDS CSRF middleware to generate tokens
+    // This endpoint is handled separately with explicit CSRF middleware application
+    // So we skip it here to avoid double-application
+    if (req.path === '/api/v1/csrf-token') {
+      return next();
+    }
+    
     // Check if current path should be excluded (exact match or starts with)
     const isExcluded = excludedPaths.some(path => req.path.startsWith(path));
     
-    // Special case: /api/v1/csrf-token NEEDS CSRF middleware to generate tokens
-    const isCsrfTokenEndpoint = req.path === '/api/v1/csrf-token';
-    
-    // Skip CSRF for excluded paths (but NOT for csrf-token endpoint)
-    // Also skip for GET/OPTIONS/HEAD on non-csrf-token endpoints
-    if (isExcluded && !isCsrfTokenEndpoint) {
+    // Skip CSRF for excluded paths
+    if (isExcluded) {
       return next();
     }
     
-    // For GET requests to non-excluded paths (except csrf-token), skip CSRF check
-    // CSRF tokens are typically needed for state-changing methods, but we generate
-    // them via GET /api/v1/csrf-token which needs the middleware to populate tokens
-    if ((req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') && !isCsrfTokenEndpoint) {
+    // For GET/OPTIONS/HEAD requests to non-excluded paths, skip CSRF check
+    // CSRF tokens are typically needed for state-changing methods only
+    if (req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') {
       return next();
     }
     
-    // Apply CSRF protection:
-    // 1. For /api/v1/csrf-token endpoint (to generate tokens)
-    // 2. For state-changing methods (POST, PUT, DELETE, PATCH) on non-excluded paths
+    // Apply CSRF protection only to state-changing methods (POST, PUT, DELETE, PATCH)
+    // on non-excluded paths
     return csrfMiddleware(req, res, next);
   });
 
@@ -456,11 +457,33 @@ async function start() {
    * GET /api/v1/csrf-token
    * Get CSRF token for authenticated users
    * This token must be included in state-changing requests (POST, PUT, DELETE)
+   * 
+   * CRITICAL: This endpoint MUST have CSRF middleware applied to generate tokens.
+   * The conditional CSRF middleware at lines 169-214 should allow this through,
+   * but we explicitly apply it here as well to ensure tokens are always populated.
+   * For GET requests, lusca.csrf() generates and populates tokens without validating.
    */
   const { authenticateToken } = require("./middleware/auth");
-  app.get("/api/v1/csrf-token", rateLimit.general, authenticateToken, (req, res) => {
-    res.json({ 
-      csrfToken: res.locals._csrf || req.csrfToken?.() || 'token-unavailable'
+  app.get("/api/v1/csrf-token", rateLimit.general, authenticateToken, (req, res, next) => {
+    // Explicitly apply CSRF middleware for this endpoint to ensure token generation
+    // For GET requests, this generates the token without validation
+    return csrfMiddleware(req, res, (err) => {
+      if (err) {
+        // CSRF validation error - but this shouldn't happen for GET requests
+        console.error('[CSRF Token] CSRF middleware error:', err.message);
+        return res.status(500).json({ error: 'Failed to generate CSRF token' });
+      }
+      
+      // Token should now be in res.locals._csrf or available via req.csrfToken()
+      const token = res.locals._csrf || (typeof req.csrfToken === 'function' ? req.csrfToken() : null);
+      
+      if (!token) {
+        console.warn('[CSRF Token] Warning: CSRF token not populated by middleware after explicit application');
+      }
+      
+      res.json({ 
+        csrfToken: token || 'token-unavailable'
+      });
     });
   });
 
