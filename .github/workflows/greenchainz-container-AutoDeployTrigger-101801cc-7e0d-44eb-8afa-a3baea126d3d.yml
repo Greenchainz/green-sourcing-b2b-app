@@ -1,0 +1,49 @@
+name: Trigger auto deployment for greenchainz-container
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/greenchainz-container-AutoDeployTrigger-101801cc-7e0d-44eb-8afa-a3baea126d3d.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.GREENCHAINZCONTAINER_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.GREENCHAINZCONTAINER_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.GREENCHAINZCONTAINER_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          _targetLabelKey_: _targetLabel_
+          registryUrl: acrgreenchainzprod916.azurecr.io
+          registryUsername: ${{ secrets.GREENCHAINZCONTAINER_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.GREENCHAINZCONTAINER_REGISTRY_PASSWORD }}
+          containerAppName: greenchainz-container
+          resourceGroup: rg-greenchainz
+          imageToBuild: acrgreenchainzprod916.azurecr.io/greenchainz-container:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
