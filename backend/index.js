@@ -465,20 +465,41 @@ async function start() {
    */
   const { authenticateToken } = require("./middleware/auth");
   app.get("/api/v1/csrf-token", rateLimit.general, authenticateToken, (req, res, next) => {
+    // CRITICAL: Ensure session exists for CSRF token generation
+    // With saveUninitialized: false, we need to explicitly initialize the session
+    // by touching it before CSRF middleware runs
+    if (!req.session) {
+      req.session = {};
+    }
+    // Touch session to ensure it's saved (required for saveUninitialized: false)
+    req.session.csrfTokenRequested = true;
+    
     // Explicitly apply CSRF middleware for this endpoint to ensure token generation
-    // For GET requests, this generates the token without validation
+    // For GET requests, lusca.csrf() generates the token without validation
+    // It stores the token in the session and populates res.locals._csrf
     return csrfMiddleware(req, res, (err) => {
       if (err) {
-        // CSRF validation error - but this shouldn't happen for GET requests
+        // CSRF validation error - shouldn't happen for GET requests
         console.error('[CSRF Token] CSRF middleware error:', err.message);
-        return res.status(500).json({ error: 'Failed to generate CSRF token' });
+        return res.status(500).json({ error: 'Failed to generate CSRF token', details: err.message });
       }
       
-      // Token should now be in res.locals._csrf or available via req.csrfToken()
-      const token = res.locals._csrf || (typeof req.csrfToken === 'function' ? req.csrfToken() : null);
+      // CSRF middleware should have populated res.locals._csrf for GET requests
+      // Also check req.csrfToken() function which lusca provides
+      let token = res.locals._csrf;
+      
+      if (!token && typeof req.csrfToken === 'function') {
+        try {
+          token = req.csrfToken();
+        } catch (tokenErr) {
+          console.warn('[CSRF Token] req.csrfToken() failed:', tokenErr.message);
+        }
+      }
       
       if (!token) {
-        console.warn('[CSRF Token] Warning: CSRF token not populated by middleware after explicit application');
+        console.warn('[CSRF Token] Warning: CSRF token not populated by middleware');
+        console.warn('[CSRF Token] Session ID:', req.sessionID);
+        console.warn('[CSRF Token] Session exists:', !!req.session);
       }
       
       res.json({ 
