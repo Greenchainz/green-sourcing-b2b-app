@@ -155,8 +155,8 @@ async function start() {
   app.use(lusca.xssProtection(true));
   
   // CSRF protection - exclude auth routes, webhooks, health checks, and GET requests
+  // Note: GET requests typically don't need CSRF protection (CSRF is for state-changing operations)
   app.use((req, res, next) => {
-    // Skip CSRF for excluded paths and GET requests (CSRF typically only needed for state-changing methods)
     const excludedPaths = [
       '/api/webhooks',
       '/auth',
@@ -170,19 +170,41 @@ async function start() {
     const isGetRequest = req.method === 'GET';
     const isOptionsRequest = req.method === 'OPTIONS';
     
+    // Skip CSRF for excluded paths, GET requests, and OPTIONS (preflight)
     if (isExcluded || isGetRequest || isOptionsRequest) {
       return next();
     }
     
-    // For other methods on protected paths, use Lusca CSRF
-    return lusca.csrf({
-      cookie: {
-        name: '_csrf',
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'strict'
-      }
-    })(req, res, next);
+    // For state-changing methods (POST, PUT, DELETE, PATCH), check CSRF token
+    // But only if not in excluded paths (which we already checked above)
+    next();
+  });
+  
+  // Apply CSRF only to state-changing methods on non-excluded paths
+  // Using a more permissive approach: exclude auth routes entirely
+  const csrfMiddleware = lusca.csrf({
+    cookie: {
+      name: '_csrf',
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'strict'
+    },
+    excludePathPrefixes: [
+      '/api/webhooks',
+      '/auth',
+      '/api/v1/auth',       // All Azure AD authentication routes
+      '/health',
+      '/ready',
+      '/diagnose'
+    ]
+  });
+  
+  // Only apply CSRF to non-GET requests on non-excluded paths
+  app.use((req, res, next) => {
+    if (req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') {
+      return next();
+    }
+    return csrfMiddleware(req, res, next);
   });
 
 
