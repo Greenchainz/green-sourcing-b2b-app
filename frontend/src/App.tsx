@@ -35,11 +35,27 @@ import Projects from "./pages/BuyerDashboard/Projects";
 import ProjectDetail from "./pages/BuyerDashboard/ProjectDetail";
 
 import Intercom from "@intercom/messenger-js-sdk";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { bootIntercom, shutdownIntercom } from "./lib/intercom";
+import { User } from "./types/auth";
 
 function App() {
+  // User state - in a real app this would come from auth context
+  const [user, setUser] = useState<User | null>(null);
+
   useEffect(() => {
-    const appId = import.meta.env.VITE_INTERCOM_APP_ID || "w0p2831g";
+    if (user) {
+      // Boot Intercom when user logs in (with secure identity verification)
+      bootIntercom(user);
+    } else {
+      // Shutdown Intercom when user logs out
+      shutdownIntercom();
+    }
+  }, [user]);
+
+  // Fallback: Initialize Intercom for anonymous users
+  useEffect(() => {
+    const appId = import.meta.env.VITE_INTERCOM_APP_ID || "cqtm1euj";
 
     if (!appId) {
       console.warn(
@@ -48,20 +64,23 @@ function App() {
       return;
     }
 
-    try {
-      const result = Intercom({
-        app_id: appId, // Fallback or env
-      });
-
-      if (result && typeof (result as any).catch === "function") {
-        (result as any).catch((error: unknown) => {
-          console.error("Intercom initialization failed (async):", error);
+    // Only boot anonymous if no user is logged in
+    if (!user) {
+      try {
+        const result = Intercom({
+          app_id: appId, // Fallback or env
         });
+
+        if (result && typeof (result as any).catch === "function") {
+          (result as any).catch((error: unknown) => {
+            console.error("Intercom initialization failed (async):", error);
+          });
+        }
+      } catch (error) {
+        console.error("Intercom initialization threw an error:", error);
       }
-    } catch (error) {
-      console.error("Intercom initialization threw an error:", error);
     }
-  }, []);
+  }, [user]);
 
   return (
     <ErrorBoundary>
