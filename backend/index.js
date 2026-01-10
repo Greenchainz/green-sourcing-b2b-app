@@ -99,7 +99,7 @@ async function start() {
   excludePathPrefixes: [
     '/api/webhooks',
     '/auth',
-    '/api/auth/',         // ← ADD THIS LINE
+    '/api/v1/auth',       // Azure AD authentication routes
     '/health',
     '/ready',
     '/diagnose'
