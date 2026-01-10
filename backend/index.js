@@ -154,23 +154,36 @@ async function start() {
   app.use(lusca.xframe("SAMEORIGIN"));
   app.use(lusca.xssProtection(true));
   
-  app.use(lusca.csrf({
-   cookie: {
-    name: '_csrf',
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'strict'
-   },
-  // Exclude external webhooks, OAuth callbacks, and health checks from CSRF
-  excludePathPrefixes: [
-    '/api/webhooks',
-    '/auth',
-    '/api/v1/auth',       // Azure AD authentication routes
-    '/health',
-    '/ready',
-    '/diagnose'
-  ]
-}));
+  // CSRF protection - exclude auth routes, webhooks, health checks, and GET requests
+  app.use((req, res, next) => {
+    // Skip CSRF for excluded paths and GET requests (CSRF typically only needed for state-changing methods)
+    const excludedPaths = [
+      '/api/webhooks',
+      '/auth',
+      '/api/v1/auth',
+      '/health',
+      '/ready',
+      '/diagnose'
+    ];
+    
+    const isExcluded = excludedPaths.some(path => req.path.startsWith(path));
+    const isGetRequest = req.method === 'GET';
+    const isOptionsRequest = req.method === 'OPTIONS';
+    
+    if (isExcluded || isGetRequest || isOptionsRequest) {
+      return next();
+    }
+    
+    // For other methods on protected paths, use Lusca CSRF
+    return lusca.csrf({
+      cookie: {
+        name: '_csrf',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'strict'
+      }
+    })(req, res, next);
+  });
 
 
 
