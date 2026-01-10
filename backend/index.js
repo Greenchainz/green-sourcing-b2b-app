@@ -84,7 +84,58 @@ async function start() {
   app.use(passport.session());
 
   // Security Headers (Helmet + Lusca)
-  app.use(helmet());
+  // Configure CSP to allow required third-party scripts (Ketch, Intercom, Stripe)
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "'unsafe-eval'", // Required for some third-party scripts
+            "https://js.stripe.com",
+            "https://m.stripe.network",
+            "https://global.ketchcdn.com",
+            "https://cdn.ketchjs.com", // Ketch SDK
+            "https://widget.intercom.io", // Intercom widget
+            "https://js.intercomcdn.com", // Intercom CDN
+            "https://cdn.intercom.io", // Intercom CDN
+          ],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+          ],
+          fontSrc: [
+            "'self'",
+            "https://fonts.gstatic.com",
+          ],
+          imgSrc: [
+            "'self'",
+            "data:",
+            "https:",
+          ],
+          connectSrc: [
+            "'self'",
+            "https://api.stripe.com",
+            "https://api.ketch.com",
+            "https://api.intercom.io",
+            "https://widget.intercom.io",
+            "https://*.ketchjs.com",
+            "https://*.ketchcdn.com",
+          ],
+          frameSrc: [
+            "'self'",
+            "https://js.stripe.com",
+            "https://hooks.stripe.com",
+            "https://widget.intercom.io",
+          ],
+        },
+      },
+      crossOriginEmbedderPolicy: false, // Disable CEP to allow third-party widgets
+    })
+  );
   app.use(lusca.xframe("SAMEORIGIN"));
   app.use(lusca.xssProtection(true));
   
