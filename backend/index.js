@@ -89,12 +89,12 @@ async function start() {
   app.use(lusca.xssProtection(true));
   
   app.use(lusca.csrf({
-  cookie: {
+   cookie: {
     name: '_csrf',
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'strict'
-  },
+   },
   // Exclude external webhooks, OAuth callbacks, and health checks from CSRF
   excludePathPrefixes: [
     '/api/webhooks',
