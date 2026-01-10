@@ -22,8 +22,8 @@ interface ExtractionResult {
 export default function SubmittalGeneratorPage() {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [fileName, setFileName] = useState<string | null>(null);
-    const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
+    const [_fileName, setFileName] = useState<string | null>(null);
+    const [_extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
     const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
     const [stage, setStage] = useState<"upload" | "processing" | "results" | "complete">("upload");
 
@@ -64,8 +64,8 @@ export default function SubmittalGeneratorPage() {
             const url = URL.createObjectURL(blob);
             setDownloadUrl(url);
             setStage("complete");
-        } catch (e: any) {
-            setError(e?.message || "Unexpected error");
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Unexpected error");
             setStage("upload");
         } finally {
             setUploading(false);

@@ -2,9 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
-import SiteHeader from './components/SiteHeader'
-import Footer from './components/Footer'
-import IntercomWidget from './components/IntercomWidget'
 import { LayoutContent } from './LayoutContent'
 
 const inter = Inter({

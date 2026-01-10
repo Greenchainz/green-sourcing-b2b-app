@@ -3,6 +3,12 @@
 import { useEffect } from 'react'
 import Intercom from '@intercom/messenger-js-sdk'
 
+// Type for Ketch consent object
+interface KetchConsent {
+    functional?: boolean | { consented?: boolean };
+    marketing?: boolean | { consented?: boolean };
+}
+
 interface IntercomWidgetProps {
     user?: {
         id: string
@@ -37,21 +43,31 @@ export default function IntercomWidget({ user }: IntercomWidgetProps) {
         }
 
         const shutdownIntercom = () => {
-            if (typeof window !== 'undefined' && (window as any).Intercom) {
-                ; (window as any).Intercom('shutdown')
+            if (typeof window !== 'undefined') {
+                const win = window as Window & { Intercom?: (command: string) => void };
+                if (win.Intercom) {
+                    win.Intercom('shutdown')
+                }
             }
         }
 
         const tryBootWithConsent = async () => {
-            const ketch = (typeof window !== 'undefined' ? (window as any).ketch : undefined)
+            const win = typeof window !== 'undefined' ? window as Window & { ketch?: { getConsent: () => Promise<KetchConsent> } } : undefined
+            const ketch = win?.ketch
             if (!ketch || typeof ketch.getConsent !== 'function') {
                 console.info('[Intercom] Ketch not detected; skipping consent gate')
                 return // Do not boot if consent is required but Ketch is unavailable
             }
             try {
                 const consent = await ketch.getConsent()
-                const functional = !!(consent?.functional?.consented ?? consent?.functional)
-                const marketing = !!(consent?.marketing?.consented ?? consent?.marketing)
+                const functionalConsent = consent?.functional
+                const marketingConsent = consent?.marketing
+                const functional = typeof functionalConsent === 'boolean' 
+                    ? functionalConsent 
+                    : !!(functionalConsent && typeof functionalConsent === 'object' && 'consented' in functionalConsent ? functionalConsent.consented : false)
+                const marketing = typeof marketingConsent === 'boolean'
+                    ? marketingConsent
+                    : !!(marketingConsent && typeof marketingConsent === 'object' && 'consented' in marketingConsent ? marketingConsent.consented : false)
                 if (functional || marketing) {
                     bootIntercom()
                 } else {
@@ -67,9 +83,9 @@ export default function IntercomWidget({ user }: IntercomWidgetProps) {
             tryBootWithConsent()
             // Listen for consent change events (event name may vary by Ketch setup)
             const handler = () => tryBootWithConsent()
-            window.addEventListener('ketch:consent', handler as any)
+            window.addEventListener('ketch:consent', handler as EventListener)
             return () => {
-                window.removeEventListener('ketch:consent', handler as any)
+                window.removeEventListener('ketch:consent', handler as EventListener)
                 shutdownIntercom()
             }
         } else {
