@@ -154,34 +154,24 @@ async function start() {
   app.use(lusca.xframe("SAMEORIGIN"));
   app.use(lusca.xssProtection(true));
   
-  // CSRF protection - API routes use JWT tokens, so CSRF not needed
-  // Only apply CSRF to non-API routes (if any)
-  app.use((req, res, next) => {
-    // Skip CSRF for all API routes (they use JWT authentication, not sessions)
-    // Also skip for health checks and OAuth callbacks
-    if (
-      req.path.startsWith('/api/') ||
-      req.path.startsWith('/auth/') ||
-      req.path === '/health' ||
-      req.path === '/ready' ||
-      req.path === '/diagnose' ||
-      req.method === 'GET' ||      // GET requests don't need CSRF
-      req.method === 'OPTIONS' ||  // Preflight requests
-      req.method === 'HEAD'
-    ) {
-      return next();
-    }
-    
-    // For non-API routes with state-changing methods, apply CSRF
-    return lusca.csrf({
-      cookie: {
-        name: '_csrf',
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'strict'
-      }
-    })(req, res, next);
-  });
+  // CSRF protection - API routes use JWT tokens (not session-based), so CSRF not needed
+  // Disable CSRF for all API routes and health checks
+  // Only enable CSRF for non-API routes that might use session-based auth (if any)
+  app.use(lusca.csrf({
+    cookie: {
+      name: '_csrf',
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'strict'
+    },
+    excludePathPrefixes: [
+      '/api/',           // All API routes (use JWT, not sessions)
+      '/auth/',          // OAuth callbacks
+      '/health',
+      '/ready',
+      '/diagnose'
+    ]
+  }));
 
 
 
