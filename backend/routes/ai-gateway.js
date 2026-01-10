@@ -137,7 +137,7 @@ router.post('/execute', authenticateToken, aiRateLimit, async (req, res) => {
  * Output:
  * - alternatives: array of top 5 alternatives with sustainability comparison
  */
-router.post('/material-alternatives', aiWorkflowLimiter, authenticateToken, async (req, res) => {
+router.post('/material-alternatives', authenticateToken, aiRateLimit, async (req, res) => {
     try {
         const { 
             materialId, 
