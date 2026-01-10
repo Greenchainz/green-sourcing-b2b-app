@@ -168,23 +168,48 @@ async function start() {
   
   app.use((req, res, next) => {
     // Define paths that should NOT have CSRF protection
+    // NOTE: Most API routes use JWT authentication, so CSRF not needed
+    // EXCEPTION: /api/v1/csrf-token needs CSRF middleware to generate tokens
     const excludedPaths = [
-      '/api/',        // All API routes (use JWT, not sessions)
-      '/auth/',       // OAuth callbacks
-      '/health',
-      '/ready',
-      '/diagnose'
+      '/api/v1/auth',     // Auth routes (use JWT)
+      '/api/v1/ai',       // AI routes (use JWT)
+      '/api/v1/rfqs',     // RFQ routes (use JWT)
+      '/api/v1/uploads',  // Upload routes (use JWT)
+      '/api/v1/verification', // Verification routes (use JWT)
+      '/api/v1/subscriptions', // Subscription routes (use JWT)
+      '/api/v1/intercom', // Intercom routes (use JWT)
+      '/api/v1/scoring',  // Scoring routes (use JWT)
+      '/api/internal',    // Internal API routes (use INTERNAL_API_KEY)
+      '/api/integrations', // Integration routes (use JWT)
+      '/api/webhooks',    // Webhook routes (use webhook signatures)
+      '/auth/',           // OAuth callbacks (use OAuth flow)
+      '/health',          // Health checks (no auth)
+      '/ready',           // Readiness checks (no auth)
+      '/diagnose'         // Diagnostics (no auth)
     ];
     
-    // Check if current path should be excluded
+    // Check if current path should be excluded (exact match or starts with)
     const isExcluded = excludedPaths.some(path => req.path.startsWith(path));
     
-    // Skip CSRF for excluded paths, GET requests (read-only), and OPTIONS (preflight)
-    if (isExcluded || req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') {
+    // Special case: /api/v1/csrf-token NEEDS CSRF middleware to generate tokens
+    const isCsrfTokenEndpoint = req.path === '/api/v1/csrf-token';
+    
+    // Skip CSRF for excluded paths (but NOT for csrf-token endpoint)
+    // Also skip for GET/OPTIONS/HEAD on non-csrf-token endpoints
+    if (isExcluded && !isCsrfTokenEndpoint) {
       return next();
     }
     
-    // Apply CSRF protection only to state-changing methods on non-excluded paths
+    // For GET requests to non-excluded paths (except csrf-token), skip CSRF check
+    // CSRF tokens are typically needed for state-changing methods, but we generate
+    // them via GET /api/v1/csrf-token which needs the middleware to populate tokens
+    if ((req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') && !isCsrfTokenEndpoint) {
+      return next();
+    }
+    
+    // Apply CSRF protection:
+    // 1. For /api/v1/csrf-token endpoint (to generate tokens)
+    // 2. For state-changing methods (POST, PUT, DELETE, PATCH) on non-excluded paths
     return csrfMiddleware(req, res, next);
   });
 
