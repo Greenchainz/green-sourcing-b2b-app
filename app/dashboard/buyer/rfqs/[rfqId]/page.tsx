@@ -6,8 +6,20 @@ import { useParams } from "next/navigation";
 import QuoteCard from "../../../../components/buyer/QuoteCard";
 import QuoteCompare from "../../../../components/buyer/QuoteCompare";
 
+// Type for quote data
+interface Quote {
+  id: string;
+  supplierName: string;
+  supplierTier: string;
+  supplierVerified: boolean;
+  price: number;
+  leadTimeWeeks: number;
+  carbonScore: number;
+  productName: string;
+}
+
 // Mock Data
-const MOCK_QUOTES = [
+const MOCK_QUOTES: Quote[] = [
   {
     id: "Q-101",
     supplierName: "EcoSteel Corp",
@@ -119,7 +131,7 @@ export default function RFQDetailPage() {
         <div className="mb-10 animate-fade-in-up">
           <h2 className="gc-section-title mb-4">Quote Comparison</h2>
           {/* Cast mock data to match component props loosely for demo */}
-          <QuoteCompare quotes={MOCK_QUOTES as any} onAward={handleAward} />
+          <QuoteCompare quotes={MOCK_QUOTES as Parameters<typeof QuoteCompare>[0]['quotes']} onAward={handleAward} />
         </div>
 
         {/* Detailed Quote Cards */}
@@ -131,7 +143,7 @@ export default function RFQDetailPage() {
             {MOCK_QUOTES.map((quote) => (
               <QuoteCard
                 key={quote.id}
-                quote={quote as any}
+                quote={quote as unknown as Parameters<typeof QuoteCard>[0]['quote']}
                 onAward={handleAward}
                 onViewDetails={handleViewDetails}
               />

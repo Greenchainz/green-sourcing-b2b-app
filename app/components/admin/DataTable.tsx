@@ -17,7 +17,7 @@ interface DataTableProps<T> {
   filterComponent?: React.ReactNode;
 }
 
-export default function DataTable<T extends Record<string, any>>({
+export default function DataTable<T extends Record<string, unknown>>({
   data,
   columns,
   keyField,
@@ -130,7 +130,7 @@ export default function DataTable<T extends Record<string, any>>({
                 >
                   {columns.map((col, colIdx) => (
                     <td key={colIdx} className="p-4 text-sm text-slate-700">
-                      {col.render ? col.render(row) : row[col.key as keyof T]}
+                      {col.render ? col.render(row) : String(row[col.key as keyof T] ?? '')}
                     </td>
                   ))}
                 </tr>

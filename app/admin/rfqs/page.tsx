@@ -74,7 +74,7 @@ export default function AdminRFQsPage() {
     {
       key: "actions",
       header: "",
-      render: (r) => (
+      render: (_r) => (
         <div className="flex justify-end gap-2">
           <button className="gc-btn gc-btn-ghost text-xs py-1 px-2 h-auto">
             View

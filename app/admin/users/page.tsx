@@ -74,7 +74,7 @@ export default function AdminUsersPage() {
     {
       key: "actions",
       header: "",
-      render: (u) => (
+      render: (_u) => (
         <div className="flex justify-end gap-2">
           <button className="text-xs font-semibold text-slate-500 hover:text-emerald-600">
             Edit

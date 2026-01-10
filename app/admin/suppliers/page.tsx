@@ -70,7 +70,7 @@ export default function AdminSuppliersPage() {
     {
       key: "actions",
       header: "",
-      render: (s) => (
+      render: (_s) => (
         <div className="flex justify-end gap-2">
           <button className="text-xs text-slate-500 underline hover:text-emerald-600">
             Details

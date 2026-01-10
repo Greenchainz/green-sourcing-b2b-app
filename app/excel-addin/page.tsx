@@ -23,8 +23,8 @@ export default function ExcelTaskPane() {
     // Initialize Office.js
     useEffect(() => {
         const initializeOffice = async () => {
-            if (typeof window !== "undefined" && (window as any).Office) {
-                (window as any).Office.onReady(() => {
+            if (typeof window !== "undefined" && typeof Office !== "undefined") {
+                Office.onReady(() => {
                     setMessage("GreenChainz loaded. Select a column of materials to begin.");
                 });
             }
@@ -33,7 +33,7 @@ export default function ExcelTaskPane() {
     }, []);
 
     const handleAudit = async () => {
-        if (!((window as any).Excel)) {
+        if (typeof Excel === "undefined") {
             setMessage("Excel library not loaded. Please ensure you're running Excel Online or Office 365.");
             return;
         }
@@ -42,7 +42,7 @@ export default function ExcelTaskPane() {
         setMessage("Fetching materials from selection...");
 
         try {
-            await (window as any).Excel.run(async (context: any) => {
+            await Excel.run(async (context) => {
                 // Get the selected range
                 const range = context.workbook.getSelectedRange();
                 range.load("values, rowCount, columnCount");
@@ -56,9 +56,9 @@ export default function ExcelTaskPane() {
 
                 // Extract materials (assumes single column selection)
                 const materials = range.values
-                    .map((row: any[]) => row[0])
-                    .filter((item: any) => item && String(item).trim().length > 0)
-                    .map((item: any) => String(item).trim());
+                    .map((row: unknown[]) => row[0])
+                    .filter((item: unknown) => item && String(item).trim().length > 0)
+                    .map((item: unknown) => String(item).trim());
 
                 setSelectedCount(materials.length);
                 setMessage(`Auditing ${materials.length} materials...`);

@@ -4,8 +4,6 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import CertificationBadge, { CertificationBadgeGroup, type CertificationType } from '../../components/catalog/CertificationBadge'
-import SustainabilityScore from '../../components/catalog/SustainabilityScore'
 
 // Types
 interface MaterialDetail {
@@ -269,7 +267,7 @@ function SupplierCard({ supplier }: { supplier: MaterialDetail['suppliers'][0] }
 
 export default function MaterialDetailPage() {
   const params = useParams()
-  const materialId = params.materialId as string
+  const _materialId = params.materialId as string
   const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'suppliers'>('overview')
   
   // In production, this would fetch from API
