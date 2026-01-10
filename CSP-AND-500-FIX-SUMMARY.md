@@ -47,7 +47,7 @@ const azureContainerAppsPattern = /^https:\/\/.*\.azurecontainerapps\.io$/;
 
 ---
 
-### 3. **CSRF Token Error - Auth Routes Blocked**
+### 3. **CSRF Token Error - Auth Routes Blocked** ⚠️ **CRITICAL FIX**
 **Problem:**
 ```
 Error: CSRF token missing
@@ -55,28 +55,45 @@ Error: CSRF token missing
 
 **Root Cause:**
 - Lusca CSRF middleware was blocking `/api/v1/auth/me` and other auth endpoints
-- `excludePathPrefixes` configuration wasn't working as expected
+- **CRITICAL BUG:** `excludePathPrefixes` option does NOT exist in lusca 1.7.0
+- The invalid option was silently ignored, causing CSRF to apply to ALL routes
 - CSRF protection is not needed for API routes using JWT authentication
 
 **Fix:**
-- ✅ Updated CSRF configuration to exclude all `/api/` routes (JWT-based, not session-based)
+- ✅ **CRITICAL FIX:** `excludePathPrefixes` option does NOT exist in lusca 1.7.0 - must exclude manually
+- ✅ Updated CSRF to apply conditionally based on path (manually check exclusions)
+- ✅ Excluded all `/api/` routes (JWT-based, not session-based)
 - ✅ Excluded `/auth/` routes for OAuth callbacks
 - ✅ Excluded health check endpoints
+- ✅ Skip CSRF for GET, OPTIONS, and HEAD requests (read-only/preflight)
 
 **Files Changed:**
-- `backend/index.js` (lines 157-174)
+- `backend/index.js` (lines 154-186)
 
 **Changes Made:**
 ```javascript
-app.use(lusca.csrf({
-  excludePathPrefixes: [
-    '/api/',      // All API routes (use JWT, not sessions)
-    '/auth/',     // OAuth callbacks
-    '/health',
-    '/ready',
-    '/diagnose'
-  ]
-}));
+// IMPORTANT: lusca 1.7.0 does NOT support excludePathPrefixes - must exclude manually
+const csrfMiddleware = lusca.csrf({
+  cookie: {
+    name: '_csrf',
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'strict'
+  }
+});
+
+app.use((req, res, next) => {
+  const excludedPaths = ['/api/', '/auth/', '/health', '/ready', '/diagnose'];
+  const isExcluded = excludedPaths.some(path => req.path.startsWith(path));
+  
+  // Skip CSRF for excluded paths, GET/OPTIONS/HEAD requests
+  if (isExcluded || req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') {
+    return next();
+  }
+  
+  // Apply CSRF only to state-changing methods on non-excluded paths
+  return csrfMiddleware(req, res, next);
+});
 ```
 
 ---
@@ -243,7 +260,7 @@ After deployment:
 1. **backend/index.js**
    - Lines 51-85: CORS configuration (added Azure Container Apps pattern)
    - Lines 88-153: CSP configuration (added Ketch and Intercom domains)
-   - Lines 157-174: CSRF configuration (excluded all `/api/` routes)
+   - Lines 154-188: CSRF configuration (**CRITICAL FIX**: manually exclude paths - `excludePathPrefixes` doesn't exist in lusca 1.7.0)
 
 2. **next.config.js**
    - Line 45: CSP header (added Ketch and Intercom domains)
@@ -261,8 +278,13 @@ After deployment:
 
 **Risk Factors:**
 - Frontend deployment might need manual rebuild if using different deployment method
-- Need to verify Lusca `excludePathPrefixes` works with wildcards
+- ~~Need to verify Lusca `excludePathPrefixes` works with wildcards~~ ✅ **FIXED**: Manual path exclusion implemented (option doesn't exist)
 - Azure Container Apps subdomain pattern might need adjustment if domain structure differs
+
+**Critical Fix Applied:**
+- ✅ **CRITICAL:** Fixed CSRF configuration - `excludePathPrefixes` option does NOT exist in lusca 1.7.0
+- ✅ Implemented manual path exclusion middleware (proper fix)
+- ✅ All `/api/` routes now correctly excluded from CSRF protection
 
 ---
 

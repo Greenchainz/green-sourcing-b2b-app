@@ -155,23 +155,38 @@ async function start() {
   app.use(lusca.xssProtection(true));
   
   // CSRF protection - API routes use JWT tokens (not session-based), so CSRF not needed
-  // Disable CSRF for all API routes and health checks
-  // Only enable CSRF for non-API routes that might use session-based auth (if any)
-  app.use(lusca.csrf({
+  // NOTE: lusca 1.7.0 does NOT support excludePathPrefixes option - must exclude manually
+  // Apply CSRF conditionally: skip for API routes, auth routes, health checks, and GET requests
+  const csrfMiddleware = lusca.csrf({
     cookie: {
       name: '_csrf',
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       sameSite: 'strict'
-    },
-    excludePathPrefixes: [
-      '/api/',           // All API routes (use JWT, not sessions)
-      '/auth/',          // OAuth callbacks
+    }
+  });
+  
+  app.use((req, res, next) => {
+    // Define paths that should NOT have CSRF protection
+    const excludedPaths = [
+      '/api/',        // All API routes (use JWT, not sessions)
+      '/auth/',       // OAuth callbacks
       '/health',
       '/ready',
       '/diagnose'
-    ]
-  }));
+    ];
+    
+    // Check if current path should be excluded
+    const isExcluded = excludedPaths.some(path => req.path.startsWith(path));
+    
+    // Skip CSRF for excluded paths, GET requests (read-only), and OPTIONS (preflight)
+    if (isExcluded || req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') {
+      return next();
+    }
+    
+    // Apply CSRF protection only to state-changing methods on non-excluded paths
+    return csrfMiddleware(req, res, next);
+  });
 
 
 
