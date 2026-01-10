@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { LayoutContent } from './LayoutContent'
+import StructuredData from './components/StructuredData'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -87,6 +88,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        <StructuredData />
+      </head>
       <body>
         {/* Ketch CMP boot script (global) */}
         <Script id="ketch-stub" strategy="beforeInteractive">
