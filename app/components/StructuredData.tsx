@@ -1,64 +1,63 @@
+// app/components/StructuredData.tsx
 export default function StructuredData() {
-  // Organization Schema
   const organizationSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'GreenChainz',
-    url: 'https://greenchainz.com',
-    logo: 'https://greenchainz.com/brand/greenchainz-logo.png',
-    description: 'The Trust Layer for Sustainable Commerce - verified sustainable building materials marketplace',
-    sameAs: [
-      'https://twitter.com/greenchainzhq',
-      'https://linkedin.com/company/greenchainz',
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "GreenChainz",
+    "url": "https://greenchainz.com",
+    "logo": "https://greenchainz.com/brand/greenchainz-logo.png",
+    "description": "B2B marketplace for verified sustainable building materials with carbon tracking and EPD integration",
+    "foundingDate": "2025",
+    "founders": [{
+      "@type": "Person",
+      "name": "Jerit Norville"
+    }],
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Danville",
+      "addressRegion": "VA",
+      "addressCountry": "US"
+    },
+    "sameAs": [
+      "https://www.linkedin.com/company/greenchainz",
+      "https://www.facebook.com/61583188363386/"
     ],
-    contactPoint: {
-      '@type': 'ContactPoint',
-      email: 'support@greenchainz.com',
-      contactType: 'Customer Support',
-      availableLanguage: 'English',
-    },
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: 'Richmond',
-      addressRegion: 'VA',
-      addressCountry: 'US',
-    },
-  }
+    "offers": {
+      "@type": "Offer",
+      "itemOffered": {
+        "@type": "Service",
+        "name": "Verified Sustainable Building Materials Marketplace",
+        "description": "EPD-verified materials, LEED credit support, carbon scoring"
+      }
+    }
+  };
 
-  // Website Schema
-  const websiteSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'GreenChainz',
-    url: 'https://greenchainz.com',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: 'https://greenchainz.com/catalog?q={search_term_string}',
-      },
-      'query-input': 'required name=search_term_string',
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "GreenChainz",
+    "image": "https://greenchainz.com/brand/greenchainz-logo.png",
+    "@id": "https://greenchainz.com",
+    "url": "https://greenchainz.com",
+    "priceRange": "$$",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Danville",
+      "addressRegion": "VA",
+      "addressCountry": "US"
     },
-  }
-
-  // Software Application Schema
-  const softwareSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'GreenChainz Platform',
-    applicationCategory: 'BusinessApplication',
-    operatingSystem: 'Web Browser',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 36.5859718,
+      "longitude": -79.3950228
     },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.8',
-      ratingCount: '50',
-    },
-  }
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+      "opens": "09:00",
+      "closes": "17:00"
+    }
+  };
 
   return (
     <>
@@ -68,12 +67,8 @@ export default function StructuredData() {
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
       />
     </>
-  )
+  );
 }
