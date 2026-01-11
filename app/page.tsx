@@ -4,6 +4,41 @@ import { ArrowRight, FileSpreadsheet, Chrome, Box, FileText } from "lucide-react
 export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* LocalBusiness Schema for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            "name": "GreenChainz",
+            "image": "https://greenchainz.com/og-image.png",
+            "@id": "https://greenchainz.com",
+            "url": "https://greenchainz.com",
+            "telephone": "",
+            "priceRange": "$$",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "",
+              "addressLocality": "Danville",
+              "addressRegion": "VA",
+              "postalCode": "",
+              "addressCountry": "US"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 36.5859718,
+              "longitude": -79.3950228
+            },
+            "openingHoursSpecification": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+              "opens": "09:00",
+              "closes": "17:00"
+            }
+          })
+        }}
+      />
       {/* Hero Section with Premium Gradient */}
       <section className="relative overflow-hidden text-white py-24 px-6 text-center" style={{
         background: 'linear-gradient(135deg, #064e3b 0%, #065f46 20%, #047857 40%, #059669 60%, #0891b2 80%, #06b6d4 100%)',
