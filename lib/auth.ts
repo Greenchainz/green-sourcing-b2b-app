@@ -8,7 +8,9 @@ interface User {
   email: string;
   firstName?: string | null;
   lastName?: string | null;
+  fullName?: string | null;
   role: "architect" | "supplier";
+  oauthProvider?: string | null;
 }
 
 interface AuthState {
@@ -201,7 +203,9 @@ export const useAuth = create<AuthState>()(
               email: data.user.email,
               firstName: data.user.firstName,
               lastName: data.user.lastName,
+              fullName: data.user.fullName,
               role: data.user.role,
+              oauthProvider: data.user.oauthProvider,
             },
             token: data.token,
             refreshToken: data.refreshToken,

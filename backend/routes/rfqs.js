@@ -44,16 +44,33 @@ router.post('/create', authenticateToken, async (req, res) => {
       });
     }
 
-    // Check user is architect
+    // Check user is architect and signed up with LinkedIn
     const userCheck = await pool.query(
-      'SELECT id, role FROM Users WHERE id = $1',
+      'SELECT UserID, Role, OAuthProvider FROM Users WHERE UserID = $1',
       [req.user.userId]
     );
 
-    if (!userCheck.rows.length || userCheck.rows[0].role !== 'architect') {
+    if (!userCheck.rows.length) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const user = userCheck.rows[0];
+
+    if (user.role !== 'architect' && user.role !== 'Buyer') {
       return res.status(403).json({
         success: false,
-        error: 'Only architects can create RFQs'
+        error: 'Only architects/buyers can create RFQs'
+      });
+    }
+
+    // Require LinkedIn signup for RFQ creation
+    if (user.oauthprovider !== 'linkedin') {
+      return res.status(403).json({
+        success: false,
+        error: 'You must sign up with LinkedIn to create RFQs. Please sign out and sign up using LinkedIn.'
       });
     }
 

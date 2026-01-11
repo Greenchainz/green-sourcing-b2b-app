@@ -28,8 +28,9 @@ interface User {
   email: string;
   firstName?: string | null;
   lastName?: string | null;
+  fullName?: string | null;
   role: "architect" | "supplier";
-  linkedin_verified?: boolean;
+  oauthProvider?: string | null;
 }
 
 const BACKEND_URL =
@@ -64,8 +65,8 @@ export default function CreateRFQPage() {
     { name: "", quantity: 0, unit: "" },
   ]);
 
-  // Check if user is LinkedIn verified (mock - in production, check user.linkedin_verified)
-  const isLinkedInVerified = user?.linkedin_verified ?? false;
+  // Check if user signed up with LinkedIn (required for RFQ creation)
+  const isLinkedInSignup = user?.oauthProvider === 'linkedin';
 
   // Handle form field changes
   const handleFormChange = (
@@ -132,8 +133,8 @@ export default function CreateRFQPage() {
 
     if (currentStep === 1 && !validateStep1()) return;
     if (currentStep === 2 && !validateStep2()) return;
-    if (currentStep === 3 && !isLinkedInVerified) {
-      setError("Please verify your LinkedIn profile to continue");
+    if (currentStep === 3 && !isLinkedInSignup) {
+      setError("You must sign up with LinkedIn to create RFQs. Please sign out and sign up using LinkedIn.");
       return;
     }
 
@@ -688,37 +689,89 @@ export default function CreateRFQPage() {
             </div>
           )}
 
-          {/* Step 3: LinkedIn Verification */}
+          {/* Step 3: LinkedIn Signup Verification */}
           {currentStep === 3 && (
             <div className="gc-rfq-step-content">
-              <LinkedInVerificationGate
-                isVerified={isLinkedInVerified}
-                onContinueAction={nextStep}
-              />
-
-              {/* Back button if verified */}
-              {isLinkedInVerified && (
-                <div className="text-center mt-4">
+              {isLinkedInSignup ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[var(--gc-emerald-500)] to-[var(--gc-teal-500)] flex items-center justify-center shadow-[0_8px_24px_rgba(16,185,129,0.3)]">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-8 h-8"
+                    >
+                      <polyline points="20,6 9,17 4,12" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-black text-[var(--gc-slate-900)] mb-2">
+                    LinkedIn Verified
+                  </h2>
+                  <p className="text-[var(--gc-slate-600)] mb-6">
+                    Your LinkedIn signup has been verified. You can proceed to create RFQs.
+                  </p>
                   <button
                     type="button"
-                    onClick={prevStep}
-                    className="gc-btn gc-btn-ghost"
+                    onClick={nextStep}
+                    className="gc-btn gc-btn-primary"
                   >
-                    ← Back to Materials
+                    Continue to Deposit
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-[18px] h-[18px] ml-1.5"
+                    >
+                      <polyline points="9,18 15,12 9,6" />
+                    </svg>
                   </button>
+                  <div className="text-center mt-4">
+                    <button
+                      type="button"
+                      onClick={prevStep}
+                      className="gc-btn gc-btn-ghost"
+                    >
+                      ← Back to Materials
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              {/* Back button if not verified */}
-              {!isLinkedInVerified && (
-                <div className="text-center mt-6">
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#0077b5] flex items-center justify-center shadow-[0_8px_24px_rgba(0,119,181,0.3)]">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="w-8 h-8 text-white"
+                    >
+                      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-black text-[var(--gc-slate-900)] mb-2">
+                    LinkedIn Signup Required
+                  </h2>
+                  <p className="text-[var(--gc-slate-600)] mb-6 max-w-md mx-auto">
+                    To create RFQs, you must sign up using LinkedIn. Please sign out and sign up again using the LinkedIn option.
+                  </p>
                   <button
                     type="button"
-                    onClick={prevStep}
-                    className="gc-btn gc-btn-ghost"
+                    onClick={() => router.push('/login')}
+                    className="gc-btn gc-btn-primary"
                   >
-                    ← Back to Materials
+                    Go to Login
                   </button>
+                  <div className="text-center mt-4">
+                    <button
+                      type="button"
+                      onClick={prevStep}
+                      className="gc-btn gc-btn-ghost"
+                    >
+                      ← Back to Materials
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
