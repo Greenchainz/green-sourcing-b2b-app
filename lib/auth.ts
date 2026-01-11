@@ -53,10 +53,15 @@ const DEFAULT_BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
 function mirrorJwtTokenToLocalStorage(token: string | null) {
-  // Some older pages expect this key; keep it in sync.
+  // Some older pages expect these keys; keep them in sync.
   try {
-    if (token) localStorage.setItem("jwt_token", token);
-    else localStorage.removeItem("jwt_token");
+    if (token) {
+      localStorage.setItem("jwt_token", token);
+      localStorage.setItem("accessToken", token);
+    } else {
+      localStorage.removeItem("jwt_token");
+      localStorage.removeItem("accessToken");
+    }
   } catch {
     // ignore (SSR / storage blocked)
   }
