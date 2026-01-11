@@ -27,7 +27,7 @@ function isValidEmail(email) {
 // ============================================
 // POST /api/v2/rfq - Create RFQ (Architect)
 // ============================================
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, rateLimit, async (req, res) => {
     const client = await pool.connect();
     try {
         const {
