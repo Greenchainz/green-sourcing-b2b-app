@@ -3501,12 +3501,6 @@ textarea {
 }
 
 .btn-money-large {
-  padding: 1.25rem 2.5rem;
-  font-size: 1.25rem;
-  border-radius: 1.25rem;
-}
-
-.btn-money-large {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -3517,7 +3511,7 @@ textarea {
   color: #052e16;
   background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
   border: none;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   cursor: pointer;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

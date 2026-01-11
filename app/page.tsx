@@ -67,10 +67,10 @@ export default function Home() {
               <Image
                 src="/brand/greenchainz-logo-full.png"
                 alt="GreenChainz"
-                width={280}
-                height={70}
+                width={320}
+                height={80}
                 priority
-                className="h-16 md:h-20 w-auto drop-shadow-2xl"
+                className="h-auto w-[200px] md:w-[280px] drop-shadow-2xl"
               />
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function Home() {
           <div className="text-center mb-16">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-money-100 text-money-700 text-sm font-bold mb-4">
               <DollarSign className="w-4 h-4" />
-              DOLLARS &amp; SENSE
+              DOLLARS & SENSE
             </span>
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-4">
               Green Makes <span className="text-money-600">Cents</span>
