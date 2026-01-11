@@ -10,6 +10,7 @@
  */
 
 const { DocumentAnalysisClient, AzureKeyCredential } = require('@azure/ai-form-recognizer');
+const decisionLogicExtractor = require('./decisionLogicExtractor');
 
 let client = null;
 let isInitialized = false;
@@ -250,6 +251,25 @@ async function batchProcess(documents, processFn = extractDocumentContent) {
     }));
 }
 
+/**
+ * Parse a document with decision logic extraction
+ * Combines content extraction with material-specific decision criteria
+ * @param {Buffer|string} source - Document buffer or URL
+ * @returns {Object} Combined extraction result with decision logic
+ */
+async function parseWithDecisionLogic(source) {
+    // First, extract document content using standard pipeline
+    const extracted = await extractDocumentContent(source);
+    
+    // Then, extract decision logic from the content
+    const decisionLogic = decisionLogicExtractor.extractDecisionLogic(extracted.content);
+    
+    return {
+        ...extracted,
+        decisionLogic
+    };
+}
+
 module.exports = {
     initialize,
     analyzeDocument,
@@ -258,5 +278,6 @@ module.exports = {
     parseEPDDocument,
     verifyDocumentAuthenticity,
     batchProcess,
+    parseWithDecisionLogic,
     isInitialized: () => isInitialized
 };
