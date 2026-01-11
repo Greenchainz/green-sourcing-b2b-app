@@ -13,7 +13,7 @@ The scraping functions extract critical procurement data from supplier websites 
 
 ## Functions
 
-### 1. persona-scraper (NEW)
+### 1. persona-scraper
 **Type**: HTTP Trigger (POST)  
 **Purpose**: Scrape websites based on persona-specific decision logic
 
@@ -28,11 +28,35 @@ Targets the 7 layers of procurement:
 
 See [PERSONA_SCRAPER_ARCHITECTURE.md](../../docs/PERSONA_SCRAPER_ARCHITECTURE.md) for complete documentation.
 
-### 2. scrape-suppliers
+### 2. gatekeeper-discovery (Phase 2 - Hunter Agents)
+**Type**: HTTP Trigger (POST)  
+**Purpose**: Find high-leverage procurement decision-makers using Bing Search API
+
+Targets Financial Gatekeepers and Operational Stewards:
+- Quantity Surveyors
+- Infection Control Officers
+- Insurance Risk Managers
+- Facility Directors
+- Procurement Directors
+
+Includes GPT-4o qualification for lead scoring.
+
+### 3. distributor-intelligence (Phase 2 - Hunter Agents)
+**Type**: HTTP Trigger (POST)  
+**Purpose**: Score distributors on compliance documentation and multi-functional SKUs
+
+Analyzes Layer VII "Hidden Influencers":
+- Ready-to-go documentation (LEED, EPDs)
+- Multi-functional products that replace multiple trades
+- Inventory transparency
+
+See [HUNTER_AGENTS_ARCHITECTURE.md](../../docs/HUNTER_AGENTS_ARCHITECTURE.md) for complete documentation.
+
+### 4. scrape-suppliers
 **Type**: Timer Trigger (Daily 2 AM)  
 **Purpose**: Scrape supplier websites for contact info and certifications
 
-### 3. scrape-epd
+### 5. scrape-epd
 **Type**: Timer Trigger (Weekly Sunday 2 AM)  
 **Purpose**: Scrape EPD databases for material data
 
