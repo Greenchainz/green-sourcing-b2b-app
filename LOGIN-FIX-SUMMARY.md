@@ -94,6 +94,7 @@ JWT_SECRET=your-jwt-secret
 ```
 
 ### 3. **Test Login Flow**
+
 1. Navigate to `/login`
 2. Click "Sign in with Microsoft"
 3. Complete Azure AD authentication
@@ -122,6 +123,7 @@ psql -U postgres -d greenchainz_dev -f database-schemas/migrations/20260107_0000
 
 ### Issue: "Cannot connect to backend service"
 **Solution:**
+
 1. Ensure backend is running: `cd backend && npm start`
 2. Check backend URL is correct in environment variables
 3. Verify backend is accessible: `curl http://localhost:3001/api/v1/health`
