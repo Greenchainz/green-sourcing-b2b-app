@@ -13,6 +13,27 @@ import { AzureOpenAI } from "openai";
 import { SearchClient, AzureKeyCredential } from "@azure/search-documents";
 import { DATA_JANITOR_PROMPTS } from "../../prompts/data-janitor";
 
+// Interface for Azure Search document
+interface SearchDocument {
+    title?: string;
+    content?: string;
+    url?: string;
+}
+
+// Interface for extracted data from OpenAI
+interface ExtractedData {
+    gwp_per_unit?: number;
+    GWP?: number;
+    unit_type?: string;
+    Unit?: string;
+    health_grade?: "A" | "B" | "C" | "F";
+    red_list_status?: "Free" | "Approved" | "None";
+    certifications?: string[];
+    compliance?: {
+        red_list_status?: "Free" | "Approved" | "None";
+    };
+}
+
 // Interface for the output
 export interface ScrapedMaterial {
     product_name: string;
@@ -54,10 +75,11 @@ async function searchWeb(query: string): Promise<{ title: string; snippet: strin
         });
 
         for await (const result of searchResults.results) {
+            const doc = result.document as SearchDocument;
             return {
-                title: (result.document as any).title || "Unknown Title",
-                snippet: (result.document as any).content || "No content available",
-                url: (result.document as any).url || "No URL"
+                title: doc.title || "Unknown Title",
+                snippet: doc.content || "No content available",
+                url: doc.url || "No URL"
             };
         }
 
@@ -96,7 +118,7 @@ async function simulateWebSearch(query: string): Promise<{ title: string; snippe
  * EXTRACTION AGENT
  * Uses Azure OpenAI to parse the "scraped" text into JSON
  */
-async function extractWithOpenAI(text: string, promptType: 'carbon' | 'health'): Promise<any> {
+async function extractWithOpenAI(text: string, promptType: 'carbon' | 'health'): Promise<ExtractedData> {
     const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const key = process.env.AZURE_OPENAI_API_KEY;
     const deployment = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || "gpt-4o";
