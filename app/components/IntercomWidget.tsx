@@ -15,10 +15,18 @@ interface IntercomWidgetProps {
         name?: string
         email?: string
         createdAt?: number
+        role?: string
+        layer?: string
+        primaryMotivation?: string
+        priorityLevel?: string
+        jobTitle?: string
+        rfqCount?: number
+        tier?: string
     }
+    userHash?: string
 }
 
-export default function IntercomWidget({ user }: IntercomWidgetProps) {
+export default function IntercomWidget({ user, userHash }: IntercomWidgetProps) {
     useEffect(() => {
         const appId = process.env.NEXT_PUBLIC_INTERCOM_APP_ID
         const requireConsent = process.env.NEXT_PUBLIC_INTERCOM_REQUIRE_CONSENT === 'true'
@@ -30,13 +38,43 @@ export default function IntercomWidget({ user }: IntercomWidgetProps) {
 
         const bootIntercom = () => {
             if (user?.id) {
-                Intercom({
+                const bootData: Record<string, unknown> = {
                     app_id: appId,
                     user_id: user.id,
                     name: user.name || undefined,
                     email: user.email || undefined,
                     created_at: user.createdAt || undefined,
-                })
+                }
+
+                // Add identity verification hash if available
+                if (userHash) {
+                    bootData.user_hash = userHash
+                }
+
+                // Add Decision Maker attributes for strategic context
+                if (user.layer) {
+                    bootData.role_layer = user.layer
+                }
+                if (user.primaryMotivation) {
+                    bootData.decision_metric = user.primaryMotivation
+                }
+                if (user.priorityLevel) {
+                    bootData.sustainability_priority = user.priorityLevel
+                }
+                if (user.rfqCount !== undefined) {
+                    bootData.active_rfqs = user.rfqCount
+                }
+                if (user.role) {
+                    bootData.user_role = user.role
+                }
+                if (user.tier) {
+                    bootData.subscription_tier = user.tier
+                }
+                if (user.jobTitle) {
+                    bootData.job_title = user.jobTitle
+                }
+
+                Intercom(bootData)
             } else {
                 Intercom({ app_id: appId })
             }
@@ -92,7 +130,7 @@ export default function IntercomWidget({ user }: IntercomWidgetProps) {
             bootIntercom()
             return () => shutdownIntercom()
         }
-    }, [user])
+    }, [user, userHash])
 
     return null // This component doesn't render anything
 }

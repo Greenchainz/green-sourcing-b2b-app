@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import { useAuth } from './hooks/useAuth'
+import IntercomWidget from './components/IntercomWidget'
 
 // Define types for Intercom
 type IntercomWindow = Window & {
@@ -15,6 +17,7 @@ type IntercomWindow = Window & {
 
 export function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { user, intercomIdentity, loading } = useAuth()
 
   useEffect(() => {
     // Initialize Intercom AFTER page load
@@ -62,5 +65,15 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [pathname])
 
-  return <>{children}</>
+  return (
+    <>
+      {!loading && (
+        <IntercomWidget 
+          user={user || undefined} 
+          userHash={intercomIdentity?.userHash}
+        />
+      )}
+      {children}
+    </>
+  )
 }

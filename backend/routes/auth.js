@@ -305,9 +305,11 @@ router.get('/me', async (req, res) => {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    // Get full user data including OAuthProvider
+    // Get full user data including OAuthProvider and Decision Maker attributes
     const userResult = await pool.query(
-      'SELECT UserID, Email, FirstName, LastName, FullName, Role, OAuthProvider FROM Users WHERE UserID = $1',
+      `SELECT UserID, Email, FirstName, LastName, FullName, Role, OAuthProvider,
+              DecisionLayer, PrimaryMotivation, PriorityLevel, JobTitle, RFQCount 
+       FROM Users WHERE UserID = $1`,
       [decoded.userId]
     );
 
@@ -317,6 +319,29 @@ router.get('/me', async (req, res) => {
 
     const user = userResult.rows[0];
 
+    // Get supplier tier if user is a supplier
+    let tier = null;
+    if (user.role === 'Supplier') {
+      try {
+        const supplierResult = await pool.query(
+          `SELECT s.SupplierID, st.TierCode 
+           FROM Suppliers s
+           JOIN Supplier_Subscriptions ss ON s.SupplierID = ss.SupplierID
+           JOIN Supplier_Tiers st ON ss.TierID = st.TierID
+           WHERE s.CompanyID = (SELECT CompanyID FROM Users WHERE UserID = $1)
+           AND ss.Status IN ('active', 'trialing')
+           LIMIT 1`,
+          [decoded.userId]
+        );
+        if (supplierResult.rows.length > 0) {
+          tier = supplierResult.rows[0].tiercode;
+        }
+      } catch (err) {
+        console.error('Error fetching supplier tier:', err);
+        // Don't fail the request if tier lookup fails
+      }
+    }
+
     res.status(200).json({
       user: {
         id: user.userid || decoded.userId,
@@ -325,7 +350,13 @@ router.get('/me', async (req, res) => {
         lastName: user.lastname,
         fullName: user.fullname,
         role: user.role || decoded.role,
-        oauthProvider: user.oauthprovider
+        oauthProvider: user.oauthprovider,
+        layer: user.decisionlayer,
+        primaryMotivation: user.primarymotivation,
+        priorityLevel: user.prioritylevel,
+        jobTitle: user.jobtitle,
+        rfqCount: user.rfqcount || 0,
+        tier: tier
       }
     });
   } catch (error) {
