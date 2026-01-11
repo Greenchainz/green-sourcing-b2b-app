@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   CheckCircle,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 interface RFQFormData {
@@ -274,26 +275,33 @@ export default function RFQForm() {
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="project_name"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Project Name *
               </label>
               <input
+                id="project_name"
                 type="text"
                 value={formData.project_name}
                 onChange={(e) => updateField("project_name", e.target.value)}
                 placeholder="e.g., Downtown Office Building Renovation"
+                aria-invalid={!!errors.project_name}
+                aria-describedby={errors.project_name ? "project_name-error" : undefined}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                   errors.project_name ? "border-red-300" : "border-gray-300"
                 }`}
               />
               {errors.project_name && (
-                <p className="text-sm text-red-600 mt-1">
+                <p id="project_name-error" className="text-sm text-red-600 mt-1">
                   {errors.project_name}
                 </p>
               )}
             </div>
 
             <LocationAutocomplete
+              id="project_location"
               value={formData.project_location}
               onChange={(value, coords) => {
                 updateField("project_location", value);
@@ -308,14 +316,20 @@ export default function RFQForm() {
               error={errors.project_location}
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="project_timeline"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Project Timeline *
               </label>
               <select
+                id="project_timeline"
                 value={formData.project_timeline}
                 onChange={(e) =>
                   updateField("project_timeline", e.target.value)
                 }
+                aria-invalid={!!errors.project_timeline}
+                aria-describedby={errors.project_timeline ? "project_timeline-error" : undefined}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                   errors.project_timeline ? "border-red-300" : "border-gray-300"
                 }`}
@@ -328,17 +342,21 @@ export default function RFQForm() {
                 ))}
               </select>
               {errors.project_timeline && (
-                <p className="text-sm text-red-600 mt-1">
+                <p id="project_timeline-error" className="text-sm text-red-600 mt-1">
                   {errors.project_timeline}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="deadline"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Response Deadline (Optional)
               </label>
               <input
+                id="deadline"
                 type="date"
                 value={formData.deadline}
                 onChange={(e) => updateField("deadline", e.target.value)}
@@ -353,48 +371,64 @@ export default function RFQForm() {
         {currentStep === 2 && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="material_type"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Material Type *
               </label>
               <input
+                id="material_type"
                 type="text"
                 value={formData.material_type}
                 onChange={(e) => updateField("material_type", e.target.value)}
                 placeholder="e.g., Low-carbon concrete, Recycled steel, Sustainable timber"
+                aria-invalid={!!errors.material_type}
+                aria-describedby={errors.material_type ? "material_type-error" : undefined}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                   errors.material_type ? "border-red-300" : "border-gray-300"
                 }`}
               />
               {errors.material_type && (
-                <p className="text-sm text-red-600 mt-1">
+                <p id="material_type-error" className="text-sm text-red-600 mt-1">
                   {errors.material_type}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="quantity"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Quantity *
               </label>
               <input
+                id="quantity"
                 type="text"
                 value={formData.quantity}
                 onChange={(e) => updateField("quantity", e.target.value)}
                 placeholder="e.g., 500 cubic yards, 10,000 sq ft"
+                aria-invalid={!!errors.quantity}
+                aria-describedby={errors.quantity ? "quantity-error" : undefined}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                   errors.quantity ? "border-red-300" : "border-gray-300"
                 }`}
               />
               {errors.quantity && (
-                <p className="text-sm text-red-600 mt-1">{errors.quantity}</p>
+                <p id="quantity-error" className="text-sm text-red-600 mt-1">{errors.quantity}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="specifications"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Detailed Specifications
               </label>
               <textarea
+                id="specifications"
                 value={formData.specifications}
                 onChange={(e) => updateField("specifications", e.target.value)}
                 placeholder="Describe technical requirements, performance criteria, or any specific needs..."
@@ -403,10 +437,10 @@ export default function RFQForm() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+            <fieldset>
+              <legend className="block text-sm font-medium text-gray-700 mb-3">
                 Required Certifications
-              </label>
+              </legend>
               <div className="grid grid-cols-2 gap-3">
                 {CERTIFICATION_OPTIONS.map((cert) => (
                   <label
@@ -423,13 +457,17 @@ export default function RFQForm() {
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="budget_range"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Budget Range (Optional)
               </label>
               <select
+                id="budget_range"
                 value={formData.budget_range}
                 onChange={(e) => updateField("budget_range", e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
@@ -572,7 +610,7 @@ export default function RFQForm() {
             >
               {loading ? (
                 <>
-                  <span className="animate-spin">⏳</span>
+                  <Loader2 className="w-5 h-5 animate-spin" />
                   Submitting...
                 </>
               ) : (
