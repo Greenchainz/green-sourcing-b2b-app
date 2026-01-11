@@ -21,6 +21,23 @@ const internalApiKeyMiddleware = require("../middleware/internalKey");
 const { pool } = require("../db");
 
 // ============================================
+// CONSTANTS
+// ============================================
+
+/**
+ * Premium tier levels that get direct routing to supplier team
+ */
+const PREMIUM_TIERS = ['premium', 'enterprise', 'pro'];
+
+/**
+ * Check if a supplier tier is premium (gets direct routing)
+ */
+const isPremiumTier = (tier) => {
+  if (!tier) return false;
+  return PREMIUM_TIERS.includes(tier.toLowerCase());
+};
+
+// ============================================
 // MIDDLEWARE
 // ============================================
 
@@ -591,14 +608,10 @@ router.post("/route-conversation", authenticateToken, async (req, res) => {
       // Continue with concierge routing if DB lookup fails
     }
 
-    // Determine routing based on tier
-    const isPremiumTier = supplierTier && (
-      supplierTier === 'premium' || 
-      supplierTier === 'enterprise' || 
-      supplierTier === 'pro'
-    );
+    // Determine routing based on tier using shared utility
+    const isPremium = isPremiumTier(supplierTier);
 
-    if (isPremiumTier) {
+    if (isPremium) {
       routedTo = "supplier";
       // In a full implementation, this would use Intercom API to route to supplier's team
       console.log(`[Intercom] Routing conversation to supplier team (tier: ${supplierTier})`);

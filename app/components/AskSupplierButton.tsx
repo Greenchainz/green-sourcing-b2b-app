@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { isPremiumTier } from '@/lib/utils/supplierTier'
 
 interface AskSupplierButtonProps {
   productId: string
@@ -54,13 +55,6 @@ const getRoleSpecificDataRequest = (userLayer?: string, userRole?: string): stri
   return 'detailed product information'
 }
 
-// Check if supplier is on premium/enterprise tier for direct routing
-const isPremiumSupplier = (tier?: string): boolean => {
-  if (!tier) return false
-  const tierLower = tier.toLowerCase()
-  return tierLower === 'premium' || tierLower === 'enterprise' || tierLower === 'pro'
-}
-
 export default function AskSupplierButton({
   productId,
   productName,
@@ -78,7 +72,7 @@ export default function AskSupplierButton({
     try {
       // Get role-specific data request
       const dataRequest = getRoleSpecificDataRequest(userLayer, userRole)
-      const isPremium = isPremiumSupplier(supplierTier)
+      const isPremium = isPremiumTier(supplierTier)
 
       // Build the pre-filled message
       let message = `Hi, I am looking at "${productName}" and need ${dataRequest}.`
@@ -107,7 +101,9 @@ export default function AskSupplierButton({
 
       // Route conversation via backend API
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
-      const token = localStorage.getItem('accessToken')
+      
+      // Safely access localStorage (client-side only)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
 
       if (token) {
         try {

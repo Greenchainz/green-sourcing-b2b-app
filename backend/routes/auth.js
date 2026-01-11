@@ -324,11 +324,12 @@ router.get('/me', async (req, res) => {
     if (user.role === 'Supplier') {
       try {
         const supplierResult = await pool.query(
-          `SELECT s.SupplierID, st.TierCode 
+          `SELECT st.TierCode 
            FROM Suppliers s
            JOIN Supplier_Subscriptions ss ON s.SupplierID = ss.SupplierID
            JOIN Supplier_Tiers st ON ss.TierID = st.TierID
-           WHERE s.CompanyID = (SELECT CompanyID FROM Users WHERE UserID = $1)
+           JOIN Users u ON u.CompanyID = s.CompanyID
+           WHERE u.UserID = $1
            AND ss.Status IN ('active', 'trialing')
            LIMIT 1`,
           [decoded.userId]
