@@ -173,6 +173,44 @@ router.post('/extract',
 );
 
 /**
+ * Extract document content with decision logic analysis
+ * POST /api/v1/ai/extract-with-decision-logic
+ */
+router.post('/extract-with-decision-logic',
+    authenticateToken,
+    authorizeRoles('Supplier', 'Admin'),
+    upload.single('document'),
+    async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: 'No document uploaded' });
+            }
+
+            const startTime = Date.now();
+            const result = await documentIntelligence.parseWithDecisionLogic(req.file.buffer);
+            const duration = Date.now() - startTime;
+
+            monitoring.trackEvent('DecisionLogicExtracted', {
+                materialCategory: result.decisionLogic.materialCategory,
+                relevanceScore: result.decisionLogic.relevanceScore,
+                duration: String(duration),
+                userId: String(req.user.userId)
+            });
+
+            res.json({
+                message: 'Document analyzed with decision logic',
+                pageCount: result.pages.length,
+                ...result,
+                analysisTimeMs: duration
+            });
+        } catch (e) {
+            monitoring.trackException(e, { context: 'decision_logic_extraction' });
+            res.status(500).json({ error: e.message });
+        }
+    }
+);
+
+/**
  * Analyze a document from Azure Storage URL
  * POST /api/v1/ai/analyze/url
  */

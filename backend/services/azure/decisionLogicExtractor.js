@@ -73,10 +73,17 @@ const FACADE_PATTERNS = {
         /\bsiding\b/i,
         /\bpanel\s+system/i,
         /\bbuilding\s+envelope/i,
-        /\brainscreen/i
+        /\brainscreen/i,
+        /\bexterior\s+panel/i,
+        /\bwall\s+panel/i,
+        /\bcomposite\s+panel/i
     ],
     // Facade uses same fire resistance patterns as insulation
-    ...INSULATION_PATTERNS
+    nonCombustible: /non[-]?combustible|incombustible|class\s*a(?:1|2)?|fire[-]?proof/i,
+    mineralWool: /mineral\s*wool|rock\s*wool|stone\s*wool/i,
+    fireResistance: /fire\s*resist(?:ance|ant)?[:\s]*(\d+)[-\s]*(?:min(?:ute)?s?|hour?s?)/i,
+    flameSpread: /flame\s*spread(?:\s*index)?[:\s]*(\d+)/i,
+    smokeDeveloped: /smoke\s*developed(?:\s*index)?[:\s]*(\d+)/i
 };
 
 /**
