@@ -259,7 +259,13 @@ async function distributeRFQ(rfqId, options = {}) {
         console.log(`  - Full access eligible: ${fullAccessCount}`);
         console.log(`  - Shadow/outreach only: ${shadowAccessCount}`);
 
-        // 6. Create Distribution Waves with tiered access
+        // 6. Limit total candidates if limit option is provided (Avoid Spam Requirement)
+        if (options.limit && typeof options.limit === 'number' && options.limit > 0) {
+            candidates = candidates.slice(0, options.limit);
+            console.log(`[RFQ Distribution] Limited distribution to top ${options.limit} candidates`);
+        }
+
+        // 7. Create Distribution Waves with tiered access
         const waveResult = await createDistributionWaves(rfqId, candidates, { 
             useEntitlements, 
             enforceQuotas 
