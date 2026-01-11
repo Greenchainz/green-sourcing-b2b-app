@@ -16,7 +16,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@azure/identity": "^4.0.0",
     "@azure/ai-form-recognizer": "^5.0.0",
     "@azure/identity": "^4.13.0",
     "@azure/openai": "^2.0.0-beta.2",
@@ -27,8 +26,10 @@
     "@react-email/tailwind": "^2.0.1",
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.6.0",
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/mssql": "^9.1.8",
     "@types/office-js": "^1.0.1",
+    "@types/pg": "^8.16.0",
     "connect-redis": "^7.1.1",
     "cookie-parser": "^1.4.7",
     "cookie-signature": "^1.2.2",
@@ -37,6 +38,7 @@
     "next": "^15.0.0",
     "openai": "^6.15.0",
     "pdf-lib": "^1.17.1",
+    "pg": "^8.16.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "resend": "^6.4.2",
