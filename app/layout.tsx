@@ -1,3 +1,4 @@
+// app/layout.tsx
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import Script from 'next/script'
@@ -90,13 +91,9 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <head>
         <StructuredData />
+        {/* REMOVE KETCH SCRIPTS FROM HERE - MOVE TO LayoutContent */}
       </head>
       <body>
-        {/* Ketch CMP boot script (global) */}
-        <Script id="ketch-stub" strategy="beforeInteractive">
-          {`!function(){window.semaphore=window.semaphore||[],window.ketch=function(){window.semaphore.push(arguments)}}();`}
-        </Script>
-        <Script id="ketch-boot" strategy="beforeInteractive" src="https://global.ketchcdn.com/web/v3/config/greenchainz/website_smart_tag/boot.js" />
         <LayoutContent>{children}</LayoutContent>
       </body>
     </html>
