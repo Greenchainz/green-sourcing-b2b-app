@@ -1,1 +1,30 @@
+// app/sitemap.ts
+import { MetadataRoute } from 'next'
+
+export default async function sitemap(): MetadataRoute.Sitemap {
+  // Fetch suppliers from database
+  const suppliers = await fetch('https://greenchainz.com/api/suppliers')
+    .then(res => res.json())
+  
+  // Create URL for each supplier
+  const supplierUrls = suppliers.map((supplier) => ({
+    url: `https://greenchainz.com/suppliers/${supplier.slug}`,
+    lastModified: supplier.updated_at,
+    changeFrequency: 'weekly',
+    priority: 0.6,
+  }))
+
+  // Static pages
+  const staticPages = [
+    {
+      url: 'https://greenchainz.com',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1,
+    },
+    // ... add more
+  ]
+
+  return [...staticPages, ...supplierUrls]
+}
 
