@@ -6,6 +6,22 @@ import './globals.css'
 import { LayoutContent } from './LayoutContent'
 import StructuredData from './components/StructuredData'
 import GoogleAnalytics from '@/components/GoogleAnalytics'
+import GoogleTagManager from '@/components/GoogleTagManager'
+import GoogleTagManagerNoscript from '@/components/GoogleTagManagerNoscript'
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <GoogleTagManager />
+      </head>
+      <body>
+        <GoogleTagManagerNoscript />
+        {children}
+      </body>
+    </html>
+  )
+}
 
 const inter = Inter({
   subsets: ['latin'],
