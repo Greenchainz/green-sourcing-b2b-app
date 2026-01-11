@@ -3,6 +3,7 @@
 ## 🔧 Issues Fixed
 
 ### 1. **Database Schema Mismatch** (NEW - January 2026)
+
 **Problem:** The backend auth code expected different column names and tables than what existed in the database schema.
 
 **Root Causes:**
