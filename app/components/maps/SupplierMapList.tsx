@@ -47,7 +47,7 @@ interface SupplierMapListProps {
 
 /**
  * SupplierMapList Component
- * 
+ *
  * Combined map and list view for displaying suppliers with
  * toggle between map and list views.
  */
@@ -61,7 +61,8 @@ export default function SupplierMapList({
   showServiceRadius = false,
 }: SupplierMapListProps) {
   const [viewMode, setViewMode] = useState<"map" | "list">(defaultView);
-  const [selectedSupplier, setSelectedSupplier] = useState<SupplierLocation | null>(null);
+  const [selectedSupplier, setSelectedSupplier] =
+    useState<SupplierLocation | null>(null);
 
   const handleSupplierClick = (supplier: SupplierLocation) => {
     setSelectedSupplier(supplier);
@@ -72,7 +73,8 @@ export default function SupplierMapList({
 
   // Sort suppliers by distance if available
   const sortedSuppliers = [...suppliers].sort((a, b) => {
-    if (a.distance_miles === undefined && b.distance_miles === undefined) return 0;
+    if (a.distance_miles === undefined && b.distance_miles === undefined)
+      return 0;
     if (a.distance_miles === undefined) return 1;
     if (b.distance_miles === undefined) return -1;
     return a.distance_miles - b.distance_miles;
@@ -97,7 +99,10 @@ export default function SupplierMapList({
             backgroundColor: viewMode === "map" ? "#10b981" : "transparent",
             color: viewMode === "map" ? "white" : "#6b7280",
             border: "none",
-            borderBottom: viewMode === "map" ? "2px solid #10b981" : "2px solid transparent",
+            borderBottom:
+              viewMode === "map"
+                ? "2px solid #10b981"
+                : "2px solid transparent",
             cursor: "pointer",
             fontWeight: 600,
             fontSize: "14px",
@@ -114,7 +119,10 @@ export default function SupplierMapList({
             backgroundColor: viewMode === "list" ? "#10b981" : "transparent",
             color: viewMode === "list" ? "white" : "#6b7280",
             border: "none",
-            borderBottom: viewMode === "list" ? "2px solid #10b981" : "2px solid transparent",
+            borderBottom:
+              viewMode === "list"
+                ? "2px solid #10b981"
+                : "2px solid transparent",
             cursor: "pointer",
             fontWeight: 600,
             fontSize: "14px",
@@ -140,7 +148,10 @@ export default function SupplierMapList({
 
       {/* List View */}
       {viewMode === "list" && (
-        <div className="gc-supplier-list" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div
+          className="gc-supplier-list"
+          style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+        >
           {sortedSuppliers.length === 0 ? (
             <div
               style={{
@@ -160,10 +171,12 @@ export default function SupplierMapList({
                 onClick={() => handleSupplierClick(supplier)}
                 style={{
                   padding: "16px",
-                  backgroundColor: selectedSupplier?.id === supplier.id ? "#ecfdf5" : "white",
-                  border: selectedSupplier?.id === supplier.id
-                    ? "2px solid #10b981"
-                    : "1px solid #e5e7eb",
+                  backgroundColor:
+                    selectedSupplier?.id === supplier.id ? "#ecfdf5" : "white",
+                  border:
+                    selectedSupplier?.id === supplier.id
+                      ? "2px solid #10b981"
+                      : "1px solid #e5e7eb",
                   borderRadius: "8px",
                   cursor: "pointer",
                   transition: "all 0.2s",
@@ -185,7 +198,14 @@ export default function SupplierMapList({
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      marginBottom: "8px",
+                    }}
+                  >
                     <SupplierMarker
                       supplier={supplier}
                       size="small"
@@ -231,32 +251,34 @@ export default function SupplierMapList({
                     </p>
                   )}
 
-                  {showCertifications && supplier.certifications && supplier.certifications.length > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "6px",
-                        flexWrap: "wrap",
-                        marginTop: "8px",
-                      }}
-                    >
-                      {supplier.certifications.map((cert, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            fontSize: "12px",
-                            padding: "4px 8px",
-                            backgroundColor: "#ecfdf5",
-                            color: "#059669",
-                            borderRadius: "6px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {cert}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {showCertifications &&
+                    supplier.certifications &&
+                    supplier.certifications.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "6px",
+                          flexWrap: "wrap",
+                          marginTop: "8px",
+                        }}
+                      >
+                        {supplier.certifications.map((cert, idx) => (
+                          <span
+                            key={idx}
+                            style={{
+                              fontSize: "12px",
+                              padding: "4px 8px",
+                              backgroundColor: "#ecfdf5",
+                              color: "#059669",
+                              borderRadius: "6px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {cert}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                 </div>
 
                 {supplier.service_radius && (

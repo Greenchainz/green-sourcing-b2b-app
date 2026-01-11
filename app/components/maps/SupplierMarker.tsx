@@ -40,7 +40,7 @@ interface SupplierMarkerProps {
 
 /**
  * SupplierMarker Component
- * 
+ *
  * Standalone marker component for displaying supplier locations
  * in custom map implementations or lists.
  */
@@ -95,10 +95,14 @@ export default function SupplierMarker({
       </div>
 
       {/* Supplier Info */}
-      <div className="gc-supplier-marker-info" style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+      <div
+        className="gc-supplier-marker-info"
+        style={{ display: "flex", flexDirection: "column", gap: "2px" }}
+      >
         <span
           style={{
-            fontSize: size === "small" ? "12px" : size === "medium" ? "14px" : "16px",
+            fontSize:
+              size === "small" ? "12px" : size === "medium" ? "14px" : "16px",
             fontWeight: 600,
             color: "#111827",
           }}
@@ -118,32 +122,34 @@ export default function SupplierMarker({
           </span>
         )}
 
-        {showCertifications && supplier.certifications && supplier.certifications.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              gap: "4px",
-              flexWrap: "wrap",
-              marginTop: "4px",
-            }}
-          >
-            {supplier.certifications.slice(0, 2).map((cert, idx) => (
-              <span
-                key={idx}
-                style={{
-                  fontSize: "10px",
-                  padding: "2px 6px",
-                  backgroundColor: "#ecfdf5",
-                  color: "#059669",
-                  borderRadius: "4px",
-                  fontWeight: 600,
-                }}
-              >
-                {cert}
-              </span>
-            ))}
-          </div>
-        )}
+        {showCertifications &&
+          supplier.certifications &&
+          supplier.certifications.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                gap: "4px",
+                flexWrap: "wrap",
+                marginTop: "4px",
+              }}
+            >
+              {supplier.certifications.slice(0, 2).map((cert, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    fontSize: "10px",
+                    padding: "2px 6px",
+                    backgroundColor: "#ecfdf5",
+                    color: "#059669",
+                    borderRadius: "4px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {cert}
+                </span>
+              ))}
+            </div>
+          )}
       </div>
     </div>
   );

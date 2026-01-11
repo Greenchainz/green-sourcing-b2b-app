@@ -1,6 +1,6 @@
 /**
  * Maps Components
- * 
+ *
  * Components for displaying supplier locations on Azure Maps
  */
 

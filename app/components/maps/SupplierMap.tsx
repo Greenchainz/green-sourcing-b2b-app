@@ -68,7 +68,7 @@ interface SupplierMapProps {
 
 /**
  * SupplierMap Component
- * 
+ *
  * Displays suppliers on an Azure Maps interactive map with markers,
  * distance calculations, and service radius visualization.
  */
@@ -308,23 +308,26 @@ export default function SupplierMap({
         <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #111827;">
           ${supplier.name}
         </h3>
-        ${supplier.city && supplier.state
-          ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">
+        ${
+          supplier.city && supplier.state
+            ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">
               ${supplier.city}, ${supplier.state}
             </p>`
-          : ""
+            : ""
         }
-        ${supplier.distance_miles !== undefined && showDistance
-          ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #059669; font-weight: 600;">
+        ${
+          supplier.distance_miles !== undefined && showDistance
+            ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #059669; font-weight: 600;">
               ${supplier.distance_miles.toFixed(1)} miles away
             </p>`
-          : ""
+            : ""
         }
-        ${supplier.service_radius
-          ? `<p style="margin: 0; font-size: 12px; color: #6b7280;">
+        ${
+          supplier.service_radius
+            ? `<p style="margin: 0; font-size: 12px; color: #6b7280;">
               Service radius: ${supplier.service_radius} miles
             </p>`
-          : ""
+            : ""
         }
       </div>
     `;
