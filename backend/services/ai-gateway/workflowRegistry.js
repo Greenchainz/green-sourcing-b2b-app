@@ -20,7 +20,7 @@ const PREDEFINED_WORKFLOWS = [
         version: '1.0.0',
         description: 'Suggest sustainable alternatives for construction materials based on certifications, carbon footprint, and regional availability',
         workflowType: 'alternatives',
-        azureDeploymentName: 'gpt-4o',
+        azureDeploymentName: 'DATA-REFINERY',
         isCacheable: true,
         cacheTTLSeconds: 7200, // 2 hours
         safetyLevel: 'standard',
@@ -34,7 +34,7 @@ const PREDEFINED_WORKFLOWS = [
         version: '1.0.0',
         description: 'Score and rank RFQ matches based on supplier fit, sustainability credentials, pricing competitiveness, and delivery capabilities',
         workflowType: 'rfq_assist',
-        azureDeploymentName: 'gpt-4o',
+        azureDeploymentName: 'RFQ-MATCHING',
         isCacheable: false,
         cacheTTLSeconds: 0,
         safetyLevel: 'standard',
@@ -48,7 +48,7 @@ const PREDEFINED_WORKFLOWS = [
         version: '1.0.0',
         description: 'Draft personalized Intercom outreach messages for supplier engagement, claim reminders, and RFQ follow-ups',
         workflowType: 'outreach',
-        azureDeploymentName: 'gpt-4o',
+        azureDeploymentName: 'OUTREACH-SCALER',
         isCacheable: false,
         cacheTTLSeconds: 0,
         safetyLevel: 'sensitive', // Contains personalization data
@@ -62,7 +62,7 @@ const PREDEFINED_WORKFLOWS = [
         version: '1.0.0',
         description: 'Verify certification validity, check expiration dates, and validate against LEED/BREEAM/WELL requirements',
         workflowType: 'compliance',
-        azureDeploymentName: 'gpt-4o',
+        azureDeploymentName: 'COMPLIANCE-VALIDATOR-AGENT',
         isCacheable: true,
         cacheTTLSeconds: 86400, // 24 hours - certifications don't change often
         safetyLevel: 'standard',
@@ -76,7 +76,7 @@ const PREDEFINED_WORKFLOWS = [
         version: '1.0.0',
         description: 'Estimate project carbon footprint based on material quantities, transportation, and regional grid factors using EC3 methodology',
         workflowType: 'carbon',
-        azureDeploymentName: 'gpt-4o',
+        azureDeploymentName: 'CARBON-OPTIMIZER-AGENT',
         isCacheable: true,
         cacheTTLSeconds: 3600, // 1 hour
         safetyLevel: 'standard',

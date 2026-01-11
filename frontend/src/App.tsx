@@ -1,5 +1,6 @@
 // frontend/src/App.tsx
 import "./App.css";
+import "./styles/theme.css";
 import { Routes, Route } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Login from "./pages/Login";
