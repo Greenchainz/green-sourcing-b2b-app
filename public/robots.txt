@@ -1,2 +1,23 @@
+# GreenChainz - Allow all search engines
+
 User-agent: *
 Allow: /
+
+# Block admin and API routes
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /admin/
+
+# Block authentication pages
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+
+# Allow specific important pages
+Allow: /suppliers
+Allow: /architects
+Allow: /about
+Allow: /contact
+
+# Sitemap location
+Sitemap: https://greenchainz.com/sitemap.xml
