@@ -1,0 +1,22 @@
+{
+  "name": "greenchainz-scraper",
+  "version": "1.0.0",
+  "description": "GreenChainz supplier and EPD data scraper",
+  "main": "index.js",
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.5.0",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0",
+    "pg": "^8.11.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@azure/functions-core-tools": "^4.0.5455"
+  }
+}

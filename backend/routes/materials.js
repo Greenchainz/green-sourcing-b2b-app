@@ -1,7 +1,7 @@
 /**
  * Materials API Routes
  * 
- * Provides REST API endpoints for searching and managing EWS materials
+ * Provides REST API endpoints for searching sustainable materials
  * with EPD data, manufacturers, and carbon metrics.
  */
 
@@ -12,304 +12,344 @@ const { authenticateToken } = require('../middleware/auth');
 
 /**
  * GET /api/v1/materials/search
- * Search materials from EWS sheet
+ * Search materials with filters, pagination, and sorting
  * 
  * Query parameters:
- *   - query: Search term (searches product name, manufacturer, assembly name)
- *   - manufacturer: Filter by manufacturer
- *   - assemblyCode: Filter by assembly code (e.g., EWS-001)
+ *   - query: Search term (full-text search on product name, manufacturer, material type)
+ *   - manufacturer: Filter by manufacturer (exact match)
+ *   - assemblyCode: Filter by assembly code
+ *   - materialType: Filter by material type (partial match)
+ *   - minGWP: Minimum Global Warming Potential
  *   - maxGWP: Maximum Global Warming Potential
  *   - hasEPD: Filter by EPD availability (true/false)
- *   - limit: Results limit (default: 100)
- *   - offset: Pagination offset (default: 0)
+ *   - isVerified: Filter by verification status (true/false)
+ *   - page: Page number (default: 1)
+ *   - limit: Results per page (default: 20)
+ *   - sortBy: Sort field (gwp, product_name, manufacturer, created_at) (default: gwp)
+ *   - sortOrder: Sort direction (asc/desc) (default: asc)
  */
 router.get('/search', authenticateToken, async (req, res) => {
   try {
-    const { 
-      query, 
-      manufacturer, 
-      assemblyCode, 
+    const {
+      query = '',
+      manufacturer,
+      assemblyCode,
+      materialType,
+      minGWP,
       maxGWP,
       hasEPD,
-      limit = 100,
-      offset = 0
+      isVerified,
+      page = 1,
+      limit = 20,
+      sortBy = 'gwp',
+      sortOrder = 'asc'
     } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     
+    // Build dynamic query
     let sql = `
       SELECT 
         id,
         assembly_code,
         assembly_name,
-        location,
+        material_type,
         manufacturer,
         product_name,
         epd_number,
         gwp,
         gwp_units,
         dimension,
-        declared_unit,
         embodied_carbon_per_1000sf,
-        notes,
-        source,
-        created_at,
-        updated_at
-      FROM ews_materials
+        is_verified,
+        notes
+      FROM materials
       WHERE 1=1
     `;
+    
     const params = [];
-    let paramIndex = 1;
-    
-    // Search query (searches multiple fields)
-    if (query) {
-      params.push(`%${query}%`);
+    let paramCount = 0;
+
+    // Full-text search
+    if (query.trim()) {
+      paramCount++;
+      params.push(query.trim());
       sql += ` AND (
-        product_name ILIKE $${paramIndex} 
-        OR manufacturer ILIKE $${paramIndex}
-        OR assembly_name ILIKE $${paramIndex}
-        OR epd_number ILIKE $${paramIndex}
+        to_tsvector('english', 
+          COALESCE(product_name, '') || ' ' || 
+          COALESCE(manufacturer, '') || ' ' || 
+          COALESCE(material_type, '')
+        ) @@ plainto_tsquery('english', $${paramCount})
+        OR product_name ILIKE $${paramCount + 1}
+        OR manufacturer ILIKE $${paramCount + 1}
+        OR material_type ILIKE $${paramCount + 1}
       )`;
-      paramIndex++;
+      params.push(`%${query.trim()}%`);
+      paramCount++;
     }
-    
-    // Filter by manufacturer
+
+    // Manufacturer filter
     if (manufacturer) {
+      paramCount++;
       params.push(manufacturer);
-      sql += ` AND manufacturer = $${paramIndex}`;
-      paramIndex++;
+      sql += ` AND manufacturer = $${paramCount}`;
     }
-    
-    // Filter by assembly code
+
+    // Assembly code filter
     if (assemblyCode) {
+      paramCount++;
       params.push(assemblyCode);
-      sql += ` AND assembly_code = $${paramIndex}`;
-      paramIndex++;
+      sql += ` AND assembly_code = $${paramCount}`;
     }
-    
-    // Filter by maximum GWP
+
+    // Material type filter
+    if (materialType) {
+      paramCount++;
+      params.push(`%${materialType}%`);
+      sql += ` AND material_type ILIKE $${paramCount}`;
+    }
+
+    // GWP filters
+    if (minGWP) {
+      paramCount++;
+      params.push(parseFloat(minGWP));
+      sql += ` AND gwp >= $${paramCount}`;
+    }
+
     if (maxGWP) {
+      paramCount++;
       params.push(parseFloat(maxGWP));
-      sql += ` AND gwp <= $${paramIndex}`;
-      paramIndex++;
+      sql += ` AND gwp <= $${paramCount}`;
     }
-    
-    // Filter by EPD availability
+
+    // EPD filter
     if (hasEPD === 'true') {
       sql += ` AND epd_number IS NOT NULL AND epd_number != ''`;
     } else if (hasEPD === 'false') {
       sql += ` AND (epd_number IS NULL OR epd_number = '')`;
     }
-    
-    // Order by GWP (ascending - lower carbon first)
-    sql += ` ORDER BY gwp ASC NULLS LAST, product_name ASC`;
-    
-    // Add pagination
+
+    // Verification filter
+    if (isVerified === 'true') {
+      sql += ` AND is_verified = true`;
+    } else if (isVerified === 'false') {
+      sql += ` AND is_verified = false`;
+    }
+
+    // Validate sortBy
+    const validSortFields = ['gwp', 'product_name', 'manufacturer', 'created_at'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'gwp';
+    const sortDir = sortOrder.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+
+    sql += ` ORDER BY ${sortField} ${sortDir}`;
+    sql += ` LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
     params.push(parseInt(limit));
-    sql += ` LIMIT $${paramIndex}`;
-    paramIndex++;
-    
-    params.push(parseInt(offset));
-    sql += ` OFFSET $${paramIndex}`;
-    
+    params.push(offset);
+
     const result = await pool.query(sql, params);
-    
+
     // Get total count for pagination
     let countSql = `
       SELECT COUNT(*) as total
-      FROM ews_materials
+      FROM materials
       WHERE 1=1
     `;
     const countParams = [];
-    let countParamIndex = 1;
-    
-    if (query) {
-      countParams.push(`%${query}%`);
+    let countParamCount = 0;
+
+    if (query.trim()) {
+      countParamCount++;
+      countParams.push(query.trim());
       countSql += ` AND (
-        product_name ILIKE $${countParamIndex} 
-        OR manufacturer ILIKE $${countParamIndex}
-        OR assembly_name ILIKE $${countParamIndex}
-        OR epd_number ILIKE $${countParamIndex}
+        to_tsvector('english', 
+          COALESCE(product_name, '') || ' ' || 
+          COALESCE(manufacturer, '') || ' ' || 
+          COALESCE(material_type, '')
+        ) @@ plainto_tsquery('english', $${countParamCount})
+        OR product_name ILIKE $${countParamCount + 1}
+        OR manufacturer ILIKE $${countParamCount + 1}
+        OR material_type ILIKE $${countParamCount + 1}
       )`;
-      countParamIndex++;
+      countParams.push(`%${query.trim()}%`);
+      countParamCount++;
     }
-    
+
     if (manufacturer) {
+      countParamCount++;
       countParams.push(manufacturer);
-      countSql += ` AND manufacturer = $${countParamIndex}`;
-      countParamIndex++;
+      countSql += ` AND manufacturer = $${countParamCount}`;
     }
-    
+
     if (assemblyCode) {
+      countParamCount++;
       countParams.push(assemblyCode);
-      countSql += ` AND assembly_code = $${countParamIndex}`;
-      countParamIndex++;
+      countSql += ` AND assembly_code = $${countParamCount}`;
     }
-    
+
+    if (materialType) {
+      countParamCount++;
+      countParams.push(`%${materialType}%`);
+      countSql += ` AND material_type ILIKE $${countParamCount}`;
+    }
+
+    if (minGWP) {
+      countParamCount++;
+      countParams.push(parseFloat(minGWP));
+      countSql += ` AND gwp >= $${countParamCount}`;
+    }
+
     if (maxGWP) {
+      countParamCount++;
       countParams.push(parseFloat(maxGWP));
-      countSql += ` AND gwp <= $${countParamIndex}`;
-      countParamIndex++;
+      countSql += ` AND gwp <= $${countParamCount}`;
     }
-    
+
     if (hasEPD === 'true') {
       countSql += ` AND epd_number IS NOT NULL AND epd_number != ''`;
     } else if (hasEPD === 'false') {
       countSql += ` AND (epd_number IS NULL OR epd_number = '')`;
     }
-    
+
+    if (isVerified === 'true') {
+      countSql += ` AND is_verified = true`;
+    } else if (isVerified === 'false') {
+      countSql += ` AND is_verified = false`;
+    }
+
     const countResult = await pool.query(countSql, countParams);
     const total = parseInt(countResult.rows[0].total);
-    
+
     res.json({
       success: true,
-      count: result.rows.length,
-      total,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      materials: result.rows
+      data: {
+        materials: result.rows,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit))
+        }
+      }
     });
+
   } catch (error) {
     console.error('Material search error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Search failed',
-      message: error.message 
+      error: 'Material search failed',
+      message: error.message
     });
   }
 });
 
 /**
- * GET /api/v1/materials/assemblies
- * Get unique assembly types with counts
+ * GET /api/v1/materials/meta/assemblies
+ * Get unique assembly types with material counts
+ * 
+ * NOTE: This route must be defined BEFORE /:id to avoid route conflicts
  */
-router.get('/assemblies', authenticateToken, async (req, res) => {
+router.get('/meta/assemblies', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        assembly_code,
-        assembly_name,
-        COUNT(*) as material_count,
-        MIN(gwp) as min_gwp,
-        MAX(gwp) as max_gwp,
-        AVG(gwp) as avg_gwp
-      FROM ews_materials
+        assembly_code, 
+        assembly_name, 
+        COUNT(*) as material_count
+      FROM materials
+      WHERE assembly_code IS NOT NULL
       GROUP BY assembly_code, assembly_name
       ORDER BY assembly_code
     `);
-    
+
     res.json({
       success: true,
-      count: result.rows.length,
-      assemblies: result.rows
+      data: { assemblies: result.rows }
     });
+
   } catch (error) {
     console.error('Assembly fetch error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to fetch assemblies',
-      message: error.message 
+      message: error.message
     });
   }
 });
 
 /**
- * GET /api/v1/materials/manufacturers
- * Get unique manufacturers with product counts
+ * GET /api/v1/materials/meta/manufacturers
+ * Get unique manufacturers with product counts and stats
+ * 
+ * NOTE: This route must be defined BEFORE /:id to avoid route conflicts
  */
-router.get('/manufacturers', authenticateToken, async (req, res) => {
+router.get('/meta/manufacturers', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        manufacturer,
+        manufacturer, 
         COUNT(*) as product_count,
-        COUNT(DISTINCT assembly_code) as assembly_count,
-        MIN(gwp) as min_gwp,
-        MAX(gwp) as max_gwp,
-        AVG(gwp) as avg_gwp,
-        COUNT(CASE WHEN epd_number IS NOT NULL AND epd_number != '' THEN 1 END) as products_with_epd
-      FROM ews_materials
+        COUNT(CASE WHEN epd_number IS NOT NULL AND epd_number != '' THEN 1 END) as epd_count,
+        AVG(gwp) as avg_gwp
+      FROM materials
       GROUP BY manufacturer
       ORDER BY manufacturer
     `);
-    
+
     res.json({
       success: true,
-      count: result.rows.length,
-      manufacturers: result.rows
+      data: { manufacturers: result.rows }
     });
+
   } catch (error) {
     console.error('Manufacturer fetch error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to fetch manufacturers',
-      message: error.message 
+      message: error.message
     });
   }
 });
 
 /**
  * GET /api/v1/materials/:id
- * Get a specific material by ID
+ * Get single material details
+ * 
+ * NOTE: This route must be defined AFTER /meta/* routes to avoid conflicts
  */
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    const result = await pool.query(`
-      SELECT *
-      FROM ews_materials
-      WHERE id = $1
-    `, [id]);
-    
+    const materialId = parseInt(req.params.id);
+
+    if (isNaN(materialId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid material ID'
+      });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM materials WHERE id = $1',
+      [materialId]
+    );
+
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Material not found'
       });
     }
-    
+
     res.json({
       success: true,
-      material: result.rows[0]
+      data: { material: result.rows[0] }
     });
+
   } catch (error) {
     console.error('Material fetch error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to fetch material',
-      message: error.message 
-    });
-  }
-});
-
-/**
- * GET /api/v1/materials/stats
- * Get material statistics
- */
-router.get('/stats', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT 
-        COUNT(*) as total_materials,
-        COUNT(DISTINCT manufacturer) as total_manufacturers,
-        COUNT(DISTINCT assembly_code) as total_assemblies,
-        COUNT(CASE WHEN epd_number IS NOT NULL AND epd_number != '' THEN 1 END) as materials_with_epd,
-        MIN(gwp) as min_gwp,
-        MAX(gwp) as max_gwp,
-        AVG(gwp) as avg_gwp,
-        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY gwp) as median_gwp
-      FROM ews_materials
-    `);
-    
-    res.json({
-      success: true,
-      stats: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Stats fetch error:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Failed to fetch stats',
-      message: error.message 
+      message: error.message
     });
   }
 });

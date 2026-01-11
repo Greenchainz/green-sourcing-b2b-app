@@ -14,12 +14,14 @@ const rfqSimulatorRoutes = require("./routes/rfq-simulator");
 const authRoutes = require("./routes/auth");
 const oauthRoutes = require("./routes/oauth");
 const rfqRoutes = require("./routes/rfqs");
+const rfqApiRoutes = require("./routes/rfq-api");
 const shadowSupplierRoutes = require("./routes/shadow-suppliers");
 const aiGatewayRoutes = require("./routes/ai-gateway");
 const buyerVerificationRoutes = require("./routes/buyerVerification");
 const intercomRoutes = require("./routes/intercom");
 const materialsRoutes = require("./routes/materials");
 const aiAgentsRoutes = require("./routes/ai-agents");
+const supplierRoutes = require("./routes/suppliers");
 
 // AI Gateway
 const aiGateway = require("./services/ai-gateway");
@@ -520,12 +522,14 @@ async function start() {
   app.use("/api/v1/auth", authRoutes);
   app.use("/auth", oauthRoutes);
   app.use("/api/v1/rfqs", rfqRoutes);
+  app.use("/api/v2/rfq", rfqApiRoutes);
   app.use("/api/v1/verification", buyerVerificationRoutes);
   app.use("/api/v1/ai-gateway", aiGatewayRoutes);
   app.use("/api/v1/subscriptions", subscriptionRoutes);
   app.use("/api/v1/intercom", intercomRoutes);
   app.use("/api/v1/materials", materialsRoutes);
   app.use("/api/v1/ai-agents", aiAgentsRoutes);
+  app.use("/api/v1/suppliers", supplierRoutes);
 
   // Initialize AI Gateway
   aiGateway.initialize().catch((err) => {

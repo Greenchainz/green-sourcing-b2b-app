@@ -438,6 +438,7 @@ export default function CatalogPage() {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="gc-select gc-sort-select"
+                aria-label="Sort materials"
               >
                 <option value="score-desc">Highest Score</option>
                 <option value="score-asc">Lowest Score</option>
@@ -516,6 +517,7 @@ export default function CatalogPage() {
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
                 className="gc-btn gc-btn-ghost gc-pagination-btn"
+                aria-label="Previous page"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -560,6 +562,7 @@ export default function CatalogPage() {
                 }
                 disabled={currentPage === totalPages}
                 className="gc-btn gc-btn-ghost gc-pagination-btn"
+                aria-label="Next page"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -599,8 +602,10 @@ export default function CatalogPage() {
             <div className="gc-filter-panel-header">
               <h2 className="gc-filter-panel-title">Filters</h2>
               <button
+                type="button"
                 onClick={() => setShowMobileFilters(false)}
                 className="gc-filter-close-btn"
+                aria-label="Close filters"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

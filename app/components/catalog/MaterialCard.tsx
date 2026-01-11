@@ -62,15 +62,7 @@ export default function MaterialCard({
       {/* Compare Checkbox */}
       {compareEnabled && (
         <label
-          className={`gc-compare-checkbox-label ${isSelected ? "gc-compare-checkbox-label--selected" : "gc-compare-checkbox-label--unselected"}`}
-          style={
-            isFocused
-              ? {
-                  boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.35)",
-                  outline: "none",
-                }
-              : undefined
-          }
+          className={`gc-compare-checkbox-label ${isSelected ? "gc-compare-checkbox-label--selected" : "gc-compare-checkbox-label--unselected"} ${isFocused ? "gc-compare-checkbox-label--focused" : ""}`}
           title={isSelected ? "Remove from comparison" : "Add to comparison"}
         >
           <input

@@ -1,4 +1,4 @@
-# Azure AI Configuration - Deployment Checklist
+﻿# Azure AI Configuration - Deployment Checklist
 
 ## ✅ Completed Steps
 
@@ -17,6 +17,7 @@
   - `carbon-estimator` → `CARBON-OPTIMIZER-AGENT`
 
 ### 3. Container App Configuration
+
 - [x] Secrets added (Key Vault references)
 - [x] Environment variables added
 
@@ -114,6 +115,7 @@ After deployment, verify:
 4. Restart Container App
 
 ### If workflows fail:
+
 1. Check agent names match exactly (case-sensitive)
 2. Verify agents are deployed and running in Azure AI Foundry
 3. Check endpoint format: `https://greenchainz-resource.openai.azure.com`
@@ -130,6 +132,7 @@ After deployment, verify:
 ## 📝 Configuration Details
 
 ### Environment Variables
+
 ```bash
 AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=secretref:azure-document-intelligence-endpoint
 AZURE_DOCUMENT_INTELLIGENCE_KEY=secretref:azure-document-intelligence-key
@@ -139,14 +142,16 @@ AZURE_AI_API_VERSION=2024-02-15-preview
 ```
 
 ### Key Vault Secrets
+
 - `Azure-Document-Intelligence-Endpoint` → `https://greenchainz-content-intel.cognitiveservices.azure.com/`
 - `Azure-Document-Intelligence-Key` → (configured)
 - `Azure-AI-Foundry-Endpoint` → `https://greenchainz-resource.openai.azure.com`
 - `Azure-AI-Foundry-Key` → (configured)
 
 ### Agent Mappings
+
 | Workflow | Agent Name |
-|----------|-----------|
+| --- | --- |
 | material-alternative | DATA-REFINERY |
 | rfq-scorer | RFQ-MATCHING |
 | outreach-draft | OUTREACH-SCALER |

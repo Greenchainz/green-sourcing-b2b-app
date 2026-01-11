@@ -1,49 +1,104 @@
-import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
 
-// MOCK DATA for when DB is empty or connection fails (for demo purposes)
-const MOCK_STATS = {
-  profileViews: 1240,
-  rfqsReceived: 12,
-  responseRate: 85,
-  actionItems: [
-    { type: 'rfq', message: 'New RFQ from Studio Alpha', id: '1', priority: 'high' },
-    { type: 'cert', message: 'ISO 9001 expiring in 30 days', id: '2', priority: 'medium' },
-    { type: 'profile', message: 'Complete your profile (80%)', id: '3', priority: 'low' }
-  ]
-};
+import { NextRequest, NextResponse } from 'next/server';
+import { runQuery, runQueryOne, runScalar } from '@/lib/azure/config';
 
-export async function GET() {
-  try {
-    // In a real scenario, we would get the supplier_id from the session
-    // const session = await getSession();
-    // const supplierId = session.supplierId;
+// Types for the dashboard response
+interface DashboardMetrics {
+    active_rfqs: number;
+    profile_views: number;
+    completion_score: number;
+    response_time_hours: number;
+}
 
-    // For now, let's try to query. If it fails (no DB), return mock.
+interface RecentRFQ {
+    rfq_id: number;
+    project_name: string;
+    material_name: string;
+    quantity: number;
+    unit: string;
+    deadline: string; // ISO date
+    status: string;
+}
+
+export async function GET(req: NextRequest) {
     try {
-        const text = `
-        SELECT
-            profile_views,
-            rfqs_received,
-            response_rate_percent
-        FROM supplier_analytics
-        LIMIT 1`; // Just getting the first one for MVP/Demo
+        // ------------------------------------------------------------------
+        // MOCK AUTH: In real app, get user from session/cookie
+        // For now, accept ?supplier_id=X or default to 1 (Demo Supplier)
+        // ------------------------------------------------------------------
+        const { searchParams } = new URL(req.url);
+        const supplierIdParam = searchParams.get('supplier_id');
+        const supplierId = supplierIdParam ? parseInt(supplierIdParam) : 1;
 
-        const res = await query(text);
+        // 1. Get Metrics
+        // JOINs or multiple queries. For simplicity, we run parallel queries.
 
-        if (res.rows.length > 0) {
-            return NextResponse.json({
-                ...res.rows[0],
-                actionItems: MOCK_STATS.actionItems // Still mocking action items for now
-            });
-        }
-    } catch (dbError) {
-        console.warn("Database query failed, returning mock data", dbError);
+        // A. Active RFQs (Status = 'Pending' or 'Viewed' sent to this supplier)
+        // Actually, RFQs table links to SupplierID if it's a direct RFQ?
+        // Schema: RFQs has SupplierID.
+        const activeRfqsQuery = `
+      SELECT COUNT(*) as count 
+      FROM rfqs 
+      WHERE supplier_id = @supplierId 
+      AND status IN ('Pending', 'Viewed')
+    `;
+
+        // B. Profile Views (Last 30 days)
+        const viewsQuery = `
+      SELECT COUNT(*) as count 
+      FROM analytics_events
+      WHERE supplier_id = @supplierId 
+      AND event_type = 'ProfileView'
+      AND created_at > DATEADD(day, -30, GETDATE())
+    `;
+
+        // C. Verification/Completion Score
+        // Using cached table or calculating on fly.
+        // Schema: supplier_verification_scores
+        const scoreQuery = `
+      SELECT score, response_rate 
+      FROM supplier_verification_scores 
+      WHERE supplier_id = @supplierId
+    `;
+
+        // D. Recent RFQs List
+        const recentRfqsQuery = `
+      SELECT TOP 5
+        r.rfq_id,
+        r.project_name,
+        p.name as material_name,
+        r.quantity_needed as quantity,
+        r.unit,
+        r.deadline_date as deadline,
+        r.status
+      FROM rfqs r
+      LEFT JOIN products p ON r.product_id = p.product_id
+      WHERE r.supplier_id = @supplierId
+      ORDER BY r.created_at DESC
+    `;
+
+        const [activeCount, viewsCount, scoreData, recentRfqs] = await Promise.all([
+            runScalar<number>(activeRfqsQuery, { supplierId }),
+            runScalar<number>(viewsQuery, { supplierId }),
+            runQueryOne<{ score: number, response_rate: number }>(scoreQuery, { supplierId }),
+            runQuery<RecentRFQ>(recentRfqsQuery, { supplierId })
+        ]);
+
+        // Format Data
+        const metrics: DashboardMetrics = {
+            active_rfqs: activeCount || 0,
+            profile_views: viewsCount || 0,
+            completion_score: scoreData?.score || 0,
+            response_time_hours: 4 // Hardcoded avg for MVP or calc from DB
+        };
+
+        return NextResponse.json({
+            metrics,
+            recent_rfqs: recentRfqs
+        });
+
+    } catch (error: unknown) {
+        console.error('Dashboard API Error:', error);
+        return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
     }
-
-    return NextResponse.json(MOCK_STATS);
-
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
 }

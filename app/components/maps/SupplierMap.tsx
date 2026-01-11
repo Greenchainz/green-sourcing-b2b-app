@@ -1,0 +1,412 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+
+/**
+ * Supplier Location Data
+ */
+export interface SupplierLocation {
+  id: number;
+  name: string;
+  email?: string;
+  city?: string;
+  state?: string;
+  latitude: number;
+  longitude: number;
+  distance_miles?: number;
+  service_radius?: number;
+  certifications?: string[];
+}
+
+/**
+ * SupplierMap Component Props
+ */
+interface SupplierMapProps {
+  /**
+   * Suppliers to display on the map
+   */
+  suppliers: SupplierLocation[];
+
+  /**
+   * Center point of the map (defaults to first supplier or San Francisco)
+   */
+  center?: {
+    latitude: number;
+    longitude: number;
+  };
+
+  /**
+   * Zoom level (default: 10)
+   */
+  zoom?: number;
+
+  /**
+   * Show distance labels
+   */
+  showDistance?: boolean;
+
+  /**
+   * Height of the map (default: "500px")
+   */
+  height?: string;
+
+  /**
+   * Callback when a supplier marker is clicked
+   */
+  onSupplierClick?: (supplier: SupplierLocation) => void;
+
+  /**
+   * Show supplier service radius circles
+   */
+  showServiceRadius?: boolean;
+
+  /**
+   * Custom marker color (default: "#10b981" - emerald)
+   */
+  markerColor?: string;
+}
+
+/**
+ * SupplierMap Component
+ *
+ * Displays suppliers on an Azure Maps interactive map with markers,
+ * distance calculations, and service radius visualization.
+ */
+export default function SupplierMap({
+  suppliers,
+  center,
+  zoom = 10,
+  showDistance = true,
+  height = "500px",
+  onSupplierClick,
+  showServiceRadius = false,
+  markerColor = "#10b981",
+}: SupplierMapProps) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const markersRef = useRef<any[]>([]);
+  const datasourceRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Load Azure Maps SDK
+    const script = document.createElement("script");
+    script.src =
+      "https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js";
+    script.async = true;
+    script.onload = initializeMap;
+    script.onerror = () => setError("Failed to load Azure Maps SDK");
+
+    // Load CSS
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href =
+      "https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css";
+
+    document.head.appendChild(link);
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup
+      if (mapRef.current) {
+        mapRef.current.dispose();
+      }
+      document.body.removeChild(script);
+      document.head.removeChild(link);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mapRef.current && suppliers.length > 0) {
+      updateMarkers();
+    }
+  }, [suppliers, showDistance, showServiceRadius, markerColor]);
+
+  const initializeMap = () => {
+    if (!mapContainerRef.current) return;
+
+    try {
+      const azureMaps = (window as any).atlas;
+      if (!azureMaps) {
+        setError("Azure Maps SDK not loaded");
+        return;
+      }
+
+      // Get Azure Maps key from environment or API
+      const subscriptionKey = process.env.NEXT_PUBLIC_AZURE_MAPS_KEY || "";
+
+      if (!subscriptionKey) {
+        setError("Azure Maps subscription key not configured");
+        setIsLoading(false);
+        return;
+      }
+
+      // Calculate center point
+      const mapCenter = center || calculateCenter(suppliers);
+
+      // Initialize map
+      mapRef.current = new azureMaps.Map(mapContainerRef.current, {
+        authOptions: {
+          authType: azureMaps.AuthenticationType.subscriptionKey,
+          subscriptionKey: subscriptionKey,
+        },
+        center: [mapCenter.longitude, mapCenter.latitude],
+        zoom: zoom,
+        style: "road",
+        language: "en-US",
+        view: "Auto",
+      });
+
+      // Wait for map to be ready
+      mapRef.current.events.add("ready", () => {
+        // Create data source for markers
+        datasourceRef.current = new azureMaps.source.DataSource();
+        mapRef.current.sources.add(datasourceRef.current);
+
+        // Add markers layer
+        const markerLayer = new azureMaps.layer.SymbolLayer(
+          datasourceRef.current,
+          null,
+          {
+            iconOptions: {
+              image: "pin-round-blue",
+              size: 0.5,
+            },
+            textOptions: {
+              textField: ["get", "name"],
+              offset: [0, 1.2],
+              color: "#333",
+              fontSize: 12,
+            },
+          }
+        );
+
+        mapRef.current.layers.add(markerLayer);
+
+        // Add popup
+        const popup = new azureMaps.Popup({
+          pixelOffset: [0, -18],
+          closeButton: false,
+        });
+
+        // Handle marker click
+        mapRef.current.events.add("click", markerLayer, (e: any) => {
+          if (e.shapes && e.shapes.length > 0) {
+            const shape = e.shapes[0];
+            const supplier = shape.getProperties();
+
+            popup.setOptions({
+              position: e.position,
+              content: createPopupContent(supplier),
+            });
+            popup.open(mapRef.current);
+
+            if (onSupplierClick) {
+              onSupplierClick(supplier);
+            }
+          }
+        });
+
+        updateMarkers();
+        setIsLoading(false);
+      });
+    } catch (err: any) {
+      console.error("Map initialization error:", err);
+      setError(err.message || "Failed to initialize map");
+      setIsLoading(false);
+    }
+  };
+
+  const calculateCenter = (suppliers: SupplierLocation[]) => {
+    if (suppliers.length === 0) {
+      return { latitude: 37.7749, longitude: -122.4194 }; // San Francisco default
+    }
+
+    if (suppliers.length === 1) {
+      return {
+        latitude: suppliers[0].latitude,
+        longitude: suppliers[0].longitude,
+      };
+    }
+
+    // Calculate average center
+    const sum = suppliers.reduce(
+      (acc, supplier) => ({
+        latitude: acc.latitude + supplier.latitude,
+        longitude: acc.longitude + supplier.longitude,
+      }),
+      { latitude: 0, longitude: 0 }
+    );
+
+    return {
+      latitude: sum.latitude / suppliers.length,
+      longitude: sum.longitude / suppliers.length,
+    };
+  };
+
+  const updateMarkers = () => {
+    if (!mapRef.current || !datasourceRef.current) return;
+
+    const azureMaps = (window as any).atlas;
+    if (!azureMaps) return;
+
+    // Clear existing markers
+    datasourceRef.current.clear();
+    markersRef.current = [];
+
+    // Add suppliers as markers
+    suppliers.forEach((supplier) => {
+      const point = new azureMaps.data.Point([
+        supplier.longitude,
+        supplier.latitude,
+      ]);
+
+      const properties: any = {
+        id: supplier.id,
+        name: supplier.name,
+        email: supplier.email,
+        city: supplier.city,
+        state: supplier.state,
+        distance_miles: supplier.distance_miles,
+        service_radius: supplier.service_radius,
+        certifications: supplier.certifications,
+      };
+
+      const feature = new azureMaps.data.Feature(point, properties);
+      datasourceRef.current.add(feature);
+
+      // Add service radius circle if enabled
+      if (showServiceRadius && supplier.service_radius) {
+        const radiusKm = supplier.service_radius * 1.60934; // Convert miles to km
+        const circle = azureMaps.math.getCircleCoordinates(
+          [supplier.longitude, supplier.latitude],
+          radiusKm,
+          64
+        );
+        const circleFeature = new azureMaps.data.Feature(
+          new azureMaps.data.Polygon([circle]),
+          { supplierId: supplier.id, type: "serviceRadius" }
+        );
+        datasourceRef.current.add(circleFeature);
+      }
+    });
+
+    // Fit map to bounds if multiple suppliers
+    if (suppliers.length > 1) {
+      const bounds = azureMaps.data.BoundingBox.fromData(datasourceRef.current);
+      mapRef.current.setCamera({
+        bounds: bounds,
+        padding: 50,
+      });
+    }
+  };
+
+  const createPopupContent = (supplier: SupplierLocation) => {
+    return `
+      <div style="padding: 12px; min-width: 200px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #111827;">
+          ${supplier.name}
+        </h3>
+        ${
+          supplier.city && supplier.state
+            ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">
+              ${supplier.city}, ${supplier.state}
+            </p>`
+            : ""
+        }
+        ${
+          supplier.distance_miles !== undefined && showDistance
+            ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #059669; font-weight: 600;">
+              ${supplier.distance_miles.toFixed(1)} miles away
+            </p>`
+            : ""
+        }
+        ${
+          supplier.service_radius
+            ? `<p style="margin: 0; font-size: 12px; color: #6b7280;">
+              Service radius: ${supplier.service_radius} miles
+            </p>`
+            : ""
+        }
+      </div>
+    `;
+  };
+
+  if (error) {
+    return (
+      <div
+        className="gc-map-error"
+        style={{
+          height,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f9fafb",
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          color: "#dc2626",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <p style={{ margin: 0, fontWeight: 600 }}>Map Error</p>
+          <p style={{ margin: "4px 0 0 0", fontSize: "14px" }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="gc-supplier-map" style={{ position: "relative", height }}>
+      {isLoading && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#f9fafb",
+            zIndex: 1000,
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                width: "32px",
+                height: "32px",
+                border: "3px solid #e5e7eb",
+                borderTopColor: "#10b981",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+                margin: "0 auto 8px",
+              }}
+            />
+            <p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>
+              Loading map...
+            </p>
+          </div>
+        </div>
+      )}
+      <div
+        ref={mapContainerRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: "8px",
+          overflow: "hidden",
+        }}
+      />
+      <style jsx>{`
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}

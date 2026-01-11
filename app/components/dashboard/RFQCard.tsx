@@ -194,8 +194,7 @@ export default function RFQCard({ rfq, onRespond }: RFQCardProps) {
       <div className="gc-rfq-card-footer">
         {/* Status Badge */}
         <span
-          className="gc-rfq-status-badge"
-          style={{ background: statusInfo.bgColor, color: statusInfo.color }}
+          className={`gc-rfq-status-badge gc-rfq-status-badge--${rfq.status}`}
         >
           {rfq.status === "responded" && (
             <svg
