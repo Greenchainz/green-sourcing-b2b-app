@@ -2,30 +2,73 @@ import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://greenchainz.com'
-  const lastModified = new Date()
-
-  // Static pages with priority
-  const staticPages = [
-    { url: '', priority: 1.0, changeFrequency: 'weekly' as const },
-    { url: '/about', priority: 0.8, changeFrequency: 'monthly' as const },
-    { url: '/how-it-works', priority: 0.8, changeFrequency: 'monthly' as const },
-    { url: '/catalog', priority: 0.9, changeFrequency: 'daily' as const },
-    { url: '/pricing', priority: 0.8, changeFrequency: 'weekly' as const },
-    { url: '/partners', priority: 0.7, changeFrequency: 'monthly' as const },
-    { url: '/developers', priority: 0.6, changeFrequency: 'monthly' as const },
-    { url: '/integrations', priority: 0.7, changeFrequency: 'monthly' as const },
-    { url: '/blog', priority: 0.7, changeFrequency: 'weekly' as const },
-    { url: '/contact', priority: 0.6, changeFrequency: 'monthly' as const },
-    { url: '/careers', priority: 0.6, changeFrequency: 'monthly' as const },
-    { url: '/legal/terms', priority: 0.3, changeFrequency: 'yearly' as const },
-    { url: '/legal/privacy', priority: 0.3, changeFrequency: 'yearly' as const },
-    { url: '/help', priority: 0.5, changeFrequency: 'monthly' as const },
+  
+  return [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/suppliers`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/architects`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: 'https://autodesk-revit.greenchainz.com',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/about`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/how-it-works`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/pricing`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/faq`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/privacy-policy`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/terms`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
   ]
-
-  return staticPages.map(({ url, priority, changeFrequency }) => ({
-    url: `${baseUrl}${url}`,
-    lastModified,
-    changeFrequency,
-    priority,
-  }))
 }
