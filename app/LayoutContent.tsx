@@ -1,42 +1,46 @@
-"use client";
+'use client'
 
-import SiteHeader from './components/SiteHeader'
-import Footer from './components/Footer'
-import IntercomWidget from './components/IntercomWidget'
-import { useAuth } from './hooks/useAuth'
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 
+declare global {
+  interface Window {
+    Intercom: any
+    intercomSettings: any
+  }
+}
+
 export function LayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
   const pathname = usePathname()
 
-  // Check if we are in the Supplier Dashboard
-  const isSupplierDashboard = pathname?.startsWith('/dashboard/supplier')
+  useEffect(() => {
+    // Initialize Intercom AFTER page load
+    if (typeof window !== 'undefined') {
+      window.intercomSettings = {
+        api_base: "https://api-iam.intercom.io",
+        app_id: "yourAppIdHere", // GET THIS FROM INTERCOM DASHBOARD
+      }
 
-  if (isSupplierDashboard) {
-    return (
-      <div className="h-full">
-        {children}
-      </div>
-    )
-  }
-import SiteHeader from "./components/SiteHeader";
-import Footer from "./components/Footer";
-import { IntercomProvider } from "./components/IntercomProvider";
-import IntercomWidget from "./components/IntercomWidget";
-import { useAuth } from "./hooks/useAuth";
+      // Load Intercom script
+      const script = document.createElement('script')
+      script.async = true
+      script.src = `https://widget.intercom.io/widget/yourAppIdHere`
+      document.body.appendChild(script)
 
-export function LayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+      script.onload = () => {
+        if (window.Intercom) {
+          window.Intercom('boot', window.intercomSettings)
+        }
+      }
+    }
+  }, [])
 
-  return (
-    <IntercomProvider>
-      <div className="gc-shell">
-        <SiteHeader />
-        <main className="gc-main">{children}</main>
-        <Footer />
-        {!loading && <IntercomWidget user={user ?? undefined} />}
-      </div>
-    </IntercomProvider>
-  );
+  // Update Intercom on route change
+  useEffect(() => {
+    if (window.Intercom) {
+      window.Intercom('update')
+    }
+  }, [pathname])
+
+  return <>{children}</>
 }
