@@ -44,6 +44,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-linkedin-oauth2": "^2.0.0",
     "passport-microsoft": "^1.0.0",
+    "pdf-parse": "^2.4.5",
     "pg": "^8.11.3",
     "redis": "^4.7.0",
     "swagger-ui-express": "^5.0.1",
