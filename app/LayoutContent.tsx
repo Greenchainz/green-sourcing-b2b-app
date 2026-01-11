@@ -3,10 +3,13 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 
-declare global {
-  interface Window {
-    Intercom: any
-    intercomSettings: any
+// Define types for Intercom
+type IntercomWindow = Window & {
+  Intercom?: (command: string, data?: Record<string, unknown>) => void
+  intercomSettings?: {
+    api_base?: string
+    app_id: string
+    [key: string]: unknown
   }
 }
 
@@ -16,20 +19,36 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Initialize Intercom AFTER page load
     if (typeof window !== 'undefined') {
-      window.intercomSettings = {
+      const win = window as IntercomWindow
+      const appId = process.env.NEXT_PUBLIC_INTERCOM_APP_ID
+
+      if (!appId) {
+        console.warn('[Intercom] NEXT_PUBLIC_INTERCOM_APP_ID not configured - chat widget disabled')
+        return
+      }
+
+      win.intercomSettings = {
         api_base: "https://api-iam.intercom.io",
-        app_id: "cqtm1euj", // GET THIS FROM INTERCOM DASHBOARD
+        app_id: appId,
       }
 
       // Load Intercom script
       const script = document.createElement('script')
       script.async = true
-      script.src = `https://widget.intercom.io/widget/yourAppIdHere`
+      script.src = `https://widget.intercom.io/widget/${appId}`
       document.body.appendChild(script)
 
       script.onload = () => {
-        if (window.Intercom) {
-          window.Intercom('boot', window.intercomSettings)
+        if (win.Intercom) {
+          win.Intercom('boot', win.intercomSettings)
+        }
+      }
+
+      // Cleanup function
+      return () => {
+        // Remove the script on unmount
+        if (script.parentNode) {
+          script.parentNode.removeChild(script)
         }
       }
     }
@@ -37,8 +56,9 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
 
   // Update Intercom on route change
   useEffect(() => {
-    if (window.Intercom) {
-      window.Intercom('update')
+    const win = window as IntercomWindow
+    if (win.Intercom) {
+      win.Intercom('update')
     }
   }, [pathname])
 

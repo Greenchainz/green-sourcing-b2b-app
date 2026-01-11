@@ -132,7 +132,7 @@ export default function LoginClient() {
   };
 
   return (
-    <div className="gc-page py-14">
+    <div className="min-h-screen py-14" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #f0fdf4 100%)' }}>
       <div className="gc-container max-w-[480px]">
         {/* Logo / Header */}
         <div className="text-center mb-8">
@@ -184,10 +184,12 @@ export default function LoginClient() {
               <button
                 onClick={initiateGoogleLogin}
                 disabled={isLoading || isInitializing}
-                className="gc-btn gc-btn-outline w-full py-3.5 px-4 text-[15px] mb-3"
+                className="flex items-center justify-center w-full py-3.5 px-4 text-[15px] mb-3 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:border-emerald-300 hover:-translate-y-0.5"
               >
                 <svg
-                  className="w-5 h-5 mr-2"
+                  width="20"
+                  height="20"
+                  className="mr-2 flex-shrink-0"
                   viewBox="0 0 24 24"
                   fill="none"
                 >
@@ -215,10 +217,12 @@ export default function LoginClient() {
               <button
                 onClick={initiateLinkedInLogin}
                 disabled={isLoading || isInitializing}
-                className="gc-btn gc-btn-outline w-full py-3.5 px-4 text-[15px] mb-5"
+                className="flex items-center justify-center w-full py-3.5 px-4 text-[15px] mb-5 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:border-emerald-300 hover:-translate-y-0.5"
               >
                 <svg
-                  className="w-5 h-5 mr-2"
+                  width="20"
+                  height="20"
+                  className="mr-2 flex-shrink-0"
                   viewBox="0 0 24 24"
                   fill="#0A66C2"
                 >
@@ -240,10 +244,12 @@ export default function LoginClient() {
               <button
                 onClick={initiateAzureLogin}
                 disabled={isLoading || isInitializing}
-                className="gc-btn gc-btn-primary w-full py-3.5 px-4 text-[15px] mb-5"
+                className="flex items-center justify-center w-full py-3.5 px-4 text-[15px] mb-5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] hover:from-emerald-700 hover:to-emerald-600 hover:-translate-y-0.5"
               >
                 <svg
-                  className="w-5 h-5 mr-2"
+                  width="20"
+                  height="20"
+                  className="mr-2 flex-shrink-0"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
