@@ -194,18 +194,45 @@ CREATE TABLE IF NOT EXISTS rfq_responses (
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- MIGRATION: Add new columns if they don't exist
+DO $$
+BEGIN
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS price DECIMAL(10, 2);
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'USD';
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS lead_time_days INTEGER;
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS min_order_quantity INTEGER;
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS valid_until DATE;
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS payment_terms TEXT;
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS delivery_terms TEXT;
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS attachments JSONB;
+  ALTER TABLE rfq_responses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_rfq_id ON rfq_responses(rfq_id);
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_supplier_id ON rfq_responses(supplier_id);
+
+DROP TRIGGER IF EXISTS trg_rfq_responses_updated_at ON rfq_responses;
+CREATE TRIGGER trg_rfq_responses_updated_at
+  BEFORE UPDATE ON rfq_responses
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Enterprise-grade: constrain RFQ response status (idempotent)
 DO $$
 BEGIN
+  -- Always drop old constraint to ensure new values are accepted
+  ALTER TABLE rfq_responses DROP CONSTRAINT IF EXISTS rfq_responses_status_check;
+
+  ALTER TABLE rfq_responses
+      ADD CONSTRAINT rfq_responses_status_check
+      CHECK (status IN ('pending','accepted','declined','submitted','clarification_requested'));
+
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'rfq_responses_status_check'
+    SELECT 1 FROM pg_constraint WHERE conname = 'rfq_responses_price_check'
   ) THEN
     ALTER TABLE rfq_responses
-      ADD CONSTRAINT rfq_responses_status_check
-      CHECK (status IN ('pending','accepted','declined'));
+      ADD CONSTRAINT rfq_responses_price_check
+      CHECK (price IS NULL OR price >= 0);
   END IF;
 END $$;
 
