@@ -7,6 +7,7 @@
 **Problem:** The backend auth code expected different column names and tables than what existed in the database schema.
 
 **Root Causes:**
+
 - Auth code expects lowercase columns (`id`, `first_name`, `azure_id`) but schema used PascalCase (`UserID`, `FirstName`)
 - Missing `azure_id` column for Azure AD user identity
 - Missing `RefreshTokens` table for session management
