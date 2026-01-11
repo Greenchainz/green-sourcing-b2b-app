@@ -19,6 +19,7 @@ logs/**
 node_modules/
 .env.local
 .env*.local
+.env.production
 
 # TypeScript incremental build info
 *.tsbuildinfo
