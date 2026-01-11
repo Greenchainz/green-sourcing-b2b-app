@@ -18,7 +18,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       window.intercomSettings = {
         api_base: "https://api-iam.intercom.io",
-        app_id: "yourAppIdHere", // GET THIS FROM INTERCOM DASHBOARD
+        app_id: "cqtm1euj", // GET THIS FROM INTERCOM DASHBOARD
       }
 
       // Load Intercom script
