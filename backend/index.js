@@ -19,6 +19,7 @@ const aiGatewayRoutes = require("./routes/ai-gateway");
 const buyerVerificationRoutes = require("./routes/buyerVerification");
 const intercomRoutes = require("./routes/intercom");
 const materialsRoutes = require("./routes/materials");
+const aiAgentsRoutes = require("./routes/ai-agents");
 
 // AI Gateway
 const aiGateway = require("./services/ai-gateway");
@@ -524,6 +525,7 @@ async function start() {
   app.use("/api/v1/subscriptions", subscriptionRoutes);
   app.use("/api/v1/intercom", intercomRoutes);
   app.use("/api/v1/materials", materialsRoutes);
+  app.use("/api/v1/ai-agents", aiAgentsRoutes);
 
   // Initialize AI Gateway
   aiGateway.initialize().catch((err) => {
