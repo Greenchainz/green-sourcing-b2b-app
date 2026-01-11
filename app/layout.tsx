@@ -5,6 +5,7 @@ import Script from 'next/script'
 import './globals.css'
 import { LayoutContent } from './LayoutContent'
 import StructuredData from './components/StructuredData'
+import GoogleAnalytics from '@/components/GoogleAnalytics'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -17,6 +18,17 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: '#059669',
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <GoogleAnalytics />
+        {children}
+      </body>
+    </html>
+  )
 }
 
 export const metadata: Metadata = {
