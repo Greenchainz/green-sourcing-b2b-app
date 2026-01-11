@@ -39,7 +39,7 @@ export interface ScrapedMaterial {
     product_name: string;
     gwp_per_unit?: number;
     unit_type?: string;
-    health_grade?: "A" | "C" | "F";
+    health_grade?: "A" | "B" | "C" | "F";
     red_list_status?: "Free" | "Approved" | "None";
     certifications?: string[];
     epd_found: boolean;
