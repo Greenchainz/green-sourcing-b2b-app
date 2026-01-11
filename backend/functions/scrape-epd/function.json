@@ -1,0 +1,12 @@
+{
+  "bindings": [
+    {
+      "authLevel": "function",
+      "type": "timerTrigger",
+      "direction": "in",
+      "name": "timer",
+      "schedule": "0 0 2 * * 0"
+    }
+  ],
+  "scriptFile": "../dist/scrape-epd/index.js"
+}
