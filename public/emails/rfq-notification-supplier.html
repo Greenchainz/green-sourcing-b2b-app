@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New RFQ Match - GreenChainz</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f9fafb;
+    }
+    .container {
+      background-color: #ffffff;
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid #10b981;
+    }
+    .logo {
+      max-width: 180px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      color: #059669;
+      font-size: 24px;
+      margin: 0 0 8px 0;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+      margin: 0;
+    }
+    .alert {
+      background-color: #ecfdf5;
+      border-left: 4px solid #10b981;
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 4px;
+    }
+    .alert-text {
+      color: #065f46;
+      font-weight: 600;
+      margin: 0;
+      font-size: 15px;
+    }
+    .section {
+      margin-bottom: 24px;
+    }
+    .section-title {
+      color: #111827;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .info-item {
+      background-color: #f9fafb;
+      padding: 12px;
+      border-radius: 6px;
+    }
+    .info-label {
+      font-size: 12px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .info-value {
+      font-size: 16px;
+      color: #111827;
+      font-weight: 600;
+    }
+    .full-width {
+      grid-column: 1 / -1;
+    }
+    .distance-badge {
+      display: inline-block;
+      background-color: #10b981;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #10b981;
+      color: white;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 16px;
+      text-align: center;
+      margin: 24px 0;
+      transition: background-color 0.2s;
+    }
+    .cta-button:hover {
+      background-color: #059669;
+    }
+    .certifications {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .cert-badge {
+      background-color: #ecfdf5;
+      color: #059669;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .footer {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .footer-link {
+      color: #10b981;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+      .container {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logoUrl}}" alt="GreenChainz" class="logo" />
+      <h1>New RFQ Match</h1>
+      <p class="subtitle">A new Request for Quote matches your services</p>
+    </div>
+
+    <div class="alert">
+      <p class="alert-text">
+        🎯 You've been matched to an RFQ based on your location and certifications!
+      </p>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Project Details</h2>
+      <div class="info-grid">
+        <div class="info-item full-width">
+          <div class="info-label">Project Name</div>
+          <div class="info-value">{{projectName}}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Material Type</div>
+          <div class="info-value">{{materialType}}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Location</div>
+          <div class="info-value">{{projectLocation}}</div>
+          {{#if distanceMiles}}
+          <span class="distance-badge">{{distanceMiles}} miles away</span>
+          {{/if}}
+        </div>
+        {{#if quantity}}
+        <div class="info-item">
+          <div class="info-label">Quantity</div>
+          <div class="info-value">{{quantity}}</div>
+        </div>
+        {{/if}}
+        {{#if deadline}}
+        <div class="info-item">
+          <div class="info-label">Deadline</div>
+          <div class="info-value">{{deadline}}</div>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+
+    {{#if certificationsRequired}}
+    <div class="section">
+      <h2 class="section-title">Required Certifications</h2>
+      <div class="certifications">
+        {{#each certificationsRequired}}
+        <span class="cert-badge">{{this}}</span>
+        {{/each}}
+      </div>
+    </div>
+    {{/if}}
+
+    {{#if specifications}}
+    <div class="section">
+      <h2 class="section-title">Specifications</h2>
+      <p style="color: #374151; white-space: pre-wrap; background-color: #f9fafb; padding: 12px; border-radius: 6px;">
+        {{specifications}}
+      </p>
+    </div>
+    {{/if}}
+
+    <div style="text-align: center;">
+      <a href="{{respondUrl}}" class="cta-button">Respond to RFQ</a>
+    </div>
+
+    <div class="footer">
+      <p>
+        This RFQ was matched to you because:
+        <br />
+        • You're within {{serviceRadius}} miles of the project location
+        <br />
+        • You have the required certifications
+      </p>
+      <p style="margin-top: 16px;">
+        <a href="{{dashboardUrl}}" class="footer-link">View Dashboard</a> |
+        <a href="{{settingsUrl}}" class="footer-link">Update Settings</a>
+      </p>
+      <p style="margin-top: 16px; font-size: 11px;">
+        GreenChainz - Verified Sustainable Sourcing<br />
+        © {{currentYear}} GreenChainz. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

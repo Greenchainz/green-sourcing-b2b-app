@@ -57,18 +57,33 @@ router.post('/create', authenticateToken, async (req, res) => {
       });
     }
 
-    // Insert RFQ
+    // Geocode project location if provided
+    const { geocodeAddress, findSuppliersNearby } = require('../services/geocoding');
+    let projectGeo = null;
+    
+    if (value.project_location) {
+      projectGeo = await geocodeAddress(value.project_location);
+      if (projectGeo) {
+        console.log(`📍 Geocoded "${value.project_location}" to (${projectGeo.latitude}, ${projectGeo.longitude})`);
+      }
+    }
+
+    // Insert RFQ with geocoded location
     const result = await pool.query(`
       INSERT INTO rfqs (
-        architect_id, project_name, project_location, project_timeline,
-        material_type, quantity, specifications, certifications_required,
+        architect_id, project_name, project_location, 
+        project_latitude, project_longitude,
+        project_timeline, material_type, quantity, 
+        specifications, certifications_required,
         budget_range, deadline
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `, [
       req.user.userId,
       value.project_name,
       value.project_location || null,
+      projectGeo?.latitude || null,
+      projectGeo?.longitude || null,
       value.project_timeline || null,
       value.material_type,
       value.quantity || null,
@@ -78,7 +93,42 @@ router.post('/create', authenticateToken, async (req, res) => {
       value.deadline || null
     ]);
 
-    // TODO: Send email notifications to matching suppliers
+    const rfqId = result.rows[0].id;
+
+    // Find nearby suppliers (within 100 miles by default)
+    let nearbySuppliers = [];
+    if (projectGeo) {
+      nearbySuppliers = await findSuppliersNearby(
+        projectGeo.latitude,
+        projectGeo.longitude,
+        100 // radius in miles
+      );
+
+      console.log(`📍 Found ${nearbySuppliers.length} suppliers within 100 miles of project`);
+
+      // Store matched suppliers in rfq_supplier_matches table
+      if (nearbySuppliers.length > 0) {
+        try {
+          // Insert matches (handle potential table not existing yet)
+          const insertMatches = nearbySuppliers.map(supplier => 
+            pool.query(`
+              INSERT INTO rfq_supplier_matches (rfq_id, supplier_id, distance_miles)
+              VALUES ($1, $2, $3)
+              ON CONFLICT (rfq_id, supplier_id) DO UPDATE
+              SET distance_miles = EXCLUDED.distance_miles
+            `, [rfqId, supplier.id, supplier.distance])
+          );
+
+          await Promise.all(insertMatches);
+          console.log(`✅ Stored ${nearbySuppliers.length} supplier matches for RFQ ${rfqId}`);
+        } catch (error) {
+          // Table might not exist yet - log but don't fail
+          console.warn('⚠️  Could not store supplier matches (table may not exist):', error.message);
+        }
+      }
+    }
+
+    // TODO: Send email notifications to nearby suppliers only
 
     res.status(201).json({
       success: true,
@@ -99,8 +149,220 @@ router.post('/create', authenticateToken, async (req, res) => {
 });
 
 // ============================================
+// GET /api/v1/rfqs/list
+// List RFQs (filtered by role)
+// 
+// NOTE: This route must be defined BEFORE /:id to avoid conflicts
+// ============================================
+
+router.get('/list', authenticateToken, async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get user role
+    const userResult = await pool.query(
+      'SELECT id, role FROM Users WHERE id = $1',
+      [req.user.userId]
+    );
+    
+    if (!userResult.rows.length) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const userRole = userResult.rows[0].role;
+    let query;
+    let params;
+
+    if (userRole === 'architect') {
+      // Architects see only their RFQs
+      if (status) {
+        query = `
+          SELECT 
+            r.*,
+            COUNT(rr.id) as response_count
+          FROM rfqs r
+          LEFT JOIN rfq_responses rr ON r.id = rr.rfq_id
+          WHERE r.architect_id = $1 AND r.status = $2
+          GROUP BY r.id
+          ORDER BY r.created_at DESC
+          LIMIT $3 OFFSET $4
+        `;
+        params = [req.user.userId, status, parseInt(limit), offset];
+      } else {
+        query = `
+          SELECT 
+            r.*,
+            COUNT(rr.id) as response_count
+          FROM rfqs r
+          LEFT JOIN rfq_responses rr ON r.id = rr.rfq_id
+          WHERE r.architect_id = $1
+          GROUP BY r.id
+          ORDER BY r.created_at DESC
+          LIMIT $2 OFFSET $3
+        `;
+        params = [req.user.userId, parseInt(limit), offset];
+      }
+    } else if (userRole === 'supplier') {
+      // Get supplier's location and service radius
+      const supplierLoc = await pool.query(
+        'SELECT latitude, longitude, service_radius FROM Users WHERE UserID = $1',
+        [req.user.userId]
+      );
+
+      const supplier = supplierLoc.rows[0];
+      const hasSupplierLocation = supplier && supplier.latitude && supplier.longitude;
+      const serviceRadius = supplier?.service_radius || 100;
+
+      // Use rfq_supplier_matches table if supplier has location, otherwise show all
+      if (hasSupplierLocation) {
+        query = `
+          SELECT 
+            r.*,
+            rsm.distance_miles,
+            EXISTS(
+              SELECT 1 FROM rfq_responses 
+              WHERE rfq_id = r.id AND supplier_id = $1
+            ) as has_responded
+          FROM rfqs r
+          LEFT JOIN rfq_supplier_matches rsm 
+            ON r.id = rsm.rfq_id AND rsm.supplier_id = $1
+          WHERE r.status = 'open'
+            AND (rsm.distance_miles <= $2 OR rsm.distance_miles IS NULL)
+          ORDER BY COALESCE(rsm.distance_miles, 9999) ASC, r.created_at DESC
+          LIMIT $3 OFFSET $4
+        `;
+        params = [req.user.userId, serviceRadius, parseInt(limit), offset];
+      } else {
+        // No supplier location - show all RFQs (fallback)
+        query = `
+          SELECT 
+            r.*,
+            NULL as distance_miles,
+            EXISTS(
+              SELECT 1 FROM rfq_responses 
+              WHERE rfq_id = r.id AND supplier_id = $1
+            ) as has_responded
+          FROM rfqs r
+          WHERE r.status = 'open'
+          ORDER BY r.created_at DESC
+          LIMIT $2 OFFSET $3
+        `;
+        params = [req.user.userId, parseInt(limit), offset];
+      }
+    } else {
+      return res.status(403).json({
+        success: false,
+        error: 'Invalid user role'
+      });
+    }
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      success: true,
+      data: {
+        rfqs: result.rows,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('RFQ list error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch RFQs',
+      message: error.message
+    });
+  }
+});
+
+// ============================================
+// GET /api/v1/rfqs/supplier/:supplierId
+// Get all RFQs for a specific supplier
+// 
+// NOTE: This route must be defined BEFORE /:id to avoid conflicts
+// ============================================
+
+router.get('/supplier/:supplierId', authenticateToken, async (req, res) => {
+  try {
+    const supplierId = parseInt(req.params.supplierId);
+
+    if (isNaN(supplierId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid supplier ID'
+      });
+    }
+
+    // Check permission (suppliers can only see their own RFQs)
+    const userResult = await pool.query(
+      'SELECT id, role FROM Users WHERE id = $1',
+      [req.user.userId]
+    );
+
+    if (!userResult.rows.length) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const userRole = userResult.rows[0].role;
+    const isSupplier = userRole === 'supplier';
+    const isAdmin = userRole === 'Admin';
+
+    // Access control: Admins can see any supplier's RFQs, suppliers can only see their own
+    if (!isAdmin && (!isSupplier || req.user.userId !== supplierId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Suppliers can only view their own RFQ responses.'
+      });
+    }
+
+    // Get all RFQs this supplier has responded to
+    const result = await pool.query(`
+      SELECT 
+        r.*,
+        rr.id as response_id,
+        rr.message as response_message,
+        rr.quoted_price,
+        rr.delivery_timeline,
+        rr.status as response_status,
+        rr.created_at as response_created_at
+      FROM rfqs r
+      INNER JOIN rfq_responses rr ON r.id = rr.rfq_id
+      WHERE rr.supplier_id = $1
+      ORDER BY rr.created_at DESC
+    `, [supplierId]);
+
+    res.json({
+      success: true,
+      data: {
+        rfqs: result.rows,
+        count: result.rows.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Supplier RFQ fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch supplier RFQs',
+      message: error.message
+    });
+  }
+});
+
+// ============================================
 // GET /api/v1/rfqs/:id
 // Get single RFQ with responses
+// 
+// NOTE: This route must be defined AFTER /list and /supplier/:supplierId to avoid conflicts
 // ============================================
 
 router.get('/:id', authenticateToken, async (req, res) => {
@@ -191,105 +453,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch RFQ',
-      message: error.message
-    });
-  }
-});
-
-// ============================================
-// GET /api/v1/rfqs/list
-// List RFQs (filtered by role)
-// ============================================
-
-router.get('/list', authenticateToken, async (req, res) => {
-  try {
-    const { status, page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    // Get user role
-    const userResult = await pool.query(
-      'SELECT id, role FROM Users WHERE id = $1',
-      [req.user.userId]
-    );
-    
-    if (!userResult.rows.length) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    const userRole = userResult.rows[0].role;
-    let query;
-    let params;
-
-    if (userRole === 'architect') {
-      // Architects see only their RFQs
-      if (status) {
-        query = `
-          SELECT 
-            r.*,
-            COUNT(rr.id) as response_count
-          FROM rfqs r
-          LEFT JOIN rfq_responses rr ON r.id = rr.rfq_id
-          WHERE r.architect_id = $1 AND r.status = $2
-          GROUP BY r.id
-          ORDER BY r.created_at DESC
-          LIMIT $3 OFFSET $4
-        `;
-        params = [req.user.userId, status, parseInt(limit), offset];
-      } else {
-        query = `
-          SELECT 
-            r.*,
-            COUNT(rr.id) as response_count
-          FROM rfqs r
-          LEFT JOIN rfq_responses rr ON r.id = rr.rfq_id
-          WHERE r.architect_id = $1
-          GROUP BY r.id
-          ORDER BY r.created_at DESC
-          LIMIT $2 OFFSET $3
-        `;
-        params = [req.user.userId, parseInt(limit), offset];
-      }
-    } else if (userRole === 'supplier') {
-      // Suppliers see all open RFQs
-      query = `
-        SELECT 
-          r.*,
-          EXISTS(
-            SELECT 1 FROM rfq_responses 
-            WHERE rfq_id = r.id AND supplier_id = $1
-          ) as has_responded
-        FROM rfqs r
-        WHERE r.status = 'open'
-        ORDER BY r.created_at DESC
-        LIMIT $2 OFFSET $3
-      `;
-      params = [req.user.userId, parseInt(limit), offset];
-    } else {
-      return res.status(403).json({
-        success: false,
-        error: 'Invalid user role'
-      });
-    }
-
-    const result = await pool.query(query, params);
-
-    res.json({
-      success: true,
-      data: {
-        rfqs: result.rows,
-        page: parseInt(page),
-        limit: parseInt(limit)
-      }
-    });
-
-  } catch (error) {
-    console.error('RFQ list error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch RFQs',
       message: error.message
     });
   }
@@ -398,80 +561,6 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to submit response',
-      message: error.message
-    });
-  }
-});
-
-// ============================================
-// GET /api/v1/rfqs/supplier/:supplierId
-// Get all RFQs for a specific supplier
-// ============================================
-
-router.get('/supplier/:supplierId', authenticateToken, async (req, res) => {
-  try {
-    const supplierId = parseInt(req.params.supplierId);
-
-    if (isNaN(supplierId)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid supplier ID'
-      });
-    }
-
-    // Check permission (suppliers can only see their own RFQs)
-    const userResult = await pool.query(
-      'SELECT id, role FROM Users WHERE id = $1',
-      [req.user.userId]
-    );
-
-    if (!userResult.rows.length) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    const userRole = userResult.rows[0].role;
-    const isSupplier = userRole === 'supplier';
-    const isAdmin = userRole === 'Admin';
-
-    if (!isSupplier && !isAdmin && req.user.userId !== supplierId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied'
-      });
-    }
-
-    // Get all RFQs this supplier has responded to
-    const result = await pool.query(`
-      SELECT 
-        r.*,
-        rr.id as response_id,
-        rr.message as response_message,
-        rr.quoted_price,
-        rr.delivery_timeline,
-        rr.status as response_status,
-        rr.created_at as response_created_at
-      FROM rfqs r
-      INNER JOIN rfq_responses rr ON r.id = rr.rfq_id
-      WHERE rr.supplier_id = $1
-      ORDER BY rr.created_at DESC
-    `, [supplierId]);
-
-    res.json({
-      success: true,
-      data: {
-        rfqs: result.rows,
-        count: result.rows.length
-      }
-    });
-
-  } catch (error) {
-    console.error('Supplier RFQ fetch error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch supplier RFQs',
       message: error.message
     });
   }

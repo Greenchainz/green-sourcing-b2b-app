@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New RFQ Response - GreenChainz</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f9fafb;
+    }
+    .container {
+      background-color: #ffffff;
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid #10b981;
+    }
+    .logo {
+      max-width: 180px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      color: #059669;
+      font-size: 24px;
+      margin: 0 0 8px 0;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+      margin: 0;
+    }
+    .alert {
+      background-color: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 4px;
+    }
+    .alert-text {
+      color: #1e40af;
+      font-weight: 600;
+      margin: 0;
+      font-size: 15px;
+    }
+    .section {
+      margin-bottom: 24px;
+    }
+    .section-title {
+      color: #111827;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    .response-card {
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .supplier-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .supplier-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .supplier-location {
+      font-size: 14px;
+      color: #6b7280;
+    }
+    .price {
+      text-align: right;
+    }
+    .price-label {
+      font-size: 12px;
+      color: #6b7280;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .price-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #10b981;
+    }
+    .message {
+      background-color: #ffffff;
+      padding: 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      color: #374151;
+      white-space: pre-wrap;
+      border-left: 3px solid #10b981;
+    }
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .detail-item {
+      background-color: #ffffff;
+      padding: 12px;
+      border-radius: 6px;
+    }
+    .detail-label {
+      font-size: 12px;
+      color: #6b7280;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .detail-value {
+      font-size: 14px;
+      color: #111827;
+      font-weight: 600;
+    }
+    .certifications {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .cert-badge {
+      background-color: #ecfdf5;
+      color: #059669;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #10b981;
+      color: white;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 16px;
+      text-align: center;
+      margin: 24px 0;
+      transition: background-color 0.2s;
+    }
+    .cta-button:hover {
+      background-color: #059669;
+    }
+    .secondary-button {
+      display: inline-block;
+      background-color: #ffffff;
+      color: #10b981;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 16px;
+      text-align: center;
+      margin: 24px 8px;
+      border: 2px solid #10b981;
+      transition: background-color 0.2s;
+    }
+    .secondary-button:hover {
+      background-color: #f0fdf4;
+    }
+    .footer {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .footer-link {
+      color: #10b981;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
+      .supplier-info {
+        flex-direction: column;
+      }
+      .price {
+        text-align: left;
+        margin-top: 12px;
+      }
+      .container {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logoUrl}}" alt="GreenChainz" class="logo" />
+      <h1>New RFQ Response</h1>
+      <p class="subtitle">You've received a response to your RFQ</p>
+    </div>
+
+    <div class="alert">
+      <p class="alert-text">
+        ✅ {{supplierName}} has responded to your RFQ
+      </p>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Project: {{projectName}}</h2>
+      <div class="response-card">
+        <div class="supplier-info">
+          <div>
+            <div class="supplier-name">{{supplierName}}</div>
+            {{#if supplierLocation}}
+            <div class="supplier-location">{{supplierLocation}}</div>
+            {{/if}}
+          </div>
+          {{#if quotedPrice}}
+          <div class="price">
+            <div class="price-label">Quoted Price</div>
+            <div class="price-value">${{quotedPrice}}</div>
+          </div>
+          {{/if}}
+        </div>
+
+        {{#if message}}
+        <div class="message">
+          {{message}}
+        </div>
+        {{/if}}
+
+        <div class="details-grid">
+          {{#if deliveryTimeline}}
+          <div class="detail-item">
+            <div class="detail-label">Delivery Timeline</div>
+            <div class="detail-value">{{deliveryTimeline}}</div>
+          </div>
+          {{/if}}
+          {{#if distanceMiles}}
+          <div class="detail-item">
+            <div class="detail-label">Distance</div>
+            <div class="detail-value">{{distanceMiles}} miles</div>
+          </div>
+          {{/if}}
+        </div>
+
+        {{#if certificationsProvided}}
+        <div style="margin-top: 16px;">
+          <div class="detail-label">Certifications Provided</div>
+          <div class="certifications">
+            {{#each certificationsProvided}}
+            <span class="cert-badge">{{this}}</span>
+            {{/each}}
+          </div>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+
+    <div style="text-align: center;">
+      <a href="{{rfqUrl}}" class="cta-button">View All Responses</a>
+      <a href="{{dashboardUrl}}" class="secondary-button">Dashboard</a>
+    </div>
+
+    <div class="footer">
+      <p>
+        You have received {{responseCount}} response(s) to this RFQ.
+        <br />
+        Deadline: {{deadline}}
+      </p>
+      <p style="margin-top: 16px;">
+        <a href="{{dashboardUrl}}" class="footer-link">View Dashboard</a> |
+        <a href="{{settingsUrl}}" class="footer-link">Settings</a>
+      </p>
+      <p style="margin-top: 16px; font-size: 11px;">
+        GreenChainz - Verified Sustainable Sourcing<br />
+        © {{currentYear}} GreenChainz. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

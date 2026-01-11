@@ -7,9 +7,11 @@
 -- RFQs table
 CREATE TABLE IF NOT EXISTS rfqs (
     id SERIAL PRIMARY KEY,
-    architect_id INTEGER REFERENCES Users(id) ON DELETE CASCADE,
+    architect_id INTEGER REFERENCES Users(UserID) ON DELETE CASCADE,
     project_name VARCHAR(255) NOT NULL,
     project_location VARCHAR(255),
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
     project_timeline VARCHAR(100),
     material_type VARCHAR(255),
     quantity VARCHAR(100),
@@ -25,7 +27,7 @@ CREATE TABLE IF NOT EXISTS rfqs (
 CREATE TABLE IF NOT EXISTS rfq_responses (
     id SERIAL PRIMARY KEY,
     rfq_id INTEGER REFERENCES rfqs(id) ON DELETE CASCADE,
-    supplier_id INTEGER REFERENCES Users(id) ON DELETE CASCADE,
+    supplier_id INTEGER REFERENCES Users(UserID) ON DELETE CASCADE,
     message TEXT,
     quoted_price DECIMAL(10, 2),
     delivery_timeline VARCHAR(100),
@@ -39,6 +41,9 @@ CREATE TABLE IF NOT EXISTS rfq_responses (
 CREATE INDEX IF NOT EXISTS idx_rfqs_architect ON rfqs(architect_id);
 CREATE INDEX IF NOT EXISTS idx_rfqs_status ON rfqs(status);
 CREATE INDEX IF NOT EXISTS idx_rfqs_deadline ON rfqs(deadline);
+CREATE INDEX IF NOT EXISTS idx_rfqs_location ON rfqs(latitude, longitude)
+WHERE latitude IS NOT NULL
+    AND longitude IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_rfq ON rfq_responses(rfq_id);
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_supplier ON rfq_responses(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_status ON rfq_responses(status);

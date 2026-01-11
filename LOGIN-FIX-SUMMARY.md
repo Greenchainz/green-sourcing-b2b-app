@@ -14,6 +14,7 @@
 - Role constraint only allowed 'Admin', 'Buyer', 'Supplier' but auth code uses 'architect', 'supplier'
 
 **Fix:**
+
 - Created database migration: `database-schemas/migrations/20260107_000000_add_azure_auth_columns.sql`
 - Adds `id`, `first_name`, `last_name`, `azure_id`, `last_login` columns to Users table
 - Creates `RefreshTokens` table with proper foreign key to Users
@@ -33,6 +34,7 @@ psql -U postgres -d greenchainz_dev -f database-schemas/migrations/20260107_0000
 **Problem:** The backend URL resolution function was rejecting valid URLs in development environments.
 
 **Fix:**
+
 - Added fallback to `http://localhost:3001` when no URL is configured
 - Made development mode more permissive (allows non-standard URLs)
 - Added better error messages when backend URL is invalid
@@ -70,6 +72,7 @@ psql -U postgres -d greenchainz_dev -f database-schemas/migrations/20260107_0000
 ## 🧪 How to Test
 
 ### 1. **Check Backend is Running**
+
 ```bash
 # Test backend health endpoint
 curl http://localhost:3001/api/v1/health
@@ -111,6 +114,7 @@ This will show detailed step-by-step logging in the browser console.
 ## 🐛 Common Issues & Solutions
 
 ### Issue: "Database error" or "column does not exist"
+
 **Solution:**
 Run the database migration to add required auth columns:
 ```bash

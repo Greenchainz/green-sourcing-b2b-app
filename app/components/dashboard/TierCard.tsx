@@ -77,38 +77,24 @@ export default function TierCard({
   const isNearLimit = usagePercent >= 80;
   const isAtLimit = usagePercent >= 100;
 
-  const getProgressGradient = () => {
-    if (isAtLimit) return "linear-gradient(90deg, #dc2626, #f87171)";
-    if (isNearLimit) return "linear-gradient(90deg, #ea580c, #fb923c)";
-    return config.iconBg;
-  };
-
-  const getUsageColor = () => {
-    if (isAtLimit) return "#dc2626";
-    if (isNearLimit) return "#ea580c";
-    return "var(--gc-slate-800)";
-  };
-
   return (
     <div
-      className="gc-card gc-tier-card"
-      style={{ background: config.bgGradient }}
+      className={`gc-card gc-tier-card gc-tier-card--${currentTier}`}
+      style={
+        {
+          "--tier-bg": config.bgGradient,
+          "--tier-icon-bg": config.iconBg,
+          "--tier-shadow": config.shadowColor,
+          "--tier-color": config.color,
+        } as React.CSSProperties
+      }
     >
       {/* Background decoration */}
-      <div
-        className="gc-tier-card-decoration"
-        style={{ background: config.iconBg }}
-      />
+      <div className="gc-tier-card-decoration" />
 
       {/* Header */}
       <div className="gc-tier-header">
-        <div
-          className="gc-tier-icon"
-          style={{
-            background: config.iconBg,
-            boxShadow: `0 6px 20px ${config.shadowColor}`,
-          }}
-        >
+        <div className="gc-tier-icon">
           {currentTier === "premium" ? (
             <svg
               width="24"
@@ -156,9 +142,7 @@ export default function TierCard({
 
         <div className="gc-tier-info">
           <div className="gc-tier-label">Current Tier</div>
-          <h3 className="gc-tier-name" style={{ color: config.color }}>
-            {config.name}
-          </h3>
+          <h3 className="gc-tier-name">{config.name}</h3>
         </div>
       </div>
 
@@ -167,8 +151,7 @@ export default function TierCard({
         <div className="gc-tier-usage-header">
           <span className="gc-tier-usage-label">RFQs This Month</span>
           <span
-            className="gc-tier-usage-value"
-            style={{ color: getUsageColor() }}
+            className={`gc-tier-usage-value ${isAtLimit ? "gc-tier-usage-value--limit" : isNearLimit ? "gc-tier-usage-value--near" : ""}`}
           >
             {rfqsUsed}
             <span className="gc-tier-usage-divider">
@@ -181,11 +164,8 @@ export default function TierCard({
         {!isUnlimited && (
           <div className="gc-tier-progress">
             <div
-              className="gc-tier-progress-bar"
-              style={{
-                width: `${usagePercent}%`,
-                background: getProgressGradient(),
-              }}
+              className={`gc-tier-progress-bar ${isAtLimit ? "gc-tier-progress-bar--limit" : isNearLimit ? "gc-tier-progress-bar--near" : ""}`}
+              style={{ width: `${usagePercent}%` }}
             />
           </div>
         )}
