@@ -11,10 +11,18 @@ const defensibilityService = require('../services/azure/defensibilityService');
 const storage = require('../services/azure/storage');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const monitoring = require('../services/azure/monitoring');
+const rateLimit = require('express-rate-limit');
 
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 50 * 1024 * 1024 }
+});
+
+const documentRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50, // limit each IP to 50 document processing requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false
 });
 
 /**
@@ -141,6 +149,7 @@ router.post('/verify',
     }
 );
 
+    documentRateLimiter,
 /**
  * Extract text content from any document
  * POST /api/v1/ai/extract
@@ -174,6 +183,7 @@ router.post('/extract',
 );
 
 /**
+    documentRateLimiter,
  * Extract document content with decision logic analysis
  * POST /api/v1/ai/extract-with-decision-logic
  */
