@@ -1,27 +1,9 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
-import Script from 'next/script'
 import './globals.css'
 import { LayoutContent } from './LayoutContent'
 import StructuredData from './components/StructuredData'
-import GoogleAnalytics from '@/components/GoogleAnalytics'
-import GoogleTagManager from '@/components/GoogleTagManager'
-import GoogleTagManagerNoscript from '@/components/GoogleTagManagerNoscript'
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <GoogleTagManager />
-      </head>
-      <body>
-        <GoogleTagManagerNoscript />
-        {children}
-      </body>
-    </html>
-  )
-}
 
 const inter = Inter({
   subsets: ['latin'],
@@ -36,21 +18,10 @@ export const viewport: Viewport = {
   themeColor: '#059669',
 }
 
-export default function RootLayout({ children }) {
-  return (
-    <html>
-      <body>
-        <GoogleAnalytics />
-        {children}
-      </body>
-    </html>
-  )
-}
-
 export const metadata: Metadata = {
   metadataBase: new URL('https://greenchainz.com'),
   title: {
-    default: 'GreenChainz — The Trust Layer for Sustainable Commerce',
+    default: 'GreenChainz — Where Being Green Has Never Been So Easy',
     template: '%s | GreenChainz',
   },
   description:
@@ -85,7 +56,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: 'GreenChainz',
-    title: 'GreenChainz — The Trust Layer for Sustainable Commerce',
+    title: 'GreenChainz — Where Being Green Has Never Been So Easy',
     description:
       'Connect verified suppliers with architects & builders. Automated certification verification and real-time material sourcing.',
     images: [
@@ -100,7 +71,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     site: '@greenchainzhq',
-    title: 'GreenChainz — The Trust Layer for Sustainable Commerce',
+    title: 'GreenChainz — Where Being Green Has Never Been So Easy',
     description:
       'Connect verified suppliers with architects & builders. Automated certification verification and real-time material sourcing.',
   },
@@ -119,7 +90,6 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <head>
         <StructuredData />
-        {/* REMOVE KETCH SCRIPTS FROM HERE - MOVE TO LayoutContent */}
       </head>
       <body>
         <LayoutContent>{children}</LayoutContent>
