@@ -26,6 +26,10 @@ const { pool } = require("../db");
 
 /**
  * Premium tier levels that get direct routing to supplier team
+ * 
+ * Note: This is intentionally duplicated from lib/utils/supplierTier.ts
+ * because backend uses CommonJS (require) while the shared utility is TypeScript.
+ * Keep these constants synchronized with the shared utility.
  */
 const PREMIUM_TIERS = ['premium', 'enterprise', 'pro'];
 

@@ -34,8 +34,8 @@ export const PREMIUM_TIERS = [
  */
 export function isPremiumTier(tier?: string | null): boolean {
   if (!tier) return false
-  const tierLower = tier.toLowerCase()
-  return PREMIUM_TIERS.includes(tierLower as any)
+  const tierLower = tier.toLowerCase() as typeof PREMIUM_TIERS[number]
+  return PREMIUM_TIERS.includes(tierLower)
 }
 
 /**
