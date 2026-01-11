@@ -17,8 +17,16 @@ function extractLeadFromSearchResult(
   role: string
 ): DiscoveredLead {
   // Extract company name from URL or snippet (basic heuristic)
-  const isLinkedIn = result.url.includes('linkedin.com');
-  
+  let isLinkedIn = false;
+  try {
+    const parsedUrl = new URL(result.url);
+    const host = parsedUrl.hostname.toLowerCase();
+    isLinkedIn = host === 'linkedin.com' || host.endsWith('.linkedin.com');
+  } catch {
+    // If URL parsing fails, treat as non-LinkedIn
+    isLinkedIn = false;
+  }
+
   let name = result.name;
   let company: string | undefined;
   
