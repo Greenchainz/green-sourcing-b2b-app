@@ -404,4 +404,133 @@ router.get("/health", (req, res) => {
   });
 });
 
+// ============================================
+// PERSONA-BASED CONVERSATION (Matrix of Motivation)
+// ============================================
+
+const personaService = require("../services/intercom/personaService");
+
+/**
+ * POST /api/v1/intercom/adapt-message
+ *
+ * Adapt a message based on user's role and motivation matrix.
+ * Uses GPT-4o to adjust tone and focus.
+ *
+ * Request body:
+ * - userId: User ID
+ * - userMessage: Message from user
+ * - jobTitle: User's job title (for role mapping)
+ * - conversationHistory: Previous messages (optional)
+ *
+ * Response:
+ * - adaptedResponse: Role-adapted message
+ * - role: Detected user role
+ * - persona: Motivation matrix for the role
+ */
+router.post("/adapt-message", internalApiKeyMiddleware, async (req, res) => {
+  try {
+    const { userId, userMessage, jobTitle, conversationHistory } = req.body;
+
+    if (!userId || !userMessage) {
+      return res.status(400).json({
+        error: "userId and userMessage are required",
+      });
+    }
+
+    const result = await personaService.processIntercomMessage(
+      userId,
+      userMessage,
+      { jobTitle, conversationHistory }
+    );
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error("[Intercom Routes] Error adapting message:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/v1/intercom/persona/:jobTitle
+ *
+ * Get persona summary for a job title.
+ *
+ * Response:
+ * - role: Mapped role
+ * - primaryDrivers: Key motivations
+ * - keyPhrases: Language to use
+ * - decisionCriteria: What they care about
+ */
+router.get("/persona/:jobTitle", internalApiKeyMiddleware, async (req, res) => {
+  try {
+    const { jobTitle } = req.params;
+
+    if (!jobTitle) {
+      return res.status(400).json({
+        error: "jobTitle is required",
+      });
+    }
+
+    const summary = personaService.getPersonaSummary(jobTitle);
+
+    return res.status(200).json({
+      success: true,
+      ...summary,
+    });
+  } catch (error) {
+    console.error("[Intercom Routes] Error getting persona:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
+  }
+});
+
+/**
+ * POST /api/v1/intercom/webhook/conversation
+ *
+ * Webhook handler for Intercom conversation events.
+ * Automatically adapts responses based on user role.
+ */
+router.post("/webhook/conversation", async (req, res) => {
+  try {
+    const event = req.body;
+
+    // Acknowledge webhook immediately
+    res.status(200).json({ received: true });
+
+    // Process asynchronously
+    if (event.type === 'conversation.user.replied' || event.type === 'conversation.user.created') {
+      const userId = event.data?.item?.user?.id;
+      const userMessage = event.data?.item?.conversation_parts?.conversation_parts?.[0]?.body;
+      const jobTitle = event.data?.item?.user?.custom_attributes?.job_title || '';
+
+      if (userId && userMessage) {
+        console.log(`[Intercom Webhook] Processing message from ${userId} (${jobTitle})`);
+        
+        // Adapt message based on role
+        const adapted = await personaService.processIntercomMessage(
+          userId,
+          userMessage,
+          { jobTitle }
+        );
+
+        console.log(`[Intercom Webhook] Adapted for ${adapted.role}: ${adapted.adaptedResponse.substring(0, 100)}...`);
+
+        // Send adapted response back to Intercom
+        // (This would integrate with Intercom API to send the message)
+      }
+    }
+  } catch (error) {
+    console.error("[Intercom Webhook] Error processing conversation:", error);
+    // Already sent 200 response, just log the error
+  }
+});
+
 module.exports = router;
