@@ -1,13 +1,25 @@
 import React from "react";
 
-export const PoweredBy: React.FC = () => {
+interface PoweredByProps {
+  variant?: "light" | "dark";
+  className?: string;
+}
+
+export const PoweredBy: React.FC<PoweredByProps> = ({
+  variant = "light",
+  className = "",
+}) => {
+  const isDark = variant === "dark";
+
   return (
-    <div className="powered-by-container">
+    <div
+      className={`powered-by-container ${isDark ? "powered-by-dark" : ""} ${className}`}
+    >
       <div className="powered-by-badge">
-        <span>Powered by</span>
         <img
-          src="https://damassets.autodesk.net/content/dam/autodesk/www/autodesk-logo-primary.svg"
-          alt="Autodesk"
+          src="/brand/autodesk-sustainability-partner.png"
+          alt="Autodesk Sustainability Tech Partner"
+          style={{ height: "32px", width: "auto" }}
         />
       </div>
       <div className="powered-by-badge">

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import TrustBadges from "./TrustBadges";
+import PoweredBy from "./PoweredBy";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -9,8 +10,13 @@ export default function Footer() {
     <footer className="gc-footer">
       <div className="gc-container py-12">
         {/* Trust Badges (Compact) */}
-        <div className="mb-10">
+        <div className="mb-6">
           <TrustBadges variant="compact" size="sm" />
+        </div>
+
+        {/* Powered By Partners */}
+        <div className="mb-10">
+          <PoweredBy />
         </div>
 
         {/* Footer Grid */}
