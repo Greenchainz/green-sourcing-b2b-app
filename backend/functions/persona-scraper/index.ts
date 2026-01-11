@@ -77,7 +77,7 @@ function extractPersonaData(
   const data: Record<string, any> = {};
   
   // Initialize data structure based on output schema
-  for (const [key, fieldDef] of Object.entries(persona.outputSchema)) {
+  for (const key of Object.keys(persona.outputSchema)) {
     data[key] = {
       keywords_found: [] as string[],
       extracted_text: [] as string[],
@@ -95,7 +95,7 @@ function extractPersonaData(
     for (const keyword of foundKeywords) {
       if (lineLower.includes(keyword.toLowerCase())) {
         // Determine which output schema field this relates to
-        for (const [key, fieldDef] of Object.entries(persona.outputSchema)) {
+        for (const key of Object.keys(persona.outputSchema)) {
           const keyLower = key.toLowerCase();
           
           // Map keywords to output schema fields based on naming patterns
@@ -122,7 +122,7 @@ function extractPersonaData(
   for (const line of lines) {
     const matches = line.match(numberRegex);
     if (matches) {
-      for (const [key] of Object.entries(data)) {
+      for (const key of Object.keys(data)) {
         if (line.toLowerCase().includes(key.split('_')[0])) {
           data[key].metrics = {
             ...data[key].metrics,
