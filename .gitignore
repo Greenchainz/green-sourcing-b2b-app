@@ -28,3 +28,7 @@ tmp/
 tmp/
 .env
 *.log
+
+# TypeScript compiled output
+dist/
+*.js.map
