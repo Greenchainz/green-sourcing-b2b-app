@@ -3305,3 +3305,537 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+   HOMEPAGE - Dollar Bill Green Theme
+   "Where Being Green Has Never Been So Easy"
+   ============================================================ */
+
+/* ---------- Money Green CSS Variables ---------- */
+:root {
+  /* Money green palette - inspired by US dollar bills */
+  --money-50: #f0fdf4;
+  --money-100: #dcfce7;
+  --money-200: #bbf7d0;
+  --money-300: #86efac;
+  --money-400: #4ade80;
+  --money-500: #22c55e;
+  --money-600: #16a34a;
+  --money-700: #15803d;
+  --money-800: #166534;
+  --money-900: #14532d;
+  --money-950: #052e16;
+  
+  /* Money glow effects */
+  --money-glow: 0 0 40px rgba(34, 197, 94, 0.4);
+  --money-glow-intense: 0 0 60px rgba(34, 197, 94, 0.6), 0 0 100px rgba(34, 197, 94, 0.3);
+}
+
+/* ---------- Hero Section Styles ---------- */
+.hero-section {
+  position: relative;
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-gradient {
+  background: linear-gradient(
+    135deg,
+    #052e16 0%,
+    #14532d 15%,
+    #166534 30%,
+    #15803d 45%,
+    #16a34a 60%,
+    #22c55e 80%,
+    #4ade80 100%
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Glowing orbs for hero */
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  animation: floatOrb 8s ease-in-out infinite;
+}
+
+.glow-orb-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(74, 222, 128, 0.6), transparent 70%);
+  top: -100px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.glow-orb-2 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.5), transparent 70%);
+  bottom: -50px;
+  right: -50px;
+  animation-delay: 2s;
+}
+
+.glow-orb-3 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(134, 239, 172, 0.4), transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: 4s;
+}
+
+@keyframes floatOrb {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-30px) scale(1.1); }
+}
+
+/* Hero title styling */
+.hero-title {
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Glowing text effect */
+.text-glow {
+  background: linear-gradient(135deg, #4ade80 0%, #86efac 50%, #bbf7d0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(74, 222, 128, 0.5));
+  animation: textGlow 3s ease-in-out infinite;
+}
+
+@keyframes textGlow {
+  0%, 100% { filter: drop-shadow(0 0 30px rgba(74, 222, 128, 0.5)); }
+  50% { filter: drop-shadow(0 0 50px rgba(74, 222, 128, 0.8)); }
+}
+
+/* Logo glow container */
+.logo-glow-container {
+  position: relative;
+  display: inline-block;
+}
+
+.logo-glow-container::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, rgba(74, 222, 128, 0.3), transparent 70%);
+  border-radius: 50%;
+  filter: blur(20px);
+  animation: logoGlow 4s ease-in-out infinite;
+}
+
+@keyframes logoGlow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
+
+/* ---------- Button Styles - Money Theme ---------- */
+.btn-money {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #052e16;
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
+  border: none;
+  border-radius: 1rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 15px rgba(34, 197, 94, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 1px 0 rgba(255, 255, 255, 0.2) inset;
+}
+
+.btn-money::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.btn-money:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 8px 30px rgba(34, 197, 94, 0.5),
+    0 0 60px rgba(74, 222, 128, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+}
+
+.btn-money:hover::before {
+  left: 100%;
+}
+
+.btn-money:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-money-large {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem 2.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #052e16;
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
+  border: none;
+  border-radius: 1.25rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 15px rgba(34, 197, 94, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.btn-money-large:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 8px 30px rgba(34, 197, 94, 0.5),
+    0 0 60px rgba(74, 222, 128, 0.3);
+}
+
+.btn-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--money-700);
+  background: transparent;
+  border: 2px solid var(--money-300);
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background: var(--money-50);
+  border-color: var(--money-500);
+  transform: translateY(-2px);
+}
+
+/* ---------- Value Cards ---------- */
+.value-card {
+  background: white;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  border: 1px solid #e2e8f0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.value-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--money-400), var(--money-600));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.value-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 
+    0 20px 60px rgba(34, 197, 94, 0.15),
+    0 0 0 1px rgba(34, 197, 94, 0.1);
+}
+
+.value-card:hover::before {
+  transform: scaleX(1);
+}
+
+.value-card-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.value-card:hover .value-card-icon {
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.3);
+}
+
+/* ---------- Slogan Banner ---------- */
+.slogan-banner {
+  background: linear-gradient(
+    135deg,
+    var(--money-800) 0%,
+    var(--money-700) 50%,
+    var(--money-600) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.slogan-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ---------- Tool Cards ---------- */
+.tool-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  border: 1px solid #e2e8f0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tool-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--money-500), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tool-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(34, 197, 94, 0.15);
+}
+
+.tool-card:hover::after {
+  opacity: 1;
+}
+
+.tool-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.tool-card:hover .tool-icon {
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.tool-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: var(--money-700);
+  transition: all 0.3s ease;
+}
+
+.tool-link:hover {
+  gap: 0.75rem;
+  color: var(--money-800);
+}
+
+/* ---------- How It Works Cards ---------- */
+.how-it-works-card {
+  background: white;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.how-it-works-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.08);
+}
+
+.how-it-works-number {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--money-500), var(--money-600));
+  color: white;
+  font-weight: 800;
+  font-size: 1rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+}
+
+/* ---------- Stats Section ---------- */
+.stat-item {
+  position: relative;
+}
+
+.stat-item::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 60%;
+  background: linear-gradient(transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.stat-item:last-child::after {
+  display: none;
+}
+
+/* ---------- CTA Card ---------- */
+.cta-card {
+  background: linear-gradient(135deg, #ffffff 0%, var(--money-50) 100%);
+  border-radius: 2rem;
+  padding: 3rem 2rem;
+  border: 1px solid var(--money-100);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(34, 197, 94, 0.1);
+}
+
+.cta-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.1), transparent 70%);
+  animation: ctaGlow 6s ease-in-out infinite;
+}
+
+@keyframes ctaGlow {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  50% { transform: translate(-10%, 10%) scale(1.2); opacity: 0.8; }
+}
+
+/* ---------- Animations ---------- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+/* Stagger delays */
+[style*="animation-delay: 0.1s"] { animation-delay: 0.1s; }
+[style*="animation-delay: 0.2s"] { animation-delay: 0.2s; }
+[style*="animation-delay: 0.3s"] { animation-delay: 0.3s; }
+[style*="animation-delay: 0.4s"] { animation-delay: 0.4s; }
+[style*="animation-delay: 0.5s"] { animation-delay: 0.5s; }
+
+/* ---------- Responsive Adjustments ---------- */
+@media (max-width: 768px) {
+  .hero-section {
+    min-height: auto;
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+  }
+  
+  .glow-orb-1,
+  .glow-orb-2 {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .glow-orb-3 {
+    display: none;
+  }
+  
+  .btn-money,
+  .btn-glass {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+  }
+  
+  .stat-item::after {
+    display: none;
+  }
+}

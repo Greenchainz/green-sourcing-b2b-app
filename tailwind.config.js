@@ -7,6 +7,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Dollar Bill / Money Green palette - inspired by US currency
+        money: {
+          50: '#f0fdf4',   // Lightest money green
+          100: '#dcfce7',  // Very light
+          200: '#bbf7d0',  // Light green
+          300: '#86efac',  // Soft money green
+          400: '#4ade80',  // Medium green
+          500: '#22c55e',  // Primary money green
+          600: '#16a34a',  // Classic dollar bill green
+          700: '#15803d',  // Deep money green
+          800: '#166534',  // Dark dollar green
+          900: '#14532d',  // Very dark green
+          950: '#052e16',  // Almost black green
+        },
         brand: {
           50: '#ecfdf8',   // Lightest mint
           100: '#d1fae9',  // Light mint
