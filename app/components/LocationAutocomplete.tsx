@@ -17,6 +17,7 @@ interface LocationAutocompleteProps {
   label?: string;
   required?: boolean;
   error?: string;
+  id?: string;
 }
 
 export default function LocationAutocomplete({
@@ -26,6 +27,7 @@ export default function LocationAutocomplete({
   label = "Location",
   required = false,
   error,
+  id = "location-input",
 }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -118,15 +120,22 @@ export default function LocationAutocomplete({
   return (
     <div className="relative" ref={wrapperRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label
+          htmlFor={id}
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
 
       <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <MapPin
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"
+          aria-hidden="true"
+        />
 
         <input
+          id={id}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -134,6 +143,8 @@ export default function LocationAutocomplete({
             value && suggestions.length > 0 && setShowSuggestions(true)
           }
           placeholder={placeholder}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined}
           className={`w-full pl-10 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
             error ? "border-red-300" : "border-gray-300"
           }`}
@@ -144,7 +155,11 @@ export default function LocationAutocomplete({
         )}
       </div>
 
-      {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+      {error && (
+        <p id={`${id}-error`} className="text-sm text-red-600 mt-1">
+          {error}
+        </p>
+      )}
 
       {/* Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && (

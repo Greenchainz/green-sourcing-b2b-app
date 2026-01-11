@@ -185,8 +185,15 @@ export default function MaterialSearch() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
         <div className="flex gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <label htmlFor="material-search" className="sr-only">
+              Search materials
+            </label>
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"
+              aria-hidden="true"
+            />
             <input
+              id="material-search"
               type="text"
               placeholder="Search materials, manufacturers, or products..."
               value={filters.query}
@@ -199,8 +206,9 @@ export default function MaterialSearch() {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+            aria-expanded={showFilters}
           >
-            <Filter className="w-5 h-5" />
+            <Filter className="w-5 h-5" aria-hidden="true" />
             Filters
           </button>
         </div>
@@ -209,16 +217,19 @@ export default function MaterialSearch() {
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="manufacturer-filter"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Manufacturer
               </label>
               <select
+                id="manufacturer-filter"
                 value={filters.manufacturer}
                 onChange={(e) =>
                   setFilters({ ...filters, manufacturer: e.target.value })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                aria-label="Manufacturer"
               >
                 <option value="">All Manufacturers</option>
                 {manufacturers.map((mfg) => (
@@ -230,16 +241,19 @@ export default function MaterialSearch() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="assembly-filter"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Assembly Type
               </label>
               <select
+                id="assembly-filter"
                 value={filters.assemblyCode}
                 onChange={(e) =>
                   setFilters({ ...filters, assemblyCode: e.target.value })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                aria-label="Assembly Type"
               >
                 <option value="">All Assemblies</option>
                 {assemblies.map((asm) => (
@@ -251,10 +265,14 @@ export default function MaterialSearch() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="gwp-filter"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Max Carbon (GWP)
               </label>
               <input
+                id="gwp-filter"
                 type="number"
                 placeholder="e.g. 100"
                 value={filters.maxGWP}
@@ -294,7 +312,7 @@ export default function MaterialSearch() {
                 onClick={clearFilters}
                 className="ml-auto text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" />
                 Clear
               </button>
             </div>
@@ -303,7 +321,7 @@ export default function MaterialSearch() {
       </div>
 
       {/* Results Count */}
-      <div className="mb-4 text-sm text-gray-600">
+      <div className="mb-4 text-sm text-gray-600" aria-live="polite">
         {loading ? "Searching..." : `Found ${pagination.total} materials`}
       </div>
 
@@ -346,13 +364,13 @@ export default function MaterialSearch() {
                     </p>
                     {material.distance_miles && (
                       <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                        <MapPin className="w-3 h-3" />
+                        <MapPin className="w-3 h-3" aria-hidden="true" />
                         {material.distance_miles} miles away
                       </div>
                     )}
                   </div>
                   {material.is_verified && (
-                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" aria-label="Verified Material" />
                   )}
                 </div>
 
@@ -385,7 +403,10 @@ export default function MaterialSearch() {
                 )}
 
                 {/* Actions */}
-                <button className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition font-medium">
+                <button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition font-medium"
+                  aria-label={`Request Quote for ${material.product_name}`}
+                >
                   Request Quote
                 </button>
               </div>
