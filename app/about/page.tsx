@@ -125,19 +125,19 @@ export default function AboutPage() {
                     {/* Partner Logos Row */}
                     <div className="flex flex-wrap justify-center items-center gap-8 mb-12 p-6 bg-slate-50 rounded-2xl">
                         <a href="https://www.usgbc.org/leed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/trust/leed.png" alt="LEED Certification" width={120} height={48} className="h-12 w-auto" />
+                            <Image src="/trust/leed.png" alt="LEED Green Building Certification logo" width={120} height={48} className="h-12 w-auto" />
                         </a>
                         <a href="https://buildingtransparency.org" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/trust/building-transparency.svg" alt="Building Transparency" width={150} height={40} unoptimized className="h-10 w-auto" />
+                            <Image src="/trust/building-transparency.svg" alt="Building Transparency organization logo" width={150} height={40} unoptimized className="h-10 w-auto" />
                         </a>
                         <a href="https://www.environdec.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/trust/epd.png" alt="Environmental Product Declaration" width={100} height={48} className="h-12 w-auto" />
+                            <Image src="/trust/epd.png" alt="Environmental Product Declaration (EPD) logo" width={100} height={48} className="h-12 w-auto" />
                         </a>
                         <a href="https://www.autodesk.com/sustainability" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/brand/autodesk-logo-white.png" alt="Autodesk" width={120} height={32} className="h-8 w-auto invert" />
+                            <Image src="/brand/autodesk-logo-white.png" alt="Autodesk company logo" width={120} height={32} className="h-8 w-auto invert" />
                         </a>
                         <a href="https://www.usgbc.org" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/trust/usgbc.png" alt="U.S. Green Building Council" width={120} height={48} className="h-12 w-auto" />
+                            <Image src="/trust/usgbc.png" alt="U.S. Green Building Council (USGBC) logo" width={120} height={48} className="h-12 w-auto" />
                         </a>
                     </div>
                     
