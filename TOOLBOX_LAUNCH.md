@@ -23,7 +23,7 @@ Everything is built. You are **ready to launch**.
    - `app/chrome-extension/page.tsx` (Extension landing)
    - `app/revit-plugin/page.tsx` (Revit landing)
 4. **Backend API:**
-   - `app/api/audit/excel-batch/route.ts` (✅ Azure SQL, not Supabase)
+   - `app/api/audit/excel-batch/route.ts` (✅ Azure SQL, Azure OpenAI)
 5. **Utilities & Prompts:**
    - `lib/excel/utils.ts` (Office.js wrappers)
    - `lib/prompts/data-janitor.ts` (✅ Updated with health/toxin prompts)
@@ -138,18 +138,19 @@ INSERT INTO Products VALUES
 7. See results append to columns B, C, D
 ```
 
-### Day 3: Deploy to Vercel
+### Day 3: Deploy to Azure
 ```bash
 git add .
 git commit -m "feat: Toolbox pivot - Excel audit, homepage redesign, Azure SQL"
 git push origin main
 
-# Vercel auto-deploys
-# Add environment variables in Vercel dashboard:
+# GitHub Actions auto-deploys to Azure Container Apps
+# Environment variables are already configured in Azure:
 # - AZURE_SQL_SERVER
 # - AZURE_SQL_DATABASE
 # - AZURE_SQL_USER
 # - AZURE_SQL_PASSWORD
+# - AZURE_OPENAI_API_KEY
 ```
 
 ---
@@ -169,7 +170,7 @@ git push origin main
 - [ ] Send to 10 friendly architects for feedback
 
 **You are live when:**
-- ✅ Homepage is at https://greenchainz.com
+- ✅ Homepage is at https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io
 - ✅ Excel add-in is installable from AppSource
 - ✅ API returns real carbon data for audited materials
 - ✅ At least 10 users have signed up
@@ -257,7 +258,7 @@ You don't need anything else. You have:
 - ✅ Code (17 files created/updated)
 - ✅ Architecture (Azure SQL + Office.js + Azure OpenAI)
 - ✅ Documentation (5 guides + this summary)
-- ✅ Deployment plan (Vercel + Office AppSource)
+- ✅ Deployment plan (Azure Container Apps + Office AppSource)
 - ✅ Microsoft pitch (ready to go)
 
 **Run:**
@@ -267,7 +268,7 @@ npm install && npm run dev
 
 **Test locally.**
 
-**Push to Vercel.**
+**Push to Azure via GitHub Actions.**
 
 **Launch to the world.**
 

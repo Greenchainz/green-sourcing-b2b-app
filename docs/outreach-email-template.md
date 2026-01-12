@@ -27,7 +27,7 @@ Your [specific data type: e.g., "EPD database" / "Scope 3 emissions data" / "cer
 - **Technical Documentation**: Integration guides or sample data formats
 
 **Our Tech Stack**:  
-We're building on a modern, API-first architecture (Vercel frontend, Supabase backend, hybrid SQL/NoSQL database), designed for scalability and real-time data integration.
+We're building on enterprise-grade Azure infrastructure (Azure Container Apps, Azure PostgreSQL, Azure OpenAI, Azure Blob Storage), designed for scalability and enterprise integration.
 
 **Timeline**: We're in MVP development and targeting our first data integrations within the next 4-6 weeks.
 

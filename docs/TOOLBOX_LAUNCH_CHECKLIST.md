@@ -38,16 +38,17 @@
   - [ ] Test "Run Audit" with sample materials
   - [ ] Verify 3 columns append with data
 
-### Vercel Deployment
+### Azure Container Apps Deployment
 - [ ] Push code to GitHub: `git push origin main`
-- [ ] Verify Vercel auto-deploys
-- [ ] Set environment variables in Vercel dashboard:
+- [ ] Verify GitHub Actions auto-deploys to Azure
+- [ ] Verify environment variables in Azure Container Apps:
   - [ ] `AZURE_SQL_SERVER`
   - [ ] `AZURE_SQL_DATABASE`
   - [ ] `AZURE_SQL_USER`
   - [ ] `AZURE_SQL_PASSWORD`
-  - [ ] `NEXT_PUBLIC_API_URL=https://greenchainz.com`
-- [ ] Test production homepage: https://greenchainz.com
+  - [ ] `AZURE_OPENAI_API_KEY`
+  - [ ] `NEXT_PUBLIC_API_URL` (production URL)
+- [ ] Test production homepage: https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io
 - [ ] Verify all tool links work
 
 ---
@@ -61,7 +62,7 @@
 - [ ] Optimize database indexes on `Products.name`
 
 ### Excel Add-in Production Readiness
-- [ ] Update manifest `<SourceLocation>` to production: `https://greenchainz.com/excel-addin`
+- [ ] Update manifest `<SourceLocation>` to production URL
 - [ ] Update manifest `<AppDomain>` to production domain
 - [ ] Test with Excel Desktop (Windows + Mac) if possible
 - [ ] Prepare for Microsoft AppSource submission
@@ -144,8 +145,8 @@ Set baseline before launch, then track:
 - ✅ Azure SQL with sample data
 - ✅ Working Excel add-in (tested in Excel Online)
 - ✅ Production manifest (correct domain)
-- ✅ Vercel deployment working
-- ✅ Home page live at greenchainz.com
+- ✅ Azure Container Apps deployment working
+- ✅ Home page live on Azure
 
 ### Nice-to-Have Before Launch
 - ✅ Azure AD auth (can add Week 2)

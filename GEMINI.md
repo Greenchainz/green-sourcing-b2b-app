@@ -1,6 +1,8 @@
 # GreenChainz Development Configuration - Azure Production Environment
 
-> **Stack Philosophy**: Enterprise-grade Azure infrastructure. No shortcuts. No Vercel/Supabase. Everything Azure.
+> **Stack Philosophy**: Enterprise-grade Azure infrastructure. No shortcuts. **No Vercel. No Supabase. Everything Azure.**
+> 
+> **Founder's directive**: "I am no longer on Supabase or Vercel - I am **only on Azure**"
 
 ---
 
@@ -542,7 +544,7 @@ platform:
 
 ## 🚨 **Non-Negotiables**
 
-1. **Azure Only**: No Vercel, No Supabase, No AWS. Everything Azure.
+1. **Azure Only**: No Vercel, No Supabase, No AWS. **Everything Azure. Period.**
 2. **Enterprise Way**: No shortcuts. Proper architecture even if it takes longer.
 3. **2-Hour Horizon**: Focus on immediate task + next 2 hours only.
 4. **Evidence-Based**: Report what data supports, not what founder wants to hear.
