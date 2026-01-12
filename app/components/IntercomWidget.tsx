@@ -39,19 +39,21 @@ export default function IntercomWidget({ user, userHash }: IntercomWidgetProps) 
     const { shutdown, update, show } = useIntercom()
     const [blockerDetected, setBlockerDetected] = useState(false)
 
-    // Check if Intercom is blocked (AdBlock detection)
-    const checkIntercomBlocked = useCallback(() => {
-        // Wait for Intercom to potentially load, then check for the launcher frame
-        setTimeout(() => {
-            const intercomFrame = document.querySelector('iframe[name="intercom-launcher-frame"]')
-            if (!intercomFrame) {
-                console.warn('[Intercom] Launcher frame not found - may be blocked')
-            }
-        }, 2000) // Give Intercom time to initialize
-    }, [])
-
     useEffect(() => {
         const requireConsent = process.env.NEXT_PUBLIC_INTERCOM_REQUIRE_CONSENT === 'true'
+
+        // Check if Intercom is blocked (AdBlock detection)
+        let checkBlockerTimeout: NodeJS.Timeout | undefined
+
+        const checkIntercomBlocked = () => {
+            // Wait for Intercom to potentially load, then check for the launcher frame
+            checkBlockerTimeout = setTimeout(() => {
+                const intercomFrame = document.querySelector('iframe[name="intercom-launcher-frame"]')
+                if (!intercomFrame) {
+                    console.warn('[Intercom] Launcher frame not found - may be blocked')
+                }
+            }, 2000) // Give Intercom time to initialize
+        }
 
         const updateIntercomUser = () => {
             if (user?.id) {
@@ -124,12 +126,16 @@ export default function IntercomWidget({ user, userHash }: IntercomWidgetProps) 
             window.addEventListener('ketch:consent', handler as EventListener)
             return () => {
                 window.removeEventListener('ketch:consent', handler as EventListener)
+                if (checkBlockerTimeout) clearTimeout(checkBlockerTimeout)
             }
         } else {
             updateIntercomUser()
             checkIntercomBlocked()
+            return () => {
+                if (checkBlockerTimeout) clearTimeout(checkBlockerTimeout)
+            }
         }
-    }, [user, userHash, shutdown, update, checkIntercomBlocked])
+    }, [user, userHash, shutdown, update])
 
     /**
      * Opens Intercom with AdBlock fallback

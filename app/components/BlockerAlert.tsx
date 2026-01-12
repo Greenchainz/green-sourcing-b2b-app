@@ -121,7 +121,7 @@ export function BlockerAlert({ isOpen, onClose }: BlockerAlertProps) {
             lineHeight: 1.6,
           }}
         >
-          Our chat widget may be blocked by your browser&apos;s ad blocker or privacy settings.
+          Our chat widget may be blocked by your browser's ad blocker or privacy settings.
         </p>
 
         {/* Alternative contact options */}

@@ -42,23 +42,28 @@ export function IntercomProvider({ children, user }: IntercomProviderProps) {
   }
 
   // Build user props for authenticated users
-  const userProps = user ? {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    userHash: user.intercomHash, // Required for Secure Mode
-    createdAt: user.createdAt,
-    // Custom attributes for Decision Maker targeting
-    customAttributes: {
-      role_layer: user.layer,
-      decision_metric: user.primaryMotivation,
-      sustainability_priority: user.priorityLevel,
-      active_rfqs: user.rfqCount,
-      user_role: user.role,
-      subscription_tier: user.tier,
-      job_title: user.jobTitle,
-    },
-  } : undefined;
+  const userProps = user ? (() => {
+    // Filter out undefined custom attributes
+    const customAttributes: Record<string, unknown> = {};
+    if (user.layer !== undefined) customAttributes.role_layer = user.layer;
+    if (user.primaryMotivation !== undefined) customAttributes.decision_metric = user.primaryMotivation;
+    if (user.priorityLevel !== undefined) customAttributes.sustainability_priority = user.priorityLevel;
+    if (user.rfqCount !== undefined) customAttributes.active_rfqs = user.rfqCount;
+    if (user.role !== undefined) customAttributes.user_role = user.role;
+    if (user.tier !== undefined) customAttributes.subscription_tier = user.tier;
+    if (user.jobTitle !== undefined) customAttributes.job_title = user.jobTitle;
+
+    const props: Record<string, unknown> = {
+      userId: user.id,
+    };
+    if (user.email !== undefined) props.email = user.email;
+    if (user.name !== undefined) props.name = user.name;
+    if (user.intercomHash !== undefined) props.userHash = user.intercomHash;
+    if (user.createdAt !== undefined) props.createdAt = user.createdAt;
+    if (Object.keys(customAttributes).length > 0) props.customAttributes = customAttributes;
+
+    return props;
+  })() : undefined;
 
   return (
     <ReactIntercomProvider
