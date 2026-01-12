@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { LayoutContent } from './LayoutContent'
 import StructuredData from './components/StructuredData'
+import KetchSmartTag from './components/KetchSmartTag'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -90,6 +91,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <head>
         <StructuredData />
+        <KetchSmartTag />
       </head>
       <body>
         <LayoutContent>{children}</LayoutContent>
