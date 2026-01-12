@@ -215,13 +215,6 @@ For custom AI models and the model catalog:
 |----------|---------------|-------------|
 | `INTERCOM_ACCESS_TOKEN` | `intercom-token` | API access token |
 
-### Supabase (if using)
-
-| Variable | Key Vault Name | Description |
-|----------|---------------|-------------|
-| `SUPABASE_URL` | N/A | Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | `supabase-service-key` | Service role key |
-
 ---
 
 ## Azure Key Vault Setup

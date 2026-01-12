@@ -4,7 +4,7 @@
 
 ### New Unified Callback Route: `/api/auth/callback`
 
-A new simplified callback route has been created that directly exchanges the authorization code with Microsoft's token endpoint, eliminating the need for intermediate API routes and fixing 500 errors in serverless environments (Vercel).
+A new simplified callback route has been created that directly exchanges the authorization code with Microsoft's token endpoint, eliminating the need for intermediate API routes and fixing 500 errors in serverless Azure Container Apps environments.
 
 **File**: `app/api/auth/callback/route.ts`
 
