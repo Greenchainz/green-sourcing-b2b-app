@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useIntercom } from 'react-use-intercom'
+import { useIntercom } from './IntercomProvider'
 import { BlockerAlert } from './BlockerAlert'
 
 // Type for Ketch consent object

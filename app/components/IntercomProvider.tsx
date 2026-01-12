@@ -1,10 +1,41 @@
 'use client';
 
-import { ReactNode } from 'react';
-import { IntercomProvider as ReactIntercomProvider } from 'react-use-intercom';
+import { ReactNode, createContext, useContext } from 'react';
+import { IntercomProvider as ReactIntercomProvider, useIntercom as useReactIntercom } from 'react-use-intercom';
 
-// Re-export the hook from react-use-intercom for convenience
-export { useIntercom } from 'react-use-intercom';
+// Context to track if Intercom is enabled
+const IntercomEnabledContext = createContext(false);
+
+// Custom hook that safely returns a no-op when Intercom is disabled
+export function useIntercom() {
+  const isEnabled = useContext(IntercomEnabledContext);
+  const realIntercom = isEnabled ? useReactIntercom() : null;
+  
+  // Return no-op functions when Intercom is disabled
+  if (!realIntercom) {
+    return {
+      boot: () => {},
+      shutdown: () => {},
+      update: () => {},
+      show: () => {},
+      hide: () => {},
+      showMessages: () => {},
+      showNewMessage: () => {},
+      getVisitorId: () => '',
+      startTour: () => {},
+      trackEvent: () => {},
+      startSurvey: () => {},
+      showArticle: () => {},
+      showSpace: () => {},
+      startChecklist: () => {},
+      showTicket: () => {},
+      showConversation: () => {},
+      showNews: () => {},
+    };
+  }
+  
+  return realIntercom;
+}
 
 interface IntercomProviderProps {
   children: ReactNode;
@@ -38,7 +69,11 @@ export function IntercomProvider({ children, user }: IntercomProviderProps) {
 
   if (!appId) {
     console.warn('[Intercom] NEXT_PUBLIC_INTERCOM_APP_ID not configured - chat widget disabled');
-    return <>{children}</>;
+    return (
+      <IntercomEnabledContext.Provider value={false}>
+        {children}
+      </IntercomEnabledContext.Provider>
+    );
   }
 
   // Build user props for authenticated users
@@ -66,15 +101,17 @@ export function IntercomProvider({ children, user }: IntercomProviderProps) {
   })() : undefined;
 
   return (
-    <ReactIntercomProvider
-      appId={appId}
-      apiBase="https://api-iam.intercom.io" // US Region
-      autoBoot={true}
-      shouldInitialize={true}
-      initializeDelay={500}
-      {...userProps}
-    >
-      {children}
-    </ReactIntercomProvider>
+    <IntercomEnabledContext.Provider value={true}>
+      <ReactIntercomProvider
+        appId={appId}
+        apiBase="https://api-iam.intercom.io" // US Region
+        autoBoot={true}
+        shouldInitialize={true}
+        initializeDelay={500}
+        {...userProps}
+      >
+        {children}
+      </ReactIntercomProvider>
+    </IntercomEnabledContext.Provider>
   );
 }
