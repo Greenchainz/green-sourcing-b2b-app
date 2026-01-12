@@ -1,138 +1,150 @@
 # Copilot Instructions for GreenChainz B2B Platform
 
-This repository contains the GreenChainz B2B platform - a verified sustainable sourcing platform that serves as the global trust layer for sustainable commerce. The stack uses Node.js/Express backend, React/Vite frontend with TypeScript, and PostgreSQL database orchestrated via Docker Compose.
+This repository contains the GreenChainz B2B platform - a verified sustainable sourcing platform that serves as the global trust layer for sustainable commerce. The platform is deployed **exclusively on Microsoft Azure** using Azure Container Apps, Azure PostgreSQL, Azure Blob Storage, Azure AD authentication, and Azure OpenAI.
 
 ## Architecture and Source of Truth
 
-### Primary Working Tree
-**Always prefer these top-level directories** when making changes:
+### Production Stack (Azure-Only)
 
-- **`backend/`** - Node.js + Express API server
-  - Entry point: `backend/index.js`
-  - **Current state**: Fully functional Express server with comprehensive REST API
-  - **Tech stack**: Express 4.18, PostgreSQL (via `pg`), JWT auth, Passport.js OAuth
-  - **Key dependencies**: 
-    - Authentication: `bcrypt`, `jsonwebtoken`, `passport`, `express-session`
-    - OAuth providers: `passport-google-oauth20`, `passport-github2`, `passport-linkedin-oauth2`, `passport-microsoft`
-    - Database: `pg` (PostgreSQL client)
-    - Email: `nodemailer`
-    - API docs: `swagger-ui-express`, OpenAPI 3.0 spec in `openapi.yaml`
-    - Data providers: FSC mock integration, verification scoring
-  - **Structure**:
-    ```
-    backend/
-    ├── index.js           # Main Express app entry point
-    ├── db.js              # PostgreSQL connection pool
-    ├── openapi.yaml       # OpenAPI 3.0 API specification
-    ├── config/            # Configuration (passport strategies)
-    ├── middleware/        # Auth middleware (JWT, role-based access)
-    ├── providers/         # External data provider integrations (FSC)
-    ├── services/          # Business logic (verification scores, mailer, error monitoring)
-    ├── scripts/           # Database seeding scripts
-    └── public/            # Static admin dashboard files
-    ```
+**GreenChainz is 100% Azure-native. We do NOT use Vercel or Supabase.**
 
-- **`frontend/`** - React + Vite + TypeScript application
-  - **Current state**: Fully scaffolded modern React SPA with TypeScript
+**Infrastructure:**
+- **Frontend Hosting:** Azure Container Apps (Next.js 15)
+- **Backend Hosting:** Azure Container Apps (Node.js 20 + Express)
+- **Database:** Azure Database for PostgreSQL (Flexible Server)
+- **Storage:** Azure Blob Storage
+- **Authentication:** Azure AD B2C (Multi-tenant + Personal Accounts)
+- **AI Services:** Azure OpenAI (GPT-4)
+- **Email:** Zoho Mail
+- **Container Registry:** Azure Container Registry
+- **CI/CD:** GitHub Actions with Federated Identity
+- **Monitoring:** Azure Application Insights
+
+**Production URLs:**
+- Frontend: `https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io`
+- Backend: `https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io`
+
+### Local Development Stack
+
+For local development, we use Docker Compose to simulate the Azure environment:
+
+- **`app/`** - Next.js 15 application (Frontend)
+  - **Current state**: Full-featured Next.js app with TypeScript
   - **Tech stack**: 
-    - Build tool: Vite 7.x
+    - Build tool: Next.js 15
     - Framework: React 19.x with TypeScript
-    - Routing: React Router DOM 6.x
-    - Styling: Tailwind CSS 3.x with autoprefixer
-    - Icons: Heroicons
-    - API client: Axios
-    - Backend integration: Supabase client (`@supabase/supabase-js`)
-  - **Dev server**: Runs on port 5173 (Vite default)
-  - **Build command**: `npm run build` (outputs to `dist/`)
-  - **Linting**: ESLint with React hooks and TypeScript support
-  - **Structure**:
-    ```
-    frontend/
-    ├── src/
-    │   ├── main.tsx       # App entry point
-    │   ├── App.tsx        # Root component
-    │   ├── components/    # Reusable UI components
-    │   ├── pages/         # Route pages
-    │   ├── api/           # API client utilities
-    │   ├── context/       # React context providers
-    │   ├── types/         # TypeScript type definitions
-    │   ├── lib/           # Utility functions
-    │   └── mocks/         # Mock data for development
-    ├── public/            # Static assets
-    └── index.html         # HTML entry point
-    ```
+    - Routing: Next.js App Router
+    - Styling: Tailwind CSS 4.x
+    - Icons: Lucide React
+    - Database client: `mssql` (Azure SQL), `pg` (PostgreSQL)
+    - AI: Azure OpenAI SDK
+    - Storage: Azure Storage SDK
+  - **Dev server**: Runs on port 3000
+  - **Build command**: `npm run build`
+  - **Linting**: ESLint with TypeScript support
+
+- **`backend/`** - Node.js + Express API server (Legacy, being migrated to Next.js API routes)
+  - Entry point: `backend/index.js`
+  - **Tech stack**: Express 4.18, PostgreSQL (via `pg`), JWT auth
+  - **Note**: New features should use Next.js API routes in `app/api/` instead
+
+- **`lib/azure/`** - Azure service integrations
+  - `config.ts` - Centralized Azure SDK configuration
+  - Azure Blob Storage client
+  - Azure SQL/PostgreSQL connection pool
+  - **Note**: This replaces any Supabase or Vercel-specific code
 
 - **`database-schemas/`** - PostgreSQL schema definitions and migrations
   - **Current state**: Contains production schema with migrations
   - **Files**:
-    - `schema.sql` - Full database schema (26KB+)
-    - `init.sql` - Database initialization script
-    - `mvp_schema.sql` - MVP-specific schema
-    - `seed-data-providers.sql` - Seed data for sustainability data providers
-    - `seed-plans.sql` - Subscription plan seeding
+    - `schema.sql` - Full database schema
     - `migrations/` - Migration scripts with timestamps
   - **Pattern**: Raw SQL files with manual migration tracking
 
-- **`docker-compose.yml`** - Infrastructure orchestration
-  - **Current state**: Defines all three services: database, backend, and frontend
+- **`docker-compose.yml`** - Local development infrastructure
   - **Services**:
     - `db` (PostgreSQL 15) - Port 5432
-    - `backend` (Node.js/Express) - Port 3001
-    - `frontend` (Vite dev server) - Port 5173
-  - **Networking**: Services communicate via Docker network, backend connects to `db:5432`
-  - **Volumes**: Persistent PostgreSQL data in `greenchainz-db-data` volume
+  - **Note**: Frontend and backend run natively during local dev, not in containers
 
 ### Repository Structure Gotcha
-⚠️ **Important**: There is an empty nested directory `green-sourcing-b2b-app/` at the repository root. This is a structural artifact - **always work in the top-level directories** (`backend/`, `frontend/`, `database-schemas/`) to avoid confusion and drift between duplicate structures.
+⚠️ **Important**: This is a Next.js monorepo. The main application code is in the top-level `app/`, `lib/`, and `components/` directories. The `backend/` directory contains legacy code being phased out.
 
 ## Runtime Configuration and Ports
 
-### Database (PostgreSQL 15)
-Managed via `docker-compose.yml`:
+### Database (Azure PostgreSQL Flexible Server)
+
+**Production (Azure):**
+- **Service**: Azure Database for PostgreSQL (Flexible Server)
+- **Server**: `greenchainz-db-prod.postgres.database.azure.com`
+- **Version**: PostgreSQL 15
+- **Connection**: Via `DATABASE_URL` environment variable
+- **SSL**: Required (`sslmode=require`)
+
+**Local Development (Docker):**
 - **Service name**: `db`
 - **Container name**: `greenchainz-db`
 - **Image**: `postgres:15`
+- **Port mapping**: `5432:5432` (host:container)
 - **Environment variables** (from `.env` or defaults):
   - `POSTGRES_USER=${DB_USER:-user}`
   - `POSTGRES_PASSWORD=${DB_PASSWORD:-password}`
   - `POSTGRES_DB=${DB_NAME:-greenchainz_dev}`
-- **Port mapping**: `5432:5432` (host:container)
-- **Volume**: `greenchainz-db-data` (persistent storage)
 - **Connection strings**:
   - From host: `postgres://user:password@localhost:5432/greenchainz_dev`
-  - From backend container: `postgres://user:password@db:5432/greenchainz_dev`
+  - From docker services: `postgres://user:password@db:5432/greenchainz_dev`
 
-### Backend API Server
-Fully containerized and managed via Docker Compose:
-- **Service name**: `backend`
-- **Container name**: `greenchainz-backend`
-- **Port**: `3001`
-- **Start command**: `npm start` (runs `node index.js`)
-- **Environment variables**:
-  - `NODE_ENV=development`
-  - `PORT=3001`
-  - `POSTGRES_HOST=db` (Docker network hostname)
-  - Database credentials (DB_USER, DB_PASSWORD, DB_NAME)
-  - OAuth credentials (GOOGLE_CLIENT_ID, GITHUB_CLIENT_ID, etc.)
-  - JWT_SECRET for authentication
-  - SMTP settings for email notifications
-  - FRONTEND_URL for CORS configuration
-- **Dependencies**: Depends on `db` service
-- **API Documentation**: Available at `http://localhost:3001/api-docs` (Swagger UI)
+### Frontend (Next.js on Azure Container Apps)
 
-### Frontend Dev Server
-Containerized Vite development server:
-- **Service name**: `frontend`
-- **Container name**: `greenchainz-frontend`
-- **Port**: `5173` (Vite default)
+**Production (Azure):**
+- **Container App**: `greenchainz-frontend`
+- **URL**: `https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io`
+- **Technology**: Next.js 15.5.9, React 19.2.3
+- **Port**: 3000
+- **Container Image**: `acrgreenchainzprod916.azurecr.io/greenchainz-frontend:latest`
+- **Resources**: 0.5 vCPU, 1.0Gi memory, 1-3 replicas
+
+**Local Development:**
+- **Port**: 3000
 - **Start command**: `npm run dev`
 - **Environment variables**:
   - `NODE_ENV=development`
-  - `VITE_API_BASE_URL=http://localhost:3001` (backend API)
-  - `VITE_SUPABASE_URL` - Supabase project URL
-  - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
-- **Dependencies**: Depends on `backend` service
+  - `NEXT_PUBLIC_API_URL=http://localhost:3000` (Next.js API routes)
+  - `DATABASE_URL=postgres://user:password@localhost:5432/greenchainz_dev`
+  - Azure credentials for local development (optional)
 - **HMR (Hot Module Replacement)**: Enabled for instant UI updates
+
+### Backend API (Node.js on Azure Container Apps)
+
+**Production (Azure):**
+- **Container App**: `greenchainz-container`
+- **URL**: `https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io`
+- **Technology**: Node.js 20, Express
+- **Port**: 8080
+- **Container Image**: `acrgreenchainzprod916.azurecr.io/greenchainz-backend:latest`
+- **Resources**: 0.5 vCPU, 1.0Gi memory, 1-3 replicas
+
+**Local Development (Legacy):**
+- **Port**: 3001 (if running legacy backend)
+- **Note**: New features should use Next.js API routes (`app/api/`) instead of the legacy Express backend
+
+### Azure Services Integration
+
+**Azure Blob Storage:**
+- **Account**: `greenchainzscraper`, `revitfiles`
+- **Connection**: Via `AZURE_STORAGE_CONNECTION_STRING`
+- **SDK**: `@azure/storage-blob`
+
+**Azure OpenAI:**
+- **Endpoint**: Configured via `AZURE_OPENAI_ENDPOINT`
+- **API Key**: `AZURE_OPENAI_API_KEY`
+- **Model**: GPT-4
+- **SDK**: `@azure/openai`
+
+**Azure AD Authentication:**
+- **App ID**: `479e2a01-70ab-4df9-baa4-560d317c3423`
+- **Tenant**: `ca4f78d4-c753-4893-9cd8-1b309922b4dc`
+- **Client Secret**: Stored in Azure Key Vault
+- **SDK**: `@azure/identity`
 
 ## Developer Workflows
 
@@ -141,88 +153,40 @@ Containerized Vite development server:
 1. **Copy environment variables**:
    ```bash
    cp .env.example .env
-   # Edit .env with your actual credentials (database, OAuth, SMTP, etc.)
+   # Edit .env with your actual credentials (Azure, database, etc.)
    ```
 
-2. **Start all services with Docker Compose**:
+2. **Install dependencies**:
    ```bash
-   docker compose up -d
-   ```
-   This starts all three services: PostgreSQL, backend, and frontend.
-
-3. **Verify services are running**:
-   ```bash
-   docker ps
-   # Should show: greenchainz-db, greenchainz-backend, greenchainz-frontend
+   npm install
    ```
 
-4. **View logs (if needed)**:
-   ```bash
-   docker compose logs -f backend   # Backend logs
-   docker compose logs -f frontend  # Frontend logs
-   docker compose logs -f db        # Database logs
-   ```
-
-5. **Access the application**:
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:3001
-   - API Documentation: http://localhost:3001/api-docs
-   - Database: localhost:5432
-
-### Alternative: Local Development (without Docker)
-
-For faster development iteration, you can run services locally:
-
-1. **Start only the database in Docker**:
+3. **Start local database** (optional - can use Azure PostgreSQL):
    ```bash
    docker compose up -d db
    ```
 
-2. **Install backend dependencies**:
+4. **Start Next.js development server**:
    ```bash
-   cd backend
-   npm install
-   ```
-
-3. **Update .env for local development**:
-   ```bash
-   # Change POSTGRES_HOST from 'db' to 'localhost'
-   POSTGRES_HOST=localhost
-   ```
-
-4. **Start backend locally**:
-   ```bash
-   cd backend
-   npm start
-   # Or for development: npm run dev
-   ```
-
-5. **Install frontend dependencies** (in new terminal):
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-6. **Start frontend dev server**:
-   ```bash
-   cd frontend
    npm run dev
    ```
 
+5. **Access the application**:
+   - Frontend: http://localhost:3000
+   - API Routes: http://localhost:3000/api/...
+   - Database: localhost:5432 (if using local Docker)
+
 ### Making Code Changes
 
-**Backend changes**:
-```bash
-# Docker approach: rebuild and restart
-docker compose up -d --build backend
+**Frontend/UI changes**:
+- Edit files in `app/`, `components/`, or `lib/`
+- Next.js has hot module replacement (HMR) - changes appear instantly
+- No restart needed
 
-# Local approach: restart process
-# Backend doesn't have hot reload, so you need to restart manually
-```
-
-**Frontend changes**:
-- Vite has hot module replacement (HMR) - changes appear instantly
-- No restart needed in either Docker or local mode
+**API changes**:
+- Edit files in `app/api/`
+- Next.js API routes have hot reload
+- Test with `curl`, Postman, or browser
 
 **Database changes**:
 1. Create migration file in `database-schemas/migrations/`:
@@ -233,24 +197,23 @@ docker compose up -d --build backend
 
 2. Apply migration:
    ```bash
+   # Local database
    docker exec -i greenchainz-db psql -U user -d greenchainz_dev < database-schemas/migrations/your-migration.sql
-   ```
-
-3. Or connect and run manually:
-   ```bash
-   docker exec -it greenchainz-db psql -U user -d greenchainz_dev
+   
+   # Azure PostgreSQL
+   psql "$DATABASE_URL" < database-schemas/migrations/your-migration.sql
    ```
 
 ### Database Access and Management
 
-**Connect to PostgreSQL using psql**:
+**Connect to local PostgreSQL using psql**:
 ```bash
 docker exec -it greenchainz-db psql -U user -d greenchainz_dev
 ```
 
-**Or from host** (if PostgreSQL client installed):
+**Connect to Azure PostgreSQL**:
 ```bash
-psql postgres://user:password@localhost:5432/greenchainz_dev
+psql "$DATABASE_URL"
 ```
 
 **Useful psql commands**:
@@ -264,115 +227,124 @@ psql postgres://user:password@localhost:5432/greenchainz_dev
 \q               -- Quit psql
 ```
 
-**Reset database** (⚠️ destroys all data):
-```bash
-docker compose down -v
-docker compose up -d db
-# Then re-apply schema and migrations
-```
-
 ### Typical Development Cycle
 
 1. **Make code changes**:
-   - Backend: Edit files in `backend/` (routes, services, middleware)
-   - Frontend: Edit files in `frontend/src/` (components, pages, API calls)
+   - Frontend: Edit files in `app/`, `components/`, `lib/`
+   - API: Edit files in `app/api/`
    - Database: Create migration in `database-schemas/migrations/`
 
 2. **Test changes**:
-   - Backend: Restart service (`docker compose restart backend` or local restart)
-   - Frontend: Hot reload automatically shows changes
-   - API: Test with `curl`, Postman, or Swagger UI at `/api-docs`
+   - Next.js dev server auto-reloads
+   - API: Test with `curl` or browser
+   - Database: Query with psql
 
-3. **Run linter** (frontend only currently):
+3. **Run linter**:
    ```bash
-   cd frontend
    npm run lint
    ```
 
-4. **Build for production** (test build integrity):
+4. **Type check**:
    ```bash
-   cd frontend
+   npm run type-check
+   ```
+
+5. **Build for production** (test build integrity):
+   ```bash
    npm run build
    ```
 
-5. **Commit changes**:
+6. **Commit changes**:
    ```bash
    git add .
    git commit -m "feat: descriptive message"
    git push
    ```
-
 ## Coding Patterns and Conventions
 
-### Backend API Development
+### Next.js API Routes
 
-**Current Pattern** - Routes defined in `backend/index.js`:
-```javascript
-// Authentication required for protected routes
-app.get('/api/v1/suppliers/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  // Query database using pool from db.js
-  const result = await pool.query('SELECT * FROM suppliers WHERE id = $1', [id]);
-  res.json(result.rows[0]);
-});
+**Current Pattern** - API routes in `app/api/`:
+```typescript
+// app/api/suppliers/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { runQueryOne } from '@/lib/azure/config';
 
-// Role-based authorization
-app.post('/api/v1/admin/users', authenticateToken, authorizeRoles(['admin']), async (req, res) => {
-  // Admin-only endpoint logic
-});
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const { id } = params;
+  
+  // Query Azure SQL/PostgreSQL
+  const supplier = await runQueryOne(
+    'SELECT * FROM suppliers WHERE id = @id',
+    { id }
+  );
+  
+  return NextResponse.json(supplier);
+}
 ```
 
 **API Structure**:
-- All API routes use `/api/v1/` prefix
+- All API routes in `app/api/` directory
 - RESTful conventions: GET (read), POST (create), PUT/PATCH (update), DELETE (delete)
-- OpenAPI documentation in `backend/openapi.yaml` - keep this updated!
-- Swagger UI auto-generated from OpenAPI spec
+- Use Next.js built-in API route handlers
 
 **Database Access**:
-- Use connection pool from `backend/db.js`:
-  ```javascript
-  const { pool } = require('./db');
-  const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+- Use Azure connection pool from `lib/azure/config.ts`:
+  ```typescript
+  import { runQuery, runQueryOne } from '@/lib/azure/config';
+  
+  const users = await runQuery<User>('SELECT * FROM users WHERE id = @id', { id: userId });
   ```
-- Always use parameterized queries ($1, $2, etc.) to prevent SQL injection
+- Always use parameterized queries to prevent SQL injection
 - Handle errors gracefully with try-catch
 
 **Authentication & Authorization**:
+- Azure AD for authentication (via NextAuth or custom)
 - JWT tokens for API authentication
-- Middleware: `authenticateToken` (verify JWT), `authorizeRoles(['role'])` (check permissions)
-- OAuth supported: Google, GitHub, LinkedIn, Microsoft (via Passport.js)
-- Session-based auth for OAuth flows
+- Middleware for protected routes
+- Multi-tenant + personal account support
 
-**Services Pattern**:
-```
-backend/services/
-├── verificationScore.js  # Supplier verification scoring
-├── mailer.js             # Email notifications
-└── errorMonitoring.js    # Error tracking
+**Azure Services Integration**:
+```typescript
+// lib/azure/config.ts provides:
+import { 
+  getBlobServiceClient,      // Azure Blob Storage
+  uploadFileToBlob,           // File uploads
+  getAzureSQLPool,           // Azure SQL connection
+  runQuery                   // Parameterized queries
+} from '@/lib/azure/config';
 ```
 
 ### Frontend Development
 
-**React + TypeScript Patterns**:
+**Next.js + TypeScript Patterns**:
 ```tsx
-// Use functional components with TypeScript
-interface ProductProps {
+// app/suppliers/[id]/page.tsx
+import { Suspense } from 'react';
+
+interface Supplier {
   id: string;
   name: string;
 }
 
-const ProductCard: React.FC<ProductProps> = ({ id, name }) => {
-  const [loading, setLoading] = useState(false);
+async function SupplierDetails({ id }: { id: string }) {
+  // Server-side data fetching
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/suppliers/${id}`);
+  const supplier: Supplier = await res.json();
   
-  // API calls using axios
-  useEffect(() => {
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/v1/products/${id}`)
-      .then(response => setProduct(response.data))
-      .catch(error => console.error(error));
-  }, [id]);
-  
-  return <div>{name}</div>;
-};
+  return <div>{supplier.name}</div>;
+}
+
+export default function SupplierPage({ params }: { params: { id: string } }) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SupplierDetails id={params.id} />
+    </Suspense>
+  );
+}
 ```
 
 **Styling**:
@@ -384,31 +356,29 @@ const ProductCard: React.FC<ProductProps> = ({ id, name }) => {
   </button>
   ```
 
-**Routing** (React Router v6):
-```tsx
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-
-<Routes>
-  <Route path="/" element={<HomePage />} />
-  <Route path="/suppliers" element={<SuppliersList />} />
-  <Route path="/suppliers/:id" element={<SupplierDetails />} />
-</Routes>
+**Routing** (Next.js App Router):
+```
+app/
+├── page.tsx                    # / (homepage)
+├── suppliers/
+│   ├── page.tsx                # /suppliers (list)
+│   └── [id]/
+│       └── page.tsx            # /suppliers/:id (details)
+└── api/
+    └── suppliers/
+        └── [id]/
+            └── route.ts        # API endpoint
 ```
 
-**API Communication**:
-- Base URL configured via `VITE_API_BASE_URL` environment variable
-- Use axios for HTTP requests
-- Create API utility functions in `frontend/src/api/`
-
 **State Management**:
-- React Context for global state (see `frontend/src/context/`)
+- Zustand for global state (`lib/store/`)
 - Local state with `useState` for component-specific state
-- `useEffect` for side effects and data fetching
+- Server components for data fetching (no useEffect needed)
 
-**Icons**: Use Heroicons from `@heroicons/react`
+**Icons**: Use Lucide React
 ```tsx
-import { UserIcon } from '@heroicons/react/24/outline';
-<UserIcon className="h-6 w-6" />
+import { User } from 'lucide-react';
+<User className="h-6 w-6" />
 ```
 
 ### Environment Configuration
@@ -421,25 +391,23 @@ import { UserIcon } from '@heroicons/react/24/outline';
    ```
 
 2. **Required variables** (see `.env.example` for full list):
-   - `DB_USER`, `DB_PASSWORD`, `DB_NAME` - Database credentials
-   - `JWT_SECRET` - Secret for JWT token signing
-   - `SESSION_SECRET` - Secret for session management (min 32 chars)
-   - `FRONTEND_URL` - Frontend URL for CORS (default: http://localhost:5173)
-   - OAuth credentials: `GOOGLE_CLIENT_ID`, `GITHUB_CLIENT_ID`, etc.
-   - Supabase: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+   - `DATABASE_URL` - PostgreSQL connection string
+   - `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE`, `AZURE_SQL_USER`, `AZURE_SQL_PASSWORD` - Azure SQL credentials
+   - `AZURE_STORAGE_CONNECTION_STRING` - Blob storage connection
+   - `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT` - Azure OpenAI
+   - `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID` - Azure AD auth
+   - `NEXTAUTH_URL`, `NEXTAUTH_SECRET` - NextAuth configuration
 
 3. **Environment-specific configs**:
-   - Development: Use `.env` with localhost URLs
-   - Docker Compose: Use `POSTGRES_HOST=db` (service name)
-   - Production: Set all variables in hosting platform (Vercel, Railway, etc.)
+   - Development: Use `.env.local` with localhost/Docker database
+   - Production: Set all variables in Azure Container Apps environment
 
 4. **Frontend variables**:
-   - Must be prefixed with `VITE_` to be accessible in browser
-   - Access via `import.meta.env.VITE_API_BASE_URL`
-   - Embedded at build time, not runtime
+   - Must be prefixed with `NEXT_PUBLIC_` to be accessible in browser
+   - Access via `process.env.NEXT_PUBLIC_API_URL`
+   - Embedded at build time
 
 5. **Backend variables**:
-   - Loaded via `dotenv` in `backend/index.js`
    - Access via `process.env.VARIABLE_NAME`
    - Available at runtime
 
@@ -447,61 +415,55 @@ import { UserIcon } from '@heroicons/react/24/outline';
 
 ### Current Dependencies
 
-**Backend** (`backend/package.json`):
-- **Core**: Express 4.18, Node.js (CommonJS)
-- **Database**: `pg` 8.11 (PostgreSQL client with connection pooling)
-- **Authentication**: `jsonwebtoken`, `bcrypt`, `passport` with OAuth strategies
-- **OAuth Providers**: Google, GitHub, LinkedIn, Microsoft (via passport strategies)
-- **Email**: `nodemailer` for transactional emails
-- **API Documentation**: `swagger-ui-express`, `yaml` parser
-- **Utilities**: `dotenv`, `cors`, `express-session`, `csv-parser`, `cheerio`
-- **External Integrations**: FSC mock provider, Supabase client
-
-**Frontend** (`frontend/package.json`):
-- **Core**: React 19.x, TypeScript, Vite 7.x (ES modules)
-- **Routing**: React Router DOM 6.x
-- **Styling**: Tailwind CSS 3.x, PostCSS, Autoprefixer
-- **HTTP Client**: Axios
-- **Backend Integration**: Supabase client
-- **Icons**: Heroicons
-- **Dev Tools**: ESLint, TypeScript ESLint, Vite plugins
+**Main Application** (`package.json`):
+- **Core**: Next.js 15, React 19, TypeScript
+- **Database**: `mssql` (Azure SQL), `pg` (PostgreSQL)
+- **Azure SDKs**: 
+  - `@azure/storage-blob` - Blob Storage
+  - `@azure/storage-queue` - Queue Storage
+  - `@azure/openai` - Azure OpenAI
+  - `@azure/identity` - Authentication
+  - `@azure/search-documents` - Cognitive Search
+- **Email**: `resend` for transactional emails
+- **UI**: Tailwind CSS 4.x, Lucide React icons
+- **State**: Zustand
+- **Payments**: Stripe SDK
 
 **Infrastructure**:
-- **Database**: PostgreSQL 15 (Docker image)
-- **Container orchestration**: Docker Compose
-- **Build Tools**: Vite (frontend), Node.js (backend)
+- **Hosting**: Azure Container Apps
+- **Database**: Azure PostgreSQL Flexible Server
+- **Storage**: Azure Blob Storage
+- **CI/CD**: GitHub Actions with Federated Identity
 
 ### Active Integrations
 
-1. **Supabase** - Backend-as-a-Service
-   - Authentication (OAuth, email)
-   - Realtime subscriptions
-   - Storage (file uploads)
-   - Environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+1. **Azure OpenAI** - AI/ML Services
+   - GPT-4 for content generation
+   - Embeddings for semantic search
+   - Environment: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`
 
-2. **OAuth Providers** (via Passport.js)
-   - Google OAuth 2.0
-   - GitHub OAuth
-   - LinkedIn OAuth 2.0
-   - Microsoft OAuth 2.0
-   - Callback URLs: `http://localhost:3001/auth/{provider}/callback`
+2. **Azure AD** - Authentication
+   - Multi-tenant application
+   - OAuth 2.0 / OpenID Connect
+   - Environment: `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID`
 
-3. **Email Service** (Nodemailer)
-   - SMTP configuration (Gmail, SendGrid, Mailgun, etc.)
+3. **Azure Blob Storage** - File Storage
+   - EPD documents, product images
+   - Environment: `AZURE_STORAGE_CONNECTION_STRING`
+
+4. **Email Service** (Zoho Mail via Resend)
    - Transactional emails (user notifications, admin alerts)
-   - Environment: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`
+   - Environment: `RESEND_API_KEY`
 
-4. **Data Providers**
-   - FSC (Forest Stewardship Council) - Mock implementation
-   - Verification scoring system
-   - Future: EC3, B Corp, other sustainability databases
+5. **Stripe** - Payment Processing
+   - Subscription management
+   - Environment: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 ### Future Integration Points
-- **Search**: Full-text search for products/suppliers (PostgreSQL full-text or Elasticsearch)
-- **File Storage**: Product images, certifications (Supabase Storage or S3)
-- **Analytics**: Usage tracking, sustainability metrics
-- **Payment Processing**: Stripe/PayPal for transactions
-- **Message Queue**: Background jobs (Bull/Redis)
+- **Search**: Azure Cognitive Search for full-text search
+- **Analytics**: Application Insights for usage tracking
+- **Message Queue**: Azure Queue Storage or Service Bus for background jobs
+- **CDN**: Azure Front Door for global content delivery
 
 ## Cross-Cutting Conventions
 
