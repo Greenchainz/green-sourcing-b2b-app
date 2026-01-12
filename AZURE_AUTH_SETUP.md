@@ -12,7 +12,7 @@ A new simplified callback route has been created that directly exchanges the aut
 - ✅ Direct token exchange with Microsoft Entra ID (`login.microsoftonline.com`)
 - ✅ No intermediate API routes (fixes serverless issues)
 - ✅ Proper URL encoding with `URLSearchParams`
-- ✅ Sets secure httpOnly session cookies (`session_token`, `id_token`)
+- ✅ Sets secure httpOnly session cookie (`session`)
 - ✅ Comprehensive error handling with redirects to login page
 - ✅ Support for custom redirect via `next` query parameter
 

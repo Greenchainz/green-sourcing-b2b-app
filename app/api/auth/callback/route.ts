@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
     )
 
     // Use 'session' cookie name for consistency with existing auth routes
+    // Prioritize ID token (contains user claims) over access token
     response.cookies.set('session', tokens.id_token || tokens.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
