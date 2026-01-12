@@ -134,7 +134,7 @@ app.use((req, res, next) => {
 
 1. **Set environment variable** (if not already set):
    ```bash
-   # For Next.js deployment (Vercel/Container App/etc)
+   # For Next.js deployment (Azure Container Apps)
    NEXT_PUBLIC_BACKEND_URL=https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
    ```
 

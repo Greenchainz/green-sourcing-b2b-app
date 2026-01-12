@@ -1,221 +1,297 @@
-# Multi-Cloud Deployment Guide
-## GreenChainz Platform - Cloud Agnostic Architecture
+# Azure Deployment Guide
+## GreenChainz Platform - Azure-Only Architecture
 
-Your Event Sourcing architecture is **100% compatible** with all major cloud providers. Choose based on which startup credits you receive.
-
----
-
-## **Platform Comparison for Blockchain Integration**
-
-### **Microsoft Azure**
-**Blockchain Platform:** Azure Blockchain Service (Hyperledger Fabric)  
-**Startup Credits:** Microsoft for Startups Founders Hub - **$150,000**  
-**PostgreSQL:** Azure Database for PostgreSQL  
-**Container Hosting:** Azure App Service / Azure Container Instances  
-**Event Grid:** Azure Event Grid (for event-driven architecture)  
-
-**Best For:** If you get Microsoft Founders Hub credits  
-**Phase 2 Blockchain:** Native Hyperledger Fabric support
+GreenChainz is deployed **exclusively on Microsoft Azure**. This guide covers production deployment to Azure Container Apps with Azure PostgreSQL, Azure Blob Storage, Azure AD authentication, and Azure OpenAI.
 
 ---
 
-### **Google Cloud Platform (GCP)**
-**Blockchain Platform:** Google Cloud Blockchain Node Engine (Ethereum) OR Self-hosted Hyperledger Fabric  
-**Startup Credits:** Google Cloud for Startups - **$100,000+**  
-**PostgreSQL:** Cloud SQL for PostgreSQL  
-**Container Hosting:** Cloud Run / Google Kubernetes Engine (GKE)  
-**Pub/Sub:** Google Cloud Pub/Sub (for event-driven architecture)  
+## **Azure Infrastructure Overview**
 
-**Best For:** If you get Google for Startups credits  
-**Phase 2 Blockchain:** Requires self-hosting Hyperledger (via GKE)
-
----
-
-### **Amazon Web Services (AWS)**
-**Blockchain Platform:** Amazon Managed Blockchain (Hyperledger Fabric)  
-**Startup Credits:** AWS Activate - **$100,000+**  
-**PostgreSQL:** Amazon RDS for PostgreSQL  
-**Container Hosting:** AWS App Runner / Amazon ECS / EKS  
-**Event Bridge:** Amazon EventBridge (for event-driven architecture)  
-
-**Best For:** If you get AWS Activate credits  
-**Phase 2 Blockchain:** Native Hyperledger Fabric support (same as Azure)
+**Hosting:** Azure Container Apps (serverless containers)  
+**Database:** Azure Database for PostgreSQL (Flexible Server)  
+**Storage:** Azure Blob Storage  
+**Authentication:** Azure AD B2C  
+**AI Services:** Azure OpenAI (GPT-4)  
+**Email:** Zoho Mail  
+**CI/CD:** GitHub Actions with Federated Identity
 
 ---
 
-## **Current Stack Compatibility Matrix**
+## **Production Architecture**
 
-| Component | Azure | GCP | AWS |
-|-----------|-------|-----|-----|
-| **Node.js 18** | ✅ App Service | ✅ Cloud Run | ✅ App Runner |
-| **PostgreSQL** | ✅ Native | ✅ Cloud SQL | ✅ RDS |
-| **Docker Compose** | ✅ Container Instances | ✅ Cloud Run | ✅ ECS |
-| **Hyperledger Fabric** | ✅ Native Service | ⚠️ Self-Hosted (GKE) | ✅ Native Service |
-| **Event Sourcing** | ✅ Event Grid | ✅ Pub/Sub | ✅ EventBridge |
-| **Object Storage** | ✅ Blob Storage | ✅ Cloud Storage | ✅ S3 |
+```yaml
+Frontend:
+  Service: Azure Container Apps
+  Technology: Next.js 15
+  URL: greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io
+  
+Backend:
+  Service: Azure Container Apps  
+  Technology: Node.js 20 + Express
+  URL: greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
 
-**Key Insight:** Azure and AWS have **native Hyperledger Fabric** services. GCP requires self-hosting.
+Database:
+  Service: Azure Database for PostgreSQL (Flexible Server)
+  Version: PostgreSQL 15
+  
+Storage:
+  Service: Azure Blob Storage
+  Accounts: greenchainzscraper, revitfiles
+  
+Authentication:
+  Service: Azure AD (Multi-tenant + Personal Accounts)
+  App ID: 479e2a01-70ab-4df9-baa4-560d317c3423
+```
 
 ---
 
-## **Deployment Instructions (All Platforms)**
+## **Azure Deployment Instructions**
 
-### **1. Azure Deployment**
+### **Step 1: Prerequisites**
 
-#### **One-Click Deploy (Production)**
 ```bash
 # Install Azure CLI
-# Follow: https://learn.microsoft.com/en-us/cli/azure/install-azure-cli
+# macOS: brew install azure-cli
+# Windows: Download from https://learn.microsoft.com/en-us/cli/azure/install-azure-cli
+# Linux: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
-# Login
+# Login to Azure
 az login
 
-# Create Resource Group
-az group create --name greenchainz-prod --location eastus
+# Set your subscription (if you have multiple)
+az account set --subscription "greenchainz-core-start"
+```
 
-# Deploy PostgreSQL
-az postgres flexible-server create \
-  --resource-group greenchainz-prod \
-  --name greenchainz-db \
-  --location eastus \
-  --admin-user adminuser \
-  --admin-password YourSecurePassword123! \
-  --sku-name Standard_B1ms \
-  --version 15
+---
 
-# Deploy Backend (App Service)
-az webapp up \
-  --resource-group greenchainz-prod \
-  --name greenchainz-backend \
-  --runtime "NODE:18-lts" \
-  --sku B1
+### **Step 2: Create Resource Group**
 
-# Deploy Frontend (Static Web App)
-az staticwebapp create \
-  --name greenchainz-frontend \
-  --resource-group greenchainz-prod \
+```bash
+# Create resource group in East US
+az group create \
+  --name rg-greenchainz-prod \
   --location eastus
 ```
 
-**Estimated Monthly Cost:** ~$50-100 (Free with Founders Hub credits)
-
 ---
 
-### **2. Google Cloud Deployment**
+### **Step 3: Deploy Azure PostgreSQL**
 
-#### **One-Click Deploy (Production)**
 ```bash
-# Install gcloud CLI
-# Follow: https://cloud.google.com/sdk/docs/install
+# Create PostgreSQL Flexible Server
+az postgres flexible-server create \
+  --resource-group rg-greenchainz-prod \
+  --name greenchainz-db-prod \
+  --location eastus \
+  --admin-user azureuser \
+  --admin-password <YourSecurePassword123!> \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --version 15 \
+  --storage-size 32 \
+  --high-availability Disabled
 
-# Login and set project
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
+# Allow Azure services to access the database
+az postgres flexible-server firewall-rule create \
+  --resource-group rg-greenchainz-prod \
+  --name greenchainz-db-prod \
+  --rule-name AllowAzureServices \
+  --start-ip-address 0.0.0.0 \
+  --end-ip-address 0.0.0.0
 
-# Deploy PostgreSQL
-gcloud sql instances create greenchainz-db \
-  --database-version=POSTGRES_15 \
-  --tier=db-f1-micro \
-  --region=us-central1
-
-gcloud sql databases create greenchainz_dev --instance=greenchainz-db
-
-# Deploy Backend (Cloud Run)
-cd backend
-gcloud run deploy greenchainz-backend \
-  --source . \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars POSTGRES_HOST=CLOUD_SQL_CONNECTION_NAME
-
-# Deploy Frontend (Firebase Hosting)
-cd ../frontend
-npm run build
-firebase init hosting
-firebase deploy
+# Create database
+az postgres flexible-server db create \
+  --resource-group rg-greenchainz-prod \
+  --server-name greenchainz-db-prod \
+  --database-name greenchainz_production
 ```
 
-**Estimated Monthly Cost:** ~$30-70 (Free with Google for Startups credits)
-
 ---
 
-### **3. AWS Deployment**
+### **Step 4: Create Azure Container Registry**
 
-#### **One-Click Deploy (Production)**
 ```bash
-# Install AWS CLI
-# Follow: https://aws.amazon.com/cli/
+# Create container registry
+az acr create \
+  --resource-group rg-greenchainz-prod \
+  --name acrgreenchainzprod \
+  --sku Basic
 
-# Configure credentials
-aws configure
+# Enable admin access (for local development)
+az acr update \
+  --name acrgreenchainzprod \
+  --admin-enabled true
 
-# Deploy PostgreSQL (RDS)
-aws rds create-db-instance \
-  --db-instance-identifier greenchainz-db \
-  --db-instance-class db.t3.micro \
-  --engine postgres \
-  --engine-version 15.3 \
-  --master-username adminuser \
-  --master-user-password YourSecurePassword123! \
-  --allocated-storage 20
-
-# Deploy Backend (App Runner)
-aws apprunner create-service \
-  --service-name greenchainz-backend \
-  --source-configuration '{
-    "CodeRepository": {
-      "RepositoryUrl": "https://github.com/jnorvi5/green-sourcing-b2b-app",
-      "SourceCodeVersion": {"Type": "BRANCH", "Value": "main"}
-    }
-  }'
-
-# Deploy Frontend (S3 + CloudFront)
-cd frontend
-npm run build
-aws s3 mb s3://greenchainz-frontend
-aws s3 sync dist/ s3://greenchainz-frontend
-aws cloudfront create-distribution \
-  --origin-domain-name greenchainz-frontend.s3.amazonaws.com
+# Get credentials
+az acr credential show --name acrgreenchainzprod
 ```
 
-**Estimated Monthly Cost:** ~$40-80 (Free with AWS Activate credits)
+---
+
+### **Step 5: Build and Push Docker Images**
+
+```bash
+# Login to ACR
+az acr login --name acrgreenchainzprod
+
+# Build and push frontend
+docker build -t acrgreenchainzprod.azurecr.io/greenchainz-frontend:latest -f Dockerfile.azure .
+docker push acrgreenchainzprod.azurecr.io/greenchainz-frontend:latest
+
+# Build and push backend
+docker build -t acrgreenchainzprod.azurecr.io/greenchainz-backend:latest -f Dockerfile.backend .
+docker push acrgreenchainzprod.azurecr.io/greenchainz-backend:latest
+```
 
 ---
 
-## **Environment Variables (All Platforms)**
+### **Step 6: Create Container Apps Environment**
 
-Create these environment variables in your cloud provider's console:
+```bash
+# Create Container Apps environment
+az containerapp env create \
+  --name greenchainz-container-env \
+  --resource-group rg-greenchainz-prod \
+  --location eastus
+```
+
+---
+
+### **Step 7: Deploy Backend Container App**
+
+```bash
+# Deploy backend
+az containerapp create \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod \
+  --environment greenchainz-container-env \
+  --image acrgreenchainzprod.azurecr.io/greenchainz-backend:latest \
+  --target-port 8080 \
+  --ingress external \
+  --registry-server acrgreenchainzprod.azurecr.io \
+  --registry-username <acr-username> \
+  --registry-password <acr-password> \
+  --cpu 0.5 \
+  --memory 1.0Gi \
+  --min-replicas 1 \
+  --max-replicas 3 \
+  --env-vars \
+    DATABASE_URL=<postgresql-connection-string> \
+    AZURE_STORAGE_CONNECTION_STRING=<storage-connection-string> \
+    AZURE_OPENAI_API_KEY=<openai-key>
+```
+
+---
+
+### **Step 8: Deploy Frontend Container App**
+
+```bash
+# Deploy frontend
+az containerapp create \
+  --name greenchainz-frontend \
+  --resource-group rg-greenchainz-prod \
+  --environment greenchainz-container-env \
+  --image acrgreenchainzprod.azurecr.io/greenchainz-frontend:latest \
+  --target-port 3000 \
+  --ingress external \
+  --registry-server acrgreenchainzprod.azurecr.io \
+  --registry-username <acr-username> \
+  --registry-password <acr-password> \
+  --cpu 0.5 \
+  --memory 1.0Gi \
+  --min-replicas 1 \
+  --max-replicas 3 \
+  --env-vars \
+    NEXT_PUBLIC_API_URL=https://greenchainz-backend.<region>.azurecontainerapps.io \
+    NEXTAUTH_URL=https://greenchainz-frontend.<region>.azurecontainerapps.io
+```
+
+---
+
+### **Step 9: Create Azure Blob Storage**
+
+```bash
+# Create storage account
+az storage account create \
+  --name greenchainzscraper \
+  --resource-group rg-greenchainz-prod \
+  --location eastus \
+  --sku Standard_LRS
+
+# Get connection string
+az storage account show-connection-string \
+  --name greenchainzscraper \
+  --resource-group rg-greenchainz-prod
+
+# Create blob containers
+az storage container create \
+  --name epd-documents \
+  --account-name greenchainzscraper \
+  --connection-string <connection-string>
+```
+
+**Estimated Monthly Cost:** ~$75-150 with Azure credits
+
+---
+
+## **Environment Variables (Azure)**
+
+Configure these environment variables in Azure Container Apps or Azure Key Vault:
 
 ```env
-# Database Connection
-POSTGRES_HOST=<your-cloud-db-host>
-POSTGRES_USER=<your-db-user>
-POSTGRES_PASSWORD=<your-db-password>
-POSTGRES_DB=greenchainz_dev
-POSTGRES_PORT=5432
+# Database Connection (Azure PostgreSQL)
+DATABASE_URL=postgresql://azureuser:<password>@greenchainz-db-prod.postgres.database.azure.com:5432/greenchainz_production?sslmode=require
 
-# JWT Secret
-JWT_SECRET=<generate-random-secret>
+# Azure SQL (if using Azure SQL instead of PostgreSQL)
+AZURE_SQL_SERVER=greenchainz-db-prod.database.windows.net
+AZURE_SQL_DATABASE=greenchainz_production
+AZURE_SQL_USER=azureuser
+AZURE_SQL_PASSWORD=<your-secure-password>
 
-# Stripe Payment Integration
+# Azure Blob Storage
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=greenchainzscraper;AccountKey=<key>;EndpointSuffix=core.windows.net
+AZURE_STORAGE_ACCOUNT_NAME=greenchainzscraper
+AZURE_STORAGE_ACCOUNT_KEY=<your-storage-key>
+
+# Azure OpenAI
+AZURE_OPENAI_API_KEY=<your-openai-key>
+AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4
+
+# Azure AD Authentication
+AZURE_AD_CLIENT_ID=479e2a01-70ab-4df9-baa4-560d317c3423
+AZURE_AD_CLIENT_SECRET=<your-client-secret>
+AZURE_AD_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
+
+# NextAuth Configuration
+NEXTAUTH_URL=https://greenchainz-frontend.<region>.azurecontainerapps.io
+NEXTAUTH_SECRET=<generate-random-secret>
+
+# Stripe Payment Integration (Optional)
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
-# LinkedIn OAuth (Buyer Verification)
-LINKEDIN_CLIENT_ID=<your-linkedin-client-id>
-LINKEDIN_CLIENT_SECRET=<your-linkedin-client-secret>
+# Email Service (Zoho Mail)
+SMTP_HOST=smtp.zoho.com
+SMTP_PORT=587
+SMTP_USER=noreply@greenchainz.com
+SMTP_PASS=<your-zoho-password>
 
-# CORS (update with your domain)
-CORS_ORIGIN=https://your-frontend-domain.com
-
-# Embedded Survey Forms (supports Google Forms, Typeform, Tally, etc.)
-SUPPLIER_FORM_URL=https://docs.google.com/forms/d/e/EXAMPLE_SUPPLIER/viewform?embedded=true
-BUYER_FORM_URL=https://docs.google.com/forms/d/e/EXAMPLE_BUYER/viewform?embedded=true
-
-# Node Environment
+# Application Settings
 NODE_ENV=production
-PORT=3001
+PORT=8080
+NEXT_PUBLIC_API_URL=https://greenchainz-backend.<region>.azurecontainerapps.io
+```
+
+**Setting environment variables in Azure Container Apps:**
+
+```bash
+az containerapp update \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod \
+  --set-env-vars \
+    DATABASE_URL=secretref:database-url \
+    AZURE_OPENAI_API_KEY=secretref:openai-key
 ```
 
 ---
@@ -228,8 +304,8 @@ GreenChainz uses Stripe webhooks for payment processing (RFQ deposits, supplier 
 
 | Environment | Webhook URL |
 |-------------|-------------|
-| **Production** | `https://greenchainz-container.eastus.azurecontainerapps.io/api/webhooks/stripe` |
-| **Staging** | `https://greenchainz-container-staging.eastus.azurecontainerapps.io/api/webhooks/stripe` |
+| **Production** | `https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io/api/webhooks/stripe` |
+| **Staging** | `https://greenchainz-container-staging.jollyrock-a66f2da6.eastus.azurecontainerapps.io/api/webhooks/stripe` |
 
 ### **Setting Up Stripe Webhooks**
 
@@ -246,8 +322,10 @@ GreenChainz uses Stripe webhooks for payment processing (RFQ deposits, supplier 
 4. **Copy the signing secret** (starts with `whsec_`)
 5. **Store in Azure Key Vault**:
    ```bash
-   export STRIPE_WEBHOOK_SECRET='whsec_...'
-   ./azure/setup-secrets.sh
+   az keyvault secret set \
+     --vault-name greenchainz-vault \
+     --name stripe-webhook-secret \
+     --value "whsec_..."
    ```
 
 ### **Verifying Webhook Configuration**
@@ -255,177 +333,214 @@ GreenChainz uses Stripe webhooks for payment processing (RFQ deposits, supplier 
 Test the webhook endpoint:
 ```bash
 # Production
-curl -X POST https://greenchainz-container.eastus.azurecontainerapps.io/api/webhooks/stripe \
+curl -X POST https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io/api/webhooks/stripe \
   -H "Content-Type: application/json" \
   -d '{"test": true}'
 # Should return 400 (missing signature) - confirms endpoint is reachable
-
-# Staging
-curl -X POST https://greenchainz-container-staging.eastus.azurecontainerapps.io/api/webhooks/stripe \
-  -H "Content-Type: application/json" \
-  -d '{"test": true}'
 ```
 
 ### **Azure Key Vault Secrets for Payments**
 
-Required secrets in `greenchianz-vault`:
+Required secrets in Azure Key Vault (`greenchainz-vault`):
 
 | Secret Name | Description | Example |
 |-------------|-------------|---------|
 | `stripe-secret-key` | Stripe API secret key | `sk_live_...` |
 | `stripe-webhook-secret` | Webhook signing secret | `whsec_...` |
 
-Set these using:
-```bash
-export STRIPE_SECRET_KEY='sk_live_...'
-export STRIPE_WEBHOOK_SECRET='whsec_...'
-./azure/setup-secrets.sh
-```
-
 ---
 
-## **LinkedIn OAuth Configuration**
+## **Azure AD Authentication Configuration**
 
-GreenChainz uses LinkedIn OAuth for buyer verification (professional identity validation).
+GreenChainz uses Azure AD for authentication (professional identity validation).
 
 ### **OAuth Callback URLs**
 
 | Environment | Callback URL |
 |-------------|--------------|
-| **Production** | `https://greenchainz-container.eastus.azurecontainerapps.io/api/auth/linkedin/callback` |
-| **Staging** | `https://greenchainz-container-staging.eastus.azurecontainerapps.io/api/auth/linkedin/callback` |
+| **Production** | `https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io/login/callback` |
+| **Local Dev** | `http://localhost:3000/login/callback` |
 
-### **Setting Up LinkedIn App**
+### **Setting Up Azure AD App**
 
-1. Go to [LinkedIn Developer Portal](https://developer.linkedin.com/)
-2. Create a new app or use existing
-3. Under **Auth** tab, add the callback URLs above
-4. Copy the **Client ID** and **Client Secret**
-5. Store in Azure Key Vault:
+1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory
+2. Navigate to **App registrations** → Select **greenchainz** app
+3. Under **Authentication**, add the callback URLs above
+4. Under **Certificates & secrets**, create a new client secret
+5. Copy the **Application (client) ID** and **Directory (tenant) ID**
+6. Store credentials in Azure Key Vault:
    ```bash
-   export LINKEDIN_CLIENT_ID='your-client-id'
-   export LINKEDIN_CLIENT_SECRET='your-client-secret'
-   ./azure/setup-secrets.sh
+   az keyvault secret set \
+     --vault-name greenchainz-vault \
+     --name azure-ad-client-id \
+     --value "479e2a01-70ab-4df9-baa4-560d317c3423"
+   
+   az keyvault secret set \
+     --vault-name greenchainz-vault \
+     --name azure-ad-client-secret \
+     --value "<your-client-secret>"
    ```
 
-### **Azure Key Vault Secrets for LinkedIn**
-
-| Secret Name | Description |
-|-------------|-------------|
-| `linkedin-client-id` | LinkedIn OAuth Client ID |
-| `linkedin-client-secret` | LinkedIn OAuth Client Secret |
-
-Quick test links you can email immediately (will preserve invite/email params):
-
-- Supplier: https://your-backend-domain/r/supplier?invite=abc123&email=name%40company.com
-- Buyer: https://your-backend-domain/r/buyer?invite=abc123&email=name%40company.com
-
-These redirect to branded pages at /surveys/supplier and /surveys/buyer that embed your configured forms.
-
 ---
 
-## **Phase 2: Blockchain Integration**
+## **CI/CD with GitHub Actions**
 
-### **Azure Blockchain Service (Hyperledger Fabric)**
-```bash
-# Create Blockchain Member
-az blockchain member create \
-  --resource-group greenchainz-prod \
-  --name greenchainz-blockchain \
-  --location eastus \
-  --protocol Hyperledger \
-  --consortium greenchainz-network \
-  --sku Basic
+GreenChainz uses GitHub Actions with Federated Identity (passwordless authentication to Azure).
+
+### **Setting Up Federated Identity**
+
+1. **Create Service Principal**:
+   ```bash
+   az ad sp create-for-rbac \
+     --name "greenchainz-github-actions" \
+     --role contributor \
+     --scopes /subscriptions/<subscription-id>/resourceGroups/rg-greenchainz-prod
+   ```
+
+2. **Create Federated Credential**:
+   ```bash
+   az ad app federated-credential create \
+     --id <application-id> \
+     --parameters federated-cred.json
+   ```
+
+3. **Add GitHub Secrets**:
+   - `AZURE_CLIENT_ID`: Service principal client ID
+   - `AZURE_TENANT_ID`: Azure tenant ID
+   - `AZURE_SUBSCRIPTION_ID`: Azure subscription ID
+
+### **GitHub Actions Workflow**
+
+The repository includes `.github/workflows/deploy-azure-cd.yml` for automated deployments.
+
+```yaml
+name: Deploy to Azure Container Apps
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Build and push to ACR
+        run: |
+          az acr build \
+            --registry acrgreenchainzprod \
+            --image greenchainz-frontend:latest \
+            --file Dockerfile.azure .
+      
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name greenchainz-frontend \
+            --resource-group rg-greenchainz-prod \
+            --image acrgreenchainzprod.azurecr.io/greenchainz-frontend:latest
 ```
 
-### **AWS Managed Blockchain (Hyperledger Fabric)**
-```bash
-# Create Blockchain Network
-aws managedblockchain create-network \
-  --name greenchainz-network \
-  --framework HYPERLEDGER_FABRIC \
-  --framework-version 2.2 \
-  --voting-policy '{"ApprovalThresholdPolicy":{"ThresholdPercentage":50}}'
-```
-
-### **GCP (Self-Hosted Hyperledger on GKE)**
-```bash
-# Create Kubernetes Cluster
-gcloud container clusters create greenchainz-blockchain \
-  --zone us-central1-a \
-  --num-nodes 3
-
-# Deploy Hyperledger Fabric via Helm
-kubectl create namespace hyperledger
-helm install fabric-network fabric-helm-charts/fabric-network \
-  --namespace hyperledger
-```
-
 ---
 
-## **Startup Credits Application Links**
+## **Database Migration (Azure PostgreSQL)**
 
-### **Microsoft for Startups Founders Hub**
-- **Credits:** $150,000 Azure credits
-- **Requirements:** Funded startup OR B2B SaaS with traction
-- **Apply:** https://www.microsoft.com/en-us/startups
-
-### **Google for Startups Cloud Program**
-- **Credits:** $100,000+ GCP credits
-- **Requirements:** Early-stage startup with funding
-- **Apply:** https://cloud.google.com/startup
-
-### **AWS Activate**
-- **Credits:** $100,000+ AWS credits
-- **Requirements:** Portfolio company OR accelerator/incubator member
-- **Apply:** https://aws.amazon.com/activate/
-
----
-
-## **Recommended Strategy**
-
-**Apply to ALL THREE** and use whichever approves you first:
-
-1. **Priority #1:** Microsoft (best Hyperledger support, highest credits)
-2. **Priority #2:** AWS (great Hyperledger support, strong ecosystem)
-3. **Priority #3:** Google (requires self-hosting Hyperledger, but generous credits)
-
-**Your current Docker-based architecture deploys identically to all three platforms** - so you can switch anytime without code changes.
-
----
-
-## **Database Migration (Cloud Agnostic)**
-
-All three cloud PostgreSQL services are compatible with your current schema. To migrate:
+To migrate your database schema to Azure PostgreSQL:
 
 ```bash
 # Export current database
 docker exec greenchainz-db pg_dump -U user greenchainz_dev > backup.sql
 
-# Import to cloud database (works on Azure, GCP, AWS)
-psql -h <cloud-db-host> -U <cloud-db-user> -d greenchainz_dev < backup.sql
+# Import to Azure PostgreSQL
+psql "postgresql://azureuser:<password>@greenchainz-db-prod.postgres.database.azure.com:5432/greenchainz_production?sslmode=require" < backup.sql
+
+# Or use Azure CLI
+az postgres flexible-server execute \
+  --name greenchainz-db-prod \
+  --admin-user azureuser \
+  --admin-password <password> \
+  --database-name greenchainz_production \
+  --file-path backup.sql
 ```
 
 ---
 
-## **Cost Comparison (Monthly, After Credits)**
+## **Monitoring and Logging**
 
-| Service | Azure | GCP | AWS |
-|---------|-------|-----|-----|
-| **PostgreSQL (Small)** | $25 | $20 | $30 |
-| **Backend Container** | $15 | $10 | $15 |
-| **Frontend Hosting** | $5 | $0 (Firebase) | $5 |
-| **Total** | **$45/mo** | **$30/mo** | **$50/mo** |
+### **Azure Application Insights**
 
-**All three are viable for a bootstrapped startup. Choose based on credits.**
+```bash
+# Create Application Insights
+az monitor app-insights component create \
+  --app greenchainz-platform \
+  --location eastus \
+  --resource-group rg-greenchainz-prod
+
+# Get instrumentation key
+az monitor app-insights component show \
+  --app greenchainz-platform \
+  --resource-group rg-greenchainz-prod \
+  --query instrumentationKey
+```
+
+### **View Logs**
+
+```bash
+# Stream container logs
+az containerapp logs show \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod \
+  --follow
+
+# Query log analytics
+az monitor log-analytics query \
+  --workspace <workspace-id> \
+  --analytics-query "ContainerAppConsoleLogs_CL | where ContainerAppName_s == 'greenchainz-backend' | order by TimeGenerated desc"
+```
+
+---
+
+## **Cost Optimization**
+
+### **Monthly Cost Estimate (Production)**
+
+| Service | Tier | Monthly Cost |
+|---------|------|--------------|
+| Container Apps (Frontend) | 0.5 vCPU, 1GB | ~$15 |
+| Container Apps (Backend) | 0.5 vCPU, 1GB | ~$15 |
+| PostgreSQL Flexible Server | Burstable B1ms | ~$25 |
+| Blob Storage | Standard LRS | ~$5 |
+| Container Registry | Basic | ~$5 |
+| Application Insights | Basic | ~$10 |
+| **Total** | | **~$75/month** |
+
+**With Microsoft for Startups credits:** Effectively free for 1-2 years
+
+### **Scaling Strategy**
+
+```bash
+# Scale container apps based on HTTP requests
+az containerapp update \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod \
+  --min-replicas 1 \
+  --max-replicas 5 \
+  --scale-rule-name http-rule \
+  --scale-rule-type http \
+  --scale-rule-http-concurrency 100
+```
 
 ---
 
 ## **Next Steps**
 
-1. ✅ **Apply for startup credits** (all three platforms)
-2. ✅ **Deploy to whichever approves first** (use scripts above)
-3. ✅ **Keep current local Docker setup** for development
-4. ✅ **Phase 2 blockchain** can be added later (architecture is ready)
+1. ✅ **Apply for Microsoft for Startups credits** - Up to $150,000 Azure credits
+2. ✅ **Deploy infrastructure** using the commands above
+3. ✅ **Set up CI/CD** with GitHub Actions
+4. ✅ **Configure monitoring** with Application Insights
+5. ✅ **Test production environment** end-to-end
 
-Your platform is **cloud-agnostic by design**. No vendor lock-in. 🚀
+Your platform is **Azure-native** and production-ready. 🚀

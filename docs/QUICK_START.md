@@ -65,7 +65,7 @@ If you get an error, check:
 
 ---
 
-## Deploy to Vercel (Production)
+## Deploy to Azure (Production)
 
 ```bash
 # 1. Push to GitHub
@@ -73,16 +73,15 @@ git add .
 git commit -m "feat: Toolbox pivot - Excel audit tool, homepage redesign"
 git push origin main
 
-# 2. Vercel auto-deploys
-# (Just push and wait 2-3 minutes)
+# 2. GitHub Actions auto-deploys to Azure Container Apps
+# (Just push and wait 2-3 minutes for deployment to complete)
 
-# 3. Update environment variables in Vercel
-# Dashboard → Settings → Environment Variables
-# Add: AZURE_SQL_SERVER, AZURE_SQL_DATABASE, AZURE_SQL_USER, AZURE_SQL_PASSWORD
+# 3. Environment variables are already configured in Azure Container Apps
+# Check Azure Portal → Container Apps → greenchainz-frontend → Configuration
 
 # 4. Update manifest for production
 # File: public/manifest.xml
-# Change: <SourceLocation DefaultValue="https://greenchainz.com/excel-addin"/>
+# Change: <SourceLocation DefaultValue="https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io/excel-addin"/>
 ```
 
 ---
@@ -173,7 +172,7 @@ CREATE TABLE Products (
 ## Next Steps
 
 1. ✅ **Test locally** (5 min)
-2. ✅ **Deploy to Vercel** (2 min)
+2. ✅ **Deploy to Azure** (automatic via GitHub Actions)
 3. ✅ **Test Excel add-in** (15 min)
 4. 🔄 **Enable Azure AD auth** (optional, for enterprise)
 5. 🔄 **Submit to Office AppSource** (3-5 day review)

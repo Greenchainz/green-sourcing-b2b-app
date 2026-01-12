@@ -2,7 +2,7 @@
  * Azure Native Configuration
  * 
  * Centralized Azure service clients and database connections
- * Replaces all Supabase/Vercel/AWS dependencies
+ * GreenChainz is 100% Azure-only (no Vercel, no Supabase, no AWS)
  */
 
 import { BlobServiceClient } from "@azure/storage-blob";

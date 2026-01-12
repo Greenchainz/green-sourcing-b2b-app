@@ -20,7 +20,7 @@ Excel Add-in User: "Audit: Drywall 5/8"
     ↓
 GreenChainz API: /api/audit/excel-batch
     ↓
-Supabase Query: SELECT * FROM products WHERE name ILIKE '%drywall%'
+Azure SQL/PostgreSQL Query: SELECT * FROM products WHERE name ILIKE '%drywall%'
     ↓
 ✅ Found: { name: "5/8 Type X Drywall", gwp: 5.5, health_grade: "A" }
     ↓
@@ -34,7 +34,7 @@ Excel Add-in User: "Audit: Acme Drywall 5/8"
     ↓
 GreenChainz API: /api/audit/excel-batch
     ↓
-Supabase Query: SELECT * FROM products WHERE name ILIKE '%acme drywall%'
+Azure SQL/PostgreSQL Query: SELECT * FROM products WHERE name ILIKE '%acme drywall%'
     ↓
 ❌ Not found
     ↓
@@ -50,7 +50,7 @@ Your Scraper Agent:
   2. Downloads PDF from Building Transparency (EC3)
   3. Sends to Azure OpenAI with HEALTH_SAFETY_EXTRACTION_PROMPT
   4. Extracts: gwp=5.2, health_grade="A", red_list_status="Free"
-  5. Caches in Supabase (next time: fast path)
+  5. Caches in Azure SQL/PostgreSQL (next time: fast path)
     ↓
 Excel: Displays "🟢 Acme Drywall | 5.2 kgCO2e | Grade A"
 ```
@@ -99,8 +99,8 @@ export async function scrapeMaterialData(options: {
     
     const extracted = await extractWithAzureOpenAI(pdf, prompt);
     
-    // 4. Cache in Supabase
-    await supabase.from('products').insert({
+    // 4. Cache in Azure SQL/PostgreSQL
+    await Azure database.from('products').insert({
       name: options.material_name,
       gwp_per_unit: extracted.gwp_per_unit,
       health_grade: extracted.health_grade,
@@ -175,7 +175,7 @@ Your scraper agent should now use these when processing material documents.
 **File:** `app/api/audit/excel-batch/route.ts` (already created)
 
 This file:
-1. ✅ Checks Supabase first (fast path)
+1. ✅ Checks Azure SQL/PostgreSQL first (fast path)
 2. ✅ Falls back to scraper if not found
 3. ✅ Uses your existing scraper infrastructure
 
@@ -195,7 +195,7 @@ const scraperResponse = await fetch(
 ### Test 1: Cached Material (Fast Path)
 
 ```bash
-# 1. Seed Supabase with test data
+# 1. Seed Azure SQL/PostgreSQL with test data
 INSERT INTO products (name, gwp_per_unit, health_grade, red_list_status, certifications, has_epd)
 VALUES ('Drywall 5/8', 5.5, 'A', 'Free', ARRAY['Cradle to Cradle'], true);
 
@@ -226,7 +226,7 @@ curl -X POST http://localhost:3000/api/audit/excel-batch \
   -d '{"materials": ["Some Unknown Drywall Brand"]}'
 
 # Expected behavior:
-# 1. Supabase query returns empty
+# 1. Azure SQL/PostgreSQL query returns empty
 # 2. API triggers scraper endpoint
 # 3. Scraper searches web for EPD data
 # 4. Azure OpenAI extracts health/carbon data
@@ -246,7 +246,7 @@ To maximize cached results (fast path):
 
 2. **Batch crawl** using your scheduled scraper:
    - Every 24 hours, search for top 100 materials from your supplier database
-   - Cache results in Supabase
+   - Cache results in Azure SQL/PostgreSQL
    - Excel users benefit from fast lookups
 
 ### Scraper Timeout Handling
@@ -306,7 +306,7 @@ const response = await fetch("/api/audit/excel-batch", {
 - [ ] `app/api/scrape/suppliers` (or `/materials`) accepts Excel Add-in request format
 - [ ] `lib/prompts/data-janitor.ts` has health/safety prompts
 - [ ] `app/api/audit/excel-batch/route.ts` is deployed
-- [ ] Supabase `products` table exists with required columns
+- [ ] Azure SQL/PostgreSQL `products` table exists with required columns
 - [ ] Scraper can be triggered via API (not just cron)
 - [ ] `public/manifest.xml` points to correct domain
 - [ ] Excel Add-in tested in Excel Online (web)

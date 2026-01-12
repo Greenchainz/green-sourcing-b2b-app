@@ -156,9 +156,9 @@ If this table doesn't exist, the API will skip the database query and go straigh
 
 #### Deploy Frontend (Next.js)
 ```bash
-# Push to your hosting (Vercel, Azure App Service, etc.)
+# Push to your hosting (Azure Container Apps, Azure App Service, etc.)
 git push origin main
-# Vercel auto-deploys on push
+# Azure Container Apps auto-deploys on push
 ```
 
 #### Update Manifest
