@@ -18,6 +18,41 @@ const messaging = require("../services/intercom/messaging");
 const contacts = require("../services/intercom/contacts");
 const { handleWebhook } = require("../services/intercom/webhooks");
 const internalApiKeyMiddleware = require("../middleware/internalKey");
+const { pool } = require("../db");
+const rateLimit = require("express-rate-limit");
+
+// ============================================
+// CONSTANTS
+// ============================================
+
+/**
+ * Premium tier levels that get direct routing to supplier team
+ * 
+ * Note: This is intentionally duplicated from lib/utils/supplierTier.ts
+ * because backend uses CommonJS (require) while the shared utility is TypeScript.
+ * Keep these constants synchronized with the shared utility.
+ */
+const PREMIUM_TIERS = ['premium', 'enterprise', 'pro'];
+
+/**
+ * Check if a supplier tier is premium (gets direct routing)
+ */
+const isPremiumTier = (tier) => {
+  if (!tier) return false;
+  return PREMIUM_TIERS.includes(tier.toLowerCase());
+};
+
+/**
+ * Rate limiter for conversation routing to prevent abuse.
+ *
+ * Limits each client to 30 requests per 5 minutes.
+ */
+const conversationLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 30, // limit each IP to 30 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================
 // MIDDLEWARE
@@ -530,6 +565,108 @@ router.post("/webhook/conversation", async (req, res) => {
   } catch (error) {
     console.error("[Intercom Webhook] Error processing conversation:", error);
     // Already sent 200 response, just log the error
+  }
+});
+
+// ============================================
+// CONVERSATION ROUTING ENDPOINTS
+// ============================================
+
+/**
+ * POST /api/v1/intercom/route-conversation
+ *
+ * Route a conversation to supplier team inbox or concierge based on tier.
+ * Used by AskSupplierButton component for contextual product inquiries.
+ *
+ * Request body:
+ * - supplierId: Supplier UUID (required)
+ * - message: Pre-filled message content (required)
+ * - productId: Product UUID (optional, for context)
+ * - productName: Product name (optional, for context)
+ *
+ * Response:
+ * - success: boolean
+ * - conversationId: Intercom conversation ID (if created)
+ * - routedTo: 'supplier' or 'concierge'
+ * - supplierTier: Supplier tier
+ */
+router.post("/route-conversation", conversationLimiter, authenticateToken, async (req, res) => {
+  try {
+    const { supplierId, message, productId, productName } = req.body;
+
+    if (!supplierId || !message) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: supplierId and message",
+      });
+    }
+
+    // Get supplier tier from database
+    let supplierTier = null;
+    let routedTo = "concierge";
+
+    try {
+      const supplierResult = await pool.query(
+        `SELECT st.TierCode, st.TierName
+         FROM Suppliers s
+         LEFT JOIN Supplier_Subscriptions ss ON s.SupplierID = ss.SupplierID
+         LEFT JOIN Supplier_Tiers st ON ss.TierID = st.TierID
+         WHERE s.SupplierID = $1
+         AND (ss.Status IN ('active', 'trialing') OR ss.Status IS NULL)
+         LIMIT 1`,
+        [supplierId]
+      );
+
+      if (supplierResult.rows.length > 0 && supplierResult.rows[0].tiercode) {
+        supplierTier = supplierResult.rows[0].tiercode.toLowerCase();
+      }
+    } catch (dbError) {
+      console.error("[Intercom] Error fetching supplier tier:", dbError);
+      // Continue with concierge routing if DB lookup fails
+    }
+
+    // Determine routing based on tier using shared utility
+    const isPremium = isPremiumTier(supplierTier);
+
+    if (isPremium) {
+      routedTo = "supplier";
+      // In a full implementation, this would use Intercom API to route to supplier's team
+      console.log(`[Intercom] Routing conversation to supplier team (tier: ${supplierTier})`);
+    } else {
+      routedTo = "concierge";
+      console.log(`[Intercom] Routing conversation to concierge (tier: ${supplierTier || 'free/unknown'})`);
+    }
+
+    // Create metadata for the conversation
+    const metadata = {
+      supplierId,
+      productId: productId || null,
+      productName: productName || null,
+      supplierTier: supplierTier || "unknown",
+      routedTo,
+      userId: req.user.userId || req.user.id,
+      timestamp: new Date().toISOString(),
+    };
+
+    // In a full implementation, this would:
+    // 1. Create a conversation in Intercom via their API
+    // 2. Tag it with metadata
+    // 3. Route to appropriate team inbox
+    // For now, we'll return success and log the routing decision
+
+    return res.status(200).json({
+      success: true,
+      routedTo,
+      supplierTier: supplierTier || "unknown",
+      metadata,
+      message: `Conversation will be routed to ${routedTo === "supplier" ? "supplier team" : "concierge team"}`,
+    });
+  } catch (error) {
+    console.error("[Intercom Routes] Error routing conversation:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
   }
 });
 
