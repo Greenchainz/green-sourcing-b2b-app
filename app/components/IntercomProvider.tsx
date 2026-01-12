@@ -1,75 +1,80 @@
-"use client";
+'use client';
 
-import { createContext, useContext, useEffect, ReactNode } from "react";
-import Intercom from "@intercom/messenger-js-sdk";
+import { ReactNode } from 'react';
+import { IntercomProvider as ReactIntercomProvider } from 'react-use-intercom';
 
-interface IntercomContextType {
-  boot: (user?: any) => void;
-  shutdown: () => void;
-  update: (data: any) => void;
-  show: () => void;
-  hide: () => void;
-}
-
-const IntercomContext = createContext<IntercomContextType | undefined>(
-  undefined
-);
+// Re-export the hook from react-use-intercom for convenience
+export { useIntercom } from 'react-use-intercom';
 
 interface IntercomProviderProps {
   children: ReactNode;
-  appId?: string;
+  user?: {
+    id: string;
+    name?: string;
+    email?: string;
+    createdAt?: number;
+    intercomHash?: string;
+    // Decision Maker attributes
+    role?: string;
+    layer?: string;
+    primaryMotivation?: string;
+    priorityLevel?: string;
+    jobTitle?: string;
+    rfqCount?: number;
+    tier?: string;
+  };
 }
 
-export function IntercomProvider({
-  children,
-  appId: propAppId,
-}: IntercomProviderProps) {
-  const appId = propAppId || process.env.NEXT_PUBLIC_INTERCOM_APP_ID;
+/**
+ * IntercomProvider - Wrapper around react-use-intercom for Next.js PWA
+ * 
+ * This implementation:
+ * - Uses the NPM method which bypasses some AdBlockers
+ * - Automatically handles SPA route changes
+ * - Supports Intercom's Secure Mode via userHash
+ */
+export function IntercomProvider({ children, user }: IntercomProviderProps) {
+  const appId = process.env.NEXT_PUBLIC_INTERCOM_APP_ID;
 
-  const boot = (user?: any) => {
-    if (!appId) return;
+  if (!appId) {
+    console.warn('[Intercom] NEXT_PUBLIC_INTERCOM_APP_ID not configured - chat widget disabled');
+    return <>{children}</>;
+  }
 
-    if (user) {
-      Intercom({
-        app_id: appId,
-        user_id: user.id,
-        name: user.name,
-        email: user.email,
-        created_at: user.createdAt,
-        ...user,
-      });
-    } else {
-      Intercom({ app_id: appId });
-    }
-  };
+  // Build user props for authenticated users
+  const userProps = user ? (() => {
+    // Filter out undefined custom attributes
+    const customAttributes: Record<string, unknown> = {};
+    if (user.layer !== undefined) customAttributes.role_layer = user.layer;
+    if (user.primaryMotivation !== undefined) customAttributes.decision_metric = user.primaryMotivation;
+    if (user.priorityLevel !== undefined) customAttributes.sustainability_priority = user.priorityLevel;
+    if (user.rfqCount !== undefined) customAttributes.active_rfqs = user.rfqCount;
+    if (user.role !== undefined) customAttributes.user_role = user.role;
+    if (user.tier !== undefined) customAttributes.subscription_tier = user.tier;
+    if (user.jobTitle !== undefined) customAttributes.job_title = user.jobTitle;
 
-  const shutdown = () => {
-    (Intercom as any)("shutdown");
-  };
+    const props: Record<string, unknown> = {
+      userId: user.id,
+    };
+    if (user.email !== undefined) props.email = user.email;
+    if (user.name !== undefined) props.name = user.name;
+    if (user.intercomHash !== undefined) props.userHash = user.intercomHash;
+    if (user.createdAt !== undefined) props.createdAt = user.createdAt;
+    if (Object.keys(customAttributes).length > 0) props.customAttributes = customAttributes;
 
-  const update = (data: any) => {
-    (Intercom as any)("update", data);
-  };
-
-  const show = () => {
-    (Intercom as any)("show");
-  };
-
-  const hide = () => {
-    (Intercom as any)("hide");
-  };
+    return props;
+  })() : undefined;
 
   return (
-    <IntercomContext.Provider value={{ boot, shutdown, update, show, hide }}>
+    <ReactIntercomProvider
+      appId={appId}
+      apiBase="https://api-iam.intercom.io" // US Region
+      autoBoot={true}
+      shouldInitialize={true}
+      initializeDelay={500}
+      {...userProps}
+    >
       {children}
-    </IntercomContext.Provider>
+    </ReactIntercomProvider>
   );
-}
-
-export function useIntercom() {
-  const context = useContext(IntercomContext);
-  if (context === undefined) {
-    throw new Error("useIntercom must be used within an IntercomProvider");
-  }
-  return context;
 }
