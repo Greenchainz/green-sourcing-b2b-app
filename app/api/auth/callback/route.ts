@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Default token expiration time in seconds (1 hour)
+const DEFAULT_TOKEN_EXPIRATION = 3600
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
@@ -23,25 +26,44 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Validate required environment variables
+  const tenantId = process.env.AZURE_AD_TENANT_ID
+  const clientId = process.env.AZURE_AD_CLIENT_ID
+  const clientSecret = process.env.AZURE_AD_CLIENT_SECRET
+
+  if (!tenantId || !clientId || !clientSecret) {
+    console.error('Missing required Azure AD environment variables')
+    return NextResponse.redirect(
+      new URL('/login?error=config_error', requestUrl.origin)
+    )
+  }
+
   try {
     // Exchange the Authorization Code for tokens with Microsoft Entra ID
     const tokenResponse = await fetch(
-      `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: process.env.AZURE_AD_CLIENT_ID!,
+          client_id: clientId,
           scope: 'openid profile email',
           code: code,
           redirect_uri: `${requestUrl.origin}/api/auth/callback`,
           grant_type: 'authorization_code',
-          client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
+          client_secret: clientSecret,
         }),
       }
     )
+
+    if (!tokenResponse.ok) {
+      console.error('Azure AD token exchange failed:', tokenResponse.status)
+      return NextResponse.redirect(
+        new URL(`/login?error=token_exchange_failed`, requestUrl.origin)
+      )
+    }
 
     const tokens = await tokenResponse.json()
 
@@ -57,24 +79,14 @@ export async function GET(request: NextRequest) {
       new URL(next, requestUrl.origin)
     )
 
-    response.cookies.set('session_token', tokens.access_token, {
+    // Use 'session' cookie name for consistency with existing auth routes
+    response.cookies.set('session', tokens.id_token || tokens.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: tokens.expires_in || 3600,
+      maxAge: tokens.expires_in || DEFAULT_TOKEN_EXPIRATION,
     })
-
-    // Optionally store the ID token for user info
-    if (tokens.id_token) {
-      response.cookies.set('id_token', tokens.id_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: tokens.expires_in || 3600,
-      })
-    }
 
     return response
 
