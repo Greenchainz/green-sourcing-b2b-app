@@ -19,6 +19,7 @@ const contacts = require("../services/intercom/contacts");
 const { handleWebhook } = require("../services/intercom/webhooks");
 const internalApiKeyMiddleware = require("../middleware/internalKey");
 const { pool } = require("../db");
+const rateLimit = require("express-rate-limit");
 
 // ============================================
 // CONSTANTS
@@ -40,6 +41,18 @@ const isPremiumTier = (tier) => {
   if (!tier) return false;
   return PREMIUM_TIERS.includes(tier.toLowerCase());
 };
+
+/**
+ * Rate limiter for conversation routing to prevent abuse.
+ *
+ * Limits each client to 30 requests per 5 minutes.
+ */
+const conversationLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 30, // limit each IP to 30 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================
 // MIDDLEWARE
@@ -577,7 +590,7 @@ router.post("/webhook/conversation", async (req, res) => {
  * - routedTo: 'supplier' or 'concierge'
  * - supplierTier: Supplier tier
  */
-router.post("/route-conversation", authenticateToken, async (req, res) => {
+router.post("/route-conversation", conversationLimiter, authenticateToken, async (req, res) => {
   try {
     const { supplierId, message, productId, productName } = req.body;
 
