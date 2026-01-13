@@ -18,7 +18,6 @@ const rfqApiRoutes = require("./routes/rfq-api");
 const shadowSupplierRoutes = require("./routes/shadow-suppliers");
 const aiGatewayRoutes = require("./routes/ai-gateway");
 const buyerVerificationRoutes = require("./routes/buyerVerification");
-const intercomRoutes = require("./routes/intercom");
 const materialsRoutes = require("./routes/materials");
 const aiAgentsRoutes = require("./routes/ai-agents");
 const supplierRoutes = require("./routes/suppliers");
@@ -103,7 +102,7 @@ async function start() {
   app.use(passport.session());
 
   // Security Headers (Helmet + Lusca)
-  // Configure CSP to allow required third-party scripts (Ketch, Intercom, Stripe)
+  // Configure CSP to allow required third-party scripts (Stripe only)
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -115,11 +114,6 @@ async function start() {
             "'unsafe-eval'", // Required for some third-party scripts
             "https://js.stripe.com",
             "https://m.stripe.network",
-            "https://global.ketchcdn.com",
-            "https://cdn.ketchjs.com", // Ketch SDK
-            "https://widget.intercom.io", // Intercom widget
-            "https://js.intercomcdn.com", // Intercom CDN
-            "https://cdn.intercom.io", // Intercom CDN
           ],
           styleSrc: [
             "'self'",
@@ -138,17 +132,11 @@ async function start() {
           connectSrc: [
             "'self'",
             "https://api.stripe.com",
-            "https://api.ketch.com",
-            "https://api.intercom.io",
-            "https://widget.intercom.io",
-            "https://*.ketchjs.com",
-            "https://*.ketchcdn.com",
           ],
           frameSrc: [
             "'self'",
             "https://js.stripe.com",
             "https://hooks.stripe.com",
-            "https://widget.intercom.io",
           ],
         },
       },
@@ -181,7 +169,6 @@ async function start() {
       '/api/v1/uploads',  // Upload routes (use JWT)
       '/api/v1/verification', // Verification routes (use JWT)
       '/api/v1/subscriptions', // Subscription routes (use JWT)
-      '/api/v1/intercom', // Intercom routes (use JWT)
       '/api/v1/scoring',  // Scoring routes (use JWT)
       '/api/internal',    // Internal API routes (use INTERNAL_API_KEY)
       '/api/integrations', // Integration routes (use JWT)
@@ -526,7 +513,6 @@ async function start() {
   app.use("/api/v1/verification", buyerVerificationRoutes);
   app.use("/api/v1/ai-gateway", aiGatewayRoutes);
   app.use("/api/v1/subscriptions", subscriptionRoutes);
-  app.use("/api/v1/intercom", intercomRoutes);
   app.use("/api/v1/materials", materialsRoutes);
   app.use("/api/v1/ai-agents", aiAgentsRoutes);
   app.use("/api/v1/suppliers", supplierRoutes);

@@ -15,14 +15,8 @@ export interface AuthUser {
   tier?: string
 }
 
-export interface IntercomIdentity {
-  userHash: string
-  appId: string
-}
-
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [intercomIdentity, setIntercomIdentity] = useState<IntercomIdentity | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -77,28 +71,6 @@ export function useAuth() {
             rfqCount: data.user.rfqCount || 0,
             tier: data.user.tier
           })
-
-          // Fetch Intercom identity hash
-          try {
-            const hashRes = await fetch(`${backendUrl}/api/v1/intercom/identity-hash`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-              credentials: 'include'
-            })
-
-            if (hashRes.ok) {
-              const hashData = await hashRes.json()
-              setIntercomIdentity({
-                userHash: hashData.userHash,
-                appId: hashData.appId
-              })
-            } else {
-              console.warn('[Auth] Failed to fetch Intercom identity hash')
-            }
-          } catch (err) {
-            console.error('[Auth] Failed to fetch Intercom identity hash:', err)
-          }
         }
       } catch (err) {
         console.error('[Auth] Failed to fetch user:', err)
@@ -110,5 +82,5 @@ export function useAuth() {
     fetchUser()
   }, [])
 
-  return { user, intercomIdentity, loading }
+  return { user, loading }
 }

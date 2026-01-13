@@ -90,7 +90,6 @@ These **MUST** be stored in Azure Key Vault. Production will **refuse to start**
 | `AZURE_REDIS_CONNECTION_STRING` | `redis-connection-string` | Redis URL with password |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | `appinsights-connection-string` | App Insights (contains key) |
 | `SMTP_PASS` | `smtp-password` | Email service password |
-| `INTERCOM_ACCESS_TOKEN` | `intercom-token` | Intercom API token |
 | `STRIPE_SECRET_KEY` | `stripe-secret-key` | Stripe API key |
 | `STRIPE_WEBHOOK_SECRET` | `stripe-webhook-secret` | Stripe webhook signing |
 | `AZURE_OPENAI_KEY` | `openai-key` | Azure OpenAI API key |
