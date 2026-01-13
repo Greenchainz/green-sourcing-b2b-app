@@ -50,38 +50,12 @@ This implementation delivers three interconnected agents that transform GreenCha
 
 ---
 
-#### 3. Intercom Persona Service (Matrix of Motivation)
-**Purpose**: Adapt bot language based on user role, focusing on hard metrics (Cost, Liability, Speed) not soft metrics (Brand, Altruism)
-
-**Key Features**:
-- Job title → role mapping (9 key roles)
-- Role-based motivation matrix
-- GPT-4o integration for adaptive responses
-- Hard metrics focus:
-  - Quantity Surveyor: ROI, 7-year payback, carbon accounting
-  - Drywall Sub: Lightweight, installation speed, less fatigue
-  - Asset Manager: Liquidity, stranded assets, exit strategy
-- Avoids soft metrics: "saving the planet", altruism, brand image
-
-**Files Created**:
-- `lib/types/intercom-persona.ts` (8,917 bytes)
-- `backend/services/intercom/personaService.js` (9,719 bytes)
-- `docs/INTERCOM_PERSONA_SERVICE.md` (12,849 bytes)
-- `backend/tests/manual/test-intercom-persona.js` (5,333 bytes)
-
----
-
 ### API Endpoints Added
 
 **Document AI Integration**:
 1. `POST /api/v1/ai/extract-with-decision-logic` - Extract document with decision criteria
 2. `POST /api/v1/ai/check-defensibility` - Verify product certifications
 3. `POST /api/v1/ai/compare-products` - Compare original vs substitute ("Or Equal" test)
-
-**Intercom Integration**:
-4. `POST /api/v1/intercom/adapt-message` - Adapt message to user role
-5. `GET /api/v1/intercom/persona/:jobTitle` - Get persona configuration
-6. `POST /api/v1/intercom/webhook/conversation` - Auto-adapt Intercom conversations
 
 ---
 
@@ -132,7 +106,6 @@ This implementation delivers three interconnected agents that transform GreenCha
 - Azure Document Intelligence for PDF parsing
 - Azure OpenAI (GPT-4o) for intelligent analysis
 - Express.js for REST API
-- Intercom for customer messaging
 
 ---
 
@@ -141,7 +114,6 @@ This implementation delivers three interconnected agents that transform GreenCha
 **Files Modified**:
 - `backend/services/azure/documentIntelligence.js` (added parseWithDecisionLogic)
 - `backend/routes/documentAI.js` (added 3 new endpoints)
-- `backend/routes/intercom.js` (added 3 new endpoints + webhook)
 
 **Files Created**: 15 new files
 - 4 TypeScript type definitions
@@ -161,10 +133,9 @@ This implementation delivers three interconnected agents that transform GreenCha
 
 ### Documentation
 
-**Comprehensive Guides** (35KB total):
+**Comprehensive Guides**:
 1. `docs/DECISION_LOGIC_EXTRACTION.md` - Material criteria extraction guide
 2. `docs/DEFENSIBILITY_AGENT.md` - Anti-value engineering protection
-3. `docs/INTERCOM_PERSONA_SERVICE.md` - Role-based communication
 
 Each document includes:
 - Business rationale
@@ -215,7 +186,6 @@ Each document includes:
 **Authentication**:
 - JWT token required for all endpoints
 - Role-based access control (Admin, Supplier, Buyer)
-- Internal API key for Intercom webhooks
 
 **Data Protection**:
 - No PII storage
@@ -226,7 +196,7 @@ Each document includes:
 **Validation**:
 - Input sanitization
 - File size limits (50MB)
-- Rate limiting (via Intercom)
+- Rate limiting
 
 ---
 
