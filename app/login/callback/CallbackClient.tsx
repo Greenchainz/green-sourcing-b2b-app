@@ -59,9 +59,9 @@ function CallbackClientInner() {
 
             pushStep("Sign-in successful! Redirecting...");
             
-            // Redirect to dashboard based on role
+            // Redirect to dashboard based on role (normalize to lowercase for comparison)
             setTimeout(() => {
-              const redirectTo = userData.user.role === "supplier" ? "/dashboard" : "/dashboard/buyer";
+              const redirectTo = userData.user.role?.toLowerCase() === "supplier" ? "/dashboard" : "/dashboard/buyer";
               router.push(redirectTo);
             }, 500);
             
@@ -170,7 +170,7 @@ function CallbackClientInner() {
           // Get fresh auth state after handleAzureCallback completes
           // handleAzureCallback updates the Zustand store synchronously
           const authState = useAuth.getState();
-          const userRole = authState.user?.role;
+          const userRole = authState.user?.role?.toLowerCase();
           const redirectTo = userRole === "supplier" ? "/dashboard" : "/dashboard/buyer";
           
           setTimeout(() => {

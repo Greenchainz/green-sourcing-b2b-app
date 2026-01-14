@@ -2,13 +2,25 @@ import { NextResponse } from 'next/server'
 import { query, getClient } from '@/lib/db'
 import jwt from 'jsonwebtoken'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-min-32-chars-replace-in-prod'
+// JWT secret must be set in production - fail early if not configured
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET environment variable is required in production')
+    }
+    // Only allow fallback in development
+    return 'dev-jwt-secret-min-32-chars-replace-in-prod'
+  }
+  return secret
+}
+
 const JWT_EXPIRY = '7d' // Token valid for 7 days
 
 function generateJWT(userId: number | string, email: string, role: string): string {
   return jwt.sign(
     { userId, email, role },
-    JWT_SECRET,
+    getJwtSecret(),
     { expiresIn: JWT_EXPIRY }
   )
 }
@@ -55,9 +67,10 @@ export async function POST(request: Request) {
         )
       } else {
         // Create new user - default role is 'architect' (buyer)
+        // Note: Database triggers sync first_name/last_name with FirstName/LastName
         const insertResult = await client.query(
-          `INSERT INTO Users (Email, FirstName, LastName, first_name, last_name, azure_id, Role, OAuthProvider, CreatedAt, UpdatedAt, LastLogin)
-           VALUES ($1, $2, $3, $2, $3, $4, 'architect', 'azure', NOW(), NOW(), NOW())
+          `INSERT INTO Users (Email, first_name, last_name, azure_id, Role, OAuthProvider, CreatedAt, UpdatedAt, LastLogin)
+           VALUES ($1, $2, $3, $4, 'architect', 'azure', NOW(), NOW(), NOW())
            RETURNING UserID, Role`,
           [email, firstName || null, lastName || null, azureId]
         )
@@ -74,7 +87,7 @@ export async function POST(request: Request) {
       // Create refresh token (valid for 30 days)
       const refreshToken = jwt.sign(
         { userId, email },
-        JWT_SECRET,
+        getJwtSecret(),
         { expiresIn: '30d' }
       )
 
