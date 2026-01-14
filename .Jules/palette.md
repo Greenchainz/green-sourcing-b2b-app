@@ -5,3 +5,7 @@
 ## 2024-05-23 - Click Outside Interaction Bug
 **Learning:** A simple "click outside" handler on the document will fire when the trigger button is clicked, immediately closing the menu before the button's onClick toggles it back open.
 **Action:** Always exclude the trigger element from the "click outside" check (e.g., using a ref for the trigger and checking `!triggerRef.current.contains(event.target)`).
+
+## 2024-05-24 - Semantic Progress Steps
+**Learning:** Visual-only progress indicators (using divs) leave screen reader users lost about where they are in a multi-step process.
+**Action:** Always use `<nav aria-label="Progress">` and `<ol>` for steps, and use `aria-current="step"` on the active step. Hide decorative connecting lines with `aria-hidden="true"`.

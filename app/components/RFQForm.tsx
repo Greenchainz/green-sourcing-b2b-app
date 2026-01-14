@@ -220,10 +220,14 @@ export default function RFQForm() {
       </div>
 
       {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <nav aria-label="Progress" className="mb-8">
+        <ol className="flex items-center justify-between">
           {steps.map((step, index) => (
-            <div key={step.number} className="flex items-center flex-1">
+            <li
+              key={step.number}
+              className="flex items-center flex-1"
+              aria-current={currentStep === step.number ? "step" : undefined}
+            >
               <div className="flex flex-col items-center">
                 <div
                   className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition ${
@@ -249,12 +253,13 @@ export default function RFQForm() {
                   className={`flex-1 h-1 mx-4 transition ${
                     currentStep > step.number ? "bg-green-600" : "bg-gray-200"
                   }`}
+                  aria-hidden="true"
                 />
               )}
-            </div>
+            </li>
           ))}
-        </div>
-      </div>
+        </ol>
+      </nav>
 
       {/* Error Alert */}
       {error && (
