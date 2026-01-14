@@ -24,13 +24,13 @@ The following changes are recommended but involve potential breaking changes or 
 - **Action:** Run `npm prune` and potentially regenerate `package-lock.json` in `backend/` to ensure no unnecessary dependencies remain.
 - **Reason:** Ensuring a clean dependency tree reduces attack surface and image size.
 
-## 3. Documentation & Placeholder Cleanup
+## 3. Documentation & Placeholder Cleanup (Done)
 
 **Current State:**
-- `CLOUD-DEPLOYMENT.md` contains placeholder secrets (e.g., `sk_live_...`).
+- `CLOUD-DEPLOYMENT.md` contained placeholder secrets (e.g., `sk_live_...`).
 
-**Recommendation:**
-- **Action:** Review `CLOUD-DEPLOYMENT.md` to ensure no real secrets were accidentally pasted. (Verified as safe placeholders by automated scan, but manual review is always good).
+**Status:**
+- **Action:** Deleted `docs/archive/CLOUD-DEPLOYMENT.md` to prevent false positives in security scans.
 
 ## 4. Azure Configuration
 
