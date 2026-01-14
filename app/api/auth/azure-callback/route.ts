@@ -1,122 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
-import { generateToken } from '@/lib/auth/jwt';
-import { isCorporateEmail, getTrustScoreForEmail } from '@/lib/auth/corporate-domains';
+import { query, getClient } from '@/lib/db';
+import { generateToken, generateRefreshToken } from '@/lib/auth/jwt';
 
 export async function POST(req: NextRequest) {
   try {
-    const { code } = await req.json();
+    const { email, firstName, lastName, azureId } = await req.json();
 
-    if (!code) {
-      return NextResponse.json({ error: 'Missing code' }, { status: 400 });
+    if (!email || !azureId) {
+      return NextResponse.json({ error: 'Email and Azure ID required' }, { status: 400 });
     }
 
-    // Azure AD Configuration
-    const tenantId = process.env.AZURE_TENANT_ID;
-    const clientId = process.env.AZURE_CLIENT_ID;
-    const clientSecret = process.env.AZURE_CLIENT_SECRET;
-    // Ensure this matches the URI registered in Azure Portal exactly
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/login/callback`; 
-
-    // 1. Exchange code for access token
-    const tokenParams = new URLSearchParams({
-      client_id: clientId!,
-      scope: 'openid profile email User.Read',
-      code,
-      redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-      client_secret: clientSecret!,
-    });
-
-    const tokenResponse = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: tokenParams,
-    });
-
-    const tokenData = await tokenResponse.json();
-
-    if (!tokenResponse.ok) {
-      console.error('Azure Token Error:', tokenData);
-      return NextResponse.json({ error: 'Failed to authenticate with Azure', details: tokenData }, { status: 401 });
-    }
-
-    // 2. Fetch User Profile from Graph API
-    const profileResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    });
+    // Get a database client for transaction
+    const client = await getClient();
     
-    const profile = await profileResponse.json();
-    // Graph API returns: { id, displayName, givenName, surname, mail, userPrincipalName }
-    const email = profile.mail || profile.userPrincipalName;
+    try {
+      await client.query('BEGIN');
 
-    if (!email) {
-       return NextResponse.json({ error: 'No email provided by Azure' }, { status: 400 });
-    }
+      // Check if user exists by azure_id or email
+      const userCheck = await client.query(
+        'SELECT id, email, role, first_name, last_name FROM Users WHERE azure_id = $1 OR email = $2',
+        [azureId, email]
+      );
 
-    // 3. Find or Create User (Logic matches your docs/AUTH.md)
-    let { data: user } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
+      let userId: string;
+      let userRole: string;
+      let userFirstName: string | null = firstName || null;
+      let userLastName: string | null = lastName || null;
 
-    if (!user) {
-       // Check for Corporate Verification
-       const isCorporate = isCorporateEmail(email);
-       const trustScore = getTrustScoreForEmail(email);
+      if (userCheck.rows.length > 0) {
+        // User exists - update last login
+        const user = userCheck.rows[0];
+        userId = user.id;
+        userRole = user.role;
+        userFirstName = user.first_name || firstName || null;
+        userLastName = user.last_name || lastName || null;
 
-       const { data: newUser, error: createError } = await supabaseAdmin
-         .from('users')
-         .insert({
-           email,
-           full_name: profile.displayName,
-           role: 'architect', // Default role for corporate/enterprise logins
-           email_verified: true, // Trusted from Entra
-           corporate_verified: isCorporate,
-           trust_score: trustScore,
-           verification_method: 'azure_ad',
-           linkedin_id: null // Azure doesn't provide this, keep null
-         })
-         .select()
-         .single();
+        await client.query(
+          'UPDATE Users SET last_login = NOW(), updated_at = NOW() WHERE id = $1',
+          [userId]
+        );
+      } else {
+        // Create new user - default role is 'architect'
+        const result = await client.query(
+          `INSERT INTO Users (email, first_name, last_name, azure_id, role, oauth_provider, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+           RETURNING id, role`,
+          [email, firstName || null, lastName || null, azureId, 'architect', 'azure']
+        );
 
-       if (createError) {
-         console.error('User Creation Error:', createError);
-         throw createError;
-       }
-       user = newUser;
-    }
+        userId = result.rows[0].id;
+        userRole = result.rows[0].role;
+      }
 
-    // 4. Generate Session Token
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role
-    });
+      await client.query('COMMIT');
 
-    // 5. Set Cookie and Return
-    const response = NextResponse.json({
+      // Generate JWT token
+      const token = generateToken({ userId, email, role: userRole });
+
+      // Generate refresh token (valid for 30 days)
+      const refreshToken = generateRefreshToken({ userId, email });
+
+      // Store refresh token in database
+      await query(
+        `INSERT INTO RefreshTokens (user_id, token, expires_at, created_at)
+         VALUES ($1, $2, NOW() + INTERVAL '30 days', NOW())
+         ON CONFLICT (user_id) DO UPDATE SET token = $2, expires_at = NOW() + INTERVAL '30 days'`,
+        [userId, refreshToken]
+      );
+
+      // Build full name
+      const fullName = [userFirstName, userLastName].filter(Boolean).join(' ') || null;
+
+      // Return user data and tokens
+      const response = NextResponse.json({
         token,
-        userId: user.id,
-        role: user.role,
-        redirectUrl: `/${user.role}/dashboard`
-    });
+        refreshToken,
+        user: {
+          id: userId,
+          email,
+          firstName: userFirstName,
+          lastName: userLastName,
+          fullName,
+          role: userRole,
+          oauthProvider: 'azure'
+        }
+      });
 
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
+      // Also set HTTP-only cookie for security
+      response.cookies.set('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: '/',
+      });
 
-    return response;
+      return response;
 
-  } catch (error: any) {
-    console.error('Azure Callback Exception:', error);
+    } catch (dbError) {
+      await client.query('ROLLBACK');
+      throw dbError;
+    } finally {
+      client.release();
+    }
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Azure Callback Exception:', errorMessage);
     return NextResponse.json({ 
       error: 'Authentication failed', 
-      details: error.message 
+      details: errorMessage 
     }, { status: 500 });
   }
 }
