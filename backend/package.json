@@ -32,6 +32,7 @@
     "express-session": "^1.18.1",
     "helmet": "^8.1.0",
     "intercom-client": "^6.4.0",
+    "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.0",
     "lusca": "^1.7.0",
