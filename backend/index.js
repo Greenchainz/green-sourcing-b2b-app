@@ -52,7 +52,7 @@ async function start() {
   const sessionMiddleware = buildSessionMiddleware({ redisClient });
 
   // Security & Basic Middleware
-  const defaultAllowedOrigins = ["http://localhost:3000", "http://localhost:5173"];
+  const defaultAllowedOrigins = ["http://localhost:3000"];
   const configuredOriginsRaw =
     process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "";
   const configuredAllowedOrigins = configuredOriginsRaw
