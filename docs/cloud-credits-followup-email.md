@@ -8,8 +8,8 @@ I'm following up on my cloud credits application submitted on [Date You Applied]
 
 **Application Details**:
 - **Company Name**: GreenChainz (or your registered name)
-- **Project**: B2B marketplace (API-first architecture, Vercel + Supabase + Cloudflare stack)
-- **Use Case**: Hosting backend APIs, database (PostgreSQL), sustainability data processing
+- **Project**: B2B sustainability platform (Azure Container Apps, Azure PostgreSQL, Azure OpenAI)
+- **Use Case**: Hosting containerized services, database, AI-powered sustainability data processing
 
 I'm currently in MVP development and planning my deployment architecture. Knowing the status of my credits application would help me finalize our hosting strategy.
 

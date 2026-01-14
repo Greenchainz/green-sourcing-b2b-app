@@ -1,44 +1,8 @@
-# GreenChainz SEO & Analytics Setup Guide
+# GreenChainz SEO Setup Guide
 
 ## ✅ What's Implemented
 
-### 1. **Google Tag Manager (GTM)**
-- **Container ID**: `GTM-MVBZVSTV`
-- **Status**: ✅ Active on all survey pages
-- **Location**: Embedded in `<head>` and `<noscript>` sections
-
-**What it does:**
-- Tracks page views
-- Monitors user interactions (form submissions, button clicks)
-- Fires conversion events for email captures and OAuth logins
-- Can add Google Analytics, Facebook Pixel, LinkedIn Insight Tag via GTM dashboard
-
-**GTM Events Triggered:**
-```javascript
-// Cookie consent granted
-window.dataLayer.push({'event': 'cookie_consent_granted'});
-
-// Cookie consent denied  
-window.dataLayer.push({'event': 'cookie_consent_denied'});
-
-// Email capture success (add this to email form)
-window.dataLayer.push({
-  'event': 'email_capture',
-  'email_source': 'supplier-survey',
-  'user_type': 'supplier'
-});
-
-// OAuth login success (add to OAuth callbacks)
-window.dataLayer.push({
-  'event': 'oauth_login',
-  'provider': 'google',
-  'user_role': 'buyer'
-});
-```
-
----
-
-### 2. **SEO Meta Tags**
+### 1. **SEO Meta Tags**
 
 #### On Every Page:
 ```html
@@ -73,7 +37,7 @@ window.dataLayer.push({
 
 ---
 
-### 3. **Structured Data (JSON-LD)**
+### 2. **Structured Data (JSON-LD)**
 
 Every survey page includes Schema.org markup:
 
@@ -107,7 +71,7 @@ Every survey page includes Schema.org markup:
 
 ---
 
-### 4. **Sitemap.xml**
+### 3. **Sitemap.xml**
 
 **URL**: `https://greenchainz.com/sitemap.xml`
 
@@ -127,7 +91,7 @@ Includes all public pages:
 
 ---
 
-### 5. **Robots.txt**
+### 4. **Robots.txt**
 
 **URL**: `https://greenchainz.com/robots.txt`
 
@@ -153,26 +117,7 @@ Crawl-delay: 1
 
 ---
 
-### 6. **Cookie Consent Banner**
-
-**GDPR/CCPA Compliant**
-
-Features:
-- ✅ Appears on first visit
-- ✅ Stores consent in localStorage
-- ✅ Accept/Decline buttons
-- ✅ Links to Privacy Policy and Cookie Policy
-- ✅ Fires GTM events based on consent
-
-**User Flow:**
-1. First visit → Banner appears
-2. Click "Accept" → `cookieConsent=accepted` saved, GTM enabled
-3. Click "Decline" → `cookieConsent=declined` saved, analytics disabled
-4. Future visits → Banner hidden (consent remembered)
-
----
-
-### 7. **Legal Pages**
+### 5. **Legal Pages**
 
 Created 3 essential pages:
 
@@ -266,62 +211,8 @@ Track:
 
 ---
 
-## 📈 Analytics Tracking Plan
-
-### Events to Track in GTM:
-
-#### 1. Email Captures
-```javascript
-// When email form submitted successfully
-window.dataLayer.push({
-  'event': 'email_capture',
-  'email_source': 'supplier-survey', // or 'buyer-survey', 'data-provider-survey'
-  'form_location': 'survey_page'
-});
-```
-
-#### 2. OAuth Logins
-```javascript
-// When OAuth callback succeeds
-window.dataLayer.push({
-  'event': 'oauth_login',
-  'provider': 'google', // or 'facebook', 'linkedin', 'github'
-  'user_role': 'buyer', // from JWT payload
-  'signup_method': 'oauth'
-});
-```
-
-#### 3. Survey Completions
-```javascript
-// When Google Form is submitted (use iframe message)
-window.dataLayer.push({
-  'event': 'survey_complete',
-  'survey_type': 'supplier',
-  'completion_time_seconds': 120
-});
-```
-
-#### 4. Page Views (automatic)
-GTM tracks these by default, but can enhance:
-```javascript
-window.dataLayer.push({
-  'event': 'pageview',
-  'page_path': '/surveys/supplier',
-  'page_title': 'GreenChainz Supplier Survey'
-});
-```
-
-### Set Up in GTM Dashboard:
-
-1. **Triggers**: Create triggers for each event
-2. **Tags**: Add Google Analytics 4 (GA4) tag
-3. **Variables**: Create custom variables for user_role, email_source, etc.
-
----
-
 ## 🔍 SEO Best Practices Checklist
 
-- [✅] Google Tag Manager installed
 - [✅] Meta titles and descriptions on all pages
 - [✅] Canonical URLs specified
 - [✅] Open Graph tags for social sharing
@@ -329,7 +220,6 @@ window.dataLayer.push({
 - [✅] Structured data (JSON-LD) for rich results
 - [✅] Sitemap.xml created and dynamic
 - [✅] Robots.txt configured
-- [✅] Cookie consent banner (GDPR compliant)
 - [✅] Privacy Policy page
 - [✅] Cookie Policy page
 - [✅] Terms of Service page
@@ -462,11 +352,10 @@ Why: Helps search engines discover all pages, distributes page authority
 
 ### Free SEO Tools:
 1. **Google Search Console** - Indexing, rankings, errors
-2. **Google Analytics 4** - Traffic, user behavior
-3. **Google PageSpeed Insights** - Performance optimization
-4. **Bing Webmaster Tools** - Bing search optimization
-5. **Schema.org Validator** - Test structured data
-6. **Mobile-Friendly Test** - Google's mobile usability checker
+2. **Google PageSpeed Insights** - Performance optimization
+3. **Bing Webmaster Tools** - Bing search optimization
+4. **Schema.org Validator** - Test structured data
+5. **Mobile-Friendly Test** - Google's mobile usability checker
 
 ### Paid SEO Tools (Optional):
 1. **Ahrefs** ($99/mo) - Backlink analysis, keyword research
@@ -481,11 +370,9 @@ Why: Helps search engines discover all pages, distributes page authority
 **SEO Questions?**
 - Documentation: `docs/SEO_ANALYTICS_GUIDE.md` (this file)
 - Google Search Console: https://search.google.com/search-console
-- GTM Dashboard: https://tagmanager.google.com (Container: GTM-MVBZVSTV)
-- Analytics Help: https://support.google.com/analytics
 
 ---
 
-**Last Updated**: November 5, 2025  
+**Last Updated**: January 13, 2026  
 **Status**: ✅ SEO Infrastructure Complete  
-**Next Steps**: Deploy to production, submit sitemap to Search Console, add GA4 to GTM
+**Next Steps**: Deploy to production, submit sitemap to Search Console

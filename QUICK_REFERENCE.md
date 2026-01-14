@@ -159,6 +159,6 @@ Just run:
 npm install && npm run dev
 ```
 
-Then deploy to Vercel.
+Then deploy to Azure via GitHub Actions.
 
 **You're done building. Time to ship.** 🚀

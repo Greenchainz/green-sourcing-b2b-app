@@ -2,9 +2,13 @@
 const nextConfig = {
   output: 'standalone',
   eslint: {
+    // Warning: Ignoring ESLint errors during build is not recommended for production.
+    // TODO: Disable this once all linting issues are resolved.
     ignoreDuringBuilds: true,
   },
   typescript: {
+    // Warning: Ignoring TypeScript errors during build is not recommended for production.
+    // TODO: Disable this once all type issues are resolved.
     ignoreBuildErrors: true,
   },
   async headers() {
@@ -42,7 +46,9 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network https://global.ketchcdn.com https://cdn.ketchjs.com https://widget.intercom.io https://js.intercomcdn.com https://cdn.intercom.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://static.zohocdn.com https://r2cdn.perplexity.ai; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https://api.ketch.com https://api.intercom.io https://widget.intercom.io https://*.ketchjs.com https://*.ketchcdn.com https:; frame-src https://js.stripe.com https://m.stripe.network https://hooks.stripe.com https://widget.intercom.io"
+            // Note: 'unsafe-inline' and 'unsafe-eval' are used here.
+            // For higher security, consider using nonces or hashes.
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://static.zohocdn.com https://r2cdn.perplexity.ai; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https:; frame-src https://js.stripe.com https://m.stripe.network https://hooks.stripe.com"
           }
         ]
       }

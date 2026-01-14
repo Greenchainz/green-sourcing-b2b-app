@@ -1,6 +1,6 @@
+// app/layout.tsx
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
-import Script from 'next/script'
 import './globals.css'
 import { LayoutContent } from './LayoutContent'
 import StructuredData from './components/StructuredData'
@@ -21,22 +21,22 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://greenchainz.com'),
   title: {
-    default: 'GreenChainz — The Trust Layer for Sustainable Commerce',
+    default: 'GreenChainz — Sustainability Compliance Auditing That Saves You Money',
     template: '%s | GreenChainz',
   },
   description:
-    'Connect verified suppliers with architects & builders. Automated certification verification, real-time material sourcing, and sustainability scoring powered by LEED, EPD, FSC, and more.',
+    'Cut compliance costs by 85% with AI-powered sustainability auditing. Automated EPD verification, LEED compliance tracking, and carbon scoring for construction. Green because it makes business sense.',
   keywords: [
-    'sustainable materials',
-    'green building',
-    'LEED certification',
-    'FSC certified',
-    'EPD',
-    'building materials marketplace',
-    'sustainable procurement',
-    'RFQ',
-    'architects',
-    'suppliers',
+    'sustainability compliance auditing',
+    'green building compliance',
+    'LEED compliance automation',
+    'EPD verification software',
+    'construction sustainability audit',
+    'building materials compliance',
+    'carbon footprint tracking',
+    'supply chain sustainability',
+    'green procurement software',
+    'sustainable construction ROI',
   ],
   manifest: '/manifest.json',
   icons: {
@@ -56,24 +56,24 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: 'GreenChainz',
-    title: 'GreenChainz — The Trust Layer for Sustainable Commerce',
+    title: 'GreenChainz — Sustainability Compliance Auditing That Saves You Money',
     description:
-      'Connect verified suppliers with architects & builders. Automated certification verification and real-time material sourcing.',
+      'Cut compliance costs by 85% with AI-powered sustainability auditing. Green because it makes business sense—save money while meeting LEED, EPD, and carbon requirements.',
     images: [
       {
         url: '/brand/greenchainz-logo.png',
         width: 1200,
         height: 630,
-        alt: 'GreenChainz',
+        alt: 'GreenChainz - Sustainability Compliance Auditing',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     site: '@greenchainzhq',
-    title: 'GreenChainz — The Trust Layer for Sustainable Commerce',
+    title: 'GreenChainz — Sustainability Compliance Auditing That Saves You Money',
     description:
-      'Connect verified suppliers with architects & builders. Automated certification verification and real-time material sourcing.',
+      'Cut compliance costs by 85% with AI-powered sustainability auditing. Green because it makes business sense.',
   },
   robots: {
     index: true,
@@ -92,11 +92,6 @@ export default function RootLayout({
         <StructuredData />
       </head>
       <body>
-        {/* Ketch CMP boot script (global) */}
-        <Script id="ketch-stub" strategy="beforeInteractive">
-          {`!function(){window.semaphore=window.semaphore||[],window.ketch=function(){window.semaphore.push(arguments)}}();`}
-        </Script>
-        <Script id="ketch-boot" strategy="beforeInteractive" src="https://global.ketchcdn.com/web/v3/config/greenchainz/website_smart_tag/boot.js" />
         <LayoutContent>{children}</LayoutContent>
       </body>
     </html>

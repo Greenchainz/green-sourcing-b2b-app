@@ -90,8 +90,6 @@ These **MUST** be stored in Azure Key Vault. Production will **refuse to start**
 | `AZURE_REDIS_CONNECTION_STRING` | `redis-connection-string` | Redis URL with password |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | `appinsights-connection-string` | App Insights (contains key) |
 | `SMTP_PASS` | `smtp-password` | Email service password |
-| `INTERCOM_ACCESS_TOKEN` | `intercom-token` | Intercom API token |
-| `SUPABASE_SERVICE_ROLE_KEY` | `supabase-service-key` | Supabase admin key |
 | `STRIPE_SECRET_KEY` | `stripe-secret-key` | Stripe API key |
 | `STRIPE_WEBHOOK_SECRET` | `stripe-webhook-secret` | Stripe webhook signing |
 | `AZURE_OPENAI_KEY` | `openai-key` | Azure OpenAI API key |
@@ -146,7 +144,6 @@ Set these as Container App environment variables. Not secrets, but environment-s
 | `SMTP_FROM_EMAIL` | `noreply@greenchainz.com` | Sender email | If sending emails |
 | `SMTP_FROM_NAME` | `GreenChainz` | Sender display name | If sending emails |
 | `ADMIN_EMAIL` | `admin@greenchainz.com` | Admin alerts recipient | Recommended |
-| `SUPABASE_URL` | `https://xxx.supabase.co` | Supabase URL | If using Supabase |
 
 ---
 
