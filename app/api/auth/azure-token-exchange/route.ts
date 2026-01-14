@@ -1,55 +1,41 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const { code } = await request.json()
-
-    // 1. STANDARD NAMES (Matching your Pure Azure Report)
-    const tenantId = process.env.AZURE_TENANT_ID; 
-    const clientId = process.env.AZURE_CLIENT_ID;
-    const clientSecret = process.env.AZURE_CLIENT_SECRET;
-
-    // 2. DIAGNOSTIC: Catch the missing variables before they cause a 500 crash
-    if (!tenantId || !clientId || !clientSecret) {
-      console.error('CRITICAL: Missing environment variables in Container App');
-      return NextResponse.json({ 
-        error: 'Configuration Missing',
-        check: { tenantId: !!tenantId, clientId: !!clientId, clientSecret: !!clientSecret }
-      }, { status: 500 });
-    }
-
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.greenchainz.com';
-    const redirectUri = `${baseUrl}/login/callback`;
+    
+    // 1. These MUST match the names you typed in the Portal in Step 2
+    const clientId = process.env.AZURE_CLIENT_ID
+    const clientSecret = process.env.AZURE_CLIENT_SECRET
+    const tenantId = process.env.AZURE_TENANT_ID
+    
+    // 2. We force the URL to be absolute so Microsoft doesn't reject it
+    const redirectUri = "https://www.greenchainz.com/login/callback"
 
     const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
-    
-    const params = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      code: code,
-      redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-      scope: 'openid profile email'
-    });
 
-    const tokenResponse = await fetch(tokenEndpoint, {
+    const response = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString()
-    });
+      body: new URLSearchParams({
+        client_id: clientId!,
+        client_secret: clientSecret!,
+        code,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+        scope: 'openid profile email'
+      })
+    })
 
-    const data = await tokenResponse.json();
+    const data = await response.json()
 
-    if (!tokenResponse.ok) {
-      return NextResponse.json({ error: 'Microsoft rejected exchange', details: data }, { status: 401 });
+    if (!response.ok) {
+      console.error('Microsoft Error:', data)
+      return NextResponse.json(data, { status: 401 })
     }
 
-    return NextResponse.json(data);
-
+    return NextResponse.json(data)
   } catch (err: any) {
-    // This block prevents the "InternalServerError" generic page
-    console.error('Exchange Route Crash:', err.message);
-    return NextResponse.json({ error: 'Server Exception', message: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
