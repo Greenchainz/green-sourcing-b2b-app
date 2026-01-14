@@ -341,9 +341,17 @@ export default function MaterialSearch() {
         </div>
       ) : materials.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <p className="text-gray-500">
+          <p className="text-gray-500 mb-4">
             No materials found. Try adjusting your filters.
           </p>
+          <button
+            onClick={clearFilters}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition font-medium"
+            aria-label="Clear all filters and search query"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+            Clear Filters
+          </button>
         </div>
       ) : (
         <>
