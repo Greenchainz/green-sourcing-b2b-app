@@ -1,129 +1,122 @@
-import { NextResponse } from 'next/server'
-import { query, getClient } from '@/lib/db'
-import jwt from 'jsonwebtoken'
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { generateToken } from '@/lib/auth/jwt';
+import { isCorporateEmail, getTrustScoreForEmail } from '@/lib/auth/corporate-domains';
 
-// JWT secret must be set in production - fail early if not configured
-function getJwtSecret(): string {
-  const secret = process.env.JWT_SECRET
-  if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('JWT_SECRET environment variable is required in production')
-    }
-    // Only allow fallback in development
-    return 'dev-jwt-secret-min-32-chars-replace-in-prod'
-  }
-  return secret
-}
-
-const JWT_EXPIRY = '7d' // Token valid for 7 days
-
-function generateJWT(userId: number | string, email: string, role: string): string {
-  return jwt.sign(
-    { userId, email, role },
-    getJwtSecret(),
-    { expiresIn: JWT_EXPIRY }
-  )
-}
-
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json()
-    const { email, firstName, lastName, azureId } = body
+    const { code } = await req.json();
 
-    if (!email || !azureId) {
-      return NextResponse.json({ error: 'Email and Azure ID are required' }, { status: 400 })
+    if (!code) {
+      return NextResponse.json({ error: 'Missing code' }, { status: 400 });
     }
 
-    // Get a database client for transaction
-    const client = await getClient()
+    // Azure AD Configuration
+    const tenantId = process.env.AZURE_TENANT_ID;
+    const clientId = process.env.AZURE_CLIENT_ID;
+    const clientSecret = process.env.AZURE_CLIENT_SECRET;
+    // Ensure this matches the URI registered in Azure Portal exactly
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/login/callback`; 
+
+    // 1. Exchange code for access token
+    const tokenParams = new URLSearchParams({
+      client_id: clientId!,
+      scope: 'openid profile email User.Read',
+      code,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+      client_secret: clientSecret!,
+    });
+
+    const tokenResponse = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenParams,
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenResponse.ok) {
+      console.error('Azure Token Error:', tokenData);
+      return NextResponse.json({ error: 'Failed to authenticate with Azure', details: tokenData }, { status: 401 });
+    }
+
+    // 2. Fetch User Profile from Graph API
+    const profileResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
     
-    try {
-      await client.query('BEGIN')
+    const profile = await profileResponse.json();
+    // Graph API returns: { id, displayName, givenName, surname, mail, userPrincipalName }
+    const email = profile.mail || profile.userPrincipalName;
 
-      // Check if user exists by azure_id or email
-      const userCheck = await client.query(
-        'SELECT UserID, Email, Role FROM Users WHERE azure_id = $1 OR Email = $2',
-        [azureId, email]
-      )
-
-      let userId: number | string
-      let userRole: string
-
-      if (userCheck.rows.length > 0) {
-        // User exists - update last login and azure_id if not set
-        const user = userCheck.rows[0]
-        userId = user.userid
-        userRole = user.role?.toLowerCase() || 'architect'
-
-        await client.query(
-          `UPDATE Users 
-           SET LastLogin = NOW(), 
-               UpdatedAt = NOW(), 
-               azure_id = COALESCE(azure_id, $2),
-               first_name = COALESCE(first_name, $3),
-               last_name = COALESCE(last_name, $4)
-           WHERE UserID = $1`,
-          [userId, azureId, firstName || null, lastName || null]
-        )
-      } else {
-        // Create new user - default role is 'architect' (buyer)
-        // Note: Database triggers sync first_name/last_name with FirstName/LastName
-        const insertResult = await client.query(
-          `INSERT INTO Users (Email, first_name, last_name, azure_id, Role, OAuthProvider, CreatedAt, UpdatedAt, LastLogin)
-           VALUES ($1, $2, $3, $4, 'architect', 'azure', NOW(), NOW(), NOW())
-           RETURNING UserID, Role`,
-          [email, firstName || null, lastName || null, azureId]
-        )
-
-        userId = insertResult.rows[0].userid
-        userRole = insertResult.rows[0].role?.toLowerCase() || 'architect'
-      }
-
-      await client.query('COMMIT')
-
-      // Generate JWT token
-      const token = generateJWT(userId, email, userRole)
-
-      // Create refresh token (valid for 30 days)
-      const refreshToken = jwt.sign(
-        { userId, email },
-        getJwtSecret(),
-        { expiresIn: '30d' }
-      )
-
-      // Store refresh token in database
-      await query(
-        `INSERT INTO RefreshTokens (user_id, token, expires_at, created_at)
-         VALUES ($1, $2, NOW() + INTERVAL '30 days', NOW())
-         ON CONFLICT (user_id) DO UPDATE SET token = $2, expires_at = NOW() + INTERVAL '30 days'`,
-        [userId, refreshToken]
-      )
-
-      return NextResponse.json({
-        token,
-        refreshToken,
-        user: {
-          id: userId,
-          email,
-          firstName: firstName || null,
-          lastName: lastName || null,
-          fullName: firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || null,
-          role: userRole,
-          oauthProvider: 'azure'
-        }
-      })
-    } catch (error) {
-      await client.query('ROLLBACK')
-      throw error
-    } finally {
-      client.release()
+    if (!email) {
+       return NextResponse.json({ error: 'No email provided by Azure' }, { status: 400 });
     }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    console.error('Azure callback error:', errorMessage)
+
+    // 3. Find or Create User (Logic matches your docs/AUTH.md)
+    let { data: user } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (!user) {
+       // Check for Corporate Verification
+       const isCorporate = isCorporateEmail(email);
+       const trustScore = getTrustScoreForEmail(email);
+
+       const { data: newUser, error: createError } = await supabaseAdmin
+         .from('users')
+         .insert({
+           email,
+           full_name: profile.displayName,
+           role: 'architect', // Default role for corporate/enterprise logins
+           email_verified: true, // Trusted from Entra
+           corporate_verified: isCorporate,
+           trust_score: trustScore,
+           verification_method: 'azure_ad',
+           linkedin_id: null // Azure doesn't provide this, keep null
+         })
+         .select()
+         .single();
+
+       if (createError) {
+         console.error('User Creation Error:', createError);
+         throw createError;
+       }
+       user = newUser;
+    }
+
+    // 4. Generate Session Token
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    // 5. Set Cookie and Return
+    const response = NextResponse.json({
+        token,
+        userId: user.id,
+        role: user.role,
+        redirectUrl: `/${user.role}/dashboard`
+    });
+
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return response;
+
+  } catch (error: any) {
+    console.error('Azure Callback Exception:', error);
     return NextResponse.json({ 
       error: 'Authentication failed', 
-      details: errorMessage 
-    }, { status: 500 })
+      details: error.message 
+    }, { status: 500 });
   }
 }
