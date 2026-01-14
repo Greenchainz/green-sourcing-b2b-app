@@ -11,7 +11,9 @@ async function getOriginFromHeaders(): Promise<string> {
 
     if (!host) return ''
 
-    const proto = forwardedProto || 'https'
+    // Default to http for localhost, https for everything else
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
+    const proto = forwardedProto || (isLocalhost ? 'http' : 'https')
     return `${proto}://${host}`
 }
 
@@ -23,7 +25,7 @@ export async function GET() {
 
     // These are NOT secrets. They’re safe to expose to the client.
     const azureTenant =
-        process.env.NEXT_PUBLIC_AZURE_TENANT || process.env.AZURE_TENANT || ''
+        process.env.NEXT_PUBLIC_AZURE_TENANT || process.env.AZURE_TENANT || process.env.AZURE_TENANT_ID || 'common'
     const azureClientId =
         process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || process.env.AZURE_CLIENT_ID || ''
 
