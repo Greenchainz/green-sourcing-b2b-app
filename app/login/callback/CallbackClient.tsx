@@ -59,9 +59,9 @@ function CallbackClientInner() {
 
             pushStep("Sign-in successful! Redirecting...");
             
-            // Redirect to dashboard based on role
+            // Redirect to dashboard based on role (normalize to lowercase for comparison)
             setTimeout(() => {
-              const redirectTo = userData.user.role === "supplier" ? "/dashboard" : "/dashboard/buyer";
+              const redirectTo = userData.user.role?.toLowerCase() === "supplier" ? "/dashboard" : "/dashboard/buyer";
               router.push(redirectTo);
             }, 500);
             
@@ -158,16 +158,23 @@ function CallbackClientInner() {
             pushStep(m)
           );
           if (debug)
-            console.info("[Auth] Backend exchange complete; routing home");
+            console.info("[Auth] Backend exchange complete; routing to dashboard");
 
           // Clear session storage
           sessionStorage.removeItem("oauth_state");
           sessionStorage.removeItem("oauth_nonce");
 
-          // Redirect based on user role or home
+          // Redirect based on user role
           pushStep("Authentication successful! Redirecting...");
+          
+          // Get fresh auth state after handleAzureCallback completes
+          // handleAzureCallback updates the Zustand store synchronously
+          const authState = useAuth.getState();
+          const userRole = authState.user?.role?.toLowerCase();
+          const redirectTo = userRole === "supplier" ? "/dashboard" : "/dashboard/buyer";
+          
           setTimeout(() => {
-            router.push("/"); // safe fallback
+            router.push(redirectTo);
           }, 500);
         } catch (callbackError) {
           // handleAzureCallback already sets error state, but add more context
