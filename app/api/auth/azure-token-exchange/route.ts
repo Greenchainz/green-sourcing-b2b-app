@@ -2,54 +2,51 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function POST(request: NextRequest) {
-  const { code } = await request.json()
-
-  if (!code) {
-    return NextResponse.json({ error: 'No code provided' }, { status: 400 })
-  }
-
-  // FAILSAFE: Ensure the base URL is absolute. 
-  // If this is missing in your Azure Portal settings, the exchange WILL fail.
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://greenchainz.com';
-  const redirectUri = `${baseUrl}/login/callback`;
-
   try {
-    // Note: Using the variable names injected by Azure
-    const tenantId = process.env.AZURE_TENANT_ID; 
+    const { code } = await request.json()
+    
+    // 1. FAILSAFE URL LOGIC: If the env var is missing, we use the real domain
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.greenchainz.com';
+    const redirectUri = `${baseUrl}/login/callback`;
+
+    // 2. SECRET CHECK: Ensure these match your Container App "Configuration" keys
+    const tenantId = process.env.AZURE_TENANT_ID;
     const clientId = process.env.AZURE_CLIENT_ID;
     const clientSecret = process.env.AZURE_CLIENT_SECRET;
 
+    if (!tenantId || !clientId || !clientSecret) {
+        console.error('CRITICAL ERROR: Azure credentials missing from Environment Variables');
+        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
     const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
     
+    const params = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+      scope: 'openid profile email'
+    });
+
     const tokenResponse = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId!,
-        client_secret: clientSecret!, // Azure pulls this from Key Vault
-        code,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
-        scope: 'openid profile email'
-      }).toString()
+      body: params.toString()
     })
 
+    const responseData = await tokenResponse.json();
+
     if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error('Azure token exchange failed:', errorText);
-      return NextResponse.json({ error: 'Token exchange failed', details: errorText }, { status: 401 });
+      console.error('Microsoft Token Exchange Rejected:', JSON.stringify(responseData));
+      return NextResponse.json(responseData, { status: 401 });
     }
 
-    const tokens = await tokenResponse.json();
-    
-    return NextResponse.json({
-      access_token: tokens.access_token,
-      id_token: tokens.id_token,
-      expires_in: tokens.expires_in
-    });
+    return NextResponse.json(responseData);
 
-  } catch (error) {
-    console.error('Token exchange error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Token Exchange System Failure:', error.message);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
