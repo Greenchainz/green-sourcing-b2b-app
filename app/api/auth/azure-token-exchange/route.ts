@@ -9,14 +9,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 1. MATCH PORTAL NAMES: Using the names you set in the Containers menu
+    // 1. Using names that match your Azure Portal exactly
     const tenantId = process.env.AZURE_TENANT_ID; 
     const clientId = process.env.AZURE_CLIENT_ID;
     const clientSecret = process.env.AZURE_CLIENT_SECRET;
-    
-    // 2. FORCE STABLE URL: This matches your DNS and App Registration
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.greenchainz.com';
-    const redirectUri = `${baseUrl}/login/callback`;
 
     const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
     
@@ -27,23 +24,21 @@ export async function POST(request: NextRequest) {
         client_id: clientId!,
         client_secret: clientSecret!,
         code,
-        redirect_uri: redirectUri, // Using the stable URI here
+        redirect_uri: `${baseUrl}/login/callback`,
         grant_type: 'authorization_code',
         scope: 'openid profile email'
       }).toString()
     })
 
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json();
+      const errorData = await tokenResponse.text();
       console.error('Azure exchange rejected:', errorData);
-      return NextResponse.json({ error: 'Exchange failed', detail: errorData }, { status: 401 })
+      return NextResponse.json({ error: 'Exchange failed' }, { status: 401 })
     }
 
-    const tokens = await tokenResponse.json()
-    return NextResponse.json(tokens)
-
+    return NextResponse.json(await tokenResponse.json())
   } catch (error: any) {
-    console.error('Token exchange error:', error.message);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Token exchange crash:', error.message);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
