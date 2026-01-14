@@ -2,21 +2,22 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-    // Check for your Azure session cookie or auth token
-    const token = request.cookies.get('greenchainz-auth-token')?.value
+  // Check for the Azure session token in your store's cookie
+  const token = request.cookies.get('greenchainz-auth-token')?.value
 
-    // Protect internal routes, but allow public ones
-    if (request.nextUrl.pathname.startsWith('/admin') ||
-        request.nextUrl.pathname.startsWith('/architect') ||
-        request.nextUrl.pathname.startsWith('/supplier')) {
-        if (!token) {
-            return NextResponse.redirect(new URL('/login', request.url))
-        }
-    }
+  // List of paths that REQUIRE login to protect your utilities
+  const protectedPaths = ['/architect', '/supplier', '/admin', '/dashboard']
+  const isProtected = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
-    return NextResponse.next()
+  if (isProtected && !token) {
+    // If no token, bounce them to the login page
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // Ignore static files and images
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 }
