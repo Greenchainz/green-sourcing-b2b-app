@@ -32,6 +32,7 @@ export default function LocationAutocomplete({
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Close suggestions when clicking outside
@@ -71,6 +72,7 @@ export default function LocationAutocomplete({
       if (data.success) {
         setSuggestions(data.data.suggestions);
         setShowSuggestions(true);
+        setActiveIndex(-1); // Reset selection
       }
     } catch (error) {
       console.error("Location autocomplete error:", error);
@@ -96,6 +98,7 @@ export default function LocationAutocomplete({
     // Set the display value
     onChange(suggestion.description);
     setShowSuggestions(false);
+    setActiveIndex(-1);
 
     // Geocode to get exact coordinates
     try {
@@ -114,6 +117,23 @@ export default function LocationAutocomplete({
       }
     } catch (error) {
       console.error("Geocoding error:", error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      handleSelect(suggestions[activeIndex]);
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
     }
   };
 
@@ -139,10 +159,16 @@ export default function LocationAutocomplete({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           onFocus={() =>
             value && suggestions.length > 0 && setShowSuggestions(true)
           }
           placeholder={placeholder}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={showSuggestions}
+          aria-controls={`${id}-listbox`}
+          aria-activedescendant={activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined}
           aria-invalid={!!error}
           aria-describedby={error ? `${id}-error` : undefined}
           className={`w-full pl-10 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
@@ -163,12 +189,21 @@ export default function LocationAutocomplete({
 
       {/* Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {suggestions.map((suggestion) => (
+        <div
+          id={`${id}-listbox`}
+          role="listbox"
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+        >
+          {suggestions.map((suggestion, index) => (
             <button
               key={suggestion.placeId}
+              id={`${id}-option-${index}`}
+              role="option"
+              aria-selected={index === activeIndex}
               onClick={() => handleSelect(suggestion)}
-              className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-start gap-3 border-b border-gray-100 last:border-b-0 transition"
+              className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-start gap-3 border-b border-gray-100 last:border-b-0 transition ${
+                index === activeIndex ? "bg-gray-50 ring-1 ring-inset ring-green-500" : ""
+              }`}
             >
               <MapPin className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
