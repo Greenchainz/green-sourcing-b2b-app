@@ -103,7 +103,7 @@ export async function initializeViabilityProfilesTable(): Promise<void> {
   const createTableSQL = `
     CREATE TABLE IF NOT EXISTS viability_profiles (
       id BIGSERIAL PRIMARY KEY,
-      product_id BIGINT,
+      product_id BIGINT UNIQUE, -- Unique constraint for UPSERT
       product_name VARCHAR(255) NOT NULL,
       manufacturer VARCHAR(255) NOT NULL,
       sku VARCHAR(100),
@@ -121,15 +121,26 @@ export async function initializeViabilityProfilesTable(): Promise<void> {
       -- Metadata
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      created_by BIGINT,
-      
-      -- Foreign key to Products table if it exists
-      CONSTRAINT fk_viability_product 
-        FOREIGN KEY (product_id) 
-        REFERENCES Products(ProductID) 
-        ON DELETE CASCADE
-        DEFERRABLE INITIALLY DEFERRED
+      created_by BIGINT
     );
+
+    -- Foreign key to Products table if it exists (safe to fail)
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'products'
+      ) THEN
+        ALTER TABLE viability_profiles 
+          DROP CONSTRAINT IF EXISTS fk_viability_product;
+        ALTER TABLE viability_profiles 
+          ADD CONSTRAINT fk_viability_product 
+          FOREIGN KEY (product_id) 
+          REFERENCES Products(ProductID) 
+          ON DELETE CASCADE
+          DEFERRABLE INITIALLY DEFERRED;
+      END IF;
+    END $$;
 
     -- Indexes for common queries
     CREATE INDEX IF NOT EXISTS idx_viability_product_id 

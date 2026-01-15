@@ -280,6 +280,13 @@ function buildViabilityProfile(
         dataTo: new Date(),
     };
 
+    // Validate and normalize red list status
+    let redListStatus: "Free" | "Approved" | "Unknown" | "Contains" = "Unknown";
+    const extractedStatus = extractedData.compliance?.red_list_status ?? extractedData.red_list_status;
+    if (extractedStatus === "Free" || extractedStatus === "Approved" || extractedStatus === "Contains") {
+        redListStatus = extractedStatus;
+    }
+
     // Build complete profile
     const profile: MaterialViabilityProfile = {
         productName: materialName,
@@ -290,7 +297,7 @@ function buildViabilityProfile(
         environmentalMetrics: {
             gwp: extractedData.gwp_per_unit ?? extractedData.GWP,
             gwpUnit: extractedData.unit_type ?? extractedData.Unit,
-            redListStatus: extractedData.compliance?.red_list_status ?? extractedData.red_list_status ?? "Unknown" as "Free" | "Approved" | "Unknown" | "Contains",
+            redListStatus,
             epdSource: sourceUrl,
         },
         healthMetrics: {
