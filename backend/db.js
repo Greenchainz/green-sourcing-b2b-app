@@ -4,6 +4,8 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(process.cwd(), '.env') });
 const { requireEnv } = require('./config/validateEnv');
 
+// Prefer a single connection string, but also support Service Connector vars
+// (AZURE_POSTGRESQL_HOST, AZURE_POSTGRESQL_USER, AZURE_POSTGRESQL_DATABASE, etc.).
 const connectionString =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
@@ -19,10 +21,19 @@ function shouldUseSsl() {
 }
 
 // Prefer a single Azure-style DATABASE_URL / connection string when provided.
-// Otherwise fall back to individual host/port/user/password/database variables.
+// Otherwise fall back to Service Connector vars, then legacy host/user/pass.
 let baseConfig;
 if (connectionString) {
     baseConfig = { connectionString };
+} else if (process.env.AZURE_POSTGRESQL_HOST) {
+    // Service Connector (per-var) inputs
+    baseConfig = {
+        host: process.env.AZURE_POSTGRESQL_HOST,
+        port: Number(process.env.AZURE_POSTGRESQL_PORT || 5432),
+        user: process.env.AZURE_POSTGRESQL_USER,
+        password: process.env.AZURE_POSTGRESQL_PASSWORD, // may be empty if using AAD
+        database: process.env.AZURE_POSTGRESQL_DATABASE,
+    };
 } else if (process.env.NODE_ENV === 'production') {
     baseConfig = {
         host: requireEnv('POSTGRES_HOST'),
@@ -69,7 +80,7 @@ if (shouldUseEntraId) {
     const { DefaultAzureCredential } = require('@azure/identity');
     const credential = new DefaultAzureCredential();
     const scope = 'https://ossrdbms-aad.database.windows.net/.default';
-    
+
     passwordProvider = async () => {
         try {
             const token = await credential.getToken(scope);
