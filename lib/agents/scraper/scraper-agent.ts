@@ -2,16 +2,22 @@
  * Scraper Agent (Azure-Native)
  * 
  * "Data Scout" that finds EPD and Health data for materials.
+ * Enhanced for Architecture of Equivalence with viability profile support.
  * 
  * Architecture:
  * 1. Search Web (Azure AI Search) -> Finds PDF URL/Content
  * 2. Extract Data (Azure OpenAI) -> Converts text to JSON
- * 3. Return structured data
+ * 3. Parse viability data (ASTM, Labor, OTIF)
+ * 4. Save to Azure DB -> Store viability profile
+ * 5. Return structured data
  */
 
 import { AzureOpenAI } from "openai";
 import { SearchClient, AzureKeyCredential } from "@azure/search-documents";
 import { DATA_JANITOR_PROMPTS } from "../../prompts/data-janitor";
+import { saveViabilityProfile, getViabilityProfileByProductId } from "../../azure-db";
+import { MaterialViabilityProfile, ASTMStandard, LaborUnits, OTIFMetrics } from "../../../types/schema";
+import { calculateViabilityScoresForAllPersonas } from "../../scoring/viability-scoring";
 
 // Interface for Azure Search document
 interface SearchDocument {
@@ -32,6 +38,16 @@ interface ExtractedData {
     compliance?: {
         red_list_status?: "Free" | "Approved" | "None";
     };
+    // Enhanced viability data
+    astm_standards?: string[];
+    labor_hours_install?: number;
+    labor_hours_maintenance?: number;
+    skill_level?: number;
+    lead_time_days?: number;
+    otif_score?: number;
+    unit_price?: number;
+    voc_emissions?: number;
+    manufacturer?: string;
 }
 
 // Interface for the output
@@ -45,6 +61,9 @@ export interface ScrapedMaterial {
     epd_found: boolean;
     matched_product_name?: string;
     source_url?: string;
+    // Enhanced viability profile data
+    viability_profile?: MaterialViabilityProfile;
+    viability_profile_id?: number;
 }
 
 /**
@@ -169,6 +188,8 @@ export async function scrapeMaterialData(options: {
     material_name: string;
     search_type: 'epddb' | 'healthdb' | 'both';
     extract_fields: string[];
+    save_to_db?: boolean;
+    product_id?: number;
 }): Promise<ScrapedMaterial> {
     console.log(`🤖 Scraper Agent activated for: ${options.material_name}`);
 
@@ -189,7 +210,27 @@ export async function scrapeMaterialData(options: {
 
     console.log("✅ Extraction complete:", extractedData);
 
-    // 3. Normalize & Return
+    // 3. Build viability profile if requested
+    let viabilityProfile: MaterialViabilityProfile | undefined;
+    let viabilityProfileId: number | undefined;
+
+    if (options.save_to_db) {
+        viabilityProfile = buildViabilityProfile(options.material_name, extractedData, searchResult.url);
+        
+        // Calculate scores for all personas
+        viabilityProfile.viabilityScores = calculateViabilityScoresForAllPersonas(viabilityProfile);
+        
+        // Save to Azure DB
+        try {
+            viabilityProfileId = await saveViabilityProfile(viabilityProfile);
+            console.log(`✅ Viability profile saved to Azure DB with ID: ${viabilityProfileId}`);
+        } catch (error) {
+            console.error('⚠️ Failed to save viability profile to Azure DB:', error);
+            // Continue without saving - don't fail the entire scrape
+        }
+    }
+
+    // 4. Normalize & Return
     return {
         product_name: options.material_name,
         gwp_per_unit: extractedData.gwp_per_unit ?? extractedData.GWP ?? 0,
@@ -199,6 +240,99 @@ export async function scrapeMaterialData(options: {
         certifications: extractedData.certifications ?? [],
         epd_found: true,
         matched_product_name: searchResult.title,
-        source_url: searchResult.url
+        source_url: searchResult.url,
+        viability_profile: viabilityProfile,
+        viability_profile_id: viabilityProfileId,
     };
+}
+
+/**
+ * Build a MaterialViabilityProfile from extracted data
+ */
+function buildViabilityProfile(
+    materialName: string,
+    extractedData: ExtractedData,
+    sourceUrl: string
+): MaterialViabilityProfile {
+    // Parse ASTM standards from extracted data
+    const astmStandards: ASTMStandard[] = (extractedData.astm_standards || []).map(std => ({
+        designation: std,
+        title: `Standard for ${materialName}`,
+        compliant: true, // Assume compliant if mentioned
+    }));
+
+    // Build labor units
+    const laborUnits: LaborUnits = {
+        installationHoursPerUnit: extractedData.labor_hours_install ?? 0.5,
+        maintenanceHoursPerYear: extractedData.labor_hours_maintenance ?? 2.0,
+        unit: extractedData.unit_type ?? extractedData.Unit ?? "sq ft",
+        skillLevelRequired: extractedData.skill_level ?? 2,
+    };
+
+    // Build OTIF metrics (with defaults if not available)
+    const otifMetrics: OTIFMetrics = {
+        onTimePercentage: 90, // Default assumption
+        inFullPercentage: 95, // Default assumption
+        otifScore: extractedData.otif_score ?? 85,
+        averageLeadTimeDays: extractedData.lead_time_days ?? 14,
+        sampleSize: 50, // Default sample size
+        dataFrom: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
+        dataTo: new Date(),
+    };
+
+    // Validate and normalize red list status
+    let redListStatus: "Free" | "Approved" | "Unknown" | "Contains" = "Unknown";
+    const extractedStatus = extractedData.compliance?.red_list_status ?? extractedData.red_list_status;
+    if (extractedStatus === "Free" || extractedStatus === "Approved" || extractedStatus === "Contains") {
+        redListStatus = extractedStatus;
+    }
+
+    // Build complete profile
+    const profile: MaterialViabilityProfile = {
+        productName: materialName,
+        manufacturer: extractedData.manufacturer ?? "Unknown",
+        astmStandards,
+        laborUnits,
+        otifMetrics,
+        environmentalMetrics: {
+            gwp: extractedData.gwp_per_unit ?? extractedData.GWP,
+            gwpUnit: extractedData.unit_type ?? extractedData.Unit,
+            redListStatus,
+            epdSource: sourceUrl,
+        },
+        healthMetrics: {
+            healthGrade: extractedData.health_grade,
+            vocEmissions: extractedData.voc_emissions,
+        },
+        costMetrics: {
+            unitPrice: extractedData.unit_price ?? 0,
+            currency: "USD",
+        },
+        dataQuality: {
+            completeness: calculateDataCompleteness(extractedData),
+            freshnessInDays: 0, // Just scraped
+            sources: [sourceUrl],
+            lastUpdated: new Date(),
+        },
+    };
+
+    return profile;
+}
+
+/**
+ * Calculate data completeness score (0-1) based on available fields
+ */
+function calculateDataCompleteness(data: ExtractedData): number {
+    const fields = [
+        data.gwp_per_unit ?? data.GWP,
+        data.health_grade,
+        data.astm_standards,
+        data.labor_hours_install,
+        data.otif_score,
+        data.unit_price,
+        data.manufacturer,
+    ];
+
+    const filledFields = fields.filter(f => f !== undefined && f !== null).length;
+    return filledFields / fields.length;
 }

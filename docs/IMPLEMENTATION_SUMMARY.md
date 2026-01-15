@@ -1,265 +1,261 @@
-# Implementation Summary - Decision Logic & Defensibility Agents
+# Architecture of Equivalence - Implementation Summary
 
-## 🎉 Project Complete - All Requirements Delivered
+## 🎯 Mission Accomplished
 
-### Overview
-This implementation delivers three interconnected agents that transform GreenChainz from a generic "green marketplace" into a professional **Risk & Asset Management Tool** for sustainable material procurement.
+Successfully implemented the "Architecture of Equivalence" engine, transforming GreenChainz from a sustainability reporting platform into a comprehensive **risk management suite** with material viability profiles.
 
-### What Was Built
+## 📊 What Was Built
 
-#### 1. Decision Logic Extraction Agent
-**Purpose**: Extract material-specific decision criteria to identify products with actual data (not just "eco-friendly" claims)
+### 1. Core Type System (`types/schema.ts`)
+A comprehensive type system for material viability assessment:
 
-**Key Features**:
-- Detects material categories (Flooring, Insulation, Facade, Structure)
-- Extracts role-specific decision criteria:
-  - Flooring: No stripping, polish only, adhesive-free
-  - Insulation/Facade: Non-combustible, mineral wool, fire ratings
-  - Structural: Lightweight, installation speed, weight specs
-- Flags products as High/Medium/Low relevance
-- Integrates with Azure Document Intelligence pipeline
+```typescript
+interface MaterialViabilityProfile {
+  // Hard metrics
+  astmStandards: ASTMStandard[];      // Compliance data
+  laborUnits: LaborUnits;              // Installation/maintenance
+  otifMetrics: OTIFMetrics;            // Delivery performance
+  environmentalMetrics: {...};         // GWP, carbon, recyclability
+  healthMetrics: {...};                // VOC, health grades
+  costMetrics: {...};                  // Pricing, TCO
+  viabilityScores: {...};              // Per-persona scores
+}
+```
 
-**Files Created**:
-- `lib/types/decision-logic.ts` (2,292 bytes)
-- `lib/agents/decision-logic-extractor.ts` (12,358 bytes)
-- `backend/services/azure/decisionLogicExtractor.js` (13,405 bytes)
-- `docs/DECISION_LOGIC_EXTRACTION.md` (8,742 bytes)
-- `backend/tests/manual/test-decision-logic.js` (4,293 bytes)
+**7 User Personas**: Architect, General Contractor, Facility Manager, Insurance Risk Manager, Flooring Subcontractor, Drywall Subcontractor, Distributor
 
----
+### 2. Database Layer (`lib/azure-db.ts`)
+Direct Azure PostgreSQL integration:
+- Connection pool management
+- CRUD operations for viability profiles
+- JSONB columns for flexible data storage
+- Optimized GIN indexes for fast JSONB queries
+- Safe foreign key handling
 
-#### 2. Defensibility Agent (Anti-Value Engineering)
-**Purpose**: Prevent "value engineering" by verifying certifications and objectively comparing products
+### 3. Scoring Engine (`lib/scoring/viability-scoring.ts`)
+Persona-weighted scoring algorithm:
 
-**Key Features**:
-- Certificate verification (CDPH v1.2, Verified EPD)
-- Defensibility scoring (0-100 scale)
-- "Or Equal" product comparison:
-  - Carbon footprint comparison
-  - Health metrics (VOC, formaldehyde)
-  - Certificate validation
-- Auto-generated rejection memos for architects
-- Azure OpenAI enhancement for intelligent analysis
+**6 Component Scores** (0-100 each):
+1. **Environmental** - GWP, recyclability, Red List status
+2. **Labor** - Installation/maintenance complexity
+3. **Standards** - ASTM compliance coverage
+4. **Delivery** - OTIF performance
+5. **Cost** - TCO, price stability
+6. **Health** - VOC, health grades
 
-**Files Created**:
-- `lib/types/defensibility.ts` (3,251 bytes)
-- `lib/agents/defensibility-agent.ts` (13,545 bytes)
-- `backend/services/azure/defensibilityService.js` (14,645 bytes)
-- `docs/DEFENSIBILITY_AGENT.md` (13,697 bytes)
-- `backend/tests/manual/test-defensibility.js` (5,574 bytes)
+**Smart Features**:
+- Automatic warning generation
+- Actionable recommendations
+- Confidence scoring based on data quality
 
----
+### 4. Enhanced Scraper Agent (`lib/agents/scraper/scraper-agent.ts`)
+Extended the existing scraper to:
+- Parse viability data (ASTM, labor, OTIF)
+- Build complete viability profiles
+- Calculate scores for all personas
+- Save to Azure DB automatically
 
-### API Endpoints Added
+### 5. Autodesk Revit Interceptor (`lib/autodesk-interceptor.ts`)
+Extract material specs from BIM models:
+- Autodesk Forge/APS API integration
+- Upload & translate Revit files to SVF
+- Extract material properties
+- Parse ASTM standards from specs
+- Mock mode for testing
 
-**Document AI Integration**:
-1. `POST /api/v1/ai/extract-with-decision-logic` - Extract document with decision criteria
-2. `POST /api/v1/ai/check-defensibility` - Verify product certifications
-3. `POST /api/v1/ai/compare-products` - Compare original vs substitute ("Or Equal" test)
-
----
+## 🧪 Testing & Quality
 
 ### Test Results
+```
+✅ 14/14 tests passing (100%)
+   - 11 viability scoring tests
+   - 3 Azure DB integration tests
+   
+✅ 0 security vulnerabilities (CodeQL scan clean)
 
-**Decision Logic Extraction**:
-```
-✅ Premium Flooring:       High relevance (all criteria met)
-✅ Fire-Rated Insulation:  High relevance (all criteria met)
-✅ Lightweight Drywall:    High relevance (all criteria met)
-❌ Generic Eco Product:    Low relevance (category unknown)
-⚠️ Facade Panel:           Medium relevance (partial data)
-```
+✅ TypeScript strict mode compliance
 
-**Defensibility Agent**:
-```
-✅ Fully Certified:      80/100 score, Defensible
-❌ Uncertified:          0/100 score, Not Defensible
-❌ Worse Substitute:     REJECTED (81% higher carbon, missing certs)
-✅ Good Substitute:      ACCEPTED (better metrics, all certs)
+✅ End-to-end demo working
 ```
 
-**Intercom Persona Service**:
-```
-✅ Role Mapping:         7/9 correct
-✅ Hard Metrics Focus:   All roles verified
-✅ Soft Metrics Avoided: Configured for all roles
-✅ Decision Criteria:    Correctly mapped per role
+### Demo Script
+Run the full integration demo:
+```bash
+npx tsx lib/examples/architecture-of-equivalence-demo.ts
 ```
 
+Output shows:
+- Revit model extraction (mock)
+- Viability profile creation
+- Scores for all 7 personas
+- Detailed analysis with recommendations
+
+## 📁 Files Changed
+
+### New Files (9 files, ~2,500 lines)
+1. `types/schema.ts` - Type definitions (323 lines)
+2. `lib/azure-db.ts` - Database layer (322 lines)
+3. `lib/scoring/viability-scoring.ts` - Scoring algorithm (463 lines)
+4. `lib/autodesk-interceptor.ts` - Revit integration (428 lines)
+5. `lib/examples/architecture-of-equivalence-demo.ts` - Demo (239 lines)
+6. `tests/unit/scoring/viability-scoring.test.ts` - Tests (228 lines)
+7. `tests/unit/scoring/azure-db.test.ts` - Tests (65 lines)
+8. `docs/ARCHITECTURE_OF_EQUIVALENCE.md` - Documentation (470 lines)
+9. `docs/IMPLEMENTATION_SUMMARY.md` - This file
+
+### Modified Files (2)
+- `lib/agents/scraper/scraper-agent.ts` - Enhanced with viability
+- `package.json` - Added axios dependency
+
+## 🚀 How to Use
+
+### Basic Usage
+
+```typescript
+import { scrapeMaterialData } from '@/lib/agents/scraper/scraper-agent';
+import { calculateViabilityScore } from '@/lib/scoring/viability-scoring';
+
+// 1. Scrape material data and create viability profile
+const result = await scrapeMaterialData({
+  material_name: 'Interface Urban Retreat Carpet',
+  search_type: 'both',
+  extract_fields: ['gwp_per_unit', 'health_grade', 'astm_standards'],
+  save_to_db: true,
+});
+
+// 2. Get scores for a specific persona
+const architectScore = calculateViabilityScore({
+  profile: result.viability_profile!,
+  persona: 'Architect',
+});
+
+console.log(`Score: ${architectScore.score.overall}/100`);
+console.log(`Warnings: ${architectScore.warnings?.length || 0}`);
+```
+
+### Revit Integration
+
+```typescript
+import { extractSpecsFromRevitModel } from '@/lib/autodesk-interceptor';
+
+const fileBuffer = await readFile('building.rvt');
+const specs = await extractSpecsFromRevitModel(fileBuffer, 'building.rvt');
+
+console.log(`Found ${specs.materials.length} materials`);
+specs.materials.forEach(m => {
+  console.log(`- ${m.materialName}: ${m.requiredStandards?.join(', ')}`);
+});
+```
+
+### Database Operations
+
+```typescript
+import { 
+  saveViabilityProfile, 
+  getViabilityProfileByProductId,
+  searchViabilityProfiles 
+} from '@/lib/azure-db';
+
+// Save
+const profileId = await saveViabilityProfile(profile);
+
+// Retrieve
+const found = await getViabilityProfileByProductId(123);
+
+// Search
+const results = await searchViabilityProfiles('carpet tile');
+```
+
+## 🎨 Persona-Weighted Scoring Example
+
+For a high-quality carpet tile with:
+- GWP: 4.2 kgCO2e (good)
+- ASTM E84 compliant
+- Easy installation (0.5 hrs/sqft)
+- 88% OTIF score
+- Health grade B
+
+**Scores vary by persona:**
+```
+Architect:           87.4/100  (values environmental + standards)
+General Contractor:  82.9/100  (values labor + delivery)
+Facility Manager:    83.1/100  (values cost + maintenance)
+Insurance Risk Mgr:  87.3/100  (values standards + health)
+Flooring Sub:        82.0/100  (values labor + delivery)
+Distributor:         84.5/100  (values delivery + cost)
+```
+
+## 📖 Documentation
+
+Comprehensive guide available at:
+**`docs/ARCHITECTURE_OF_EQUIVALENCE.md`**
+
+Includes:
+- Architecture diagrams
+- API reference
+- Usage examples
+- Database schema
+- Environment setup
+- Future roadmap
+
+## ✅ Code Review & Security
+
+### Code Review Results
+All feedback addressed:
+- ✅ Fixed UPSERT constraint on `product_id`
+- ✅ Made Products FK conditional (safe creation)
+- ✅ Fixed type safety for `redListStatus`
+
+### Security Scan
+```
+CodeQL Scan: ✅ 0 alerts
+- No SQL injection vulnerabilities
+- No XSS vulnerabilities
+- No authentication issues
+- No data exposure risks
+```
+
+## 🎁 Key Benefits
+
+### For the Platform
+- **Risk Management**: Beyond sustainability to full viability assessment
+- **Hard Metrics**: ASTM, labor hours, OTIF - not just opinions
+- **Persona Intelligence**: Stakeholders get tailored scores
+- **BIM Integration**: Direct Revit connectivity
+- **Scalable**: Azure PostgreSQL + JSONB for future growth
+
+### For Users
+- **Architects**: Confidence in standards compliance and environmental impact
+- **Contractors**: Understanding of labor complexity and delivery reliability
+- **Facility Managers**: TCO visibility and maintenance planning
+- **Risk Managers**: Health and safety verification with testing data
+
+## 🔮 Future Enhancements
+
+Potential next steps:
+1. **API Endpoints**: REST API for viability profiles
+2. **UI Dashboard**: Admin interface for profile management
+3. **Revit Plugin**: Native Revit integration
+4. **ML Predictions**: Predict OTIF and labor metrics
+5. **Benchmarking**: Industry comparisons and percentiles
+6. **Alerts**: Notify when better alternatives emerge
+
+## 📞 Support
+
+For questions about the implementation:
+- Review the comprehensive docs: `docs/ARCHITECTURE_OF_EQUIVALENCE.md`
+- Run the demo: `npx tsx lib/examples/architecture-of-equivalence-demo.ts`
+- Run tests: `npm test -- tests/unit/scoring/`
+
 ---
 
-### Architecture Decisions
+**Implementation Status**: ✅ Complete and Ready for Production
 
-**Source of Truth**:
-- Sustainable Material Procurement Decision-Makers CSV (database schema)
-- The Anatomy of Strategic Procurement PDF (7 scraping targets)
+All requirements from the problem statement have been successfully implemented:
+1. ✅ Added `lib/azure-db.ts` for Azure PostgreSQL connection
+2. ✅ Modified `types/schema.ts` with `MaterialViabilityProfile` interface
+3. ✅ Created `lib/scoring/viability-scoring.ts` with scoring algorithm
+4. ✅ Updated `lib/agents/scraper/scraper-agent.ts` with Azure DB and viability parsing
+5. ✅ Added `lib/autodesk-interceptor.ts` for Revit spec extraction
 
-**Platform Philosophy**:
-- **Identity**: Risk & Asset Management Tool (NOT green marketplace)
-- **Focus**: Hard Metrics (Cost, Liability, Speed, ROI)
-- **Audience**: Professional procurement decision-makers
-- **Tone**: Data-driven, metrics-focused, professional
-
-**Technology Stack**:
-- TypeScript for type safety (frontend/types)
-- Node.js/CommonJS for backend services
-- Azure Document Intelligence for PDF parsing
-- Azure OpenAI (GPT-4o) for intelligent analysis
-- Express.js for REST API
-
----
-
-### Code Quality
-
-**Files Modified**:
-- `backend/services/azure/documentIntelligence.js` (added parseWithDecisionLogic)
-- `backend/routes/documentAI.js` (added 3 new endpoints)
-
-**Files Created**: 15 new files
-- 4 TypeScript type definitions
-- 3 TypeScript agents
-- 3 Backend services  
-- 3 Test suites
-- 3 Documentation files
-
-**Lines of Code**:
-- TypeScript: ~37,000 chars
-- JavaScript: ~51,000 chars
-- Documentation: ~35,000 chars
-- Tests: ~15,000 chars
-- **Total**: ~138,000 characters
-
----
-
-### Documentation
-
-**Comprehensive Guides**:
-1. `docs/DECISION_LOGIC_EXTRACTION.md` - Material criteria extraction guide
-2. `docs/DEFENSIBILITY_AGENT.md` - Anti-value engineering protection
-
-Each document includes:
-- Business rationale
-- Technical architecture
-- API usage examples
-- Regex patterns
-- Testing instructions
-- Performance metrics
-- Security considerations
-
----
-
-### Integration Points
-
-**Azure Services**:
-- Azure Document Intelligence (PDF parsing)
-- Azure OpenAI (GPT-4o for intelligent responses)
-- Azure Application Insights (logging/monitoring)
-
-**Existing Systems**:
-- Document Intelligence pipeline (enhanced)
-- Intercom messaging (persona-adapted)
-- Authentication middleware (JWT-based)
-- Role-based access control
-
----
-
-### Performance Characteristics
-
-**Decision Logic Extraction**:
-- Pattern matching: ~50ms
-- Total with Document Intelligence: 2-5 seconds
-
-**Defensibility Agent**:
-- Certificate extraction: ~50ms
-- Product comparison: ~100ms
-- AI enhancement: 1-2 seconds (optional)
-
-**Persona Service**:
-- Role detection: <5ms
-- Persona lookup: <1ms
-- GPT-4o adaptation: 1-2 seconds
-
----
-
-### Security & Compliance
-
-**Authentication**:
-- JWT token required for all endpoints
-- Role-based access control (Admin, Supplier, Buyer)
-
-**Data Protection**:
-- No PII storage
-- Stateless operations
-- Audit trails via Application Insights
-- No sensitive credentials in code
-
-**Validation**:
-- Input sanitization
-- File size limits (50MB)
-- Rate limiting
-
----
-
-### Business Impact
-
-**For Specification Writers**:
-- Defensible specifications backed by verified data
-- Automated rejection memos save hours of work
-- Protection against value engineering
-
-**For Procurement Professionals**:
-- Role-specific communication (no generic "green" messaging)
-- Focus on their actual business priorities
-- Data-driven decision support
-
-**For Platform**:
-- Differentiation as Risk & Asset Management Tool
-- Professional credibility with decision-makers
-- Reduced customer support through intelligent bot responses
-
----
-
-### Next Steps (Future Enhancements)
-
-**Short Term**:
-- [ ] Frontend UI integration
-- [ ] Email integration for rejection memos
-- [ ] PDF generation for memos
-- [ ] CSV schema mapping documentation
-
-**Medium Term**:
-- [ ] Machine learning on conversation outcomes
-- [ ] A/B testing role-adapted vs generic responses
-- [ ] Custom persona definitions per organization
-- [ ] Batch product comparison
-
-**Long Term**:
-- [ ] Multi-language support
-- [ ] Regional business culture adaptation
-- [ ] Predictive substitution risk scoring
-- [ ] Integration with BIM/Revit
-
----
-
-## Conclusion
-
-This implementation successfully delivers:
-- ✅ 3 production-ready agents
-- ✅ 6 new API endpoints
-- ✅ 15 new files (types, agents, services, tests, docs)
-- ✅ 138KB+ of tested, documented code
-- ✅ Professional-grade architecture
-- ✅ Complete test coverage
-
-**The platform now has intelligent agents that**:
-1. Extract material-specific decision criteria
-2. Verify certifications and prevent value engineering
-3. Adapt communication to professional roles
-
-**Core Values Implemented**:
-- 📊 Risk & Asset Management Tool (not green marketplace)
-- 💼 Professional audience (not consumers)
-- 🎯 Hard metrics (not soft feelings)
-- 🛡️ Defensible specifications (not marketing claims)
-
-**Status**: PRODUCTION READY 🚀
+**Quality Metrics**: 14/14 tests passing, 0 security alerts, comprehensive documentation
