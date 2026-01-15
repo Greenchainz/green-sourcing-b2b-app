@@ -56,21 +56,27 @@ describe('Auth Diagnostics Utilities', () => {
     });
 
     it('should return true in development mode', () => {
-      process.env.NODE_ENV = 'development';
+      const originalNodeEnv = process.env.NODE_ENV;
+      (process.env as { NODE_ENV?: string }).NODE_ENV = 'development';
       process.env.AUTH_DEBUG = undefined;
       expect(isAuthDebugEnabled()).toBe(true);
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalNodeEnv;
     });
 
     it('should return false when AUTH_DEBUG is "false"', () => {
       process.env.AUTH_DEBUG = 'false';
-      process.env.NODE_ENV = 'production';
+      const originalNodeEnv = process.env.NODE_ENV;
+      (process.env as { NODE_ENV?: string }).NODE_ENV = 'production';
       expect(isAuthDebugEnabled()).toBe(false);
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalNodeEnv;
     });
 
     it('should return false when AUTH_DEBUG is not set in production', () => {
       process.env.AUTH_DEBUG = undefined;
-      process.env.NODE_ENV = 'production';
+      const originalNodeEnv = process.env.NODE_ENV;
+      (process.env as { NODE_ENV?: string }).NODE_ENV = 'production';
       expect(isAuthDebugEnabled()).toBe(false);
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalNodeEnv;
     });
   });
 
@@ -166,7 +172,8 @@ describe('Auth Diagnostics Utilities', () => {
   describe('logAuthEvent', () => {
     it('should log error events even when debug is disabled', () => {
       process.env.AUTH_DEBUG = 'false';
-      process.env.NODE_ENV = 'production';
+      const originalNodeEnv = process.env.NODE_ENV;
+      (process.env as { NODE_ENV?: string }).NODE_ENV = 'production';
       
       logAuthEvent('error', 'Test error', {
         traceId: 'test-123',
@@ -178,17 +185,22 @@ describe('Auth Diagnostics Utilities', () => {
         '[AUTH]',
         expect.stringContaining('"level":"error"')
       );
+      
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalNodeEnv;
     });
 
     it('should not log info events when debug is disabled', () => {
       process.env.AUTH_DEBUG = 'false';
-      process.env.NODE_ENV = 'production';
+      const originalNodeEnv = process.env.NODE_ENV;
+      (process.env as { NODE_ENV?: string }).NODE_ENV = 'production';
       
       logAuthEvent('info', 'Test info', {
         traceId: 'test-123'
       });
       
       expect(console.info).not.toHaveBeenCalled();
+      
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalNodeEnv;
     });
 
     it('should log info events when debug is enabled', () => {
@@ -362,11 +374,14 @@ describe('Auth Diagnostics Utilities', () => {
 
     it('should not log metrics when debug is disabled', () => {
       process.env.AUTH_DEBUG = 'false';
-      process.env.NODE_ENV = 'production';
+      const originalNodeEnv = process.env.NODE_ENV;
+      (process.env as { NODE_ENV?: string }).NODE_ENV = 'production';
       
       incrementAuthMetric('auth_success', 'azure');
       
       expect(console.info).not.toHaveBeenCalled();
+      
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalNodeEnv;
     });
 
     it('should handle metrics without reason', () => {

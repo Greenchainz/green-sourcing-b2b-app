@@ -166,7 +166,9 @@ export function redactQueryParams(url: string): string {
     const urlObj = new URL(url);
     const redactedParams = new URLSearchParams();
     
-    for (const [key, value] of urlObj.searchParams.entries()) {
+    // Convert to array to avoid downlevelIteration issues
+    const entries = Array.from(urlObj.searchParams.entries());
+    for (const [key, value] of entries) {
       const lowerKey = key.toLowerCase();
       if (lowerKey.includes('code') || lowerKey.includes('token') || lowerKey.includes('secret')) {
         redactedParams.set(key, '[REDACTED]');
