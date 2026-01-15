@@ -2,7 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const { distributeRFQ } = require('../services/rfq/distributor');
-const rateLimit = require('../middleware/rateLimit');
+const {
+    rfq: rfqRateLimit,
+    inbox: inboxRateLimit,
+    general: generalRateLimit
+} = require('../middleware/rateLimit');
 const { authenticateToken } = require('../middleware/auth'); // Assuming this exists or using internal key
 
 // Middleware to ensure user is authenticated (can be replaced/augmented with internal key if needed)
@@ -17,17 +21,17 @@ const { authenticateToken } = require('../middleware/auth'); // Assuming this ex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isValidUUID(str) {
-  return str && UUID_REGEX.test(str);
+    return str && UUID_REGEX.test(str);
 }
 
 function isValidEmail(email) {
-  return email && typeof email === 'string' && email.includes('@') && email.length <= 255;
+    return email && typeof email === 'string' && email.includes('@') && email.length <= 255;
 }
 
 // ============================================
 // POST /api/v2/rfq - Create RFQ (Architect)
 // ============================================
-router.post('/', authenticateToken, rateLimit, async (req, res) => {
+router.post('/', authenticateToken, rfqRateLimit, async (req, res) => {
     const client = await pool.connect();
     try {
         const {
@@ -47,7 +51,7 @@ router.post('/', authenticateToken, rateLimit, async (req, res) => {
         const buyer_email = req.user.email;
 
         if (!buyer_email) {
-             return res.status(401).json({ error: 'User email required from auth token' });
+            return res.status(401).json({ error: 'User email required from auth token' });
         }
 
         if (!message) {
@@ -118,7 +122,7 @@ router.post('/', authenticateToken, rateLimit, async (req, res) => {
 // ============================================
 // GET /api/v2/rfq/:id - Get RFQ Details
 // ============================================
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, generalRateLimit, async (req, res) => {
     const { id } = req.params;
     if (!isValidUUID(id)) return res.status(400).json({ error: 'Invalid ID' });
 
@@ -172,7 +176,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // ============================================
 // GET /api/v2/rfq/supplier/inbox - Supplier Inbox
 // ============================================
-router.get('/supplier/inbox', authenticateToken, async (req, res) => {
+router.get('/supplier/inbox', authenticateToken, inboxRateLimit, async (req, res) => {
     try {
         // Get supplier ID from user email
         const supplierRes = await pool.query('SELECT id FROM suppliers WHERE email = $1', [req.user.email]);
@@ -200,7 +204,7 @@ router.get('/supplier/inbox', authenticateToken, async (req, res) => {
 // ============================================
 // POST /api/v2/rfq/:id/quote - Submit Quote (Supplier)
 // ============================================
-router.post('/:id/quote', authenticateToken, async (req, res) => {
+router.post('/:id/quote', authenticateToken, generalRateLimit, async (req, res) => {
     const { id } = req.params;
     if (!isValidUUID(id)) return res.status(400).json({ error: 'Invalid ID' });
 
@@ -297,7 +301,7 @@ router.post('/:id/quote', authenticateToken, async (req, res) => {
 // ============================================
 // POST /api/v2/rfq/:id/decline - Decline RFQ (Supplier)
 // ============================================
-router.post('/:id/decline', authenticateToken, async (req, res) => {
+router.post('/:id/decline', authenticateToken, generalRateLimit, async (req, res) => {
     const { id } = req.params;
     if (!isValidUUID(id)) return res.status(400).json({ error: 'Invalid ID' });
 
@@ -349,7 +353,7 @@ router.post('/:id/decline', authenticateToken, async (req, res) => {
 // ============================================
 // POST /api/v2/rfq/:id/award - Award RFQ (Architect)
 // ============================================
-router.post('/:id/award', authenticateToken, async (req, res) => {
+router.post('/:id/award', authenticateToken, generalRateLimit, async (req, res) => {
     const { id } = req.params;
     if (!isValidUUID(id)) return res.status(400).json({ error: 'Invalid ID' });
 
@@ -374,11 +378,11 @@ router.post('/:id/award', authenticateToken, async (req, res) => {
 
         // Update winning response status
         if (response_id) {
-             await client.query(`
+            await client.query(`
                 UPDATE rfq_responses SET status = 'accepted' WHERE id = $1
             `, [response_id]);
         } else {
-             await client.query(`
+            await client.query(`
                 UPDATE rfq_responses SET status = 'accepted' WHERE rfq_id = $1 AND supplier_id = $2
             `, [id, supplier_id]);
         }
@@ -398,7 +402,7 @@ router.post('/:id/award', authenticateToken, async (req, res) => {
 // ============================================
 // POST /api/v2/rfq/:id/invite - Manual Supplier Invite (Architect)
 // ============================================
-router.post('/:id/invite', authenticateToken, async (req, res) => {
+router.post('/:id/invite', authenticateToken, generalRateLimit, async (req, res) => {
     const { id } = req.params;
     if (!isValidUUID(id)) return res.status(400).json({ error: 'Invalid ID' });
 
@@ -454,7 +458,7 @@ router.post('/:id/invite', authenticateToken, async (req, res) => {
 // ============================================
 // POST /api/v2/rfq/:id/clarify - Request Clarification (Supplier)
 // ============================================
-router.post('/:id/clarify', authenticateToken, async (req, res) => {
+router.post('/:id/clarify', authenticateToken, generalRateLimit, async (req, res) => {
     const { id } = req.params;
     if (!isValidUUID(id)) return res.status(400).json({ error: 'Invalid ID' });
 
@@ -508,7 +512,7 @@ router.post('/:id/clarify', authenticateToken, async (req, res) => {
 // ============================================
 // GET /api/v2/rfq/:id/quotes - View Quotes (Architect)
 // ============================================
-router.get('/:id/quotes', authenticateToken, async (req, res) => {
+router.get('/:id/quotes', authenticateToken, generalRateLimit, async (req, res) => {
     const { id } = req.params;
     if (!isValidUUID(id)) return res.status(400).json({ error: 'Invalid ID' });
 
