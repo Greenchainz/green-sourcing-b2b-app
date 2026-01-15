@@ -1,25 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, getClient } from '@/lib/db';
 import { generateToken, generateRefreshToken } from '@/lib/auth/jwt';
-import { 
-  generateTraceId, 
-  logAuthEvent, 
+import {
+  generateTraceId,
+  logAuthEvent,
   incrementAuthMetric,
-  formatUserError 
+  formatUserError
 } from '@/lib/auth/diagnostics';
 
 export async function POST(req: NextRequest) {
   const traceId = generateTraceId();
-  
+
   logAuthEvent('info', 'Azure callback initiated', {
     traceId,
     step: 'init',
     metadata: { url: req.url }
   });
-  
+
   try {
+    // Ensure required server-side config is present (helps avoid silent 500s)
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      logAuthEvent('error', 'DATABASE_URL missing for Azure callback', {
+        traceId,
+        step: 'validate-config',
+        statusCode: 500,
+      });
+      return NextResponse.json({
+        error: 'Server authentication config missing',
+        message: `DATABASE_URL is not configured (Trace ID: ${traceId})`,
+        traceId,
+      }, { status: 500 });
+    }
+
     const { email, firstName, lastName, azureId } = await req.json();
-    
+
     logAuthEvent('info', 'Request body parsed', {
       traceId,
       step: 'parse-body',
@@ -39,9 +54,9 @@ export async function POST(req: NextRequest) {
         metadata: { hasEmail: !!email, hasAzureId: !!azureId }
       });
       incrementAuthMetric('auth_failure', 'azure', 'missing-fields');
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Email and Azure ID required',
-        traceId 
+        traceId
       }, { status: 400 });
     }
 
@@ -50,12 +65,12 @@ export async function POST(req: NextRequest) {
       traceId,
       step: 'db-connect'
     });
-    
+
     const client = await getClient();
-    
+
     try {
       await client.query('BEGIN');
-      
+
       logAuthEvent('info', 'Database transaction started', {
         traceId,
         step: 'db-begin'
@@ -67,7 +82,7 @@ export async function POST(req: NextRequest) {
         step: 'db-user-check',
         metadata: { email, azureId: `${azureId.substring(0, 8)}...` }
       });
-      
+
       const userCheck = await client.query(
         'SELECT id, email, role, first_name, last_name FROM Users WHERE azure_id = $1 OR email = $2',
         [azureId, email]
@@ -103,7 +118,7 @@ export async function POST(req: NextRequest) {
           step: 'db-create-user',
           metadata: { email, role: 'architect' }
         });
-        
+
         const result = await client.query(
           `INSERT INTO Users (email, first_name, last_name, azure_id, role, oauth_provider, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
@@ -113,7 +128,7 @@ export async function POST(req: NextRequest) {
 
         userId = result.rows[0].id;
         userRole = result.rows[0].role;
-        
+
         logAuthEvent('info', 'New user created', {
           traceId,
           step: 'db-user-created',
@@ -122,7 +137,7 @@ export async function POST(req: NextRequest) {
       }
 
       await client.query('COMMIT');
-      
+
       logAuthEvent('info', 'Database transaction committed', {
         traceId,
         step: 'db-commit'
@@ -133,7 +148,7 @@ export async function POST(req: NextRequest) {
         traceId,
         step: 'generate-tokens'
       });
-      
+
       const token = generateToken({ userId, email, role: userRole });
 
       // Generate refresh token (valid for 30 days)
@@ -144,7 +159,7 @@ export async function POST(req: NextRequest) {
         traceId,
         step: 'store-refresh-token'
       });
-      
+
       await query(
         `INSERT INTO RefreshTokens (user_id, token, expires_at, created_at)
          VALUES ($1, $2, NOW() + INTERVAL '30 days', NOW())
@@ -161,7 +176,7 @@ export async function POST(req: NextRequest) {
         statusCode: 200,
         metadata: { userId, userRole }
       });
-      
+
       incrementAuthMetric('auth_success', 'azure', 'callback');
 
       // Return user data and tokens
@@ -208,19 +223,29 @@ export async function POST(req: NextRequest) {
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Provide clearer hints for common backend issues (e.g., missing tables)
+    let hint: string | undefined;
+    if (errorMessage.toLowerCase().includes('refreshtokens')) {
+      hint = 'RefreshTokens table is missing; run the 20260107_* migration.';
+    } else if (errorMessage.toLowerCase().includes('users')) {
+      hint = 'Users table/columns missing expected fields (email, azure_id).';
+    }
+
     logAuthEvent('error', 'Azure callback exception', {
       traceId,
       step: 'exception',
       statusCode: 500,
       error
     });
-    
+
     incrementAuthMetric('auth_failure', 'azure', 'callback-exception');
-    
+
     const userError = formatUserError(error, traceId, 'Authentication failed');
-    return NextResponse.json({ 
-      error: 'Authentication failed', 
+    return NextResponse.json({
+      error: 'Authentication failed',
       details: errorMessage,
+      hint,
       message: userError.message,
       traceId
     }, { status: 500 });
