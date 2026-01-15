@@ -40,14 +40,15 @@ export async function sendEmail({ to, subject, template, data }: SendEmailParams
     let react: ReactElement;
 
     switch (template) {
-      case 'welcome':
+      case 'welcome': {
         const welcomeData = data as WelcomeEmailData;
         react = WelcomeEmail({
           firstName: welcomeData.firstName,
           loginUrl: welcomeData.loginUrl
         });
         break;
-      case 'rfq_notification':
+      }
+      case 'rfq_notification': {
         const rfqData = data as RFQNotificationData;
         react = RFQNotificationEmail({
           supplierName: rfqData.supplierName,
@@ -57,13 +58,15 @@ export async function sendEmail({ to, subject, template, data }: SendEmailParams
           rfqLink: rfqData.rfqLink
         });
         break;
-      case 'password_reset':
+      }
+      case 'password_reset': {
         const resetData = data as PasswordResetData;
         react = PasswordResetEmail({
             userEmail: resetData.userEmail,
             resetLink: resetData.resetLink
         });
         break;
+      }
       default:
         throw new Error('Invalid email template');
     }

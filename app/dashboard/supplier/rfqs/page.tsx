@@ -1,10 +1,23 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, Calendar, DollarSign, MessageSquare } from 'lucide-react';
+import { Search, MessageSquare, Filter, DollarSign } from 'lucide-react';
+
+interface RFQ {
+  id: string;
+  project_name?: string;
+  buyer_name?: string;
+  product_name?: string;
+  quantity?: number;
+  unit?: string;
+  status?: string;
+  received_at?: string;
+  created_at?: string;
+  message?: string;
+}
 
 export default function RFQsPage() {
-  const [rfqs, setRfqs] = useState<any[]>([]);
+  const [rfqs, setRfqs] = useState<RFQ[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

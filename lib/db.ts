@@ -8,11 +8,11 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-export async function query(text: string, params?: any[]) {
-  const start = Date.now();
+export async function query(text: string, params?: unknown[]) {
   try {
     const res = await pool.query(text, params);
-    const duration = Date.now() - start;
+    // Duration calculation for potential monitoring
+    // const duration = Date.now() - start;
     // console.log('executed query', { text, duration, rows: res.rowCount });
     return res;
   } catch (error) {

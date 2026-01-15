@@ -27,7 +27,7 @@ export async function POST(request: Request) {
                 email: res.rows[0].claim_email
             });
 
-        } catch (e) {
+        } catch (_e) {
             // Mock response for dev without DB
             if (token === 'valid-token-123') {
                 return NextResponse.json({
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
             }
             return NextResponse.json({ error: 'Invalid token (mock)' }, { status: 400 });
         }
-    } catch (error) {
+    } catch (_error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

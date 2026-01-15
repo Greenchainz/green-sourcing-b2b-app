@@ -85,8 +85,8 @@ export default function AskSupplierButton({
       }
 
       // Track analytics event
-      if (typeof window !== 'undefined' && (window as any).Intercom) {
-        (window as any).Intercom('trackEvent', 'ask-supplier-clicked', {
+      if (typeof window !== 'undefined' && (window as Window & { Intercom?: (action: string, event: string, data: Record<string, unknown>) => void }).Intercom) {
+        ((window as unknown) as { Intercom: (action: string, event: string, data: Record<string, unknown>) => void }).Intercom('trackEvent', 'ask-supplier-clicked', {
           product_id: productId,
           product_name: productName,
           supplier_id: supplierId,
@@ -134,8 +134,8 @@ export default function AskSupplierButton({
       }
 
       // Open Intercom with pre-filled message
-      if (typeof window !== 'undefined' && (window as any).Intercom) {
-        (window as any).Intercom('showNewMessage', message)
+      if (typeof window !== 'undefined' && (window as Window & { Intercom?: (action: string, message: string) => void }).Intercom) {
+        ((window as unknown) as { Intercom: (action: string, message: string) => void }).Intercom('showNewMessage', message)
       } else {
         console.warn('[AskSupplier] Intercom not available')
         alert('Chat is not available. Please contact support.')

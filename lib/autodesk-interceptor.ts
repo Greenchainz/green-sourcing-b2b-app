@@ -41,7 +41,7 @@ export interface RevitMaterialSpec {
     fireRating?: string;
     thermalResistance?: number;
     compressiveStrength?: number;
-    [key: string]: any;
+    [key: string]: string | number | undefined;
   };
   /** Quantity needed */
   quantity?: number;
@@ -318,7 +318,7 @@ async function extractMaterialProperties(urn: string): Promise<RevitMaterialSpec
 /**
  * Extract ASTM standards from material data
  */
-function extractStandards(materialData: any): string[] {
+function extractStandards(materialData: Record<string, unknown>): string[] {
   const standards: string[] = [];
   
   // Look for standard-related properties
@@ -340,26 +340,35 @@ function extractStandards(materialData: any): string[] {
 /**
  * Extract performance requirements from material data
  */
-function extractPerformanceRequirements(materialData: any): any {
-  const requirements: any = {};
+function extractPerformanceRequirements(materialData: Record<string, unknown>): { 
+  fireRating?: string;
+  thermalResistance?: number;
+  compressiveStrength?: number;
+  [key: string]: string | number | undefined;
+} {
+  const requirements: { 
+    fireRating?: string;
+    thermalResistance?: number;
+    compressiveStrength?: number;
+    [key: string]: string | number | undefined;
+  } = {};
   
   // Fire rating
   if (materialData.fireRating || materialData.FireRating) {
-    requirements.fireRating = materialData.fireRating || materialData.FireRating;
+    const fireRatingValue = materialData.fireRating || materialData.FireRating;
+    requirements.fireRating = typeof fireRatingValue === 'string' ? fireRatingValue : String(fireRatingValue);
   }
   
   // Thermal resistance (R-value)
   if (materialData.thermalResistance || materialData.ThermalResistance) {
-    requirements.thermalResistance = parseFloat(
-      materialData.thermalResistance || materialData.ThermalResistance
-    );
+    const value = materialData.thermalResistance || materialData.ThermalResistance;
+    requirements.thermalResistance = typeof value === 'number' ? value : parseFloat(String(value));
   }
   
   // Compressive strength
   if (materialData.compressiveStrength || materialData.CompressiveStrength) {
-    requirements.compressiveStrength = parseFloat(
-      materialData.compressiveStrength || materialData.CompressiveStrength
-    );
+    const value = materialData.compressiveStrength || materialData.CompressiveStrength;
+    requirements.compressiveStrength = typeof value === 'number' ? value : parseFloat(String(value));
   }
   
   return requirements;

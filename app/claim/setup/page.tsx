@@ -3,7 +3,6 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import Link from "next/link";
 
 function SetupContent() {
   const router = useRouter();

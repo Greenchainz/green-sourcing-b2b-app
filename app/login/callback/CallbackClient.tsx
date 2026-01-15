@@ -17,7 +17,7 @@ function CallbackClientInner() {
   const searchParams = useSearchParams();
   const { handleAzureCallback, setBackendUrl, setToken, setRefreshToken, setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [traceId, setTraceId] = useState<string | null>(null);
+  const [_traceId, _setTraceId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
   const [, setPublicConfig] = useState<PublicConfig | null>(null);
   const debug = process.env.NEXT_PUBLIC_AUTH_DEBUG === "true";
@@ -254,9 +254,9 @@ function CallbackClientInner() {
 
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-sm text-red-700 whitespace-pre-wrap">{error}</p>
-              {traceId && (
+              {_traceId && (
                 <p className="text-xs text-red-600 mt-2 font-mono">
-                  Trace ID: {traceId}
+                  Trace ID: {_traceId}
                 </p>
               )}
             </div>

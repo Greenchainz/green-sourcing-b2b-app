@@ -7,7 +7,6 @@ import TrustBadges from "@/app/components/TrustBadges";
 import CheckoutTrustSignals from "@/app/components/CheckoutTrustSignals";
 import {
   RFQStepper,
-  LinkedInVerificationGate,
   DepositPayment,
   DEFAULT_DEPOSIT_AMOUNT,
 } from "@/app/components/rfq";

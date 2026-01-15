@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation'; // Correct hook for App Router params? No, useParams
+import { useRouter } from 'next/navigation'; // Correct hook for App Router params? No, useParams
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, AlertTriangle, ArrowRight, Loader2 } from 'lucide-react';
@@ -12,8 +12,10 @@ export default function ClaimPage() {
   const router = useRouter();
 
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'claimed'>('loading');
-  const [supplier, setSupplier] = useState<any>(null);
-  const [email, setEmail] = useState('');
+  const [supplier, setSupplier] = useState<{
+    name?: string;
+    claim_email?: string;
+  } | null>(null);
   const [password, setPassword] = useState('');
 
   useEffect(() => {

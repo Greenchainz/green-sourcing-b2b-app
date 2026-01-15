@@ -8,7 +8,6 @@ import {
   ChevronRight,
   DollarSign,
   FileText,
-  Filter,
   Users,
   TrendingUp,
   AlertCircle,

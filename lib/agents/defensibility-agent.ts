@@ -13,7 +13,6 @@ import type {
   ProductComparison,
   DefensibilityResult,
   RejectionMemo,
-  OrEqualResponse
 } from '../types/defensibility';
 
 /**
@@ -29,8 +28,8 @@ export function extractCertificates(content: string): CertificateVerification {
   const cdphPatterns = {
     version: /cdph\s*(?:v|version)?\s*1\.2/i,
     certificate: /cdph\s*(?:certificate|cert)?[\s#:]*([A-Z0-9-]+)/i,
-    issueDate: /(?:issue|issued|certificate)\s*date[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
-    expiryDate: /(?:expir(?:y|ation)|valid\s*(?:until|thru|through))[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i
+    issueDate: /(?:issue|issued|certificate)\s*date[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
+    expiryDate: /(?:expir(?:y|ation)|valid\s*(?:until|thru|through))[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i
   };
 
   // Check for CDPH v1.2
@@ -52,8 +51,8 @@ export function extractCertificates(content: string): CertificateVerification {
     verified: /(?:verified|third[-\s]party\s*verified|independently\s*verified)\s*epd/i,
     number: /epd\s*(?:number|no|#)[:\s]*([A-Z0-9-]+)/i,
     programOperator: /program\s*operator[:\s]*([^\n]+)/i,
-    validFrom: /valid\s*from[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
-    validTo: /valid\s*(?:to|until|thru|through)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i
+    validFrom: /valid\s*from[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
+    validTo: /valid\s*(?:to|until|thru|through)[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i
   };
 
   // Check for verified EPD
