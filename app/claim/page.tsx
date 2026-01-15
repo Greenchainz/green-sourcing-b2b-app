@@ -44,7 +44,7 @@ function ClaimContent() {
             setErrorMessage(data.error || "Invalid or expired token.");
           }
         }
-      } catch (err) {
+      } catch (_err) {
         setStatus("error");
         setErrorMessage("Failed to connect to verification server.");
       }

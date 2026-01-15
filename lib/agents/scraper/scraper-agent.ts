@@ -15,7 +15,7 @@
 import { AzureOpenAI } from "openai";
 import { SearchClient, AzureKeyCredential } from "@azure/search-documents";
 import { DATA_JANITOR_PROMPTS } from "../../prompts/data-janitor";
-import { saveViabilityProfile, getViabilityProfileByProductId } from "../../azure-db";
+import { saveViabilityProfile } from "../../azure-db";
 import { MaterialViabilityProfile, ASTMStandard, LaborUnits, OTIFMetrics } from "../../../types/schema";
 import { calculateViabilityScoresForAllPersonas } from "../../scoring/viability-scoring";
 

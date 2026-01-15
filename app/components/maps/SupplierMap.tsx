@@ -2,6 +2,27 @@
 
 import React, { useEffect, useRef, useState } from "react";
 
+// Azure Maps type definitions
+interface AzureMapEvent {
+  shapes?: { getProperties: () => Record<string, unknown> }[];
+  position?: [number, number];
+}
+
+interface AzureMap {
+  layers: {
+    add: (layer: unknown) => void;
+  };
+  events: {
+    add: (event: string, layer: unknown, handler: (e: AzureMapEvent) => void) => void;
+  };
+  setCamera: (options: { center?: [number, number]; zoom?: number }) => void;
+}
+
+interface AzureDataSource {
+  clear: () => void;
+  add: (feature: unknown) => void;
+}
+
 /**
  * Supplier Location Data
  */
@@ -83,11 +104,11 @@ export default function SupplierMap({
   markerColor = "#10b981",
 }: SupplierMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<AzureMap | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const markersRef = useRef<any[]>([]);
-  const datasourceRef = useRef<any>(null);
+  const markersRef = useRef<unknown[]>([]);
+  const datasourceRef = useRef<AzureDataSource | null>(null);
 
   useEffect(() => {
     // Load Azure Maps SDK
@@ -127,7 +148,7 @@ export default function SupplierMap({
     if (!mapContainerRef.current) return;
 
     try {
-      const azureMaps = (window as any).atlas;
+      const azureMaps = (window as Window & { atlas?: unknown }).atlas;
       if (!azureMaps) {
         setError("Azure Maps SDK not loaded");
         return;
@@ -191,7 +212,7 @@ export default function SupplierMap({
         });
 
         // Handle marker click
-        mapRef.current.events.add("click", markerLayer, (e: any) => {
+        mapRef.current.events.add("click", markerLayer, (e: AzureMapEvent) => {
           if (e.shapes && e.shapes.length > 0) {
             const shape = e.shapes[0];
             const supplier = shape.getProperties();
@@ -203,7 +224,7 @@ export default function SupplierMap({
             popup.open(mapRef.current);
 
             if (onSupplierClick) {
-              onSupplierClick(supplier);
+              onSupplierClick(supplier as SupplierLocation);
             }
           }
         });
@@ -211,9 +232,9 @@ export default function SupplierMap({
         updateMarkers();
         setIsLoading(false);
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Map initialization error:", err);
-      setError(err.message || "Failed to initialize map");
+      setError(err instanceof Error ? err.message : "Failed to initialize map");
       setIsLoading(false);
     }
   };
@@ -248,7 +269,7 @@ export default function SupplierMap({
   const updateMarkers = () => {
     if (!mapRef.current || !datasourceRef.current) return;
 
-    const azureMaps = (window as any).atlas;
+    const azureMaps = (window as Window & { atlas?: unknown }).atlas;
     if (!azureMaps) return;
 
     // Clear existing markers
@@ -257,12 +278,13 @@ export default function SupplierMap({
 
     // Add suppliers as markers
     suppliers.forEach((supplier) => {
-      const point = new azureMaps.data.Point([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const point = new (azureMaps as any).data.Point([
         supplier.longitude,
         supplier.latitude,
       ]);
 
-      const properties: any = {
+      const properties: Record<string, unknown> = {
         id: supplier.id,
         name: supplier.name,
         email: supplier.email,

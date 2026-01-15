@@ -12,7 +12,6 @@ import {
   LogOut,
   Menu,
   X,
-  UserCircle,
 } from "lucide-react";
 
 const navigation = [

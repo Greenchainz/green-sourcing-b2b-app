@@ -113,8 +113,6 @@ export function detectMaterialCategory(content: string): MaterialCategory {
  * Extract flooring-specific decision criteria
  */
 function extractFlooringCriteria(content: string): MaintenanceRequirements {
-  const lowerContent = content.toLowerCase();
-
   // No stripping pattern
   const noStripping = /no\s*strip(?:ping)?|strip[-]?free|never\s+strip/i.test(content);
   
@@ -151,8 +149,6 @@ function extractFlooringCriteria(content: string): MaintenanceRequirements {
  * Extract insulation/facade fire resistance criteria
  */
 function extractFireResistanceCriteria(content: string): FireResistanceData {
-  const lowerContent = content.toLowerCase();
-
   // Non-combustible pattern
   const nonCombustible = /non[-]?combustible|incombustible|class\s*a(?:1|2)?|fire[-]?proof/i.test(content);
   
@@ -205,8 +201,6 @@ function extractFireResistanceCriteria(content: string): FireResistanceData {
  * Extract structural material installation criteria
  */
 function extractInstallationCriteria(content: string): InstallationData {
-  const lowerContent = content.toLowerCase();
-
   // Lightweight pattern
   const lightweight = /light[-]?weight|reduced\s*weight|easy\s*to\s*(?:lift|carry|handle)/i.test(content);
   

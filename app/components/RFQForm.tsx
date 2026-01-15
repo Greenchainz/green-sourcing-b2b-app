@@ -70,7 +70,7 @@ export default function RFQForm() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const updateField = (field: keyof RFQFormData, value: any) => {
+  const updateField = (field: keyof RFQFormData, value: string | string[]) => {
     setFormData({ ...formData, [field]: value });
     // Clear error when user starts typing
     if (errors[field]) {

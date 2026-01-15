@@ -2,10 +2,20 @@
 
 import React, { useEffect, useState } from 'react';
 import { ArrowUpRight, Clock, CheckCircle2, AlertTriangle, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
+
+interface DashboardStats {
+  activeRfqs?: number;
+  quotedRfqs?: number;
+  productsCount?: number;
+  verificationLevel?: string;
+  profileViews?: number;
+  rfqsReceived?: number;
+  responseRate?: number;
+  actionItems?: { id: string; priority: string; message: string }[];
+}
 
 export default function SupplierDashboardPage() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,7 +73,7 @@ export default function SupplierDashboardPage() {
             <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">High Priority</span>
           </div>
           <div className="divide-y divide-slate-100">
-            {stats?.actionItems?.map((item: any) => (
+            {stats?.actionItems?.map((item: { id: string; priority: string; message: string }) => (
               <div key={item.id} className="p-4 hover:bg-slate-50 transition-colors flex items-start gap-4 cursor-pointer">
                  <div className={`mt-1 p-2 rounded-full ${item.priority === 'high' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                     <AlertTriangle size={16} />
@@ -90,7 +100,13 @@ export default function SupplierDashboardPage() {
   );
 }
 
-function StatCard({ label, value, trend, trendUp, icon }: any) {
+function StatCard({ label, value, trend, trendUp, icon }: {
+  label: string;
+  value: string | number;
+  trend?: string;
+  trendUp?: boolean;
+  icon: React.ReactNode;
+}) {
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
       <div className="flex justify-between items-start">

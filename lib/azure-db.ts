@@ -48,9 +48,9 @@ export function getAzureDBPool(): Pool {
 /**
  * Execute a query against Azure PostgreSQL
  */
-export async function azureQuery<T extends Record<string, any> = any>(
+export async function azureQuery<T extends Record<string, unknown> = Record<string, unknown>>(
   text: string,
-  params?: any[]
+  params?: unknown[]
 ): Promise<QueryResult<T>> {
   const pool = getAzureDBPool();
   const start = Date.now();
@@ -304,15 +304,15 @@ export async function deleteViabilityProfile(id: number | string): Promise<boole
 /**
  * Map database row to MaterialViabilityProfile
  */
-function mapRowToProfile(row: any): MaterialViabilityProfile {
+function mapRowToProfile(row: Record<string, unknown>): MaterialViabilityProfile {
   return {
-    id: row.id,
-    productId: row.product_id,
-    productName: row.product_name,
-    manufacturer: row.manufacturer,
-    sku: row.sku,
-    astmStandards: row.astm_standards,
-    laborUnits: row.labor_units,
+    id: row.id as string,
+    productId: row.product_id as string,
+    productName: row.product_name as string,
+    manufacturer: row.manufacturer as string,
+    sku: row.sku as string,
+    astmStandards: row.astm_standards as ASTMStandard[],
+    laborUnits: row.labor_units as LaborUnits,
     otifMetrics: row.otif_metrics,
     environmentalMetrics: row.environmental_metrics,
     healthMetrics: row.health_metrics,

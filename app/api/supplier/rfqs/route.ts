@@ -40,11 +40,11 @@ export async function GET() {
         if (res.rows.length > 0) {
             return NextResponse.json(res.rows);
         }
-    } catch (e) {
+    } catch (_e) {
         console.warn("DB failed, using mock RFQs");
     }
     return NextResponse.json(MOCK_RFQS);
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

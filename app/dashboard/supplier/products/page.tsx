@@ -3,8 +3,18 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Filter, MoreHorizontal, AlertCircle, CheckCircle } from 'lucide-react';
 
+interface Product {
+  id: string;
+  name?: string;
+  category?: string;
+  status?: string;
+  carbon_footprint?: number;
+  source?: string;
+  image_url?: string;
+}
+
 export default function ProductsPage() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,14 +105,14 @@ export default function ProductsPage() {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const styles: any = {
+  const styles: Record<string, string> = {
     approved: "bg-green-100 text-green-700 border-green-200",
     pending_approval: "bg-amber-100 text-amber-700 border-amber-200",
     draft: "bg-slate-100 text-slate-700 border-slate-200",
     rejected: "bg-red-100 text-red-700 border-red-200",
   };
 
-  const labels: any = {
+  const labels: Record<string, string> = {
     approved: "Active",
     pending_approval: "Pending",
     draft: "Draft",
