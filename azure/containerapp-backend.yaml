@@ -75,6 +75,13 @@ properties:
       - name: internal-api-key
         keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/internal-api-key
         identity: system
+      # Zoho Mail (for contact form)
+      - name: zoho-email
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/zoho-email
+        identity: system
+      - name: zoho-password
+        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/zoho-password
+        identity: system
 
   template:
     containers:
@@ -184,6 +191,16 @@ properties:
             secretRef: intercom-token
           - name: INTERNAL_API_KEY
             secretRef: internal-api-key
+          
+          # ─────────────────────────────────────────────────────────────
+          # Zoho Mail (Contact Form)
+          # ─────────────────────────────────────────────────────────────
+          - name: ZOHO_EMAIL
+            secretRef: zoho-email
+          - name: ZOHO_PASSWORD
+            secretRef: zoho-password
+          - name: ADMIN_EMAIL
+            value: founder@greenchainz.com
           
           # ─────────────────────────────────────────────────────────────
           # Azure Services
