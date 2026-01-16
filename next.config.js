@@ -2,13 +2,9 @@
 const nextConfig = {
   output: 'standalone',
   eslint: {
-    // Warning: Ignoring ESLint errors during build is not recommended for production.
-    // TODO: Disable this once all linting issues are resolved.
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Warning: Ignoring TypeScript errors during build is not recommended for production.
-    // TODO: Disable this once all type issues are resolved.
     ignoreBuildErrors: true,
   },
   async headers() {
