@@ -73,7 +73,7 @@ export interface RevitExtractionResult {
 /**
  * Get Autodesk Forge OAuth token
  */
-async function getForgeToken(): Promise<string> {
+export async function getForgeToken(): Promise<string> {
   const clientId = process.env.AUTODESK_CLIENT_ID;
   const clientSecret = process.env.AUTODESK_CLIENT_SECRET;
 
