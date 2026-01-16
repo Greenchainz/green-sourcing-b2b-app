@@ -3,7 +3,11 @@ const router = express.Router();
 const { pool } = require('../db');
 const { distributeRFQ } = require('../services/rfq/distributor');
 const { updateResponseMetrics } = require('../services/rfq/metrics');
-const rateLimit = require('../middleware/rateLimit');
+const {
+  simulator: simulatorRateLimit,
+  queueClaim: queueClaimRateLimit,
+  inbox: inboxRateLimit
+} = require('../middleware/rateLimit');
 const requireInternalKey = require('../middleware/internalKey');
 
 // Apply internal key protection to all routes
@@ -33,7 +37,7 @@ function sanitizeBudget(budget) {
 // POST /rfqs - Create RFQ and distribute
 // ============================================
 
-router.post('/rfqs', rateLimit.simulator, async (req, res) => {
+router.post('/rfqs', simulatorRateLimit, async (req, res) => {
   const {
     buyer_email,
     product_id,
@@ -111,7 +115,7 @@ router.post('/rfqs', rateLimit.simulator, async (req, res) => {
 // GET /rfqs/:rfqId - Get RFQ details
 // ============================================
 
-router.get('/rfqs/:rfqId', rateLimit.simulator, async (req, res) => {
+router.get('/rfqs/:rfqId', simulatorRateLimit, async (req, res) => {
   const { rfqId } = req.params;
 
   if (!isValidUUID(rfqId)) {
@@ -142,7 +146,7 @@ router.get('/rfqs/:rfqId', rateLimit.simulator, async (req, res) => {
 // GET /suppliers/:supplierId/inbox - Supplier's visible RFQs
 // ============================================
 
-router.get('/suppliers/:supplierId/inbox', rateLimit.inbox, async (req, res) => {
+router.get('/suppliers/:supplierId/inbox', inboxRateLimit, async (req, res) => {
   const { supplierId } = req.params;
 
   if (!isValidUUID(supplierId)) {
@@ -171,7 +175,7 @@ router.get('/suppliers/:supplierId/inbox', rateLimit.inbox, async (req, res) => 
 // POST /queue/claim - Claim due notifications (worker endpoint)
 // ============================================
 
-router.post('/queue/claim', rateLimit.queueClaim, async (req, res) => {
+router.post('/queue/claim', queueClaimRateLimit, async (req, res) => {
   const rawLimit = req.body?.limit;
   const limit = Math.min(Math.max(Number(rawLimit) || 100, 1), 500); // Clamp between 1-500
 
@@ -195,7 +199,7 @@ router.post('/queue/claim', rateLimit.queueClaim, async (req, res) => {
 // POST /queue/expire - Expire old queue entries (worker endpoint)
 // ============================================
 
-router.post('/queue/expire', rateLimit.queueClaim, async (req, res) => {
+router.post('/queue/expire', queueClaimRateLimit, async (req, res) => {
   try {
     const result = await pool.query('SELECT gc_expire_queue_entries() AS expired_count');
     return res.json({
@@ -211,7 +215,7 @@ router.post('/queue/expire', rateLimit.queueClaim, async (req, res) => {
 // POST /suppliers/:supplierId/respond - Mark supplier responded
 // ============================================
 
-router.post('/suppliers/:supplierId/respond', rateLimit.simulator, async (req, res) => {
+router.post('/suppliers/:supplierId/respond', simulatorRateLimit, async (req, res) => {
   const { supplierId } = req.params;
   const { rfq_id } = req.body || {};
 
@@ -252,7 +256,7 @@ router.post('/suppliers/:supplierId/respond', rateLimit.simulator, async (req, r
 // GET /metrics/:supplierId - Get supplier response metrics
 // ============================================
 
-router.get('/metrics/:supplierId', rateLimit.inbox, async (req, res) => {
+router.get('/metrics/:supplierId', inboxRateLimit, async (req, res) => {
   const { supplierId } = req.params;
 
   if (!isValidUUID(supplierId)) {
@@ -289,7 +293,7 @@ router.get('/metrics/:supplierId', rateLimit.inbox, async (req, res) => {
 // POST /metrics/:supplierId/refresh - Refresh supplier metrics
 // ============================================
 
-router.post('/metrics/:supplierId/refresh', rateLimit.simulator, async (req, res) => {
+router.post('/metrics/:supplierId/refresh', simulatorRateLimit, async (req, res) => {
   const { supplierId } = req.params;
 
   if (!isValidUUID(supplierId)) {
