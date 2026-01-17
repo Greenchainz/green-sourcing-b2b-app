@@ -118,7 +118,7 @@ export default function LoginClient() {
       // Debug logging
       if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
         console.log("[Azure Login] Configuration:", {
-          clientId: azureClientId ? `${azureClientId.substring(0, 8)}...` : "MISSING",
+          clientIdConfigured: !!azureClientId,
           tenant: azureTenant,
           redirectUri,
           hasPublicConfig: !!publicConfig,
@@ -138,7 +138,9 @@ export default function LoginClient() {
         );
       }
 
-      console.log("[Azure Login] Creating MSAL instance...");
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[Azure Login] Creating MSAL instance...");
+      }
 
       // Create and initialize MSAL instance
       const msalClient = createMsalClient({
@@ -148,14 +150,18 @@ export default function LoginClient() {
       });
 
       // Initialize MSAL instance - this is critical for SPA configuration
-      console.log("[Azure Login] Initializing MSAL...");
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[Azure Login] Initializing MSAL...");
+      }
       await msalClient.initialize();
 
-      console.log("[Azure Login] Starting login redirect...");
-      console.log("[Azure Login] Redirect URI:", redirectUri);
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[Azure Login] Starting login redirect...");
+        console.log("[Azure Login] Redirect URI:", redirectUri);
+      }
 
-      // Attempt login redirect
-      await msalClient.loginRedirect({
+      // Attempt login redirect (note: this performs a synchronous browser redirect)
+      msalClient.loginRedirect({
         ...loginRequest,
         redirectUri,
         prompt: "select_account",
@@ -163,7 +169,9 @@ export default function LoginClient() {
 
       // Note: loginRedirect() doesn't return - it redirects the browser
       // If we reach here, something went wrong
-      console.warn("[Azure Login] loginRedirect() completed without redirecting");
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.warn("[Azure Login] loginRedirect() completed without redirecting");
+      }
     } catch (err) {
       // Comprehensive error logging
       console.error("[Azure Login] Error occurred:", err);
