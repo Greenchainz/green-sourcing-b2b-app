@@ -4,60 +4,60 @@ import React, { useEffect, useState } from 'react';
 import { Search, MessageSquare, Filter, DollarSign } from 'lucide-react';
 
 interface RFQ {
-  id: string;
-  project_name?: string;
-  buyer_name?: string;
-  product_name?: string;
-  quantity?: number;
-  unit?: string;
-  status?: string;
-  received_at?: string;
-  created_at?: string;
-  message?: string;
+   id: string;
+   project_name?: string;
+   buyer_name?: string;
+   product_name?: string;
+   quantity?: number;
+   unit?: string;
+   status?: string;
+   received_at?: string;
+   created_at?: string;
+   message?: string;
 }
 
 export default function RFQsPage() {
-  const [rfqs, setRfqs] = useState<RFQ[]>([]);
-  const [loading, setLoading] = useState(true);
+   const [rfqs, setRfqs] = useState<RFQ[]>([]);
+   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch('/api/supplier/rfqs')
-      .then(res => res.json())
-      .then(data => {
-        setRfqs(data);
-        setLoading(false);
-      });
-  }, []);
+   useEffect(() => {
+      fetch('/api/supplier/rfqs')
+         .then(res => res.json())
+         .then(data => {
+            setRfqs(data);
+            setLoading(false);
+         });
+   }, []);
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">RFQ Inbox</h2>
-          <p className="text-slate-500">Manage incoming requests and send quotes.</p>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="flex gap-4">
-         <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search by project or buyer..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm shadow-sm"
-            />
+   return (
+      <div className="space-y-6">
+         <div className="flex justify-between items-center">
+            <div>
+               <h2 className="text-2xl font-bold text-slate-900">RFQ Inbox</h2>
+               <p className="text-slate-500">Manage incoming requests and send quotes.</p>
+            </div>
          </div>
-         <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg flex items-center gap-2 text-sm font-medium text-slate-600 hover:bg-slate-50 shadow-sm">
-            <Filter size={18} /> Filters
-         </button>
-      </div>
 
-      {/* RFQ List */}
-      <div className="space-y-4">
-         {loading ? (
-             <div className="text-center p-8 text-slate-500">Loading RFQs...</div>
-         ) : rfqs.map((rfq) => (
+         {/* Search Bar */}
+         <div className="flex gap-4">
+            <div className="relative flex-1">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+               <input
+                  type="text"
+                  placeholder="Search by project or buyer..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm shadow-sm"
+               />
+            </div>
+            <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg flex items-center gap-2 text-sm font-medium text-slate-600 hover:bg-slate-50 shadow-sm">
+               <Filter size={18} /> Filters
+            </button>
+         </div>
+
+         {/* RFQ List */}
+         <div className="space-y-4">
+            {loading ? (
+               <div className="text-center p-8 text-slate-500">Loading RFQs...</div>
+            ) : rfqs.map((rfq) => (
              <div key={rfq.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:border-green-300 transition-all cursor-pointer group">
                 <div className="flex justify-between items-start">
                    <div>
@@ -65,19 +65,26 @@ export default function RFQsPage() {
                          <h3 className="font-semibold text-lg text-slate-900 group-hover:text-green-700 transition-colors">
                             {rfq.project_name}
                          </h3>
-                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
-                             rfq.status === 'pending' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                             rfq.status === 'quoted' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                             'bg-slate-50 text-slate-600 border-slate-100'
-                         }`}>
-                            {rfq.status.toUpperCase()}
+                                     {(() => {
+                                        const status = rfq.status ?? 'pending';
+                                        const badgeClass = status === 'pending'
+                                           ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                           : status === 'quoted'
+                                           ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                           : 'bg-slate-50 text-slate-600 border-slate-100';
+                                        return (
+                                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${badgeClass}`}>
+                                              {status.toUpperCase()}
+                                           </span>
+                                        );
+                                     })()}
                          </span>
                       </div>
                       <p className="text-slate-500 text-sm">from <span className="font-medium text-slate-700">{rfq.buyer_name}</span></p>
                    </div>
                    <div className="text-right">
                       <span className="text-xs text-slate-400 font-medium">Received</span>
-                      <p className="text-sm font-medium text-slate-700">{new Date(rfq.received_at || rfq.created_at).toLocaleDateString()}</p>
+                      <p className="text-sm font-medium text-slate-700">{new Date(rfq.received_at || rfq.created_at || Date.now()).toLocaleDateString()}</p>
                    </div>
                 </div>
 
@@ -107,6 +114,6 @@ export default function RFQsPage() {
              </div>
          ))}
       </div>
-    </div>
+    </div >
   );
 }

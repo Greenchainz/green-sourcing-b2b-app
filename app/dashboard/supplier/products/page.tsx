@@ -41,13 +41,13 @@ export default function ProductsPage() {
 
       {/* Filters */}
       <div className="flex gap-4 items-center bg-white p-2 rounded-lg border border-slate-200 w-fit">
-         <button className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-slate-100 rounded-md">All</button>
-         <button className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">Approved</button>
-         <button className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">Drafts</button>
-         <div className="w-px h-4 bg-slate-200 mx-2"></div>
-         <button className="flex items-center gap-2 text-sm text-slate-500 px-2">
-            <Filter size={14} /> Filter
-         </button>
+        <button className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-slate-100 rounded-md">All</button>
+        <button className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">Approved</button>
+        <button className="px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">Drafts</button>
+        <div className="w-px h-4 bg-slate-200 mx-2"></div>
+        <button className="flex items-center gap-2 text-sm text-slate-500 px-2">
+          <Filter size={14} /> Filter
+        </button>
       </div>
 
       {/* Table */}
@@ -65,30 +65,30 @@ export default function ProductsPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
-                <tr><td colSpan={6} className="p-6 text-center text-slate-500">Loading products...</td></tr>
+              <tr><td colSpan={6} className="p-6 text-center text-slate-500">Loading products...</td></tr>
             ) : products.map((product) => (
               <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-slate-200 bg-cover bg-center" style={{backgroundImage: `url(${product.image_url})`}}></div>
+                    <div className="w-10 h-10 rounded bg-slate-200 bg-cover bg-center" style={{ backgroundImage: `url(${product.image_url})` }}></div>
                     <span className="font-medium text-slate-900">{product.name}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 text-slate-600">{product.category}</td>
                 <td className="px-6 py-4 text-slate-600 font-mono">{product.carbon_footprint}</td>
                 <td className="px-6 py-4">
-                  <StatusBadge status={product.status} />
+                  <StatusBadge status={product.status ?? 'draft'} />
                 </td>
                 <td className="px-6 py-4">
-                   {product.source === 'scraper' ? (
-                       <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-100">
-                          <AlertCircle size={12} /> AI Scraped
-                       </span>
-                   ) : (
-                       <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
-                          <CheckCircle size={12} /> Verified
-                       </span>
-                   )}
+                  {product.source === 'scraper' ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-100">
+                      <AlertCircle size={12} /> AI Scraped
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
+                      <CheckCircle size={12} /> Verified
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <button className="text-slate-400 hover:text-slate-600 p-2">

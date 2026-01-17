@@ -8,14 +8,44 @@ interface AzureMapEvent {
   position?: [number, number];
 }
 
+// Minimal Azure Maps types to satisfy TS without the SDK typings installed
+interface AzureMapsNamespace {
+  Map: new (
+    container: HTMLDivElement,
+    options: {
+      authOptions: { authType: string; subscriptionKey: string };
+      center: [number, number];
+      zoom: number;
+      style: string;
+      language: string;
+      view: string;
+    }
+  ) => AzureMap;
+  AuthenticationType: { subscriptionKey: string };
+  source: { DataSource: new () => AzureDataSource };
+  layer: { SymbolLayer: new (source: AzureDataSource, id: string | null, opts: unknown) => unknown };
+  data: {
+    Point: new (coords: [number, number]) => unknown;
+    Feature: new (geom: unknown, properties?: Record<string, unknown>) => unknown;
+    Polygon: new (rings: unknown) => unknown;
+    BoundingBox: { fromData: (source: AzureDataSource) => unknown };
+  };
+  math: { getCircleCoordinates: (center: [number, number], radiusKm: number, points: number) => unknown };
+  Popup: new (opts: unknown) => { setOptions: (opts: unknown) => void; open: (map: AzureMap) => void };
+}
+
 interface AzureMap {
+  dispose?: () => void;
   layers: {
     add: (layer: unknown) => void;
   };
-  events: {
-    add: (event: string, layer: unknown, handler: (e: AzureMapEvent) => void) => void;
+  sources: {
+    add: (source: AzureDataSource) => void;
   };
-  setCamera: (options: { center?: [number, number]; zoom?: number }) => void;
+  events: {
+    add: (event: string, layerOrHandler: unknown, handler?: (e: AzureMapEvent) => void) => void;
+  };
+  setCamera: (options: { center?: [number, number]; zoom?: number; bounds?: unknown; padding?: number }) => void;
 }
 
 interface AzureDataSource {
@@ -130,7 +160,7 @@ export default function SupplierMap({
 
     return () => {
       // Cleanup
-      if (mapRef.current) {
+      if (mapRef.current?.dispose) {
         mapRef.current.dispose();
       }
       document.body.removeChild(script);
@@ -148,7 +178,7 @@ export default function SupplierMap({
     if (!mapContainerRef.current) return;
 
     try {
-      const azureMaps = (window as Window & { atlas?: unknown }).atlas;
+      const azureMaps = (window as Window & { atlas?: AzureMapsNamespace }).atlas;
       if (!azureMaps) {
         setError("Azure Maps SDK not loaded");
         return;
@@ -269,7 +299,7 @@ export default function SupplierMap({
   const updateMarkers = () => {
     if (!mapRef.current || !datasourceRef.current) return;
 
-    const azureMaps = (window as Window & { atlas?: unknown }).atlas;
+    const azureMaps = (window as Window & { atlas?: AzureMapsNamespace }).atlas;
     if (!azureMaps) return;
 
     // Clear existing markers
@@ -278,8 +308,7 @@ export default function SupplierMap({
 
     // Add suppliers as markers
     suppliers.forEach((supplier) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const point = new (azureMaps as any).data.Point([
+      const point = new azureMaps.data.Point([
         supplier.longitude,
         supplier.latitude,
       ]);
@@ -330,27 +359,24 @@ export default function SupplierMap({
         <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #111827;">
           ${supplier.name}
         </h3>
-        ${
-          supplier.city && supplier.state
-            ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">
+        ${supplier.city && supplier.state
+        ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">
               ${supplier.city}, ${supplier.state}
             </p>`
-            : ""
-        }
-        ${
-          supplier.distance_miles !== undefined && showDistance
-            ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #059669; font-weight: 600;">
+        : ""
+      }
+        ${supplier.distance_miles !== undefined && showDistance
+        ? `<p style="margin: 0 0 8px 0; font-size: 14px; color: #059669; font-weight: 600;">
               ${supplier.distance_miles.toFixed(1)} miles away
             </p>`
-            : ""
-        }
-        ${
-          supplier.service_radius
-            ? `<p style="margin: 0; font-size: 12px; color: #6b7280;">
+        : ""
+      }
+        ${supplier.service_radius
+        ? `<p style="margin: 0; font-size: 12px; color: #6b7280;">
               Service radius: ${supplier.service_radius} miles
             </p>`
-            : ""
-        }
+        : ""
+      }
       </div>
     `;
   };

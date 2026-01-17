@@ -216,10 +216,10 @@ export async function scrapeMaterialData(options: {
 
     if (options.save_to_db) {
         viabilityProfile = buildViabilityProfile(options.material_name, extractedData, searchResult.url);
-        
+
         // Calculate scores for all personas
         viabilityProfile.viabilityScores = calculateViabilityScoresForAllPersonas(viabilityProfile);
-        
+
         // Save to Azure DB
         try {
             viabilityProfileId = await saveViabilityProfile(viabilityProfile);
@@ -282,7 +282,7 @@ function buildViabilityProfile(
 
     // Validate and normalize red list status
     let redListStatus: "Free" | "Approved" | "Unknown" | "Contains" = "Unknown";
-    const extractedStatus = extractedData.compliance?.red_list_status ?? extractedData.red_list_status;
+    const extractedStatus = (extractedData.compliance?.red_list_status ?? extractedData.red_list_status) as string | undefined;
     if (extractedStatus === "Free" || extractedStatus === "Approved" || extractedStatus === "Contains") {
         redListStatus = extractedStatus;
     }
