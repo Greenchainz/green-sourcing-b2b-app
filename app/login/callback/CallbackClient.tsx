@@ -3,6 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useMsal } from "@azure/msal-react";
+import type { AuthenticationResult } from "@azure/msal-browser";
 
 type PublicConfig = {
   origin?: string;
@@ -15,7 +17,8 @@ type PublicConfig = {
 function CallbackClientInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { handleAzureCallback, setBackendUrl, setToken, setRefreshToken, setUser } = useAuth();
+  const { instance } = useMsal();
+  const { setBackendUrl, setToken, setRefreshToken, setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [_traceId, _setTraceId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
@@ -34,7 +37,7 @@ function CallbackClientInner() {
 
         if (provider && token && (provider === 'google' || provider === 'linkedin')) {
           pushStep(`Processing ${provider} OAuth callback...`);
-          
+
           // Set tokens in auth store
           setToken(token);
           if (refreshToken) {
@@ -59,13 +62,13 @@ function CallbackClientInner() {
             setUser(userData.user);
 
             pushStep("Sign-in successful! Redirecting...");
-            
+
             // Redirect to dashboard based on role (normalize to lowercase for comparison)
             setTimeout(() => {
               const redirectTo = userData.user.role?.toLowerCase() === "supplier" ? "/dashboard" : "/dashboard/buyer";
               router.push(redirectTo);
             }, 500);
-            
+
             return;
           } catch (fetchError) {
             console.error('Error fetching user data:', fetchError);
@@ -118,84 +121,64 @@ function CallbackClientInner() {
           pushStep(`Backend URL: ${config.backendUrl}`);
         }
 
-        // Get auth code and state from URL
-        const code = searchParams.get("code");
-        const state = searchParams.get("state");
-        const sessionState = sessionStorage.getItem("oauth_state");
-        if (debug)
-          console.info(
-            "[Auth] code present:",
-            !!code,
-            "state:",
-            state,
-            "sessionState:",
-            sessionState
-          );
-        pushStep("Validating sign-in state...");
+        pushStep("Completing Microsoft sign-in...");
+        const result = (await instance.handleRedirectPromise()) as
+          | AuthenticationResult
+          | null;
 
-        // Validate state for CSRF protection
-        if (!state || !sessionState || state !== sessionState) {
+        if (!result || !result.idTokenClaims) {
           throw new Error(
-            "Sign-in session expired or invalid state returned. Please try signing in again."
+            "No sign-in response received. Please try signing in again."
           );
         }
 
-        if (!code) {
-          throw new Error("No authorization code received from Azure AD");
+        const claims = result.idTokenClaims as Record<string, unknown>;
+        const email =
+          (claims.email as string) ||
+          (claims.preferred_username as string) ||
+          (claims.upn as string) ||
+          null;
+        const azureId = (claims.oid as string) || (claims.sub as string) || null;
+        const firstName = (claims.given_name as string) || null;
+        const lastName = (claims.family_name as string) || null;
+
+        if (!email || !azureId) {
+          throw new Error("Azure token missing required claims (email or oid)");
         }
 
-        // Sign user in via our backend.
-        // Backend performs the secure code exchange using AZURE_CLIENT_SECRET.
-        const redirectUri =
-          config.redirectUri || `${window.location.origin}/login/callback`;
-        if (debug) console.info("[Auth] Using redirectUri:", redirectUri);
-        pushStep(`Redirect URI: ${redirectUri}`);
+        pushStep("Finalizing sign-in on backend...");
+        const response = await fetch(`/api/auth/azure-callback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, firstName, lastName, azureId }),
+        });
 
-        if (debug) console.info("[Auth] Exchanging code via backend...");
-        pushStep(`Backend URL: ${config.backendUrl || "default"}`);
-
-        try {
-          await handleAzureCallback(code, redirectUri, config.backendUrl, (m) =>
-            pushStep(m)
-          );
-          if (debug)
-            console.info("[Auth] Backend exchange complete; routing to dashboard");
-
-          // Clear session storage
-          sessionStorage.removeItem("oauth_state");
-          sessionStorage.removeItem("oauth_nonce");
-
-          // Redirect based on user role
-          pushStep("Authentication successful! Redirecting...");
-          
-          // Get fresh auth state after handleAzureCallback completes
-          // handleAzureCallback updates the Zustand store synchronously
-          const authState = useAuth.getState();
-          const userRole = authState.user?.role?.toLowerCase();
-          const redirectTo = userRole === "supplier" ? "/dashboard" : "/dashboard/buyer";
-          
-          setTimeout(() => {
-            router.push(redirectTo);
-          }, 500);
-        } catch (callbackError) {
-          // handleAzureCallback already sets error state, but add more context
-          const errorMsg =
-            callbackError instanceof Error
-              ? callbackError.message
-              : "Unknown error";
-          if (
-            errorMsg.includes("connect") ||
-            errorMsg.includes("network") ||
-            errorMsg.includes("502")
-          ) {
-            throw new Error(
-              `Cannot connect to backend service. ` +
-                `Please ensure the backend is running at ${config.backendUrl || "http://localhost:3001"}. ` +
-                `Error: ${errorMsg}`
-            );
+        if (!response.ok) {
+          let details = "";
+          try {
+            const errorJson = await response.json();
+            details =
+              errorJson.error || errorJson.details || JSON.stringify(errorJson);
+          } catch {
+            details = await response.text().catch(() => "");
           }
-          throw callbackError;
+
+          throw new Error(
+            details
+              ? `Authentication failed: ${details}`
+              : `Authentication failed (HTTP ${response.status})`
+          );
         }
+
+        const data = await response.json();
+        setToken(data.token);
+        setRefreshToken(data.refreshToken);
+        setUser(data.user);
+
+        pushStep("Authentication successful! Redirecting...");
+        const userRole = data.user?.role?.toLowerCase();
+        const redirectTo = userRole === "supplier" ? "/dashboard" : "/dashboard/buyer";
+        setTimeout(() => router.push(redirectTo), 500);
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Authentication failed";
@@ -206,7 +189,7 @@ function CallbackClientInner() {
     };
 
     processCallback();
-  }, [searchParams, handleAzureCallback, router, setBackendUrl]);
+  }, [searchParams, instance, router, setBackendUrl]);
 
   if (isProcessing) {
     return (

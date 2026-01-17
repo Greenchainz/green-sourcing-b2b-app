@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { LayoutContent } from './LayoutContent'
+import MsalProviderWrapper from './providers/MsalProvider'
 import StructuredData from './components/StructuredData'
 
 const inter = Inter({
@@ -92,7 +93,9 @@ export default function RootLayout({
         <StructuredData />
       </head>
       <body>
-        <LayoutContent>{children}</LayoutContent>
+        <MsalProviderWrapper>
+          <LayoutContent>{children}</LayoutContent>
+        </MsalProviderWrapper>
       </body>
     </html>
   )

@@ -6,8 +6,9 @@ import { useAuth } from "@/lib/auth";
 import Image from "next/image";
 import TrustBadges from "../components/TrustBadges";
 import { Sparkles, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
+import { useMsal } from "@azure/msal-react";
+import { loginRequest } from "@/lib/auth/msalConfig";
 
-const AZURE_TENANT = process.env.NEXT_PUBLIC_AZURE_TENANT || "common";
 const AZURE_CLIENT_ID = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || "";
 const AZURE_REDIRECT_URI =
   process.env.NEXT_PUBLIC_AZURE_REDIRECT_URI ||
@@ -23,6 +24,7 @@ type PublicConfig = {
 
 export default function LoginClient() {
   const router = useRouter();
+  const { instance } = useMsal();
   const { user, isAuthenticated, isLoading, error } = useAuth();
   const [isInitializing, setIsInitializing] = useState(false);
   const [publicConfig, setPublicConfig] = useState<PublicConfig | null>(null);
@@ -34,7 +36,7 @@ export default function LoginClient() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const errorParam = params.get("error");
-      
+
       if (errorParam) {
         const errorMessages: Record<string, string> = {
           google_auth_failed: "Google sign-in failed. Please try again.",
@@ -42,9 +44,9 @@ export default function LoginClient() {
           linkedin_auth_failed: "LinkedIn sign-in failed. Please try again.",
           linkedin_callback_failed: "LinkedIn authentication completed but user creation failed. Please contact support."
         };
-        
+
         setOauthError(errorMessages[errorParam] || "Authentication failed. Please try again.");
-        
+
         // Clear error from URL
         window.history.replaceState({}, document.title, window.location.pathname);
       }
@@ -87,7 +89,6 @@ export default function LoginClient() {
   const initiateAzureLogin = () => {
     setIsInitializing(true);
 
-    const azureTenant = publicConfig?.azureTenant || AZURE_TENANT;
     const azureClientId = publicConfig?.azureClientId || AZURE_CLIENT_ID;
     const redirectUri = publicConfig?.redirectUri || AZURE_REDIRECT_URI;
 
@@ -99,27 +100,17 @@ export default function LoginClient() {
       return;
     }
 
-    const state = Math.random().toString(36).substring(7);
-    const nonce = Math.random().toString(36).substring(7);
-
-    // Save state for CSRF protection
-    sessionStorage.setItem("oauth_state", state);
-    sessionStorage.setItem("oauth_nonce", nonce);
-
-    const authorizeUrl = new URL(
-      `https://login.microsoftonline.com/${azureTenant}/oauth2/v2.0/authorize`
-    );
-
-    authorizeUrl.searchParams.append("client_id", azureClientId);
-    authorizeUrl.searchParams.append("response_type", "code");
-    authorizeUrl.searchParams.append("redirect_uri", redirectUri);
-    authorizeUrl.searchParams.append("scope", "openid profile email");
-    authorizeUrl.searchParams.append("state", state);
-    authorizeUrl.searchParams.append("nonce", nonce);
-    authorizeUrl.searchParams.append("prompt", "select_account");
-
-    // Redirect to Azure AD login
-    window.location.href = authorizeUrl.toString();
+    instance
+      .loginRedirect({
+        ...loginRequest,
+        redirectUri,
+        prompt: "select_account",
+      })
+      .catch((err) => {
+        console.error("Microsoft login failed:", err);
+        setIsInitializing(false);
+        setConfigError("Microsoft sign-in failed. Please try again.");
+      });
   };
 
   const initiateGoogleLogin = () => {
@@ -136,12 +127,12 @@ export default function LoginClient() {
     <div className="auth-page-premium">
       {/* Animated gradient background */}
       <div className="auth-bg-gradient" />
-      
+
       {/* Floating decorative orbs */}
       <div className="auth-deco-orb auth-deco-orb-1" />
       <div className="auth-deco-orb auth-deco-orb-2" />
       <div className="auth-deco-orb auth-deco-orb-3" />
-      
+
       {/* Floating particles */}
       <div className="floating-particles">
         <div className="floating-particle" />
