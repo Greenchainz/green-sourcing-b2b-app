@@ -283,12 +283,16 @@ export default function MaterialSearch() {
                 >
                   Max Carbon (GWP)
                 </label>
-                <div className="group relative flex items-center">
+                <button
+                  type="button"
+                  className="group relative flex items-center focus:outline-none"
+                  aria-label="What is Global Warming Potential?"
+                >
                   <Info className="w-4 h-4 text-gray-400 cursor-help" aria-hidden="true" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-xs p-2 rounded z-10 text-center shadow-lg">
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block group-focus:block w-48 bg-gray-900 text-white text-xs p-2 rounded z-10 text-center shadow-lg pointer-events-none">
                     Global Warming Potential (kg CO₂e). Lower values indicate smaller carbon footprint.
-                  </div>
-                </div>
+                  </span>
+                </button>
               </div>
               <input
                 id="gwp-filter"
@@ -315,12 +319,16 @@ export default function MaterialSearch() {
                   />
                   <span className="text-sm text-gray-700">Has EPD</span>
                 </label>
-                <div className="group relative flex items-center">
+                <button
+                  type="button"
+                  className="group relative flex items-center focus:outline-none"
+                  aria-label="What is an EPD?"
+                >
                   <Info className="w-4 h-4 text-gray-400 cursor-help" aria-hidden="true" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-xs p-2 rounded z-10 text-center shadow-lg">
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block group-focus:block w-48 bg-gray-900 text-white text-xs p-2 rounded z-10 text-center shadow-lg pointer-events-none">
                     Environmental Product Declaration. Verified document reporting environmental data.
-                  </div>
-                </div>
+                  </span>
+                </button>
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer">
