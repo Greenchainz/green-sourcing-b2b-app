@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import Image from "next/image";
 import TrustBadges from "../components/TrustBadges";
-import { Sparkles, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  Mail,
+  Lock,
+  AlertCircle,
+  ArrowLeft
+} from "lucide-react";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { loginRequest } from "@/lib/auth/msalConfig";
 
@@ -25,11 +34,34 @@ type PublicConfig = {
 
 export default function LoginClient() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, error } = useAuth();
+  const searchParams = useSearchParams();
+  const { user, isAuthenticated, isLoading, error, setUser, setToken, setRefreshToken } = useAuth();
+
   const [isInitializing, setIsInitializing] = useState(false);
   const [publicConfig, setPublicConfig] = useState<PublicConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
+
+  // Email/Password State
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  // Password Reset State
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetStatus, setResetStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+
+  // Check for registration success message
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  useEffect(() => {
+    if (searchParams?.get("registered") === "true") {
+      setRegistrationSuccess(true);
+    }
+  }, [searchParams]);
 
   const createMsalClient = (options: {
     clientId: string;
@@ -115,138 +147,174 @@ export default function LoginClient() {
       const azureTenant = publicConfig?.azureTenant || AZURE_TENANT;
       const redirectUri = publicConfig?.redirectUri || AZURE_REDIRECT_URI;
 
-      // Debug logging
-      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
-        console.log("[Azure Login] Configuration:", {
-          clientIdConfigured: !!azureClientId,
-          tenant: azureTenant,
-          redirectUri,
-          hasPublicConfig: !!publicConfig,
-        });
-      }
+      if (!azureClientId) throw new Error("Missing Azure Client ID.");
+      if (!redirectUri) throw new Error("Missing redirect URI.");
 
-      // Validate configuration
-      if (!azureClientId) {
-        throw new Error(
-          "Missing Azure Client ID. Set NEXT_PUBLIC_AZURE_CLIENT_ID environment variable."
-        );
-      }
-
-      if (!redirectUri) {
-        throw new Error(
-          "Missing redirect URI. This should be auto-configured but appears to be missing."
-        );
-      }
-
-      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
-        console.log("[Azure Login] Creating MSAL instance...");
-      }
-
-      // Create and initialize MSAL instance
       const msalClient = createMsalClient({
         clientId: azureClientId,
         tenant: azureTenant,
         redirectUri,
       });
 
-      // Initialize MSAL instance - this is critical for SPA configuration
-      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
-        console.log("[Azure Login] Initializing MSAL...");
-      }
       await msalClient.initialize();
 
-      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
-        console.log("[Azure Login] Starting login redirect...");
-        console.log("[Azure Login] Redirect URI:", redirectUri);
-      }
-
-      // Attempt login redirect (note: this performs a synchronous browser redirect)
       msalClient.loginRedirect({
         ...loginRequest,
         redirectUri,
         prompt: "select_account",
       });
-
-      // Note: loginRedirect() doesn't return - it redirects the browser
-      // If we reach here, something went wrong
-      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
-        console.warn("[Azure Login] loginRedirect() completed without redirecting");
-      }
     } catch (err) {
-      // Comprehensive error logging
-      console.error("[Azure Login] Error occurred:", err);
-      
-      if (err instanceof Error) {
-        console.error("[Azure Login] Error name:", err.name);
-        console.error("[Azure Login] Error message:", err.message);
-        console.error("[Azure Login] Error stack:", err.stack);
-      }
-
-      // User-friendly error messages
+      console.error("[Azure Login] Error:", err);
       let errorMessage = "Microsoft sign-in failed. Please try again.";
-      
-      if (err instanceof Error) {
-        if (err.message.includes("popup_window_error") || err.message.includes("popup")) {
-          errorMessage = "Popup was blocked. Please allow popups for this site or try again.";
-        } else if (err.message.includes("user_cancelled") || err.message.includes("cancel")) {
-          errorMessage = "Sign-in was cancelled. Please try again when ready.";
-        } else if (err.message.includes("network") || err.message.includes("fetch")) {
-          errorMessage = "Network error. Please check your connection and try again.";
-        } else if (err.message.includes("Client ID") || err.message.includes("configuration")) {
-          errorMessage = err.message; // Show configuration errors directly
-        } else if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
-          errorMessage = `${errorMessage} Details: ${err.message}`;
-        }
-      }
-
+      if (err instanceof Error) errorMessage = err.message;
       setConfigError(errorMessage);
-    } finally {
-      // Reset loading state - this will happen whether redirect succeeds or fails
-      // (If redirect succeeds, user will leave the page anyway)
       setIsInitializing(false);
     }
   };
 
-  const initiateGoogleLogin = () => {
-    try {
-      setIsInitializing(true);
-      setConfigError(null);
-      setOauthError(null);
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsEmailLoading(true);
+    setEmailError(null);
 
+    try {
       const backendUrl = publicConfig?.backendUrl || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
       
-      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
-        console.log("[Google Login] Redirecting to:", `${backendUrl}/auth/google`);
+      const response = await fetch(`${backendUrl}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Invalid email or password");
       }
 
-      window.location.href = `${backendUrl}/auth/google`;
+      setUser(data.user);
+      setToken(data.token);
+      if (data.refreshToken) setRefreshToken(data.refreshToken);
+
+      const redirectTo = data.user.role === "supplier" ? "/dashboard" : "/dashboard/buyer";
+      router.push(redirectTo);
     } catch (err) {
-      console.error("[Google Login] Error:", err);
-      setIsInitializing(false);
-      setConfigError("Failed to initiate Google sign-in. Please try again.");
+      setEmailError(err instanceof Error ? err.message : "Login failed");
+      setIsEmailLoading(false);
     }
   };
 
-  const initiateLinkedInLogin = () => {
-    try {
-      setIsInitializing(true);
-      setConfigError(null);
-      setOauthError(null);
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetStatus("loading");
+    setResetMessage(null);
 
+    try {
       const backendUrl = publicConfig?.backendUrl || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
       
-      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
-        console.log("[LinkedIn Login] Redirecting to:", `${backendUrl}/auth/linkedin`);
+      const response = await fetch(`${backendUrl}/api/v1/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to send reset email");
       }
 
-      window.location.href = `${backendUrl}/auth/linkedin`;
+      setResetStatus("success");
+      setResetMessage("Check your email for password reset instructions.");
     } catch (err) {
-      console.error("[LinkedIn Login] Error:", err);
-      setIsInitializing(false);
-      setConfigError("Failed to initiate LinkedIn sign-in. Please try again.");
+      setResetStatus("error");
+      setResetMessage(err instanceof Error ? err.message : "Failed to request password reset");
     }
   };
 
+  // Forgot Password View
+  if (showForgotPassword) {
+    return (
+      <div className="auth-page-premium">
+        <div className="auth-bg-gradient" />
+        <div className="auth-deco-orb auth-deco-orb-1" />
+
+        <div className="relative z-10 py-14 min-h-screen flex flex-col justify-center">
+          <div className="gc-container max-w-[500px]">
+            <div className="auth-card-premium p-8 md:p-10 section-fade-in">
+              <button
+                onClick={() => setShowForgotPassword(false)}
+                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 transition-colors text-sm font-semibold"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Sign In
+              </button>
+
+              <div className="mb-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 mb-4">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900">Reset Password</h2>
+                <p className="mt-2 text-slate-600">
+                  Enter your email address and we'll send you instructions to reset your password.
+                </p>
+              </div>
+
+              {resetStatus === "success" ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center animate-fade-in-up">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+                  <p className="text-emerald-800 font-medium mb-4">{resetMessage}</p>
+                  <button
+                    onClick={() => setShowForgotPassword(false)}
+                    className="btn-aurora w-full text-sm py-2"
+                  >
+                    Return to Login
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handlePasswordReset} className="space-y-4">
+                  {resetStatus === "error" && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2 text-red-700 text-sm">
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <span>{resetMessage}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="name@company.com"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        className="input-vibrant pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={resetStatus === "loading"}
+                    className="btn-aurora w-full flex items-center justify-center gap-2"
+                  >
+                    {resetStatus === "loading" ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      "Send Reset Link"
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main Login View
   return (
     <div className="auth-page-premium">
       {/* Animated gradient background */}
@@ -298,10 +366,15 @@ export default function LoginClient() {
               <h2 className="text-xl font-black text-slate-900">
                 Choose Your Sign-In Method
               </h2>
-              <p className="mt-2 text-sm text-slate-500">
-                Quick, secure access to your sustainability dashboard
-              </p>
             </div>
+
+            {/* Success Message (from Registration) */}
+            {registrationSuccess && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-start gap-3 text-emerald-800 text-sm animate-fade-in-up">
+                <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-600" />
+                <span>Account created successfully! Please sign in with your email and password.</span>
+              </div>
+            )}
 
             {/* Error Message */}
             {(error || configError || oauthError) && (
@@ -322,69 +395,11 @@ export default function LoginClient() {
               </div>
             ) : (
               <>
-                {/* Google Sign In Button */}
-                <button
-                  onClick={initiateGoogleLogin}
-                  disabled={isLoading || isInitializing}
-                  className="auth-btn-premium auth-btn-google mb-4"
-                >
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      fill="#EA4335"
-                    />
-                  </svg>
-                  <span>Continue with Google</span>
-                </button>
-
-                {/* LinkedIn Sign In Button */}
-                <button
-                  onClick={initiateLinkedInLogin}
-                  disabled={isLoading || isInitializing}
-                  className="auth-btn-premium auth-btn-linkedin mb-6"
-                >
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="#0A66C2"
-                  >
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                  </svg>
-                  <span>Continue with LinkedIn</span>
-                </button>
-
-                {/* Divider */}
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Or use
-                  </span>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-                </div>
-
                 {/* Microsoft Sign In Button - Primary */}
                 <button
                   onClick={initiateAzureLogin}
                   disabled={isLoading || isInitializing}
-                  className="auth-btn-premium auth-btn-microsoft group mb-6"
+                  className="auth-btn-premium auth-btn-microsoft group mb-4"
                 >
                   <svg
                     width="22"
@@ -398,33 +413,108 @@ export default function LoginClient() {
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </button>
 
-                {/* Benefits */}
-                <div className="bg-gradient-to-br from-emerald-50 via-cyan-50 to-violet-50 rounded-xl p-5 border border-emerald-100">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield className="w-5 h-5 text-emerald-600" />
-                    <span className="font-bold text-slate-800">Why GreenChainz?</span>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="flex items-center gap-2 text-sm text-slate-600">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                      50,000+ verified EPD products
-                    </p>
-                    <p className="flex items-center gap-2 text-sm text-slate-600">
-                      <CheckCircle2 className="w-4 h-4 text-cyan-500 flex-shrink-0" />
-                      AI-powered sustainability scoring
-                    </p>
-                    <p className="flex items-center gap-2 text-sm text-slate-600">
-                      <CheckCircle2 className="w-4 h-4 text-violet-500 flex-shrink-0" />
-                      LEED & Buy Clean compliance tools
-                    </p>
-                  </div>
+                {/* Google Sign In Button */}
+                <button
+                  onClick={() => window.location.href = "/api/v1/auth/google"}
+                  className="auth-btn-premium auth-btn-google mb-4"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+
+                {/* LinkedIn Sign In Button */}
+                <button
+                  onClick={() => window.location.href = "/api/v1/auth/linkedin"}
+                  className="auth-btn-premium auth-btn-linkedin mb-6"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#0A66C2">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                  </svg>
+                  <span>Continue with LinkedIn</span>
+                </button>
+
+                {/* Divider */}
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Or sign in with email
+                  </span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
                 </div>
 
+                {/* Email Form */}
+                <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
+                  {emailError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2 text-red-700 text-sm">
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <span>{emailError}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700 ml-1">Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="name@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="input-vibrant pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between ml-1">
+                      <label className="text-sm font-semibold text-slate-700">Password</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                      <input
+                        type="password"
+                        required
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="input-vibrant pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isEmailLoading}
+                    className="btn-aurora w-full flex items-center justify-center gap-2"
+                  >
+                    {isEmailLoading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      "Sign In"
+                    )}
+                  </button>
+                </form>
+
                 {/* New user info */}
-                <div className="mt-6 text-center">
+                <div className="mt-6 text-center pt-5 border-t border-slate-100">
                   <p className="text-sm text-slate-500">
                     <span className="font-semibold text-emerald-600">New to GreenChainz?</span>{" "}
-                    Sign in to create your account instantly.
+                    <Link href="/signup" className="text-emerald-700 font-bold hover:underline">
+                      Create your account
+                    </Link>
                   </p>
                 </div>
               </>
@@ -432,20 +522,14 @@ export default function LoginClient() {
           </div>
 
           {/* Footer Links */}
-          <div className="mt-6 pt-5 border-t border-white/50 text-center section-fade-in section-delay-2">
+          <div className="mt-6 text-center section-fade-in section-delay-2">
             <p className="text-xs text-slate-500">
               By signing in, you agree to our{" "}
-              <a
-                href="/legal/terms"
-                className="text-emerald-600 font-semibold hover:text-emerald-700 transition-colors"
-              >
+              <a href="/legal/terms" className="text-emerald-600 font-semibold hover:text-emerald-700 transition-colors">
                 Terms of Service
               </a>{" "}
               and{" "}
-              <a
-                href="/legal/privacy"
-                className="text-emerald-600 font-semibold hover:text-emerald-700 transition-colors"
-              >
+              <a href="/legal/privacy" className="text-emerald-600 font-semibold hover:text-emerald-700 transition-colors">
                 Privacy Policy
               </a>
             </p>
@@ -454,19 +538,6 @@ export default function LoginClient() {
           {/* Trust Badges */}
           <div className="mt-8 section-fade-in section-delay-3">
             <TrustBadges variant="compact" size="sm" />
-          </div>
-
-          {/* Support Link */}
-          <div className="mt-6 text-center section-fade-in section-delay-4">
-            <p className="text-sm text-slate-600">
-              Need help?{" "}
-              <a
-                href="mailto:support@greenchainz.com"
-                className="text-emerald-600 font-semibold hover:text-emerald-700 transition-colors"
-              >
-                Contact support
-              </a>
-            </p>
           </div>
         </div>
       </div>
