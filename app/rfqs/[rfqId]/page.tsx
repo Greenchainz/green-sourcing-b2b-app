@@ -8,41 +8,27 @@ import TrustBadges from "@/app/components/TrustBadges";
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
 
-interface RFQLineItem {
-  id: number;
-  rfq_id: string;
-  material_name: string;
-  quantity: number;
-  unit: string;
-  specification?: string | null;
-  sort_order?: number | null;
-}
-
 interface RFQ {
   id: string;
   project_name: string;
-  description?: string | null;
-  deadline: string;
-  budget?: number | null;
+  category?: string | null;
+  message?: string | null;
   status: string;
   created_at: string;
-  materials: RFQLineItem[];
-}
-
-interface RFQResponseQuote {
-  quote_id: number;
-  line_item_id: number;
-  price: number;
-  availability: "available" | "partial" | "unavailable";
-  lead_time_days?: number | null;
+  project_details?: {
+    deadline?: string | null;
+    attachments?: Array<{ url?: string; name?: string; type?: string }>;
+  } | null;
 }
 
 interface RFQResponse {
-  response_id: number;
-  supplier_id: number;
-  notes?: string | null;
+  id?: string;
+  response_id?: number;
+  supplier_id: string | number;
+  supplier_name?: string | null;
+  price?: number | null;
   created_at: string;
-  quotes: RFQResponseQuote[];
+  quotes?: RFQResponseQuote[];
 }
 
 // Helper to get status badge class
@@ -80,11 +66,12 @@ export default function RFQDetailPage() {
     const fetchRFQ = async () => {
       try {
         if (!token) throw new Error("Not authenticated. Please log in first.");
-        const response = await fetch(`${BACKEND_URL}/api/v1/rfqs/${rfqId}`, {
+        const response = await fetch(`${BACKEND_URL}/api/v2/rfqs/${rfqId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) throw new Error("Failed to fetch RFQ");
-        setRfq(await response.json());
+        const data = await response.json();
+        setRfq(data.rfq);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       }
@@ -93,13 +80,12 @@ export default function RFQDetailPage() {
     const fetchResponses = async () => {
       try {
         if (!token) return;
-        const response = await fetch(
-          `${BACKEND_URL}/api/v1/rfqs/${rfqId}/responses`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const response = await fetch(`${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!response.ok) return;
         const data = await response.json();
-        setResponses(data.responses || []);
+        setResponses(data || []);
       } catch (err) {
         console.error("Failed to fetch responses:", err);
       }
@@ -120,19 +106,11 @@ export default function RFQDetailPage() {
 
     try {
       if (!token) throw new Error("Not authenticated. Please log in first.");
-      if (!rfq?.materials?.length)
-        throw new Error("RFQ has no line items to quote.");
       const price = parseFloat(bidForm.quotedPrice);
       if (Number.isNaN(price)) throw new Error("Please enter a valid price.");
 
-      const quotes = rfq.materials.map((li) => ({
-        rfq_line_item_id: li.id,
-        price,
-        availability: "available" as const,
-      }));
-
       const response = await fetch(
-        `${BACKEND_URL}/api/v1/rfqs/${rfqId}/respond`,
+        `${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids`,
         {
           method: "POST",
           headers: {
@@ -140,8 +118,8 @@ export default function RFQDetailPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            quotes,
-            notes: bidForm.notes || null,
+            total_price: price,
+            line_items: [],
           }),
         }
       );
@@ -205,57 +183,28 @@ export default function RFQDetailPage() {
                 >
                   {rfq.status}
                 </span>
-                {rfq.deadline && (
+                {rfq.project_details?.deadline && (
                   <span className="gc-rfq-deadline">
-                    Deadline: {new Date(rfq.deadline).toLocaleDateString()}
+                    Deadline: {new Date(rfq.project_details.deadline).toLocaleDateString()}
                   </span>
                 )}
               </div>
             </div>
-
-            {rfq.budget && (
-              <div className="gc-rfq-budget">
-                <p className="gc-rfq-budget-value">
-                  ${rfq.budget.toLocaleString()}
-                </p>
-                <p className="gc-rfq-budget-label">Estimated Budget</p>
-              </div>
-            )}
           </div>
 
-          {rfq.description && (
+          {rfq.message && (
             <>
               <hr className="gc-divider" />
               <div>
                 <h3 className="gc-rfq-description-title">Description</h3>
-                <p className="gc-rfq-description-text">{rfq.description}</p>
+                <p className="gc-rfq-description-text">{rfq.message}</p>
               </div>
             </>
           )}
         </div>
 
-        {/* Materials Card */}
-        <div className="gc-card gc-animate-fade-in gc-stagger-1 gc-card-padding gc-spacing-bottom-sm">
-          <h2 className="gc-rfq-section-title">Required Materials</h2>
-          <div className="gc-materials-grid">
-            {rfq.materials.map((material, idx) => (
-              <div key={idx} className="gc-material-item">
-                <div>
-                  <p className="gc-material-name">{material.material_name}</p>
-                  {material.specification && (
-                    <p className="gc-material-spec">{material.specification}</p>
-                  )}
-                </div>
-                <p className="gc-material-qty">
-                  {material.quantity} {material.unit}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Bids Card */}
-        <div className="gc-card gc-animate-fade-in gc-stagger-2 gc-card-padding">
+        <div className="gc-card gc-animate-fade-in gc-stagger-1 gc-card-padding">
           <div className="gc-bids-header">
             <h2 className="gc-bids-title">
               Bids Received ({responses.length})
@@ -282,7 +231,7 @@ export default function RFQDetailPage() {
             <form onSubmit={handleSubmitBid} className="gc-card gc-bid-form">
               <div className="gc-form-group">
                 <label className="gc-label gc-label-required">
-                  Your Quote (USD per line item)
+                  Your Quote (USD total)
                 </label>
                 <input
                   type="number"
@@ -330,7 +279,7 @@ export default function RFQDetailPage() {
                   <div className="gc-response-header">
                     <div>
                       <h3 className="gc-response-supplier">
-                        Supplier #{response.supplier_id}
+                          {response.supplier_name || `Supplier #${response.supplier_id}`}
                       </h3>
                       <p className="gc-response-date">
                         {new Date(
@@ -340,29 +289,12 @@ export default function RFQDetailPage() {
                     </div>
                   </div>
 
-                  {Array.isArray(response.quotes) &&
-                    response.quotes.length > 0 && (
+                    {typeof response.price === "number" && (
                       <div className="gc-quotes-section">
-                        <p className="gc-quotes-label">Quotes:</p>
-                        <ul className="gc-quotes-list">
-                          {response.quotes.map((q) => (
-                            <li key={q.quote_id}>
-                              Line item #{q.line_item_id}:{" "}
-                              <strong className="gc-quote-price">
-                                ${q.price}
-                              </strong>{" "}
-                              ({q.availability})
-                            </li>
-                          ))}
-                        </ul>
+                        <p className="gc-quotes-label">Total Price:</p>
+                        <p className="gc-quote-price">${response.price}</p>
                       </div>
                     )}
-
-                  {response.notes && (
-                    <p className="gc-response-notes">
-                      &ldquo;{response.notes}&rdquo;
-                    </p>
-                  )}
                 </div>
               ))
             )}

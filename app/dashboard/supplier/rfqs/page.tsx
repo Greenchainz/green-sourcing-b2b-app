@@ -2,16 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { Search, MessageSquare, Filter, DollarSign } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
+
+const BACKEND_URL =
+   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 interface RFQ {
    id: string;
    project_name?: string;
    buyer_name?: string;
-   product_name?: string;
-   quantity?: number;
-   unit?: string;
+   category?: string;
    status?: string;
-   received_at?: string;
+   visible_at?: string;
    created_at?: string;
    message?: string;
 }
@@ -19,15 +21,34 @@ interface RFQ {
 export default function RFQsPage() {
    const [rfqs, setRfqs] = useState<RFQ[]>([]);
    const [loading, setLoading] = useState(true);
+   const { user, token } = useAuth() as {
+      user: { id: string } | null;
+      token: string | null;
+   };
 
    useEffect(() => {
-      fetch('/api/supplier/rfqs')
-         .then(res => res.json())
-         .then(data => {
-            setRfqs(data);
+      const loadInbox = async () => {
+         try {
+            if (!token || !user?.id) {
+               setLoading(false);
+               return;
+            }
+            const res = await fetch(
+               `${BACKEND_URL}/api/v2/suppliers/${user.id}/inbox`,
+               { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!res.ok) throw new Error('Failed to load inbox');
+            const data = await res.json();
+            setRfqs(data.inbox || []);
+         } catch (_err) {
+            setRfqs([]);
+         } finally {
             setLoading(false);
-         });
-   }, []);
+         }
+      };
+
+      loadInbox();
+   }, [token, user?.id]);
 
    return (
       <div className="space-y-6">
@@ -65,7 +86,7 @@ export default function RFQsPage() {
                      : status === 'quoted'
                         ? 'bg-amber-50 text-amber-600 border-amber-100'
                         : 'bg-slate-50 text-slate-600 border-slate-100';
-                  const receivedDate = new Date(rfq.received_at || rfq.created_at || Date.now()).toLocaleDateString();
+                  const receivedDate = new Date(rfq.visible_at || rfq.created_at || Date.now()).toLocaleDateString();
 
                   return (
                      <div key={rfq.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:border-green-300 transition-all cursor-pointer group">
@@ -79,7 +100,7 @@ export default function RFQsPage() {
                                     {status.toUpperCase()}
                                  </span>
                               </div>
-                              <p className="text-slate-500 text-sm">from <span className="font-medium text-slate-700">{rfq.buyer_name}</span></p>
+                              <p className="text-slate-500 text-sm">RFQ ID <span className="font-medium text-slate-700">{rfq.id}</span></p>
                            </div>
                            <div className="text-right">
                               <span className="text-xs text-slate-400 font-medium">Received</span>
@@ -87,18 +108,14 @@ export default function RFQsPage() {
                            </div>
                         </div>
 
-                        <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
                            <div>
-                              <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Product</span>
-                              <p className="text-sm font-medium text-slate-900 mt-1">{rfq.product_name}</p>
-                           </div>
-                           <div>
-                              <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Quantity</span>
-                              <p className="text-sm font-medium text-slate-900 mt-1">{rfq.quantity} {rfq.unit}</p>
+                              <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Category</span>
+                              <p className="text-sm font-medium text-slate-900 mt-1">{rfq.category || 'Unspecified'}</p>
                            </div>
                            <div>
                               <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Message</span>
-                              <p className="text-sm text-slate-600 mt-1 truncate">{rfq.message}</p>
+                              <p className="text-sm text-slate-600 mt-1 truncate">{rfq.message || 'No message provided'}</p>
                            </div>
                         </div>
 

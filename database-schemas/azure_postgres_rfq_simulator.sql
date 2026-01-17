@@ -173,7 +173,7 @@ BEGIN
   ) THEN
     ALTER TABLE rfqs
       ADD CONSTRAINT rfqs_status_check
-      CHECK (status IN ('pending','open','responded','closed','cancelled','expired'));
+      CHECK (status IN ('pending','open','responded','closed','cancelled','expired','archived'));
   END IF;
 
   IF NOT EXISTS (

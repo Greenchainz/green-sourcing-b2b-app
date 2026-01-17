@@ -13,7 +13,6 @@ const documentAIRoutes = require("./routes/documentAI");
 const rfqSimulatorRoutes = require("./routes/rfq-simulator");
 const authRoutes = require("./routes/auth");
 const oauthRoutes = require("./routes/oauth");
-const rfqRoutes = require("./routes/rfqs");
 const rfqApiRoutes = require("./routes/rfq-api");
 const shadowSupplierRoutes = require("./routes/shadow-suppliers");
 const aiGatewayRoutes = require("./routes/ai-gateway");
@@ -21,6 +20,7 @@ const buyerVerificationRoutes = require("./routes/buyerVerification");
 const materialsRoutes = require("./routes/materials");
 const aiAgentsRoutes = require("./routes/ai-agents");
 const supplierRoutes = require("./routes/suppliers");
+const supplierV2Routes = require("./routes/suppliers-v2");
 const contactRoutes = require("./routes/contact");
 
 // AI Gateway
@@ -166,7 +166,8 @@ async function start() {
     const excludedPaths = [
       '/api/v1/auth',     // Auth routes (use JWT)
       '/api/v1/ai',       // AI routes (use JWT)
-      '/api/v1/rfqs',     // RFQ routes (use JWT)
+      '/api/v2/rfqs',     // RFQ routes (use JWT)
+      '/api/v2/suppliers', // Supplier v2 routes (use JWT)
       '/api/v1/uploads',  // Upload routes (use JWT)
       '/api/v1/verification', // Verification routes (use JWT)
       '/api/v1/subscriptions', // Subscription routes (use JWT)
@@ -509,8 +510,8 @@ async function start() {
   app.use("/api/v1/ai", documentAIRoutes);
   app.use("/api/v1/auth", authRoutes);
   app.use("/auth", oauthRoutes);
-  app.use("/api/v1/rfqs", rfqRoutes);
-  app.use("/api/v2/rfq", rfqApiRoutes);
+  app.use("/api/v2/rfqs", rfqApiRoutes);
+  app.use("/api/v2/suppliers", supplierV2Routes);
   app.use("/api/v1/verification", buyerVerificationRoutes);
   app.use("/api/v1/ai-gateway", aiGatewayRoutes);
   app.use("/api/v1/subscriptions", subscriptionRoutes);

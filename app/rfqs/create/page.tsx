@@ -171,22 +171,19 @@ export default function CreateRFQPage() {
         throw new Error("Not authenticated. Please log in first.");
       }
 
-      const response = await fetch(`${BACKEND_URL}/api/v1/rfqs`, {
+      const response = await fetch(`${BACKEND_URL}/api/v2/rfqs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          project_name: formData.project_name,
+          title: formData.project_name,
           description: formData.description || null,
+          category: formData.certifications_required || null,
           deadline: formData.deadline,
-          budget: formData.budget ? parseFloat(formData.budget) : null,
-          certifications_required: formData.certifications_required || null,
-          location: formData.location || null,
-          materials: materials.filter((m) => m.name.trim() !== ""),
-          deposit_payment_intent_id: depositPaymentIntentId,
-          deposit_amount: depositAmount,
+          supplier_ids: [],
+          attachments: [],
         }),
       });
 
