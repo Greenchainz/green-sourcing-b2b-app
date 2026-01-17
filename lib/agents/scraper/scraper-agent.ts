@@ -6,10 +6,11 @@
  * 
  * Architecture:
  * 1. Search Web (Azure AI Search) -> Finds PDF URL/Content
- * 2. Extract Data (Azure OpenAI) -> Converts text to JSON
- * 3. Parse viability data (ASTM, Labor, OTIF)
- * 4. Save to Azure DB -> Store viability profile
- * 5. Return structured data
+ * 2. Fetch Content (WebFetcher) -> If snippet is insufficient, fetch full page
+ * 3. Extract Data (Azure OpenAI) -> Converts text to JSON
+ * 4. Parse viability data (ASTM, Labor, OTIF)
+ * 5. Save to Azure DB -> Store viability profile
+ * 6. Return structured data
  */
 
 import { AzureOpenAI } from "openai";
@@ -18,6 +19,7 @@ import { DATA_JANITOR_PROMPTS } from "../../prompts/data-janitor";
 import { saveViabilityProfile } from "../../azure-db";
 import { MaterialViabilityProfile, ASTMStandard, LaborUnits, OTIFMetrics } from "../../../types/schema";
 import { calculateViabilityScoresForAllPersonas } from "../../scoring/viability-scoring";
+import { WebFetcher } from "./web-fetcher";
 
 // Interface for Azure Search document
 interface SearchDocument {
@@ -65,6 +67,9 @@ export interface ScrapedMaterial {
     viability_profile?: MaterialViabilityProfile;
     viability_profile_id?: number;
 }
+
+// Initialize WebFetcher
+const webFetcher = new WebFetcher();
 
 /**
  * AZURE AI SEARCH
@@ -168,7 +173,7 @@ async function extractWithOpenAI(text: string, promptType: 'carbon' | 'health'):
             model: deployment,
             messages: [
                 { role: "system", content: systemPrompt },
-                { role: "user", content: `Analyze this search result:\n\n${text}` },
+                { role: "user", content: `Analyze this text and extract structured data:\n\n${text}` },
             ],
             response_format: { type: "json_object" }
         });
@@ -194,23 +199,60 @@ export async function scrapeMaterialData(options: {
     console.log(`🤖 Scraper Agent activated for: ${options.material_name}`);
 
     // 1. Search (Azure AI Search with fallback)
-    const searchResult = await searchWeb(options.material_name);
+    let searchResult = await searchWeb(options.material_name);
 
-    // 2. Extract Data (Real AI)
+    // 2. Enhance content if needed
+    // If we have a URL but the snippet is short (likely just a summary), we fetch the full page
+    // unless it's a PDF (mock or real) which we can't easily scrape with axios alone without pdf parsing lib
+    // For now, if it's an HTTP URL and not explicitly a PDF, we try to fetch.
+    if (searchResult.url && searchResult.url.startsWith('http') && !searchResult.url.toLowerCase().endsWith('.pdf')) {
+        try {
+            console.log(`🌍 Attempting to scrape external URL: ${searchResult.url}`);
+            const fetchedPage = await webFetcher.fetchPage(searchResult.url);
+
+            // If fetch was successful and gave us substantial content, use it.
+            if (fetchedPage.content && fetchedPage.content.length > 200) {
+                 searchResult = {
+                    title: fetchedPage.title,
+                    snippet: fetchedPage.content, // Use full scraped content
+                    url: fetchedPage.url
+                 };
+            }
+        } catch (fetchError) {
+             console.warn(`⚠️ External scraping failed for ${searchResult.url}, using search snippet instead.`);
+             // Continue with original search result
+        }
+    }
+
+    // 3. Extract Data (Real AI)
     const promptType = options.extract_fields.includes("health_grade") ? 'health' : 'carbon';
 
-    // Combine search snippet into context
+    // Combine search snippet/content into context
+    // We limit context size to avoid token overflow, taking first 15000 chars if exceedingly long
+    const contentToAnalyze = searchResult.snippet.length > 20000
+        ? searchResult.snippet.substring(0, 20000)
+        : searchResult.snippet;
+
     const extractionContext = `
         Title: ${searchResult.title}
         URL: ${searchResult.url}
-        Content: ${searchResult.snippet}
+        Content: ${contentToAnalyze}
     `;
 
-    const extractedData = await extractWithOpenAI(extractionContext, promptType);
+    let extractedData: ExtractedData;
+    try {
+        extractedData = await extractWithOpenAI(extractionContext, promptType);
+    } catch (error) {
+        console.error("⚠️ Extraction failed, returning partial/mock data");
+        extractedData = {
+            gwp_per_unit: 0,
+            health_grade: "C"
+        };
+    }
 
     console.log("✅ Extraction complete:", extractedData);
 
-    // 3. Build viability profile if requested
+    // 4. Build viability profile if requested
     let viabilityProfile: MaterialViabilityProfile | undefined;
     let viabilityProfileId: number | undefined;
 
@@ -230,7 +272,7 @@ export async function scrapeMaterialData(options: {
         }
     }
 
-    // 4. Normalize & Return
+    // 5. Normalize & Return
     return {
         product_name: options.material_name,
         gwp_per_unit: extractedData.gwp_per_unit ?? extractedData.GWP ?? 0,

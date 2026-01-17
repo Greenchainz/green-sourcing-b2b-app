@@ -19,9 +19,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@azure/msal-browser": "^3.27.0",
     "@azure/ai-form-recognizer": "^5.0.0",
     "@azure/identity": "^4.13.0",
+    "@azure/msal-browser": "^3.27.0",
     "@azure/search-documents": "^12.2.0",
     "@azure/storage-blob": "^12.29.1",
     "@azure/storage-queue": "^12.28.1",
