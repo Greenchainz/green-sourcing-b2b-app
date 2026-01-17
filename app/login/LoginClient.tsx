@@ -6,8 +6,8 @@ import { useAuth } from "@/lib/auth";
 import Image from "next/image";
 import TrustBadges from "../components/TrustBadges";
 import { Sparkles, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
-import { useMsal } from "@azure/msal-react";
 import { loginRequest } from "@/lib/auth/msalConfig";
+import { msalInstance } from "@/lib/auth/msalInstance";
 
 const AZURE_CLIENT_ID = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || "";
 const AZURE_REDIRECT_URI =
@@ -24,7 +24,6 @@ type PublicConfig = {
 
 export default function LoginClient() {
   const router = useRouter();
-  const { instance } = useMsal();
   const { user, isAuthenticated, isLoading, error } = useAuth();
   const [isInitializing, setIsInitializing] = useState(false);
   const [publicConfig, setPublicConfig] = useState<PublicConfig | null>(null);
@@ -100,7 +99,7 @@ export default function LoginClient() {
       return;
     }
 
-    instance
+    msalInstance
       .loginRedirect({
         ...loginRequest,
         redirectUri,

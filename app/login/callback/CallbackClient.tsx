@@ -3,8 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { useMsal } from "@azure/msal-react";
 import type { AuthenticationResult } from "@azure/msal-browser";
+import { msalInstance } from "@/lib/auth/msalInstance";
 
 type PublicConfig = {
   origin?: string;
@@ -17,7 +17,6 @@ type PublicConfig = {
 function CallbackClientInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { instance } = useMsal();
   const { setBackendUrl, setToken, setRefreshToken, setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [_traceId, _setTraceId] = useState<string | null>(null);
@@ -122,7 +121,7 @@ function CallbackClientInner() {
         }
 
         pushStep("Completing Microsoft sign-in...");
-        const result = (await instance.handleRedirectPromise()) as
+        const result = (await msalInstance.handleRedirectPromise()) as
           | AuthenticationResult
           | null;
 
@@ -189,7 +188,7 @@ function CallbackClientInner() {
     };
 
     processCallback();
-  }, [searchParams, instance, router, setBackendUrl]);
+  }, [searchParams, router, setBackendUrl]);
 
   if (isProcessing) {
     return (
