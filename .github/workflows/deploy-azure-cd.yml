@@ -54,6 +54,7 @@ jobs:
       
       - name: Build and Push Backend Image
         run: |
+          # Uses backend/Dockerfile.azure with root context (.) to access backend/ and database-schemas/
           az acr build \
             --registry ${{ vars.CONTAINER_REGISTRY }} \
             --image greenchainz-backend:${{ github.sha }} \
