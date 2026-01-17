@@ -7,6 +7,7 @@ import {
   X,
   CheckCircle,
   MapPin,
+  Info,
 } from "lucide-react";
 
 interface Material {
@@ -169,6 +170,12 @@ export default function MaterialSearch() {
     return "bg-red-100 text-red-800 border-red-300";
   };
 
+  const getGWPLabel = (gwp: number) => {
+    if (gwp < 50) return "Low Carbon Impact";
+    if (gwp < 100) return "Medium Carbon Impact";
+    return "High Carbon Impact";
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6">
       {/* Header */}
@@ -207,6 +214,7 @@ export default function MaterialSearch() {
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
             aria-expanded={showFilters}
+            aria-controls="filters-panel"
           >
             <Filter className="w-5 h-5" aria-hidden="true" />
             Filters
@@ -215,7 +223,10 @@ export default function MaterialSearch() {
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            id="filters-panel"
+            className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
             <div>
               <label
                 htmlFor="manufacturer-filter"
@@ -265,12 +276,20 @@ export default function MaterialSearch() {
             </div>
 
             <div>
-              <label
-                htmlFor="gwp-filter"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Max Carbon (GWP)
-              </label>
+              <div className="flex items-center gap-2 mb-2">
+                <label
+                  htmlFor="gwp-filter"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Max Carbon (GWP)
+                </label>
+                <div className="group relative flex items-center">
+                  <Info className="w-4 h-4 text-gray-400 cursor-help" aria-hidden="true" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-xs p-2 rounded z-10 text-center shadow-lg">
+                    Global Warming Potential (kg CO₂e). Lower values indicate smaller carbon footprint.
+                  </div>
+                </div>
+              </div>
               <input
                 id="gwp-filter"
                 type="number"
@@ -284,17 +303,25 @@ export default function MaterialSearch() {
             </div>
 
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.hasEPD}
-                  onChange={(e) =>
-                    setFilters({ ...filters, hasEPD: e.target.checked })
-                  }
-                  className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-                />
-                <span className="text-sm text-gray-700">Has EPD</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.hasEPD}
+                    onChange={(e) =>
+                      setFilters({ ...filters, hasEPD: e.target.checked })
+                    }
+                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Has EPD</span>
+                </label>
+                <div className="group relative flex items-center">
+                  <Info className="w-4 h-4 text-gray-400 cursor-help" aria-hidden="true" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-xs p-2 rounded z-10 text-center shadow-lg">
+                    Environmental Product Declaration. Verified document reporting environmental data.
+                  </div>
+                </div>
+              </div>
 
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -391,7 +418,9 @@ export default function MaterialSearch() {
 
                 {/* GWP Badge */}
                 <div
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border mb-4 ${getGWPBadgeColor(material.gwp)}`}
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border mb-4 cursor-help ${getGWPBadgeColor(material.gwp)}`}
+                  aria-label={`GWP: ${material.gwp} ${material.gwp_units} - ${getGWPLabel(material.gwp)}`}
+                  title={getGWPLabel(material.gwp)}
                 >
                   {material.gwp} {material.gwp_units}
                 </div>

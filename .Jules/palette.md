@@ -9,3 +9,7 @@
 ## 2024-05-24 - Semantic Progress Steps
 **Learning:** Visual-only progress indicators (using divs) leave screen reader users lost about where they are in a multi-step process.
 **Action:** Always use `<nav aria-label="Progress">` and `<ol>` for steps, and use `aria-current="step"` on the active step. Hide decorative connecting lines with `aria-hidden="true"`.
+
+## 2024-05-24 - Explain Industry Jargon
+**Learning:** Industry-specific terms (like GWP, EPD) are barriers to entry. Assuming user knowledge hurts usability for new team members (e.g., procurement managers who aren't sustainability experts).
+**Action:** Use simple, accessible tooltips (using `group-hover` CSS patterns or `title` attributes) to decode acronyms inline without cluttering the UI.
