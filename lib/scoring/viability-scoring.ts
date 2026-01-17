@@ -468,9 +468,27 @@ function calculateVerificationScore(profile: MaterialViabilityProfile): number {
 
   // 1. Data Source Verification (Max 50)
   if (environmentalMetrics.epdSource) {
-    if (environmentalMetrics.epdSource.includes('environdec.com') ||
-        environmentalMetrics.epdSource.includes('ul.com') ||
-        environmentalMetrics.epdSource.includes('buildingtransparency.org')) {
+    const trustedHosts = [
+      'environdec.com',
+      'www.environdec.com',
+      'epd.environdec.com',
+      'ul.com',
+      'www.ul.com',
+      'buildingtransparency.org',
+      'www.buildingtransparency.org',
+    ];
+
+    let isTrustedEpdsSource = false;
+    try {
+      const parsed = new URL(environmentalMetrics.epdSource);
+      const host = parsed.hostname.toLowerCase();
+      isTrustedEpdsSource = trustedHosts.includes(host);
+    } catch {
+      // Malformed URL; treat as generic link below
+      isTrustedEpdsSource = false;
+    }
+
+    if (isTrustedEpdsSource) {
       score += 50; // Third-party verified repo
     } else {
       score += 30; // Generic link
