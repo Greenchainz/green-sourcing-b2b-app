@@ -74,6 +74,26 @@ export interface DecisionCriteria {
 export type RelevanceScore = 'High' | 'Medium' | 'Low';
 
 /**
+ * Decision Tree Types
+ */
+export type DecisionNodeType = 'Question' | 'Outcome';
+
+export interface DecisionNode {
+  id: string;
+  type: DecisionNodeType;
+  text: string;
+  options?: {
+    label: string;
+    nextId: string;
+  }[];
+}
+
+export interface DecisionTree {
+  nodes: DecisionNode[];
+  rootId: string;
+}
+
+/**
  * Complete decision logic extraction result
  */
 export interface DecisionLogicResult {
@@ -83,6 +103,7 @@ export interface DecisionLogicResult {
   relevanceScore: RelevanceScore;
   missingCriteria: string[];
   validationNotes: string;
+  decisionTree?: DecisionTree;
 }
 
 /**

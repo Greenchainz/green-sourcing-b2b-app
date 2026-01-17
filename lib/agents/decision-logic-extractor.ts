@@ -5,6 +5,7 @@
  * to enhance Azure Document Intelligence pipeline with role-based filtering
  */
 
+import { chat } from '@/lib/azure/openai';
 import type {
   MaterialCategory,
   DecisionCriteria,
@@ -12,7 +13,8 @@ import type {
   RelevanceScore,
   MaintenanceRequirements,
   FireResistanceData,
-  InstallationData
+  InstallationData,
+  DecisionTree
 } from '../types/decision-logic';
 
 import { TARGET_ROLES } from '../types/decision-logic';
@@ -384,11 +386,68 @@ export function validateDecisionLogic(
 }
 
 /**
+ * Generates a decision tree based on the extracted content and category using OpenAI.
+ * @param content - Document content
+ * @param category - Material category
+ * @returns Promise<DecisionTree>
+ */
+export async function generateDecisionTree(
+  content: string,
+  category: MaterialCategory
+): Promise<DecisionTree | undefined> {
+  const systemPrompt = `You are a decision logic expert for construction materials.
+Analyze the provided product specification text and generate a decision tree to help a ${category} specialist decide whether to approve or use this product.
+The tree should consist of questions (DecisionNode with type 'Question') that lead to outcomes (DecisionNode with type 'Outcome').
+The output must be a valid JSON object with the following structure:
+{
+  "rootId": "string",
+  "nodes": [
+    {
+      "id": "string",
+      "type": "Question" | "Outcome",
+      "text": "string",
+      "options": [
+        { "label": "string", "nextId": "string" }
+      ]
+    }
+  ]
+}
+For 'Outcome' nodes, 'options' should be undefined or empty.
+Limit the tree to a maximum depth of 3 levels. Focus on critical decision factors like compliance, safety, and installation requirements.`;
+
+  const userPrompt = `Material Category: ${category}
+Document Content:
+${content.substring(0, 4000)} // Limit content length`;
+
+  try {
+    const response = await chat([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+    ], {
+        jsonMode: true,
+        temperature: 0.1
+    });
+
+    const responseContent = response.content || "{}";
+    const parsed = JSON.parse(responseContent);
+
+    if (parsed.rootId && Array.isArray(parsed.nodes)) {
+      return parsed as DecisionTree;
+    }
+    return undefined;
+
+  } catch (error) {
+    console.warn("Failed to generate decision tree:", error);
+    return undefined;
+  }
+}
+
+/**
  * Main orchestrator function for decision logic extraction
  * @param documentContent - Raw document content from Azure Document Intelligence
  * @returns Complete decision logic result
  */
-export function extractDecisionLogic(documentContent: string): DecisionLogicResult {
+export async function extractDecisionLogic(documentContent: string): Promise<DecisionLogicResult> {
   // Step 1: Detect material category
   const materialCategory = detectMaterialCategory(documentContent);
 
@@ -406,12 +465,19 @@ export function extractDecisionLogic(documentContent: string): DecisionLogicResu
     ? TARGET_ROLES[materialCategory] 
     : [];
 
+  // Step 5: Generate decision tree (AI-based)
+  let decisionTree: DecisionTree | undefined;
+  if (materialCategory !== 'Unknown') {
+     decisionTree = await generateDecisionTree(documentContent, materialCategory);
+  }
+
   return {
     materialCategory,
     targetRoles,
     decisionCriteria,
     relevanceScore,
     missingCriteria,
-    validationNotes
+    validationNotes,
+    decisionTree
   };
 }
