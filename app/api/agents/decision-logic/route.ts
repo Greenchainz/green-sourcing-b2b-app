@@ -5,6 +5,7 @@ import {
   validateDecisionLogic,
 } from '@/lib/agents/decision-logic-extractor';
 import type { DecisionLogicResult, MaterialCategory } from '@/lib/types/decision-logic';
+import { TARGET_ROLES } from '@/lib/types/decision-logic';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,7 +70,6 @@ export async function POST(request: NextRequest) {
         decisionCriteria
       );
 
-      const { TARGET_ROLES } = await import('@/lib/types/decision-logic');
       const targetRoles = TARGET_ROLES[providedCategory] || [];
 
       result = {

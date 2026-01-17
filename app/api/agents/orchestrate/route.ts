@@ -125,6 +125,8 @@ export async function POST(request: NextRequest) {
       product: { name: productName, manufacturer },
     };
 
+    // Track agent execution status
+    const agentStatus: Record<string, 'success' | 'failed'> = {};
     const agentPromises: Promise<void>[] = [];
 
     // Decision Logic Agent
@@ -133,8 +135,10 @@ export async function POST(request: NextRequest) {
         (async () => {
           try {
             results.decisionLogic = extractDecisionLogic(documentContent);
+            agentStatus['decision-logic'] = 'success';
             console.log(`✅ Decision logic: ${results.decisionLogic.materialCategory}`);
           } catch (error) {
+            agentStatus['decision-logic'] = 'failed';
             console.error('❌ Decision logic agent failed:', error);
           }
         })()
@@ -151,8 +155,10 @@ export async function POST(request: NextRequest) {
               productName,
               manufacturer
             );
+            agentStatus['defensibility'] = 'success';
             console.log(`✅ Defensibility: ${results.defensibility.defensibilityScore}/100`);
           } catch (error) {
+            agentStatus['defensibility'] = 'failed';
             console.error('❌ Defensibility agent failed:', error);
           }
         })()
@@ -169,8 +175,10 @@ export async function POST(request: NextRequest) {
               epdMetrics: extractEPDMetrics(documentContent),
               healthMetrics: extractHealthMetrics(documentContent),
             };
+            agentStatus['extraction'] = 'success';
             console.log(`✅ Extraction complete`);
           } catch (error) {
+            agentStatus['extraction'] = 'failed';
             console.error('❌ Extraction agent failed:', error);
           }
         })()
@@ -201,14 +209,13 @@ export async function POST(request: NextRequest) {
       vulnerabilities: results.defensibility?.vulnerabilities ?? [],
     };
 
-    // Build metadata
+    // Build metadata with explicit tracking
     const metadata = {
-      agentsRun: agentsToRun.filter((a) => {
-        if (a === 'decision-logic') return !!results.decisionLogic;
-        if (a === 'defensibility') return !!results.defensibility;
-        if (a === 'extraction') return !!results.extraction;
-        return false;
-      }),
+      agentsRequested: agentsToRun,
+      agentsSucceeded: agentsToRun.filter((a) => agentStatus[a] === 'success'),
+      agentsFailed: agentsToRun.filter((a) => agentStatus[a] === 'failed'),
+      // Backward-compatible alias
+      agentsRun: agentsToRun.filter((a) => agentStatus[a] === 'success'),
       processingTimeMs: Date.now() - startTime,
       documentLengthChars: documentContent.length,
     };
