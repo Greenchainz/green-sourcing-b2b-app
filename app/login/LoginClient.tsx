@@ -6,10 +6,11 @@ import { useAuth } from "@/lib/auth";
 import Image from "next/image";
 import TrustBadges from "../components/TrustBadges";
 import { Sparkles, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
+import { PublicClientApplication } from "@azure/msal-browser";
 import { loginRequest } from "@/lib/auth/msalConfig";
-import { msalInstance } from "@/lib/auth/msalInstance";
 
 const AZURE_CLIENT_ID = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || "";
+const AZURE_TENANT = process.env.NEXT_PUBLIC_AZURE_TENANT || "common";
 const AZURE_REDIRECT_URI =
   process.env.NEXT_PUBLIC_AZURE_REDIRECT_URI ||
   `${typeof window !== "undefined" ? window.location.origin : ""}/login/callback`;
@@ -29,6 +30,26 @@ export default function LoginClient() {
   const [publicConfig, setPublicConfig] = useState<PublicConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
+
+  const createMsalClient = (options: {
+    clientId: string;
+    tenant: string;
+    redirectUri: string;
+  }) => {
+    return new PublicClientApplication({
+      auth: {
+        clientId: options.clientId,
+        authority: `https://login.microsoftonline.com/${options.tenant}`,
+        redirectUri: options.redirectUri,
+        postLogoutRedirectUri:
+          typeof window !== "undefined" ? window.location.origin : "/",
+      },
+      cache: {
+        cacheLocation: "sessionStorage",
+        storeAuthStateInCookie: false,
+      },
+    });
+  };
 
   // Check for OAuth errors in URL
   useEffect(() => {
@@ -89,6 +110,7 @@ export default function LoginClient() {
     setIsInitializing(true);
 
     const azureClientId = publicConfig?.azureClientId || AZURE_CLIENT_ID;
+    const azureTenant = publicConfig?.azureTenant || AZURE_TENANT;
     const redirectUri = publicConfig?.redirectUri || AZURE_REDIRECT_URI;
 
     if (!azureClientId) {
@@ -99,7 +121,13 @@ export default function LoginClient() {
       return;
     }
 
-    msalInstance
+    const msalClient = createMsalClient({
+      clientId: azureClientId,
+      tenant: azureTenant,
+      redirectUri,
+    });
+
+    msalClient
       .loginRedirect({
         ...loginRequest,
         redirectUri,
