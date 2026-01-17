@@ -106,48 +106,145 @@ export default function LoginClient() {
     }
   }, [isAuthenticated, user, router]);
 
-  const initiateAzureLogin = () => {
-    setIsInitializing(true);
+  const initiateAzureLogin = async () => {
+    try {
+      setIsInitializing(true);
+      setConfigError(null); // Clear any previous errors
 
-    const azureClientId = publicConfig?.azureClientId || AZURE_CLIENT_ID;
-    const azureTenant = publicConfig?.azureTenant || AZURE_TENANT;
-    const redirectUri = publicConfig?.redirectUri || AZURE_REDIRECT_URI;
+      const azureClientId = publicConfig?.azureClientId || AZURE_CLIENT_ID;
+      const azureTenant = publicConfig?.azureTenant || AZURE_TENANT;
+      const redirectUri = publicConfig?.redirectUri || AZURE_REDIRECT_URI;
 
-    if (!azureClientId) {
-      setIsInitializing(false);
-      setConfigError(
-        "Missing Azure Client ID. Set AZURE_CLIENT_ID (or NEXT_PUBLIC_AZURE_CLIENT_ID) on the frontend container app."
-      );
-      return;
-    }
+      // Debug logging
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[Azure Login] Configuration:", {
+          clientIdConfigured: !!azureClientId,
+          tenant: azureTenant,
+          redirectUri,
+          hasPublicConfig: !!publicConfig,
+        });
+      }
 
-    const msalClient = createMsalClient({
-      clientId: azureClientId,
-      tenant: azureTenant,
-      redirectUri,
-    });
+      // Validate configuration
+      if (!azureClientId) {
+        throw new Error(
+          "Missing Azure Client ID. Set NEXT_PUBLIC_AZURE_CLIENT_ID environment variable."
+        );
+      }
 
-    msalClient
-      .loginRedirect({
+      if (!redirectUri) {
+        throw new Error(
+          "Missing redirect URI. This should be auto-configured but appears to be missing."
+        );
+      }
+
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[Azure Login] Creating MSAL instance...");
+      }
+
+      // Create and initialize MSAL instance
+      const msalClient = createMsalClient({
+        clientId: azureClientId,
+        tenant: azureTenant,
+        redirectUri,
+      });
+
+      // Initialize MSAL instance - this is critical for SPA configuration
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[Azure Login] Initializing MSAL...");
+      }
+      await msalClient.initialize();
+
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[Azure Login] Starting login redirect...");
+        console.log("[Azure Login] Redirect URI:", redirectUri);
+      }
+
+      // Attempt login redirect (note: this performs a synchronous browser redirect)
+      msalClient.loginRedirect({
         ...loginRequest,
         redirectUri,
         prompt: "select_account",
-      })
-      .catch((err) => {
-        console.error("Microsoft login failed:", err);
-        setIsInitializing(false);
-        setConfigError("Microsoft sign-in failed. Please try again.");
       });
+
+      // Note: loginRedirect() doesn't return - it redirects the browser
+      // If we reach here, something went wrong
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.warn("[Azure Login] loginRedirect() completed without redirecting");
+      }
+    } catch (err) {
+      // Comprehensive error logging
+      console.error("[Azure Login] Error occurred:", err);
+      
+      if (err instanceof Error) {
+        console.error("[Azure Login] Error name:", err.name);
+        console.error("[Azure Login] Error message:", err.message);
+        console.error("[Azure Login] Error stack:", err.stack);
+      }
+
+      // User-friendly error messages
+      let errorMessage = "Microsoft sign-in failed. Please try again.";
+      
+      if (err instanceof Error) {
+        if (err.message.includes("popup_window_error") || err.message.includes("popup")) {
+          errorMessage = "Popup was blocked. Please allow popups for this site or try again.";
+        } else if (err.message.includes("user_cancelled") || err.message.includes("cancel")) {
+          errorMessage = "Sign-in was cancelled. Please try again when ready.";
+        } else if (err.message.includes("network") || err.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (err.message.includes("Client ID") || err.message.includes("configuration")) {
+          errorMessage = err.message; // Show configuration errors directly
+        } else if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+          errorMessage = `${errorMessage} Details: ${err.message}`;
+        }
+      }
+
+      setConfigError(errorMessage);
+    } finally {
+      // Reset loading state - this will happen whether redirect succeeds or fails
+      // (If redirect succeeds, user will leave the page anyway)
+      setIsInitializing(false);
+    }
   };
 
   const initiateGoogleLogin = () => {
-    const backendUrl = publicConfig?.backendUrl || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-    window.location.href = `${backendUrl}/auth/google`;
+    try {
+      setIsInitializing(true);
+      setConfigError(null);
+      setOauthError(null);
+
+      const backendUrl = publicConfig?.backendUrl || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[Google Login] Redirecting to:", `${backendUrl}/auth/google`);
+      }
+
+      window.location.href = `${backendUrl}/auth/google`;
+    } catch (err) {
+      console.error("[Google Login] Error:", err);
+      setIsInitializing(false);
+      setConfigError("Failed to initiate Google sign-in. Please try again.");
+    }
   };
 
   const initiateLinkedInLogin = () => {
-    const backendUrl = publicConfig?.backendUrl || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-    window.location.href = `${backendUrl}/auth/linkedin`;
+    try {
+      setIsInitializing(true);
+      setConfigError(null);
+      setOauthError(null);
+
+      const backendUrl = publicConfig?.backendUrl || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      
+      if (process.env.NEXT_PUBLIC_AUTH_DEBUG === "true") {
+        console.log("[LinkedIn Login] Redirecting to:", `${backendUrl}/auth/linkedin`);
+      }
+
+      window.location.href = `${backendUrl}/auth/linkedin`;
+    } catch (err) {
+      console.error("[LinkedIn Login] Error:", err);
+      setIsInitializing(false);
+      setConfigError("Failed to initiate LinkedIn sign-in. Please try again.");
+    }
   };
 
   return (
