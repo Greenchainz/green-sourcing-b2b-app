@@ -24,8 +24,8 @@ services:
   backend:
     container_name: greenchainz-backend
     build:
-      context: .
-      dockerfile: ./backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "3001:3001"
