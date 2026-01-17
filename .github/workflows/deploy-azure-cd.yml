@@ -58,7 +58,7 @@ jobs:
             --registry ${{ vars.CONTAINER_REGISTRY }} \
             --image greenchainz-backend:${{ github.sha }} \
             --image greenchainz-backend:latest \
-            --file backend/Dockerfile \
+            --file Dockerfile \
             backend/
       
       - name: Deploy Backend Container App
