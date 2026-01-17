@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import DataTable, { Column } from "../../components/admin/DataTable";
 import StatusBadge from "../../components/admin/StatusBadge";
 
@@ -42,9 +42,24 @@ const MOCK_USERS = [
     status: "Suspended",
     joined: "2024-03-10",
   },
+  {
+    id: 5,
+    name: "Eve Engineer",
+    email: "eve@engcorp.com",
+    role: "Buyer",
+    tier: "Standard",
+    status: "Active",
+    joined: "2024-03-22",
+  },
 ];
 
 export default function AdminUsersPage() {
+    const [filterRole, setFilterRole] = useState<string>("All");
+
+    const filteredData = filterRole === "All"
+        ? MOCK_USERS
+        : MOCK_USERS.filter(u => u.role === filterRole);
+
   const columns: Column<(typeof MOCK_USERS)[0]>[] = [
     {
       key: "name",
@@ -90,12 +105,29 @@ export default function AdminUsersPage() {
   return (
     <div className="gc-page min-h-screen p-6 md:p-10">
       <div className="gc-container">
-        <h1 className="text-2xl font-bold text-slate-900 mb-6">
-          User Management
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-slate-900">
+            User Management
+            </h1>
+
+            {/* Filter by Role */}
+            <div className="flex gap-2 items-center">
+                <span className="text-sm text-slate-500">Filter by Role:</span>
+                <select
+                    className="border border-slate-300 rounded p-1 text-sm text-slate-700"
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value)}
+                >
+                    <option value="All">All Users</option>
+                    <option value="Buyer">Buyers</option>
+                    <option value="Supplier">Suppliers</option>
+                    <option value="Admin">Admins</option>
+                </select>
+            </div>
+        </div>
 
         <DataTable
-          data={MOCK_USERS}
+          data={filteredData}
           columns={columns}
           keyField="id"
           searchPlaceholder="Search users..."
