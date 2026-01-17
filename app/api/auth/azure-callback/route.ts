@@ -196,12 +196,15 @@ export async function POST(req: NextRequest) {
       });
 
       // Also set HTTP-only cookie for security
-      response.cookies.set('token', token, {
+      const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
         path: '/',
-      });
+      };
+
+      response.cookies.set('greenchainz-auth-token', token, { ...cookieOptions, maxAge: 60 * 60 * 24 * 7 });
+      response.cookies.set('refresh_token', refreshToken, { ...cookieOptions, maxAge: 60 * 60 * 24 * 30 });
+      response.cookies.set('token', token, { ...cookieOptions, maxAge: 60 * 60 * 24 * 7 }); // Legacy
 
       return response;
 
