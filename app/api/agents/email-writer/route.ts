@@ -13,10 +13,10 @@ export async function POST(request: Request) {
     }
 
     const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const key = process.env.AZURE_OPENAI_API_KEY;
+    const apiKey = process.env.AZURE_OPENAI_API_KEY;
     const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
 
-    if (!endpoint || !key) {
+    if (!endpoint || !apiKey) {
       console.error('Missing Azure OpenAI credentials');
       return NextResponse.json(
         { error: 'Server configuration error: Azure OpenAI credentials missing' },
@@ -24,14 +24,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Connect to Azure OpenAI to generate email body
     const client = new AzureOpenAI({
       endpoint,
-      apiKey: key,
+      apiKey,
       apiVersion: '2024-08-01-preview',
       deployment,
     });
 
-    const prompt = `Write a professional B2B email for GreenChainz:
+    console.log(`Generating email for recipient type: ${recipientType}`);
+
+    const emailPrompt = `Write a professional B2B email for GreenChainz:
 Recipient: ${recipientType}
 Purpose: ${purpose}
 Context: ${context}`;
@@ -43,7 +46,7 @@ Context: ${context}`;
           role: 'system',
           content: 'You are an expert B2B email copywriter for GreenChainz, a sustainable construction marketplace. Write professional, concise, and persuasive emails.',
         },
-        { role: 'user', content: prompt },
+        { role: 'user', content: emailPrompt },
       ],
       temperature: 0.7,
     });
