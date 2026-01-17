@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import type { AuthenticationResult } from "@azure/msal-browser";
-import { msalInstance } from "@/lib/auth/msalInstance";
+import { PublicClientApplication } from "@azure/msal-browser";
 
 type PublicConfig = {
   origin?: string;
@@ -25,6 +25,25 @@ function CallbackClientInner() {
   const debug = process.env.NEXT_PUBLIC_AUTH_DEBUG === "true";
   const [steps, setSteps] = useState<string[]>([]);
   const pushStep = (msg: string) => setSteps((prev) => [...prev, msg]);
+  const createMsalClient = (options: {
+    clientId: string;
+    tenant: string;
+    redirectUri: string;
+  }) => {
+    return new PublicClientApplication({
+      auth: {
+        clientId: options.clientId,
+        authority: `https://login.microsoftonline.com/${options.tenant}`,
+        redirectUri: options.redirectUri,
+        postLogoutRedirectUri:
+          typeof window !== "undefined" ? window.location.origin : "/",
+      },
+      cache: {
+        cacheLocation: "sessionStorage",
+        storeAuthStateInCookie: false,
+      },
+    });
+  };
 
   useEffect(() => {
     const processCallback = async () => {
@@ -121,7 +140,23 @@ function CallbackClientInner() {
         }
 
         pushStep("Completing Microsoft sign-in...");
-        const result = (await msalInstance.handleRedirectPromise()) as
+        const azureClientId = config.azureClientId || "";
+        const azureTenant = config.azureTenant || "common";
+        const redirectUri = config.redirectUri || "";
+
+        if (!azureClientId || !redirectUri) {
+          throw new Error(
+            "Missing Azure sign-in configuration. Please contact support."
+          );
+        }
+
+        const msalClient = createMsalClient({
+          clientId: azureClientId,
+          tenant: azureTenant,
+          redirectUri,
+        });
+
+        const result = (await msalClient.handleRedirectPromise()) as
           | AuthenticationResult
           | null;
 
