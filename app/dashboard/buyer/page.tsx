@@ -173,18 +173,18 @@ export default function BuyerDashboardOverview() {
     }
   };
 
-  const getActivityIcon = (type: string) => {
+  const getActivityIcon = (type: string): React.ReactNode => {
     switch (type) {
       case "quote":
-        return "Q";
+        return <FileText className="w-4 h-4" />;
       case "status":
-        return "!";
+        return <AlertCircle className="w-4 h-4" />;
       case "order":
-        return "📦";
+        return <Package className="w-4 h-4" />;
       case "system":
-        return "✓";
+        return <CheckCircle2 className="w-4 h-4" />;
       default:
-        return "•";
+        return <Clock className="w-4 h-4" />;
     }
   };
 

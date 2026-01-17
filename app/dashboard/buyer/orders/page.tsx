@@ -12,6 +12,7 @@ import {
   Download,
   Eye,
   FileText,
+  Leaf,
 } from "lucide-react";
 
 type OrderStatus = "all" | "processing" | "in_transit" | "delivered" | "cancelled";
@@ -354,7 +355,7 @@ export default function BuyerOrdersPage() {
                         </div>
                         {order.carbonSaved > 0 && (
                           <div className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                            🌿 {order.carbonSaved}% carbon saved
+                            <Leaf className="w-3 h-3" /> {order.carbonSaved}% carbon saved
                           </div>
                         )}
                       </td>

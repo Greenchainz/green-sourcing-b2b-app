@@ -376,6 +376,9 @@ export default function SupplierComparisonPage() {
                 </div>
                 <button
                   onClick={() => toggleSupplierSelection(supplier.id)}
+                  role="checkbox"
+                  aria-checked={selectedSuppliers.includes(supplier.id)}
+                  aria-label={`Select ${supplier.name} for comparison`}
                   className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
                     selectedSuppliers.includes(supplier.id)
                       ? "bg-emerald-500 border-emerald-500 text-white"
@@ -535,8 +538,8 @@ export default function SupplierComparisonPage() {
                         const best = Math.max(...selectedSuppliersData.map((x) => x.rating));
                         return (
                           <td key={s.id} className="p-4">
-                            <span className={s.rating === best ? "text-emerald-600 font-bold" : ""}>
-                              ⭐ {s.rating} ({s.reviewCount} reviews)
+                            <span className={`inline-flex items-center gap-1 ${s.rating === best ? "text-emerald-600 font-bold" : ""}`}>
+                              <Star className="w-4 h-4 fill-current" /> {s.rating} ({s.reviewCount} reviews)
                             </span>
                             {s.rating === best && (
                               <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">
@@ -553,8 +556,8 @@ export default function SupplierComparisonPage() {
                         const best = Math.max(...selectedSuppliersData.map((x) => x.carbonScore));
                         return (
                           <td key={s.id} className="p-4">
-                            <span className={s.carbonScore === best ? "text-emerald-600 font-bold" : ""}>
-                              🌿 {s.carbonScore}/100
+                            <span className={`inline-flex items-center gap-1 ${s.carbonScore === best ? "text-emerald-600 font-bold" : ""}`}>
+                              <Leaf className="w-4 h-4" /> {s.carbonScore}/100
                             </span>
                             {s.carbonScore === best && (
                               <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">
