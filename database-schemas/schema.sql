@@ -106,6 +106,30 @@ CREATE TABLE IF NOT EXISTS Product_Materials_Composition (
   SourceRegion VARCHAR(255)
 );
 
+-- Materials (Sustainable Materials Library)
+CREATE TABLE IF NOT EXISTS Materials (
+  MaterialID BIGSERIAL PRIMARY KEY,
+  AssemblyCode VARCHAR(50),
+  AssemblyName VARCHAR(255),
+  Location VARCHAR(50),
+  MaterialType VARCHAR(255),
+  Manufacturer VARCHAR(255) NOT NULL,
+  ProductName VARCHAR(500) NOT NULL,
+  EPDNumber VARCHAR(100),
+  Dimension VARCHAR(50),
+  GWP DECIMAL(10,2),
+  GWPUnits VARCHAR(50),
+  DeclaredUnit VARCHAR(100),
+  MSFFactor DECIMAL(10,3),
+  EmbodiedCarbonPer1000sf DECIMAL(10,2),
+  Notes TEXT,
+  Source VARCHAR(50) DEFAULT 'manual',
+  IsVerified BOOLEAN DEFAULT FALSE,
+  CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT materials_unique UNIQUE(Manufacturer, ProductName, EPDNumber)
+);
+
 -- ============================================
 -- EVENT SOURCING ARCHITECTURE (Blockchain-Ready)
 -- ============================================
@@ -489,6 +513,9 @@ CREATE INDEX IF NOT EXISTS idx_suppliers_company ON Suppliers(CompanyID);
 CREATE INDEX IF NOT EXISTS idx_products_supplier ON Products(SupplierID);
 CREATE INDEX IF NOT EXISTS idx_products_category ON Products(CategoryID);
 CREATE INDEX IF NOT EXISTS idx_materials_product ON Product_Materials_Composition(ProductID);
+CREATE INDEX IF NOT EXISTS idx_materials_manufacturer ON Materials(Manufacturer);
+CREATE INDEX IF NOT EXISTS idx_materials_epd ON Materials(EPDNumber);
+CREATE INDEX IF NOT EXISTS idx_materials_gwp ON Materials(GWP);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON User_Subscriptions(UserID);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON User_Subscriptions(StripeSubscriptionID);
 CREATE INDEX IF NOT EXISTS idx_transactions_user ON Payment_Transactions(UserID);
@@ -524,8 +551,35 @@ CREATE TABLE IF NOT EXISTS Buyers (
   JobTitle VARCHAR(255),
   ProjectTypes TEXT[], -- array of project types: ['Commercial', 'Residential', 'Institutional']
   PreferredContactMethod VARCHAR(50) DEFAULT 'Email' CHECK (PreferredContactMethod IN ('Email', 'Phone', 'Both')),
+
+  -- Verification fields
+  LinkedInVerified BOOLEAN DEFAULT FALSE,
+  LinkedInVerifiedAt TIMESTAMP,
+  LinkedInProfileID VARCHAR(255),
+  LinkedInProfileURL VARCHAR(500),
+
   CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- RFQ Deposits (Stripe)
+CREATE TABLE IF NOT EXISTS RFQ_Deposits (
+  DepositID BIGSERIAL PRIMARY KEY,
+  RFQID BIGINT, -- Can be null initially if deposit is for future RFQs
+  UserID BIGINT NOT NULL REFERENCES Users(UserID) ON DELETE CASCADE,
+  StripePaymentIntentID VARCHAR(255) UNIQUE NOT NULL,
+  AmountCents INTEGER NOT NULL DEFAULT 500 CHECK (AmountCents > 0),
+  Currency VARCHAR(10) NOT NULL DEFAULT 'usd',
+  Status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (Status IN ('pending', 'processing', 'succeeded', 'failed', 'canceled', 'refunded', 'partially_refunded')),
+  RefundReason TEXT,
+  StripeRefundID VARCHAR(255),
+  Metadata JSONB DEFAULT '{}'::jsonb,
+  IPAddress VARCHAR(45),
+  UserAgent TEXT,
+  CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  SucceededAt TIMESTAMP,
+  RefundedAt TIMESTAMP
 );
 
 -- RFQs (Request for Quote)
@@ -541,9 +595,18 @@ CREATE TABLE IF NOT EXISTS RFQs (
   BudgetRange VARCHAR(100), -- e.g., "$5,000-$10,000"
   DeadlineDate DATE,
   Status VARCHAR(50) NOT NULL DEFAULT 'Pending' CHECK (Status IN ('Pending', 'Responded', 'Accepted', 'Declined', 'Expired', 'Cancelled')),
+
+  -- Deposit Verification
+  DepositVerified BOOLEAN DEFAULT FALSE,
+  DepositID BIGINT REFERENCES RFQ_Deposits(DepositID) ON DELETE SET NULL,
+  DepositVerifiedAt TIMESTAMP,
+
   CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Circular Reference Update
+ALTER TABLE RFQ_Deposits ADD CONSTRAINT fk_rfq_deposits_rfq FOREIGN KEY (RFQID) REFERENCES RFQs(RFQID) ON DELETE SET NULL;
 
 -- RFQ Responses (Supplier quotes)
 CREATE TABLE IF NOT EXISTS RFQ_Responses (
@@ -560,15 +623,61 @@ CREATE TABLE IF NOT EXISTS RFQ_Responses (
   UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- RFQ Distribution Queue (Wave System)
+CREATE TABLE IF NOT EXISTS RFQ_Distribution_Queue (
+    QueueID BIGSERIAL PRIMARY KEY,
+    RFQID BIGINT NOT NULL REFERENCES RFQs(RFQID) ON DELETE CASCADE,
+    SupplierID BIGINT NOT NULL REFERENCES Suppliers(SupplierID) ON DELETE CASCADE,
+    WaveNumber INTEGER NOT NULL DEFAULT 1 CHECK (WaveNumber >= 1),
+    ScheduledFor TIMESTAMP NOT NULL,
+    Status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (Status IN ('pending', 'processed', 'failed', 'cancelled')),
+
+    -- Audit columns
+    WaveReason TEXT,
+    AccessLevel VARCHAR(50) DEFAULT 'full' CHECK (AccessLevel IN ('full', 'outreach_only')),
+    TierSnapshot VARCHAR(50),
+
+    ErrorMessage TEXT,
+    ProcessedAt TIMESTAMP,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Buyer Verification Log
+CREATE TABLE IF NOT EXISTS Buyer_Verification_Log (
+    LogID BIGSERIAL PRIMARY KEY,
+    BuyerID BIGINT NOT NULL REFERENCES Buyers(BuyerID) ON DELETE CASCADE,
+    VerificationType VARCHAR(50) NOT NULL CHECK (VerificationType IN ('linkedin', 'deposit')),
+    Status VARCHAR(50) NOT NULL CHECK (Status IN ('pending', 'verified', 'failed', 'revoked')),
+    ProfileID VARCHAR(255),
+    ProfileURL VARCHAR(500),
+    Metadata JSONB,
+    IPAddress VARCHAR(45),
+    UserAgent TEXT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for RFQ system
 CREATE INDEX IF NOT EXISTS idx_buyers_user ON Buyers(UserID);
 CREATE INDEX IF NOT EXISTS idx_buyers_company ON Buyers(CompanyID);
+CREATE INDEX IF NOT EXISTS idx_buyers_linkedin_verified ON Buyers(LinkedInVerified);
 CREATE INDEX IF NOT EXISTS idx_rfqs_buyer ON RFQs(BuyerID, CreatedAt DESC);
 CREATE INDEX IF NOT EXISTS idx_rfqs_supplier ON RFQs(SupplierID, Status, CreatedAt DESC);
 CREATE INDEX IF NOT EXISTS idx_rfqs_product ON RFQs(ProductID);
 CREATE INDEX IF NOT EXISTS idx_rfqs_status ON RFQs(Status);
+CREATE INDEX IF NOT EXISTS idx_rfqs_deposit_verified ON RFQs(DepositVerified) WHERE DepositVerified = TRUE;
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_rfq ON RFQ_Responses(RFQID);
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_supplier ON RFQ_Responses(SupplierID, CreatedAt DESC);
+
+-- RFQ Deposit Indexes
+CREATE INDEX IF NOT EXISTS idx_rfq_deposits_stripe_pi ON RFQ_Deposits(StripePaymentIntentID);
+CREATE INDEX IF NOT EXISTS idx_rfq_deposits_user ON RFQ_Deposits(UserID, CreatedAt DESC);
+CREATE INDEX IF NOT EXISTS idx_rfq_deposits_status ON RFQ_Deposits(Status);
+CREATE INDEX IF NOT EXISTS idx_rfq_deposits_rfq ON RFQ_Deposits(RFQID) WHERE RFQID IS NOT NULL;
+
+-- RFQ Distribution Indexes
+CREATE INDEX IF NOT EXISTS idx_rfq_dist_queue_scheduled ON RFQ_Distribution_Queue(ScheduledFor) WHERE Status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_rfq_dist_queue_rfq ON RFQ_Distribution_Queue(RFQID);
+CREATE INDEX IF NOT EXISTS idx_rfq_dist_queue_audit ON RFQ_Distribution_Queue(WaveNumber, AccessLevel, TierSnapshot);
 
 -- Email Capture for Marketing (Survey Landing Pages)
 CREATE TABLE IF NOT EXISTS Email_Captures (
@@ -613,3 +722,64 @@ CREATE INDEX IF NOT EXISTS idx_email_captures_date ON Email_Captures(CapturedAt 
 CREATE INDEX IF NOT EXISTS idx_notification_log_type ON Notification_Log(NotificationType);
 CREATE INDEX IF NOT EXISTS idx_notification_log_status ON Notification_Log(Status);
 CREATE INDEX IF NOT EXISTS idx_notification_log_created ON Notification_Log(CreatedAt DESC);
+
+-- Supplier Tiers (Freemium Model)
+CREATE TABLE IF NOT EXISTS Supplier_Tiers (
+    TierID SERIAL PRIMARY KEY,
+    TierName VARCHAR(50) UNIQUE NOT NULL,
+    TierCode VARCHAR(20) UNIQUE NOT NULL,
+    Description TEXT,
+    MonthlyPrice DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    AnnualPrice DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    DisplayOrder INTEGER DEFAULT 0,
+    IsActive BOOLEAN DEFAULT TRUE,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tier Entitlements
+CREATE TABLE IF NOT EXISTS Tier_Entitlements (
+    EntitlementID SERIAL PRIMARY KEY,
+    TierID INTEGER NOT NULL REFERENCES Supplier_Tiers(TierID) ON DELETE CASCADE,
+    RFQWaveNumber INTEGER NOT NULL DEFAULT 3 CHECK (RFQWaveNumber >= 1 AND RFQWaveNumber <= 4),
+    RFQDelayMinutes INTEGER NOT NULL DEFAULT 30,
+    RFQMonthlyQuota INTEGER DEFAULT NULL,
+    CanOutboundMessage BOOLEAN NOT NULL DEFAULT FALSE,
+    OutboundMonthlyQuota INTEGER DEFAULT 0,
+    FeaturedListing BOOLEAN NOT NULL DEFAULT FALSE,
+    VerifiedBadge BOOLEAN NOT NULL DEFAULT FALSE,
+    AnalyticsDashboard BOOLEAN NOT NULL DEFAULT FALSE,
+    PrioritySupport BOOLEAN NOT NULL DEFAULT FALSE,
+    APIAccess BOOLEAN NOT NULL DEFAULT FALSE,
+    ExtraEntitlements JSONB DEFAULT '{}'::jsonb,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_tier_entitlements UNIQUE (TierID)
+);
+
+-- Supplier Subscriptions (Tiered)
+CREATE TABLE IF NOT EXISTS Supplier_Subscriptions (
+    SubscriptionID BIGSERIAL PRIMARY KEY,
+    SupplierID BIGINT NOT NULL, -- Logical reference
+    TierID INTEGER NOT NULL REFERENCES Supplier_Tiers(TierID),
+    Status VARCHAR(50) NOT NULL DEFAULT 'active' CHECK (Status IN ('active', 'trialing', 'past_due', 'canceled', 'expired', 'pending')),
+    BillingCycle VARCHAR(20) DEFAULT 'monthly' CHECK (BillingCycle IN ('monthly', 'annual', 'lifetime')),
+    StripeCustomerID VARCHAR(255),
+    StripeSubscriptionID VARCHAR(255),
+    CurrentPeriodStart TIMESTAMP,
+    CurrentPeriodEnd TIMESTAMP,
+    TrialEndsAt TIMESTAMP,
+    CanceledAt TIMESTAMP,
+    CancelAtPeriodEnd BOOLEAN DEFAULT FALSE,
+    RFQsReceivedThisMonth INTEGER DEFAULT 0,
+    OutboundMessagesSentThisMonth INTEGER DEFAULT 0,
+    UsageResetAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_supplier_subscription UNIQUE (SupplierID)
+);
+
+-- Indexes for Supplier Tiers
+CREATE INDEX IF NOT EXISTS idx_supplier_subscriptions_supplier ON Supplier_Subscriptions(SupplierID);
+CREATE INDEX IF NOT EXISTS idx_supplier_subscriptions_tier ON Supplier_Subscriptions(TierID);
+CREATE INDEX IF NOT EXISTS idx_supplier_subscriptions_status ON Supplier_Subscriptions(Status);
