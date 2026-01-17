@@ -16,10 +16,12 @@
     "test:auth": "jest tests/unit/auth",
     "test:e2e": "playwright test",
     "test:api": "jest backend/tests",
+    "setup:foundry-agent": "tsx scripts/setup-foundry-agent.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.0.0",
+    "@azure/ai-projects": "^1.0.1",
     "@azure/identity": "^4.13.0",
     "@azure/msal-browser": "^3.27.0",
     "@azure/search-documents": "^12.2.0",
