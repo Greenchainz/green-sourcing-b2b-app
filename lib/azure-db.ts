@@ -6,6 +6,13 @@
  * 
  * This module provides a dedicated connection pool for the Architecture of
  * Equivalence engine, ensuring separation from the main app database operations.
+ * 
+ * Features:
+ * - Connection pool management for Azure PostgreSQL
+ * - Parameterized queries to prevent SQL injection
+ * - Transaction support with automatic rollback
+ * - Query timeout handling
+ * - Connection string parsing for Azure
  */
 
 import { Pool, PoolClient, QueryResult } from 'pg';
@@ -17,6 +24,78 @@ import {
   UserPersona,
   ViabilityScore,
 } from '../types/schema';
+
+// ============================================================================
+// CONFIGURATION CONSTANTS
+// ============================================================================
+
+/** Default query timeout in milliseconds (30 seconds) */
+const DEFAULT_QUERY_TIMEOUT_MS = 30000;
+
+/** Maximum connections in the pool */
+const MAX_POOL_SIZE = 20;
+
+/** Idle timeout before connection is closed (30 seconds) */
+const IDLE_TIMEOUT_MS = 30000;
+
+/** Connection timeout (5 seconds) */
+const CONNECTION_TIMEOUT_MS = 5000;
+
+// ============================================================================
+// CONNECTION STRING PARSING
+// ============================================================================
+
+/**
+ * Configuration for Azure PostgreSQL connection
+ */
+export interface AzureConnectionConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  ssl: boolean;
+}
+
+/**
+ * Parse Azure PostgreSQL connection string into components
+ * Supports both DATABASE_URL and Azure Service Connector formats
+ * 
+ * @param connectionString - PostgreSQL connection string
+ * @returns Parsed connection configuration
+ */
+export function parseAzureConnectionString(connectionString: string): AzureConnectionConfig {
+  // Parse postgres:// or postgresql:// URLs
+  const regex = /^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:/]+):?(\d+)?\/([^?]+)(?:\?(.*))?$/;
+  const match = connectionString.match(regex);
+
+  if (!match) {
+    throw new Error('Invalid Azure PostgreSQL connection string format');
+  }
+
+  const [, user, password, host, port, database, queryParams] = match;
+
+  // Parse SSL mode from query parameters (Azure requires SSL by default)
+  let ssl = true;
+  if (queryParams) {
+    const params = new URLSearchParams(queryParams);
+    const sslMode = params.get('sslmode');
+    ssl = sslMode !== 'disable';
+  }
+
+  return {
+    host,
+    port: port ? parseInt(port, 10) : 5432,
+    database,
+    user: decodeURIComponent(user),
+    password: decodeURIComponent(password),
+    ssl,
+  };
+}
+
+// ============================================================================
+// CONNECTION POOL MANAGEMENT
+// ============================================================================
 
 // Connection pool for Azure PostgreSQL
 let azurePool: Pool | null = null;
@@ -40,51 +119,16 @@ export function getAzureDBPool(): Pool {
       ssl: process.env.NODE_ENV === 'production'
         ? { rejectUnauthorized: false }
         : undefined,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-      statement_timeout: 30000,
+      max: MAX_POOL_SIZE,
+      idleTimeoutMillis: IDLE_TIMEOUT_MS,
+      connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
+      statement_timeout: DEFAULT_QUERY_TIMEOUT_MS,
     });
 
     console.log('✅ Azure PostgreSQL pool created for viability profiles');
   }
 
   return azurePool;
-}
-
-/**
- * Execute a query against Azure PostgreSQL
- */
-export async function azureQuery<T extends Record<string, unknown> = Record<string, unknown>>(
-  text: string,
-  params?: unknown[]
-): Promise<QueryResult<T>> {
-  const pool = getAzureDBPool();
-  const start = Date.now();
-
-  try {
-    const result = await pool.query<T>(text, params);
-    const duration = Date.now() - start;
-
-    if (duration > 1000) {
-      console.warn(`⚠️ Slow Azure DB query (${duration}ms):`, text.substring(0, 100));
-    }
-
-    return result;
-  } catch (error) {
-    console.error('❌ Azure DB Query Error:', error);
-    console.error('Query:', text);
-    console.error('Params:', params);
-    throw error;
-  }
-}
-
-/**
- * Get a client from the pool for transactions
- */
-export async function getAzureDBClient(): Promise<PoolClient> {
-  const pool = getAzureDBPool();
-  return await pool.connect();
 }
 
 /**
@@ -97,6 +141,184 @@ export async function closeAzureDBPool(): Promise<void> {
     azurePool = null;
     console.log('✅ Azure PostgreSQL pool closed');
   }
+}
+
+// ============================================================================
+// QUERY EXECUTION
+// ============================================================================
+
+/**
+ * Query options for customizing execution
+ */
+export interface AzureQueryOptions {
+  /** Query timeout in milliseconds (overrides default 30s) */
+  timeout?: number;
+}
+
+/**
+ * Execute a parameterized query against Azure PostgreSQL
+ * 
+ * @param text - SQL query with $1, $2 placeholders for parameterized queries
+ * @param params - Array of parameter values (prevents SQL injection)
+ * @param options - Optional query configuration (timeout)
+ * @returns Query result with typed rows
+ * 
+ * @example
+ * const result = await azureQuery<UserRow>(
+ *   'SELECT * FROM users WHERE id = $1',
+ *   [userId],
+ *   { timeout: 5000 }
+ * );
+ */
+export async function azureQuery<T extends Record<string, unknown> = Record<string, unknown>>(
+  text: string,
+  params?: unknown[],
+  options?: AzureQueryOptions
+): Promise<QueryResult<T>> {
+  const pool = getAzureDBPool();
+  const start = Date.now();
+
+  try {
+    // Build query config with optional timeout override
+    // Note: query_timeout is a supported pg library option for per-query timeouts
+    const queryConfig: { text: string; values?: unknown[]; query_timeout?: number } = {
+      text,
+      values: params,
+    };
+
+    if (options?.timeout) {
+      queryConfig.query_timeout = options.timeout;
+    }
+
+    const result = await pool.query<T>(queryConfig);
+    const duration = Date.now() - start;
+
+    if (duration > 1000) {
+      console.warn(`⚠️ Slow Azure DB query (${duration}ms):`, text.substring(0, 100));
+    }
+
+    return result;
+  } catch (error) {
+    const duration = Date.now() - start;
+    console.error('❌ Azure DB Query Error:', {
+      query: text.substring(0, 200),
+      duration,
+      error: error instanceof Error ? error.message : error,
+    });
+    console.error('Params:', params);
+    throw error;
+  }
+}
+
+/**
+ * Execute a query and return a single row or null
+ * 
+ * @example
+ * const user = await azureQueryOne<UserRow>(
+ *   'SELECT * FROM users WHERE email = $1',
+ *   [email]
+ * );
+ */
+export async function azureQueryOne<T extends Record<string, unknown> = Record<string, unknown>>(
+  text: string,
+  params?: unknown[],
+  options?: AzureQueryOptions
+): Promise<T | null> {
+  const result = await azureQuery<T>(text, params, options);
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
+ * Execute a query and return all rows
+ * 
+ * @example
+ * const users = await azureQueryMany<UserRow>(
+ *   'SELECT * FROM users WHERE status = $1',
+ *   ['active']
+ * );
+ */
+export async function azureQueryMany<T extends Record<string, unknown> = Record<string, unknown>>(
+  text: string,
+  params?: unknown[],
+  options?: AzureQueryOptions
+): Promise<T[]> {
+  const result = await azureQuery<T>(text, params, options);
+  return result.rows;
+}
+
+// ============================================================================
+// CLIENT & TRANSACTION MANAGEMENT
+// ============================================================================
+
+/**
+ * Get a client from the pool for transactions
+ * Remember to call client.release() when done!
+ */
+export async function getAzureDBClient(): Promise<PoolClient> {
+  const pool = getAzureDBPool();
+  return await pool.connect();
+}
+
+/**
+ * Transaction callback function type
+ */
+export type AzureTransactionCallback<T> = (client: PoolClient) => Promise<T>;
+
+/**
+ * Execute a function within a database transaction
+ * Automatically handles BEGIN, COMMIT, and ROLLBACK on error
+ * 
+ * @param callback - Async function that receives a PoolClient for queries
+ * @returns The result of the callback function
+ * 
+ * @example
+ * const result = await withAzureTransaction(async (client) => {
+ *   await client.query('INSERT INTO profiles (...) VALUES (...)', [...]);
+ *   await client.query('UPDATE products SET viability_id = $1', [id]);
+ *   return { success: true, id };
+ * });
+ */
+export async function withAzureTransaction<T>(callback: AzureTransactionCallback<T>): Promise<T> {
+  const client = await getAzureDBClient();
+
+  try {
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Azure transaction rolled back:', error instanceof Error ? error.message : error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Execute multiple queries within a single transaction
+ * All queries succeed or all are rolled back
+ * 
+ * @param queries - Array of query objects with text and optional params
+ * @returns Array of query results in order
+ * 
+ * @example
+ * const results = await executeAzureTransaction([
+ *   { text: 'INSERT INTO profiles (...) VALUES ($1, $2) RETURNING id', params: [name, sku] },
+ *   { text: 'UPDATE counters SET count = count + 1 WHERE name = $1', params: ['profiles'] },
+ * ]);
+ */
+export async function executeAzureTransaction(
+  queries: Array<{ text: string; params?: unknown[] }>
+): Promise<QueryResult[]> {
+  return withAzureTransaction(async (client) => {
+    const results: QueryResult[] = [];
+    for (const q of queries) {
+      const result = await client.query(q.text, q.params);
+      results.push(result);
+    }
+    return results;
+  });
 }
 
 // ============================================================================
