@@ -141,6 +141,62 @@ export function extractHealthMetrics(content: string): HealthMetrics {
 }
 
 /**
+ * Check for LEED credit compliance
+ */
+export function checkLEEDCompliance(productData: ProductData): string[] {
+  const credits: string[] = [];
+
+  // MRc2: EPD
+  if (productData.certificates.hasVerifiedEPD) {
+    credits.push("LEED v4.1 MRc2: Environmental Product Declarations (EPD)");
+  }
+
+  // MRc3: Sourcing of Raw Materials
+  if (productData.epdMetrics.recycledContent && productData.epdMetrics.recycledContent > 0) {
+    credits.push("LEED v4.1 MRc3: Sourcing of Raw Materials (Recycled Content)");
+  }
+
+  // EQc2: Low-Emitting Materials
+  // Requires CDPH compliance
+  if (productData.certificates.hasCDPHv12 && productData.healthMetrics.compliance === 'Pass') {
+    credits.push("LEED v4.1 EQc2: Low-Emitting Materials");
+  }
+
+  return credits;
+}
+
+/**
+ * Verify certificate expiration dates
+ */
+export function verifyCertificateDates(certs: CertificateVerification): string[] {
+  const issues: string[] = [];
+  const now = new Date();
+
+  const parseDate = (dateStr: string | undefined): Date | null => {
+    if (!dateStr) return null;
+    const timestamp = Date.parse(dateStr);
+    if (isNaN(timestamp)) return null;
+    return new Date(timestamp);
+  };
+
+  if (certs.cdphExpiryDate) {
+    const expiry = parseDate(certs.cdphExpiryDate);
+    if (expiry && expiry < now) {
+      issues.push(`CDPH certificate expired on ${certs.cdphExpiryDate}`);
+    }
+  }
+
+  if (certs.epdValidTo) {
+    const validTo = parseDate(certs.epdValidTo);
+    if (validTo && validTo < now) {
+      issues.push(`EPD expired on ${certs.epdValidTo}`);
+    }
+  }
+
+  return issues;
+}
+
+/**
  * Check product defensibility
  */
 export function checkDefensibility(productData: ProductData): DefensibilityResult {
@@ -150,6 +206,21 @@ export function checkDefensibility(productData: ProductData): DefensibilityResul
   const recommendations: string[] = [];
   
   let score = 0;
+
+  // LEED Compliance Check
+  const leedCredits = checkLEEDCompliance(productData);
+  if (leedCredits.length > 0) {
+    score += 10; // Bonus for LEED compliance
+    strengths.push(...leedCredits);
+  }
+
+  // Certificate Validity Check
+  const expiredCerts = verifyCertificateDates(productData.certificates);
+  if (expiredCerts.length > 0) {
+    score -= 20; // Penalty for expired certs
+    vulnerabilities.push(...expiredCerts);
+    recommendations.push("Update expired certifications immediately");
+  }
 
   // Certificate checks (40 points total)
   if (productData.certificates.hasCDPHv12) {
@@ -200,7 +271,7 @@ export function checkDefensibility(productData: ProductData): DefensibilityResul
     vulnerabilities.push('Failed compliance testing');
   }
 
-  const isDefensible = score >= 60 && missingRequirements.length <= 1;
+  const isDefensible = score >= 60 && missingRequirements.length <= 1 && expiredCerts.length === 0;
 
   return {
     productData,
