@@ -156,6 +156,11 @@ function CallbackClientInner() {
           redirectUri,
         });
 
+        // Initialize MSAL instance - CRITICAL for MSAL 3.x+
+        if (debug) console.info("[Auth] Initializing MSAL for callback...");
+        await msalClient.initialize();
+        if (debug) console.info("[Auth] MSAL initialized, handling redirect...");
+
         const result = (await msalClient.handleRedirectPromise()) as
           | AuthenticationResult
           | null;
