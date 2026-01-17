@@ -201,8 +201,8 @@ export default function LoginClient() {
 
       setConfigError(errorMessage);
     } finally {
-      // Only reset loading state if an error occurred (redirect will happen otherwise)
-      // This prevents a flash of the button becoming enabled before redirect
+      // Reset loading state - this will happen whether redirect succeeds or fails
+      // (If redirect succeeds, user will leave the page anyway)
       setIsInitializing(false);
     }
   };
