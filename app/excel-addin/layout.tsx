@@ -1,9 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
     title: "GreenChainz | Excel Audit Add-in",
     description: "Carbon audit for your Bill of Materials directly in Excel",
-    viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport: Viewport = {
+    width: "device-width",
+    initialScale: 1,
 };
 
 export default function ExcelAddinLayout({
