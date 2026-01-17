@@ -91,6 +91,10 @@ export interface PersonaWeights {
   cost: number;
   /** Weight for health/safety metrics (0-1) */
   health: number;
+  /** Weight for physical material properties (0-1) */
+  physical?: number;
+  /** Weight for similarity to reference material (0-1) */
+  similarity?: number;
 }
 
 /**
@@ -111,6 +115,10 @@ export interface ViabilityScore {
   cost: number;
   /** Health and safety score (0-100) */
   health: number;
+  /** Physical properties score (0-100) */
+  physical?: number;
+  /** Similarity score (0-100) */
+  similarity?: number;
   /** Persona used for weighting */
   persona: UserPersona;
   /** Confidence level of the score (0-1) */
@@ -183,6 +191,40 @@ export interface MaterialViabilityProfile {
     priceVolatility?: number;
   };
   
+  /** Physical properties for performance scoring */
+  physicalProperties?: {
+    /** 1-10 scale */
+    hardnessMohs?: number;
+    /** For plastics/elastomers */
+    hardnessShore?: number;
+    /** 0-100 scale */
+    scratchResistance?: number;
+    /** Izod/Charpy (J/m) */
+    impactResistance?: number;
+    /** Taber cycles */
+    wearResistance?: number;
+    /** % by weight */
+    waterAbsorption?: number;
+    /** W/(m·K) */
+    thermalConductivity?: number;
+  };
+
+  /** Similarity metrics for material substitution */
+  similarityMetrics?: {
+    /** What material to compare against */
+    referenceMaterial: string;
+    /** 0-100 (100 = identical) */
+    hardnessSimilarity: number;
+    /** 0-100 */
+    densitySimilarity: number;
+    /** 0-100 */
+    colorSimilarity: number;
+    /** 0-100 */
+    textureSimilarity: number;
+    /** 0-100 */
+    frictionSimilarity: number;
+  };
+
   /** Calculated viability scores per persona */
   viabilityScores?: Record<UserPersona, ViabilityScore>;
   
@@ -211,60 +253,74 @@ export interface MaterialViabilityProfile {
  */
 export const DEFAULT_PERSONA_WEIGHTS: Record<UserPersona, PersonaWeights> = {
   Architect: {
-    environmental: 0.25,
+    environmental: 0.20,
     labor: 0.10,
-    standards: 0.25,
+    standards: 0.20,
     delivery: 0.10,
-    cost: 0.15,
+    cost: 0.10,
     health: 0.15,
+    physical: 0.10,
+    similarity: 0.05,
   },
   GeneralContractor: {
     environmental: 0.10,
-    labor: 0.25,
-    standards: 0.15,
-    delivery: 0.25,
+    labor: 0.20,
+    standards: 0.10,
+    delivery: 0.20,
     cost: 0.20,
     health: 0.05,
+    physical: 0.10,
+    similarity: 0.05,
   },
   FacilityManager: {
     environmental: 0.15,
     labor: 0.20,
     standards: 0.15,
-    delivery: 0.15,
-    cost: 0.25,
+    delivery: 0.10,
+    cost: 0.20,
     health: 0.10,
+    physical: 0.05,
+    similarity: 0.05,
   },
   InsuranceRiskManager: {
     environmental: 0.05,
     labor: 0.05,
-    standards: 0.35,
+    standards: 0.30,
     delivery: 0.10,
     cost: 0.15,
-    health: 0.30,
+    health: 0.25,
+    physical: 0.10,
+    similarity: 0.00,
   },
   FlooringSubcontractor: {
     environmental: 0.05,
-    labor: 0.35,
-    standards: 0.15,
-    delivery: 0.25,
+    labor: 0.30,
+    standards: 0.10,
+    delivery: 0.20,
     cost: 0.15,
     health: 0.05,
+    physical: 0.15,
+    similarity: 0.00,
   },
   DrywallSubcontractor: {
     environmental: 0.05,
-    labor: 0.35,
-    standards: 0.15,
-    delivery: 0.25,
+    labor: 0.30,
+    standards: 0.10,
+    delivery: 0.20,
     cost: 0.15,
     health: 0.05,
+    physical: 0.15,
+    similarity: 0.00,
   },
   Distributor: {
     environmental: 0.10,
     labor: 0.10,
-    standards: 0.15,
-    delivery: 0.35,
-    cost: 0.25,
+    standards: 0.10,
+    delivery: 0.30,
+    cost: 0.20,
     health: 0.05,
+    physical: 0.10,
+    similarity: 0.05,
   },
 };
 

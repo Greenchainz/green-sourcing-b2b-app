@@ -46,6 +46,8 @@ export function calculateViabilityScore(
     delivery: weights.delivery / totalWeight,
     cost: weights.cost / totalWeight,
     health: weights.health / totalWeight,
+    physical: (weights.physical ?? 0) / totalWeight,
+    similarity: (weights.similarity ?? 0) / totalWeight,
   };
   
   // Calculate component scores
@@ -55,6 +57,8 @@ export function calculateViabilityScore(
   const deliveryScore = calculateDeliveryScore(profile);
   const costScore = calculateCostScore(profile);
   const healthScore = calculateHealthScore(profile);
+  const physicalScore = calculatePhysicalScore(profile);
+  const similarityScore = calculateSimilarityScore(profile);
   
   // Calculate weighted overall score
   const overallScore = 
@@ -63,10 +67,13 @@ export function calculateViabilityScore(
     standardsScore * normalizedWeights.standards +
     deliveryScore * normalizedWeights.delivery +
     costScore * normalizedWeights.cost +
-    healthScore * normalizedWeights.health;
+    healthScore * normalizedWeights.health +
+    physicalScore * (normalizedWeights.physical ?? 0) +
+    similarityScore * (normalizedWeights.similarity ?? 0);
   
-  // Calculate confidence based on data quality
-  const confidence = profile.dataQuality.completeness;
+  // Calculate confidence based on data quality and verification
+  const verificationScore = calculateVerificationScore(profile);
+  const confidence = (profile.dataQuality.completeness * 0.7) + (verificationScore / 100 * 0.3);
   
   // Build score object
   const score: ViabilityScore = {
@@ -77,6 +84,8 @@ export function calculateViabilityScore(
     delivery: Math.round(deliveryScore * 100) / 100,
     cost: Math.round(costScore * 100) / 100,
     health: Math.round(healthScore * 100) / 100,
+    physical: Math.round(physicalScore * 100) / 100,
+    similarity: Math.round(similarityScore * 100) / 100,
     persona,
     confidence: Math.round(confidence * 100) / 100,
     calculatedAt: new Date(),
@@ -98,11 +107,8 @@ function calculateEnvironmentalScore(profile: MaterialViabilityProfile): number 
   let score = 50; // Start at neutral
   
   // GWP scoring (lower is better)
-  if (environmentalMetrics.gwp !== undefined) {
-    // Normalize: assume 0-100 kgCO2e range, lower is better
-    const gwpScore = Math.max(0, 100 - (environmentalMetrics.gwp ?? 0));
-    score += (gwpScore - 50) * 0.4; // 40% weight
-  }
+  const gwpScore = calculateGWPScore(environmentalMetrics);
+  score += (gwpScore - 50) * 0.4; // 40% weight
   
   // Recyclability (higher is better)
   if (environmentalMetrics.recyclability !== undefined) {
@@ -116,10 +122,9 @@ function calculateEnvironmentalScore(profile: MaterialViabilityProfile): number 
     score -= 20; // Penalty
   }
   
-  // Has EPD documentation
-  if (environmentalMetrics.epdSource) {
-    score += 10; // Bonus for transparency
-  }
+  // Verification bonus (replaces simple EPD check)
+  const verificationScore = calculateVerificationScore(profile);
+  score += (verificationScore / 100) * 15; // Up to 15 points for robust verification
   
   return Math.max(0, Math.min(100, score));
 }
@@ -260,19 +265,16 @@ function calculateCostScore(profile: MaterialViabilityProfile): number {
  */
 function calculateHealthScore(profile: MaterialViabilityProfile): number {
   const { healthMetrics } = profile;
-  let score = 50;
   
-  // Health grade
-  if (healthMetrics.healthGrade) {
-    const gradeScores = { A: 100, B: 75, C: 50, F: 0 };
-    score = gradeScores[healthMetrics.healthGrade];
-  }
+  // Calculate base score from health grade (explicit or derived)
+  let score = calculateHealthGradeScore(healthMetrics);
   
-  // VOC emissions (lower is better)
+  // VOC emissions fine-tuning (lower is better)
   if (healthMetrics.vocEmissions !== undefined) {
     // Assume 0-500 μg/m³ range
     const vocScore = Math.max(0, 100 - (healthMetrics.vocEmissions / 5));
-    score = (score + vocScore) / 2; // Average with health grade
+    // Weighted average: 70% grade, 30% specific VOC score
+    score = (score * 0.7) + (vocScore * 0.3);
   }
   
   // CDPH compliance bonus
@@ -280,12 +282,12 @@ function calculateHealthScore(profile: MaterialViabilityProfile): number {
     score += 10;
   }
   
-  // Formaldehyde (lower is better)
+  // Formaldehyde penalty (severe)
   if (healthMetrics.formaldehydeEmissions !== undefined) {
-    if (healthMetrics.formaldehydeEmissions < 10) {
-      score += 5;
-    } else if (healthMetrics.formaldehydeEmissions > 50) {
-      score -= 10;
+    if (healthMetrics.formaldehydeEmissions > 50) {
+      score -= 20;
+    } else if (healthMetrics.formaldehydeEmissions > 10) {
+      score -= 5;
     }
   }
   
@@ -360,6 +362,8 @@ function generateRecommendations(
     { area: 'delivery', score: score.delivery, weight: weights.delivery },
     { area: 'cost', score: score.cost, weight: weights.cost },
     { area: 'health', score: score.health, weight: weights.health },
+    { area: 'physical', score: score.physical ?? 0, weight: weights.physical ?? 0 },
+    { area: 'similarity', score: score.similarity ?? 0, weight: weights.similarity ?? 0 },
   ];
   
   weightedScores.sort((a, b) => (a.score * a.weight) - (b.score * b.weight));
@@ -387,6 +391,12 @@ function generateRecommendations(
           break;
         case 'health':
           recommendations.push('Address health concerns: Reduce VOC emissions and obtain CDPH certification');
+          break;
+        case 'physical':
+          recommendations.push('Material may not meet physical performance requirements (hardness, wear, impact)');
+          break;
+        case 'similarity':
+          recommendations.push('Material substitution match is low - consider materials with closer density or hardness');
           break;
       }
     }
@@ -424,4 +434,167 @@ export function calculateViabilityScoresForAllPersonas(
   }
   
   return scores as Record<UserPersona, ViabilityScore>;
+}
+
+/**
+ * Calculate GWP (Global Warming Potential) Score
+ * Normalizes GWP against a standard baseline (100 kgCO2e implied for now)
+ */
+function calculateGWPScore(metrics: MaterialViabilityProfile['environmentalMetrics']): number {
+  if (metrics.gwp === undefined) return 50; // Neutral if missing
+
+  // Dynamic baseline could be passed here, for now using static 100 kgCO2e
+  const baselineGWP = 100;
+
+  // Calculate reduction relative to baseline
+  // If GWP is 0, score is 100. If GWP is baseline, score is 50.
+  // If GWP is 2x baseline, score is 0.
+  const relativeGWP = metrics.gwp / baselineGWP;
+  let score = 100 - (relativeGWP * 50);
+
+  // Adjust score curve
+  if (score < 0) score = 0;
+  if (score > 100) score = 100;
+
+  return score;
+}
+
+/**
+ * Calculate Verification Score based on data sources and quality
+ */
+function calculateVerificationScore(profile: MaterialViabilityProfile): number {
+  let score = 0;
+  const { dataQuality, environmentalMetrics } = profile;
+
+  // 1. Data Source Verification (Max 50)
+  if (environmentalMetrics.epdSource) {
+    const trustedHosts = [
+      'environdec.com',
+      'www.environdec.com',
+      'epd.environdec.com',
+      'ul.com',
+      'www.ul.com',
+      'buildingtransparency.org',
+      'www.buildingtransparency.org',
+    ];
+
+    let isTrustedEpdsSource = false;
+    try {
+      const parsed = new URL(environmentalMetrics.epdSource);
+      const host = parsed.hostname.toLowerCase();
+      isTrustedEpdsSource = trustedHosts.includes(host);
+    } catch {
+      // Malformed URL; treat as generic link below
+      isTrustedEpdsSource = false;
+    }
+
+    if (isTrustedEpdsSource) {
+      score += 50; // Third-party verified repo
+    } else {
+      score += 30; // Generic link
+    }
+  } else if (dataQuality.sources.length > 0) {
+    score += 10; // Has some sources
+  }
+
+  // 2. Data Quality Attributes (Max 30)
+  if (dataQuality.completeness > 0.8) score += 20;
+  else if (dataQuality.completeness > 0.5) score += 10;
+
+  if (dataQuality.freshnessInDays < 365) score += 10;
+
+  // 3. Standards Compliance (Max 20)
+  if (profile.astmStandards.some(s => s.compliant)) {
+    score += 20;
+  }
+
+  return Math.min(100, score);
+}
+
+/**
+ * Derive Health Grade if missing and calculate score
+ */
+function calculateHealthGradeScore(metrics: MaterialViabilityProfile['healthMetrics']): number {
+  let grade = metrics.healthGrade;
+
+  // Derive grade if missing
+  if (!grade) {
+    const voc = metrics.vocEmissions ?? 999;
+    const formaldehyde = metrics.formaldehydeEmissions ?? 999;
+
+    if (voc < 50 && formaldehyde < 10) grade = 'A';
+    else if (voc < 100 && formaldehyde < 50) grade = 'B';
+    else if (voc < 300) grade = 'C';
+    else grade = 'F';
+  }
+
+  const gradeScores = { A: 100, B: 75, C: 50, F: 10 };
+  return gradeScores[grade] ?? 50;
+}
+
+/**
+ * Calculate Physical Properties Score (0-100)
+ */
+function calculatePhysicalScore(profile: MaterialViabilityProfile): number {
+  if (!profile.physicalProperties) return 50; // Neutral default
+
+  let score = 50;
+  const props = profile.physicalProperties;
+  let components = 0;
+
+  // Hardness (Mohs 1-10) - Context dependent, but higher generally means more durable
+  if (props.hardnessMohs) {
+    score += (props.hardnessMohs / 10) * 20;
+    components++;
+  }
+
+  // Scratch Resistance (0-100)
+  if (props.scratchResistance) {
+    score += (props.scratchResistance - 50) * 0.5;
+    components++;
+  }
+
+  // Impact Resistance (higher is better, assuming normalized 0-100 input or raw J/m)
+  // Simple check for now: bonus if present
+  if (props.impactResistance) {
+    score += 10;
+    components++;
+  }
+
+  // Wear Resistance (Taber) - Higher cycles = better
+  if (props.wearResistance) {
+    if (props.wearResistance > 1000) score += 10;
+    if (props.wearResistance > 5000) score += 10;
+    components++;
+  }
+
+  // Water Absorption (Lower is better)
+  if (props.waterAbsorption !== undefined) {
+    if (props.waterAbsorption < 0.5) score += 20;
+    else if (props.waterAbsorption > 5) score -= 20;
+    components++;
+  }
+
+  // Return adjusted score clamped 0-100
+  // If no components were found, return neutral 50
+  return components > 0 ? Math.max(0, Math.min(100, score)) : 50;
+}
+
+/**
+ * Calculate Similarity Score (0-100) for material substitution
+ */
+function calculateSimilarityScore(profile: MaterialViabilityProfile): number {
+  if (!profile.similarityMetrics) return 100; // Not a substitution scenario -> Perfect score (not a negative factor)
+
+  const sim = profile.similarityMetrics;
+  let totalScore = 0;
+  let count = 0;
+
+  if (sim.hardnessSimilarity !== undefined) { totalScore += sim.hardnessSimilarity; count++; }
+  if (sim.densitySimilarity !== undefined) { totalScore += sim.densitySimilarity; count++; }
+  if (sim.colorSimilarity !== undefined) { totalScore += sim.colorSimilarity; count++; }
+  if (sim.textureSimilarity !== undefined) { totalScore += sim.textureSimilarity; count++; }
+  if (sim.frictionSimilarity !== undefined) { totalScore += sim.frictionSimilarity; count++; }
+
+  return count > 0 ? totalScore / count : 100;
 }
