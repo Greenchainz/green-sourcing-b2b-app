@@ -13,3 +13,7 @@
 ## 2024-05-24 - Explain Industry Jargon
 **Learning:** Industry-specific terms (like GWP, EPD) are barriers to entry. Assuming user knowledge hurts usability for new team members (e.g., procurement managers who aren't sustainability experts).
 **Action:** Use simple, accessible tooltips (using `group-hover` CSS patterns or `title` attributes) to decode acronyms inline without cluttering the UI.
+
+## 2026-01-17 - Accessible Tooltip Implementation
+**Learning:** The previous "Explain Industry Jargon" action suggested `group-hover` tooltips, but these are inaccessible to keyboard users. Tooltips must be focusable.
+**Action:** Wrap tooltip triggers in `<button type="button">` and add `group-focus:block` alongside `group-hover:block`. Add `aria-label` to the button describing the help action.
