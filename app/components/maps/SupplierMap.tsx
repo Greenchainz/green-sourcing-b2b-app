@@ -209,11 +209,13 @@ export default function SupplierMap({
         view: "Auto",
       });
 
+      const mapInstance = mapRef.current;
+
       // Wait for map to be ready
-      mapRef.current.events.add("ready", () => {
+      mapInstance.events.add("ready", () => {
         // Create data source for markers
         datasourceRef.current = new azureMaps.source.DataSource();
-        mapRef.current.sources.add(datasourceRef.current);
+        mapInstance.sources.add(datasourceRef.current);
 
         // Add markers layer
         const markerLayer = new azureMaps.layer.SymbolLayer(
@@ -233,7 +235,7 @@ export default function SupplierMap({
           }
         );
 
-        mapRef.current.layers.add(markerLayer);
+        mapInstance.layers.add(markerLayer);
 
         // Add popup
         const popup = new azureMaps.Popup({
@@ -242,19 +244,19 @@ export default function SupplierMap({
         });
 
         // Handle marker click
-        mapRef.current.events.add("click", markerLayer, (e: AzureMapEvent) => {
+        mapInstance.events.add("click", markerLayer, (e: AzureMapEvent) => {
           if (e.shapes && e.shapes.length > 0) {
             const shape = e.shapes[0];
-            const supplier = shape.getProperties();
+            const supplier = shape.getProperties() as SupplierLocation;
 
             popup.setOptions({
               position: e.position,
               content: createPopupContent(supplier),
             });
-            popup.open(mapRef.current);
+            popup.open(mapInstance);
 
             if (onSupplierClick) {
-              onSupplierClick(supplier as SupplierLocation);
+              onSupplierClick(supplier);
             }
           }
         });
