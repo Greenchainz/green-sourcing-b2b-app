@@ -46,6 +46,8 @@ export function calculateViabilityScore(
     delivery: weights.delivery / totalWeight,
     cost: weights.cost / totalWeight,
     health: weights.health / totalWeight,
+    physical: (weights.physical ?? 0) / totalWeight,
+    similarity: (weights.similarity ?? 0) / totalWeight,
   };
   
   // Calculate component scores
@@ -55,6 +57,8 @@ export function calculateViabilityScore(
   const deliveryScore = calculateDeliveryScore(profile);
   const costScore = calculateCostScore(profile);
   const healthScore = calculateHealthScore(profile);
+  const physicalScore = calculatePhysicalScore(profile);
+  const similarityScore = calculateSimilarityScore(profile);
   
   // Calculate weighted overall score
   const overallScore = 
@@ -63,7 +67,9 @@ export function calculateViabilityScore(
     standardsScore * normalizedWeights.standards +
     deliveryScore * normalizedWeights.delivery +
     costScore * normalizedWeights.cost +
-    healthScore * normalizedWeights.health;
+    healthScore * normalizedWeights.health +
+    physicalScore * (normalizedWeights.physical ?? 0) +
+    similarityScore * (normalizedWeights.similarity ?? 0);
   
   // Calculate confidence based on data quality and verification
   const verificationScore = calculateVerificationScore(profile);
@@ -78,6 +84,8 @@ export function calculateViabilityScore(
     delivery: Math.round(deliveryScore * 100) / 100,
     cost: Math.round(costScore * 100) / 100,
     health: Math.round(healthScore * 100) / 100,
+    physical: Math.round(physicalScore * 100) / 100,
+    similarity: Math.round(similarityScore * 100) / 100,
     persona,
     confidence: Math.round(confidence * 100) / 100,
     calculatedAt: new Date(),
@@ -354,6 +362,8 @@ function generateRecommendations(
     { area: 'delivery', score: score.delivery, weight: weights.delivery },
     { area: 'cost', score: score.cost, weight: weights.cost },
     { area: 'health', score: score.health, weight: weights.health },
+    { area: 'physical', score: score.physical ?? 0, weight: weights.physical ?? 0 },
+    { area: 'similarity', score: score.similarity ?? 0, weight: weights.similarity ?? 0 },
   ];
   
   weightedScores.sort((a, b) => (a.score * a.weight) - (b.score * b.weight));
@@ -381,6 +391,12 @@ function generateRecommendations(
           break;
         case 'health':
           recommendations.push('Address health concerns: Reduce VOC emissions and obtain CDPH certification');
+          break;
+        case 'physical':
+          recommendations.push('Material may not meet physical performance requirements (hardness, wear, impact)');
+          break;
+        case 'similarity':
+          recommendations.push('Material substitution match is low - consider materials with closer density or hardness');
           break;
       }
     }
@@ -496,4 +512,71 @@ function calculateHealthGradeScore(metrics: MaterialViabilityProfile['healthMetr
 
   const gradeScores = { A: 100, B: 75, C: 50, F: 10 };
   return gradeScores[grade] ?? 50;
+}
+
+/**
+ * Calculate Physical Properties Score (0-100)
+ */
+function calculatePhysicalScore(profile: MaterialViabilityProfile): number {
+  if (!profile.physicalProperties) return 50; // Neutral default
+
+  let score = 50;
+  const props = profile.physicalProperties;
+  let components = 0;
+
+  // Hardness (Mohs 1-10) - Context dependent, but higher generally means more durable
+  if (props.hardnessMohs) {
+    score += (props.hardnessMohs / 10) * 20;
+    components++;
+  }
+
+  // Scratch Resistance (0-100)
+  if (props.scratchResistance) {
+    score += (props.scratchResistance - 50) * 0.5;
+    components++;
+  }
+
+  // Impact Resistance (higher is better, assuming normalized 0-100 input or raw J/m)
+  // Simple check for now: bonus if present
+  if (props.impactResistance) {
+    score += 10;
+    components++;
+  }
+
+  // Wear Resistance (Taber) - Higher cycles = better
+  if (props.wearResistance) {
+    if (props.wearResistance > 1000) score += 10;
+    if (props.wearResistance > 5000) score += 10;
+    components++;
+  }
+
+  // Water Absorption (Lower is better)
+  if (props.waterAbsorption !== undefined) {
+    if (props.waterAbsorption < 0.5) score += 20;
+    else if (props.waterAbsorption > 5) score -= 20;
+    components++;
+  }
+
+  // Return adjusted score clamped 0-100
+  // If no components were found, return neutral 50
+  return components > 0 ? Math.max(0, Math.min(100, score)) : 50;
+}
+
+/**
+ * Calculate Similarity Score (0-100) for material substitution
+ */
+function calculateSimilarityScore(profile: MaterialViabilityProfile): number {
+  if (!profile.similarityMetrics) return 100; // Not a substitution scenario -> Perfect score (not a negative factor)
+
+  const sim = profile.similarityMetrics;
+  let totalScore = 0;
+  let count = 0;
+
+  if (sim.hardnessSimilarity !== undefined) { totalScore += sim.hardnessSimilarity; count++; }
+  if (sim.densitySimilarity !== undefined) { totalScore += sim.densitySimilarity; count++; }
+  if (sim.colorSimilarity !== undefined) { totalScore += sim.colorSimilarity; count++; }
+  if (sim.textureSimilarity !== undefined) { totalScore += sim.textureSimilarity; count++; }
+  if (sim.frictionSimilarity !== undefined) { totalScore += sim.frictionSimilarity; count++; }
+
+  return count > 0 ? totalScore / count : 100;
 }
