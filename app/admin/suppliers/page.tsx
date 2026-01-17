@@ -1,11 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import DataTable, { Column } from "../../components/admin/DataTable";
 import StatusBadge from "../../components/admin/StatusBadge";
 
 // Mock Data
-const MOCK_SUPPLIERS = [
+const INITIAL_SUPPLIERS = [
   {
     id: 1,
     company: "EcoConcrete Ltd",
@@ -30,10 +30,33 @@ const MOCK_SUPPLIERS = [
     founding50: false,
     region: "West Coast",
   },
+  {
+    id: 4,
+    company: "Green Lumber Co",
+    tier: "Premium",
+    verified: false,
+    founding50: true,
+    region: "Pacific NW",
+  },
 ];
 
 export default function AdminSuppliersPage() {
-  const columns: Column<(typeof MOCK_SUPPLIERS)[0]>[] = [
+  const [suppliers, setSuppliers] = useState(INITIAL_SUPPLIERS);
+
+  const handleVerify = (id: number) => {
+    setSuppliers((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, verified: true } : s))
+    );
+  };
+
+  const handleReject = (id: number) => {
+      // In a real app, this would open a modal for rejection reason or API call
+      if(confirm("Are you sure you want to reject this supplier?")) {
+        console.log("Rejected supplier", id);
+      }
+  }
+
+  const columns: Column<(typeof INITIAL_SUPPLIERS)[0]>[] = [
     {
       key: "company",
       header: "Company Name",
@@ -62,9 +85,20 @@ export default function AdminSuppliersPage() {
             ✓ Verified
           </span>
         ) : (
-          <button className="text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700">
-            Verify Now
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleVerify(s.id)}
+              className="text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700 transition-colors"
+            >
+              Verify
+            </button>
+            <button
+                onClick={() => handleReject(s.id)}
+                className="text-xs border border-red-200 text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors"
+            >
+                Reject
+            </button>
+          </div>
         ),
     },
     {
@@ -83,12 +117,18 @@ export default function AdminSuppliersPage() {
   return (
     <div className="gc-page min-h-screen p-6 md:p-10">
       <div className="gc-container">
-        <h1 className="text-2xl font-bold text-slate-900 mb-6">
-          Supplier Management
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-slate-900">
+            Supplier Management
+            </h1>
+            <div className="text-sm text-slate-500">
+                {suppliers.filter(s => !s.verified).length} Pending Verification
+            </div>
+        </div>
+
 
         <DataTable
-          data={MOCK_SUPPLIERS}
+          data={suppliers}
           columns={columns}
           keyField="id"
           searchPlaceholder="Search suppliers..."
