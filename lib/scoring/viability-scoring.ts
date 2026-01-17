@@ -65,8 +65,9 @@ export function calculateViabilityScore(
     costScore * normalizedWeights.cost +
     healthScore * normalizedWeights.health;
   
-  // Calculate confidence based on data quality
-  const confidence = profile.dataQuality.completeness;
+  // Calculate confidence based on data quality and verification
+  const verificationScore = calculateVerificationScore(profile);
+  const confidence = (profile.dataQuality.completeness * 0.7) + (verificationScore / 100 * 0.3);
   
   // Build score object
   const score: ViabilityScore = {
@@ -98,11 +99,8 @@ function calculateEnvironmentalScore(profile: MaterialViabilityProfile): number 
   let score = 50; // Start at neutral
   
   // GWP scoring (lower is better)
-  if (environmentalMetrics.gwp !== undefined) {
-    // Normalize: assume 0-100 kgCO2e range, lower is better
-    const gwpScore = Math.max(0, 100 - (environmentalMetrics.gwp ?? 0));
-    score += (gwpScore - 50) * 0.4; // 40% weight
-  }
+  const gwpScore = calculateGWPScore(environmentalMetrics);
+  score += (gwpScore - 50) * 0.4; // 40% weight
   
   // Recyclability (higher is better)
   if (environmentalMetrics.recyclability !== undefined) {
@@ -116,10 +114,9 @@ function calculateEnvironmentalScore(profile: MaterialViabilityProfile): number 
     score -= 20; // Penalty
   }
   
-  // Has EPD documentation
-  if (environmentalMetrics.epdSource) {
-    score += 10; // Bonus for transparency
-  }
+  // Verification bonus (replaces simple EPD check)
+  const verificationScore = calculateVerificationScore(profile);
+  score += (verificationScore / 100) * 15; // Up to 15 points for robust verification
   
   return Math.max(0, Math.min(100, score));
 }
@@ -260,19 +257,16 @@ function calculateCostScore(profile: MaterialViabilityProfile): number {
  */
 function calculateHealthScore(profile: MaterialViabilityProfile): number {
   const { healthMetrics } = profile;
-  let score = 50;
   
-  // Health grade
-  if (healthMetrics.healthGrade) {
-    const gradeScores = { A: 100, B: 75, C: 50, F: 0 };
-    score = gradeScores[healthMetrics.healthGrade];
-  }
+  // Calculate base score from health grade (explicit or derived)
+  let score = calculateHealthGradeScore(healthMetrics);
   
-  // VOC emissions (lower is better)
+  // VOC emissions fine-tuning (lower is better)
   if (healthMetrics.vocEmissions !== undefined) {
     // Assume 0-500 μg/m³ range
     const vocScore = Math.max(0, 100 - (healthMetrics.vocEmissions / 5));
-    score = (score + vocScore) / 2; // Average with health grade
+    // Weighted average: 70% grade, 30% specific VOC score
+    score = (score * 0.7) + (vocScore * 0.3);
   }
   
   // CDPH compliance bonus
@@ -280,12 +274,12 @@ function calculateHealthScore(profile: MaterialViabilityProfile): number {
     score += 10;
   }
   
-  // Formaldehyde (lower is better)
+  // Formaldehyde penalty (severe)
   if (healthMetrics.formaldehydeEmissions !== undefined) {
-    if (healthMetrics.formaldehydeEmissions < 10) {
-      score += 5;
-    } else if (healthMetrics.formaldehydeEmissions > 50) {
-      score -= 10;
+    if (healthMetrics.formaldehydeEmissions > 50) {
+      score -= 20;
+    } else if (healthMetrics.formaldehydeEmissions > 10) {
+      score -= 5;
     }
   }
   
@@ -424,4 +418,82 @@ export function calculateViabilityScoresForAllPersonas(
   }
   
   return scores as Record<UserPersona, ViabilityScore>;
+}
+
+/**
+ * Calculate GWP (Global Warming Potential) Score
+ * Normalizes GWP against a standard baseline (100 kgCO2e implied for now)
+ */
+function calculateGWPScore(metrics: MaterialViabilityProfile['environmentalMetrics']): number {
+  if (metrics.gwp === undefined) return 50; // Neutral if missing
+
+  // Dynamic baseline could be passed here, for now using static 100 kgCO2e
+  const baselineGWP = 100;
+
+  // Calculate reduction relative to baseline
+  // If GWP is 0, score is 100. If GWP is baseline, score is 50.
+  // If GWP is 2x baseline, score is 0.
+  const relativeGWP = metrics.gwp / baselineGWP;
+  let score = 100 - (relativeGWP * 50);
+
+  // Adjust score curve
+  if (score < 0) score = 0;
+  if (score > 100) score = 100;
+
+  return score;
+}
+
+/**
+ * Calculate Verification Score based on data sources and quality
+ */
+function calculateVerificationScore(profile: MaterialViabilityProfile): number {
+  let score = 0;
+  const { dataQuality, environmentalMetrics } = profile;
+
+  // 1. Data Source Verification (Max 50)
+  if (environmentalMetrics.epdSource) {
+    if (environmentalMetrics.epdSource.includes('environdec.com') ||
+        environmentalMetrics.epdSource.includes('ul.com') ||
+        environmentalMetrics.epdSource.includes('buildingtransparency.org')) {
+      score += 50; // Third-party verified repo
+    } else {
+      score += 30; // Generic link
+    }
+  } else if (dataQuality.sources.length > 0) {
+    score += 10; // Has some sources
+  }
+
+  // 2. Data Quality Attributes (Max 30)
+  if (dataQuality.completeness > 0.8) score += 20;
+  else if (dataQuality.completeness > 0.5) score += 10;
+
+  if (dataQuality.freshnessInDays < 365) score += 10;
+
+  // 3. Standards Compliance (Max 20)
+  if (profile.astmStandards.some(s => s.compliant)) {
+    score += 20;
+  }
+
+  return Math.min(100, score);
+}
+
+/**
+ * Derive Health Grade if missing and calculate score
+ */
+function calculateHealthGradeScore(metrics: MaterialViabilityProfile['healthMetrics']): number {
+  let grade = metrics.healthGrade;
+
+  // Derive grade if missing
+  if (!grade) {
+    const voc = metrics.vocEmissions ?? 999;
+    const formaldehyde = metrics.formaldehydeEmissions ?? 999;
+
+    if (voc < 50 && formaldehyde < 10) grade = 'A';
+    else if (voc < 100 && formaldehyde < 50) grade = 'B';
+    else if (voc < 300) grade = 'C';
+    else grade = 'F';
+  }
+
+  const gradeScores = { A: 100, B: 75, C: 50, F: 10 };
+  return gradeScores[grade] ?? 50;
 }
