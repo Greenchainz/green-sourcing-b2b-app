@@ -9,9 +9,10 @@
  * 5. PDF package generation via pdf-lib
  */
 
-import { uploadFileToBlob, runQuery } from "@/lib/azure/config";
-import { DocumentAnalysisClient, AzureKeyCredential } from "@azure/ai-form-recognizer";
-import { AzureOpenAI } from "openai";
+import { runQuery } from "@/lib/azure/config";
+import { uploadBlob } from "@/lib/azure/blob-storage";
+import { analyzeDocument } from "@/lib/azure/document-intelligence";
+import { chat } from "@/lib/azure/openai";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export interface SpecRequirements {
@@ -39,33 +40,27 @@ export async function uploadSpecToAzure(
     file: File
 ): Promise<{ fileUrl: string; fileBuffer: Buffer }> {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = `spec-${Date.now()}-${file.name}`;
+    const fileName = `spec-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
 
-    const fileUrl = await uploadFileToBlob("submittals", fileName, buffer);
+    const { url } = await uploadBlob("submittals", fileName, buffer, {
+        contentType: "application/pdf"
+    });
 
-    console.log(`✅ Uploaded ${file.name} to Azure Blob: ${fileUrl}`);
+    console.log(`✅ Uploaded ${file.name} to Azure Blob: ${url}`);
 
-    return { fileUrl, fileBuffer: buffer };
+    return { fileUrl: url, fileBuffer: buffer };
 }
 
 /**
  * STEP 2: Extract text from PDF via Azure Document Intelligence
  */
 export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
-    const endpoint = process.env.AZURE_DOC_INTEL_ENDPOINT;
-    const key = process.env.AZURE_DOC_INTEL_KEY;
-
-    if (!endpoint || !key) {
-        throw new Error("Missing Azure Document Intelligence credentials");
-    }
-
-    const client = new DocumentAnalysisClient(endpoint, new AzureKeyCredential(key));
-
     try {
-        const poller = await client.beginAnalyzeDocument("prebuilt-read", fileBuffer);
-        const result = await poller.pollUntilDone();
+        const result = await analyzeDocument(fileBuffer, {
+            modelId: "prebuilt-read"
+        });
 
-        const text = result?.content ?? "";
+        const text = result.content;
         console.log(`✅ Extracted ${text.length} characters from PDF`);
 
         return text.substring(0, 80000); // Safety cap for OpenAI context
@@ -81,20 +76,8 @@ export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
 export async function extractRequirementsWithOpenAI(
     specText: string
 ): Promise<SpecRequirements> {
-    const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const key = process.env.AZURE_OPENAI_API_KEY;
-    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o-mini";
-
-    if (!endpoint || !key) {
-        throw new Error("Missing Azure OpenAI credentials");
-    }
-
-    const client = new AzureOpenAI({
-        endpoint,
-        apiKey: key,
-        apiVersion: "2024-08-01-preview",
-        deployment
-    });
+    // Note: Azure OpenAI client is managed by @/lib/azure/openai.ts
+    // Configuration (endpoint, key, deployment) is handled there.
 
     const systemPrompt = `You are a construction spec analyzer. Extract material requirements from architectural specs.
 Return strict JSON with these fields:
@@ -107,16 +90,26 @@ Return strict JSON with these fields:
     const userPrompt = `Analyze this spec excerpt and extract criteria as JSON:\n\n${specText.substring(0, 6000)}`;
 
     try {
-        const response = await client.chat.completions.create({
-            model: deployment,
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt },
-            ],
+        const response = await chat([
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+        ], {
+            jsonMode: true, // Enforce JSON mode
+            temperature: 0.2
         });
 
-        const content = response.choices?.[0]?.message?.content ?? "{}";
-        let parsed = JSON.parse(content);
+        const content = response.content || "{}";
+        let parsed: any = {};
+
+        try {
+            // Clean markdown code blocks if present (though jsonMode usually prevents this)
+            const cleanContent = content.replace(/^```json\n|\n```$/g, "").trim();
+            parsed = JSON.parse(cleanContent);
+        } catch (e) {
+            console.warn("JSON parse failed, attempting loose parse", e);
+             // Fallback or re-throw
+            parsed = {};
+        }
 
         console.log(`✅ Extracted requirements:`, parsed);
 
