@@ -106,49 +106,79 @@ async function findSuppliersNearby(latitude, longitude, radiusMiles = 100) {
   }
 
   try {
-    // Get all suppliers with locations
+    // Join users and companies to get location info
+    // Schema assumption: companies table has lat/long, users linked to companies
+    // Fallback: Check if users table has lat/long directly (as in legacy schema)
+
+    // Attempt 1: Try using companies table (Standard Schema)
+    try {
+      const result = await pool.query(`
+        SELECT
+          u.user_id as id,
+          u.email,
+          u.first_name,
+          u.last_name,
+          c.company_name,
+          c.latitude,
+          c.longitude
+        FROM users u
+        JOIN companies c ON u.company_id = c.company_id
+        WHERE u.role = 'supplier' OR u.role = 'Supplier'
+          AND c.latitude IS NOT NULL
+          AND c.longitude IS NOT NULL
+      `);
+
+      if (result.rows.length > 0) {
+        return processResults(result.rows, latitude, longitude, radiusMiles);
+      }
+    } catch (err) {
+      // Ignore error and try fallback
+    }
+
+    // Attempt 2: Fallback to users table (Legacy Schema)
+    // Note: Assuming column names might be lowercase based on schema.sql,
+    // but code previously used 'Users' and 'UserID'. Using lowercase 'users' and 'user_id' per target schema.
     const result = await pool.query(`
       SELECT 
-        UserID as id, 
-        Email as email,
-        FirstName,
-        LastName,
-        city, 
-        state, 
+        user_id as id,
+        email,
+        first_name,
+        last_name,
         latitude, 
-        longitude, 
-        service_radius
-      FROM Users
-      WHERE role = 'supplier'
+        longitude
+      FROM users
+      WHERE (role = 'supplier' OR role = 'Supplier')
         AND latitude IS NOT NULL
         AND longitude IS NOT NULL
     `);
 
-    // Calculate distance for each supplier and filter by radius
-    const nearby = result.rows
+    return processResults(result.rows, latitude, longitude, radiusMiles);
+
+  } catch (error) {
+    console.error('Find nearby suppliers error:', error);
+    return [];
+  }
+}
+
+function processResults(rows, lat, lon, radius) {
+    return rows
       .map(supplier => {
         const distance = calculateDistance(
-          latitude,
-          longitude,
+          lat,
+          lon,
           supplier.latitude,
           supplier.longitude
         );
 
         return {
           ...supplier,
-          name: `${supplier.FirstName || ''} ${supplier.LastName || ''}`.trim(),
+          name: supplier.company_name || `${supplier.first_name || ''} ${supplier.last_name || ''}`.trim(),
           distance: distance,
           distance_miles: distance
         };
       })
-      .filter(supplier => supplier.distance !== null && supplier.distance <= radiusMiles)
+      .filter(supplier => supplier.distance !== null && supplier.distance <= radius)
       .sort((a, b) => a.distance - b.distance);
-
-    return nearby;
-  } catch (error) {
-    console.error('Find nearby suppliers error:', error);
-    return [];
-  }
 }
 
 module.exports = {
