@@ -12,12 +12,16 @@ import {
   LogOut,
   Menu,
   X,
+  User,
+  BarChart3,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/supplier", icon: LayoutDashboard },
-  { name: "RFQs", href: "/supplier/rfqs", icon: MessageSquare },
+  { name: "Profile", href: "/supplier/profile", icon: User },
   { name: "My Products", href: "/supplier/products", icon: Package },
+  { name: "RFQs", href: "/supplier/rfqs", icon: MessageSquare },
+  { name: "Analytics", href: "/supplier/analytics", icon: BarChart3 },
   { name: "Certifications", href: "/supplier/certs", icon: FileText },
   { name: "Settings", href: "/supplier/settings", icon: Settings },
 ];
@@ -74,7 +78,8 @@ export default function SupplierLayout({
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || 
+                (item.href !== "/supplier" && pathname.startsWith(item.href));
               return (
                 <Link
                   key={item.name}
