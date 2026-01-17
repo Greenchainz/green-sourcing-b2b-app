@@ -4,86 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-
-// Types
-interface MaterialDetail {
-  id: string
-  name: string
-  category: string
-  manufacturer: string
-  description: string
-  imageUrl?: string
-  sustainabilityScore: number
-  certifications: Array<{
-    name: string
-    issuedDate: string
-    expiryDate?: string
-    documentUrl?: string
-  }>
-  suppliers: Array<{
-    id: string
-    name: string
-    location: string
-    verified: boolean
-    rating?: number
-  }>
-  shadowSupplierCount: number
-  specifications: Record<string, string>
-  environmentalData: {
-    gwp?: number
-    embodiedCarbon?: number
-    recyclableContent?: number
-    recycledContent?: number
-    voc?: number
-    waterUsage?: number
-  }
-  priceRange?: { min: number; max: number }
-  createdAt: string
-  updatedAt: string
-}
-
-// Mock material data
-const MOCK_MATERIAL: MaterialDetail = {
-  id: 'mat-001',
-  name: 'EcoTimber Premium Hardwood Flooring',
-  category: 'Flooring',
-  manufacturer: 'EcoTimber Inc.',
-  description: 'Premium sustainably sourced hardwood flooring with FSC certification. Our EcoTimber Premium line combines traditional craftsmanship with modern sustainability standards, offering exceptional durability while minimizing environmental impact.',
-  imageUrl: '/placeholder-material.png',
-  sustainabilityScore: 92,
-  certifications: [
-    { name: 'FSC Certified', issuedDate: '2023-01-15', documentUrl: '#' },
-    { name: 'LEED Credit Compliant', issuedDate: '2023-03-20', documentUrl: '#' },
-    { name: 'EPD Verified', issuedDate: '2023-06-01', documentUrl: '#' },
-  ],
-  suppliers: [
-    { id: 's1', name: 'GreenBuild Supply', location: 'Portland, OR', verified: true, rating: 4.8 },
-    { id: 's2', name: 'EcoMaterials Direct', location: 'Seattle, WA', verified: true, rating: 4.6 },
-    { id: 's3', name: 'Sustainable Floors Inc', location: 'San Francisco, CA', verified: false, rating: 4.2 },
-  ],
-  shadowSupplierCount: 12,
-  specifications: {
-    'Thickness': '3/4 inch (19mm)',
-    'Width': '5 inch (127mm)',
-    'Length': 'Random lengths 12"-84"',
-    'Species': 'White Oak',
-    'Finish': 'UV-cured polyurethane',
-    'Janka Hardness': '1360 lbf',
-    'Installation': 'Nail, Staple, or Glue Down',
-    'Warranty': '50 Year Residential',
-  },
-  environmentalData: {
-    gwp: 12.4,
-    embodiedCarbon: 8.2,
-    recyclableContent: 100,
-    recycledContent: 35,
-    voc: 0.02,
-    waterUsage: 45,
-  },
-  priceRange: { min: 8, max: 15 },
-  createdAt: '2023-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-}
+import { getMaterial, type MaterialDetail } from '../data'
 
 // Score badge component
 function ScoreBadge({ score }: { score: number }) {
@@ -121,7 +42,7 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 // Certification badge component
-function CertBadge({ cert }: { cert: MaterialDetail['certifications'][0] }) {
+function CertBadge({ cert }: { cert: MaterialDetail['certificationDetails'][0] }) {
   return (
     <div
       style={{
@@ -270,8 +191,21 @@ export default function MaterialDetailPage() {
   const _materialId = params.materialId as string
   const [activeTab, setActiveTab] = useState<'overview' | 'specs' | 'suppliers'>('overview')
   
-  // In production, this would fetch from API
-  const material = MOCK_MATERIAL
+  const material = getMaterial(_materialId)
+
+  if (!material) {
+    return (
+      <div className="gc-page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="gc-container" style={{ textAlign: 'center' }}>
+          <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Material Not Found</h1>
+          <p style={{ marginBottom: '2rem', color: 'var(--gc-slate-600)' }}>The material you are looking for does not exist or has been removed.</p>
+          <Link href="/catalog" className="gc-btn gc-btn-primary">
+            Back to Catalog
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="gc-page" style={{ minHeight: '100vh' }}>
@@ -315,7 +249,7 @@ export default function MaterialDetailPage() {
             }}
           >
             <Image
-              src={material.imageUrl || '/placeholder-material.png'}
+              src={material.image || '/placeholder-material.png'}
               alt={material.name}
               fill
               style={{ objectFit: 'cover' }}
@@ -379,7 +313,7 @@ export default function MaterialDetailPage() {
             </div>
 
             {/* Price Range */}
-            {material.priceRange && (
+            {material.priceRangeMin && material.priceRangeMax && (
               <div
                 style={{
                   display: 'inline-flex',
@@ -392,11 +326,11 @@ export default function MaterialDetailPage() {
                 }}
               >
                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--gc-slate-900)' }}>
-                  ${material.priceRange.min}
+                  ${material.priceRangeMin}
                 </span>
                 <span style={{ fontSize: '0.9rem', color: 'var(--gc-slate-500)' }}>-</span>
                 <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--gc-slate-900)' }}>
-                  ${material.priceRange.max}
+                  ${material.priceRangeMax}
                 </span>
                 <span style={{ fontSize: '0.85rem', color: 'var(--gc-slate-500)' }}>/ sq ft</span>
               </div>
@@ -463,7 +397,7 @@ export default function MaterialDetailPage() {
                 Certifications
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {material.certifications.map((cert, i) => (
+                {material.certificationDetails.map((cert, i) => (
                   <CertBadge key={i} cert={cert} />
                 ))}
               </div>
@@ -546,9 +480,9 @@ export default function MaterialDetailPage() {
               <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--gc-slate-900)' }}>
                 Suppliers ({material.suppliers.length})
               </h2>
-              {material.shadowSupplierCount > 0 && (
+              {material.shadowSuppliers && material.shadowSuppliers > 0 && (
                 <span style={{ fontSize: '0.8125rem', color: 'var(--gc-slate-500)' }}>
-                  +{material.shadowSupplierCount} unverified suppliers
+                  +{material.shadowSuppliers} unverified suppliers
                 </span>
               )}
             </div>
