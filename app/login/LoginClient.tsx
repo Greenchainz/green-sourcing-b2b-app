@@ -182,8 +182,6 @@ export default function LoginClient() {
         console.error("[Azure Login] Error stack:", err.stack);
       }
 
-      setIsInitializing(false);
-
       // User-friendly error messages
       let errorMessage = "Microsoft sign-in failed. Please try again.";
       
@@ -202,6 +200,10 @@ export default function LoginClient() {
       }
 
       setConfigError(errorMessage);
+    } finally {
+      // Only reset loading state if an error occurred (redirect will happen otherwise)
+      // This prevents a flash of the button becoming enabled before redirect
+      setIsInitializing(false);
     }
   };
 
