@@ -35,32 +35,32 @@ export default function Home() {
             },
             "openingHoursSpecification": {
               "@type": "OpeningHoursSpecification",
-              "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
               "opens": "09:00",
               "closes": "17:00"
             }
           })
         }}
       />
-      
+
       <SiteHeader />
 
       {/* Hero Section - Premium Vibrant Theme */}
       <section className="hero-premium relative overflow-hidden text-white py-28 md:py-40 px-6 text-center">
         {/* Animated premium gradient background */}
         <div className="absolute inset-0 hero-premium-gradient"></div>
-        
+
         {/* Subtle pattern overlay */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }}></div>
-        
+
         {/* Multi-color glowing orbs */}
         <div className="hero-orb hero-orb-1"></div>
         <div className="hero-orb hero-orb-2"></div>
         <div className="hero-orb hero-orb-3"></div>
         <div className="hero-orb hero-orb-4"></div>
-        
+
         <div className="relative z-10 max-w-6xl mx-auto">
           {/* Logo with glow effect */}
           <div className="flex justify-center mb-10 animate-fade-in-up">
@@ -83,26 +83,26 @@ export default function Home() {
             Where Being Green<br />
             <span className="hero-title-glow">Has Never Been So Easy</span>
           </h1>
-          
+
           {/* Value proposition */}
           <p className="text-xl md:text-2xl max-w-3xl mx-auto mb-4 text-white/95 leading-relaxed animate-fade-in-up font-medium" style={{
             animationDelay: '0.2s',
           }}>
             Save money. Save the planet. Same workflow.
           </p>
-          
+
           <p className="text-lg md:text-xl max-w-2xl mx-auto mb-12 text-white/80 leading-relaxed animate-fade-in-up" style={{
             animationDelay: '0.3s',
           }}>
             We plug AI-powered sustainability tools directly into Excel, Revit, and your browser—so you can stay compliant without changing how you work.
           </p>
-          
+
           {/* CTA Buttons with aurora glow */}
           <div className="flex justify-center gap-5 flex-wrap animate-fade-in-up" style={{
             animationDelay: '0.4s',
           }}>
             <Link
-              href="/signup"
+              href="/login"
               className="btn-aurora group shimmer"
             >
               <Sparkles className="w-5 h-5" />
@@ -116,7 +116,7 @@ export default function Home() {
               See How It Works
             </Link>
           </div>
-          
+
           {/* Trust indicators */}
           <div className="mt-14 flex flex-wrap justify-center gap-6 md:gap-10 text-white/80 text-sm animate-fade-in-up" style={{
             animationDelay: '0.5s',
@@ -142,7 +142,7 @@ export default function Home() {
         {/* Decorative blobs */}
         <div className="deco-blob deco-blob-emerald w-[500px] h-[500px] -top-40 -left-40 opacity-30"></div>
         <div className="deco-blob deco-blob-cyan w-[400px] h-[400px] top-20 -right-20 opacity-20"></div>
-        
+
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-20">
             <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-100 via-cyan-100 to-violet-100 text-emerald-700 text-sm font-bold mb-5 border border-emerald-200">
@@ -156,7 +156,7 @@ export default function Home() {
               Sustainability isn&apos;t a luxury—it&apos;s a competitive advantage. We make it affordable, accessible, and automatic.
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             {/* Card 1 */}
             <div className="feature-card-premium group">
@@ -168,7 +168,7 @@ export default function Home() {
                 No more expensive consultants. No manual data entry. Our AI does the heavy lifting—so your budget stays green too.
               </p>
             </div>
-            
+
             {/* Card 2 */}
             <div className="feature-card-premium group">
               <div className="feature-icon-premium">
@@ -179,7 +179,7 @@ export default function Home() {
                 What used to take days now takes minutes. Instant EPD lookups, automated audits, and one-click submittals.
               </p>
             </div>
-            
+
             {/* Card 3 */}
             <div className="feature-card-premium group">
               <div className="feature-icon-premium">
@@ -214,7 +214,7 @@ export default function Home() {
         {/* Decorative blobs */}
         <div className="deco-blob deco-blob-violet w-[450px] h-[450px] top-0 -right-40 opacity-20"></div>
         <div className="deco-blob deco-blob-blue w-[350px] h-[350px] bottom-20 -left-20 opacity-20"></div>
-        
+
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-20 animate-fade-in-up">
             <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-100 via-sky-100 to-violet-100 text-emerald-700 text-sm font-bold mb-5 border border-sky-200">
@@ -324,34 +324,33 @@ export default function Home() {
 
           <div className="space-y-8 md:space-y-0 md:grid md:grid-cols-3 md:gap-10">
             {[
-              { 
-                step: 1, 
-                title: "Connect", 
+              {
+                step: 1,
+                title: "Connect",
                 desc: "Install our Excel add-in, Chrome extension, or Revit plugin. Takes under 2 minutes.",
                 icon: "🔌",
                 color: "emerald"
               },
-              { 
-                step: 2, 
-                title: "Work Normally", 
+              {
+                step: 2,
+                title: "Work Normally",
                 desc: "Do your job like always. Select materials, browse suppliers, design your model.",
                 icon: "💼",
                 color: "cyan"
               },
-              { 
-                step: 3, 
-                title: "Get Green Insights", 
+              {
+                step: 3,
+                title: "Get Green Insights",
                 desc: "Carbon scores, certifications, and better alternatives appear automatically. Done.",
                 icon: "🌱",
                 color: "violet"
               },
             ].map((item) => (
               <div key={item.step} className="card-vibrant p-8 text-center relative group">
-                <div className={`absolute -top-5 left-1/2 transform -translate-x-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-lg shadow-lg ${
-                  item.color === 'emerald' ? 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-300/50' :
-                  item.color === 'cyan' ? 'bg-gradient-to-br from-cyan-500 to-blue-500 shadow-cyan-300/50' :
-                  'bg-gradient-to-br from-violet-500 to-purple-500 shadow-violet-300/50'
-                }`}>
+                <div className={`absolute -top-5 left-1/2 transform -translate-x-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-lg shadow-lg ${item.color === 'emerald' ? 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-300/50' :
+                    item.color === 'cyan' ? 'bg-gradient-to-br from-cyan-500 to-blue-500 shadow-cyan-300/50' :
+                      'bg-gradient-to-br from-violet-500 to-purple-500 shadow-violet-300/50'
+                  }`}>
                   {item.step}
                 </div>
                 <span className="text-5xl mb-5 block group-hover:scale-110 transition-transform duration-300">{item.icon}</span>
@@ -405,7 +404,7 @@ export default function Home() {
         {/* Decorative elements */}
         <div className="deco-blob deco-blob-emerald w-[400px] h-[400px] -top-20 -left-20 opacity-20"></div>
         <div className="deco-blob deco-blob-violet w-[350px] h-[350px] -bottom-20 -right-20 opacity-20"></div>
-        
+
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <div className="cta-premium p-10 md:p-14">
             <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-100 via-cyan-100 to-violet-100 text-emerald-700 text-sm font-bold mb-8 border border-emerald-200">
@@ -419,7 +418,7 @@ export default function Home() {
               Join the teams who&apos;ve stopped wrestling with spreadsheets and started winning green building projects.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-5">
-              <Link href="/signup" className="btn-aurora group shimmer">
+              <Link href="/login" className="btn-aurora group shimmer">
                 <Sparkles className="w-5 h-5" />
                 <span>Get Started Free</span>
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />

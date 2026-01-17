@@ -42,28 +42,28 @@ export default function AboutPage() {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             {/* Story Content */}
                             <div className="flex-1">
                                 <h2 className="text-3xl font-bold text-slate-900 mb-6">From Military Logistics to Supply Chain Revolution</h2>
-                                
+
                                 <div className="prose prose-slate max-w-none">
                                     <p className="text-lg text-slate-700 leading-relaxed mb-4">
                                         My journey started in the military, where I handled communications, supply, and logistics. That experience taught me one thing: <strong>efficiency saves lives and money</strong>. Every wasted resource, every delayed shipment—it all adds up.
                                     </p>
-                                    
+
                                     <p className="text-slate-600 leading-relaxed mb-4">
                                         After leaving the service, I wandered a bit before settling into construction. Ten years of building taught me a lot about putting things together—and about the frustration that comes with it. The inefficiency of supply chains, the paperwork nightmares, the constant struggle to verify that materials actually met spec. It was chaos hiding behind spreadsheets.
                                     </p>
-                                    
+
                                     <p className="text-slate-600 leading-relaxed mb-4">
                                         But after a decade, I needed a new challenge. Something that would push me. I'd always tinkered with computers as an amateur, so I took a deep dive into tech. While going through school, I started thinking about my legacy—how I could make a real difference.
                                     </p>
-                                    
+
                                     <p className="text-slate-600 leading-relaxed mb-4">
                                         I wanted work that was challenging and let me sleep well at night. That's when it clicked: I'd seen the supply chain problems firsthand in construction. The waste. The inefficiency. The frustration. With what I was learning about AI, I knew I could do better.
                                     </p>
-                                    
+
                                     <p className="text-lg text-slate-700 leading-relaxed font-medium">
                                         <strong>GreenChainz</strong> isn't about saving the world—it's about saving you money while doing the right thing. We're green because it makes business sense. Period.
                                     </p>
@@ -121,7 +121,7 @@ export default function AboutPage() {
                 <section className="max-w-6xl mx-auto mb-16">
                     <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">Powered By Industry Leaders</h2>
                     <p className="text-slate-600 text-center mb-8 max-w-2xl mx-auto">We integrate with the platforms and data sources that matter most for sustainability compliance.</p>
-                    
+
                     {/* Partner Logos Row */}
                     <div className="flex flex-wrap justify-center items-center gap-8 mb-12 p-6 bg-slate-50 rounded-2xl">
                         <a href="https://www.usgbc.org/leed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
@@ -140,21 +140,21 @@ export default function AboutPage() {
                             <Image src="/trust/usgbc.png" alt="U.S. Green Building Council (USGBC) logo" width={120} height={48} className="h-12 w-auto" />
                         </a>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* LEED */}
-                        <a 
-                            href="https://www.usgbc.org/leed" 
-                            target="_blank" 
+                        <a
+                            href="https://www.usgbc.org/leed"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="gc-card p-6 hover:shadow-lg transition-shadow group"
                         >
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center overflow-hidden p-2">
-                                    <Image 
-                                        src="/trust/leed.png" 
-                                        alt="LEED" 
-                                        width={40} 
+                                    <Image
+                                        src="/trust/leed.png"
+                                        alt="LEED"
+                                        width={40}
                                         height={40}
                                         className="object-contain"
                                     />
@@ -168,18 +168,18 @@ export default function AboutPage() {
                         </a>
 
                         {/* Building Transparency / EC3 */}
-                        <a 
-                            href="https://buildingtransparency.org/ec3" 
-                            target="_blank" 
+                        <a
+                            href="https://buildingtransparency.org/ec3"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="gc-card p-6 hover:shadow-lg transition-shadow group"
                         >
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-12 h-12 rounded-lg bg-teal-100 flex items-center justify-center overflow-hidden p-1">
-                                    <Image 
-                                        src="/trust/building-transparency.svg" 
-                                        alt="Building Transparency" 
-                                        width={40} 
+                                    <Image
+                                        src="/trust/building-transparency.svg"
+                                        alt="Building Transparency"
+                                        width={40}
                                         height={40}
                                         unoptimized
                                     />
@@ -193,18 +193,18 @@ export default function AboutPage() {
                         </a>
 
                         {/* EPD */}
-                        <a 
-                            href="https://www.environdec.com" 
-                            target="_blank" 
+                        <a
+                            href="https://www.environdec.com"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="gc-card p-6 hover:shadow-lg transition-shadow group"
                         >
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center overflow-hidden p-2">
-                                    <Image 
-                                        src="/trust/epd.png" 
-                                        alt="EPD" 
-                                        width={40} 
+                                    <Image
+                                        src="/trust/epd.png"
+                                        alt="EPD"
+                                        width={40}
                                         height={40}
                                         className="object-contain"
                                     />
@@ -218,18 +218,18 @@ export default function AboutPage() {
                         </a>
 
                         {/* Autodesk */}
-                        <a 
-                            href="https://www.autodesk.com/sustainability" 
-                            target="_blank" 
+                        <a
+                            href="https://www.autodesk.com/sustainability"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="gc-card p-6 hover:shadow-lg transition-shadow group"
                         >
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center">
-                                    <Image 
-                                        src="/brand/autodesk-logo-white.png" 
-                                        alt="Autodesk" 
-                                        width={32} 
+                                    <Image
+                                        src="/brand/autodesk-logo-white.png"
+                                        alt="Autodesk"
+                                        width={32}
                                         height={32}
                                         className="invert opacity-70"
                                     />
@@ -243,18 +243,18 @@ export default function AboutPage() {
                         </a>
 
                         {/* USGBC */}
-                        <a 
-                            href="https://www.usgbc.org" 
-                            target="_blank" 
+                        <a
+                            href="https://www.usgbc.org"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="gc-card p-6 hover:shadow-lg transition-shadow group"
                         >
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center overflow-hidden p-2">
-                                    <Image 
-                                        src="/trust/usgbc.png" 
-                                        alt="USGBC" 
-                                        width={40} 
+                                    <Image
+                                        src="/trust/usgbc.png"
+                                        alt="USGBC"
+                                        width={40}
                                         height={40}
                                         className="object-contain"
                                     />
@@ -268,18 +268,18 @@ export default function AboutPage() {
                         </a>
 
                         {/* FSC */}
-                        <a 
-                            href="https://fsc.org/en" 
-                            target="_blank" 
+                        <a
+                            href="https://fsc.org/en"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="gc-card p-6 hover:shadow-lg transition-shadow group"
                         >
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center overflow-hidden p-2">
-                                    <Image 
-                                        src="/trust/fsc.png" 
-                                        alt="FSC" 
-                                        width={40} 
+                                    <Image
+                                        src="/trust/fsc.png"
+                                        alt="FSC"
+                                        width={40}
                                         height={40}
                                         className="object-contain"
                                     />
@@ -304,7 +304,7 @@ export default function AboutPage() {
                     <h2 className="text-2xl font-bold text-slate-900 mb-4">Ready to Cut Compliance Costs?</h2>
                     <p className="text-slate-600 mb-6 max-w-2xl mx-auto">Join teams saving 85% on sustainability compliance. Free to start, no credit card required.</p>
                     <div className="flex justify-center gap-4 flex-wrap">
-                        <Link href="/signup" className="gc-btn gc-btn-primary">Get Started Free</Link>
+                        <Link href="/login" className="gc-btn gc-btn-primary">Get Started Free</Link>
                         <Link href="/contact" className="gc-btn gc-btn-secondary">Talk to Sales</Link>
                     </div>
                 </div>
