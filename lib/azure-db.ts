@@ -9,7 +9,14 @@
  */
 
 import { Pool, PoolClient, QueryResult } from 'pg';
-import { MaterialViabilityProfile } from '../types/schema';
+import {
+  ASTMStandard,
+  LaborUnits,
+  MaterialViabilityProfile,
+  OTIFMetrics,
+  UserPersona,
+  ViabilityScore,
+} from '../types/schema';
 
 // Connection pool for Azure PostgreSQL
 let azurePool: Pool | null = null;
@@ -23,15 +30,15 @@ let azurePool: Pool | null = null;
 export function getAzureDBPool(): Pool {
   if (!azurePool) {
     const connectionString = process.env.DATABASE_URL;
-    
+
     if (!connectionString) {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
     azurePool = new Pool({
       connectionString,
-      ssl: process.env.NODE_ENV === 'production' 
-        ? { rejectUnauthorized: false } 
+      ssl: process.env.NODE_ENV === 'production'
+        ? { rejectUnauthorized: false }
         : undefined,
       max: 20,
       idleTimeoutMillis: 30000,
@@ -54,15 +61,15 @@ export async function azureQuery<T extends Record<string, unknown> = Record<stri
 ): Promise<QueryResult<T>> {
   const pool = getAzureDBPool();
   const start = Date.now();
-  
+
   try {
     const result = await pool.query<T>(text, params);
     const duration = Date.now() - start;
-    
+
     if (duration > 1000) {
       console.warn(`⚠️ Slow Azure DB query (${duration}ms):`, text.substring(0, 100));
     }
-    
+
     return result;
   } catch (error) {
     console.error('❌ Azure DB Query Error:', error);
@@ -232,7 +239,7 @@ export async function getViabilityProfileByProductId(
   `;
 
   const result = await azureQuery(sql, [productId]);
-  
+
   if (result.rows.length === 0) {
     return null;
   }
@@ -248,7 +255,7 @@ export async function getViabilityProfileById(
 ): Promise<MaterialViabilityProfile | null> {
   const sql = 'SELECT * FROM viability_profiles WHERE id = $1;';
   const result = await azureQuery(sql, [id]);
-  
+
   if (result.rows.length === 0) {
     return null;
   }
@@ -305,22 +312,64 @@ export async function deleteViabilityProfile(id: number | string): Promise<boole
  * Map database row to MaterialViabilityProfile
  */
 function mapRowToProfile(row: Record<string, unknown>): MaterialViabilityProfile {
+  const parseJson = <T>(value: unknown, fallback: T): T => {
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return fallback;
+      }
+    }
+    return value as T;
+  };
+
+  const astmStandards = parseJson<ASTMStandard[]>(row.astm_standards, []);
+  const laborUnits = parseJson<LaborUnits>(row.labor_units, {
+    installationHoursPerUnit: 0,
+    maintenanceHoursPerYear: 0,
+    unit: 'unit',
+    skillLevelRequired: 0,
+  });
+  const otifMetrics = parseJson<OTIFMetrics>(row.otif_metrics, {
+    onTimePercentage: 0,
+    inFullPercentage: 0,
+    otifScore: 0,
+    averageLeadTimeDays: 0,
+    sampleSize: 0,
+    dataFrom: new Date(),
+    dataTo: new Date(),
+  });
+  const environmentalMetrics = parseJson<MaterialViabilityProfile['environmentalMetrics']>(row.environmental_metrics, {});
+  const healthMetrics = parseJson<MaterialViabilityProfile['healthMetrics']>(row.health_metrics, {});
+  const costMetrics = parseJson<MaterialViabilityProfile['costMetrics']>(row.cost_metrics, {
+    unitPrice: 0,
+    currency: 'USD',
+  });
+  const viabilityScores = parseJson<Record<UserPersona, ViabilityScore> | undefined>(row.viability_scores, undefined);
+  const dataQuality = parseJson<MaterialViabilityProfile['dataQuality']>(row.data_quality, {
+    completeness: 0,
+    freshnessInDays: 0,
+    sources: [],
+    lastUpdated: new Date(),
+  });
+
   return {
     id: row.id as string,
     productId: row.product_id as string,
     productName: row.product_name as string,
     manufacturer: row.manufacturer as string,
-    sku: row.sku as string,
-    astmStandards: row.astm_standards as ASTMStandard[],
-    laborUnits: row.labor_units as LaborUnits,
-    otifMetrics: row.otif_metrics,
-    environmentalMetrics: row.environmental_metrics,
-    healthMetrics: row.health_metrics,
-    costMetrics: row.cost_metrics,
-    viabilityScores: row.viability_scores,
-    dataQuality: row.data_quality,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    createdBy: row.created_by,
+    sku: (row.sku as string) ?? undefined,
+    astmStandards,
+    laborUnits,
+    otifMetrics,
+    environmentalMetrics,
+    healthMetrics,
+    costMetrics,
+    viabilityScores,
+    dataQuality,
+    createdAt: row.created_at ? new Date(row.created_at as string) : undefined,
+    updatedAt: row.updated_at ? new Date(row.updated_at as string) : undefined,
+    createdBy: row.created_by as string | number | undefined,
   };
 }

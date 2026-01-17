@@ -299,6 +299,9 @@ export default function SupplierMap({
   const updateMarkers = () => {
     if (!mapRef.current || !datasourceRef.current) return;
 
+    const mapInstance = mapRef.current;
+    const datasource = datasourceRef.current;
+
     const azureMaps = (window as Window & { atlas?: AzureMapsNamespace }).atlas;
     if (!azureMaps) return;
 
@@ -325,7 +328,7 @@ export default function SupplierMap({
       };
 
       const feature = new azureMaps.data.Feature(point, properties);
-      datasourceRef.current.add(feature);
+      datasource.add(feature);
 
       // Add service radius circle if enabled
       if (showServiceRadius && supplier.service_radius) {
@@ -339,14 +342,14 @@ export default function SupplierMap({
           new azureMaps.data.Polygon([circle]),
           { supplierId: supplier.id, type: "serviceRadius" }
         );
-        datasourceRef.current.add(circleFeature);
+        datasource.add(circleFeature);
       }
     });
 
     // Fit map to bounds if multiple suppliers
     if (suppliers.length > 1) {
-      const bounds = azureMaps.data.BoundingBox.fromData(datasourceRef.current);
-      mapRef.current.setCamera({
+      const bounds = azureMaps.data.BoundingBox.fromData(datasource);
+      mapInstance.setCamera({
         bounds: bounds,
         padding: 50,
       });
