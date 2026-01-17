@@ -54,24 +54,20 @@ jobs:
       
       - name: Build and Push Backend Image
         run: |
+          # Uses backend/Dockerfile.azure with root context (.) to access backend/ and database-schemas/
           az acr build \
             --registry ${{ vars.CONTAINER_REGISTRY }} \
             --image greenchainz-backend:${{ github.sha }} \
             --image greenchainz-backend:latest \
-            --file Dockerfile \
-            backend/
+            --file backend/Dockerfile.azure \
+            .
       
       - name: Deploy Backend Container App
         run: |
-          # Only deploy if backend image was built
-          if az acr repository show --name ${{ vars.CONTAINER_REGISTRY }} --image greenchainz-backend:${{ github.sha }} &>/dev/null; then
-            az containerapp update \
-              --name greenchainz-container \
-              --resource-group ${{ vars.RESOURCE_GROUP }} \
-              --image ${{ steps.acr.outputs.login_server }}/greenchainz-backend:${{ github.sha }}
-          else
-            echo "⚠️ Backend image not found, skipping backend deployment"
-          fi
+          az containerapp update \
+            --name greenchainz-container \
+            --resource-group ${{ vars.RESOURCE_GROUP }} \
+            --image ${{ steps.acr.outputs.login_server }}/greenchainz-backend:${{ github.sha }}
       
       - name: Deployment Summary
         run: |
@@ -87,10 +83,9 @@ jobs:
           
           echo "**Frontend:** https://$FRONTEND_URL" >> $GITHUB_STEP_SUMMARY
           
-          if az containerapp show --name greenchainz-container --resource-group ${{ vars.RESOURCE_GROUP }} &>/dev/null; then
-            BACKEND_URL=$(az containerapp show \
-              --name greenchainz-container \
-              --resource-group ${{ vars.RESOURCE_GROUP }} \
-              --query properties.configuration.ingress.fqdn -o tsv)
-            echo "**Backend:** https://$BACKEND_URL" >> $GITHUB_STEP_SUMMARY
-          fi
+          BACKEND_URL=$(az containerapp show \
+            --name greenchainz-container \
+            --resource-group ${{ vars.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          
+          echo "**Backend:** https://$BACKEND_URL" >> $GITHUB_STEP_SUMMARY
