@@ -25,23 +25,31 @@ function authenticateToken(req, res, next) {
         req.user = decoded;
         next();
     } catch (err) {
-        console.error('Token verification failed:', err.message);
+        // Return 403 (Forbidden) for invalid tokens, but don't crash
         return res.status(403).json({ error: 'Invalid or expired token' });
     }
 }
 
 /**
- * Middleware to authorize specific roles
- * Must be used after authenticateToken
- * @param {...string} roles - Allowed roles (e.g., 'Admin', 'Supplier')
+ * Role-Based Authorization Middleware
+ * Verifies that the authenticated user has one of the required roles.
+ * Must be used after authenticateToken middleware.
+ *
+ * @param {...string} roles - List of allowed roles (e.g., 'Admin', 'Supplier', 'Buyer')
+ * @returns {Function} Express middleware function
  */
 function authorizeRoles(...roles) {
     return (req, res, next) => {
+        // Ensure user is authenticated
         if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
+        // Check if user has one of the required roles
         if (!roles.includes(req.user.role)) {
+            // Log unauthorized access attempt for security auditing
+            console.warn(`[Auth] Access denied for user ${req.user.userId || 'unknown'} (Role: ${req.user.role}) to ${req.originalUrl}. Required: ${roles.join(', ')}`);
+
             return res.status(403).json({
                 error: `Access denied. Required roles: ${roles.join(', ')}`
             });
