@@ -10,6 +10,7 @@ const BACKEND_URL =
 
 interface RFQ {
   id: string;
+  user_id: string;
   project_name: string;
   category?: string | null;
   message?: string | null;
@@ -27,6 +28,7 @@ interface RFQResponse {
   supplier_id: string | number;
   supplier_name?: string | null;
   price?: number | null;
+  status?: string;
   created_at: string;
   quotes?: RFQResponseQuote[];
 }
@@ -131,10 +133,46 @@ export default function RFQDetailPage() {
 
       setShowBidForm(false);
       setBidForm({ quotedPrice: "", notes: "" });
+      // Refresh responses
+      const refreshResponse = await fetch(`${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json();
+        setResponses(data || []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleBidAction = async (bidId: string | number, action: "accept" | "reject") => {
+    try {
+      if (!token) throw new Error("Not authenticated");
+      const response = await fetch(
+        `${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids/${bidId}/${action}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error(`Failed to ${action} bid`);
+
+      // Refresh responses
+      const refreshResponse = await fetch(`${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json();
+        setResponses(data || []);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Action failed");
     }
   };
 
@@ -275,7 +313,7 @@ export default function RFQDetailPage() {
               </p>
             ) : (
               responses.map((response) => (
-                <div key={response.response_id} className="gc-response-card">
+                <div key={response.response_id || response.id} className="gc-response-card">
                   <div className="gc-response-header">
                     <div>
                       <h3 className="gc-response-supplier">
@@ -287,14 +325,37 @@ export default function RFQDetailPage() {
                         ).toLocaleDateString()}
                       </p>
                     </div>
+                    {response.status && (
+                      <span className={`gc-status-badge gc-status-badge--${response.status.toLowerCase()}`}>
+                        {response.status}
+                      </span>
+                    )}
                   </div>
 
-                    {typeof response.price === "number" && (
-                      <div className="gc-quotes-section">
-                        <p className="gc-quotes-label">Total Price:</p>
-                        <p className="gc-quote-price">${response.price}</p>
-                      </div>
-                    )}
+                  {typeof response.price === "number" && (
+                    <div className="gc-quotes-section">
+                      <p className="gc-quotes-label">Total Price:</p>
+                      <p className="gc-quote-price">${response.price}</p>
+                    </div>
+                  )}
+
+                  {/* Actions for RFQ Owner */}
+                  {user && rfq.user_id === user.id && response.status !== "accepted" && response.status !== "rejected" && (
+                    <div className="gc-response-actions mt-4 flex gap-2">
+                      <button
+                        onClick={() => handleBidAction(response.id || response.response_id!, "accept")}
+                        className="gc-btn gc-btn-primary gc-btn-compact"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleBidAction(response.id || response.response_id!, "reject")}
+                        className="gc-btn gc-btn-secondary gc-btn-compact"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
