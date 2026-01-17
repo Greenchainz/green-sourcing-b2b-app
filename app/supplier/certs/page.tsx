@@ -26,6 +26,12 @@ interface Certification {
   document_url?: string;
 }
 
+function getDaysUntilExpiry(expiryDate: string): number {
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 const MOCK_CERTIFICATIONS: Certification[] = [
   {
     id: "1",
@@ -88,9 +94,7 @@ export default function SupplierCertificationsPage() {
   const verifiedCount = certifications.filter((c) => c.status === "verified").length;
   const pendingCount = certifications.filter((c) => c.status === "pending").length;
   const expiringCount = certifications.filter((c) => {
-    const expiry = new Date(c.expiry_date);
-    const now = new Date();
-    const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = getDaysUntilExpiry(c.expiry_date);
     return daysUntilExpiry <= 90 && daysUntilExpiry > 0;
   }).length;
 
@@ -172,11 +176,7 @@ export default function SupplierCertificationsPage() {
           {certifications.map((cert) => {
             const statusConfig = STATUS_STYLES[cert.status];
             const StatusIcon = statusConfig.icon;
-            const expiry = new Date(cert.expiry_date);
-            const now = new Date();
-            const daysUntilExpiry = Math.ceil(
-              (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-            );
+            const daysUntilExpiry = getDaysUntilExpiry(cert.expiry_date);
 
             return (
               <div

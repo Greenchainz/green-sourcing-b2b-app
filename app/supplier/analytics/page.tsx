@@ -84,7 +84,9 @@ export default function SupplierAnalyticsPage() {
 
   if (!data) return null;
 
-  const maxViews = Math.max(...data.monthly_views.map((m) => m.views));
+  const maxViews = data.monthly_views.length > 0 
+    ? Math.max(...data.monthly_views.map((m) => m.views)) 
+    : 1;
 
   return (
     <div>

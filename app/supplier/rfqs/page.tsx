@@ -9,7 +9,6 @@ import {
   Clock,
   MapPin,
   Loader2,
-  AlertCircle,
   CheckCircle,
   Send,
   ChevronRight,
@@ -83,7 +82,6 @@ const MOCK_RFQS: RFQ[] = [
 export default function SupplierRFQsPage() {
   const [rfqs, setRfqs] = useState<RFQ[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRfq, setSelectedRfq] = useState<RFQ | null>(null);
@@ -96,12 +94,10 @@ export default function SupplierRFQsPage() {
         const data = await res.json();
         // Use API data if available, otherwise use mock data
         setRfqs(data.length > 0 ? data : MOCK_RFQS);
-        setError("");
       } catch (err) {
         console.error(err);
         // Use mock data on error for demo purposes
         setRfqs(MOCK_RFQS);
-        setError("");
       } finally {
         setLoading(false);
       }
@@ -126,15 +122,6 @@ export default function SupplierRFQsPage() {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-forest-600" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 bg-rose-50 border border-rose-200 rounded-xl text-rose-700">
-        <AlertCircle className="h-6 w-6 mb-2" />
-        {error}
       </div>
     );
   }
