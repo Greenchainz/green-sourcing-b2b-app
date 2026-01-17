@@ -247,7 +247,7 @@ export default function SupplierMap({
         mapInstance.events.add("click", markerLayer, (e: AzureMapEvent) => {
           if (e.shapes && e.shapes.length > 0) {
             const shape = e.shapes[0];
-            const supplier = shape.getProperties() as SupplierLocation;
+            const supplier = shape.getProperties() as unknown as SupplierLocation;
 
             popup.setOptions({
               position: e.position,
