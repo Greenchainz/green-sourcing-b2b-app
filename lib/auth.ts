@@ -15,6 +15,7 @@ export const AZURE_AD_CONFIG = {
   // Use 'common' tenant to support both organizational and personal Microsoft accounts
   // This enables multi-tenant + personal account authentication
   tenantId: process.env.NEXT_PUBLIC_AZURE_TENANT_ID || "common",
+  // NEXT_PUBLIC_* prefix makes this available on client-side (browser)
   clientId: process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || "",
   
   // OAuth 2.0 endpoints for Microsoft Identity Platform v2.0
@@ -46,7 +47,8 @@ export const getAzureADProviderConfig = () => ({
   name: "Microsoft",
   type: "oidc" as const,
   issuer: `https://login.microsoftonline.com/${AZURE_AD_CONFIG.tenantId}/v2.0`,
-  clientId: process.env.AZURE_AD_CLIENT_ID || AZURE_AD_CONFIG.clientId,
+  // AZURE_AD_CLIENT_ID is server-side only; falls back to NEXT_PUBLIC_* for compatibility
+  clientId: process.env.AZURE_AD_CLIENT_ID || process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || "",
   clientSecret: process.env.AZURE_AD_CLIENT_SECRET || "",
   authorization: {
     url: AZURE_AD_CONFIG.authorizationEndpoint,
@@ -650,11 +652,6 @@ export const useAuth = create<AuthState>()(
         const { token } = get();
         if (token) {
           try {
-            // Get post-logout redirect URI for Azure AD
-            const postLogoutRedirectUri = typeof window !== "undefined" 
-              ? window.location.origin 
-              : "";
-            
             // Try to logout from backend first
             await fetch(`${BACKEND_URL}/api/v1/auth/logout`, {
               method: "POST",
@@ -663,14 +660,9 @@ export const useAuth = create<AuthState>()(
               },
             });
             
-            // Optionally redirect to Azure AD logout endpoint
-            // This ensures the user is logged out from Azure AD as well
-            if (typeof window !== "undefined" && postLogoutRedirectUri) {
-              // Note: buildAzureLogoutUrl can be used here if needed for federated logout
-              // For now, we just clear local state - calling code can use buildAzureLogoutUrl
-              // to redirect to Azure AD logout if federated logout is needed
-              void 0; // No-op placeholder
-            }
+            // Note: For federated logout, calling code can use buildAzureLogoutUrl()
+            // to redirect to Azure AD logout endpoint after this method returns.
+            // We don't redirect here to give the caller control over navigation.
           } catch {
             // ignore logout errors - still clear local state
           }
