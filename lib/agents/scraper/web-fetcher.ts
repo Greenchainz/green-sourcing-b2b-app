@@ -76,12 +76,12 @@ export class WebFetcher {
             // 6. Decode HTML entities
             content = content
                 .replace(/&nbsp;/g, ' ')
-                .replace(/&amp;/g, '&')
                 .replace(/&lt;/g, '<')
                 .replace(/&gt;/g, '>')
                 .replace(/&quot;/g, '"')
                 .replace(/&#39;/g, "'")
-                .replace(/&[a-z]+;/g, ' '); // Remove other entities
+                .replace(/&[a-z]+;/g, ' ') // Remove other entities
+                .replace(/&amp;/g, '&');
 
             // 7. Clean up whitespace (multiple spaces/newlines to single space)
             content = content.replace(/\s+/g, ' ').trim();
