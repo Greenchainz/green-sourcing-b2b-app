@@ -83,7 +83,7 @@ export default function CreateRFQPage() {
       <div className="gc-page gc-rfq-page--centered">
         <p>Please log in to create an RFQ.</p>
         <p className="text-sm text-gray-500 mt-2">
-            If you are seeing this during verification, ensure auth is mocked.
+          If you are seeing this during verification, ensure auth is mocked.
         </p>
       </div>
     );
