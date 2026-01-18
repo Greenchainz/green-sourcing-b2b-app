@@ -26,7 +26,8 @@ function authenticateToken(req, res, next) {
         next();
     } catch (err) {
         // Return 403 (Forbidden) for invalid tokens, but don't crash
-        return res.status(403).json({ error: 'Invalid or expired token' });
+        const message = err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token';
+        return res.status(403).json({ error: message });
     }
 }
 
@@ -37,6 +38,10 @@ function authenticateToken(req, res, next) {
  *
  * @param {...string} roles - List of allowed roles (e.g., 'Admin', 'Supplier', 'Buyer')
  * @returns {Function} Express middleware function
+ */
+/**
+ * Role-Based Authorization Middleware
+ * Verifies that the authenticated user has one of the required roles.
  */
 function authorizeRoles(...roles) {
     return (req, res, next) => {

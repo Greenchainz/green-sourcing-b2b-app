@@ -17,7 +17,11 @@ function notFound(req, res, next) {
  */
 function errorHandler(err, req, res, next) {
     // Set default status code if not set
-    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+
+    // Check if error object has status code
+    if (err.status) statusCode = err.status;
+    if (err.statusCode) statusCode = err.statusCode;
 
     // Log the error
     console.error(`[Error] ${statusCode} - ${err.message}`);
