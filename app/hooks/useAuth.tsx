@@ -6,9 +6,8 @@ import { useRouter } from 'next/navigation';
 interface User {
   id: string;
   email: string;
-  role: 'architect' | 'supplier' | 'admin';
-  full_name?: string;
-  user_type?: string;
+  role: string;
+  full_name: string;
 }
 
 interface AuthContextType {
@@ -16,7 +15,6 @@ interface AuthContextType {
   loading: boolean;
   login: (data: any) => Promise<void>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,7 +22,6 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => {},
   logout: async () => {},
-  refreshUser: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -32,59 +29,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Check session on load
-  const refreshUser = async () => {
-    try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-      }
-    } catch (error) {
-      console.error("Auth check failed", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Initial check (Optional: You can disable this if /api/auth/me isn't ready)
   useEffect(() => {
-    refreshUser();
+    // For now, we assume not logged in on refresh to verify the explicit login flow first
+    setLoading(false);
   }, []);
 
-  // THE MISSING LINK: This function actually calls the API
   const login = async (formData: any) => {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) {
-      throw new Error(data.error || "Login failed");
+      if (!res.ok) throw new Error(data.error || "Login failed");
+
+      // Success
+      setUser(data.user);
+      
+      // Force a hard refresh/redirect to ensure middleware sees the new cookie
+      if (data.user.role === 'supplier') {
+        window.location.href = '/supplier/dashboard';
+      } else {
+        window.location.href = '/architect/dashboard';
+      }
+    } catch (error) {
+      console.error("Login Hook Error:", error);
+      throw error;
     }
-
-    // Success: Set user and redirect immediately
-    setUser(data.user);
-    
-    if (data.user.role === 'supplier' || data.user.user_type === 'supplier') {
-      router.push('/supplier/dashboard');
-    } else {
-      router.push('/architect/dashboard');
-    }
-    router.refresh();
   };
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
     router.push('/login');
-    router.refresh();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { generateToken } from '@/lib/auth/jwt'; 
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const { email, password } = body;
 
-    // 1. HARDCODED DEMO CHECK (Bypassing DB for immediate fix)
-    // This proves the flow works without Supabase or Azure SQL blocking you.
+    // 1. Hardcoded Check (Works immediately)
     const isArchitect = email === 'demo@architect.com' && password === 'demo123';
     const isSupplier = email === 'demo@supplier.com' && password === 'demo123';
 
@@ -14,40 +14,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // 2. Create User Object (Simulating an Azure AD / SQL User)
+    // 2. Build User Object
     const user = {
-      id: isSupplier ? 'supplier-guid-123' : 'architect-guid-456',
+      id: isSupplier ? 'sup-123' : 'arch-456',
       email: email,
       role: isSupplier ? 'supplier' : 'architect',
-      full_name: isSupplier ? 'Demo Supplier' : 'Demo Architect',
-      user_type: isSupplier ? 'supplier' : 'architect' // Critical for your frontend check
+      full_name: isSupplier ? 'Demo Supplier' : 'Demo Architect'
     };
 
-    // 3. Generate Session Token
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role
+    // 3. Generate Token
+    const token = generateToken({ 
+      userId: user.id, 
+      email: user.email, 
+      role: user.role 
     });
 
-    // 4. Set Secure Cookie & Return User
-    const response = NextResponse.json({
-      success: true,
-      user: user, // This is what your frontend is waiting for
-      token
-    });
+    // 4. Create Response
+    const response = NextResponse.json({ success: true, user, token });
 
-    response.cookies.set('token', token, {
+    // 5. SET COOKIE (CRITICAL FIX FOR LOCALHOST)
+    // If we are in dev (localhost), secure must be FALSE.
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    response.cookies.set({
+      name: 'greenchainz-auth-token',
+      value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
       path: '/',
+      secure: isProduction, // false on localhost, true on Azure
+      sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7 // 7 days
     });
 
     return response;
 
   } catch (error) {
-    console.error('Azure Login Error:', error);
-    return NextResponse.json({ error: 'System Error' }, { status: 500 });
+    console.error('Login Route Error:', error);
+    return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }
