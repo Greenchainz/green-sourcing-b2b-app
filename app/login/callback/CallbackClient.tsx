@@ -157,6 +157,38 @@ function CallbackClientInner() {
           );
         }
 
+        if (typeof window !== "undefined") {
+          const hash = window.location.hash || "";
+          if (hash.includes("code=")) {
+            const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+            const code = hashParams.get("code");
+
+            if (!code) {
+              throw new Error("Missing authorization code in callback.");
+            }
+
+            pushStep("Exchanging Microsoft authorization code...");
+            await handleAzureCallback(
+              code,
+              redirectUri,
+              config.backendUrl || undefined,
+              pushStep
+            );
+
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname
+            );
+
+            pushStep("Authentication successful! Redirecting...");
+            const role = useAuth.getState().user?.role?.toLowerCase();
+            const redirectTo = role === "supplier" ? "/dashboard" : "/dashboard/buyer";
+            setTimeout(() => router.push(redirectTo), 500);
+            return;
+          }
+        }
+
         const msalClient = createMsalClient({
           clientId: azureClientId,
           tenant: azureTenant,
