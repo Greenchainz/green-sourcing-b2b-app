@@ -10,14 +10,18 @@ export type TaskType =
   | "process_document"
   | "data_janitor";
 
+// Updated to match User Request: { task_type, payload, priority }
 export interface QueueTask {
-  type: TaskType;
+  task_type: TaskType;
   payload: Record<string, unknown>;
+  priority?: "normal" | "high" | "low";
   timestamp: string;
   requestedBy?: string;
+  // Backward compatibility fields (optional)
+  type?: TaskType;
 }
 
-export async function sendToScraperQueue(taskType: TaskType, payload: Record<string, unknown>) {
+export async function sendToScraperQueue(taskType: TaskType, payload: Record<string, unknown>, priority: "normal" | "high" | "low" = "normal") {
   if (!connectionString) {
     console.warn("⚠️ AZURE_STORAGE_CONNECTION_STRING not set - task not queued");
     return { queued: false, reason: "no_connection_string" };
@@ -30,10 +34,17 @@ export async function sendToScraperQueue(taskType: TaskType, payload: Record<str
   await queueClient.createIfNotExists();
 
   const message: QueueTask = {
-    type: taskType,
+    task_type: taskType,
     payload: payload,
-    timestamp: new Date().toISOString()
+    priority: priority,
+    timestamp: new Date().toISOString(),
+    // Backward compatibility
+    type: taskType
   };
+
+  if (payload.requestedBy) {
+      message.requestedBy = payload.requestedBy as string;
+  }
 
   const messageString = JSON.stringify(message);
   const messageBase64 = Buffer.from(messageString).toString('base64');
@@ -44,7 +55,7 @@ export async function sendToScraperQueue(taskType: TaskType, payload: Record<str
   return { queued: true, taskType, timestamp: message.timestamp };
 }
 
-export async function sendToIntegrationQueue(taskType: TaskType, payload: Record<string, unknown>) {
+export async function sendToIntegrationQueue(taskType: TaskType, payload: Record<string, unknown>, priority: "normal" | "high" | "low" = "normal") {
   if (!connectionString) {
     console.warn("⚠️ AZURE_STORAGE_CONNECTION_STRING not set - task not queued");
     return { queued: false, reason: "no_connection_string" };
@@ -57,9 +68,11 @@ export async function sendToIntegrationQueue(taskType: TaskType, payload: Record
   await queueClient.createIfNotExists();
 
   const message: QueueTask = {
-    type: taskType,
+    task_type: taskType,
     payload: payload,
-    timestamp: new Date().toISOString()
+    priority: priority,
+    timestamp: new Date().toISOString(),
+    type: taskType
   };
 
   const messageString = JSON.stringify(message);
