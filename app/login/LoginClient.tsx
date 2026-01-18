@@ -89,6 +89,7 @@ export default function LoginClient() {
         redirectUri: options.redirectUri,
         postLogoutRedirectUri:
           typeof window !== "undefined" ? window.location.origin : "/",
+        navigateToLoginRequestUrl: false,
       },
       cache: {
         cacheLocation: "sessionStorage",
