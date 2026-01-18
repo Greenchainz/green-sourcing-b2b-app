@@ -26,10 +26,17 @@ import { POST } from '@/app/api/auth/azure-callback/route';
 import { NextRequest } from 'next/server';
 
 describe('Azure Entra ID Callback API', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockClient.query.mockReset();
     mockQuery.mockReset();
+    process.env = { ...originalEnv, DATABASE_URL: 'postgres://mock:mock@localhost:5432/mock' };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   describe('POST /api/auth/azure-callback', () => {
