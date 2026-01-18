@@ -1,76 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateToken } from '@/lib/auth/jwt'; // Your existing JWT lib
-// import { getSecret } from '@/lib/azure/keyvault'; // Future: Fetch secrets dynamically
-// import { sql } from '@/lib/azure/db'; // Future: Your actual Azure SQL client
+import { generateToken } from '@/lib/auth/jwt'; 
 
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Missing credentials' }, { status: 400 });
-    }
+    // 1. HARDCODED DEMO CHECK (Bypassing DB for immediate fix)
+    // This proves the flow works without Supabase or Azure SQL blocking you.
+    const isArchitect = email === 'demo@architect.com' && password === 'demo123';
+    const isSupplier = email === 'demo@supplier.com' && password === 'demo123';
 
-    // --- STEP 1: AUTHENTICATE USER (STRICTLY AZURE) ---
-    // In a real Azure build, you'd query Azure SQL here.
-    // Ideally, we fetch the DB connection string from Key Vault if not using Managed Identity.
-    
-    // MOCK VALIDATION (Replace with your actual Azure SQL query logic)
-    // const result = await sql.query`SELECT * FROM Users WHERE Email = ${email}`;
-    // const user = result.recordset[0];
-    
-    // For now, allow the demo users to pass so you can work:
-    const validArchitect = email === 'demo@architect.com' && password === 'demo123';
-    const validSupplier = email === 'demo@supplier.com' && password === 'demo123';
-
-    let user = null;
-
-    if (validArchitect) {
-      user = {
-        id: 'arch-123',
-        email: 'demo@architect.com',
-        role: 'architect',
-        full_name: 'Architect Demo',
-        avatar_url: ''
-      };
-    } else if (validSupplier) {
-      user = {
-        id: 'supp-456',
-        email: 'demo@supplier.com',
-        role: 'supplier',
-        full_name: 'Supplier Demo',
-        avatar_url: ''
-      };
-    } else {
+    if (!isArchitect && !isSupplier) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // --- STEP 2: GENERATE SESSION (USING YOUR JWT LIB) ---
+    // 2. Create User Object (Simulating an Azure AD / SQL User)
+    const user = {
+      id: isSupplier ? 'supplier-guid-123' : 'architect-guid-456',
+      email: email,
+      role: isSupplier ? 'supplier' : 'architect',
+      full_name: isSupplier ? 'Demo Supplier' : 'Demo Architect',
+      user_type: isSupplier ? 'supplier' : 'architect' // Critical for your frontend check
+    };
+
+    // 3. Generate Session Token
     const token = generateToken({
       userId: user.id,
       email: user.email,
       role: user.role
     });
 
-    // --- STEP 3: RETURN RESPONSE & SET COOKIE ---
+    // 4. Set Secure Cookie & Return User
     const response = NextResponse.json({
       success: true,
-      user: user, // Crucial: This is what useAuth needs
+      user: user, // This is what your frontend is waiting for
       token
     });
 
     response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7 days
     });
 
     return response;
 
   } catch (error) {
     console.error('Azure Login Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'System Error' }, { status: 500 });
   }
 }
