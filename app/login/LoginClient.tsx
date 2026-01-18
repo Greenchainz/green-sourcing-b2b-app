@@ -63,6 +63,20 @@ export default function LoginClient() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!searchParams) return;
+    const hasOauthParams =
+      searchParams.has("code") ||
+      searchParams.has("state") ||
+      searchParams.has("error") ||
+      searchParams.has("id_token");
+
+    if (hasOauthParams) {
+      const query = searchParams.toString();
+      router.replace(`/login/callback${query ? `?${query}` : ""}`);
+    }
+  }, [searchParams, router]);
+
   const createMsalClient = (options: {
     clientId: string;
     tenant: string;
