@@ -8,7 +8,7 @@ interface User {
   email: string;
   role: 'architect' | 'supplier' | 'admin';
   full_name?: string;
-  avatar_url?: string;
+  user_type?: string;
 }
 
 interface AuthContextType {
@@ -32,17 +32,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Check session on load
   const refreshUser = async () => {
     try {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
-      } else {
-        setUser(null);
       }
     } catch (error) {
-      setUser(null);
+      console.error("Auth check failed", error);
     } finally {
       setLoading(false);
     }
@@ -52,6 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     refreshUser();
   }, []);
 
+  // THE MISSING LINK: This function actually calls the API
   const login = async (formData: any) => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
@@ -65,18 +65,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw new Error(data.error || "Login failed");
     }
 
-    // SUCCESS: Update global state immediately
-    if (data.user) {
-      setUser(data.user);
-      
-      // Redirect based on role
-      const redirectPath = data.user.role === 'supplier' 
-        ? '/supplier/dashboard' 
-        : '/architect/dashboard';
-        
-      router.push(redirectPath);
-      router.refresh(); // Ensure server components update
+    // Success: Set user and redirect immediately
+    setUser(data.user);
+    
+    if (data.user.role === 'supplier' || data.user.user_type === 'supplier') {
+      router.push('/supplier/dashboard');
+    } else {
+      router.push('/architect/dashboard');
     }
+    router.refresh();
   };
 
   const logout = async () => {
