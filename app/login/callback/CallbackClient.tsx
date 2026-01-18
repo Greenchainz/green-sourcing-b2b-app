@@ -48,6 +48,9 @@ function CallbackClientInner() {
   useEffect(() => {
     const processCallback = async () => {
       try {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("msal.interaction.status");
+        }
         // Check for OAuth provider callbacks (Google, LinkedIn)
         const provider = searchParams.get("provider");
         const token = searchParams.get("token");
@@ -165,6 +168,10 @@ function CallbackClientInner() {
           | AuthenticationResult
           | null;
 
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("msal.interaction.status");
+        }
+
         if (!result || !result.idTokenClaims) {
           throw new Error(
             "No sign-in response received. Please try signing in again."
@@ -224,6 +231,10 @@ function CallbackClientInner() {
         if (debug) console.error("[Auth] Callback error:", err);
         setError(errorMessage);
         setIsProcessing(false);
+      } finally {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("msal.interaction.status");
+        }
       }
     };
 
