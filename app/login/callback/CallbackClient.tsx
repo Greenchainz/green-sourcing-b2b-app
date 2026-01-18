@@ -49,7 +49,10 @@ function CallbackClientInner() {
     const processCallback = async () => {
       try {
         if (typeof window !== "undefined") {
-          sessionStorage.removeItem("msal.interaction.status");
+          const interactionKeys = Object.keys(sessionStorage).filter((key) =>
+            key.includes("interaction.status")
+          );
+          interactionKeys.forEach((key) => sessionStorage.removeItem(key));
         }
         // Check for OAuth provider callbacks (Google, LinkedIn)
         const provider = searchParams.get("provider");
@@ -169,7 +172,10 @@ function CallbackClientInner() {
           | null;
 
         if (typeof window !== "undefined") {
-          sessionStorage.removeItem("msal.interaction.status");
+          const interactionKeys = Object.keys(sessionStorage).filter((key) =>
+            key.includes("interaction.status")
+          );
+          interactionKeys.forEach((key) => sessionStorage.removeItem(key));
         }
 
         if (!result || !result.idTokenClaims) {
@@ -233,7 +239,10 @@ function CallbackClientInner() {
         setIsProcessing(false);
       } finally {
         if (typeof window !== "undefined") {
-          sessionStorage.removeItem("msal.interaction.status");
+          const interactionKeys = Object.keys(sessionStorage).filter((key) =>
+            key.includes("interaction.status")
+          );
+          interactionKeys.forEach((key) => sessionStorage.removeItem(key));
         }
       }
     };

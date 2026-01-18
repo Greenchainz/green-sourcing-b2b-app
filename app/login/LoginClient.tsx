@@ -141,12 +141,11 @@ export default function LoginClient() {
   const initiateAzureLogin = async () => {
     try {
       if (typeof window !== "undefined") {
-        const interactionStatus = sessionStorage.getItem(
-          "msal.interaction.status"
+        const interactionKeys = Object.keys(sessionStorage).filter((key) =>
+          key.includes("interaction.status")
         );
-        if (interactionStatus === "interaction_in_progress") {
-          setConfigError("Microsoft sign-in already in progress.");
-          return;
+        if (interactionKeys.length > 0) {
+          interactionKeys.forEach((key) => sessionStorage.removeItem(key));
         }
       }
 
@@ -169,13 +168,11 @@ export default function LoginClient() {
       await msalClient.initialize();
 
       if (typeof window !== "undefined") {
-        const interactionStatus = sessionStorage.getItem(
-          "msal.interaction.status"
+        const interactionKeys = Object.keys(sessionStorage).filter((key) =>
+          key.includes("interaction.status")
         );
-        if (interactionStatus === "interaction_in_progress") {
-          setConfigError("Microsoft sign-in already in progress.");
-          setIsInitializing(false);
-          return;
+        if (interactionKeys.length > 0) {
+          interactionKeys.forEach((key) => sessionStorage.removeItem(key));
         }
       }
 
