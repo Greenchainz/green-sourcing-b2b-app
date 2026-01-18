@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       };
     } else {
       // Full extraction with category detection
-      result = extractDecisionLogic(documentContent);
+      result = await extractDecisionLogic(documentContent);
     }
 
     console.log(`✅ Decision logic extracted: ${result.materialCategory} (${result.relevanceScore})`);
