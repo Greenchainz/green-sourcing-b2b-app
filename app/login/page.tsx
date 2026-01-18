@@ -1,28 +1,18 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { useAuth } from "@/hooks/useAuth"; // IMPORT THIS
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { FiEye, FiEyeOff, FiCheckSquare } from "react-icons/fi";
-import { FcGoogle } from "react-icons/fc";
-import { FaGithub, FaLinkedin, FaMicrosoft } from "react-icons/fa";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const supabase = createClient();
-  const { login } = useAuth(); // GET LOGIN FUNCTION
-  
+  const { login } = useAuth(); // Use our Azure hook
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,65 +20,72 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // Pass the raw form data to our Auth Hook
-      await login(formData); 
-      // If login throws, it will be caught below. If successful, useAuth handles redirect.
+      await login(formData);
     } catch (err: any) {
-      console.error("Login failed", err);
-      setError(err.message || "Login failed. Please check your credentials.");
+      setError(err.message || "Invalid credentials");
     } finally {
       setLoading(false);
     }
   };
 
-  // ... Keep your fillDemo and OAuth functions as they were ...
-  const fillDemo = (type: "architect" | "supplier") => {
+  const fillDemo = (type: string) => {
     setFormData({
       email: type === "architect" ? "demo@architect.com" : "demo@supplier.com",
       password: "demo123",
     });
   };
 
-  // ... (Keep the rest of your JSX exactly as it was, just ensure the form uses handleSubmit above)
-  
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 relative overflow-hidden">
-        {/* ... (Your existing UI code) ... */}
-        
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">GreenChainz Login</CardTitle>
+          <CardDescription className="text-center">Strictly Azure / Entra ID</CardDescription>
+        </CardHeader>
+        <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-             {/* ... Inputs ... */}
-             <div className="space-y-2">
-              <label className="text-sm font-medium">Email Address</label>
-              <Input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="demo@architect.com"
-                disabled={loading}
+            {error && <div className="p-3 bg-red-100 text-red-600 rounded text-sm">{error}</div>}
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email</label>
+              <Input 
+                type="email" 
+                value={formData.email} 
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                required 
               />
             </div>
             
             <div className="space-y-2">
               <label className="text-sm font-medium">Password</label>
               <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  required
+                <Input 
+                  type={showPassword ? "text" : "password"} 
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="••••••••"
-                  disabled={loading}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  required 
                 />
-                 {/* ... Eye icon ... */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400"
+                >
+                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full h-11 text-lg">
-              {loading ? "Signing in..." : "Sign In"}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Verifying..." : "Sign In"}
             </Button>
           </form>
-        {/* ... */}
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <Button variant="outline" onClick={() => fillDemo("architect")}>Architect Demo</Button>
+            <Button variant="outline" onClick={() => fillDemo("supplier")}>Supplier Demo</Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
