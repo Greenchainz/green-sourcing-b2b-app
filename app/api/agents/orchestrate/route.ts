@@ -47,6 +47,9 @@ interface OrchestrationResult {
   };
   /** Processing metadata */
   metadata: {
+    agentsRequested: string[];
+    agentsSucceeded: string[];
+    agentsFailed: string[];
     agentsRun: string[];
     processingTimeMs: number;
     documentLengthChars: number;
@@ -134,7 +137,7 @@ export async function POST(request: NextRequest) {
       agentPromises.push(
         (async () => {
           try {
-            results.decisionLogic = extractDecisionLogic(documentContent);
+            results.decisionLogic = await extractDecisionLogic(documentContent);
             agentStatus['decision-logic'] = 'success';
             console.log(`✅ Decision logic: ${results.decisionLogic.materialCategory}`);
           } catch (error) {
