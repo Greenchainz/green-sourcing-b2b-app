@@ -60,14 +60,14 @@ async function start() {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  
+
   // Add Azure Container Apps frontend URL pattern (dynamic subdomains)
   const azureContainerAppsPattern = /^https:\/\/.*\.azurecontainerapps\.io$/;
   const greenchainzDomains = [
     "https://greenchainz.com",
     "https://www.greenchainz.com",
   ];
-  
+
   const allowedOrigins = new Set([
     ...defaultAllowedOrigins,
     ...configuredAllowedOrigins,
@@ -146,7 +146,7 @@ async function start() {
   );
   app.use(lusca.xframe("SAMEORIGIN"));
   app.use(lusca.xssProtection(true));
-  
+
   // CSRF protection - API routes use JWT tokens (not session-based), so CSRF not needed
   // NOTE: lusca 1.7.0 does NOT support excludePathPrefixes option - must exclude manually
   // Apply CSRF conditionally: skip for API routes, auth routes, health checks, and GET requests
@@ -158,7 +158,7 @@ async function start() {
       sameSite: 'strict'
     }
   });
-  
+
   app.use((req, res, next) => {
     // Define paths that should NOT have CSRF protection
     // NOTE: Most API routes use JWT authentication, so CSRF not needed
@@ -180,28 +180,28 @@ async function start() {
       '/ready',           // Readiness checks (no auth)
       '/diagnose'         // Diagnostics (no auth)
     ];
-    
+
     // Special case: /api/v1/csrf-token NEEDS CSRF middleware to generate tokens
     // This endpoint is handled separately with explicit CSRF middleware application
     // So we skip it here to avoid double-application
     if (req.path === '/api/v1/csrf-token') {
       return next();
     }
-    
+
     // Check if current path should be excluded (exact match or starts with)
     const isExcluded = excludedPaths.some(path => req.path.startsWith(path));
-    
+
     // Skip CSRF for excluded paths
     if (isExcluded) {
       return next();
     }
-    
+
     // For GET/OPTIONS/HEAD requests to non-excluded paths, skip CSRF check
     // CSRF tokens are typically needed for state-changing methods only
     if (req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') {
       return next();
     }
-    
+
     // Apply CSRF protection only to state-changing methods (POST, PUT, DELETE, PATCH)
     // on non-excluded paths
     return csrfMiddleware(req, res, next);
@@ -445,7 +445,7 @@ async function start() {
   // ============================================
   // CSRF TOKEN ENDPOINT
   // ============================================
-  
+
   /**
    * GET /api/v1/csrf-token
    * Get CSRF token for authenticated users
@@ -466,7 +466,7 @@ async function start() {
     }
     // Touch session to ensure it's saved (required for saveUninitialized: false)
     req.session.csrfTokenRequested = true;
-    
+
     // Explicitly apply CSRF middleware for this endpoint to ensure token generation
     // For GET requests, lusca.csrf() generates the token without validation
     // It stores the token in the session and populates res.locals._csrf
@@ -476,11 +476,11 @@ async function start() {
         console.error('[CSRF Token] CSRF middleware error:', err.message);
         return res.status(500).json({ error: 'Failed to generate CSRF token', details: err.message });
       }
-      
+
       // CSRF middleware should have populated res.locals._csrf for GET requests
       // Also check req.csrfToken() function which lusca provides
       let token = res.locals._csrf;
-      
+
       if (!token && typeof req.csrfToken === 'function') {
         try {
           token = req.csrfToken();
@@ -488,14 +488,14 @@ async function start() {
           console.warn('[CSRF Token] req.csrfToken() failed:', tokenErr.message);
         }
       }
-      
+
       if (!token) {
         console.warn('[CSRF Token] Warning: CSRF token not populated by middleware');
         console.warn('[CSRF Token] Session ID:', req.sessionID);
         console.warn('[CSRF Token] Session exists:', !!req.session);
       }
-      
-      res.json({ 
+
+      res.json({
         csrfToken: token || 'token-unavailable'
       });
     });

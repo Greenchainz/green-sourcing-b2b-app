@@ -165,7 +165,7 @@ router.get('/:id', authenticateToken, generalRateLimit, async (req, res) => {
 
         const responsesRes = isBuyer
             ? await client.query(
-                    `
+                `
                         SELECT r.*,
                                      s.name as supplier_name,
                                      s.email as supplier_email,
@@ -176,12 +176,12 @@ router.get('/:id', authenticateToken, generalRateLimit, async (req, res) => {
                         WHERE r.rfq_id = $1
                         ORDER BY r.created_at DESC
                     `,
-                    [id]
-                )
+                [id]
+            )
             : await client.query(
-                    'SELECT * FROM rfq_responses WHERE rfq_id = $1 AND supplier_id = $2 ORDER BY created_at DESC',
-                    [id, supplierId]
-                );
+                'SELECT * FROM rfq_responses WHERE rfq_id = $1 AND supplier_id = $2 ORDER BY created_at DESC',
+                [id, supplierId]
+            );
 
         res.json({
             rfq,
@@ -284,7 +284,7 @@ router.get('/:id/bids', authenticateToken, generalRateLimit, async (req, res) =>
 
         const bidsRes = isBuyer
             ? await client.query(
-                    `
+                `
                         SELECT r.*,
                                      s.name as supplier_name,
                                      s.email as supplier_email,
@@ -295,12 +295,12 @@ router.get('/:id/bids', authenticateToken, generalRateLimit, async (req, res) =>
                         WHERE r.rfq_id = $1
                         ORDER BY r.created_at DESC
                     `,
-                    [id]
-                )
+                [id]
+            )
             : await client.query(
-                    'SELECT * FROM rfq_responses WHERE rfq_id = $1 AND supplier_id = $2 ORDER BY created_at DESC',
-                    [id, supplierId]
-                );
+                'SELECT * FROM rfq_responses WHERE rfq_id = $1 AND supplier_id = $2 ORDER BY created_at DESC',
+                [id, supplierId]
+            );
 
         res.json(bidsRes.rows);
     } catch (error) {

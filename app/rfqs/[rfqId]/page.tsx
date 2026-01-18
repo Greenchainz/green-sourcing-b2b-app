@@ -317,7 +317,7 @@ export default function RFQDetailPage() {
                   <div className="gc-response-header">
                     <div>
                       <h3 className="gc-response-supplier">
-                          {response.supplier_name || `Supplier #${response.supplier_id}`}
+                        {response.supplier_name || `Supplier #${response.supplier_id}`}
                       </h3>
                       <p className="gc-response-date">
                         {new Date(

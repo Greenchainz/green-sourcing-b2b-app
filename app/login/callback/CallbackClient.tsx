@@ -17,7 +17,7 @@ type PublicConfig = {
 function CallbackClientInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setBackendUrl, setToken, setRefreshToken, setUser } = useAuth();
+  const { setBackendUrl, setToken, setRefreshToken, setUser, handleAzureCallback } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [_traceId, _setTraceId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
@@ -48,6 +48,12 @@ function CallbackClientInner() {
   useEffect(() => {
     const processCallback = async () => {
       try {
+        if (typeof window !== "undefined") {
+          const interactionKeys = Object.keys(sessionStorage).filter((key) =>
+            key.includes("interaction.status")
+          );
+          interactionKeys.forEach((key) => sessionStorage.removeItem(key));
+        }
         // Check for OAuth provider callbacks (Google, LinkedIn)
         const provider = searchParams.get("provider");
         const token = searchParams.get("token");
@@ -150,6 +156,31 @@ function CallbackClientInner() {
           );
         }
 
+        if (typeof window !== "undefined") {
+          const hash = window.location.hash || "";
+          if (hash.includes("code=")) {
+            const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+            const code = hashParams.get("code");
+            if (!code) {
+              throw new Error("Missing authorization code in callback.");
+            }
+
+            pushStep("Exchanging Microsoft authorization code...");
+            await handleAzureCallback(
+              code,
+              redirectUri,
+              config.backendUrl || undefined,
+              pushStep
+            );
+
+            pushStep("Authentication successful! Redirecting...");
+            const role = useAuth.getState().user?.role?.toLowerCase();
+            const redirectTo = role === "supplier" ? "/dashboard" : "/dashboard/buyer";
+            setTimeout(() => router.push(redirectTo), 500);
+            return;
+          }
+        }
+
         const msalClient = createMsalClient({
           clientId: azureClientId,
           tenant: azureTenant,
@@ -164,6 +195,13 @@ function CallbackClientInner() {
         const result = (await msalClient.handleRedirectPromise()) as
           | AuthenticationResult
           | null;
+
+        if (typeof window !== "undefined") {
+          const interactionKeys = Object.keys(sessionStorage).filter((key) =>
+            key.includes("interaction.status")
+          );
+          interactionKeys.forEach((key) => sessionStorage.removeItem(key));
+        }
 
         if (!result || !result.idTokenClaims) {
           throw new Error(
@@ -224,6 +262,13 @@ function CallbackClientInner() {
         if (debug) console.error("[Auth] Callback error:", err);
         setError(errorMessage);
         setIsProcessing(false);
+      } finally {
+        if (typeof window !== "undefined") {
+          const interactionKeys = Object.keys(sessionStorage).filter((key) =>
+            key.includes("interaction.status")
+          );
+          interactionKeys.forEach((key) => sessionStorage.removeItem(key));
+        }
       }
     };
 
