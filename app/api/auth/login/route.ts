@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { generateToken } from '@/lib/auth/jwt'; 
 
@@ -6,7 +7,7 @@ export async function POST(req: NextRequest) {
     const { email, password } = await req.json();
 
     // 1. HARDCODED DEMO CHECK (Bypassing DB for immediate fix)
-    // This proves the flow works without Supabase or Azure SQL blocking you.
+    // In production, this would query Azure SQL.
     const isArchitect = email === 'demo@architect.com' && password === 'demo123';
     const isSupplier = email === 'demo@supplier.com' && password === 'demo123';
 
@@ -14,13 +15,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // 2. Create User Object (Simulating an Azure AD / SQL User)
+    // 2. Create User Object
     const user = {
       id: isSupplier ? 'supplier-guid-123' : 'architect-guid-456',
       email: email,
       role: isSupplier ? 'supplier' : 'architect',
       full_name: isSupplier ? 'Demo Supplier' : 'Demo Architect',
-      user_type: isSupplier ? 'supplier' : 'architect' // Critical for your frontend check
+      user_type: isSupplier ? 'supplier' : 'architect'
     };
 
     // 3. Generate Session Token
@@ -30,14 +31,15 @@ export async function POST(req: NextRequest) {
       role: user.role
     });
 
-    // 4. Set Secure Cookie & Return User
+    // 4. Return User
     const response = NextResponse.json({
       success: true,
-      user: user, // This is what your frontend is waiting for
+      user: user,
       token
     });
 
-    response.cookies.set('token', token, {
+    // --- CRITICAL FIX: NAMING THE COOKIE 'greenchainz-auth-token' ---
+    response.cookies.set('greenchainz-auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
