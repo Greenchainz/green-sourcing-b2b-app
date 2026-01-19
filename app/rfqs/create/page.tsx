@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { Trash2, Plus, Loader2 } from "lucide-react";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
@@ -189,9 +190,11 @@ export default function CreateRFQPage() {
                     <button
                       type="button"
                       onClick={() => removeMaterial(index)}
-                      className="gc-btn gc-btn-secondary text-red-600 border-red-200 hover:bg-red-50"
+                      className="gc-btn gc-btn-secondary text-red-600 border-red-200 hover:bg-red-50 p-2"
+                      aria-label="Remove material"
+                      title="Remove material"
                     >
-                      ×
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -200,9 +203,10 @@ export default function CreateRFQPage() {
               <button
                 type="button"
                 onClick={addMaterial}
-                className="gc-btn gc-btn-secondary text-sm"
+                className="gc-btn gc-btn-secondary text-sm flex items-center"
               >
-                + Add Another Material
+                <Plus className="w-4 h-4 mr-2" />
+                Add Another Material
               </button>
             </div>
 
@@ -217,9 +221,16 @@ export default function CreateRFQPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="gc-btn gc-btn-primary"
+                className="gc-btn gc-btn-primary flex items-center"
               >
-                {loading ? "Creating..." : "Create RFQ"}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create RFQ"
+                )}
               </button>
             </div>
           </form>

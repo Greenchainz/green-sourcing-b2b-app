@@ -17,3 +17,7 @@
 ## 2026-01-17 - Accessible Tooltip Implementation
 **Learning:** The previous "Explain Industry Jargon" action suggested `group-hover` tooltips, but these are inaccessible to keyboard users. Tooltips must be focusable.
 **Action:** Wrap tooltip triggers in `<button type="button">` and add `group-focus:block` alongside `group-hover:block`. Add `aria-label` to the button describing the help action.
+
+## 2024-05-22 - Auth Bypass for Visual Verification
+**Learning:** Visual regression testing (Playwright) on authenticated routes requires injecting state directly into LocalStorage (`greenchainz-auth`) because the login UI might be broken or slow to interact with during dev cycles.
+**Action:** Use the `verify_rfq_authed.py` pattern (injecting Zustand state) for future authenticated page verifications to bypass login forms.
