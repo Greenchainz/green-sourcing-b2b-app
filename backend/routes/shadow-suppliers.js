@@ -1,7 +1,6 @@
 /**
  * Shadow Supplier Routes
  * 
-const { general: generalRateLimit } = require('../middleware/rateLimit');
  * API endpoints for shadow supplier management:
  * - Claim token validation and consumption
  * - Opt-in/opt-out flows
@@ -18,6 +17,7 @@ const router = express.Router();
 const shadowService = require('../services/shadow');
 const { claimFlow, catalog, ingestion, visibility } = shadowService;
 const internalApiKeyMiddleware = require('../middleware/internalKey');
+const { general: generalRateLimit } = require('../middleware/rateLimit');
 
 // ============================================
 // MIDDLEWARE

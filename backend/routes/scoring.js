@@ -1,7 +1,6 @@
 /**
  * Scoring API Routes
  * 
-const { general: generalRateLimit } = require('../middleware/rateLimit');
  * Endpoints for material/supplier sustainability scoring.
  * Provides explainable scores with "why recommended" breakdowns.
  */
@@ -10,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const scoringService = require('../services/scoringService');
+const { general: generalRateLimit } = require('../middleware/rateLimit');
 
 // ============================================
 // PUBLIC ENDPOINTS (no auth required)

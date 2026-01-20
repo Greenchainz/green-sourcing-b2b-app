@@ -1,7 +1,6 @@
 /**
  * AI Agents API Routes
  * 
-const { health: healthRateLimit, admin: adminRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
  * Provides endpoints for verifying and testing Azure AI Foundry agents.
  * All routes require authentication.
  */
@@ -11,6 +10,7 @@ const router = express.Router();
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const aiGateway = require('../services/ai-gateway');
 const agentGateway = require('../services/ai-gateway/agentGateway');
+const { health: healthRateLimit, admin: adminRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
 
 /**
  * GET /api/v1/ai-agents/health

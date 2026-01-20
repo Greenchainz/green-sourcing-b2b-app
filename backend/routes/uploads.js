@@ -172,10 +172,9 @@ router.post('/rfq/:rfqId/attachment',
                 return res.status(400).json({ error: 'No files uploaded' });
             }
 
-            // Validate file count is within expected range
-            const fileCount = parseInt(req.files.length, 10);
-            if (!Number.isInteger(fileCount) || fileCount < 1 || fileCount > 5) {
-                return res.status(400).json({ error: 'Invalid file count' });
+            // Validate file count is within expected range (multer already enforces max of 5)
+            if (req.files.length > 5) {
+                return res.status(400).json({ error: 'Too many files' });
             }
 
             // Validate user ID
@@ -197,7 +196,7 @@ router.post('/rfq/:rfqId/attachment',
 
             monitoring.trackEvent('RFQAttachmentsUploaded', {
                 rfqId: String(req.params.rfqId || ''),
-                fileCount: String(fileCount),
+                fileCount: String(req.files.length),
                 userId: String(userId)
             });
 

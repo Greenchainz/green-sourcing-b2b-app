@@ -1,6 +1,5 @@
 /**
  * Materials API Routes
-const { search: searchRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
  * 
  * Provides REST API endpoints for searching sustainable materials
  * with EPD data, manufacturers, and carbon metrics.
@@ -10,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const { search: searchRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
 
 /**
  * GET /api/v1/materials/search
