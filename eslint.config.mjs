@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import typescript from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
+import security from "eslint-plugin-security";
 import globals from "globals";
 
 export default [
@@ -16,6 +17,7 @@ export default [
     ],
   },
   js.configs.recommended,
+  security.configs.recommended,
   {
     files: ["**/*.{js,mjs,cjs,ts,tsx}"],
     languageOptions: {

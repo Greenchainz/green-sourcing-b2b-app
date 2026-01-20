@@ -88,7 +88,7 @@ Ensure the following are set in your `Container App` configuration:
    Run the SQL against your production DB:
 
    ```bash
-   psql $DATABASE_URL -f supabase/schema.sql
+   psql $DATABASE_URL -f database-schemas/schema.sql
    ```
 
 2. **Seed Static Data (Reference Tables)**

@@ -18,6 +18,7 @@ export default function LoginPage() {
 
     try {
       await login(formData);
+    } catch {
     } catch (err: unknown) {
       setError("Invalid credentials. Try demo@architect.com / demo123");
     } finally {
