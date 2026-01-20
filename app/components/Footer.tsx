@@ -9,11 +9,11 @@ export default function Footer() {
 
   return (
     <footer className="relative overflow-hidden" style={{
-      background: 'linear-gradient(180deg, #ffffff 0%, #f0fdf4 50%, #ecfeff 100%)'
+      background: 'linear-gradient(180deg, #ffffff 0%, #f5faf0 50%, #f0fdfa 100%)'
     }}>
-      {/* Decorative top border */}
+      {/* Decorative top border - brand gradient */}
       <div className="h-1 w-full" style={{
-        background: 'linear-gradient(90deg, #10b981 0%, #0891b2 33%, #6366f1 66%, #a855f7 100%)'
+        background: 'linear-gradient(90deg, #11270b 0%, #3c5a14 25%, #71b340 50%, #0d9488 75%, #14b8a6 100%)'
       }}></div>
       
       <div className="gc-container py-16">
@@ -37,7 +37,7 @@ export default function Footer() {
                 alt="GreenChainz"
                 width={160}
                 height={40}
-                className="h-10 w-auto"
+                className="h-10 w-auto object-contain"
               />
             </Link>
             <p className="m-0 text-sm text-slate-600 leading-relaxed max-w-[280px]">
@@ -53,20 +53,20 @@ export default function Footer() {
           {/* Column 2: Company */}
           <div>
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <span className="w-8 h-0.5 bg-gradient-to-r from-emerald-500 to-transparent rounded"></span>
+              <span className="w-8 h-0.5 rounded" style={{ background: 'linear-gradient(90deg, #71b340, transparent)' }}></span>
               Company
             </h3>
             <nav aria-label="Company links" className="flex flex-col gap-2">
-              <Link href="/about" className="text-sm font-medium text-slate-600 hover:text-emerald-600 transition-colors">
+              <Link href="/about" className="text-sm font-medium text-slate-600 hover:text-gc-fern transition-colors">
                 About
               </Link>
-              <Link href="/blog" className="text-sm font-medium text-slate-600 hover:text-emerald-600 transition-colors">
+              <Link href="/blog" className="text-sm font-medium text-slate-600 hover:text-gc-fern transition-colors">
                 Blog
               </Link>
-              <Link href="/careers" className="text-sm font-medium text-slate-600 hover:text-emerald-600 transition-colors">
+              <Link href="/careers" className="text-sm font-medium text-slate-600 hover:text-gc-fern transition-colors">
                 Careers
               </Link>
-              <Link href="/contact" className="text-sm font-medium text-slate-600 hover:text-emerald-600 transition-colors">
+              <Link href="/contact" className="text-sm font-medium text-slate-600 hover:text-gc-fern transition-colors">
                 Contact
               </Link>
             </nav>
@@ -75,23 +75,23 @@ export default function Footer() {
           {/* Column 3: Resources */}
           <div>
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <span className="w-8 h-0.5 bg-gradient-to-r from-cyan-500 to-transparent rounded"></span>
+              <span className="w-8 h-0.5 rounded" style={{ background: 'linear-gradient(90deg, #0d9488, transparent)' }}></span>
               Resources
             </h3>
             <nav aria-label="Resources links" className="flex flex-col gap-2">
-              <Link href="/how-it-works" className="text-sm font-medium text-slate-600 hover:text-cyan-600 transition-colors">
+              <Link href="/how-it-works" className="text-sm font-medium text-slate-600 hover:text-gc-teal transition-colors">
                 How It Works
               </Link>
-              <Link href="/pricing" className="text-sm font-medium text-slate-600 hover:text-cyan-600 transition-colors">
+              <Link href="/pricing" className="text-sm font-medium text-slate-600 hover:text-gc-teal transition-colors">
                 Pricing
               </Link>
-              <Link href="/help" className="text-sm font-medium text-slate-600 hover:text-cyan-600 transition-colors">
+              <Link href="/help" className="text-sm font-medium text-slate-600 hover:text-gc-teal transition-colors">
                 Help Center
               </Link>
-              <Link href="/developers" className="text-sm font-medium text-slate-600 hover:text-cyan-600 transition-colors">
+              <Link href="/developers" className="text-sm font-medium text-slate-600 hover:text-gc-teal transition-colors">
                 API Docs
               </Link>
-              <Link href="/partners" className="text-sm font-medium text-slate-600 hover:text-cyan-600 transition-colors">
+              <Link href="/partners" className="text-sm font-medium text-slate-600 hover:text-gc-teal transition-colors">
                 Partner Program
               </Link>
             </nav>
@@ -100,17 +100,17 @@ export default function Footer() {
           {/* Column 4: Legal */}
           <div>
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <span className="w-8 h-0.5 bg-gradient-to-r from-violet-500 to-transparent rounded"></span>
+              <span className="w-8 h-0.5 rounded" style={{ background: 'linear-gradient(90deg, #669d31, transparent)' }}></span>
               Legal
             </h3>
             <nav aria-label="Legal links" className="flex flex-col gap-2">
-              <Link href="/legal/privacy" className="text-sm font-medium text-slate-600 hover:text-violet-600 transition-colors">
+              <Link href="/legal/privacy" className="text-sm font-medium text-slate-600 hover:text-gc-sage transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="/legal/terms" className="text-sm font-medium text-slate-600 hover:text-violet-600 transition-colors">
+              <Link href="/legal/terms" className="text-sm font-medium text-slate-600 hover:text-gc-sage transition-colors">
                 Terms of Service
               </Link>
-              <Link href="/legal/supplier-agreement" className="text-sm font-medium text-slate-600 hover:text-violet-600 transition-colors">
+              <Link href="/legal/supplier-agreement" className="text-sm font-medium text-slate-600 hover:text-gc-sage transition-colors">
                 Supplier Agreement
               </Link>
             </nav>
@@ -118,14 +118,14 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-14 pt-8 border-t border-emerald-100 flex flex-wrap items-center justify-between gap-6">
+        <div className="mt-14 pt-8 border-t border-gc-fern/10 flex flex-wrap items-center justify-between gap-6">
           {/* Social Icons */}
           <div className="flex items-center gap-3">
             <a
               href="https://linkedin.com/company/greenchainz"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-100 transition-all duration-300"
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-gc-fern hover:border-gc-fern/30 hover:shadow-lg hover:shadow-gc-fern/10 transition-all duration-300"
               aria-label="LinkedIn"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -136,7 +136,7 @@ export default function Footer() {
               href="https://twitter.com/greenchainzhq"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-cyan-600 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-100 transition-all duration-300"
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-gc-teal hover:border-gc-teal/30 hover:shadow-lg hover:shadow-gc-teal/10 transition-all duration-300"
               aria-label="Twitter / X"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -147,7 +147,7 @@ export default function Footer() {
               href="https://github.com/greenchainz"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-violet-600 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-100 transition-all duration-300"
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-gc-sage hover:border-gc-sage/30 hover:shadow-lg hover:shadow-gc-sage/10 transition-all duration-300"
               aria-label="GitHub"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -158,7 +158,7 @@ export default function Footer() {
 
           {/* Copyright */}
           <p className="m-0 text-sm text-slate-500 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-500" />
+            <Sparkles className="w-4 h-4 text-gc-fern" />
             © {currentYear} GreenChainz, Inc. All rights reserved.
           </p>
         </div>
