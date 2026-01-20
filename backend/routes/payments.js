@@ -175,7 +175,7 @@ router.get('/deposit-status/:paymentIntentId', requireAuth, generalRateLimit, as
  * Returns:
  * - verified: boolean
  */
-router.post('/verify-deposit', requireAuth, generalRateLimit, async (req, res) => {
+router.post('/verify-deposit', generalRateLimit, requireAuth, async (req, res) => {
     try {
         const { paymentIntentId } = req.body;
 
@@ -378,7 +378,7 @@ router.delete('/linkedin/verification', requireAuth, generalRateLimit, async (re
  * - fullyVerified: boolean (both verified)
  * - canSubmitRfq: boolean
  */
-router.get('/verification-status', requireAuth, generalRateLimit, async (req, res) => {
+router.get('/verification-status', generalRateLimit, requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId;
 

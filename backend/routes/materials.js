@@ -29,7 +29,7 @@ const { search: searchRateLimit, general: generalRateLimit } = require('../middl
  *   - sortBy: Sort field (gwp, product_name, manufacturer, created_at) (default: gwp)
  *   - sortOrder: Sort direction (asc/desc) (default: asc)
  */
-router.get('/search', authenticateToken, searchRateLimit, async (req, res) => {
+router.get('/search', searchRateLimit, authenticateToken, async (req, res) => {
   try {
     const {
       query = '',
@@ -249,7 +249,7 @@ router.get('/search', authenticateToken, searchRateLimit, async (req, res) => {
  * 
  * NOTE: This route must be defined BEFORE /:id to avoid route conflicts
  */
-router.get('/meta/assemblies', authenticateToken, generalRateLimit, async (req, res) => {
+router.get('/meta/assemblies', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -283,7 +283,7 @@ router.get('/meta/assemblies', authenticateToken, generalRateLimit, async (req, 
  * 
  * NOTE: This route must be defined BEFORE /:id to avoid route conflicts
  */
-router.get('/meta/manufacturers', authenticateToken, generalRateLimit, async (req, res) => {
+router.get('/meta/manufacturers', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -317,7 +317,7 @@ router.get('/meta/manufacturers', authenticateToken, generalRateLimit, async (re
  * 
  * NOTE: This route must be defined AFTER /meta/* routes to avoid conflicts
  */
-router.get('/:id', authenticateToken, generalRateLimit, async (req, res) => {
+router.get('/:id', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const materialId = parseInt(req.params.id);
 

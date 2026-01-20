@@ -35,7 +35,7 @@ const respondToRFQSchema = Joi.object({
 // Create new RFQ (architects only)
 // ============================================
 
-router.post('/create', authenticateToken, rfqRateLimit, async (req, res) => {
+router.post('/create', rfqRateLimit, authenticateToken, async (req, res) => {
   try {
     // Validate input
     const { error, value } = createRFQSchema.validate(req.body);
@@ -178,7 +178,7 @@ router.post('/create', authenticateToken, rfqRateLimit, async (req, res) => {
 // NOTE: This route must be defined BEFORE /:id to avoid conflicts
 // ============================================
 
-router.get('/list', authenticateToken, generalRateLimit, async (req, res) => {
+router.get('/list', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -337,7 +337,7 @@ router.get('/list', authenticateToken, generalRateLimit, async (req, res) => {
 // NOTE: This route must be defined BEFORE /:id to avoid conflicts
 // ============================================
 
-router.get('/supplier/:supplierId', authenticateToken, generalRateLimit, async (req, res) => {
+router.get('/supplier/:supplierId', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const supplierId = parseInt(req.params.supplierId);
 
@@ -415,7 +415,7 @@ router.get('/supplier/:supplierId', authenticateToken, generalRateLimit, async (
 // NOTE: This route must be defined AFTER /list and /supplier/:supplierId to avoid conflicts
 // ============================================
 
-router.get('/:id', authenticateToken, generalRateLimit, async (req, res) => {
+router.get('/:id', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const rfqId = parseInt(req.params.id);
 
@@ -518,7 +518,7 @@ router.get('/:id', authenticateToken, generalRateLimit, async (req, res) => {
 // Supplier responds to RFQ
 // ============================================
 
-router.post('/:id/respond', authenticateToken, generalRateLimit, async (req, res) => {
+router.post('/:id/respond', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const rfqId = parseInt(req.params.id);
 
@@ -629,7 +629,7 @@ router.post('/:id/respond', authenticateToken, generalRateLimit, async (req, res
 // Update RFQ status (close, reopen)
 // ============================================
 
-router.put('/:id/status', authenticateToken, generalRateLimit, async (req, res) => {
+router.put('/:id/status', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const rfqId = parseInt(req.params.id);
     const { status } = req.body;

@@ -9,7 +9,7 @@ const { findSuppliersNearby, geocodeAddress } = require('../services/geocoding')
  * GET /api/v1/suppliers/nearby
  * Find suppliers near a location
  */
-router.get('/nearby', authenticateToken, generalRateLimit, async (req, res) => {
+router.get('/nearby', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const { address, lat, lng, radius = 100 } = req.query;
 

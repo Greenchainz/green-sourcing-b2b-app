@@ -371,7 +371,7 @@ router.post('/compare', generalRateLimit, async (req, res) => {
  * Add material to user's favorites (requires authentication).
  * Future enhancement for user personalization.
  */
-router.post('/materials/:materialId/favorite', authenticateToken, generalRateLimit, async (req, res) => {
+router.post('/materials/:materialId/favorite', generalRateLimit, authenticateToken, async (req, res) => {
     try {
         const { materialId } = req.params;
         const userId = req.user.id || req.user.userId;
@@ -399,7 +399,7 @@ router.post('/materials/:materialId/favorite', authenticateToken, generalRateLim
  * 
  * Remove material from user's favorites (requires authentication).
  */
-router.delete('/materials/:materialId/favorite', authenticateToken, generalRateLimit, async (req, res) => {
+router.delete('/materials/:materialId/favorite', generalRateLimit, authenticateToken, async (req, res) => {
     try {
         const { materialId } = req.params;
         const userId = req.user.id || req.user.userId;

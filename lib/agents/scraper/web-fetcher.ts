@@ -54,13 +54,14 @@ export class WebFetcher {
 
             // 2. Remove non-content tags (script, style, head, iframe, noscript, svg, path)
             // Using limited quantifiers to prevent ReDoS attacks
+            // Allow whitespace before closing > to match malformed tags like </script >
             let content = html
-                .replace(/<script\b[^>]{0,200}>[\s\S]{0,50000}?<\/script>/gim, " ")
-                .replace(/<style\b[^>]{0,200}>[\s\S]{0,50000}?<\/style>/gim, " ")
-                .replace(/<noscript\b[^>]{0,200}>[\s\S]{0,10000}?<\/noscript>/gim, " ")
-                .replace(/<iframe\b[^>]{0,200}>[\s\S]{0,10000}?<\/iframe>/gim, " ")
-                .replace(/<svg\b[^>]{0,200}>[\s\S]{0,50000}?<\/svg>/gim, " ")
-                .replace(/<head\b[^>]{0,200}>[\s\S]{0,50000}?<\/head>/gim, " ")
+                .replace(/<script\b[^>]{0,200}>[\s\S]{0,50000}?<\/script\s{0,10}>/gim, " ")
+                .replace(/<style\b[^>]{0,200}>[\s\S]{0,50000}?<\/style\s{0,10}>/gim, " ")
+                .replace(/<noscript\b[^>]{0,200}>[\s\S]{0,10000}?<\/noscript\s{0,10}>/gim, " ")
+                .replace(/<iframe\b[^>]{0,200}>[\s\S]{0,10000}?<\/iframe\s{0,10}>/gim, " ")
+                .replace(/<svg\b[^>]{0,200}>[\s\S]{0,50000}?<\/svg\s{0,10}>/gim, " ")
+                .replace(/<head\b[^>]{0,200}>[\s\S]{0,50000}?<\/head\s{0,10}>/gim, " ")
                 .replace(/<!--[\s\S]{0,10000}?-->/g, " ");
 
             // 3. Extract Alt text from images before stripping tags (often useful for context)
