@@ -7,56 +7,117 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Dollar Bill / Money Green palette - inspired by US currency
-        money: {
-          50: '#f0fdf4',   // Lightest money green
-          100: '#dcfce7',  // Very light
-          200: '#bbf7d0',  // Light green
-          300: '#86efac',  // Soft money green
-          400: '#4ade80',  // Medium green
-          500: '#22c55e',  // Primary money green
-          600: '#16a34a',  // Classic dollar bill green
-          700: '#15803d',  // Deep money green
-          800: '#166534',  // Dark dollar green
-          900: '#14532d',  // Very dark green
-          950: '#052e16',  // Almost black green
+        // GreenChainz Brand Palette - Dark Green + Teal
+        // Professional, trustworthy, sustainable
+        gc: {
+          // Primary: Evergreen (Dark foundation)
+          evergreen: {
+            DEFAULT: '#11270b',
+            50: '#f4f8f3',
+            100: '#e5ede3',
+            200: '#c8dbc3',
+            300: '#9fc096',
+            400: '#71a365',
+            500: '#4f8340',
+            600: '#3c6831',
+            700: '#11270b',  // Main brand dark
+          },
+          // Accent: Bright Fern (Primary action color)
+          fern: {
+            DEFAULT: '#71b340',
+            50: '#f5faf0',
+            100: '#e8f4dd',
+            200: '#d1e9bc',
+            300: '#afd88e',
+            400: '#8bc45e',
+            500: '#71b340',  // Main accent
+            600: '#569130',
+            700: '#437028',
+            800: '#385a24',
+            900: '#304c21',
+          },
+          // Secondary: Sage Green
+          sage: {
+            DEFAULT: '#669d31',
+            50: '#f6faf0',
+            100: '#eaf4dd',
+            200: '#d4e8bb',
+            300: '#b4d68e',
+            400: '#92c161',
+            500: '#669d31',  // Secondary
+            600: '#578730',
+            700: '#446928',
+            800: '#385424',
+            900: '#304620',
+          },
+          // Tertiary: Forest Moss
+          moss: {
+            DEFAULT: '#598b2c',
+            50: '#f6faf1',
+            100: '#eaf4de',
+            200: '#d5e8be',
+            300: '#b6d692',
+            400: '#94c064',
+            500: '#598b2c',  // Tertiary
+            600: '#4d7726',
+            700: '#3d5e20',
+            800: '#344d1e',
+            900: '#2c411b',
+          },
+          // Dark Accent: Olive Leaf
+          olive: {
+            DEFAULT: '#3c5a14',
+            50: '#f6f9f0',
+            100: '#eaf2dc',
+            200: '#d4e4b9',
+            300: '#b5d08a',
+            400: '#94b85b',
+            500: '#739d3b',
+            600: '#598029',
+            700: '#456423',
+            800: '#3c5a14',  // Dark accent
+            900: '#334b17',
+          },
+          // Teal accents for variety
+          teal: {
+            DEFAULT: '#0d9488',
+            50: '#f0fdfa',
+            100: '#ccfbf1',
+            200: '#99f6e4',
+            300: '#5eead4',
+            400: '#2dd4bf',
+            500: '#14b8a6',
+            600: '#0d9488',
+            700: '#0f766e',
+            800: '#115e59',
+            900: '#134e4a',
+          },
         },
+        // Keep legacy aliases for compatibility
         brand: {
-          50: '#ecfdf8',   // Lightest mint
-          100: '#d1fae9',  // Light mint
-          200: '#a7f3d5',  // Soft green
-          300: '#6ee7c2',  // Light teal
-          400: '#34d399',  // Emerald
-          500: '#10b981',  // Primary green
-          600: '#059669',  // Deep green
-          700: '#047857',  // Forest green
-          800: '#065f46',  // Dark forest
-          900: '#064e3b',  // Darkest green
-          950: '#022c22',  // Almost black green
+          50: '#f5faf0',
+          100: '#e8f4dd',
+          200: '#d1e9bc',
+          300: '#afd88e',
+          400: '#8bc45e',
+          500: '#71b340',  // Bright Fern
+          600: '#569130',
+          700: '#11270b',  // Evergreen
+          800: '#0d1f08',
+          900: '#091506',
+          950: '#050b03',
         },
         ocean: {
-          50: '#ecfeff',
-          100: '#cffafe',
-          200: '#a5f3fc',
-          300: '#67e8f9',
-          400: '#22d3ee',
-          500: '#06b6d4',  // Primary teal
-          600: '#0891b2',
-          700: '#0e7490',
-          800: '#155e75',
-          900: '#164e63',
-        },
-        midnight: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',  // Deep blue
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
         },
       },
       animation: {
