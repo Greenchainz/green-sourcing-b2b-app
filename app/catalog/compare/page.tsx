@@ -412,8 +412,8 @@ function CompareLoading() {
     <div className="gc-page" style={{ minHeight: "100vh" }}>
       <div className="gc-container" style={{ paddingTop: "4rem", textAlign: "center" }}>
         <div className="animate-pulse">
-          <div className="h-8 w-48 bg-slate-200 rounded mx-auto mb-4"></div>
-          <div className="h-4 w-32 bg-slate-200 rounded mx-auto"></div>
+          <div className="h-8 w-48 rounded mx-auto mb-4" style={{ background: 'rgba(113, 179, 64, 0.2)' }}></div>
+          <div className="h-4 w-32 rounded mx-auto" style={{ background: 'rgba(13, 148, 136, 0.2)' }}></div>
         </div>
       </div>
     </div>
