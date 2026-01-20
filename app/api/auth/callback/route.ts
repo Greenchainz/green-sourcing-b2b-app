@@ -120,14 +120,12 @@ export async function GET(request: NextRequest) {
             [azureId, email]
         );
 
-        let userId, userRole, userFirstName, userLastName;
+        let userId, userRole;
 
         if (userCheck.rows.length > 0) {
             const user = userCheck.rows[0];
             userId = user.id;
             userRole = user.role;
-            userFirstName = user.first_name || firstName || null;
-            userLastName = user.last_name || lastName || null;
 
             await client.query(
                 'UPDATE Users SET last_login = NOW(), updated_at = NOW() WHERE id = $1',
@@ -142,8 +140,6 @@ export async function GET(request: NextRequest) {
             );
             userId = result.rows[0].id;
             userRole = result.rows[0].role;
-            userFirstName = firstName || null;
-            userLastName = lastName || null;
         }
 
         await client.query('COMMIT');

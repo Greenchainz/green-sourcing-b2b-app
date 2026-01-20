@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateTraceId, logAuthEvent } from '@/lib/auth/diagnostics';
 
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   const traceId = generateTraceId();
 
   logAuthEvent('info', 'Sign-out initiated', {
