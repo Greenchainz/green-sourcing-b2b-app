@@ -122,15 +122,15 @@ export default function Home() {
             animationDelay: '0.5s',
           }}>
             <span className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-              <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+              <CheckCircle2 className="w-5 h-5 text-gc-fern-light" />
               Free to start
             </span>
             <span className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-              <CheckCircle2 className="w-5 h-5 text-cyan-300" />
+              <CheckCircle2 className="w-5 h-5 text-gc-teal-light" />
               No credit card needed
             </span>
             <span className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-              <CheckCircle2 className="w-5 h-5 text-violet-300" />
+              <CheckCircle2 className="w-5 h-5 text-gc-sage-light" />
               5-minute setup
             </span>
           </div>
@@ -140,12 +140,12 @@ export default function Home() {
       {/* Value Props Section - Premium Gradient */}
       <section className="py-24 px-6 section-gradient-1 relative overflow-hidden">
         {/* Decorative blobs */}
-        <div className="deco-blob deco-blob-emerald w-[500px] h-[500px] -top-40 -left-40 opacity-30"></div>
-        <div className="deco-blob deco-blob-cyan w-[400px] h-[400px] top-20 -right-20 opacity-20"></div>
+        <div className="deco-blob deco-blob-fern w-[500px] h-[500px] -top-40 -left-40 opacity-30"></div>
+        <div className="deco-blob deco-blob-teal w-[400px] h-[400px] top-20 -right-20 opacity-20"></div>
 
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-20">
-            <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-100 via-cyan-100 to-violet-100 text-emerald-700 text-sm font-bold mb-5 border border-emerald-200">
+            <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-gc-fern-50 via-gc-teal-50 to-gc-sage-50 text-gc-fern-dark text-sm font-bold mb-5 border border-gc-fern-200">
               <DollarSign className="w-4 h-4" />
               DOLLARS & SENSE
             </span>

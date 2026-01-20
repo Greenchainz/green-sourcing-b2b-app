@@ -1,12 +1,12 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { getMaterial, type MaterialDetail } from "../data";
 
-export default function ComparePage() {
+function CompareContent() {
   const searchParams = useSearchParams();
   const idsParam = searchParams.get("ids");
 
@@ -178,13 +178,13 @@ export default function ComparePage() {
                         borderRadius: "99px",
                         background:
                           m.sustainabilityScore >= 80
-                            ? "var(--gc-emerald-100)"
+                            ? "var(--gc-fern-100)"
                             : m.sustainabilityScore >= 60
                               ? "var(--gc-teal-100)"
                               : "#fef3c7",
                         color:
                           m.sustainabilityScore >= 80
-                            ? "var(--gc-emerald-700)"
+                            ? "var(--gc-fern-dark)"
                             : m.sustainabilityScore >= 60
                               ? "var(--gc-teal-700)"
                               : "#92400e",
@@ -228,7 +228,7 @@ export default function ComparePage() {
                         textAlign: "center",
                         borderBottom: "1px solid var(--gc-slate-100)",
                         borderLeft: "1px solid var(--gc-slate-100)",
-                        background: isBest ? "var(--gc-emerald-50)" : "white",
+                        background: isBest ? "var(--gc-fern-50)" : "white",
                       }}
                     >
                       <div
@@ -236,7 +236,7 @@ export default function ComparePage() {
                           fontSize: "1rem",
                           fontWeight: 700,
                           color: isBest
-                            ? "var(--gc-emerald-700)"
+                            ? "var(--gc-fern-dark)"
                             : "var(--gc-slate-900)",
                         }}
                       >
@@ -254,7 +254,7 @@ export default function ComparePage() {
                         <div
                           style={{
                             fontSize: "0.75rem",
-                            color: "var(--gc-emerald-600)",
+                            color: "var(--gc-fern)",
                             marginTop: "0.25rem",
                             fontWeight: 600,
                           }}
@@ -404,5 +404,26 @@ export default function ComparePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CompareLoading() {
+  return (
+    <div className="gc-page" style={{ minHeight: "100vh" }}>
+      <div className="gc-container" style={{ paddingTop: "4rem", textAlign: "center" }}>
+        <div className="animate-pulse">
+          <div className="h-8 w-48 bg-slate-200 rounded mx-auto mb-4"></div>
+          <div className="h-4 w-32 bg-slate-200 rounded mx-auto"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense fallback={<CompareLoading />}>
+      <CompareContent />
+    </Suspense>
   );
 }
