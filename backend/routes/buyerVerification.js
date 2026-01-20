@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const { general: generalRateLimit } = require('../middleware/rateLimit');
 
 const { getJwtSecret } = require('../middleware/auth');
 const {
@@ -60,7 +61,7 @@ router.use(authMiddleware);
 // Get current buyer's verification status
 // ============================================
 
-router.get('/status', async (req, res) => {
+router.get('/status', generalRateLimit, async (req, res) => {
     try {
         const buyerId = await getBuyerIdFromUser(req.user.id);
         
@@ -102,7 +103,7 @@ router.get('/status', async (req, res) => {
 // Quick check if buyer can distribute RFQs
 // ============================================
 
-router.get('/can-distribute', async (req, res) => {
+router.get('/can-distribute', generalRateLimit, async (req, res) => {
     try {
         const buyerId = await getBuyerIdFromUser(req.user.id);
         
@@ -184,7 +185,7 @@ router.post('/linkedin', linkedinVerificationLimiter, async (req, res) => {
 // Revoke LinkedIn verification (admin or self-service)
 // ============================================
 
-router.delete('/linkedin', async (req, res) => {
+router.delete('/linkedin', generalRateLimit, async (req, res) => {
     try {
         const buyerId = await getBuyerIdFromUser(req.user.id);
         
@@ -215,7 +216,7 @@ router.delete('/linkedin', async (req, res) => {
 // This endpoint requires additional security in production
 // ============================================
 
-router.post('/deposit', async (req, res) => {
+router.post('/deposit', generalRateLimit, async (req, res) => {
     try {
         const { buyer_id, amount_cents, source } = req.body;
 

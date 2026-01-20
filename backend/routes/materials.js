@@ -1,5 +1,6 @@
 /**
  * Materials API Routes
+const { search: searchRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
  * 
  * Provides REST API endpoints for searching sustainable materials
  * with EPD data, manufacturers, and carbon metrics.
@@ -28,7 +29,7 @@ const { authenticateToken } = require('../middleware/auth');
  *   - sortBy: Sort field (gwp, product_name, manufacturer, created_at) (default: gwp)
  *   - sortOrder: Sort direction (asc/desc) (default: asc)
  */
-router.get('/search', authenticateToken, async (req, res) => {
+router.get('/search', authenticateToken, searchRateLimit, async (req, res) => {
   try {
     const {
       query = '',
@@ -248,7 +249,7 @@ router.get('/search', authenticateToken, async (req, res) => {
  * 
  * NOTE: This route must be defined BEFORE /:id to avoid route conflicts
  */
-router.get('/meta/assemblies', authenticateToken, async (req, res) => {
+router.get('/meta/assemblies', authenticateToken, generalRateLimit, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -282,7 +283,7 @@ router.get('/meta/assemblies', authenticateToken, async (req, res) => {
  * 
  * NOTE: This route must be defined BEFORE /:id to avoid route conflicts
  */
-router.get('/meta/manufacturers', authenticateToken, async (req, res) => {
+router.get('/meta/manufacturers', authenticateToken, generalRateLimit, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -316,7 +317,7 @@ router.get('/meta/manufacturers', authenticateToken, async (req, res) => {
  * 
  * NOTE: This route must be defined AFTER /meta/* routes to avoid conflicts
  */
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, generalRateLimit, async (req, res) => {
   try {
     const materialId = parseInt(req.params.id);
 

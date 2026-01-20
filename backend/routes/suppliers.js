@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { general: generalRateLimit } = require('../middleware/rateLimit');
 const { pool } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { findSuppliersNearby, geocodeAddress } = require('../services/geocoding');
@@ -8,7 +9,7 @@ const { findSuppliersNearby, geocodeAddress } = require('../services/geocoding')
  * GET /api/v1/suppliers/nearby
  * Find suppliers near a location
  */
-router.get('/nearby', authenticateToken, async (req, res) => {
+router.get('/nearby', authenticateToken, generalRateLimit, async (req, res) => {
   try {
     const { address, lat, lng, radius = 100 } = req.query;
 

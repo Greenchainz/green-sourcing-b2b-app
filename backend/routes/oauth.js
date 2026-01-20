@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { auth: authRateLimit } = require('../middleware/rateLimit');
 const passport = require('../config/passport');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../db');
@@ -35,7 +36,7 @@ const generateJWT = (userId, email, role) => {
  * GET /auth/google
  * Initiates Google OAuth flow
  */
-router.get('/google', passport.authenticate('google', {
+router.get('/google', authRateLimit, passport.authenticate('google', {
   scope: ['profile', 'email']
 }));
 
@@ -92,7 +93,7 @@ router.get('/google/callback',
  * GET /auth/linkedin
  * Initiates LinkedIn OAuth flow
  */
-router.get('/linkedin', passport.authenticate('linkedin', {
+router.get('/linkedin', authRateLimit, passport.authenticate('linkedin', {
   scope: ['openid', 'profile', 'email']
 }));
 
@@ -101,6 +102,7 @@ router.get('/linkedin', passport.authenticate('linkedin', {
  * Handles LinkedIn OAuth callback
  */
 router.get('/linkedin/callback',
+    authRateLimit,
   passport.authenticate('linkedin', {
     failureRedirect: `${FRONTEND_URL}/login?error=linkedin_auth_failed`,
     session: false

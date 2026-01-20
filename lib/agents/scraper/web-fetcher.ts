@@ -53,25 +53,27 @@ export class WebFetcher {
             const title = titleMatch ? titleMatch[1].trim() : 'No Title';
 
             // 2. Remove non-content tags (script, style, head, iframe, noscript, svg, path)
-            // Using non-greedy match [\s\S]*? to capture multiline content
+            // Using limited quantifiers to prevent ReDoS attacks
             let content = html
-                .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gim, " ")
-                .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gim, " ")
-                .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gim, " ")
-                .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gim, " ")
-                .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gim, " ")
-                .replace(/<head\b[^>]*>[\s\S]*?<\/head>/gim, " ")
-                .replace(/<!--[\s\S]*?-->/g, " ");
+                .replace(/<script\b[^>]{0,200}>[\s\S]{0,50000}?<\/script>/gim, " ")
+                .replace(/<style\b[^>]{0,200}>[\s\S]{0,50000}?<\/style>/gim, " ")
+                .replace(/<noscript\b[^>]{0,200}>[\s\S]{0,10000}?<\/noscript>/gim, " ")
+                .replace(/<iframe\b[^>]{0,200}>[\s\S]{0,10000}?<\/iframe>/gim, " ")
+                .replace(/<svg\b[^>]{0,200}>[\s\S]{0,50000}?<\/svg>/gim, " ")
+                .replace(/<head\b[^>]{0,200}>[\s\S]{0,50000}?<\/head>/gim, " ")
+                .replace(/<!--[\s\S]{0,10000}?-->/g, " ");
 
             // 3. Extract Alt text from images before stripping tags (often useful for context)
             // Replace <img ... alt="foo" ...> with " foo "
-            content = content.replace(/<img\b[^>]*alt=["']([^"']*)["'][^>]*>/gim, " $1 ");
+            // Limited quantifiers to prevent ReDoS
+            content = content.replace(/<img\b[^>]{0,500}alt=["']([^"']{0,200})["'][^>]{0,500}>/gim, " $1 ");
 
             // 4. Convert block tags to spaces to ensure separation of words
-            content = content.replace(/<(div|p|br|h[1-6]|li|tr|td|section|article)[^>]*>/gim, " ");
+            // Limited quantifiers to prevent ReDoS
+            content = content.replace(/<(div|p|br|h[1-6]|li|tr|td|section|article)[^>]{0,200}>/gim, " ");
 
-            // 5. Remove all remaining HTML tags
-            content = content.replace(/<[^>]+>/g, " ");
+            // 5. Remove all remaining HTML tags - limited to prevent ReDoS
+            content = content.replace(/<[^>]{0,500}>/g, " ");
 
             // 6. Decode HTML entities
             content = content

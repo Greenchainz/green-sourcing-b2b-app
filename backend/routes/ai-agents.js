@@ -1,6 +1,7 @@
 /**
  * AI Agents API Routes
  * 
+const { health: healthRateLimit, admin: adminRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
  * Provides endpoints for verifying and testing Azure AI Foundry agents.
  * All routes require authentication.
  */
@@ -15,7 +16,7 @@ const agentGateway = require('../services/ai-gateway/agentGateway');
  * GET /api/v1/ai-agents/health
  * Health check for AI agent system
  */
-router.get('/health', async (req, res) => {
+router.get('/health', healthRateLimit, async (req, res) => {
   try {
     const health = await aiGateway.getHealth();
     
@@ -41,7 +42,7 @@ router.get('/health', async (req, res) => {
  * Verify all configured agents are callable (Admin only)
  * Tests each agent with a simple ping/test call
  */
-router.get('/verify', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
+router.get('/verify', authenticateToken, authorizeRoles('Admin'), adminRateLimit, async (req, res) => {
   try {
     const agents = [
       'AZURE-COMMANDER',
@@ -135,7 +136,7 @@ async function testAgentCall(agentName, messages) {
  * GET /api/v1/ai-agents/list
  * List all available agents and their status
  */
-router.get('/list', authenticateToken, async (req, res) => {
+router.get('/list', authenticateToken, generalRateLimit, async (req, res) => {
   try {
     const agents = [
       {

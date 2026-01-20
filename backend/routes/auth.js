@@ -5,6 +5,7 @@ const { pool } = require('../db');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const { requireEnv } = require('../config/validateEnv');
+const { auth: authRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
 
 // ============================================
 // CONSTANTS
@@ -53,7 +54,7 @@ const verifyJWT = (token) => {
 // Exchange Azure AD auth code -> ID token (server-side using client secret)
 // ============================================
 
-router.post('/azure-token-exchange', async (req, res) => {
+router.post('/azure-token-exchange', authRateLimit, async (req, res) => {
   try {
     const { code, redirectUri } = req.body || {};
     if (!code || !redirectUri) {
@@ -120,7 +121,7 @@ router.post('/azure-token-exchange', async (req, res) => {
 // Exchange Azure auth code for JWT token
 // ============================================
 
-router.post('/azure-callback', async (req, res) => {
+router.post('/azure-callback', authRateLimit, async (req, res) => {
   try {
     const { code, email, firstName, lastName, azureId } = req.body;
 
@@ -213,7 +214,7 @@ router.post('/azure-callback', async (req, res) => {
 // Exchange refresh token for new JWT
 // ============================================
 
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authRateLimit, async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
@@ -262,7 +263,7 @@ router.post('/refresh', async (req, res) => {
 // Invalidate refresh token
 // ============================================
 
-router.post('/logout', async (req, res) => {
+router.post('/logout', generalRateLimit, async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -291,7 +292,7 @@ router.post('/logout', async (req, res) => {
 // Get current user details (protected)
 // ============================================
 
-router.get('/me', async (req, res) => {
+router.get('/me', generalRateLimit, async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -371,7 +372,7 @@ router.get('/me', async (req, res) => {
 // Update user role (architect or supplier)
 // ============================================
 
-router.patch('/role', async (req, res) => {
+router.patch('/role', generalRateLimit, async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
