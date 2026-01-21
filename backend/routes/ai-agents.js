@@ -10,12 +10,13 @@ const router = express.Router();
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const aiGateway = require('../services/ai-gateway');
 const agentGateway = require('../services/ai-gateway/agentGateway');
+const { health: healthRateLimit, admin: adminRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
 
 /**
  * GET /api/v1/ai-agents/health
  * Health check for AI agent system
  */
-router.get('/health', async (req, res) => {
+router.get('/health', healthRateLimit, async (req, res) => {
   try {
     const health = await aiGateway.getHealth();
     
@@ -41,7 +42,7 @@ router.get('/health', async (req, res) => {
  * Verify all configured agents are callable (Admin only)
  * Tests each agent with a simple ping/test call
  */
-router.get('/verify', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
+router.get('/verify', adminRateLimit, authenticateToken, authorizeRoles('Admin'), async (req, res) => {
   try {
     const agents = [
       'AZURE-COMMANDER',
@@ -135,7 +136,7 @@ async function testAgentCall(agentName, messages) {
  * GET /api/v1/ai-agents/list
  * List all available agents and their status
  */
-router.get('/list', authenticateToken, async (req, res) => {
+router.get('/list', generalRateLimit, authenticateToken, async (req, res) => {
   try {
     const agents = [
       {

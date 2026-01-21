@@ -209,9 +209,9 @@ function extractInstallationCriteria(content: string): InstallationData {
   // Speed of install pattern
   const speedOfInstall = /(?:fast|quick|rapid|easy)\s*install(?:ation)?|time[-]?saving|reduced\s*labor/i.test(content);
 
-  // Weight per square foot extraction
+  // Weight per square foot extraction - ReDoS-safe with limited quantifiers
   let weightPerSqFt: number | undefined;
-  const weightMatch = content.match(/(\d+(?:\.\d+)?)\s*(?:lb|lbs|pounds?)?\s*(?:per|\/)\s*(?:sq\.?\s*ft|square\s*foot)/i);
+  const weightMatch = content.match(/(\d{1,10}(?:\.\d{1,10})?)\s{0,5}(?:lb|lbs|pounds?)?[\s]{0,5}(?:per|\/)\s{0,5}(?:sq\.?\s{0,3}ft|square\s{0,5}foot)/i);
   if (weightMatch) {
     weightPerSqFt = parseFloat(weightMatch[1]);
   }

@@ -12,6 +12,7 @@ const storage = require('../services/azure/storage');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const monitoring = require('../services/azure/monitoring');
 const rateLimit = require('express-rate-limit');
+const { ai: aiRateLimit } = require('../middleware/rateLimit');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -30,6 +31,7 @@ const documentRateLimiter = rateLimit({
  * POST /api/v1/ai/analyze/certification
  */
 router.post('/analyze/certification',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Supplier', 'Admin'),
     upload.single('document'),
@@ -82,6 +84,7 @@ router.post('/analyze/certification',
  * POST /api/v1/ai/analyze/epd
  */
 router.post('/analyze/epd',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Supplier', 'Admin'),
     upload.single('document'),
@@ -118,6 +121,7 @@ router.post('/analyze/epd',
  * POST /api/v1/ai/verify
  */
 router.post('/verify',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Admin'),
     upload.single('document'),
@@ -155,6 +159,7 @@ router.post('/verify',
  * POST /api/v1/ai/extract
  */
 router.post('/extract',
+    aiRateLimit,
     authenticateToken,
     upload.single('document'),
     async (req, res) => {
@@ -188,6 +193,7 @@ router.post('/extract',
  * POST /api/v1/ai/extract-with-decision-logic
  */
 router.post('/extract-with-decision-logic',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Supplier', 'Admin'),
     upload.single('document'),
@@ -226,6 +232,7 @@ router.post('/extract-with-decision-logic',
  * POST /api/v1/ai/analyze/url
  */
 router.post('/analyze/url',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Admin'),
     async (req, res) => {
@@ -271,6 +278,7 @@ router.post('/analyze/url',
  * POST /api/v1/ai/batch
  */
 router.post('/batch',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Admin'),
     async (req, res) => {
@@ -319,6 +327,7 @@ router.post('/batch',
  * GET /api/v1/ai/status
  */
 router.get('/status',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Admin'),
     async (req, res) => {
@@ -337,6 +346,7 @@ router.get('/status',
  * POST /api/v1/ai/check-defensibility
  */
 router.post('/check-defensibility',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Supplier', 'Admin'),
     upload.single('document'),
@@ -391,6 +401,7 @@ router.post('/check-defensibility',
  * POST /api/v1/ai/compare-products
  */
 router.post('/compare-products',
+    aiRateLimit,
     authenticateToken,
     authorizeRoles('Admin', 'Buyer'),
     upload.fields([

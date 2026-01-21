@@ -8,7 +8,7 @@ const router = express.Router();
 const multer = require('multer');
 const storage = require('../services/azure/storage');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
-const { upload: uploadRateLimit } = require('../middleware/rateLimit');
+const { upload: uploadRateLimit, general: generalRateLimit } = require('../middleware/rateLimit');
 const monitoring = require('../services/azure/monitoring');
 
 // Configure multer for memory storage (we'll stream to Azure)
@@ -167,8 +167,20 @@ router.post('/rfq/:rfqId/attachment',
     upload.array('attachments', 5),
     async (req, res) => {
         try {
-            if (!req.files || req.files.length === 0) {
+            // Validate req.files is an array and has valid length
+            if (!Array.isArray(req.files) || req.files.length === 0) {
                 return res.status(400).json({ error: 'No files uploaded' });
+            }
+
+            // Validate file count is within expected range (multer already enforces max of 5)
+            if (req.files.length > 5) {
+                return res.status(400).json({ error: 'Too many files' });
+            }
+
+            // Validate user ID
+            const userId = req.user?.userId;
+            if (!userId || (typeof userId !== 'string' && typeof userId !== 'number')) {
+                return res.status(401).json({ error: 'Invalid user' });
             }
 
             const results = await Promise.all(
@@ -183,9 +195,9 @@ router.post('/rfq/:rfqId/attachment',
             );
 
             monitoring.trackEvent('RFQAttachmentsUploaded', {
-                rfqId: req.params.rfqId,
+                rfqId: String(req.params.rfqId || ''),
                 fileCount: String(req.files.length),
-                userId: String(req.user.userId)
+                userId: String(userId)
             });
 
             res.status(201).json({
@@ -205,6 +217,7 @@ router.post('/rfq/:rfqId/attachment',
  */
 router.get('/supplier/:supplierId/files',
     authenticateToken,
+    generalRateLimit,
     async (req, res) => {
         try {
             const [certifications, products] = await Promise.all([
@@ -231,6 +244,7 @@ router.get('/supplier/:supplierId/files',
 router.delete('/:blobName(*)',
     authenticateToken,
     authorizeRoles('Supplier', 'Admin'),
+    generalRateLimit,
     async (req, res) => {
         try {
             await storage.deleteFile(req.params.blobName);
