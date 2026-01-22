@@ -4,6 +4,10 @@
   "private": true,
   "type": "commonjs",
   "main": "index.js",
+  "engines": {
+    "node": ">=18.18.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
