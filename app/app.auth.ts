@@ -23,9 +23,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async signIn({ user }) {
+      console.log("🔥 MICROSOFT SENT US THIS EMAIL:", user.email);
       if (!user.email) return false;
       const client = await pool.connect();
-      
+
       try {
         // 1. Check if user exists in 'Users' table
         // Note: We use double quotes "Users" because Postgres is case-sensitive with tables created via some tools
@@ -40,7 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             RETURNING id
           `;
           const newRec = await client.query(insertQuery, [user.email, user.name, user.id]);
-          
+
           // Create empty profile in Architects table
           await client.query('INSERT INTO "Architects" (user_id) VALUES ($1)', [newRec.rows[0].id]);
 
@@ -49,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const updateQuery = 'UPDATE "Users" SET last_login = NOW() WHERE email = $1';
           await client.query(updateQuery, [user.email]);
         }
-        
+
         return true;
       } catch (err) {
         console.error("Postgres Login Error:", err);
