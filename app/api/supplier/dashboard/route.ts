@@ -11,16 +11,6 @@ interface DashboardMetrics {
     response_time_hours: number;
 }
 
-interface RecentRFQ {
-    rfq_id: number | string;
-    project_name: string;
-    material_name: string;
-    quantity: number;
-    unit: string;
-    deadline: string; // ISO date
-    status: string;
-}
-
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);

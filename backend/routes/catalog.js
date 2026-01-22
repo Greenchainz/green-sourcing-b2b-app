@@ -18,6 +18,7 @@ const router = express.Router();
 
 const catalogService = require('../services/catalog');
 const { authenticateToken } = require('../middleware/auth');
+const { general: generalRateLimit, search: searchRateLimit } = require('../middleware/rateLimit');
 
 // Shadow supplier visibility service for anonymization
 let shadowVisibility;
@@ -90,7 +91,7 @@ function anonymizeShadowSupplier(material) {
  *   filters: { query, category, certifications, minScore, sortBy }
  * }
  */
-router.get('/materials', async (req, res) => {
+router.get('/materials', searchRateLimit, async (req, res) => {
     try {
         const {
             q: query,
@@ -143,7 +144,7 @@ router.get('/materials', async (req, res) => {
  * Note: Shadow suppliers are anonymized until they claim their profile
  * or until an RFQ is submitted.
  */
-router.get('/materials/:materialId', async (req, res) => {
+router.get('/materials/:materialId', generalRateLimit, async (req, res) => {
     try {
         const { materialId } = req.params;
 
@@ -185,7 +186,7 @@ router.get('/materials/:materialId', async (req, res) => {
  * Query Parameters:
  * - refresh (boolean): Force recalculation (default: false)
  */
-router.get('/materials/:materialId/score', async (req, res) => {
+router.get('/materials/:materialId/score', generalRateLimit, async (req, res) => {
     try {
         const { materialId } = req.params;
         const refresh = req.query.refresh === 'true';
@@ -231,7 +232,7 @@ router.get('/materials/:materialId/score', async (req, res) => {
  * Get all product categories with material counts and average sustainability scores.
  * Useful for building category navigation and filters.
  */
-router.get('/categories', async (req, res) => {
+router.get('/categories', generalRateLimit, async (req, res) => {
     try {
         const categories = await catalogService.getCategoryTree();
 
@@ -254,7 +255,7 @@ router.get('/categories', async (req, res) => {
  * Get all available certifications with supplier counts.
  * Useful for building certification filter dropdowns.
  */
-router.get('/certifications', async (req, res) => {
+router.get('/certifications', generalRateLimit, async (req, res) => {
     try {
         const certifications = await catalogService.getAvailableCertifications();
 
@@ -290,7 +291,7 @@ router.get('/certifications', async (req, res) => {
  *   materialIds: [1, 2, 3] // Array of 2-5 material IDs
  * }
  */
-router.post('/compare', async (req, res) => {
+router.post('/compare', generalRateLimit, async (req, res) => {
     try {
         const { materialIds } = req.body;
 
@@ -370,7 +371,7 @@ router.post('/compare', async (req, res) => {
  * Add material to user's favorites (requires authentication).
  * Future enhancement for user personalization.
  */
-router.post('/materials/:materialId/favorite', authenticateToken, async (req, res) => {
+router.post('/materials/:materialId/favorite', generalRateLimit, authenticateToken, async (req, res) => {
     try {
         const { materialId } = req.params;
         const userId = req.user.id || req.user.userId;
@@ -398,7 +399,7 @@ router.post('/materials/:materialId/favorite', authenticateToken, async (req, re
  * 
  * Remove material from user's favorites (requires authentication).
  */
-router.delete('/materials/:materialId/favorite', authenticateToken, async (req, res) => {
+router.delete('/materials/:materialId/favorite', generalRateLimit, authenticateToken, async (req, res) => {
     try {
         const { materialId } = req.params;
         const userId = req.user.id || req.user.userId;
@@ -429,7 +430,7 @@ router.delete('/materials/:materialId/favorite', authenticateToken, async (req, 
  * 
  * Health check for catalog service.
  */
-router.get('/health', (req, res) => {
+router.get('/health', generalRateLimit, (req, res) => {
     res.json({
         status: 'ok',
         service: 'catalog',

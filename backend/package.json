@@ -10,7 +10,7 @@
     "seed": "node scripts/seed.js",
     "seed:rfq-simulator": "node scripts/seed-rfq-simulator.js",
     "db:apply:rfq-simulator": "node scripts/db/apply-rfq-simulator-schema.js",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "echo \"Run npm run test:api from project root\" && exit 0"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.0.0",

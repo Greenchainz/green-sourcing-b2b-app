@@ -17,6 +17,7 @@ const router = express.Router();
 const shadowService = require('../services/shadow');
 const { claimFlow, catalog, ingestion, visibility } = shadowService;
 const internalApiKeyMiddleware = require('../middleware/internalKey');
+const { general: generalRateLimit } = require('../middleware/rateLimit');
 
 // ============================================
 // MIDDLEWARE
@@ -42,7 +43,7 @@ const extractIp = (req) => {
  * Body: { token: string }
  * Response: { valid: boolean, supplier?: { company_name, email, category } }
  */
-router.post('/claim/validate', async (req, res) => {
+router.post('/claim/validate', generalRateLimit, async (req, res) => {
     try {
         const { token } = req.body;
         
@@ -80,7 +81,7 @@ router.post('/claim/validate', async (req, res) => {
  * Body: { token: string, newSupplierId: string, userId?: string }
  * Response: { success: boolean }
  */
-router.post('/claim/complete', async (req, res) => {
+router.post('/claim/complete', generalRateLimit, async (req, res) => {
     try {
         const { token, newSupplierId, userId } = req.body;
         
@@ -135,7 +136,7 @@ router.post('/claim/complete', async (req, res) => {
  * Body: { shadowSupplierId: string, expiryHours?: number }
  * Response: { success: boolean, token?: string, expiresAt?: string }
  */
-router.post('/claim/generate-token', internalApiKeyMiddleware, async (req, res) => {
+router.post('/claim/generate-token', internalApiKeyMiddleware, generalRateLimit, async (req, res) => {
     try {
         const { shadowSupplierId, expiryHours } = req.body;
         
@@ -174,7 +175,7 @@ router.post('/claim/generate-token', internalApiKeyMiddleware, async (req, res) 
  * 
  * Response: { found: boolean, claimed_status?, opt_out_status?, ... }
  */
-router.get('/claim/status/:shadowSupplierId', internalApiKeyMiddleware, async (req, res) => {
+router.get('/claim/status/:shadowSupplierId', internalApiKeyMiddleware, generalRateLimit, async (req, res) => {
     try {
         const { shadowSupplierId } = req.params;
         
@@ -198,7 +199,7 @@ router.get('/claim/status/:shadowSupplierId', internalApiKeyMiddleware, async (r
  * Body: { token: string, reason?: string } OR { shadowSupplierId: string, reason?: string }
  * Response: { success: boolean }
  */
-router.post('/opt-out', async (req, res) => {
+router.post('/opt-out', generalRateLimit, async (req, res) => {
     try {
         const { token, shadowSupplierId, reason } = req.body;
         
@@ -258,7 +259,7 @@ router.post('/opt-out', async (req, res) => {
  * Body: { company_name, email, category?, source?, source_url? }
  * Response: { success: boolean, id?: string, action?: string }
  */
-router.post('/ingest/supplier', internalApiKeyMiddleware, async (req, res) => {
+router.post('/ingest/supplier', internalApiKeyMiddleware, generalRateLimit, async (req, res) => {
     try {
         const result = await ingestion.ingestShadowSupplier(req.body);
         
@@ -281,7 +282,7 @@ router.post('/ingest/supplier', internalApiKeyMiddleware, async (req, res) => {
  * Body: { suppliers: Array<{ company_name, email, ... }> }
  * Response: { success: number, failed: number, created: number, updated: number }
  */
-router.post('/ingest/suppliers', internalApiKeyMiddleware, async (req, res) => {
+router.post('/ingest/suppliers', internalApiKeyMiddleware, generalRateLimit, async (req, res) => {
     try {
         const { suppliers } = req.body;
         
@@ -305,7 +306,7 @@ router.post('/ingest/suppliers', internalApiKeyMiddleware, async (req, res) => {
  * Body: { shadow_supplier_id, name, material_type?, certifications?, ... }
  * Response: { success: boolean, id?: string }
  */
-router.post('/ingest/product', internalApiKeyMiddleware, async (req, res) => {
+router.post('/ingest/product', internalApiKeyMiddleware, generalRateLimit, async (req, res) => {
     try {
         const result = await ingestion.ingestShadowProduct(req.body);
         
@@ -328,7 +329,7 @@ router.post('/ingest/product', internalApiKeyMiddleware, async (req, res) => {
  * Body: { supplier: {...}, products: [{...}, ...] }
  * Response: { success: boolean, supplierId?: string, productIds?: string[] }
  */
-router.post('/ingest/complete', internalApiKeyMiddleware, async (req, res) => {
+router.post('/ingest/complete', internalApiKeyMiddleware, generalRateLimit, async (req, res) => {
     try {
         const result = await ingestion.importSupplierWithProducts(req.body);
         
@@ -355,7 +356,7 @@ router.post('/ingest/complete', internalApiKeyMiddleware, async (req, res) => {
  * Query: materialType?, category?, certifications[]?, query?, limit?, offset?
  * Response: { materials: Array, total: number }
  */
-router.get('/catalog/search', async (req, res) => {
+router.get('/catalog/search', generalRateLimit, async (req, res) => {
     try {
         const { 
             materialType, 

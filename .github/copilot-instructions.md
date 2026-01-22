@@ -486,13 +486,12 @@ import { User } from 'lucide-react';
 
 ### Testing Strategy
 
-**Current State**: No test framework configured yet
+**Current State**: Testing framework configuration in progress
 
 **When adding tests**:
 
 **Backend Testing**:
-- Unit tests: `jest` or `mocha` + `chai`
-- API integration tests: `supertest`
+- Unit tests: `jest`
 - Add scripts to `backend/package.json`:
   ```json
   "scripts": {
@@ -504,18 +503,16 @@ import { User } from 'lucide-react';
 - Place tests: `backend/__tests__/` or alongside files as `*.test.js`
 
 **Frontend Testing**:
-- Unit/Component tests: `vitest` (native Vite integration)
-- React component tests: `@testing-library/react`
-- E2E tests: `playwright` or `cypress`
-- Add scripts to `frontend/package.json`:
+- Unit/Component tests: `jest` + `@testing-library/react`
+- E2E tests: `playwright`
+- Add scripts to `package.json`:
   ```json
   "scripts": {
-    "test": "vitest",
-    "test:ui": "vitest --ui",
+    "test": "jest",
     "test:e2e": "playwright test"
   }
   ```
-- Place tests: `frontend/src/**/*.test.tsx` or `frontend/tests/`
+- Place tests: `tests/unit/` or `tests/e2e/`
 
 **Database Testing**:
 - Create test database: `greenchainz_test`
@@ -532,10 +529,9 @@ import { User } from 'lucide-react';
 | `backend/openapi.yaml` | API specification | OpenAPI 3.0 spec for all endpoints |
 | `backend/middleware/auth.js` | Auth middleware | JWT verification, role-based access |
 | `backend/services/` | Business logic | Verification scoring, email, monitoring |
-| `frontend/src/main.tsx` | React app entry | TypeScript + React 19 entry point |
-| `frontend/src/App.tsx` | Root component | Main app component with routing |
-| `frontend/vite.config.ts` | Vite configuration | Build tool configuration |
-| `frontend/tailwind.config.js` | Tailwind config | CSS framework configuration |
+| `app/layout.tsx` | Root component | Main app component |
+| `next.config.js` | Next.js configuration | Build tool configuration |
+| `tailwind.config.js` | Tailwind config | CSS framework configuration |
 | `database-schemas/schema.sql` | Main database schema | Full table definitions (26KB+) |
 | `database-schemas/migrations/` | Database migrations | Timestamped migration scripts |
 | `.env.example` | Environment template | All required env variables documented |
@@ -564,16 +560,15 @@ cp .env.example .env
 **Problem**: `import.meta.env.VITE_API_BASE_URL` is undefined
 
 **Solution**: 
-- Environment variables MUST be prefixed with `VITE_`
+- We are using Next.js. Use `process.env.NEXT_PUBLIC_API_URL`.
 - Variables are embedded at build time
-- After changing `.env`, restart dev server: `docker compose restart frontend`
 
 ### ⚠️ OAuth Redirect Mismatch
 **Problem**: OAuth login fails with "redirect_uri_mismatch"
 
 **Solution**:
 - Callback URLs must match exactly in OAuth provider settings
-- Development: `http://localhost:3001/auth/{provider}/callback`
+- Development: `http://localhost:3000/auth/{provider}/callback`
 - Update `.env`: `GOOGLE_CALLBACK_URL`, `GITHUB_CALLBACK_URL`, etc.
 - No trailing slash!
 
@@ -591,11 +586,14 @@ cp .env.example .env
 3. Are you using the right host? (`localhost` from host, `db` from within docker-compose network)
 
 ### ⚠️ Port Conflicts
-**Problem**: "Port 5432 already in use" or "Port 3001 already in use"
+**Problem**: "Port 5432/3001/3000 already in use"
 
 **Solution**:
-- For PostgreSQL: Stop existing postgres service or change port in `docker-compose.yml`
-- For backend: Change `const port = 3001` in `backend/index.js` or stop other process
+```bash
+# Find and kill process using the port
+lsof -ti:3001 | xargs kill -9  # macOS/Linux
+# Or change port in docker-compose.yml
+```
 
 ### ⚠️ Docker Compose Version
 **Problem**: `docker-compose` command not found or version too old
@@ -607,8 +605,7 @@ cp .env.example .env
 
 **Solution**:
 ```bash
-cd frontend
-npm run build:check  # Type-check before building
+npm run type-check  # Type-check before building
 # Fix type errors in your code
 ```
 
@@ -616,17 +613,17 @@ npm run build:check  # Type-check before building
 **Problem**: API calls fail with CORS errors
 
 **Checklist**:
-- Is `FRONTEND_URL` set correctly in backend `.env`? (default: http://localhost:5173)
+- Is `FRONTEND_URL` set correctly in backend `.env`?
 - Backend CORS config allows credentials: `credentials: true`
 - Frontend axios calls include: `withCredentials: true` (for cookies/sessions)
 
 ### ⚠️ Port Already in Use
-**Problem**: "Port 5432/3001/5173 already in use"
+**Problem**: "Port 5432/3001/3000 already in use"
 
 **Solution**:
 ```bash
 # Find and kill process using the port
-lsof -ti:3001 | xargs kill -9  # macOS/Linux
+lsof -ti:3000 | xargs kill -9  # macOS/Linux
 # Or change port in docker-compose.yml
 ```
 
@@ -642,10 +639,10 @@ lsof -ti:3001 | xargs kill -9  # macOS/Linux
 7. ✅ Database queries use parameterized syntax (prevent SQL injection)
 
 ### After Frontend Changes
-1. ✅ TypeScript compiles: `cd frontend && npm run build:check`
-2. ✅ Linter passes: `cd frontend && npm run lint`
-3. ✅ Production build succeeds: `cd frontend && npm run build`
-4. ✅ UI displays correctly in browser: http://localhost:5173
+1. ✅ TypeScript compiles: `npm run type-check`
+2. ✅ Linter passes: `npm run lint`
+3. ✅ Production build succeeds: `npm run build`
+4. ✅ UI displays correctly in browser: http://localhost:3000
 5. ✅ Console has no errors: Check browser dev tools
 6. ✅ API calls work: Check network tab for 200 responses
 
@@ -713,15 +710,14 @@ docker exec -it greenchainz-backend node -v   # Check Node version
 # View frontend logs (Vite output)
 docker compose logs -f frontend
 
-# Clear Vite cache
-docker exec -it greenchainz-frontend rm -rf node_modules/.vite
+# Clear Next.js cache
+rm -rf .next
 
 # Rebuild frontend
 docker compose up -d --build frontend
 
 # Check TypeScript errors
-cd frontend
-npm run build:check
+npm run type-check
 ```
 
 ### Container Issues
@@ -762,7 +758,7 @@ docker network inspect green-sourcing-b2b-app_default
 docker exec -it greenchainz-backend env | grep -E "(POSTGRES|JWT|GOOGLE)"
 
 # Check frontend environment variables (build-time)
-docker exec -it greenchainz-frontend env | grep VITE
+docker exec -it greenchainz-frontend env | grep NEXT_PUBLIC
 ```
 
 ## Next Steps and Future Enhancements
@@ -771,12 +767,12 @@ As the platform evolves, update this file when you:
 
 1. ✅ ~~Add package.json to backend~~ - DONE
 2. ✅ ~~Containerize backend~~ - DONE (Docker Compose with all services)
-3. ✅ ~~Scaffold frontend~~ - DONE (Vite + React + TypeScript + Tailwind)
+3. ✅ ~~Scaffold frontend~~ - DONE (Next.js + React + TypeScript + Tailwind)
 4. ✅ ~~Add database migrations~~ - DONE (migration scripts in database-schemas/migrations/)
 5. ✅ ~~Implement authentication~~ - DONE (JWT + OAuth via Passport.js)
 6. ✅ ~~Add API documentation~~ - DONE (OpenAPI 3.0 spec + Swagger UI)
 7. 🔄 **Add testing framework** - IN PROGRESS
-   - Add Jest/Vitest for unit tests
+   - Add Jest for unit tests
    - Add Playwright for E2E tests
    - Add test scripts to package.json files
 8. 🔄 **Set up CI/CD** - PLANNED
@@ -784,7 +780,7 @@ As the platform evolves, update this file when you:
    - Automated deployment to staging/production
    - Docker image builds and registry pushes
 9. 🔄 **Production deployment** - PLANNED
-   - Configure for Vercel (frontend) + Railway/Render (backend)
+   - Configure for Azure Container Apps
    - Environment-specific configurations
    - SSL/TLS certificates
    - CDN configuration
@@ -796,7 +792,7 @@ As the platform evolves, update this file when you:
 
 ---
 
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2026-01-04
 **Repository**: [jnorvi5/green-sourcing-b2b-app](https://github.com/jnorvi5/green-sourcing-b2b-app)  
 **Platform**: GreenChainz - Global Trust Layer for Sustainable Commerce
 
@@ -804,7 +800,7 @@ As the platform evolves, update this file when you:
 
 ## Quick Links
 
-- **Frontend Dev**: http://localhost:5173
+- **Frontend Dev**: http://localhost:3000
 - **Backend API**: http://localhost:3001
 - **API Documentation**: http://localhost:3001/api-docs
 - **Database**: localhost:5432 (user/password/greenchainz_dev)

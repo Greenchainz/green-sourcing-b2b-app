@@ -218,7 +218,7 @@ export async function scrapeMaterialData(options: {
                     url: fetchedPage.url
                  };
             }
-        } catch (fetchError) {
+        } catch {
              console.warn(`⚠️ External scraping failed for ${searchResult.url}, using search snippet instead.`);
              // Continue with original search result
         }
@@ -242,7 +242,7 @@ export async function scrapeMaterialData(options: {
     let extractedData: ExtractedData;
     try {
         extractedData = await extractWithOpenAI(extractionContext, promptType);
-    } catch (error) {
+    } catch {
         console.error("⚠️ Extraction failed, returning partial/mock data");
         extractedData = {
             gwp_per_unit: 0,

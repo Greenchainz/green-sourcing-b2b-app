@@ -24,12 +24,12 @@ export function extractCertificates(content: string): CertificateVerification {
     hasVerifiedEPD: false
   };
 
-  // CDPH v1.2 patterns
+  // CDPH v1.2 patterns (ReDoS-safe with limited quantifiers)
   const cdphPatterns = {
-    version: /cdph\s*(?:v|version)?\s*1\.2/i,
-    certificate: /cdph\s*(?:certificate|cert)?[\s#:]*([A-Z0-9-]+)/i,
-    issueDate: /(?:issue|issued|certificate)\s*date[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
-    expiryDate: /(?:expir(?:y|ation)|valid\s*(?:until|thru|through))[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i
+    version: /cdph\s{0,5}(?:v|version)?\s{0,5}1\.2/i,
+    certificate: /cdph\s{0,5}(?:certificate|cert)?[\s#:]{0,10}([A-Z0-9-]{1,50})/i,
+    issueDate: /(?:issue|issued|certificate)\s{0,5}date[\s:]{0,5}(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
+    expiryDate: /(?:expir(?:y|ation)|valid\s{0,5}(?:until|thru|through))[\s:]{0,5}(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i
   };
 
   // Check for CDPH v1.2
@@ -84,27 +84,27 @@ export function extractCertificates(content: string): CertificateVerification {
 export function extractEPDMetrics(content: string): EPDMetrics {
   const metrics: EPDMetrics = {};
 
-  // GWP (Global Warming Potential)
-  const gwpMatch = content.match(/(?:gwp|global\s*warming\s*potential)[:\s]*([0-9.]+)\s*(?:kg\s*co2|kgco2)/i);
+  // GWP (Global Warming Potential) - ReDoS-safe
+  const gwpMatch = content.match(/(?:gwp|global\s{0,5}warming\s{0,5}potential)[\s:]{0,5}([0-9.]{1,20})\s{0,5}(?:kg\s{0,3}co2|kgco2)/i);
   if (gwpMatch) {
     metrics.globalWarmingPotential = parseFloat(gwpMatch[1]);
     metrics.gwpUnit = 'kg CO2 eq';
   }
 
-  // Acidification Potential
-  const acidMatch = content.match(/acidification\s*(?:potential)?[:\s]*([0-9.]+)/i);
+  // Acidification Potential - ReDoS-safe with limited quantifiers
+  const acidMatch = content.match(/acidification\s{0,5}(?:potential)?[\s:]{0,5}([0-9.]{1,20})/i);
   if (acidMatch) metrics.acidificationPotential = parseFloat(acidMatch[1]);
 
-  // Eutrophication Potential
-  const eutrophMatch = content.match(/eutrophication\s*(?:potential)?[:\s]*([0-9.]+)/i);
+  // Eutrophication Potential - ReDoS-safe with limited quantifiers
+  const eutrophMatch = content.match(/eutrophication\s{0,5}(?:potential)?[\s:]{0,5}([0-9.]{1,20})/i);
   if (eutrophMatch) metrics.eutrophicationPotential = parseFloat(eutrophMatch[1]);
 
-  // Recycled content
-  const recycledMatch = content.match(/(?:recycled|post[-\s]consumer)\s*content[:\s]*([0-9.]+)\s*%/i);
+  // Recycled content - ReDoS-safe
+  const recycledMatch = content.match(/(?:recycled|post[-\s]{0,1}consumer)\s{0,5}content[\s:]{0,5}([0-9.]{1,20})\s{0,5}%/i);
   if (recycledMatch) metrics.recycledContent = parseFloat(recycledMatch[1]);
 
-  // Renewable content
-  const renewableMatch = content.match(/renewable\s*content[:\s]*([0-9.]+)\s*%/i);
+  // Renewable content - ReDoS-safe
+  const renewableMatch = content.match(/renewable\s{0,5}content[\s:]{0,5}([0-9.]{1,20})\s{0,5}%/i);
   if (renewableMatch) metrics.renewableContent = parseFloat(renewableMatch[1]);
 
   return metrics;
@@ -116,16 +116,16 @@ export function extractEPDMetrics(content: string): EPDMetrics {
 export function extractHealthMetrics(content: string): HealthMetrics {
   const metrics: HealthMetrics = {};
 
-  // VOC emissions (μg/m³)
-  const vocMatch = content.match(/(?:total\s*)?voc\s*(?:emissions)?[:\s]*([0-9.]+)\s*(?:μg\/m³|ug\/m3|µg\/m³)/i);
+  // VOC emissions (μg/m³) - ReDoS-safe with limited quantifiers
+  const vocMatch = content.match(/(?:total\s{0,5})?voc\s{0,5}(?:emissions)?[\s:]{0,5}([0-9.]{1,20})\s{0,5}(?:μg\/m³|ug\/m3|µg\/m³)/i);
   if (vocMatch) metrics.vocEmissions = parseFloat(vocMatch[1]);
 
-  // Formaldehyde emissions
-  const formaldehydeMatch = content.match(/formaldehyde[:\s]*([0-9.]+)\s*(?:μg\/m³|ug\/m3|µg\/m³)/i);
+  // Formaldehyde emissions - ReDoS-safe
+  const formaldehydeMatch = content.match(/formaldehyde[\s:]{0,5}([0-9.]{1,20})\s{0,5}(?:μg\/m³|ug\/m3|µg\/m³)/i);
   if (formaldehydeMatch) metrics.formaldehydeEmissions = parseFloat(formaldehydeMatch[1]);
 
-  // Test method
-  const testMethodMatch = content.match(/(?:test|testing)\s*method[:\s]*([A-Z0-9.\s-]+)/i);
+  // Test method - ReDoS-safe
+  const testMethodMatch = content.match(/(?:test|testing)\s{0,5}method[\s:]{0,5}([A-Z0-9.\s-]{1,100})/i);
   if (testMethodMatch) metrics.testMethod = testMethodMatch[1].trim();
 
   // Compliance

@@ -15,6 +15,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 
+const { general: generalRateLimit } = require('../middleware/rateLimit');
 const stripeService = require('../services/payments/stripe');
 const linkedinService = require('../services/payments/linkedin');
 const { getEnvOrFallback } = require('../config/validateEnv');
@@ -140,7 +141,7 @@ router.post('/rfq-deposit', paymentLimiter, requireAuth, async (req, res) => {
  * - status: string - 'pending', 'completed', 'failed', 'refunded', or 'not_found'
  * - deposit: object - Deposit details if found
  */
-router.get('/deposit-status/:paymentIntentId', requireAuth, async (req, res) => {
+router.get('/deposit-status/:paymentIntentId', requireAuth, generalRateLimit, async (req, res) => {
     try {
         const { paymentIntentId } = req.params;
 
@@ -174,7 +175,7 @@ router.get('/deposit-status/:paymentIntentId', requireAuth, async (req, res) => 
  * Returns:
  * - verified: boolean
  */
-router.post('/verify-deposit', requireAuth, async (req, res) => {
+router.post('/verify-deposit', generalRateLimit, requireAuth, async (req, res) => {
     try {
         const { paymentIntentId } = req.body;
 
@@ -323,7 +324,7 @@ router.get('/linkedin/callback', oauthLimiter, async (req, res) => {
  * - verified: boolean
  * - profile: object (if verified)
  */
-router.get('/linkedin/status', requireAuth, async (req, res) => {
+router.get('/linkedin/status', requireAuth, generalRateLimit, async (req, res) => {
     try {
         const result = await linkedinService.getVerificationStatus(req.user.userId);
         res.json(result);
@@ -342,7 +343,7 @@ router.get('/linkedin/status', requireAuth, async (req, res) => {
  * Returns:
  * - success: boolean
  */
-router.delete('/linkedin/verification', requireAuth, async (req, res) => {
+router.delete('/linkedin/verification', requireAuth, generalRateLimit, async (req, res) => {
     try {
         const { reason } = req.body;
         const result = await linkedinService.revokeVerification(
@@ -377,7 +378,7 @@ router.delete('/linkedin/verification', requireAuth, async (req, res) => {
  * - fullyVerified: boolean (both verified)
  * - canSubmitRfq: boolean
  */
-router.get('/verification-status', requireAuth, async (req, res) => {
+router.get('/verification-status', generalRateLimit, requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId;
 

@@ -34,7 +34,7 @@ export class RateLimiter {
         try {
             const parsedUrl = new URL(url);
             return parsedUrl.hostname;
-        } catch (e) {
+        } catch {
             return "unknown";
         }
     }

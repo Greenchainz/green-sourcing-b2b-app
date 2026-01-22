@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const scoringService = require('../services/scoringService');
+const { general: generalRateLimit } = require('../middleware/rateLimit');
 
 // ============================================
 // PUBLIC ENDPOINTS (no auth required)
@@ -23,7 +24,7 @@ const scoringService = require('../services/scoringService');
  * - buyerLng: Buyer longitude for distance calculation
  * - refresh: Force recalculation (skip cache)
  */
-router.get('/product/:productId', async (req, res) => {
+router.get('/product/:productId', generalRateLimit, async (req, res) => {
     try {
         const { productId } = req.params;
         const { buyerLat, buyerLng, refresh } = req.query;
@@ -72,7 +73,7 @@ router.get('/product/:productId', async (req, res) => {
  * GET /api/v1/scoring/supplier/:supplierId
  * Get sustainability score for a specific supplier
  */
-router.get('/supplier/:supplierId', async (req, res) => {
+router.get('/supplier/:supplierId', generalRateLimit, async (req, res) => {
     try {
         const { supplierId } = req.params;
         const { buyerLat, buyerLng, refresh } = req.query;
@@ -129,7 +130,7 @@ router.get('/supplier/:supplierId', async (req, res) => {
  *   supplierData: { bCorpScore }
  * }
  */
-router.post('/calculate', async (req, res) => {
+router.post('/calculate', generalRateLimit, async (req, res) => {
     try {
         const {
             certifications = [],
@@ -165,7 +166,7 @@ router.post('/calculate', async (req, res) => {
  * - category: Filter by material type
  * - limit: Max results (default 20)
  */
-router.get('/top-products', async (req, res) => {
+router.get('/top-products', generalRateLimit, async (req, res) => {
     try {
         const { category, limit = 20 } = req.query;
         
@@ -195,7 +196,7 @@ router.get('/top-products', async (req, res) => {
  *   buyerLocation: { latitude, longitude }
  * }
  */
-router.post('/batch', async (req, res) => {
+router.post('/batch', generalRateLimit, async (req, res) => {
     try {
         const { productIds = [], buyerLocation = {} } = req.body;
 
@@ -225,7 +226,7 @@ router.post('/batch', async (req, res) => {
  * GET /api/v1/scoring/stats
  * Get scoring statistics for dashboard
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', generalRateLimit, async (req, res) => {
     try {
         const stats = await scoringService.getScoringStats(pool);
 
@@ -251,7 +252,7 @@ router.get('/stats', async (req, res) => {
  * Get scoring configuration (weights, tiers, thresholds)
  * Useful for frontend to explain scoring methodology
  */
-router.get('/config', (req, res) => {
+router.get('/config', generalRateLimit, (req, res) => {
     res.json({
         success: true,
         data: {
@@ -278,7 +279,7 @@ router.get('/config', (req, res) => {
  * - lat1, lng1: Point 1 coordinates
  * - lat2, lng2: Point 2 coordinates
  */
-router.get('/distance', (req, res) => {
+router.get('/distance', generalRateLimit, (req, res) => {
     try {
         const { lat1, lng1, lat2, lng2 } = req.query;
 
