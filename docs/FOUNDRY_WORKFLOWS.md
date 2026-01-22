@@ -63,9 +63,9 @@ steps:
   - id: "validation_gate"
     type: "condition"
     condition: |
-      {{ validate_parallel.compliance_result.passed == true AND
-         validate_parallel.carbon_result.passed == true AND
-         validate_parallel.match_result.matched == true }}
+      {{ validate_parallel.compliance_result.passed and
+         validate_parallel.carbon_result.passed and
+         validate_parallel.match_result.matched }}
     then_steps:
       - id: "compose_output"
         type: "action"
@@ -141,14 +141,15 @@ steps:
 
   - id: "log_campaign"
     type: "action"
-    action: "database_insert"
-    database: "greenchainz_prod"
-    table: "outreach_campaigns"
-    data:
+    action: "http_request"
+    url: "{{ env.BACKEND_API_URL }}/api/outreach/campaigns"
+    method: "POST"
+    body:
       campaign_id: "{{ enriched_outreach.campaign_id }}"
       prospects_sent: "{{ send_result.sent_count }}"
       timestamp: "{{ now() }}"
       status: "{{ send_result.status }}"
+    output_var: "log_result"
 
 outputs:
   - name: "campaign_metrics"
@@ -156,6 +157,17 @@ outputs:
 ```
 
 ## Deployment Instructions
+
+**Required Environment Variables:**
+- `APP_BASE_URL` - Your application's base URL (e.g., `http://localhost:3000` for dev, `https://greenchainz.com` for prod)
+- `BACKEND_API_URL` - Your backend API URL (e.g., `http://localhost:3000` or `https://api.greenchainz.com`)
+
+**Required Agent Names in Azure AI Foundry:**
+The workflows reference these exact agent names. Ensure they exist before deploying:
+- `COMPLIANCE-VALIDATOR-AGENT`
+- `CARBON-OPTIMIZER-AGENT`
+- `RFQ-MATCHING`
+- `OUTREACH-SCALER`
 
 1. **Login to Azure AI Foundry:**
    ```bash

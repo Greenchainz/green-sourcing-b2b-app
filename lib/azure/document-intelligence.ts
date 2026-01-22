@@ -47,36 +47,67 @@ export async function extractEPDData(
     confidence_scores: {},
   };
 
+  // Accumulate multiple occurrences of the same field
+  const certificationIds: string[] = [];
+
   for (const doc of result.documents || []) {
     for (const [fieldName, field] of Object.entries(doc.fields || {})) {
       const fieldLower = fieldName.toLowerCase();
+      const content = field.content?.trim();
 
       // Map field names to our schema
       if (fieldLower.includes('gwp') || fieldLower.includes('global warming')) {
-        extracted.gwp = parseFloat(field.content || '0');
-        extracted.confidence_scores.gwp = field.confidence || 0;
+        const value = content ? parseFloat(content) : null;
+        if (value !== null && !isNaN(value)) {
+          // Take the highest confidence value if multiple occurrences
+          if (!extracted.gwp || (field.confidence || 0) > (extracted.confidence_scores.gwp || 0)) {
+            extracted.gwp = value;
+            extracted.confidence_scores.gwp = field.confidence || 0;
+          }
+        }
       }
 
       if (fieldLower.includes('recycled') || fieldLower.includes('post-consumer')) {
-        extracted.recycled_content_percentage = parseFloat(field.content || '0');
-        extracted.confidence_scores.recycled_content = field.confidence || 0;
+        const value = content ? parseFloat(content) : null;
+        if (value !== null && !isNaN(value)) {
+          if (!extracted.recycled_content_percentage || (field.confidence || 0) > (extracted.confidence_scores.recycled_content || 0)) {
+            extracted.recycled_content_percentage = value;
+            extracted.confidence_scores.recycled_content = field.confidence || 0;
+          }
+        }
       }
 
       if (fieldLower.includes('certification') || fieldLower.includes('cert')) {
-        extracted.certification_ids = field.content?.split(',').map(s => s.trim()) || [];
-        extracted.confidence_scores.certifications = field.confidence || 0;
+        // Accumulate all certification IDs found
+        if (content) {
+          const ids = content.split(/[,;]/).map(s => s.trim()).filter(s => s.length > 0);
+          certificationIds.push(...ids);
+          extracted.confidence_scores.certifications = Math.max(
+            extracted.confidence_scores.certifications || 0,
+            field.confidence || 0
+          );
+        }
       }
 
       if (fieldLower.includes('expiration') || fieldLower.includes('valid until')) {
-        extracted.expiration_date = field.content || '';
-        extracted.confidence_scores.expiration_date = field.confidence || 0;
+        if (content && (!extracted.expiration_date || (field.confidence || 0) > (extracted.confidence_scores.expiration_date || 0))) {
+          extracted.expiration_date = content;
+          extracted.confidence_scores.expiration_date = field.confidence || 0;
+        }
       }
 
       if (fieldLower.includes('manufacturer') || fieldLower.includes('company')) {
-        extracted.manufacturer_name = field.content || '';
-        extracted.confidence_scores.manufacturer = field.confidence || 0;
+        if (content && (!extracted.manufacturer_name || (field.confidence || 0) > (extracted.confidence_scores.manufacturer || 0))) {
+          extracted.manufacturer_name = content;
+          extracted.confidence_scores.manufacturer = field.confidence || 0;
+        }
       }
     }
+  }
+
+  // Set certification IDs if any were found (remove duplicates)
+  if (certificationIds.length > 0) {
+    extracted.certification_ids = [...new Set(certificationIds)];
   }
 
   return extracted;
@@ -89,25 +120,58 @@ export async function extractCertificationData(
     throw new Error('Document Intelligence client not initialized');
   }
 
+  // Use prebuilt-document for certifications (FSC, LEED, etc.)
+  // The prebuilt-idDocument model is for passports/driver's licenses only
   const poller = await client.beginAnalyzeDocumentFromUrl(
-    'prebuilt-idDocument',
+    'prebuilt-document',
     documentUrl
   );
 
   const result = await poller.pollUntilDone();
 
-  const fields = result.documents?.[0]?.fields || {};
-
-  return {
-    certificate_id: fields['DocumentNumber']?.content,
-    issue_date: fields['DateOfIssue']?.content,
-    expiration_date: fields['DateOfExpiration']?.content,
-    issuing_authority: fields['IssuingCountry']?.content,
-    confidence_scores: {
-      certificate_id: fields['DocumentNumber']?.confidence || 0,
-      issue_date: fields['DateOfIssue']?.confidence || 0,
-      expiration_date: fields['DateOfExpiration']?.confidence || 0,
-      issuing_authority: fields['IssuingCountry']?.confidence || 0,
-    },
+  const extracted: ExtractedCertData = {
+    confidence_scores: {},
   };
+
+  // Parse extracted fields for certification-specific data
+  for (const doc of result.documents || []) {
+    for (const [fieldName, field] of Object.entries(doc.fields || {})) {
+      const fieldLower = fieldName.toLowerCase();
+
+      // Map common certification field names
+      if (fieldLower.includes('certificate') || fieldLower.includes('cert') || fieldLower.includes('number')) {
+        extracted.certificate_id = field.content || extracted.certificate_id;
+        extracted.confidence_scores.certificate_id = Math.max(
+          extracted.confidence_scores.certificate_id || 0,
+          field.confidence || 0
+        );
+      }
+
+      if (fieldLower.includes('issue') || fieldLower.includes('issued')) {
+        extracted.issue_date = field.content || extracted.issue_date;
+        extracted.confidence_scores.issue_date = Math.max(
+          extracted.confidence_scores.issue_date || 0,
+          field.confidence || 0
+        );
+      }
+
+      if (fieldLower.includes('expir') || fieldLower.includes('valid')) {
+        extracted.expiration_date = field.content || extracted.expiration_date;
+        extracted.confidence_scores.expiration_date = Math.max(
+          extracted.confidence_scores.expiration_date || 0,
+          field.confidence || 0
+        );
+      }
+
+      if (fieldLower.includes('authority') || fieldLower.includes('issuer') || fieldLower.includes('organization')) {
+        extracted.issuing_authority = field.content || extracted.issuing_authority;
+        extracted.confidence_scores.issuing_authority = Math.max(
+          extracted.confidence_scores.issuing_authority || 0,
+          field.confidence || 0
+        );
+      }
+    }
+  }
+
+  return extracted;
 }
