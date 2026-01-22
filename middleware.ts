@@ -40,7 +40,8 @@ export function middleware(request: NextRequest) {
       } else if (role === 'buyer') {
         return NextResponse.redirect(new URL('/dashboard/buyer', request.url));
       }
-      // If role is neither supplier nor buyer, continue (may be admin or other roles)
+      // If role is neither supplier nor buyer, allow access (for future roles like admin)
+      // In production, you may want to redirect unknown roles to a default dashboard or error page
     }
 
     // Prevent cross-dashboard access

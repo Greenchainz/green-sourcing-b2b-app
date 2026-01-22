@@ -5,7 +5,7 @@
  * without requiring a running server.
  */
 
-import { generateToken, verifyToken } from '../lib/auth/jwt';
+import { generateToken, verifyToken } from '@/lib/auth/jwt';
 
 console.log('🧪 Middleware Role-Based Redirect Verification\n');
 console.log('='.repeat(60));
