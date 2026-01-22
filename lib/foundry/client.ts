@@ -118,15 +118,27 @@ export async function invokeFoundryWorkflow(
   });
 }
 
+function validateExecutionId(executionId: string): string {
+  // Restrict execution IDs to a safe character set and reasonable length.
+  // Adjust the pattern if the Foundry API uses a different format.
+  const EXECUTION_ID_REGEX = /^[A-Za-z0-9_-]{1,128}$/;
+  if (!EXECUTION_ID_REGEX.test(executionId)) {
+    throw new Error('Invalid execution ID format');
+  }
+  return executionId;
+}
+
 export async function getWorkflowStatus(executionId: string): Promise<WorkflowResult> {
   if (!FOUNDRY_API_ENDPOINT || !FOUNDRY_API_KEY) {
     throw new Error('Azure Foundry credentials not configured');
   }
 
+  const safeExecutionId = validateExecutionId(executionId);
+
   return retryWithBackoff(async () => {
     try {
       const response = await axios.get(
-        `${FOUNDRY_API_ENDPOINT}/executions/${executionId}`,
+        `${FOUNDRY_API_ENDPOINT}/executions/${encodeURIComponent(safeExecutionId)}`,
         {
           headers: {
             'Authorization': `Bearer ${FOUNDRY_API_KEY}`,
