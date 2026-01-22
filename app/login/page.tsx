@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import LoginClient from "./LoginClient";
 
 export default async function LoginPage() {
-  return <LoginClient />;
+  return (
+    <Suspense>
+      <LoginClient />
+    </Suspense>
+  );
 }
