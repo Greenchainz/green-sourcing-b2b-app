@@ -20,6 +20,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@auth/core": "^0.41.0",
     "@azure/ai-form-recognizer": "^5.0.0",
     "@azure/ai-projects": "^1.0.1",
     "@azure/identity": "^4.13.0",
@@ -43,12 +44,11 @@
     "dotenv": "^17.2.3",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.562.0",
-    "mssql": "^12.2.0",
     "next": "^15.0.0",
     "next-auth": "^5.0.0-beta.30",
     "openai": "^6.16.0",
     "pdf-lib": "^1.17.1",
-    "pg": "^8.17.1",
+    "pg": "^8.17.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "resend": "^6.4.2",
