@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/app/hooks/useAuth"; 
+import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -18,7 +18,6 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-    } catch {
     } catch (err: unknown) {
       setError("Invalid credentials. Try demo@architect.com / demo123");
     } finally {
@@ -27,7 +26,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen flex items-center justify-center p-4"
       style={{
         background: 'linear-gradient(135deg, #f5faf0 0%, #ffffff 50%, #f0fdfa 100%)'
@@ -35,20 +34,20 @@ export default function LoginPage() {
     >
       {/* Decorative background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div 
+        <div
           className="absolute -top-40 -left-40 w-96 h-96 rounded-full blur-3xl"
           style={{ background: 'rgba(113, 179, 64, 0.15)' }}
         ></div>
-        <div 
+        <div
           className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full blur-3xl"
           style={{ background: 'rgba(13, 148, 136, 0.15)' }}
         ></div>
-        <div 
+        <div
           className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl opacity-30"
           style={{ background: 'radial-gradient(circle, rgba(102, 157, 49, 0.1) 0%, transparent 70%)' }}
         ></div>
       </div>
-      
+
       <div className="relative w-full max-w-md z-10">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -65,7 +64,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div 
+        <div
           className="backdrop-blur-xl rounded-2xl p-8"
           style={{
             background: 'rgba(255, 255, 255, 0.95)',
@@ -80,7 +79,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div 
+              <div
                 className="text-sm p-4 rounded-xl"
                 style={{
                   background: 'rgba(239, 68, 68, 0.1)',
@@ -91,41 +90,15 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-slate-700">Email</label>
-              <input 
-                type="email" 
-                value={formData.email} 
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="demo@architect.com"
-                required 
-                className="w-full px-4 py-3.5 rounded-xl outline-none transition-all duration-200"
-                style={{
-                  border: '2px solid #e2e8f0',
-                  background: '#fafafa',
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#71b340';
-                  e.target.style.boxShadow = '0 0 0 4px rgba(113, 179, 64, 0.15)';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e2e8f0';
-                  e.target.style.boxShadow = 'none';
-                  e.target.style.background = '#fafafa';
-                }}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Password</label>
-              <input 
-                type="password" 
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                placeholder="••••••••"
-                required 
+                required
                 className="w-full px-4 py-3.5 rounded-xl outline-none transition-all duration-200"
                 style={{
                   border: '2px solid #e2e8f0',
@@ -144,8 +117,34 @@ export default function LoginPage() {
               />
             </div>
 
-            <button 
-              type="submit" 
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Password</label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="••••••••"
+                required
+                className="w-full px-4 py-3.5 rounded-xl outline-none transition-all duration-200"
+                style={{
+                  border: '2px solid #e2e8f0',
+                  background: '#fafafa',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#71b340';
+                  e.target.style.boxShadow = '0 0 0 4px rgba(113, 179, 64, 0.15)';
+                  e.target.style.background = '#ffffff';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e2e8f0';
+                  e.target.style.boxShadow = 'none';
+                  e.target.style.background = '#fafafa';
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
               className="w-full py-4 px-4 rounded-xl font-bold text-white transition-all duration-300 disabled:opacity-60 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
               style={{
                 background: 'linear-gradient(135deg, #71b340 0%, #669d31 50%, #0d9488 100%)',
@@ -160,8 +159,8 @@ export default function LoginPage() {
           <div className="mt-8 text-center">
             <p className="text-sm text-slate-600">
               Don&apos;t have an account?{" "}
-              <Link 
-                href="/signup" 
+              <Link
+                href="/signup"
                 className="font-semibold transition-colors"
                 style={{ color: '#71b340' }}
                 onMouseOver={(e) => e.currentTarget.style.color = '#569130'}
