@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractEPDData, extractCertificationData } from '@/lib/azure/document-intelligence';
+import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { validateDocumentUrl } from '@/lib/utils/url-validation';
 
 export async function POST(req: NextRequest) {
+  // Authentication check
+  const user = authenticateRequest(req);
+  if (!user) {
+    return unauthorizedResponse('Authentication required to extract documents');
+  }
+
   try {
     const { document_url, document_type } = await req.json();
 
     if (!document_url || !document_type) {
       return NextResponse.json(
         { error: 'document_url and document_type required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate URL to prevent SSRF attacks
+    const urlValidation = validateDocumentUrl(document_url);
+    if (!urlValidation.valid) {
+      return NextResponse.json(
+        { error: `Invalid document URL: ${urlValidation.error}` },
         { status: 400 }
       );
     }
@@ -27,6 +44,8 @@ export async function POST(req: NextRequest) {
 
     // Log for audit trail
     console.log(`[AUDIT] Document extracted: ${document_type}`, {
+      user_id: user.userId,
+      user_email: user.email,
       document_url,
       document_type,
       timestamp: new Date().toISOString(),
