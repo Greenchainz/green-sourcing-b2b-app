@@ -17,7 +17,13 @@
  */
 
 import { BlobServiceClient } from "@azure/storage-blob";
-import * as sql from "mssql";
+let sql: any;
+
+function getMssqlUnavailableError(): Error {
+    return new Error(
+        'Azure SQL support requires the "mssql" package (not installed in this app).'
+    );
+}
 
 // ============================================================================
 // RETRY UTILITIES (used across all Azure operations)
@@ -210,8 +216,8 @@ const sqlConfig: sql.config = {
 };
 
 // Connection pool (singleton)
-let sqlPool: sql.ConnectionPool | null = null;
-let poolConnecting: Promise<sql.ConnectionPool> | null = null;
+let sqlPool: any | null = null;
+let poolConnecting: Promise<any> | null = null;
 
 /**
  * Check if Azure SQL is configured
@@ -230,7 +236,9 @@ export function isAzureSQLConfigured(): boolean {
  * Uses a singleton pattern with connection deduplication to prevent
  * multiple simultaneous connection attempts
  */
-export async function getAzureSQLPool(): Promise<sql.ConnectionPool> {
+export async function getAzureSQLPool(): Promise<any> {
+    throw getMssqlUnavailableError();
+
     // Return existing connected pool
     if (sqlPool && sqlPool.connected) {
         return sqlPool;
@@ -258,7 +266,7 @@ export async function getAzureSQLPool(): Promise<sql.ConnectionPool> {
             sqlPool = null;
         }
 
-        sqlPool = new sql.ConnectionPool(sqlConfig);
+        throw getMssqlUnavailableError();
         await sqlPool.connect();
 
         console.log("✅ Connected to Azure SQL Database");

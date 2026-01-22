@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractEPDData, extractCertificationData } from '@/lib/azure/document-intelligence';
 
+/**
+ * GET endpoint for testing Azure Container Apps log streaming
+ * This endpoint ensures server-side logs are emitted to stdout
+ */
+export async function GET() {
+  console.log('[extract-document-test] HIT in production at', new Date().toISOString());
+  return NextResponse.json({ success: true, source: 'production' });
+}
+
 export async function POST(req: NextRequest) {
+  console.log('[extract-document-test] POST request received at', new Date().toISOString());
   try {
     const { document_url, document_type } = await req.json();
+    console.log('[extract-document-test] Processing:', { document_type, document_url });
 
     if (!document_url || !document_type) {
       return NextResponse.json(
