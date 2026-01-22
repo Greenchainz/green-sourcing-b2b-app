@@ -1,16 +1,16 @@
 import NextAuth from "next-auth"
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
-import sql from "mssql"
+import { Pool } from "pg"
 
-// Azure SQL Connection Config (Server-side only)
-const sqlConfig = {
-  user: process.env.AZURE_SQL_USER,
-  password: process.env.AZURE_SQL_PASSWORD,
-  database: process.env.AZURE_SQL_DB,
-  server: process.env.AZURE_SQL_SERVER!, 
-  pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
-  options: { encrypt: true, trustServerCertificate: false } // True for Azure
-};
+// 1. Configure Azure PostgreSQL Connection
+const pool = new Pool({
+  user: process.env.POSTGRES_USER,
+  password: process.env.POSTGRES_PASSWORD,
+  host: process.env.POSTGRES_HOST,
+  port: 5432,
+  database: process.env.POSTGRES_DB,
+  ssl: { rejectUnauthorized: false } // Azure Flexible Server usually requires SSL
+});
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -24,39 +24,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user }) {
       if (!user.email) return false;
+      const client = await pool.connect();
+      
       try {
-        // Connect to Azure SQL
-        const pool = await sql.connect(sqlConfig);
-        
-        // Check/Create User Logic
-        const result = await pool.request()
-          .input('email', sql.NVarChar, user.email)
-          .query('SELECT UserID, Role FROM Users WHERE Email = @email');
+        // 1. Check if user exists in 'Users' table
+        // Note: We use double quotes "Users" because Postgres is case-sensitive with tables created via some tools
+        const checkQuery = 'SELECT id, role FROM "Users" WHERE email = $1';
+        const result = await client.query(checkQuery, [user.email]);
 
-        if (result.recordset.length === 0) {
-          // New User -> Default to 'Architect' (Buyer)
-          await pool.request()
-            .input('email', sql.NVarChar, user.email)
-            .input('name', sql.NVarChar, user.name)
-            .input('entraId', sql.NVarChar, user.id)
-            .query(`
-              INSERT INTO Users (Email, FullName, Role, OAuthID, LastLogin)
-              VALUES (@email, @name, 'Buyer', @entraId, GETDATE())
-            `);
+        if (result.rows.length === 0) {
+          // NEW USER -> Default to 'Architect' (Buyer)
+          const insertQuery = `
+            INSERT INTO "Users" (email, full_name, role, entra_id, created_at, last_login)
+            VALUES ($1, $2, 'Buyer', $3, NOW(), NOW())
+            RETURNING id
+          `;
+          const newRec = await client.query(insertQuery, [user.email, user.name, user.id]);
+          
+          // Create empty profile in Architects table
+          await client.query('INSERT INTO "Architects" (user_id) VALUES ($1)', [newRec.rows[0].id]);
+
         } else {
-          // Update Login Time
-          await pool.request()
-            .input('email', sql.NVarChar, user.email)
-            .query('UPDATE Users SET LastLogin = GETDATE() WHERE Email = @email');
+          // EXISTING USER -> Update login time
+          const updateQuery = 'UPDATE "Users" SET last_login = NOW() WHERE email = $1';
+          await client.query(updateQuery, [user.email]);
         }
+        
         return true;
       } catch (err) {
-        console.error("Azure SQL Login Error:", err);
-        return false; 
+        console.error("Postgres Login Error:", err);
+        return false;
+      } finally {
+        client.release();
       }
     },
     async session({ session, token }) {
-      // Pass UserID to session if needed
+      // Pass the Entra ID to the session so we can query DB later
       if (session.user && token.sub) {
         session.user.id = token.sub;
       }
