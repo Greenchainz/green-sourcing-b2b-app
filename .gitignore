@@ -32,3 +32,6 @@ tmp/
 # TypeScript compiled output
 dist/
 *.js.map
+
+# Sentry Config File
+.env.sentry-build-plugin
