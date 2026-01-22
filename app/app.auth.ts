@@ -1,5 +1,7 @@
 import NextAuth from "next-auth"
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
+import Google from "next-auth/providers/google"
+import LinkedIn from "next-auth/providers/linkedin"
 import { Pool } from "pg"
 
 // 1. Configure Azure PostgreSQL Connection
@@ -17,8 +19,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     MicrosoftEntraID({
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
       clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
-      tenantId: process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID,
+      issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
       authorization: { params: { scope: "openid profile email User.Read" } },
+    }),
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
+    LinkedIn({
+      clientId: process.env.AUTH_LINKEDIN_ID,
+      clientSecret: process.env.AUTH_LINKEDIN_SECRET,
     }),
   ],
   callbacks: {
