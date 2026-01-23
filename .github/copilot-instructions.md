@@ -427,7 +427,6 @@ import { User } from 'lucide-react';
 - **Email**: `resend` for transactional emails
 - **UI**: Tailwind CSS 4.x, Lucide React icons
 - **State**: Zustand
-- **Payments**: Stripe SDK
 
 **Infrastructure**:
 - **Hosting**: Azure Container Apps
@@ -454,10 +453,6 @@ import { User } from 'lucide-react';
 4. **Email Service** (Zoho Mail via Resend)
    - Transactional emails (user notifications, admin alerts)
    - Environment: `RESEND_API_KEY`
-
-5. **Stripe** - Payment Processing
-   - Subscription management
-   - Environment: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 ### Future Integration Points
 - **Search**: Azure Cognitive Search for full-text search
