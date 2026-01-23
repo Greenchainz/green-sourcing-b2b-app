@@ -1384,11 +1384,6 @@ textarea {
   color: var(--gc-slate-400);
 }
 
-.gc-stripe-logo {
-  width: 45px;
-  height: auto;
-}
-
 /* Checkout Summary */
 .gc-checkout-summary-title {
   margin: 0 0 1rem 0;

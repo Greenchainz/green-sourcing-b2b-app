@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 // Azure-first environment validation for Next.js + backend shared usage.
-// Replace any legacy Supabase vars with Azure resources (Entra ID, PostgreSQL, Blob).
 const envSchema = z.object({
     // Core
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

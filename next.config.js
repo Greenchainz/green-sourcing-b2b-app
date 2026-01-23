@@ -44,7 +44,7 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             // Note: 'unsafe-inline' and 'unsafe-eval' are used here.
             // For higher security, consider using nonces or hashes.
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://static.zohocdn.com https://r2cdn.perplexity.ai; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https: https://greenchainz-backend.jollyrock-a66f2da6.eastus.azurecontainerapps.io; frame-src https://js.stripe.com https://m.stripe.network https://hooks.stripe.com"
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://static.zohocdn.com https://r2cdn.perplexity.ai; img-src 'self' data: https:; connect-src 'self' https: https://greenchainz-backend.jollyrock-a66f2da6.eastus.azurecontainerapps.io; frame-src 'self'"
           }
         ]
       }
@@ -82,12 +82,6 @@ module.exports = withSentryConfig(module.exports, {
   tunnelRoute: "/monitoring",
 
   webpack: {
-    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-    // See the following for more information:
-    // https://docs.sentry.io/product/crons/
-    // https://vercel.com/docs/cron-jobs
-    automaticVercelMonitors: true,
-
     // Tree-shaking options for reducing bundle size
     treeshake: {
       // Automatically tree-shake Sentry logger statements to reduce bundle size
