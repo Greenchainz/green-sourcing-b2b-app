@@ -146,17 +146,17 @@ CREATE TABLE IF NOT EXISTS Buyers (
   UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- RFQ Deposits (Stripe)
+-- RFQ Deposits
 CREATE TABLE IF NOT EXISTS RFQ_Deposits (
   DepositID BIGSERIAL PRIMARY KEY,
   RFQID BIGINT,
   UserID BIGINT NOT NULL REFERENCES Users(UserID) ON DELETE CASCADE,
-  StripePaymentIntentID VARCHAR(255) UNIQUE NOT NULL,
+  PaymentIntentID VARCHAR(255) UNIQUE NOT NULL,
   AmountCents INTEGER NOT NULL DEFAULT 500 CHECK (AmountCents > 0),
   Currency VARCHAR(10) NOT NULL DEFAULT 'usd',
   Status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (Status IN ('pending', 'processing', 'succeeded', 'failed', 'canceled', 'refunded', 'partially_refunded')),
   RefundReason TEXT,
-  StripeRefundID VARCHAR(255),
+  RefundID VARCHAR(255),
   Metadata JSONB DEFAULT '{}'::jsonb,
   IPAddress VARCHAR(45),
   UserAgent TEXT,

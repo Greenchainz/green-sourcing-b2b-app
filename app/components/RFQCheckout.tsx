@@ -13,14 +13,14 @@ export interface RFQCheckoutProps {
   /** Deadline date string */
   deadline: string
   /** Callback when payment succeeds */
-  onPaymentSuccess: (paymentIntent: StripePaymentResult) => void
+  onPaymentSuccess: (paymentIntent: PaymentResult) => void
   /** Callback to go back to form */
   onBack: () => void
   /** Whether checkout is processing */
   isProcessing?: boolean
 }
 
-export interface StripePaymentResult {
+export interface PaymentResult {
   paymentIntentId: string
   status: 'succeeded' | 'processing' | 'requires_action'
   amount: number
@@ -114,12 +114,12 @@ export default function RFQCheckout({
     setIsSubmitting(true)
 
     try {
-      // Simulate Stripe payment processing (client-side only)
-      // In production, this would call Stripe.js to create a PaymentIntent
+      // Simulate payment processing (client-side only)
+      // In production, this would integrate with a payment processor
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
       // Simulate successful payment
-      const mockPaymentResult: StripePaymentResult = {
+      const mockPaymentResult: PaymentResult = {
         paymentIntentId: `pi_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
         status: 'succeeded',
         amount: DEPOSIT_AMOUNT_CENTS,
@@ -369,15 +369,9 @@ export default function RFQCheckout({
               </button>
             </form>
 
-            {/* Powered by Stripe */}
+            {/* Powered by secure payment */}
             <div className="gc-checkout-powered-by">
-              <span>Powered by</span>
-              <svg viewBox="0 0 60 25" className="gc-stripe-logo">
-                <path
-                  fill="#635bff"
-                  d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95l.59 3.14c-1.16.67-2.88 1.16-4.93 1.16-4.91 0-7.63-2.88-7.63-7.43 0-4.05 2.46-7.57 7.03-7.57 4.35 0 5.91 3.4 5.91 6.73 0 .77-.08 1.73-.16 2.37zm-4.35-2.95c0-1.21-.49-2.95-2.21-2.95-1.6 0-2.37 1.66-2.46 2.95h4.67zm-9.47 7.28h-4.74V5.73h4.74v13.88zm-7.11 0h-4.74V.69h4.74v18.92zm-6.15-7.63c0 4.42-2.95 7.87-7.24 7.87-4.26 0-7.13-3.37-7.13-7.8 0-4.35 2.95-7.8 7.16-7.8 4.34 0 7.21 3.37 7.21 7.73zm-4.75.04c0-2.3-1.12-4.05-2.46-4.05-1.37 0-2.43 1.73-2.43 4.05 0 2.34 1.03 4.11 2.43 4.11 1.34 0 2.46-1.8 2.46-4.11zm-10.28 7.59h-4.31l-.16-1.36c-.93.93-2.27 1.6-3.88 1.6-3.4 0-4.88-2.34-4.88-4.93 0-4.35 3.13-5.44 6.89-5.44.67 0 1.45.04 2.08.12 0-1.16-.45-2.18-2.27-2.18-1.37 0-2.8.41-3.93.93L5.14 4.03c1.41-.67 3.4-1.2 5.73-1.2 4.88 0 6.15 2.59 6.15 6.28l-.04 9.5zM13.9 16.03v-2.87c-.41-.04-.89-.04-1.36-.04-1.77 0-2.87.53-2.87 1.97 0 1.12.67 1.73 1.77 1.73.97 0 1.86-.33 2.46-.79z"
-                />
-              </svg>
+              <span>Secure Payment Processing</span>
             </div>
           </div>
         </div>

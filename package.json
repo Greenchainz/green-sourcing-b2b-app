@@ -32,8 +32,6 @@
     "@react-email/render": "^2.0.0",
     "@react-email/tailwind": "^2.0.1",
     "@sentry/nextjs": "^10.36.0",
-    "@stripe/react-stripe-js": "^5.4.1",
-    "@stripe/stripe-js": "^8.6.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/bcryptjs": "^2.4.6",
     "@types/office-js": "^1.0.1",

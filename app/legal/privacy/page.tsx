@@ -65,10 +65,7 @@ export default function PrivacyPage() {
 
                             <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.4 Payment Information</h3>
                             <p className="mb-3">
-                                Payment processing for RFQ deposits ($50 refundable) is handled by <strong>Stripe</strong>, our PCI-compliant payment processor. We do not store credit card numbers, CVV codes, or other sensitive payment details on our servers.
-                            </p>
-                            <p className="text-sm text-slate-600">
-                                Stripe's privacy policy: <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 underline">stripe.com/privacy</a>
+                                Payment processing for RFQ deposits ($50 refundable) is handled securely. We do not store credit card numbers, CVV codes, or other sensitive payment details on our servers.
                             </p>
 
                             <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.5 Uploaded Documents</h3>
@@ -106,12 +103,6 @@ export default function PrivacyPage() {
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 mb-4">4. Third-Party Integrations</h2>
                             <ul className="list-disc pl-6 space-y-3">
-                                <li>
-                                    <strong>Stripe (Payment Processing):</strong> Processes RFQ deposits. Stripe is PCI DSS Level 1 certified.{' '}
-                                    <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 underline">
-                                        Privacy Policy
-                                    </a>
-                                </li>
                                 <li>
                                     <strong>LinkedIn OAuth:</strong> Authenticates architect accounts for RFQ creation.{' '}
                                     <a href="https://www.linkedin.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 underline">
@@ -242,7 +233,7 @@ export default function PrivacyPage() {
                             <p className="mb-4">We do not sell your personal data. We share data only in the following circumstances:</p>
                             <ul className="list-disc pl-6 space-y-2">
                                 <li><strong>With Other Users:</strong> Your name, company, and contact information are visible to users you engage with (RFQ responses, messages).</li>
-                                <li><strong>Service Providers:</strong> Microsoft Azure (infrastructure), Stripe (payments), LinkedIn (authentication) - all under data processing agreements.</li>
+                                <li><strong>Service Providers:</strong> Microsoft Azure (infrastructure), LinkedIn (authentication) - all under data processing agreements.</li>
                                 <li><strong>Legal Compliance:</strong> If required by law, court order, or government request.</li>
                                 <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or asset sale, user data may be transferred (you will be notified).</li>
                             </ul>

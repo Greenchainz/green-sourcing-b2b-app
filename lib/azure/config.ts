@@ -2,7 +2,7 @@
  * Azure Native Configuration
  * 
  * Centralized Azure service clients and database connections
- * GreenChainz is 100% Azure-only (no Vercel, no Supabase, no AWS)
+ * GreenChainz is 100% Azure-only
  * 
  * This module provides:
  * - Azure SQL Database connection pooling with retries
