@@ -1,4 +1,5 @@
 // app/layout.tsx
+import { AppProviders } from "./providers";
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { LayoutContent } from './LayoutContent'
