@@ -29,6 +29,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     LinkedIn({
       clientId: process.env.AUTH_LINKEDIN_ID,
       clientSecret: process.env.AUTH_LINKEDIN_SECRET,
+      // 🔥 FIX: Add scopes for LinkedIn OpenID Connect
+      authorization: {
+        params: {
+          scope: "openid profile email",
+        },
+      },
     }),
   ],
   cookies: {
@@ -47,14 +53,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
-    async signIn({ user }) {
-      console.log("🔥 MICROSOFT SENT US THIS EMAIL:", user.email);
+    async signIn({ user, account }) {
+      console.log("🔥 OAuth SignIn - Provider:", account?.provider, "Email:", user.email);
       if (!user.email) return false;
       const client = await pool.connect();
 
       try {
         // 1. Check if user exists in 'Users' table
-        // Note: We use double quotes "Users" because Postgres is case-sensitive with tables created via some tools
         const checkQuery = 'SELECT id, role FROM "Users" WHERE email = $1';
         const result = await client.query(checkQuery, [user.email]);
 
@@ -69,23 +74,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           // Create empty profile in Architects table
           await client.query('INSERT INTO "Architects" (user_id) VALUES ($1)', [newRec.rows[0].id]);
-
+          console.log("✅ New user created via OAuth:", user.email);
         } else {
           // EXISTING USER -> Update login time
           const updateQuery = 'UPDATE "Users" SET last_login = NOW() WHERE email = $1';
           await client.query(updateQuery, [user.email]);
+          console.log("✅ Existing user logged in:", user.email);
         }
 
         return true;
       } catch (err) {
-        console.error("Postgres Login Error:", err);
+        console.error("❌ Postgres Login Error:", err);
         return false;
       } finally {
         client.release();
       }
     },
     async session({ session, token }) {
-      // Pass the Entra ID to the session so we can query DB later
+      // Pass the user ID to the session
       if (session.user && token.sub) {
         session.user.id = token.sub;
       }
@@ -94,5 +100,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   pages: {
     signIn: '/login',
-  }
+    error: '/login?error=auth_error',
+  },
+  debug: process.env.NODE_ENV === 'development',
 })
