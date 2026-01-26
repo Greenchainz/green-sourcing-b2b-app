@@ -1,13 +1,14 @@
-import { type NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
+import type { NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import LinkedInProvider from "next-auth/providers/linkedin";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-export const authOptions: NextAuthOptions = {
+export const authConfig = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -38,7 +39,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email as string },
         });
 
         if (!user || !user.password) {
@@ -46,7 +47,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const isPasswordValid = await bcrypt.compare(
-          credentials.password,
+          credentials.password as string,
           user.password
         );
 
@@ -70,7 +71,7 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.plan = (user as any).plan || "free";
@@ -80,21 +81,21 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.plan = token.plan as string;
-        session.user.role = token.role as string;
+        (session.user as any).id = token.id as string;
+        (session.user as any).plan = token.plan as string;
+        (session.user as any).role = token.role as string;
       }
       return session;
     },
   },
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 1 day
-  },
-  jwt: {
-    secret: process.env.NEXTAUTH_SECRET,
-    maxAge: 30 * 24 * 60 * 60,
   },
   secret: process.env.NEXTAUTH_SECRET,
-};
+} satisfies NextAuthConfig;
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+
+// For backwards compatibility
+export const authOptions = authConfig;
