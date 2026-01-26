@@ -1,6 +1,6 @@
 -- Migration: Add NextAuth.js authentication tables
 -- Created: 2026-01-26 16:57:00
--- Author: GitHub Copilot
+-- Author: System
 -- 
 -- Description:
 -- This migration creates the required tables for NextAuth.js v5 authentication system.
