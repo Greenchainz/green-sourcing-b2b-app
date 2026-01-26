@@ -25,6 +25,7 @@ export const authConfig = {
     LinkedInProvider({
       clientId: process.env.LINKEDIN_CLIENT_ID || "",
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET || "",
+      authorization: { params: { scope: "openid profile email" } },
       allowDangerousEmailAccountLinking: true,
     }),
     CredentialsProvider({
