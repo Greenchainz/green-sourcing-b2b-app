@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { useAuth } from "@/lib/auth";
+import { signIn } from "next-auth/react";
 import {
   Mail,
   Lock,
@@ -20,8 +20,6 @@ function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialRole = searchParams.get("type") === "supplier" ? "supplier" : "architect";
-
-  const { setUser, setToken, setRefreshToken } = useAuth();
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -63,7 +61,7 @@ function SignupForm() {
     }
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3002";
       const response = await fetch(`${backendUrl}/api/v1/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,17 +80,20 @@ function SignupForm() {
         throw new Error(data.message || data.error || "Registration failed");
       }
 
-      // If registration returns a token, log them in
-      if (data.token) {
-        setUser(data.user);
-        setToken(data.token);
-        if (data.refreshToken) setRefreshToken(data.refreshToken);
+      // If registration successful, sign them in with NextAuth
+      if (data.user) {
+        const result = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: false
+        });
 
-        const redirectTo = data.user.role === "supplier" ? "/dashboard" : "/dashboard/buyer";
-        router.push(redirectTo);
-      } else {
-        // Otherwise redirect to login
-        router.push("/login?registered=true");
+        if (result?.ok) {
+          const redirectTo = data.user.role === "supplier" ? "/dashboard" : "/dashboard/buyer";
+          router.push(redirectTo);
+        } else {
+          router.push("/login?registered=true");
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
