@@ -44,7 +44,7 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             // Note: 'unsafe-inline' and 'unsafe-eval' are used here.
             // For higher security, consider using nonces or hashes.
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://static.zohocdn.com https://r2cdn.perplexity.ai; img-src 'self' data: https:; connect-src 'self' https: https://greenchainz-backend.jollyrock-a66f2da6.eastus.azurecontainerapps.io; frame-src 'self'"
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://static.zohocdn.com https://r2cdn.perplexity.ai; img-src 'self' data: https:; connect-src 'self' http://localhost:* https:; frame-src 'self'"
           }
         ]
       }
