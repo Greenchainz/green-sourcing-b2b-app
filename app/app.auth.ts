@@ -31,6 +31,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.AUTH_LINKEDIN_SECRET,
     }),
   ],
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-authjs.session-token"
+        : "authjs.session-token",
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // true in prod, false in dev
+        sameSite: "lax",
+        path: "/",
+        domain: process.env.COOKIE_DOMAIN || "localhost", // .greenchainz.com in prod
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      },
+    },
+  },
   callbacks: {
     async signIn({ user }) {
       console.log("🔥 MICROSOFT SENT US THIS EMAIL:", user.email);

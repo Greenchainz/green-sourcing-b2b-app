@@ -1,22 +1,17 @@
-// app/login/page.tsx (or similar)
-"use client";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import LoginClient from "./LoginClient";
 
-import { useMsal } from "@azure/msal-react";
+export default async function LoginPage() {
+  const session = await auth();
 
-const loginRequest = {
-  scopes: ["User.Read"], // Microsoft Graph basic scope
-};
-
-export default function LoginPage() {
-  const { instance } = useMsal();
-
-  const handleLogin = () => {
-    instance.loginRedirect(loginRequest);
-  };
+  if (session) {
+    redirect("/dashboard");
+  }
 
   return (
-    <main>
-      <button onClick={handleLogin}>Sign in with Microsoft</button>
-    </main>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+      <LoginClient />
+    </div>
   );
 }
