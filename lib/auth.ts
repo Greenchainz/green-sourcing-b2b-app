@@ -99,3 +99,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
 
 // For backwards compatibility
 export const authOptions = authConfig;
+
+// DEPRECATED: useAuth hook - use useSession from next-auth/react in client components
+// This is a stub to prevent build errors in pages that haven't been migrated yet
+export function useAuth() {
+  console.warn("useAuth from @/lib/auth is deprecated. Use useSession from next-auth/react instead.");
+  return { user: null, token: null };
+}
