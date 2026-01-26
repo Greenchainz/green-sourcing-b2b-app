@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { auth } from "@/app/app.auth";
 import { redirect } from "next/navigation";
 import LoginClient from "./LoginClient";
 
