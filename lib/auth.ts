@@ -11,7 +11,10 @@
 import { useSession } from 'next-auth/react';
 
 // Re-export NextAuth handlers, utilities, and config
-export { handlers, auth, signIn, signOut, authConfig } from '@/app/app.auth';
+export { handlers, auth, signIn, signOut } from '@/app/app.auth';
+
+// Also export authConfig for middleware (edge-safe)
+export { authConfig } from '@/app/auth.config';
 
 /**
  * Custom useAuth hook that wraps next-auth's useSession
