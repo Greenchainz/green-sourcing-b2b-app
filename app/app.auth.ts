@@ -2,17 +2,15 @@ import NextAuth from "next-auth"
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
 import Google from "next-auth/providers/google"
 import LinkedIn from "next-auth/providers/linkedin"
-import { Pool } from "pg"
 
-// 1. Configure Azure PostgreSQL Connection
-const pool = new Pool({
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  host: process.env.POSTGRES_HOST,
-  port: 5432,
-  database: process.env.POSTGRES_DB,
-  ssl: { rejectUnauthorized: false } // Azure Flexible Server usually requires SSL
-});
+/**
+ * NextAuth.js Configuration
+ * 
+ * 🚨 IMPORTANT: This runs in Edge Runtime (middleware)
+ * - NO Node.js modules (pg, fs, etc.)
+ * - NO database calls here
+ * - DB operations delegated to /api/auth-callback route
+ */
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -29,7 +27,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     LinkedIn({
       clientId: process.env.AUTH_LINKEDIN_ID,
       clientSecret: process.env.AUTH_LINKEDIN_SECRET,
-      // 🔥 FIX: Add scopes for LinkedIn OpenID Connect
       authorization: {
         params: {
           scope: "openid profile email",
@@ -44,59 +41,87 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         : "authjs.session-token",
       options: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // true in prod, false in dev
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
-        domain: process.env.COOKIE_DOMAIN || "localhost", // .greenchainz.com in prod
+        domain: process.env.COOKIE_DOMAIN || "localhost",
         maxAge: 30 * 24 * 60 * 60, // 30 days
       },
     },
   },
   callbacks: {
+    /**
+     * signIn callback
+     * Called after OAuth provider returns user info
+     * 
+     * 🚨 This also runs in Edge Runtime - NO DB calls
+     * Solution: Call /api/auth-callback instead
+     */
     async signIn({ user, account }) {
-      console.log("🔥 OAuth SignIn - Provider:", account?.provider, "Email:", user.email);
+      console.log("🔐 OAuth SignIn - Provider:", account?.provider, "Email:", user.email);
+      
       if (!user.email) return false;
-      const client = await pool.connect();
 
       try {
-        // 1. Check if user exists in 'Users' table
-        const checkQuery = 'SELECT id, role FROM "Users" WHERE email = $1';
-        const result = await client.query(checkQuery, [user.email]);
+        // Call Node.js API route to handle DB operations
+        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3002';
+        
+        // 1. Check if user exists
+        const checkResponse = await fetch(`${baseUrl}/api/auth-callback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'check_user',
+            email: user.email,
+          }),
+        });
 
-        if (result.rows.length === 0) {
-          // NEW USER -> Default to 'Architect' (Buyer)
-          const insertQuery = `
-            INSERT INTO "Users" (email, full_name, role, entra_id, created_at, last_login)
-            VALUES ($1, $2, 'Buyer', $3, NOW(), NOW())
-            RETURNING id
-          `;
-          const newRec = await client.query(insertQuery, [user.email, user.name, user.id]);
+        const checkData = await checkResponse.json();
 
-          // Create empty profile in Architects table
-          await client.query('INSERT INTO "Architects" (user_id) VALUES ($1)', [newRec.rows[0].id]);
-          console.log("✅ New user created via OAuth:", user.email);
+        if (!checkData.exists) {
+          // Create new user
+          const createResponse = await fetch(`${baseUrl}/api/auth-callback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'create_user',
+              email: user.email,
+              name: user.name,
+              entra_id: user.id,
+            }),
+          });
+
+          const createData = await createResponse.json();
+          if (!createData.success) {
+            console.error("❌ Failed to create user");
+            return false;
+          }
         } else {
-          // EXISTING USER -> Update login time
-          const updateQuery = 'UPDATE "Users" SET last_login = NOW() WHERE email = $1';
-          await client.query(updateQuery, [user.email]);
-          console.log("✅ Existing user logged in:", user.email);
+          // Update login timestamp
+          await fetch(`${baseUrl}/api/auth-callback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'update_login',
+              email: user.email,
+            }),
+          });
         }
 
         return true;
-      } catch (err) {
-        console.error("❌ Postgres Login Error:", err);
+      } catch (error) {
+        console.error("❌ Auth callback error:", error);
         return false;
-      } finally {
-        client.release();
       }
     },
+    
     async session({ session, token }) {
-      // Pass the user ID to the session
+      // Pass user ID to session
       if (session.user && token.sub) {
         session.user.id = token.sub;
       }
       return session;
-    }
+    },
   },
   pages: {
     signIn: '/login',
