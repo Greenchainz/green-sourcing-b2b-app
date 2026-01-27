@@ -49,7 +49,14 @@ const nextConfig = {
         ]
       }
     ]
-  }
+  },
+  webpack: (config) => {
+    // Externalize pg-native to prevent Edge runtime errors
+    config.externals.push({
+      'pg-native': 'commonjs pg-native',
+    });
+    return config;
+  },
 }
 
 module.exports = nextConfig

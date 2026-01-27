@@ -32,6 +32,8 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=3000
+# Force pg to use pure JavaScript (no native bindings for Alpine)
+ENV NODE_PG_FORCE_NATIVE=""
 
 # Azure Health Check endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
