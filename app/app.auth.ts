@@ -84,9 +84,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
+    // Spread other callbacks from authConfig first (authorized, session, etc.)
+    ...authConfig.callbacks,
     /**
      * signIn callback for OAuth providers
      * Called after OAuth provider returns user info
+     * This overrides any signIn callback from authConfig
      * 
      * 🚨 This also runs in Edge Runtime - NO DB calls
      * Solution: Call /api/auth-callback instead
@@ -153,8 +156,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return false;
       }
     },
-    // Spread other callbacks from authConfig (authorized, session, etc.)
-    ...authConfig.callbacks,
   },
   debug: process.env.NODE_ENV === 'development',
 });

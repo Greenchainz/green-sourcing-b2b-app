@@ -5,14 +5,18 @@ import type { NextAuthConfig } from "next-auth";
  * 
  * Edge Runtime Safe Configuration
  * 
- * 🚨 CRITICAL: This file is imported by middleware.ts
+ * 🚨 CRITICAL: This file is designed for Edge Runtime compatibility
  * - NO Node.js modules (pg, prisma, bcrypt, fs, etc.)
  * - NO database adapters
  * - NO heavy providers (only config)
  * - ONLY Edge-compatible code
  * 
- * Purpose: Lightweight auth configuration that can run in Edge Runtime
+ * Purpose: Lightweight auth configuration that CAN be used in Edge Runtime
+ * (e.g., if NextAuth's authorized() callback is needed in middleware)
  * Full providers and database adapter are in app.auth.ts
+ * 
+ * Note: Current middleware.ts implements auth checks via cookie inspection
+ * and doesn't import this file, but this remains available for future use.
  */
 
 export const authConfig = {
