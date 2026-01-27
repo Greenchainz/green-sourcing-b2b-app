@@ -1,18 +1,26 @@
-import NextAuth from "next-auth"
-import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
-import Google from "next-auth/providers/google"
-import LinkedIn from "next-auth/providers/linkedin"
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import Google from "next-auth/providers/google";
+import LinkedIn from "next-auth/providers/linkedin";
+// import { PrismaAdapter } from "@auth/prisma-adapter"; // Uncomment when ready
+// import { prisma } from "@/lib/prisma";                // Uncomment when ready
+import { authConfig } from "./auth.config";
 
 /**
- * NextAuth.js Configuration
+ * NextAuth.js Full Configuration
  * 
- * 🚨 IMPORTANT: This runs in Edge Runtime (middleware)
- * - NO Node.js modules (pg, fs, etc.)
- * - NO database calls here
- * - DB operations delegated to /api/auth-callback route
+ * 🚨 IMPORTANT: This file includes providers and can use Node.js APIs
+ * - Extends lightweight auth.config.ts (used by middleware)
+ * - Adds OAuth providers and Credentials provider
+ * - Can include database adapter when ready
+ * - NOT imported by middleware (Edge Runtime safe)
  */
 
-export const authConfig = {
+export const { auth, handlers, signIn, signOut } = NextAuth({
+  ...authConfig,
+  // adapter: PrismaAdapter(prisma), // Add this back when DB is ready
+  session: { strategy: "jwt" },
   providers: [
     MicrosoftEntraID({
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
@@ -33,6 +41,32 @@ export const authConfig = {
         },
       },
     }),
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+        
+        // TODO: Replace with real database verification
+        // For development testing only - use environment variables in production
+        const testEmail = process.env.TEST_USER_EMAIL || "test@example.com";
+        const testPassword = process.env.TEST_USER_PASSWORD || "password";
+        
+        if (credentials.email === testEmail && credentials.password === testPassword) {
+          return { 
+            id: process.env.TEST_USER_ID || "1", 
+            name: process.env.TEST_USER_NAME || "Test User", 
+            email: testEmail 
+          };
+        }
+        return null;
+      }
+    })
   ],
   cookies: {
     sessionToken: {
@@ -50,14 +84,22 @@ export const authConfig = {
     },
   },
   callbacks: {
+    // Spread other callbacks from authConfig first (authorized, session, etc.)
+    ...authConfig.callbacks,
     /**
-     * signIn callback
+     * signIn callback for OAuth providers
      * Called after OAuth provider returns user info
+     * This overrides any signIn callback from authConfig
      * 
      * 🚨 This also runs in Edge Runtime - NO DB calls
      * Solution: Call /api/auth-callback instead
      */
     async signIn({ user, account }) {
+      // Skip OAuth database handling for Credentials provider
+      if (account?.provider === "credentials") {
+        return true;
+      }
+
       console.log("🔐 OAuth SignIn - Provider:", account?.provider, "Email:", user.email);
       
       if (!user.email) return false;
@@ -114,20 +156,6 @@ export const authConfig = {
         return false;
       }
     },
-    
-    async session({ session, token }) {
-      // Pass user ID to session
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: '/login',
-    error: '/login?error=auth_error',
   },
   debug: process.env.NODE_ENV === 'development',
-};
-
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+});
