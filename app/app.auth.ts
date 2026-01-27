@@ -48,7 +48,17 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        // Explicit null check to prevent "Missing email or password" errors
+        if (!credentials) {
+          console.error("❌ Credentials object is null or undefined");
+          return null;
+        }
+        
+        if (!credentials.email || !credentials.password) {
+          console.error("❌ Missing email or password in credentials:", { 
+            hasEmail: !!credentials.email, 
+            hasPassword: !!credentials.password 
+          });
           return null;
         }
         
@@ -58,12 +68,15 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const testPassword = process.env.TEST_USER_PASSWORD || "password";
         
         if (credentials.email === testEmail && credentials.password === testPassword) {
+          console.log("✅ Credentials authenticated successfully");
           return { 
             id: process.env.TEST_USER_ID || "1", 
             name: process.env.TEST_USER_NAME || "Test User", 
             email: testEmail 
           };
         }
+        
+        console.error("❌ Invalid credentials provided");
         return null;
       }
     })
@@ -105,8 +118,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (!user.email) return false;
 
       try {
-        // Call Node.js API route to handle DB operations
-        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3002';
+        // Use NEXTAUTH_URL or AUTH_URL for production-ready base URL
+        const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://greenchainz.com';
         
         // 1. Check if user exists
         const checkResponse = await fetch(`${baseUrl}/api/auth-callback`, {
