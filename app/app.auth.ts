@@ -53,9 +53,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         }
         
         // TODO: Replace with real database verification
-        // For testing only:
-        if (credentials.email === "test@example.com" && credentials.password === "password") {
-          return { id: "1", name: "Test User", email: "test@example.com" };
+        // For development testing only - use environment variables in production
+        const testEmail = process.env.TEST_USER_EMAIL || "test@example.com";
+        const testPassword = process.env.TEST_USER_PASSWORD || "password";
+        
+        if (credentials.email === testEmail && credentials.password === testPassword) {
+          return { 
+            id: process.env.TEST_USER_ID || "1", 
+            name: process.env.TEST_USER_NAME || "Test User", 
+            email: testEmail 
+          };
         }
         return null;
       }
@@ -77,7 +84,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
-    ...authConfig.callbacks,
     /**
      * signIn callback for OAuth providers
      * Called after OAuth provider returns user info
@@ -147,6 +153,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return false;
       }
     },
+    // Spread other callbacks from authConfig (authorized, session, etc.)
+    ...authConfig.callbacks,
   },
   debug: process.env.NODE_ENV === 'development',
 });
