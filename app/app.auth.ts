@@ -12,7 +12,7 @@ import LinkedIn from "next-auth/providers/linkedin"
  * - DB operations delegated to /api/auth-callback route
  */
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authConfig = {
   providers: [
     MicrosoftEntraID({
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
@@ -128,4 +128,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: '/login?error=auth_error',
   },
   debug: process.env.NODE_ENV === 'development',
-})
+};
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
