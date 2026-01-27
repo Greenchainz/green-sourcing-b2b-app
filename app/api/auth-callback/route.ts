@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
+// Force pg to use pure JavaScript implementation (no native bindings)
+// This prevents "Module not found: Can't resolve 'pg-native'" errors
+delete process.env.NODE_PG_FORCE_NATIVE;
+
 // PostgreSQL connection pool - ONLY in Node.js context
 const pool = new Pool({
   user: process.env.POSTGRES_USER,
