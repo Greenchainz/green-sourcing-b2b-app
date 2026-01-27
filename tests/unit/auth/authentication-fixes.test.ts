@@ -73,30 +73,41 @@ describe('Authentication System Fixes', () => {
       const originalNextAuthUrl = process.env.NEXTAUTH_URL;
       const originalAuthUrl = process.env.AUTH_URL;
 
-      // Test NEXTAUTH_URL priority
-      process.env.NEXTAUTH_URL = 'https://greenchainz.com';
-      process.env.AUTH_URL = 'https://other.com';
-      
-      const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://greenchainz.com';
-      expect(baseUrl).toBe('https://greenchainz.com');
+      try {
+        // Test NEXTAUTH_URL priority
+        process.env.NEXTAUTH_URL = 'https://greenchainz.com';
+        process.env.AUTH_URL = 'https://other.com';
+        
+        const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://greenchainz.com';
+        expect(baseUrl).toBe('https://greenchainz.com');
 
-      // Test AUTH_URL fallback
-      delete process.env.NEXTAUTH_URL;
-      process.env.AUTH_URL = 'https://production.com';
-      
-      const baseUrl2 = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://greenchainz.com';
-      expect(baseUrl2).toBe('https://production.com');
+        // Test AUTH_URL fallback
+        delete process.env.NEXTAUTH_URL;
+        process.env.AUTH_URL = 'https://production.com';
+        
+        const baseUrl2 = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://greenchainz.com';
+        expect(baseUrl2).toBe('https://production.com');
 
-      // Test default fallback
-      delete process.env.NEXTAUTH_URL;
-      delete process.env.AUTH_URL;
-      
-      const baseUrl3 = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://greenchainz.com';
-      expect(baseUrl3).toBe('https://greenchainz.com');
-
-      // Restore original values
-      process.env.NEXTAUTH_URL = originalNextAuthUrl;
-      process.env.AUTH_URL = originalAuthUrl;
+        // Test default fallback
+        delete process.env.NEXTAUTH_URL;
+        delete process.env.AUTH_URL;
+        
+        const baseUrl3 = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://greenchainz.com';
+        expect(baseUrl3).toBe('https://greenchainz.com');
+      } finally {
+        // Properly restore original values
+        if (originalNextAuthUrl !== undefined) {
+          process.env.NEXTAUTH_URL = originalNextAuthUrl;
+        } else {
+          delete process.env.NEXTAUTH_URL;
+        }
+        
+        if (originalAuthUrl !== undefined) {
+          process.env.AUTH_URL = originalAuthUrl;
+        } else {
+          delete process.env.AUTH_URL;
+        }
+      }
     });
 
     it('should map Azure Key Vault secrets to NextAuth v5 variables', () => {
