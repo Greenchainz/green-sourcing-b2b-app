@@ -1,0 +1,92 @@
+trigger:
+  - main
+
+variables:
+  - group: GreenChainzVariables
+
+stages:
+  # STAGE 1: BUILD
+  - stage: Build
+    displayName: 'Build Node.js App'
+    jobs:
+      - job: Build
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '18.x'
+            displayName: 'Install Node.js'
+
+          - script: |
+              npm install
+              npm run build --if-present
+            displayName: 'npm install and build'
+
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/WebApp.zip'
+              replaceExistingArchive: true
+            displayName: 'Archive files'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+            displayName: 'Publish artifact'
+
+  # STAGE 2: DEPLOY AZURE INFRASTRUCTURE
+  - stage: DeployInfrastructure
+    displayName: 'Deploy Azure Resources'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: DeployResources
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(AZURESUBSCRIPTION)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Create resource group
+                az group create --location $(LOCATION) --name $(RESOURCEGROUPNAME)
+                echo "✅ Created resource group $(RESOURCEGROUPNAME)"
+
+                # Create App Service plan
+                az appservice plan create -g $(RESOURCEGROUPNAME) -n $(SVCPLANNAME) --sku FREE
+                echo "✅ Created App Service plan $(SVCPLANNAME)"
+
+                # Create Web App
+                az webapp create -g $(RESOURCEGROUPNAME) -p $(SVCPLANNAME) -n $(WEBAPPNAMETEST) -r "NODE|18-lts"
+                echo "✅ Created Web App $(WEBAPPNAMETEST)"
+
+  # STAGE 3: DEPLOY WEB APP
+  - stage: DeployApp
+    displayName: 'Deploy Web Application'
+    dependsOn: DeployInfrastructure
+    condition: succeeded()
+    jobs:
+      - job: DeployWebApp
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'drop'
+              downloadPath: '$(System.DefaultWorkingDirectory)'
+
+          - task: AzureRmWebAppDeployment@4
+            inputs:
+              ConnectionType: 'AzureRM'
+              azureSubscription: $(AZURESUBSCRIPTION)
+              appType: 'webApp'
+              WebAppName: '$(WEBAPPNAMETEST)'
+              Package: '$(System.DefaultWorkingDirectory)/**/*.zip'
