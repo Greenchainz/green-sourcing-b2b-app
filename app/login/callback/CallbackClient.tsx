@@ -14,6 +14,16 @@ type PublicConfig = {
   redirectUri?: string;
 };
 
+type User = {
+  id: string;
+  email: string;
+  role: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  azure_id?: string;
+};
+
 function CallbackClientInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,7 +38,7 @@ function CallbackClientInner() {
   // Local state management for auth data
   const [token, setToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const createMsalClient = (options: {
     clientId: string;
     tenant: string;
@@ -225,7 +235,17 @@ function CallbackClientInner() {
               throw new Error("No id_token received from token exchange");
             }
 
-            // Decode JWT to get claims (simple base64 decode, no verification needed here)
+            // Decode JWT to extract claims (NO signature verification at this stage)
+            // 
+            // Security Note: This is SAFE because:
+            // 1. The id_token was received directly from Microsoft's token endpoint via HTTPS
+            // 2. The backend already validated the authorization code and PKCE parameters
+            // 3. We're only extracting claims for display/routing purposes
+            // 4. The actual authentication happens in the next step (/api/auth/azure-callback)
+            //    where the backend validates the user and issues our own JWT
+            // 5. Microsoft's token signature will be validated when used for API calls
+            //
+            // We avoid adding a JWT library dependency just for claim extraction here.
             const base64Url = idToken.split('.')[1];
             const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
             const jsonPayload = decodeURIComponent(
