@@ -31,8 +31,6 @@ interface HealthResponse {
 }
 
 describe('Health Check Endpoint', () => {
-  let GET: () => Promise<Response>;
-  
   /**
    * Helper function to get health response with isolated modules
    */
@@ -54,17 +52,11 @@ describe('Health Check Endpoint', () => {
     // Clear all mocks before each test
     jest.clearAllMocks();
     
-    // Reset environment variables
+    // Reset environment variables to ensure clean test state
     delete process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
     delete process.env.AZURE_STORAGE_ACCOUNT_NAME;
     delete process.env.AZURE_STORAGE_CONNECTION_STRING;
     delete process.env.AZURE_OPENAI_ENDPOINT;
-    
-    // Re-import the route handler to get fresh environment
-    jest.isolateModules(() => {
-      const healthRoute = require('../../../app/api/health/route');
-      GET = healthRoute.GET;
-    });
   });
 
   it('should return healthy status when all services are configured', async () => {
