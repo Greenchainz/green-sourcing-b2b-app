@@ -45,18 +45,23 @@ describe('Health Check Endpoint', () => {
     process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com/';
 
     // Re-import with environment variables set
-    jest.isolateModules(async () => {
+    let response: any;
+    let data: any;
+    
+    jest.isolateModules(() => {
       const healthRoute = require('../../../app/api/health/route');
-      const response = await healthRoute.GET();
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.status).toBe('healthy');
-      expect(data.azure.sql).toBe('connected');
-      expect(data.azure.documentIntelligence).toBe('configured');
-      expect(data.azure.storage).toBe('available');
-      expect(data.azure.openai).toBe('configured');
+      response = healthRoute.GET();
     });
+    
+    response = await response;
+    data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.status).toBe('healthy');
+    expect(data.azure.sql).toBe('connected');
+    expect(data.azure.documentIntelligence).toBe('configured');
+    expect(data.azure.storage).toBe('available');
+    expect(data.azure.openai).toBe('configured');
   });
 
   it('should report not_configured when Document Intelligence endpoint is missing', async () => {
@@ -64,41 +69,56 @@ describe('Health Check Endpoint', () => {
     process.env.AZURE_STORAGE_ACCOUNT_NAME = 'teststorage';
     process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com/';
 
-    jest.isolateModules(async () => {
+    let response: any;
+    let data: any;
+    
+    jest.isolateModules(() => {
       const healthRoute = require('../../../app/api/health/route');
-      const response = await healthRoute.GET();
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.status).toBe('healthy');
-      expect(data.azure.documentIntelligence).toBe('not_configured');
+      response = healthRoute.GET();
     });
+    
+    response = await response;
+    data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.status).toBe('healthy');
+    expect(data.azure.documentIntelligence).toBe('not_configured');
   });
 
   it('should report not_configured when storage is missing', async () => {
     process.env.DOCUMENT_INTELLIGENCE_ENDPOINT = 'https://test.cognitiveservices.azure.com/';
     process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com/';
 
-    jest.isolateModules(async () => {
+    let response: any;
+    let data: any;
+    
+    jest.isolateModules(() => {
       const healthRoute = require('../../../app/api/health/route');
-      const response = await healthRoute.GET();
-      const data = await response.json();
-
-      expect(data.azure.storage).toBe('not_configured');
+      response = healthRoute.GET();
     });
+    
+    response = await response;
+    data = await response.json();
+
+    expect(data.azure.storage).toBe('not_configured');
   });
 
   it('should report not_configured when OpenAI endpoint is missing', async () => {
     process.env.DOCUMENT_INTELLIGENCE_ENDPOINT = 'https://test.cognitiveservices.azure.com/';
     process.env.AZURE_STORAGE_ACCOUNT_NAME = 'teststorage';
 
-    jest.isolateModules(async () => {
+    let response: any;
+    let data: any;
+    
+    jest.isolateModules(() => {
       const healthRoute = require('../../../app/api/health/route');
-      const response = await healthRoute.GET();
-      const data = await response.json();
-
-      expect(data.azure.openai).toBe('not_configured');
+      response = healthRoute.GET();
     });
+    
+    response = await response;
+    data = await response.json();
+
+    expect(data.azure.openai).toBe('not_configured');
   });
 
   it('should return unhealthy status when database query fails', async () => {
@@ -106,27 +126,37 @@ describe('Health Check Endpoint', () => {
     const { getAzureSQLPool } = require('@/lib/azure/config');
     getAzureSQLPool.mockRejectedValueOnce(new Error('Database connection failed'));
 
-    jest.isolateModules(async () => {
+    let response: any;
+    let data: any;
+    
+    jest.isolateModules(() => {
       const healthRoute = require('../../../app/api/health/route');
-      const response = await healthRoute.GET();
-      const data = await response.json();
-
-      expect(response.status).toBe(503);
-      expect(data.status).toBe('unhealthy');
-      expect(data.error).toContain('Database connection failed');
+      response = healthRoute.GET();
     });
+    
+    response = await response;
+    data = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(data.status).toBe('unhealthy');
+    expect(data.error).toContain('Database connection failed');
   });
 
   it('should include timestamp in response', async () => {
     process.env.DOCUMENT_INTELLIGENCE_ENDPOINT = 'https://test.cognitiveservices.azure.com/';
 
-    jest.isolateModules(async () => {
+    let response: any;
+    let data: any;
+    
+    jest.isolateModules(() => {
       const healthRoute = require('../../../app/api/health/route');
-      const response = await healthRoute.GET();
-      const data = await response.json();
-
-      expect(data.timestamp).toBeDefined();
-      expect(new Date(data.timestamp).getTime()).toBeGreaterThan(0);
+      response = healthRoute.GET();
     });
+    
+    response = await response;
+    data = await response.json();
+
+    expect(data.timestamp).toBeDefined();
+    expect(new Date(data.timestamp).getTime()).toBeGreaterThan(0);
   });
 });
