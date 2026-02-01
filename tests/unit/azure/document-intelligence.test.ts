@@ -2,7 +2,13 @@
  * Azure Document Intelligence Integration Tests (Mock)
  * 
  * Tests for Azure Document Intelligence client for EPD processing
+ * Uses managed identity (DefaultAzureCredential) - no API keys
  */
+
+// Mock the Azure Identity SDK
+jest.mock("@azure/identity", () => ({
+  DefaultAzureCredential: jest.fn().mockImplementation(() => ({})),
+}));
 
 // Mock the Azure Form Recognizer SDK
 jest.mock("@azure/ai-form-recognizer", () => ({
@@ -47,15 +53,14 @@ jest.mock("@azure/ai-form-recognizer", () => ({
       }),
     }),
   })),
-  AzureKeyCredential: jest.fn().mockImplementation((key: string) => ({ key })),
 }));
 
 describe("Azure Document Intelligence Client", () => {
   let documentIntelligence: typeof import("../../../lib/azure/document-intelligence");
 
   beforeAll(() => {
-    process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT = "https://test.cognitiveservices.azure.com/";
-    process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY = "test-key";
+    // Only endpoint is needed - managed identity handles authentication
+    process.env.DOCUMENT_INTELLIGENCE_ENDPOINT = "https://greenchainz-content-intel.cognitiveservices.azure.com/";
   });
 
   beforeEach(() => {
@@ -64,8 +69,7 @@ describe("Azure Document Intelligence Client", () => {
   });
 
   afterAll(() => {
-    delete process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
-    delete process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+    delete process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
   });
 
   describe("getDocumentClient", () => {
