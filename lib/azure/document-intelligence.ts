@@ -1,14 +1,15 @@
-import { DocumentAnalysisClient, AzureKeyCredential } from '@azure/ai-form-recognizer';
+import { DocumentAnalysisClient } from '@azure/ai-form-recognizer';
+import { DefaultAzureCredential } from '@azure/identity';
 
-const ENDPOINT = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT!;
-const API_KEY = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY!;
+const ENDPOINT = process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
+const credential = new DefaultAzureCredential();
 
-if (!ENDPOINT || !API_KEY) {
-  console.warn('Azure Document Intelligence credentials not configured');
+if (!ENDPOINT) {
+  console.warn('Azure Document Intelligence endpoint not configured');
 }
 
-const client = ENDPOINT && API_KEY
-  ? new DocumentAnalysisClient(ENDPOINT, new AzureKeyCredential(API_KEY))
+const client = ENDPOINT
+  ? new DocumentAnalysisClient(ENDPOINT, credential)
   : null;
 
 export interface ExtractedEPDData {
