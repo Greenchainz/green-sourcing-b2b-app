@@ -390,70 +390,91 @@ export default function SupplierMap({
     return (
       <div
         className="gc-map-error"
-        style={{
-          height,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#f9fafb",
-          border: "1px solid #e5e7eb",
-          borderRadius: "8px",
-          color: "#dc2626",
-        }}
+        style={{ height }}
       >
-        <div style={{ textAlign: "center" }}>
-          <p style={{ margin: 0, fontWeight: 600 }}>Map Error</p>
-          <p style={{ margin: "4px 0 0 0", fontSize: "14px" }}>{error}</p>
+        <div className="gc-map-error-content">
+          <p className="gc-map-error-title">Map Error</p>
+          <p className="gc-map-error-message">{error}</p>
         </div>
+        <style jsx>{`
+          .gc-map-error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            color: #dc2626;
+          }
+          .gc-map-error-content {
+            text-align: center;
+          }
+          .gc-map-error-title {
+            margin: 0;
+            font-weight: 600;
+          }
+          .gc-map-error-message {
+            margin: 4px 0 0 0;
+            font-size: 14px;
+          }
+        `}</style>
       </div>
     );
   }
 
   return (
-    <div className="gc-supplier-map" style={{ position: "relative", height }}>
+    <div className="gc-supplier-map" style={{ height }}>
       {isLoading && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#f9fafb",
-            zIndex: 1000,
-          }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                width: "32px",
-                height: "32px",
-                border: "3px solid #e5e7eb",
-                borderTopColor: "#10b981",
-                borderRadius: "50%",
-                animation: "spin 0.8s linear infinite",
-                margin: "0 auto 8px",
-              }}
-            />
-            <p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>
-              Loading map...
-            </p>
+        <div className="gc-map-loading">
+          <div className="gc-map-loading-content">
+            <div className="gc-map-spinner" />
+            <p className="gc-map-loading-text">Loading map...</p>
           </div>
         </div>
       )}
       <div
         ref={mapContainerRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          borderRadius: "8px",
-          overflow: "hidden",
-        }}
+        className="gc-map-container"
       />
       <style jsx>{`
+        .gc-supplier-map {
+          position: relative;
+        }
+        .gc-map-container {
+          width: 100%;
+          height: 100%;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .gc-map-loading {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #f9fafb;
+          z-index: 1000;
+        }
+        .gc-map-loading-content {
+          text-align: center;
+        }
+        .gc-map-spinner {
+          width: 32px;
+          height: 32px;
+          border: 3px solid #e5e7eb;
+          border-top-color: #10b981;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          margin: 0 auto 8px;
+        }
+        .gc-map-loading-text {
+          margin: 0;
+          color: #6b7280;
+          font-size: 14px;
+        }
         @keyframes spin {
           to {
             transform: rotate(360deg);
