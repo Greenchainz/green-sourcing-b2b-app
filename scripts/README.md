@@ -2,13 +2,9 @@
 
 This directory contains a test script to validate the Azure AD authentication diagnostics system.
 
-## Usage
+## Scripts
 
-### Quick Test
-
-```bash
-bash scripts/test-auth-diagnostics.sh
-```
+### Authentication Diagnostics Test (`test-auth-diagnostics.sh`)
 
 This will:
 1. Check/create `.env` file
@@ -19,7 +15,76 @@ This will:
    - User-facing error messages
    - Metrics tracking
 
-### Manual Authentication Flow Testing
+### Azure AD Configuration Verification (`verify-azure-ad-config.sh`)
+
+Verifies that all necessary Azure AD configurations are in place for the Container App.
+
+**Usage:**
+```bash
+./scripts/verify-azure-ad-config.sh
+```
+
+**What it checks:**
+- Azure CLI installation and login status
+- Container App existence and URL
+- Required environment variables (NextAuth, Azure AD)
+- Provides checklist for Azure Portal verification
+
+### Azure AD Configuration Update (`update-azure-auth-config.sh`)
+
+Updates the Container App with all required NextAuth environment variables.
+
+**Usage:**
+```bash
+./scripts/update-azure-auth-config.sh
+```
+
+**What it does:**
+1. Prompts for Azure AD client secret
+2. Generates or accepts NextAuth secret
+3. Determines Container App URL automatically
+4. Updates all environment variables
+5. Restarts the Container App
+
+## Usage
+
+### Quick Test (Local Development)
+
+```bash
+bash scripts/test-auth-diagnostics.sh
+```
+
+## Quick Start
+
+### For Local Development
+```bash
+# Test authentication diagnostics
+bash scripts/test-auth-diagnostics.sh
+```
+
+### For Production Issues (invalid_grant errors)
+
+1. **Run verification script:**
+   ```bash
+   ./scripts/verify-azure-ad-config.sh
+   ```
+
+2. **If environment variables are missing, update them:**
+   ```bash
+   ./scripts/update-azure-auth-config.sh
+   ```
+
+3. **Verify redirect URIs in Azure Portal:**
+   - See output from verification script
+   - Or follow guide in `docs/AZURE_AD_FIX.md`
+
+4. **Test login:**
+   ```bash
+   # Get your Container App URL from verification script
+   open https://YOUR-APP-URL/login
+   ```
+
+## Manual Authentication Flow Testing
 
 After running the test script, test the full flow:
 
@@ -32,6 +97,35 @@ npm run dev
 # 4. Sign in with Microsoft
 # 5. Check terminal for [AUTH] log entries
 ```
+
+## Troubleshooting Production Issues
+
+### "Azure CLI not found"
+Install Azure CLI:
+- Mac: `brew install azure-cli`
+- Windows: Download from https://aka.ms/installazurecliwindows
+- Linux: https://docs.microsoft.com/cli/azure/install-azure-cli-linux
+
+### "Not logged in to Azure"
+Login to Azure:
+```bash
+az login
+```
+
+### "Container App not found"
+Set the correct resource group:
+```bash
+export AZURE_RESOURCE_GROUP=your-resource-group-name
+./scripts/verify-azure-ad-config.sh
+```
+
+### "Client secret is invalid"
+Get the latest secret from Azure Key Vault:
+1. Go to: Azure Portal → Key Vaults → Greenchainz-vault-2026
+2. Navigate to: Secrets → AzureAD-ClientSecret
+3. Click on the latest version
+4. Click "Show Secret Value"
+5. Copy the value and use it in the update script
 
 ### Expected Log Output
 
@@ -90,3 +184,14 @@ npm test -- tests/unit/auth/azure-callback.test.ts
 ```
 
 All tests passing ✅
+
+## Related Documentation
+
+For comprehensive authentication fix instructions:
+- **`docs/AZURE_AD_FIX.md`** - Complete Azure AD authentication fix guide (START HERE for production issues)
+- `AZURE_AD_SETUP.md` - Original PKCE setup documentation
+- `AZURE_PORTAL_CHECKLIST.md` - Azure Portal configuration checklist
+- `.env.azure.example` - Production environment variables reference
+- [Authentication Debugging Guide](../docs/auth-debugging.md) - Detailed debugging information
+- [OAuth Setup](../docs/OAUTH_SETUP.md) - Azure AD configuration
+- [Environment Variables](../.env.example) - Configuration reference
