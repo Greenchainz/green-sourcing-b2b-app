@@ -5,27 +5,6 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// PKCE helper functions
-function generateCodeVerifier(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return base64URLEncode(array);
-}
-
-async function generateCodeChallenge(verifier: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(verifier);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return base64URLEncode(new Uint8Array(hash));
-}
-
-function base64URLEncode(buffer: Uint8Array): string {
-  return btoa(String.fromCharCode(...buffer))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
-
 export default function LoginClient() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -57,43 +36,8 @@ export default function LoginClient() {
     setError("");
     setLoading(true);
     
-    // Special handling for Azure AD with PKCE
-    if (provider === "azure-ad") {
-      await handleAzureLogin();
-      return;
-    }
-    
+    // Use NextAuth's built-in provider for Microsoft Entra ID
     await signIn(provider, { callbackUrl: "/dashboard" });
-  };
-  
-  const handleAzureLogin = async () => {
-    try {
-      // Generate PKCE code_verifier and code_challenge
-      const codeVerifier = generateCodeVerifier();
-      const codeChallenge = await generateCodeChallenge(codeVerifier);
-      
-      // Store code_verifier in sessionStorage (retrieved after redirect)
-      sessionStorage.setItem('pkce_code_verifier', codeVerifier);
-      
-      const clientId = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID!;
-      const tenantId = process.env.NEXT_PUBLIC_AZURE_TENANT_ID || 'common';
-      const redirectUri = `${window.location.origin}/login/callback`;
-      
-      const authUrl = new URL(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`);
-      authUrl.searchParams.set('client_id', clientId);
-      authUrl.searchParams.set('response_type', 'code');
-      authUrl.searchParams.set('redirect_uri', redirectUri);
-      authUrl.searchParams.set('scope', 'openid profile email');
-      authUrl.searchParams.set('response_mode', 'query');
-      authUrl.searchParams.set('code_challenge', codeChallenge);
-      authUrl.searchParams.set('code_challenge_method', 'S256');
-      
-      window.location.href = authUrl.toString();
-    } catch (err) {
-      console.error('Azure login failed:', err);
-      setError('Azure login failed. Check console for details.');
-      setLoading(false);
-    }
   };
 
   return (
@@ -186,7 +130,7 @@ export default function LoginClient() {
         </button>
 
         <button
-          onClick={() => handleOAuthLogin("azure-ad")}
+          onClick={() => handleOAuthLogin("microsoft-entra-id")}
           disabled={loading}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 font-medium text-gray-700 transition"
         >
