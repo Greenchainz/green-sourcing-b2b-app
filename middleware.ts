@@ -13,9 +13,27 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(req: NextRequest) {
+  // Define public paths that don't require authentication
+  const publicPaths = [
+    '/login',
+    '/login/callback',
+    '/signup',
+    '/api/auth',
+    '/api/public-config'
+  ];
+  
+  // Check if current path is public
+  const isPublicPath = publicPaths.some(path => req.nextUrl.pathname.startsWith(path));
+  
+  if (isPublicPath) {
+    return NextResponse.next();
+  }
+  
   // Get session token from cookies
   const sessionToken = req.cookies.get('authjs.session-token')?.value ||
-    req.cookies.get('__Secure-authjs.session-token')?.value;
+    req.cookies.get('__Secure-authjs.session-token')?.value ||
+    req.cookies.get('greenchainz-auth-token')?.value ||
+    req.cookies.get('token')?.value;
 
   const isLoggedIn = !!sessionToken;
   const isProtectedRoute = 
