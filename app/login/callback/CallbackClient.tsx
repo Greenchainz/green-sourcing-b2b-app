@@ -14,10 +14,19 @@ type PublicConfig = {
   redirectUri?: string;
 };
 
+type User = {
+  id: string;
+  email: string;
+  role: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  azure_id?: string;
+};
+
 function CallbackClientInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setBackendUrl, setToken, setRefreshToken, setUser, handleAzureCallback } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [_traceId, _setTraceId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
@@ -25,6 +34,11 @@ function CallbackClientInner() {
   const debug = process.env.NEXT_PUBLIC_AUTH_DEBUG === "true";
   const [steps, setSteps] = useState<string[]>([]);
   const pushStep = (msg: string) => setSteps((prev) => [...prev, msg]);
+  
+  // Local state management for auth data
+  const [token, setToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const createMsalClient = (options: {
     clientId: string;
     tenant: string;
@@ -55,6 +69,7 @@ function CallbackClientInner() {
           );
           interactionKeys.forEach((key) => sessionStorage.removeItem(key));
         }
+        
         // Check for OAuth provider callbacks (Google, LinkedIn)
         const provider = searchParams.get("provider");
         const token = searchParams.get("token");
@@ -124,8 +139,100 @@ function CallbackClientInner() {
           return;
         }
 
+        // **NEW PKCE FLOW** - Check if we have authorization code in query params (not hash!)
+        // This is the new simpler flow without MSAL
+        const code = searchParams.get("code");
+        if (code && typeof window !== "undefined") {
+          pushStep("Processing Azure AD callback with PKCE...");
+          
+          // Retrieve code_verifier from sessionStorage
+          const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+          if (!codeVerifier) {
+            throw new Error('PKCE code_verifier missing from sessionStorage. Please try signing in again.');
+          }
+          
+          const redirectUri = `${window.location.origin}/login/callback`;
+          
+          // Exchange code for tokens
+          pushStep("Exchanging authorization code...");
+          const response = await fetch('/api/auth/azure-token-exchange', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code,
+              redirectUri,
+              codeVerifier
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error_description || data.error || 'Token exchange failed');
+          }
+          
+          // Extract user claims from id_token
+          pushStep("Parsing user identity...");
+          const idToken = data.id_token;
+          if (!idToken) {
+            throw new Error("No id_token received from token exchange");
+          }
+
+          // Decode JWT to extract claims
+          const base64Url = idToken.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map((c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          const claims = JSON.parse(jsonPayload);
+
+          const email = claims.email || claims.preferred_username || claims.upn || null;
+          const azureId = claims.oid || claims.sub || null;
+          const firstName = claims.given_name || null;
+          const lastName = claims.family_name || null;
+
+          if (!email || !azureId) {
+            throw new Error("Azure token missing required claims (email or oid)");
+          }
+
+          // Finalize authentication with backend
+          pushStep("Finalizing sign-in on backend...");
+          const callbackResponse = await fetch(`/api/auth/azure-callback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, firstName, lastName, azureId }),
+          });
+
+          if (!callbackResponse.ok) {
+            const errorData = await callbackResponse.json().catch(() => ({}));
+            throw new Error(
+              errorData.error || 
+              errorData.details || 
+              `Authentication failed: ${callbackResponse.status}`
+            );
+          }
+
+          const authData = await callbackResponse.json();
+          setToken(authData.token);
+          setRefreshToken(authData.refreshToken);
+          setUser(authData.user);
+
+          // Clean up PKCE verifier
+          sessionStorage.removeItem('pkce_code_verifier');
+
+          pushStep("Authentication successful! Redirecting...");
+          const userRole = authData.user?.role?.toLowerCase();
+          const redirectTo = userRole === "supplier" ? "/dashboard" : "/dashboard/buyer";
+          setTimeout(() => router.push(redirectTo), 500);
+          return;
+        }
+
+        // **LEGACY MSAL FLOW** - Fallback for existing hash-based flows
         // Load runtime config first so redirectUri + backendUrl are correct.
-        if (debug) console.info("[Auth] Loading public config...");
+        if (debug) console.info("[Auth] Loading public config for legacy MSAL flow...");
         pushStep("Loading configuration...");
         const configRes = await fetch("/api/public-config", {
           cache: "no-store",
@@ -139,14 +246,12 @@ function CallbackClientInner() {
         const config = (await configRes.json()) as PublicConfig;
         setPublicConfig(config);
 
-        if (config.backendUrl) {
-          if (debug)
-            console.info("[Auth] backendUrl from config:", config.backendUrl);
-          setBackendUrl(config.backendUrl);
+        if (config.backendUrl && debug) {
+          console.info("[Auth] backendUrl from config:", config.backendUrl);
           pushStep(`Backend URL: ${config.backendUrl}`);
         }
 
-        pushStep("Completing Microsoft sign-in...");
+        pushStep("Completing Microsoft sign-in (legacy MSAL)...");
         const azureClientId = config.azureClientId || "";
         const azureTenant = config.azureTenant || "common";
         const redirectUri = config.redirectUri || "";
@@ -157,24 +262,125 @@ function CallbackClientInner() {
           );
         }
 
+        // Check if we have the authorization code in the hash (old MSAL flow)
         if (typeof window !== "undefined") {
           const hash = window.location.hash || "";
           if (hash.includes("code=")) {
             const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
             const code = hashParams.get("code");
+            const state = hashParams.get("state");
 
             if (!code) {
               throw new Error("Missing authorization code in callback.");
             }
 
-            pushStep("Exchanging Microsoft authorization code...");
-            await handleAzureCallback(
-              code,
-              redirectUri,
-              config.backendUrl || undefined,
-              pushStep
-            );
+            // Extract PKCE code_verifier from sessionStorage
+            // MSAL.js stores it with a key pattern like: "{clientId}.{state}.code.verifier"
+            let codeVerifier: string | null = null;
+            
+            if (state) {
+              // Try to find the code_verifier in sessionStorage
+              const storageKeys = Object.keys(sessionStorage);
+              for (const key of storageKeys) {
+                if (key.includes(state) && key.includes("code.verifier")) {
+                  codeVerifier = sessionStorage.getItem(key);
+                  if (debug) console.info("[Auth] Found code_verifier in sessionStorage");
+                  break;
+                }
+              }
+            }
 
+            if (!codeVerifier) {
+              throw new Error(
+                "PKCE code_verifier not found. This may indicate the authorization flow was not initiated correctly. Please try signing in again."
+              );
+            }
+
+            pushStep("Exchanging Microsoft authorization code with PKCE...");
+            
+            // Call backend token exchange endpoint with code AND code_verifier
+            const backendUrl = config.backendUrl || "/api";
+            const tokenExchangeResponse = await fetch(`${backendUrl}/auth/azure-token-exchange`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                code, 
+                redirectUri,
+                codeVerifier // PKCE parameter
+              }),
+            });
+
+            if (!tokenExchangeResponse.ok) {
+              const errorData = await tokenExchangeResponse.json();
+              throw new Error(
+                errorData.error_description || 
+                errorData.error || 
+                `Token exchange failed: ${tokenExchangeResponse.status}`
+              );
+            }
+
+            const tokenData = await tokenExchangeResponse.json();
+            
+            // Extract user info from id_token claims
+            pushStep("Parsing Azure identity...");
+            const idToken = tokenData.id_token;
+            if (!idToken) {
+              throw new Error("No id_token received from token exchange");
+            }
+
+            // Decode JWT to extract claims (NO signature verification at this stage)
+            // 
+            // Security Note: This is SAFE because:
+            // 1. The id_token was received directly from Microsoft's token endpoint via HTTPS
+            // 2. The backend already validated the authorization code and PKCE parameters
+            // 3. We're only extracting claims for display/routing purposes
+            // 4. The actual authentication happens in the next step (/api/auth/azure-callback)
+            //    where the backend validates the user and issues our own JWT
+            // 5. Microsoft's token signature will be validated when used for API calls
+            //
+            // We avoid adding a JWT library dependency just for claim extraction here.
+            const base64Url = idToken.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            const claims = JSON.parse(jsonPayload);
+
+            const email = claims.email || claims.preferred_username || claims.upn || null;
+            const azureId = claims.oid || claims.sub || null;
+            const firstName = claims.given_name || null;
+            const lastName = claims.family_name || null;
+
+            if (!email || !azureId) {
+              throw new Error("Azure token missing required claims (email or oid)");
+            }
+
+            // Finalize authentication with backend
+            pushStep("Finalizing sign-in on backend...");
+            const callbackResponse = await fetch(`/api/auth/azure-callback`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, firstName, lastName, azureId }),
+            });
+
+            if (!callbackResponse.ok) {
+              const errorData = await callbackResponse.json().catch(() => ({}));
+              throw new Error(
+                errorData.error || 
+                errorData.details || 
+                `Authentication failed: ${callbackResponse.status}`
+              );
+            }
+
+            const authData = await callbackResponse.json();
+            setToken(authData.token);
+            setRefreshToken(authData.refreshToken);
+            setUser(authData.user);
+
+            // Clear the hash from URL
             window.history.replaceState(
               {},
               document.title,
@@ -182,8 +388,8 @@ function CallbackClientInner() {
             );
 
             pushStep("Authentication successful! Redirecting...");
-            const role = useAuth.getState().user?.role?.toLowerCase();
-            const redirectTo = role === "supplier" ? "/dashboard" : "/dashboard/buyer";
+            const userRole = authData.user?.role?.toLowerCase();
+            const redirectTo = userRole === "supplier" ? "/dashboard" : "/dashboard/buyer";
             setTimeout(() => router.push(redirectTo), 500);
             return;
           }

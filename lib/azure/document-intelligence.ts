@@ -1,14 +1,19 @@
-import { DocumentAnalysisClient, AzureKeyCredential } from '@azure/ai-form-recognizer';
+import { DocumentAnalysisClient } from '@azure/ai-form-recognizer';
+import { DefaultAzureCredential } from '@azure/identity';
 
-const ENDPOINT = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT!;
-const API_KEY = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY!;
+const ENDPOINT = process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
+const credential = new DefaultAzureCredential();
 
-if (!ENDPOINT || !API_KEY) {
-  console.warn('Azure Document Intelligence credentials not configured');
+if (!ENDPOINT) {
+  console.warn(
+    '[Document Intelligence] DOCUMENT_INTELLIGENCE_ENDPOINT environment variable not set. ' +
+    'Document extraction features will be unavailable. ' +
+    'Uses DefaultAzureCredential (managed identity) - no API key needed.'
+  );
 }
 
-const client = ENDPOINT && API_KEY
-  ? new DocumentAnalysisClient(ENDPOINT, new AzureKeyCredential(API_KEY))
+const client = ENDPOINT
+  ? new DocumentAnalysisClient(ENDPOINT, credential)
   : null;
 
 export interface ExtractedEPDData {
@@ -32,7 +37,11 @@ export async function extractEPDData(
   documentUrl: string
 ): Promise<ExtractedEPDData> {
   if (!client) {
-    throw new Error('Document Intelligence client not initialized. Check environment variables.');
+    throw new Error(
+      'Document Intelligence client not initialized. ' +
+      'Ensure DOCUMENT_INTELLIGENCE_ENDPOINT is set and the app has managed identity permissions. ' +
+      'No API key required - uses DefaultAzureCredential.'
+    );
   }
 
   const poller = await client.beginAnalyzeDocumentFromUrl(
@@ -117,7 +126,10 @@ export async function extractCertificationData(
   documentUrl: string
 ): Promise<ExtractedCertData> {
   if (!client) {
-    throw new Error('Document Intelligence client not initialized');
+    throw new Error(
+      'Document Intelligence client not initialized. ' +
+      'Ensure DOCUMENT_INTELLIGENCE_ENDPOINT is set and the app has managed identity permissions.'
+    );
   }
 
   // Use prebuilt-document for certifications (FSC, LEED, etc.)
