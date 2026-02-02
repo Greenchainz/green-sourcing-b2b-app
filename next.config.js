@@ -4,6 +4,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    optimizeCss: true, // Use built-in CSS optimizer for Next.js 16
+  },
   async headers() {
     return [
       {

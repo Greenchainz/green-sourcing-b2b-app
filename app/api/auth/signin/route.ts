@@ -16,8 +16,9 @@ export async function GET(request: Request) {
   const clientId = process.env.AZURE_AD_CLIENT_ID || process.env.AZURE_CLIENT_ID;
 
   // Use logic consistent with callback/route.ts to avoid redirect_uri mismatch
+  // Support both custom domain and revision-specific URLs
   const requestUrl = new URL(request.url);
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin;
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin;
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
   const redirectUri = `${cleanBaseUrl}/api/auth/callback`;
 

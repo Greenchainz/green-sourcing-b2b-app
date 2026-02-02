@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
 
   // Use the exact same redirect URI as sent in the authorize request
   // Must match exactly what is in signin/route.ts
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin;
+  // Support both custom domain and revision-specific URLs
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin;
   // Ensure no trailing slash
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
   const redirectUri = `${cleanBaseUrl}/api/auth/callback`
