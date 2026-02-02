@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function proxy(req: NextRequest) {
+export function middleware(req: NextRequest) {
   // Define public paths that don't require authentication
   const publicPaths = [
     '/login',
