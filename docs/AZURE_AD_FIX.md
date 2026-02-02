@@ -91,6 +91,8 @@ NEXTAUTH_SECRET=<generate-with: openssl rand -base64 32>
 AUTH_SECRET=<same-as-NEXTAUTH_SECRET>
 
 # Microsoft Entra ID (Azure AD) Provider (Required)
+# Note: Client ID and Tenant ID are NOT secrets - they are public identifiers
+# These values are specific to the GreenChainz Azure AD app registration
 AUTH_MICROSOFT_ENTRA_ID_ID=479e2a01-70ab-4df9-baa4-560d317c3423
 AUTH_MICROSOFT_ENTRA_ID_SECRET=<from-key-vault>
 AUTH_MICROSOFT_ENTRA_ID_ISSUER=https://login.microsoftonline.com/ca4f78d4-c753-4893-9cd8-1b309922b4dc/v2.0
@@ -101,6 +103,7 @@ AZURE_AD_CLIENT_SECRET=<from-key-vault>
 AZURE_AD_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
 
 # Public variables for browser (optional, used by custom flow)
+# These are embedded in the browser JavaScript bundle and are NOT secrets
 NEXT_PUBLIC_AZURE_CLIENT_ID=479e2a01-70ab-4df9-baa4-560d317c3423
 NEXT_PUBLIC_AZURE_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
 NEXT_PUBLIC_SITE_URL=https://greenchainz.com

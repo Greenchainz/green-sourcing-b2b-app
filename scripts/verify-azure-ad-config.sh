@@ -26,6 +26,8 @@ echo -e "${GREEN}✓ Azure CLI found${NC}"
 echo ""
 
 # Variables
+# Note: Client ID and Tenant ID are NOT secrets - they are public identifiers
+# These values are specific to the GreenChainz Azure AD app registration
 APP_NAME="greenchainz-frontend"
 RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-greenchainz-production}"
 CLIENT_ID="479e2a01-70ab-4df9-baa4-560d317c3423"
