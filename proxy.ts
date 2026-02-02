@@ -1,7 +1,7 @@
 /**
- * Middleware.ts
+ * Proxy.ts (Next.js 16+)
  * 
- * 🚨 CRITICAL: Middleware runs in Edge Runtime
+ * 🚨 CRITICAL: Proxy runs in Edge Runtime
  * - NO imports of Node.js modules (pg, prisma, bcrypt, etc.)
  * - NO NextAuth auth() wrapper - it triggers schema loading
  * - Simple redirect logic ONLY
@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   // Define public paths that don't require authentication
   const publicPaths = [
     '/login',
