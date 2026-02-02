@@ -19,14 +19,15 @@ export async function POST(request: Request) {
   incrementAuthMetric('auth_attempt', 'azure', 'token-exchange');
   
   try {
-    const { code, redirectUri: requestRedirectUri } = await request.json()
+    const { code, redirectUri: requestRedirectUri, codeVerifier } = await request.json()
     
     logAuthEvent('info', 'Request parsed', {
       traceId,
       step: 'parse-request',
       metadata: { 
         hasCode: !!code,
-        redirectUri: requestRedirectUri 
+        redirectUri: requestRedirectUri,
+        hasCodeVerifier: !!codeVerifier
       }
     });
     
@@ -40,6 +41,20 @@ export async function POST(request: Request) {
       incrementAuthMetric('auth_failure', 'azure', 'missing-code');
       return NextResponse.json({ 
         error: 'Authorization code is required',
+        traceId 
+      }, { status: 400 })
+    }
+    
+    // PKCE: code_verifier is required for secure token exchange
+    if (!codeVerifier) {
+      logAuthEvent('error', 'PKCE code_verifier missing', {
+        traceId,
+        step: 'validate-input',
+        statusCode: 400
+      });
+      incrementAuthMetric('auth_failure', 'azure', 'missing-code-verifier');
+      return NextResponse.json({ 
+        error: 'PKCE code_verifier is required',
         traceId 
       }, { status: 400 })
     }
@@ -79,21 +94,26 @@ export async function POST(request: Request) {
         tokenEndpoint,
         redirectUri,
         tenantId,
-        scope: 'openid profile email'
+        scope: 'openid profile email',
+        pkceEnabled: true
       }
     });
+
+    // Build token exchange parameters with PKCE support
+    const tokenParams: Record<string, string> = {
+      client_id: clientId,
+      client_secret: clientSecret,
+      code: code,
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+      scope: 'openid profile email',
+      code_verifier: codeVerifier // PKCE: Must match the code_challenge from authorization request
+    };
 
     const response = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        grant_type: 'authorization_code',
-        redirect_uri: redirectUri,
-        scope: 'openid profile email'
-      })
+      body: new URLSearchParams(tokenParams)
     })
 
     const data = await response.json()
