@@ -23,10 +23,15 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   providers: [
     MicrosoftEntraID({
-      clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
-      clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
-      issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
-      authorization: { params: { scope: "openid profile email User.Read" } },
+      clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID || process.env.AZURE_AD_CLIENT_ID,
+      clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET || process.env.AZURE_AD_CLIENT_SECRET,
+      issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER || (process.env.AZURE_AD_TENANT_ID ? `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0` : undefined),
+      authorization: { 
+        params: { 
+          scope: "openid profile email User.Read",
+          prompt: "select_account", // Force account picker to avoid stale tokens
+        } 
+      },
     }),
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
