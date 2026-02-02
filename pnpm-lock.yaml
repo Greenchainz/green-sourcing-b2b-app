@@ -8,12 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@auth/core':
-        specifier: ^0.41.0
-        version: 0.41.1
-      '@auth/prisma-adapter':
-        specifier: ^2.11.1
-        version: 2.11.1(@prisma/client@5.22.0(prisma@5.22.0))
       '@azure/ai-form-recognizer':
         specifier: ^5.1.0
         version: 5.1.0
@@ -26,9 +20,9 @@ importers:
       '@azure/msal-browser':
         specifier: ^3.27.0
         version: 3.30.0
-      '@azure/msal-node':
-        specifier: ^5.0.3
-        version: 5.0.3
+      '@azure/msal-react':
+        specifier: ^2.1.3
+        version: 2.2.0(@azure/msal-browser@3.30.0)(react@19.2.4)
       '@azure/search-documents':
         specifier: ^12.2.0
         version: 12.2.0
@@ -104,9 +98,6 @@ importers:
       next:
         specifier: ^16.1.6
         version: 16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      next-auth:
-        specifier: ^5.0.0-beta.30
-        version: 5.0.0-beta.30(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       openai:
         specifier: ^6.16.0
         version: 6.17.0(zod@4.3.6)
@@ -223,39 +214,6 @@ packages:
   '@apm-js-collab/tracing-hooks@0.3.1':
     resolution: {integrity: sha512-Vu1CbmPURlN5fTboVuKMoJjbO5qcq9fA5YXpskx3dXe/zTBvjODFoerw+69rVBlRLrJpwPqSDqEuJDEKIrTldw==}
 
-  '@auth/core@0.41.0':
-    resolution: {integrity: sha512-Wd7mHPQ/8zy6Qj7f4T46vg3aoor8fskJm6g2Zyj064oQ3+p0xNZXAV60ww0hY+MbTesfu29kK14Zk5d5JTazXQ==}
-    peerDependencies:
-      '@simplewebauthn/browser': ^9.0.1
-      '@simplewebauthn/server': ^9.0.2
-      nodemailer: ^6.8.0
-    peerDependenciesMeta:
-      '@simplewebauthn/browser':
-        optional: true
-      '@simplewebauthn/server':
-        optional: true
-      nodemailer:
-        optional: true
-
-  '@auth/core@0.41.1':
-    resolution: {integrity: sha512-t9cJ2zNYAdWMacGRMT6+r4xr1uybIdmYa49calBPeTqwgAFPV/88ac9TEvCR85pvATiSPt8VaNf+Gt24JIT/uw==}
-    peerDependencies:
-      '@simplewebauthn/browser': ^9.0.1
-      '@simplewebauthn/server': ^9.0.2
-      nodemailer: ^7.0.7
-    peerDependenciesMeta:
-      '@simplewebauthn/browser':
-        optional: true
-      '@simplewebauthn/server':
-        optional: true
-      nodemailer:
-        optional: true
-
-  '@auth/prisma-adapter@2.11.1':
-    resolution: {integrity: sha512-Ke7DXP0Fy0Mlmjz/ZJLXwQash2UkA4621xCM0rMtEczr1kppLc/njCbUkHkIQ/PnmILjqSPEKeTjDPsYruvkug==}
-    peerDependencies:
-      '@prisma/client': '>=2.26.0 || >=3 || >=4 || >=5 || >=6'
-
   '@azure-rest/core-client@2.5.1':
     resolution: {integrity: sha512-EHaOXW0RYDKS5CFffnixdyRPak5ytiCtU7uXDcP/uiY+A6jFRwNGzzJBiznkCzvi5EYpY+YWinieqHb0oY916A==}
     engines: {node: '>=20.0.0'}
@@ -352,17 +310,16 @@ packages:
     resolution: {integrity: sha512-IkzF7Pywt6QKTS0kwdCv/XV8x8JXknZDvSjj/IccooxnP373T5jaadO3FnOrbWo3S0UqkfIDyZNTaQ/oAgRdXw==}
     engines: {node: '>=0.8.0'}
 
-  '@azure/msal-common@16.0.3':
-    resolution: {integrity: sha512-3aedNnM0CHVuVZ+BqembdZWgovqe96BJ4YxGoIK0+qhoBZQsAhfwXdhjen72K94pkSQHtzlJ7fAq6w7knFZsng==}
-    engines: {node: '>=0.8.0'}
-
   '@azure/msal-node@3.8.6':
     resolution: {integrity: sha512-XTmhdItcBckcVVTy65Xp+42xG4LX5GK+9AqAsXPXk4IqUNv+LyQo5TMwNjuFYBfAB2GTG9iSQGk+QLc03vhf3w==}
     engines: {node: '>=16'}
 
-  '@azure/msal-node@5.0.3':
-    resolution: {integrity: sha512-DTiu9SEblUVbgiuXWtCXFS2OoIVZPNbPFfK7AVhsWCD4bCHqvHcnDz9uCxk5wnUYJX9Ik0KxjGDFLwH9/lrE+w==}
-    engines: {node: '>=20'}
+  '@azure/msal-react@2.2.0':
+    resolution: {integrity: sha512-2V+9JXeXyyjYNF92y5u0tU4el9px/V1+vkRuN+DtoxyiMHCtYQpJoaFdGWArh43zhz5aqQqiGW/iajPDSu3QsQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      '@azure/msal-browser': ^3.27.0
+      react: ^16.8.0 || ^17 || ^18
 
   '@azure/search-documents@12.2.0':
     resolution: {integrity: sha512-4+Qw+qaGqnkdUCq/vEFzk/bkROogTvdbPb1fmI8poxNfDDN1q2WHxBmhI7CYwesrBj1yXC4i5E0aISBxZqZi0g==}
@@ -1303,9 +1260,6 @@ packages:
     engines: {node: ^18.19.0 || >=20.6.0}
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
-
-  '@panva/hkdf@1.2.1':
-    resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
 
   '@pdf-lib/standard-fonts@1.0.0':
     resolution: {integrity: sha512-hU30BK9IUN/su0Mn9VdlVKsWBS6GyhVfqjwl1FjZN4TxP6cCw0jP2w7V3Hf5uX7M0AZJ16vey9yE0ny7Sa59ZA==}
@@ -3645,9 +3599,6 @@ packages:
     resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
     hasBin: true
 
-  jose@6.1.3:
-    resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
-
   js-md4@0.3.2:
     resolution: {integrity: sha512-/GDnfQYsltsjRswQhN9fhv3EMw2sCpUdrdxyWDOUK7eyD++r3gRhzgiQgc/x4MAv2i1iuQ4lxO5mvqM3vj4bwA==}
 
@@ -3996,22 +3947,6 @@ packages:
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
 
-  next-auth@5.0.0-beta.30:
-    resolution: {integrity: sha512-+c51gquM3F6nMVmoAusRJ7RIoY0K4Ts9HCCwyy/BRoe4mp3msZpOzYMyb5LAYc1wSo74PMQkGDcaghIO7W6Xjg==}
-    peerDependencies:
-      '@simplewebauthn/browser': ^9.0.1
-      '@simplewebauthn/server': ^9.0.2
-      next: ^14.0.0-0 || ^15.0.0 || ^16.0.0
-      nodemailer: ^7.0.7
-      react: ^18.2.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@simplewebauthn/browser':
-        optional: true
-      '@simplewebauthn/server':
-        optional: true
-      nodemailer:
-        optional: true
-
   next@16.1.6:
     resolution: {integrity: sha512-hkyRkcu5x/41KoqnROkfTm2pZVbKxvbZRuNvKXLRXxs3VfyO0WhY50TQS40EuKO9SW3rBj/sF3WbVwDACeMZyw==}
     engines: {node: '>=20.9.0'}
@@ -4059,9 +3994,6 @@ packages:
   npm-run-path@4.0.1:
     resolution: {integrity: sha512-S48WzZW777zhNIrn7gxOlISNAqi9ZC/uQFnRdbeIHhZhCA6UqpkOT8T1G7BvfdgP4Er8gF4sUbaS0i7QvIfCWw==}
     engines: {node: '>=8'}
-
-  oauth4webapi@3.8.3:
-    resolution: {integrity: sha512-pQ5BsX3QRTgnt5HxgHwgunIRaDXBdkT23tf8dfzmtTIL2LTpdmxgbpbBm0VgFWAIDlezQvQCTgnVIUmHupXHxw==}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -4296,14 +4228,6 @@ packages:
   postgres-interval@1.2.0:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
-
-  preact-render-to-string@6.5.11:
-    resolution: {integrity: sha512-ubnauqoGczeGISiOh6RjX0/cdaF8v/oDXIjO85XALCQjwQP+SB4RDXXtvZ6yTYSjG+PC1QRP2AhPgCEsM2EvUw==}
-    peerDependencies:
-      preact: '>=10'
-
-  preact@10.24.3:
-    resolution: {integrity: sha512-Z2dPnBnMUfyQfSQ+GBdsGa16hz35YmLmtTLhM169uW944hYL6xzTYkJjC07j+Wosz733pMWx0fgON3JNw1jJQA==}
 
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
@@ -5090,31 +5014,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@auth/core@0.41.0':
-    dependencies:
-      '@panva/hkdf': 1.2.1
-      jose: 6.1.3
-      oauth4webapi: 3.8.3
-      preact: 10.24.3
-      preact-render-to-string: 6.5.11(preact@10.24.3)
-
-  '@auth/core@0.41.1':
-    dependencies:
-      '@panva/hkdf': 1.2.1
-      jose: 6.1.3
-      oauth4webapi: 3.8.3
-      preact: 10.24.3
-      preact-render-to-string: 6.5.11(preact@10.24.3)
-
-  '@auth/prisma-adapter@2.11.1(@prisma/client@5.22.0(prisma@5.22.0))':
-    dependencies:
-      '@auth/core': 0.41.1
-      '@prisma/client': 5.22.0(prisma@5.22.0)
-    transitivePeerDependencies:
-      - '@simplewebauthn/browser'
-      - '@simplewebauthn/server'
-      - nodemailer
-
   '@azure-rest/core-client@2.5.1':
     dependencies:
       '@azure/abort-controller': 2.1.2
@@ -5329,19 +5228,16 @@ snapshots:
 
   '@azure/msal-common@15.14.1': {}
 
-  '@azure/msal-common@16.0.3': {}
-
   '@azure/msal-node@3.8.6':
     dependencies:
       '@azure/msal-common': 15.14.1
       jsonwebtoken: 9.0.3
       uuid: 8.3.2
 
-  '@azure/msal-node@5.0.3':
+  '@azure/msal-react@2.2.0(@azure/msal-browser@3.30.0)(react@19.2.4)':
     dependencies:
-      '@azure/msal-common': 16.0.3
-      jsonwebtoken: 9.0.3
-      uuid: 8.3.2
+      '@azure/msal-browser': 3.30.0
+      react: 19.2.4
 
   '@azure/search-documents@12.2.0':
     dependencies:
@@ -6369,8 +6265,6 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.5.0(@opentelemetry/api@1.9.0)
-
-  '@panva/hkdf@1.2.1': {}
 
   '@pdf-lib/standard-fonts@1.0.0':
     dependencies:
@@ -9141,8 +9035,6 @@ snapshots:
 
   jiti@2.6.1: {}
 
-  jose@6.1.3: {}
-
   js-md4@0.3.2: {}
 
   js-tokens@4.0.0: {}
@@ -9445,12 +9337,6 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-auth@5.0.0-beta.30(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4):
-    dependencies:
-      '@auth/core': 0.41.0
-      next: 16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react: 19.2.4
-
   next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       '@next/env': 16.1.6
@@ -9492,8 +9378,6 @@ snapshots:
   npm-run-path@4.0.1:
     dependencies:
       path-key: 3.1.1
-
-  oauth4webapi@3.8.3: {}
 
   object-assign@4.1.1: {}
 
@@ -9721,12 +9605,6 @@ snapshots:
   postgres-interval@1.2.0:
     dependencies:
       xtend: 4.0.2
-
-  preact-render-to-string@6.5.11(preact@10.24.3):
-    dependencies:
-      preact: 10.24.3
-
-  preact@10.24.3: {}
 
   prelude-ls@1.2.1: {}
 
