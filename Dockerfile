@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json pnpm-lock.yaml* ./
 
-# Install pnpm and dependencies (BuildKit cache mount not available in ACR builds)
-RUN npm install -g pnpm && \
+# Install pnpm and dependencies (lockfileVersion 6 requires pnpm v8)
+RUN npm install -g pnpm@8.15.9 && \
     pnpm install --frozen-lockfile
 
 # Stage 2: Builder
