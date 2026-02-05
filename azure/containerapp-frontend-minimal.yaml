@@ -1,0 +1,66 @@
+# Azure Container Apps - Frontend Configuration (Minimal for troubleshooting)
+properties:
+  managedEnvironmentId: /subscriptions/f9164e8d-d74d-43ea-98d4-b0466b3ef8b8/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.App/managedEnvironments/cae-greenchainz-env
+  
+  configuration:
+    activeRevisionsMode: Single
+    
+    ingress:
+      external: true
+      targetPort: 3000
+      transport: http
+      allowInsecure: false
+      traffic:
+        - latestRevision: true
+          weight: 100
+    
+    registries:
+      - server: acrgreenchainzprod916.azurecr.io
+        identity: system
+
+  template:
+    containers:
+      - name: greenchainz-frontend
+        image: acrgreenchainzprod916.azurecr.io/greenchainz-frontend:02aa0704ac95db8b2385f793c549d6c6f65fdad3
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+
+        env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "3000"
+        
+        # Health Probes (use root path for Next.js)
+        probes:
+          - type: startup
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          
+          - type: liveness
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          
+          - type: readiness
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+    scale:
+      minReplicas: 1
+      maxReplicas: 5
+
+  identity:
+    type: SystemAssigned

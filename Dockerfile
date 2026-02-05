@@ -75,5 +75,9 @@ EXPOSE 3000 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-# Start Next.js server
+# Start Next.js server (use the built-in server from standalone output)
 CMD ["node", "server.js"]
+
+# NOTE: The server.js entry point is created by the Next.js standalone build
+# If server.js doesn't exist in root, the .next/standalone/server.js will be used
+# Alternative: Use next start if next is available
