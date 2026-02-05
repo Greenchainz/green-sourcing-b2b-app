@@ -53,8 +53,8 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Copy built application from builder (Next.js standalone output)
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/* ./
+# Copy built application from builder (Next.js standalone output always creates package-name subdir)
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/green-sourcing-b2b-app /app
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Switch to non-root user
@@ -74,5 +74,5 @@ EXPOSE 3000 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/sbin/dumb-init", "--"]
 
-# Start Next.js server (from subdir created by standalone output)
-CMD ["node", "green-sourcing-b2b-app/server.js"]
+# Start Next.js server
+CMD ["node", "server.js"]
