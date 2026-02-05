@@ -53,13 +53,12 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Copy standalone Next.js production build from builder
-# .next/standalone contains server.js and all needed libraries
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone /app
-# Copy static files - required for Next.js to serve /_next/static URLs  
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static /app/.next/static
-# Copy public assets
+# Copy full Next.js production build (NOT standalone)
+# This works reliably - standalone was causing static file issues
+COPY --from=builder --chown=nextjs:nodejs /app/.next /app/.next
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules /app/node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/public /app/public
+COPY --from=builder --chown=nextjs:nodejs /app/package*.json /app/
 
 # Switch to non-root user
 USER nextjs
@@ -78,5 +77,5 @@ EXPOSE 3000 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-# Start Next.js standalone server
-CMD ["node", "server.js"]
+# Start Next.js production server
+CMD ["npx", "next", "start"]
