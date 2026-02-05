@@ -253,3 +253,4 @@ describe("Azure Config", () => {
       expect(azureConfig.uploadFileToBlob).toBeDefined();
     });
   });
+});
