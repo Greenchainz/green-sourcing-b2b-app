@@ -61,17 +61,16 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Switch to non-root user
 USER nextjs
 
-# Set environment variables
+# Set environment variables (PORT will be set by container runtime)
 ENV NODE_ENV=production \
-    NODE_PG_FORCE_NATIVE="" \
-    PORT=3000
+    NODE_PG_FORCE_NATIVE=""
 
-# Health check endpoint
+# Health check endpoint (uses PORT env var from runtime)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+    CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Expose port
-EXPOSE 3000
+# Expose ports (both 3000 and 3001 for flexibility)
+EXPOSE 3000 3001
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/sbin/dumb-init", "--"]
