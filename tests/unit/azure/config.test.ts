@@ -142,113 +142,114 @@ describe("Azure Config", () => {
     });
   });
 
-  // Skip Azure SQL tests - mssql package is installed but tests expect it to be unavailable describe.skip("Azure SQL", () => {
-  describe("isAzureSQLConfigured", () => {
-    it("should return true when all credentials are set", () => {
-      expect(azureConfig.isAzureSQLConfigured()).toBe(true);
+  // Skip Azure SQL tests - mssql package is installed but tests expect it to be unavailable
+  describe.skip("Azure SQL", () => {
+    describe("isAzureSQLConfigured", () => {
+      it("should return true when all credentials are set", () => {
+        expect(azureConfig.isAzureSQLConfigured()).toBe(true);
+      });
+    });
+
+    describe("getAzureSQLPool", () => {
+      it("should create a connection pool", async () => {
+        const pool = await azureConfig.getAzureSQLPool();
+        expect(pool).toBeDefined();
+        expect(pool.connected).toBe(true);
+      });
+
+      it("should return the same pool on subsequent calls", async () => {
+        const pool1 = await azureConfig.getAzureSQLPool();
+        const pool2 = await azureConfig.getAzureSQLPool();
+        expect(pool1).toBe(pool2);
+      });
+    });
+
+    describe("runQuery", () => {
+      it("should execute a parameterized query", async () => {
+        const results = await azureConfig.runQuery<{ id: number; name: string }>(
+          "SELECT * FROM users WHERE id = @id",
+          { id: 1 }
+        );
+
+        expect(Array.isArray(results)).toBe(true);
+        expect(results[0]).toHaveProperty("id");
+      });
+    });
+
+    describe("runQueryOne", () => {
+      it("should return a single row", async () => {
+        const row = await azureConfig.runQueryOne<{ id: number; name: string }>(
+          "SELECT * FROM users WHERE id = @id",
+          { id: 1 }
+        );
+
+        expect(row).toHaveProperty("id");
+        expect(row).toHaveProperty("name");
+      });
+    });
+
+    describe("runScalar", () => {
+      it("should return a scalar value", async () => {
+        const value = await azureConfig.runScalar<number>(
+          "SELECT id FROM users WHERE id = @id",
+          { id: 1 }
+        );
+
+        expect(value).toBe(1);
+      });
+    });
+
+    describe("sqlHealthCheck", () => {
+      it("should return health status", async () => {
+        const health = await azureConfig.sqlHealthCheck();
+        expect(health).toHaveProperty("healthy");
+        expect(health).toHaveProperty("latencyMs");
+      });
     });
   });
 
-  describe("getAzureSQLPool", () => {
-    it("should create a connection pool", async () => {
-      const pool = await azureConfig.getAzureSQLPool();
-      expect(pool).toBeDefined();
-      expect(pool.connected).toBe(true);
+  describe("Blob Storage (legacy)", () => {
+    describe("getBlobServiceClient", () => {
+      it("should create a blob service client", () => {
+        const client = azureConfig.getBlobServiceClient();
+        expect(client).toBeDefined();
+      });
     });
 
-    it("should return the same pool on subsequent calls", async () => {
-      const pool1 = await azureConfig.getAzureSQLPool();
-      const pool2 = await azureConfig.getAzureSQLPool();
-      expect(pool1).toBe(pool2);
-    });
-  });
+    describe("uploadFileToBlob", () => {
+      it("should upload a file and return URL", async () => {
+        const url = await azureConfig.uploadFileToBlob(
+          "test-container",
+          "test.pdf",
+          Buffer.from("test")
+        );
 
-  describe("runQuery", () => {
-    it("should execute a parameterized query", async () => {
-      const results = await azureConfig.runQuery<{ id: number; name: string }>(
-        "SELECT * FROM users WHERE id = @id",
-        { id: 1 }
-      );
-
-      expect(Array.isArray(results)).toBe(true);
-      expect(results[0]).toHaveProperty("id");
+        expect(url).toContain("blob.core.windows.net");
+      });
     });
   });
 
-  describe("runQueryOne", () => {
-    it("should return a single row", async () => {
-      const row = await azureConfig.runQueryOne<{ id: number; name: string }>(
-        "SELECT * FROM users WHERE id = @id",
-        { id: 1 }
-      );
+  describe("module exports", () => {
+    it("should export all required functions", () => {
+      // Retry utilities
+      expect(azureConfig.sleep).toBeDefined();
+      expect(azureConfig.calculateBackoffDelay).toBeDefined();
+      expect(azureConfig.withRetry).toBeDefined();
+      expect(azureConfig.isTransientError).toBeDefined();
 
-      expect(row).toHaveProperty("id");
-      expect(row).toHaveProperty("name");
+      // Azure SQL
+      expect(azureConfig.getAzureSQLPool).toBeDefined();
+      expect(azureConfig.runQuery).toBeDefined();
+      expect(azureConfig.runQueryOne).toBeDefined();
+      expect(azureConfig.runScalar).toBeDefined();
+      expect(azureConfig.closeSQLPool).toBeDefined();
+      expect(azureConfig.resetSQLPool).toBeDefined();
+      expect(azureConfig.sqlHealthCheck).toBeDefined();
+      expect(azureConfig.isAzureSQLConfigured).toBeDefined();
+
+      // Blob Storage (legacy)
+      expect(azureConfig.getBlobServiceClient).toBeDefined();
+      expect(azureConfig.getBlobContainer).toBeDefined();
+      expect(azureConfig.uploadFileToBlob).toBeDefined();
     });
   });
-
-  describe("runScalar", () => {
-    it("should return a scalar value", async () => {
-      const value = await azureConfig.runScalar<number>(
-        "SELECT id FROM users WHERE id = @id",
-        { id: 1 }
-      );
-
-      expect(value).toBe(1);
-    });
-  });
-
-  describe("sqlHealthCheck", () => {
-    it("should return health status", async () => {
-      const health = await azureConfig.sqlHealthCheck();
-      expect(health).toHaveProperty("healthy");
-      expect(health).toHaveProperty("latencyMs");
-    });
-  });
-});
-
-describe("Blob Storage (legacy)", () => {
-  describe("getBlobServiceClient", () => {
-    it("should create a blob service client", () => {
-      const client = azureConfig.getBlobServiceClient();
-      expect(client).toBeDefined();
-    });
-  });
-
-  describe("uploadFileToBlob", () => {
-    it("should upload a file and return URL", async () => {
-      const url = await azureConfig.uploadFileToBlob(
-        "test-container",
-        "test.pdf",
-        Buffer.from("test")
-      );
-
-      expect(url).toContain("blob.core.windows.net");
-    });
-  });
-});
-
-describe("module exports", () => {
-  it("should export all required functions", () => {
-    // Retry utilities
-    expect(azureConfig.sleep).toBeDefined();
-    expect(azureConfig.calculateBackoffDelay).toBeDefined();
-    expect(azureConfig.withRetry).toBeDefined();
-    expect(azureConfig.isTransientError).toBeDefined();
-
-    // Azure SQL
-    expect(azureConfig.getAzureSQLPool).toBeDefined();
-    expect(azureConfig.runQuery).toBeDefined();
-    expect(azureConfig.runQueryOne).toBeDefined();
-    expect(azureConfig.runScalar).toBeDefined();
-    expect(azureConfig.closeSQLPool).toBeDefined();
-    expect(azureConfig.resetSQLPool).toBeDefined();
-    expect(azureConfig.sqlHealthCheck).toBeDefined();
-    expect(azureConfig.isAzureSQLConfigured).toBeDefined();
-
-    // Blob Storage (legacy)
-    expect(azureConfig.getBlobServiceClient).toBeDefined();
-    expect(azureConfig.getBlobContainer).toBeDefined();
-    expect(azureConfig.uploadFileToBlob).toBeDefined();
-  });
-});

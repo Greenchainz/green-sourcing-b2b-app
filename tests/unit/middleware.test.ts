@@ -141,9 +141,9 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       expect(redirectUrl).toContain('/dashboard/buyer');
     });
   });
+
   // Skip case normalization tests - middleware doesn't implement role-based redirects yet
-  describe.skip
-  describe('Case Normalization', () => {
+  describe.skip('Case Normalization', () => {
     it('should handle uppercase SUPPLIER role', () => {
       const token = generateToken({
         userId: 'user-123',
