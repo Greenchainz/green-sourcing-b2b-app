@@ -220,66 +220,66 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
     });
   });
 
-describe('Existing Protected Paths', () => {
-  it('should allow access to /architect with valid token', async () => {
-    const token = await generateToken({
-      userId: 'architect-123',
-      email: 'architect@test.com',
-      role: 'architect',
+  describe('Existing Protected Paths', () => {
+    it('should allow access to /architect with valid token', async () => {
+      const token = await generateToken({
+        userId: 'architect-123',
+        email: 'architect@test.com',
+        role: 'architect',
+      });
+
+      const request = createRequest('http://localhost:3000/architects', token);
+      const response = middleware(request);
+
+      // Should not redirect - allow access
+      const redirectUrl = getRedirectUrl(response);
+      expect(redirectUrl).toBeNull();
+    });
+  });
+
+  describe('Unauthenticated Dashboard Access', () => {
+    it('should redirect to /login for /dashboard/supplier without token', () => {
+      const request = createRequest('http://localhost:3000/dashboard/supplier');
+      const response = middleware(request);
+
+      const redirectUrl = getRedirectUrl(response);
+      expect(redirectUrl).toContain('/login');
     });
 
-    const request = createRequest('http://localhost:3000/architects', token);
-    const response = middleware(request);
+    it('should redirect to /login for /dashboard/buyer without token', () => {
+      const request = createRequest('http://localhost:3000/dashboard/buyer');
+      const response = middleware(request);
 
-    // Should not redirect - allow access
-    const redirectUrl = getRedirectUrl(response);
-    expect(redirectUrl).toBeNull();
-  });
-});
+      const redirectUrl = getRedirectUrl(response);
+      expect(redirectUrl).toContain('/login');
+    });
 
-describe('Unauthenticated Dashboard Access', () => {
-  it('should redirect to /login for /dashboard/supplier without token', () => {
-    const request = createRequest('http://localhost:3000/dashboard/supplier');
-    const response = middleware(request);
+    it('should redirect to /login for nested dashboard routes without token', () => {
+      const request = createRequest('http://localhost:3000/dashboard/buyer/orders');
+      const response = middleware(request);
 
-    const redirectUrl = getRedirectUrl(response);
-    expect(redirectUrl).toContain('/login');
-  });
-
-  it('should redirect to /login for /dashboard/buyer without token', () => {
-    const request = createRequest('http://localhost:3000/dashboard/buyer');
-    const response = middleware(request);
-
-    const redirectUrl = getRedirectUrl(response);
-    expect(redirectUrl).toContain('/login');
+      const redirectUrl = getRedirectUrl(response);
+      expect(redirectUrl).toContain('/login');
+    });
   });
 
-  it('should redirect to /login for nested dashboard routes without token', () => {
-    const request = createRequest('http://localhost:3000/dashboard/buyer/orders');
-    const response = middleware(request);
+  describe('Public Routes', () => {
+    it('should allow access to /login without token', () => {
+      const request = createRequest('http://localhost:3000/login');
+      const response = middleware(request);
 
-    const redirectUrl = getRedirectUrl(response);
-    expect(redirectUrl).toContain('/login');
+      // Should not redirect - allow access
+      const redirectUrl = getRedirectUrl(response);
+      expect(redirectUrl).toBeNull();
+    });
+
+    it('should allow access to root / without token', () => {
+      const request = createRequest('http://localhost:3000/');
+      const response = middleware(request);
+
+      // Should not redirect - allow access
+      const redirectUrl = getRedirectUrl(response);
+      expect(redirectUrl).toBeNull();
+    });
   });
-});
-
-describe('Public Routes', () => {
-  it('should allow access to /login without token', () => {
-    const request = createRequest('http://localhost:3000/login');
-    const response = middleware(request);
-
-    // Should not redirect - allow access
-    const redirectUrl = getRedirectUrl(response);
-    expect(redirectUrl).toBeNull();
-  });
-
-  it('should allow access to root / without token', () => {
-    const request = createRequest('http://localhost:3000/');
-    const response = middleware(request);
-
-    // Should not redirect - allow access
-    const redirectUrl = getRedirectUrl(response);
-    expect(redirectUrl).toBeNull();
-  });
-});
 });
