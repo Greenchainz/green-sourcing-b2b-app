@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Use full output instead of standalone for better file serving
+  // output: 'standalone',
   typescript: {
     ignoreBuildErrors: true,
   },
