@@ -53,15 +53,13 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Copy built application from builder (standard Next.js output)
-# Copy entire .next directory with all files and caches
-COPY --from=builder --chown=nextjs:nodejs /app/.next /app/.next
-# Copy node_modules since we're not using standalone
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules /app/node_modules
+# Copy standalone Next.js production build from builder
+# .next/standalone contains server.js and all needed libraries
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone /app
+# Copy static files - required for Next.js to serve /_next/static URLs  
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static /app/.next/static
 # Copy public assets
 COPY --from=builder --chown=nextjs:nodejs /app/public /app/public
-# Copy package files
-COPY --chown=nextjs:nodejs package*.json /app/
 
 # Switch to non-root user
 USER nextjs
@@ -80,5 +78,5 @@ EXPOSE 3000 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-# Start Next.js using next start (standard mode)
-CMD ["npm", "start"]
+# Start Next.js standalone server
+CMD ["node", "server.js"]
