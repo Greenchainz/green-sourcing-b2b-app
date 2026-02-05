@@ -1,0 +1,14 @@
+"redirectUris": [
+    "https://greenchainz.com/api/auth/callback/microsoft-entra-id",
+    "http://localhost:3000/api/auth/callback/microsoft-entra-id"
+],
+"redirectUriSettings": [
+    {
+        "uri": "https://greenchainz.com/api/auth/callback/microsoft-entra-id",
+        "index": null
+    },
+    {
+        "uri": "http://localhost:3000/api/auth/callback/microsoft-entra-id",
+        "index": null
+    }
+]
