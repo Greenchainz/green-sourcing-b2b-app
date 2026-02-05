@@ -36,7 +36,7 @@ describe('PKCE Token Exchange', () => {
       expect(requestBody.code).toBeDefined();
       expect(requestBody.redirectUri).toBeDefined();
       expect(requestBody.codeVerifier).toBeDefined();
-      expect(requestBody.codeVerifier.length).toBeGreaterThan(43); // PKCE verifiers are at least 43 chars
+      expect(requestBody.codeVerifier.length).toBeGreaterThanOrEqual(43); // PKCE verifiers are at least 43 chars
     });
 
     it('should build correct token exchange parameters with PKCE', () => {
@@ -154,7 +154,7 @@ describe('PKCE Token Exchange', () => {
       // PKCE code_verifier must be 43-128 characters long
       // and use only A-Z, a-z, 0-9, and the punctuation characters -._~ (hyphen, period, underscore, tilde)
       const validVerifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
-      
+
       expect(validVerifier.length).toBeGreaterThanOrEqual(43);
       expect(validVerifier.length).toBeLessThanOrEqual(128);
       expect(/^[A-Za-z0-9\-._~]+$/.test(validVerifier)).toBe(true);
@@ -172,7 +172,7 @@ describe('PKCE Token Exchange', () => {
         const isValidLength = verifier.length >= 43 && verifier.length <= 128;
         const isValidFormat = /^[A-Za-z0-9\-._~]+$/.test(verifier);
         const isValid = isValidLength && isValidFormat;
-        
+
         expect(isValid).toBe(false);
       });
     });
@@ -188,7 +188,7 @@ describe('PKCE Token Exchange', () => {
 
       const hasCode = 'code' in requestBody;
       expect(hasCode).toBe(false);
-      
+
       // In the actual route, this would return a 400 error with message:
       // "Authorization code is required"
     });
@@ -202,7 +202,7 @@ describe('PKCE Token Exchange', () => {
 
       const hasCodeVerifier = 'codeVerifier' in requestBody;
       expect(hasCodeVerifier).toBe(false);
-      
+
       // In the actual route, this would return a 400 error with message:
       // "PKCE code_verifier is required"
     });
