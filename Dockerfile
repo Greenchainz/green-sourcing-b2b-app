@@ -42,6 +42,12 @@ ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
 # Build Next.js app
 RUN pnpm run build
 
+# Debug: Show what standalone output creates
+RUN echo "=== Contents of .next/standalone ===" && \
+    ls -lah .next/standalone/ && \
+    echo "=== Checking for subdirectories ===" && \
+    find .next/standalone/ -maxdepth 2 -type f -name "server.js"
+
 # Stage 3: Runtime (Azure App Service optimized)
 FROM node:20-alpine AS runtime
 WORKDIR /app
@@ -53,8 +59,9 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Copy built application from builder (Next.js standalone output always creates package-name subdir)
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/green-sourcing-b2b-app /app
+# Copy built application from builder (Next.js standalone output)
+# Use wildcard to handle potential subdirectory created by standalone mode
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/* /app/
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Switch to non-root user
