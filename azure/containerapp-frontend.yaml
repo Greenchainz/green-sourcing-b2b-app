@@ -7,19 +7,16 @@ properties:
   configuration:
     activeRevisionsMode: Single
     secrets:
-      - name: next-public-intercom-app-id
-        # Use Key Vault secret name in lowercase with dashes
-        # Ensure the system-assigned identity has 'Key Vault Secrets User' on this vault
-        keyVaultUri: https://Greenchainz-vault-2026.vault.azure.net/secrets/next-public-intercom-app-id
-      # Backend + auth secrets needed by Next.js API routes
-      - name: database-url
-        keyVaultUri: https://Greenchainz-vault-2026.vault.azure.net/secrets/Database-URL
-      - name: azure-client-id
-        keyVaultUri: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientId
-      - name: azure-client-secret
-        keyVaultUri: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientSecret
-      - name: azure-tenant-id
-        keyVaultUri: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-TenantId
+      # Azure AD secrets (match names in greenchainz-vault)
+      - name: azure-ad-client-id
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-client-id
+        identity: system
+      - name: azure-ad-client-secret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-client-secret
+        identity: system
+      - name: azure-ad-tenant-id
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-tenant-id
+        identity: system
     ingress:
       external: true
       targetPort: 3000
@@ -46,15 +43,13 @@ properties:
             value: production
           - name: PORT
             value: "3000"
-          # Server-side secrets for Next.js API routes (Azure auth + database)
-          - name: DATABASE_URL
-            secretRef: database-url
+          # Server-side secrets for Next.js API routes (Azure auth)
           - name: AZURE_CLIENT_ID
-            secretRef: azure-client-id
+            secretRef: azure-ad-client-id
           - name: AZURE_CLIENT_SECRET
-            secretRef: azure-client-secret
+            secretRef: azure-ad-client-secret
           - name: AZURE_TENANT_ID
-            secretRef: azure-tenant-id
+            secretRef: azure-ad-tenant-id
           # Public runtime config (also baked in at build time via Docker build args)
           - name: NEXT_PUBLIC_BACKEND_URL
             value: https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
@@ -62,8 +57,6 @@ properties:
             value: greenchainz2025.onmicrosoft.com
           - name: NEXT_PUBLIC_AZURE_CLIENT_ID
             value: "479e2a01-70ab-4df9-baa4-560d317c3423"
-          - name: NEXT_PUBLIC_INTERCOM_APP_ID
-            secretRef: next-public-intercom-app-id
         
         # ─────────────────────────────────────────────────────────────
         # Health Probes (use root path for Next.js)
