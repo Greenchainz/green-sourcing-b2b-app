@@ -1,23 +1,23 @@
-"use client";
-
-import { MsalProvider } from "@azure/msal-react";
-import { PublicClientApplication } from "@azure/msal-browser";
-import { msalConfig } from "@/lib/msalConfig";
+import type { Metadata } from "next";
+import { AppProviders } from "./providers";
 import "./globals.css";
 
-const msalInstance = new PublicClientApplication(msalConfig);
+export const metadata: Metadata = {
+  title: "GreenChainz - Verified Sustainable Sourcing",
+  description: "The global trust layer for sustainable commerce",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.Node;
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
       <body>
-        <MsalProvider instance={msalInstance}>
+        <AppProviders>
           {children}
-        </MsalProvider>
+        </AppProviders>
       </body>
     </html>
   );
