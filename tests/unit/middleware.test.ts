@@ -174,7 +174,7 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
   });
 
   describe('Allowed Access', () => {
-    async () => {
+    it('should allow supplier to access /dashboard/supplier routes', async () => {
       const token = await generateToken({
         userId: 'supplier-123',
         email: 'supplier@test.com',
@@ -189,36 +189,36 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       expect(redirectUrl).toBeNull();
     });
 
-  it('should allow buyer to access /dashboard/buyer routes', async () => {
-    const token = await generateToken({
-      userId: 'buyer-456',
-      email: 'buyer@test.com',
-      role: 'buyer',
+    it('should allow buyer to access /dashboard/buyer routes', async () => {
+      const token = await generateToken({
+        userId: 'buyer-456',
+        email: 'buyer@test.com',
+        role: 'buyer',
+      });
+
+      const request = createRequest('http://localhost:3000/dashboard/buyer', token);
+      const response = middleware(request);
+
+      // Should not redirect - allow access
+      const redirectUrl = getRedirectUrl(response);
+      expect(redirectUrl).toBeNull();
     });
 
-    const request = createRequest('http://localhost:3000/dashboard/buyer', token);
-    const response = middleware(request);
+    it('should allow supplier to access nested supplier routes', async () => {
+      const token = await generateToken({
+        userId: 'supplier-789',
+        email: 'supplier@test.com',
+        role: 'supplier',
+      });
 
-    // Should not redirect - allow access
-    const redirectUrl = getRedirectUrl(response);
-    expect(redirectUrl).toBeNull();
-  });
+      const request = createRequest('http://localhost:3000/dashboard/supplier/products', token);
+      const response = middleware(request);
 
-  it('should allow supplier to access nested supplier routes', async () => {
-    const token = await generateToken({
-      userId: 'supplier-789',
-      email: 'supplier@test.com',
-      role: 'supplier',
+      // Should not redirect - allow access
+      const redirectUrl = getRedirectUrl(response);
+      expect(redirectUrl).toBeNull();
     });
-
-    const request = createRequest('http://localhost:3000/dashboard/supplier/products', token);
-    const response = middleware(request);
-
-    // Should not redirect - allow access
-    const redirectUrl = getRedirectUrl(response);
-    expect(redirectUrl).toBeNull();
   });
-});
 
 describe('Existing Protected Paths', () => {
   it('should allow access to /architect with valid token', async () => {
