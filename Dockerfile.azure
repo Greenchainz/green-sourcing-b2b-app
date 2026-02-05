@@ -1,59 +1,74 @@
 # Multi-stage build for Next.js on Azure
+
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
+
+# Copy package files
 COPY package*.json pnpm-lock.yaml* ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+
+# Install pnpm and dependencies with cache mount
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    npm install -g pnpm && \
+    pnpm install --frozen-lockfile
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy application files
 COPY . .
 
 # Accept build-time environment variables for Next.js
 ARG NEXT_PUBLIC_AZURE_CLIENT_ID
 ARG NEXT_PUBLIC_AZURE_TENANT_ID
-ARG NEXT_PUBLIC_SITE_URL
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_INTERCOM_APP_ID
+ARG NEXT_PUBLIC_SITE_URL
 
 # Make them available during build
-ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID
-ENV NEXT_PUBLIC_AZURE_TENANT_ID=$NEXT_PUBLIC_AZURE_TENANT_ID
-ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
-ENV NEXT_PUBLIC_INTERCOM_APP_ID=$NEXT_PUBLIC_INTERCOM_APP_ID
+ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
+    NEXT_PUBLIC_AZURE_TENANT_ID=$NEXT_PUBLIC_AZURE_TENANT_ID \
+    NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL \
+    NEXT_PUBLIC_INTERCOM_APP_ID=$NEXT_PUBLIC_INTERCOM_APP_ID \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NODE_ENV=production
 
 # Build Next.js app
-RUN npm run build
+RUN pnpm run build
 
 # Stage 3: Runtime (Azure App Service optimized)
-FROM node:20-alpine
+FROM node:20-alpine AS runtime
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
+# Install runtime dependencies
 RUN apk add --no-cache dumb-init
 
-# Copy from builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
 
-# Set environment
-ENV NODE_ENV=production
-ENV PORT=3000
-# Force pg to use pure JavaScript (no native bindings for Alpine)
-ENV NODE_PG_FORCE_NATIVE=""
+# Copy built application from builder
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Azure Health Check endpoint
+# Switch to non-root user
+USER nextjs
+
+# Set environment variables
+ENV NODE_ENV=production \
+    NODE_PG_FORCE_NATIVE="" \
+    PORT=3000
+
+# Health check endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Expose port for Azure App Service
+# Expose port
 EXPOSE 3000
 
 # Use dumb-init to handle signals properly
