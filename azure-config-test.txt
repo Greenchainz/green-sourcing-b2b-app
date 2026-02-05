@@ -1,0 +1,210 @@
+
+> green-sourcing-b2b-app@0.1.0 test
+> jest tests/unit/azure/config.test.ts
+
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+  console.warn
+    ΓÜá∩╕Å Retry attempt 1/3 after 10.390412723832519ms: ECONNRESET
+
+    [0m [90m 113 |[39m
+     [90m 114 |[39m             [36mconst[39m delay [33m=[39m calculateBackoffDelay(attempt[33m,[39m opts)[33m;[39m
+    [31m[1m>[22m[39m[90m 115 |[39m             console[33m.[39mwarn(
+     [90m     |[39m                     [31m[1m^[22m[39m
+     [90m 116 |[39m                 [32m`ΓÜá∩╕Å Retry attempt ${attempt}/${opts.maxRetries} after ${delay}ms:`[39m[33m,[39m
+     [90m 117 |[39m                 lastError[33m.[39mmessage
+     [90m 118 |[39m             )[33m;[39m[0m
+
+      at Object.withRetry (lib/azure/config.ts:115:21)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:107:24)
+
+  console.warn
+    ΓÜá∩╕Å Retry attempt 1/2 after 9.432076877558584ms: ECONNRESET
+
+    [0m [90m 113 |[39m
+     [90m 114 |[39m             [36mconst[39m delay [33m=[39m calculateBackoffDelay(attempt[33m,[39m opts)[33m;[39m
+    [31m[1m>[22m[39m[90m 115 |[39m             console[33m.[39mwarn(
+     [90m     |[39m                     [31m[1m^[22m[39m
+     [90m 116 |[39m                 [32m`ΓÜá∩╕Å Retry attempt ${attempt}/${opts.maxRetries} after ${delay}ms:`[39m[33m,[39m
+     [90m 117 |[39m                 lastError[33m.[39mmessage
+     [90m 118 |[39m             )[33m;[39m[0m
+
+      at Object.withRetry (lib/azure/config.ts:115:21)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:119:9)
+
+FAIL tests/unit/azure/config.test.ts
+  Azure Config
+    retry utilities
+      sleep
+        ΓêÜ should delay execution (107 ms)
+      calculateBackoffDelay
+        ΓêÜ should calculate exponential backoff delay (1 ms)
+        ΓêÜ should respect maxDelayMs (1 ms)
+      withRetry
+        ΓêÜ should return result on success (1 ms)
+        ΓêÜ should retry on transient errors (32 ms)
+        ΓêÜ should throw after max retries (34 ms)
+      isTransientError
+        ΓêÜ should identify transient errors (1 ms)
+        ΓêÜ should not identify non-transient errors
+    isAzureSQLConfigured
+      ΓêÜ should return true when all credentials are set
+    getAzureSQLPool
+      ├ù should create a connection pool
+      ├ù should return the same pool on subsequent calls
+    runQuery
+      ├ù should execute a parameterized query
+    runQueryOne
+      ├ù should return a single row
+    runScalar
+      ├ù should return a scalar value (1 ms)
+    sqlHealthCheck
+      ΓêÜ should return health status (1 ms)
+  Blob Storage (legacy)
+    getBlobServiceClient
+      ├ù should create a blob service client
+    uploadFileToBlob
+      ├ù should upload a file and return URL
+  module exports
+    ├ù should export all required functions (1 ms)
+
+  ΓùÅ Azure Config ΓÇ║ getAzureSQLPool ΓÇ║ should create a connection pool
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at Object.getAzureSQLPool (lib/azure/config.ts:240:11)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:154:38)
+
+  ΓùÅ Azure Config ΓÇ║ getAzureSQLPool ΓÇ║ should return the same pool on subsequent calls
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at Object.getAzureSQLPool (lib/azure/config.ts:240:11)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:160:39)
+
+  ΓùÅ Azure Config ΓÇ║ runQuery ΓÇ║ should execute a parameterized query
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at Object.runQuery (lib/azure/config.ts:299:12)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:168:41)
+
+  ΓùÅ Azure Config ΓÇ║ runQueryOne ΓÇ║ should return a single row
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at runQuery (lib/azure/config.ts:299:12)
+      at Object.runQueryOne (lib/azure/config.ts:332:27)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:180:37)
+
+  ΓùÅ Azure Config ΓÇ║ runScalar ΓÇ║ should return a scalar value
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at runQuery (lib/azure/config.ts:299:12)
+      at runQueryOne (lib/azure/config.ts:332:27)
+      at Object.runScalar (lib/azure/config.ts:343:26)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:192:39)
+
+  ΓùÅ Blob Storage (legacy) ΓÇ║ getBlobServiceClient ΓÇ║ should create a blob service client
+
+    ReferenceError: azureConfig is not defined
+
+      211 |   describe("getBlobServiceClient", () => {
+      212 |     it("should create a blob service client", () => {
+    > 213 |       const client = azureConfig.getBlobServiceClient();
+          |                      ^
+      214 |       expect(client).toBeDefined();
+      215 |     });
+      216 |   });
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:213:22)
+
+  ΓùÅ Blob Storage (legacy) ΓÇ║ uploadFileToBlob ΓÇ║ should upload a file and return URL
+
+    ReferenceError: azureConfig is not defined
+
+      218 |   describe("uploadFileToBlob", () => {
+      219 |     it("should upload a file and return URL", async () => {
+    > 220 |       const url = await azureConfig.uploadFileToBlob(
+          |                   ^
+      221 |         "test-container",
+      222 |         "test.pdf",
+      223 |         Buffer.from("test")
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:220:19)
+
+  ΓùÅ module exports ΓÇ║ should export all required functions
+
+    ReferenceError: azureConfig is not defined
+
+      232 |   it("should export all required functions", () => {
+      233 |     // Retry utilities
+    > 234 |     expect(azureConfig.sleep).toBeDefined();
+          |            ^
+      235 |     expect(azureConfig.calculateBackoffDelay).toBeDefined();
+      236 |     expect(azureConfig.withRetry).toBeDefined();
+      237 |     expect(azureConfig.isTransientError).toBeDefined();
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:234:12)
+
+Test Suites: 1 failed, 1 total
+Tests:       8 failed, 10 passed, 18 total
+Snapshots:   0 total
+Time:        0.638 s, estimated 1 s
+Ran all test suites matching tests/unit/azure/config.test.ts.
