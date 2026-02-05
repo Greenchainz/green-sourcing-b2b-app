@@ -36,6 +36,7 @@ export default function LoginClient() {
   const handleOAuthLogin = (provider: string) => {
     setError("");
     setLoading(true);
+    console.log("OAuth button clicked:", provider);
     signIn(provider, { callbackUrl: "/dashboard" });
   };
 

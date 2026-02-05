@@ -56,6 +56,7 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy built application from builder (Next.js standalone output)
 # Use ./. to copy all files and directories including hidden ones and node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/. /app/
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Switch to non-root user
