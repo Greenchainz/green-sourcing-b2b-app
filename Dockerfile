@@ -42,12 +42,6 @@ ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
 # Build Next.js app
 RUN pnpm run build
 
-# Debug: Show what standalone output creates
-RUN echo "=== Contents of .next/standalone ===" && \
-    ls -lah .next/standalone/ && \
-    echo "=== Checking for subdirectories ===" && \
-    find .next/standalone/ -maxdepth 2 -type f -name "server.js"
-
 # Stage 3: Runtime (Azure App Service optimized)
 FROM node:20-alpine AS runtime
 WORKDIR /app
@@ -79,7 +73,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 3000 3001
 
 # Use dumb-init to handle signals properly
-ENTRYPOINT ["/sbin/dumb-init", "--"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 # Start Next.js server
 CMD ["node", "server.js"]
