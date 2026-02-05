@@ -31,7 +31,7 @@ properties:
     
     registries:
       - server: acrgreenchainzprod916.azurecr.io
-        identity: system
+        identity: /subscriptions/f9164e8d-d74d-43ea-98d4-b0466b3ef8b8/resourcegroups/rg-greenchainz-prod-container/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cae-greenchainz-envacrgreenchainzprod916rg-greenchainz-prod-containerOidc
 
   template:
     containers:
@@ -103,4 +103,6 @@ properties:
               concurrentRequests: "100"
 
   identity:
-    type: SystemAssigned
+    type: SystemAssigned, UserAssigned
+    userAssignedIdentities:
+      /subscriptions/f9164e8d-d74d-43ea-98d4-b0466b3ef8b8/resourcegroups/rg-greenchainz-prod-container/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cae-greenchainz-envacrgreenchainzprod916rg-greenchainz-prod-containerOidc: {}
