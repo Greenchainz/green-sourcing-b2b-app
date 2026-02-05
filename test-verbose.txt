@@ -1,0 +1,1333 @@
+
+> green-sourcing-b2b-app@0.1.0 test
+> jest --verbose
+
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at Object.getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at Object.getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+  console.log
+    Γ£à Uploaded blob: test-container/test-file.pdf (12 bytes)
+
+      at Object.uploadBlob (lib/azure/blob-storage.ts:202:13)
+
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+  console.log
+    Γ£à Uploaded blob: test-container/document.pdf (4 bytes)
+
+      at Object.uploadBlob (lib/azure/blob-storage.ts:202:13)
+
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+  console.log
+    Γ£à Downloaded blob: test-container/test-file.pdf (12 bytes)
+
+      at Object.downloadBlob (lib/azure/blob-storage.ts:290:13)
+
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+  console.log
+    Γ£à Deleted blob: test-container/test-file.pdf
+
+      at Object.deleteBlob (lib/azure/blob-storage.ts:337:15)
+
+  console.log
+    Γ£à Azure Blob Storage client initialized with connection pooling
+
+      at getBlobServiceClient (lib/azure/blob-storage.ts:127:11)
+
+PASS tests/unit/azure/blob-storage.test.ts
+  Azure Blob Storage Client
+    getBlobServiceClient
+      ΓêÜ should create a blob service client (69 ms)
+      ΓêÜ should return the same client on subsequent calls (5 ms)
+    getContainer
+      ΓêÜ should get or create a container (4 ms)
+    uploadBlob
+      ΓêÜ should upload a buffer to blob storage (13 ms)
+      ΓêÜ should auto-detect content type from extension (5 ms)
+    downloadBlob
+      ΓêÜ should download a blob as buffer (12 ms)
+    blobExists
+      ΓêÜ should check if a blob exists (5 ms)
+    deleteBlob
+      ΓêÜ should delete a blob (5 ms)
+    listBlobs
+      ΓêÜ should list blobs in a container (4 ms)
+    module exports
+      ΓêÜ should export all required functions (3 ms)
+
+PASS tests/unit/scoring/viability-scoring.test.ts
+  Viability Scoring Algorithm
+    ΓêÜ calculateViabilityScore should return valid score for Architect persona (9 ms)
+    ΓêÜ calculateViabilityScore should return component scores (7 ms)
+    ΓêÜ calculateViabilityScore should generate warnings for low scores (1 ms)
+    ΓêÜ calculateViabilityScore should generate recommendations (2 ms)
+    ΓêÜ calculateViabilityScoresForAllPersonas should return scores for all personas (5 ms)
+    ΓêÜ scores should vary by persona weights (1 ms)
+    ΓêÜ calculateViabilityScore should handle custom weights (1 ms)
+    ΓêÜ environmental score should be higher with EPD and Red List Free (1 ms)
+    ΓêÜ labor score should be higher with low installation hours (5 ms)
+    ΓêÜ standards score should be 0 with no ASTM standards (1 ms)
+    ΓêÜ delivery score should match OTIF score (1 ms)
+
+  console.log
+    Γ£à Azure OpenAI client initialized (deployment: gpt-4o)
+
+      at Object.getOpenAIClient (lib/azure/openai.ts:159:11)
+
+  console.log
+    Γ£à Azure OpenAI client initialized (deployment: gpt-4o)
+
+      at Object.getOpenAIClient (lib/azure/openai.ts:159:11)
+
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+  console.log
+    Γ£à Azure OpenAI client initialized (deployment: gpt-4o)
+
+      at getOpenAIClient (lib/azure/openai.ts:159:11)
+
+  console.log
+    Γ£à Azure OpenAI client initialized (deployment: gpt-4o)
+
+      at getOpenAIClient (lib/azure/openai.ts:159:11)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at Object.getPostgresPool (lib/azure/postgres.ts:166:11)
+
+  console.log
+    Γ£à Azure OpenAI client initialized (deployment: gpt-4o)
+
+      at getOpenAIClient (lib/azure/openai.ts:159:11)
+
+  console.log
+    Γ£à Azure OpenAI client initialized (deployment: gpt-4o)
+
+      at Object.getOpenAIClient (lib/azure/openai.ts:159:11)
+
+  console.log
+    Γ£à Azure OpenAI client initialized (deployment: gpt-4o)
+
+      at getOpenAIClient (lib/azure/openai.ts:159:11)
+
+PASS tests/unit/auth/diagnostics.test.ts
+  Auth Diagnostics Utilities
+    generateTraceId
+      ΓêÜ should generate unique trace IDs (11 ms)
+      ΓêÜ should include timestamp in trace ID (2 ms)
+    isAuthDebugEnabled
+      ΓêÜ should return true when AUTH_DEBUG is "true" (1 ms)
+      ΓêÜ should return true in development mode (2 ms)
+      ΓêÜ should return false when AUTH_DEBUG is "false" (1 ms)
+      ΓêÜ should return false when AUTH_DEBUG is not set in production (1 ms)
+    redactSensitiveData
+      ΓêÜ should redact token fields (1 ms)
+      ΓêÜ should redact authorization codes (1 ms)
+      ΓêÜ should redact client secrets (1 ms)
+      ΓêÜ should handle nested objects (2 ms)
+      ΓêÜ should handle arrays (2 ms)
+      ΓêÜ should handle null and undefined (2 ms)
+      ΓêÜ should handle primitive values (1 ms)
+      ΓêÜ should show partial token for long strings (2 ms)
+    logAuthEvent
+      ΓêÜ should log error events even when debug is disabled (9 ms)
+      ΓêÜ should not log info events when debug is disabled (2 ms)
+      ΓêÜ should log info events when debug is enabled (2 ms)
+      ΓêÜ should include all context fields in log (2 ms)
+      ΓêÜ should redact sensitive data in metadata (3 ms)
+      ΓêÜ should handle Error objects (25 ms)
+    formatUserError
+      ΓêÜ should format network errors (4 ms)
+      ΓêÜ should format timeout errors (1 ms)
+      ΓêÜ should format invalid/expired errors (2 ms)
+      ΓêÜ should use default message for unknown errors (2 ms)
+      ΓêÜ should handle non-Error objects (2 ms)
+    redactQueryParams
+      ΓêÜ should redact code parameter (3 ms)
+      ΓêÜ should redact token parameters (2 ms)
+      ΓêÜ should handle invalid URLs (1 ms)
+      ΓêÜ should preserve non-sensitive parameters (2 ms)
+    incrementAuthMetric
+      ΓêÜ should log metrics when debug is enabled (13 ms)
+      ΓêÜ should not log metrics when debug is disabled (1 ms)
+      ΓêÜ should handle metrics without reason (1 ms)
+
+  console.log
+    Generating email for recipient type: Architect
+
+      at POST (app/api/agents/email-writer/route.ts:15:13)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at Object.getPostgresPool (lib/azure/postgres.ts:166:11)
+
+PASS tests/unit/azure/openai.test.ts
+  Azure OpenAI Client
+    getOpenAIClient
+      ΓêÜ should create an OpenAI client (78 ms)
+      ΓêÜ should return the same client on subsequent calls (6 ms)
+    isOpenAIConfigured
+      ΓêÜ should return true when credentials are set (2 ms)
+    chat
+      ΓêÜ should execute a chat completion (6 ms)
+      ΓêÜ should include system message when provided (8 ms)
+    simpleChat
+      ΓêÜ should return content string directly (9 ms)
+    auditProductSustainability
+      ΓêÜ should audit a product and return structured data (6 ms)
+    generateEmbedding
+      ΓêÜ should generate embeddings for text (4 ms)
+    module exports
+      ΓêÜ should export all required functions (4 ms)
+
+  console.log
+    Generating email for recipient type: Architect
+
+      at POST (app/api/agents/email-writer/route.ts:15:13)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at getPostgresPool (lib/azure/postgres.ts:166:11)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at getPostgresPool (lib/azure/postgres.ts:166:11)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at Object.getPostgresPool (lib/azure/postgres.ts:166:11)
+
+PASS tests/unit/auth/pkce-token-exchange.test.ts
+  PKCE Token Exchange
+    Backend API Route
+      ΓêÜ should validate presence of code_verifier parameter (12 ms)
+      ΓêÜ should accept valid PKCE parameters (2 ms)
+      ΓêÜ should build correct token exchange parameters with PKCE (1 ms)
+      ΓêÜ should format token parameters as URL-encoded form data (2 ms)
+    Frontend PKCE Flow
+      ΓêÜ should extract code_verifier from sessionStorage (14 ms)
+      ΓêÜ should handle missing code_verifier gracefully (1 ms)
+      ΓêÜ should send both code and code_verifier to backend (2 ms)
+    PKCE Compliance
+      ΓêÜ should generate valid code_verifier format (1 ms)
+      ΓêÜ should reject invalid code_verifier formats (1 ms)
+    Error Handling
+      ΓêÜ should return proper error for missing code
+      ΓêÜ should return proper error for missing code_verifier (1 ms)
+      ΓêÜ should handle Microsoft OAuth errors gracefully (1 ms)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at getPostgresPool (lib/azure/postgres.ts:166:11)
+
+PASS tests/unit/auth/authentication-fixes.test.ts
+  Authentication System Fixes
+    PostgreSQL Configuration
+      ΓêÜ should force pg to use pure JavaScript implementation (3 ms)
+    Credentials Provider
+      ΓêÜ should handle null credentials object (1 ms)
+    Environment Variable Configuration
+      ΓêÜ should use NEXTAUTH_URL for production baseUrl (1 ms)
+      ΓêÜ should map Azure Key Vault secrets to NextAuth v5 variables (1 ms)
+    PostgreSQL Connection Pool
+      ΓêÜ should create connection pool with correct SSL settings (1 ms)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at Object.getPostgresPool (lib/azure/postgres.ts:166:11)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at getPostgresPool (lib/azure/postgres.ts:166:11)
+
+  console.log
+    Γ£à Azure PostgreSQL connection pool initialized
+
+      at getPostgresPool (lib/azure/postgres.ts:166:11)
+
+  console.log
+    ≡ƒ¢í∩╕Å Performing defensibility check for EcoPanel 500 by GreenTech Industries
+
+      at handleDefensibilityCheck (app/api/agents/defensibility/route.ts:121:11)
+
+PASS tests/unit/azure/postgres.test.ts
+  Azure PostgreSQL Client
+    getPostgresPool
+      ΓêÜ should create a connection pool (88 ms)
+      ΓêÜ should return the same pool on subsequent calls (25 ms)
+    isPostgresConfigured
+      ΓêÜ should return true when DATABASE_URL is set (1 ms)
+    query
+      ΓêÜ should execute a query with parameters (16 ms)
+    queryOne
+      ΓêÜ should return a single row (5 ms)
+      ΓêÜ should return null for empty results (4 ms)
+    queryAll
+      ΓêÜ should return all rows (4 ms)
+    queryScalar
+      ΓêÜ should return a scalar value (4 ms)
+    withTransaction
+      ΓêÜ should execute callback within a transaction (6 ms)
+    healthCheck
+      ΓêÜ should return health status (5 ms)
+    closePostgresPool
+      ΓêÜ should close the connection pool (1 ms)
+    module exports
+      ΓêÜ should export all required functions (3 ms)
+
+  console.error
+    [AUTH] {"timestamp":"2026-02-05T05:24:20.411Z","level":"error","message":"Missing required fields","traceId":"auth-1770269060407-e5df0475","provider":"azure","step":"validate-input","statusCode":400,"metadata":{"hasEmail":false,"hasAzureId":true}}
+
+    [0m [90m 105 |[39m     
+     [90m 106 |[39m     [36mconst[39m logMethod [33m=[39m level [33m===[39m [32m'error'[39m [33m?[39m console[33m.[39merror [33m:[39m level [33m===[39m [32m'warn'[39m [33m?[39m console[33m.[39mwarn [33m:[39m console[33m.[39minfo[33m;[39m
+    [31m[1m>[22m[39m[90m 107 |[39m     logMethod([32m'[AUTH]'[39m[33m,[39m [33mJSON[39m[33m.[39mstringify(logData[33m,[39m [36mnull[39m[33m,[39m isDebug [33m?[39m [35m2[39m [33m:[39m [35m0[39m))[33m;[39m
+     [90m     |[39m     [31m[1m^[22m[39m
+     [90m 108 |[39m   }
+     [90m 109 |[39m }
+     [90m 110 |[39m[0m
+
+      at logAuthEvent (lib/auth/diagnostics.ts:107:5)
+      at POST (app/api/auth/azure-callback/route.ts:50:19)
+      at Object.<anonymous> (tests/unit/auth/azure-callback.test.ts:49:24)
+
+  console.log
+    Γ£à Defensibility check complete: Defensible (Score: 100)
+
+      at handleDefensibilityCheck (app/api/agents/defensibility/route.ts:129:11)
+
+  console.error
+    [AUTH] {"timestamp":"2026-02-05T05:24:20.505Z","level":"error","message":"Missing required fields","traceId":"auth-1770269060504-138493d9","provider":"azure","step":"validate-input","statusCode":400,"metadata":{"hasEmail":true,"hasAzureId":false}}
+
+    [0m [90m 105 |[39m     
+     [90m 106 |[39m     [36mconst[39m logMethod [33m=[39m level [33m===[39m [32m'error'[39m [33m?[39m console[33m.[39merror [33m:[39m level [33m===[39m [32m'warn'[39m [33m?[39m console[33m.[39mwarn [33m:[39m console[33m.[39minfo[33m;[39m
+    [31m[1m>[22m[39m[90m 107 |[39m     logMethod([32m'[AUTH]'[39m[33m,[39m [33mJSON[39m[33m.[39mstringify(logData[33m,[39m [36mnull[39m[33m,[39m isDebug [33m?[39m [35m2[39m [33m:[39m [35m0[39m))[33m;[39m
+     [90m     |[39m     [31m[1m^[22m[39m
+     [90m 108 |[39m   }
+     [90m 109 |[39m }
+     [90m 110 |[39m[0m
+
+      at logAuthEvent (lib/auth/diagnostics.ts:107:5)
+      at POST (app/api/auth/azure-callback/route.ts:50:19)
+      at Object.<anonymous> (tests/unit/auth/azure-callback.test.ts:62:24)
+
+  console.error
+    Error generating email: Error: Missing AZURE_OPENAI_ENDPOINT environment variable.
+        at Object.<anonymous> (D:\perplexitydownloads\green-sourcing-b2b-app\tests\unit\api\agents\email-writer\route.test.ts:75:47)
+        at Promise.finally.completed (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1557:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1497:10)
+        at _callCircusTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1007:40)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at _runTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:947:3)
+        at D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:849:7
+        at _runTestsForDescribeBlock (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:862:11)
+        at _runTestsForDescribeBlock (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+        at run (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:761:3)
+        at runAndTransformResultsToJestFormat (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1918:21)
+        at jestAdapter (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\runner.js:101:19)
+        at runTestInternal (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:275:16)
+        at runTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:343:7)
+        at Object.worker (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:497:12)
+
+    [0m [90m 32 |[39m     [36mreturn[39m [33mNextResponse[39m[33m.[39mjson({ email[33m:[39m emailBody })[33m;[39m
+     [90m 33 |[39m   } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 34 |[39m     console[33m.[39merror([32m'Error generating email:'[39m[33m,[39m error)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 35 |[39m     [90m// Determine if it's a configuration error based on the error message from helper[39m
+     [90m 36 |[39m     [36mif[39m (error [36minstanceof[39m [33mError[39m [33m&&[39m error[33m.[39mmessage[33m.[39mincludes([32m'Missing AZURE_OPENAI'[39m)) {
+     [90m 37 |[39m         [36mreturn[39m [33mNextResponse[39m[33m.[39mjson([0m
+
+      at POST (app/api/agents/email-writer/route.ts:34:13)
+      at Object.<anonymous> (tests/unit/api/agents/email-writer/route.test.ts:86:22)
+
+  console.log
+    ΓÜû∩╕Å Comparing products: EcoPanel Original vs CheapPanel Substitute
+
+      at handleProductComparison (app/api/agents/defensibility/route.ts:173:11)
+
+  console.log
+    Γ£à Product comparison complete: Reject
+
+      at handleProductComparison (app/api/agents/defensibility/route.ts:192:11)
+
+  console.log
+    ΓÜû∩╕Å Comparing products: EcoPanel Original vs EcoPanel Equivalent
+
+      at handleProductComparison (app/api/agents/defensibility/route.ts:173:11)
+
+  console.log
+    Γ£à Product comparison complete: Acceptable
+
+      at handleProductComparison (app/api/agents/defensibility/route.ts:192:11)
+
+  console.warn
+    ΓÜá∩╕Å Retry attempt 1/3 after 10.933419466238405ms: ECONNRESET
+
+    [0m [90m 113 |[39m
+     [90m 114 |[39m             [36mconst[39m delay [33m=[39m calculateBackoffDelay(attempt[33m,[39m opts)[33m;[39m
+    [31m[1m>[22m[39m[90m 115 |[39m             console[33m.[39mwarn(
+     [90m     |[39m                     [31m[1m^[22m[39m
+     [90m 116 |[39m                 [32m`ΓÜá∩╕Å Retry attempt ${attempt}/${opts.maxRetries} after ${delay}ms:`[39m[33m,[39m
+     [90m 117 |[39m                 lastError[33m.[39mmessage
+     [90m 118 |[39m             )[33m;[39m[0m
+
+      at Object.withRetry (lib/azure/config.ts:115:21)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:107:24)
+
+PASS tests/unit/api/agents/email-writer/route.test.ts
+  POST /api/agents/email-writer
+    ΓêÜ should generate an email successfully (66 ms)
+    ΓêÜ should return 400 if required fields are missing (2 ms)
+    ΓêÜ should return 500 if credentials are missing (87 ms)
+
+  console.error
+    [AUTH] {"timestamp":"2026-02-05T05:24:20.538Z","level":"error","message":"Database transaction rolled back","traceId":"auth-1770269060537-eba35202","provider":"azure","step":"db-rollback","error":{"name":"Error","message":"Database connection failed"}}
+
+    [0m [90m 105 |[39m     
+     [90m 106 |[39m     [36mconst[39m logMethod [33m=[39m level [33m===[39m [32m'error'[39m [33m?[39m console[33m.[39merror [33m:[39m level [33m===[39m [32m'warn'[39m [33m?[39m console[33m.[39mwarn [33m:[39m console[33m.[39minfo[33m;[39m
+    [31m[1m>[22m[39m[90m 107 |[39m     logMethod([32m'[AUTH]'[39m[33m,[39m [33mJSON[39m[33m.[39mstringify(logData[33m,[39m [36mnull[39m[33m,[39m isDebug [33m?[39m [35m2[39m [33m:[39m [35m0[39m))[33m;[39m
+     [90m     |[39m     [31m[1m^[22m[39m
+     [90m 108 |[39m   }
+     [90m 109 |[39m }
+     [90m 110 |[39m[0m
+
+      at logAuthEvent (lib/auth/diagnostics.ts:107:5)
+      at POST (app/api/auth/azure-callback/route.ts:213:19)
+      at Object.<anonymous> (tests/unit/auth/azure-callback.test.ts:151:24)
+
+PASS tests/unit/api/agents/defensibility/route.test.ts
+  POST /api/agents/defensibility - check action
+    ΓêÜ should perform defensibility check on document content (111 ms)
+    ΓêÜ should return 400 if action is missing (2 ms)
+    ΓêÜ should return 400 if check action is missing required fields (2 ms)
+  POST /api/agents/defensibility - compare action
+    ΓêÜ should compare products and return Reject verdict (11 ms)
+    ΓêÜ should compare equivalent products and return Acceptable verdict (6 ms)
+    ΓêÜ should return 400 if original product is missing (2 ms)
+    ΓêÜ should return 400 if product data is invalid (3 ms)
+  GET /api/agents/defensibility
+    ΓêÜ should return API documentation (4 ms)
+
+  console.error
+    [AUTH] {"timestamp":"2026-02-05T05:24:20.543Z","level":"error","message":"Azure callback exception","traceId":"auth-1770269060537-eba35202","provider":"azure","step":"exception","statusCode":500,"error":{"name":"Error","message":"Database connection failed"}}
+
+    [0m [90m 105 |[39m     
+     [90m 106 |[39m     [36mconst[39m logMethod [33m=[39m level [33m===[39m [32m'error'[39m [33m?[39m console[33m.[39merror [33m:[39m level [33m===[39m [32m'warn'[39m [33m?[39m console[33m.[39mwarn [33m:[39m console[33m.[39minfo[33m;[39m
+    [31m[1m>[22m[39m[90m 107 |[39m     logMethod([32m'[AUTH]'[39m[33m,[39m [33mJSON[39m[33m.[39mstringify(logData[33m,[39m [36mnull[39m[33m,[39m isDebug [33m?[39m [35m2[39m [33m:[39m [35m0[39m))[33m;[39m
+     [90m     |[39m     [31m[1m^[22m[39m
+     [90m 108 |[39m   }
+     [90m 109 |[39m }
+     [90m 110 |[39m[0m
+
+      at logAuthEvent (lib/auth/diagnostics.ts:107:5)
+      at POST (app/api/auth/azure-callback/route.ts:238:17)
+      at Object.<anonymous> (tests/unit/auth/azure-callback.test.ts:151:24)
+
+  console.error
+    Health check failed: Error: Database connection failed
+        at Object.<anonymous> (D:\perplexitydownloads\green-sourcing-b2b-app\tests\unit\api\health.test.ts:111:43)
+        at Promise.finally.completed (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1557:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1497:10)
+        at _callCircusTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1007:40)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at _runTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:947:3)
+        at D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:849:7
+        at _runTestsForDescribeBlock (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:862:11)
+        at _runTestsForDescribeBlock (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+        at run (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:761:3)
+        at runAndTransformResultsToJestFormat (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1918:21)
+        at jestAdapter (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\runner.js:101:19)
+        at runTestInternal (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:275:16)
+        at runTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:343:7)
+        at Object.worker (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:497:12)
+
+    [0m [90m 45 |[39m         )[33m;[39m
+     [90m 46 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 47 |[39m         console[33m.[39merror([32m"Health check failed:"[39m[33m,[39m error)[33m;[39m
+     [90m    |[39m                 [31m[1m^[22m[39m
+     [90m 48 |[39m
+     [90m 49 |[39m         [36mreturn[39m [33mNextResponse[39m[33m.[39mjson(
+     [90m 50 |[39m             {[0m
+
+      at Object.GET (app/api/health/route.ts:47:17)
+      at getHealthResponse (tests/unit/api/health.test.ts:45:22)
+      at Object.<anonymous> (tests/unit/api/health.test.ts:113:32)
+
+FAIL tests/unit/middleware.test.ts
+  Middleware - Role-Based Dashboard Redirects
+    Dashboard Base Route Redirects
+      Γùï skipped should redirect supplier to /dashboard/supplier when accessing /dashboard
+      Γùï skipped should redirect buyer to /dashboard/buyer when accessing /dashboard
+      Γùï skipped should redirect to /login when accessing /dashboard without token
+      Γùï skipped should redirect to /login when accessing /dashboard with invalid token
+    Cross-Dashboard Access Prevention
+      Γùï skipped should redirect supplier to /dashboard/supplier when accessing /dashboard/buyer
+      Γùï skipped should redirect buyer to /dashboard/buyer when accessing /dashboard/supplier
+      Γùï skipped should prevent supplier from accessing nested buyer routes
+      Γùï skipped should prevent buyer from accessing nested supplier routes
+    Case Normalization
+      ├ù should handle uppercase SUPPLIER role (56 ms)
+      ├ù should handle mixed case Buyer role (3 ms)
+    Allowed Access
+      ΓêÜ should allow supplier to access /dashboard/supplier routes (8 ms)
+      ΓêÜ should allow buyer to access /dashboard/buyer routes (2 ms)
+      ΓêÜ should allow supplier to access nested supplier routes (2 ms)
+    Existing Protected Paths
+      ΓêÜ should allow access to /architect with valid token (2 ms)
+    Unauthenticated Dashboard Access
+      ΓêÜ should redirect to /login for /dashboard/supplier without token (1 ms)
+      ΓêÜ should redirect to /login for /dashboard/buyer without token (1 ms)
+      ΓêÜ should redirect to /login for nested dashboard routes without token (2 ms)
+    Public Routes
+      ΓêÜ should allow access to /login without token (2 ms)
+      ΓêÜ should allow access to root / without token (3 ms)
+
+  ΓùÅ Middleware - Role-Based Dashboard Redirects ΓÇ║ Case Normalization ΓÇ║ should handle uppercase SUPPLIER role
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: null
+
+      156 |
+      157 |       const redirectUrl = getRedirectUrl(response);
+    > 158 |       expect(redirectUrl).toContain('/dashboard/supplier');
+          |                           ^
+      159 |     });
+      160 |
+      161 |     it('should handle mixed case Buyer role', () => {
+
+      at Object.<anonymous> (tests/unit/middleware.test.ts:158:27)
+
+  ΓùÅ Middleware - Role-Based Dashboard Redirects ΓÇ║ Case Normalization ΓÇ║ should handle mixed case Buyer role
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: null
+
+      170 |
+      171 |       const redirectUrl = getRedirectUrl(response);
+    > 172 |       expect(redirectUrl).toContain('/dashboard/buyer');
+          |                           ^
+      173 |     });
+      174 |   });
+      175 |
+
+      at Object.<anonymous> (tests/unit/middleware.test.ts:172:27)
+
+  console.log
+    Γ£à Azure PostgreSQL pool created for viability profiles
+
+      at Object.getAzureDBPool (lib/azure-db.ts:133:13)
+
+PASS tests/unit/auth/azure-callback.test.ts
+  Azure Entra ID Callback API
+    POST /api/auth/azure-callback
+      ΓêÜ should return 400 if email is missing (106 ms)
+      ΓêÜ should return 400 if azureId is missing (7 ms)
+      ΓêÜ should create new user if not exists (19 ms)
+      ΓêÜ should login existing user by azure_id (6 ms)
+      ΓêÜ should handle database errors gracefully (20 ms)
+      ΓêÜ should set HTTP-only cookie with token (3 ms)
+      ΓêÜ should return full user object with all fields (8 ms)
+
+PASS tests/unit/scoring/azure-db.test.ts
+  Azure DB Integration
+    ΓêÜ getAzureDBPool should create a pool (13 ms)
+    ΓêÜ mapRowToProfile should correctly transform database row
+    ΓêÜ module should export all required functions (2 ms)
+
+  console.warn
+    ΓÜá∩╕Å Retry attempt 1/2 after 10.677514543016201ms: ECONNRESET
+
+    [0m [90m 113 |[39m
+     [90m 114 |[39m             [36mconst[39m delay [33m=[39m calculateBackoffDelay(attempt[33m,[39m opts)[33m;[39m
+    [31m[1m>[22m[39m[90m 115 |[39m             console[33m.[39mwarn(
+     [90m     |[39m                     [31m[1m^[22m[39m
+     [90m 116 |[39m                 [32m`ΓÜá∩╕Å Retry attempt ${attempt}/${opts.maxRetries} after ${delay}ms:`[39m[33m,[39m
+     [90m 117 |[39m                 lastError[33m.[39mmessage
+     [90m 118 |[39m             )[33m;[39m[0m
+
+      at Object.withRetry (lib/azure/config.ts:115:21)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:119:9)
+
+PASS tests/unit/api/health.test.ts
+  Health Check Endpoint
+    ΓêÜ should return healthy status when all services are configured (149 ms)
+    ΓêÜ should report not_configured when Document Intelligence endpoint is missing (23 ms)
+    ΓêÜ should report not_configured when storage is missing (43 ms)
+    ΓêÜ should report not_configured when OpenAI endpoint is missing (18 ms)
+    ΓêÜ should return unhealthy status when database query fails (88 ms)
+    ΓêÜ should include timestamp in response (15 ms)
+
+  console.log
+    ≡ƒöì Extracting decision logic from 236 characters of content
+
+      at POST (app/api/agents/decision-logic/route.ts:61:13)
+
+  console.log
+    Extracting logic from document type: Memo
+
+      at POST (app/api/agents/decision-extractor/route.ts:34:13)
+
+PASS tests/unit/api/agents/decision-extractor/route.test.ts
+  POST /api/agents/decision-extractor
+    ΓêÜ should extract logic successfully (50 ms)
+    ΓêÜ should return 400 if text is missing (1 ms)
+
+  console.warn
+    Failed to generate decision tree: Error: Missing AZURE_OPENAI_ENDPOINT environment variable. Please configure Azure OpenAI credentials.
+        at getConfigFromEnv (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:108:11)
+        at getOpenAIClient (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:144:18)
+        at chat (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:197:18)
+        at generateDecisionTree (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:423:32)
+        at extractDecisionLogic (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:471:27)
+        at POST (D:\perplexitydownloads\green-sourcing-b2b-app\app\api\agents\decision-logic\route.ts:85:42)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at Object.<anonymous> (D:\perplexitydownloads\green-sourcing-b2b-app\tests\unit\api\agents\decision-logic\route.test.ts:17:22)
+
+    [0m [90m 438 |[39m
+     [90m 439 |[39m   } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 440 |[39m     console[33m.[39mwarn([32m"Failed to generate decision tree:"[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 441 |[39m     [36mreturn[39m undefined[33m;[39m
+     [90m 442 |[39m   }
+     [90m 443 |[39m }[0m
+
+      at generateDecisionTree (lib/agents/decision-logic-extractor.ts:440:13)
+      at extractDecisionLogic (lib/agents/decision-logic-extractor.ts:471:21)
+      at POST (app/api/agents/decision-logic/route.ts:85:16)
+      at Object.<anonymous> (tests/unit/api/agents/decision-logic/route.test.ts:17:22)
+
+  console.log
+    Γ£à Decision logic extracted: Flooring (High)
+
+      at POST (app/api/agents/decision-logic/route.ts:88:13)
+
+  console.log
+    ≡ƒöì Extracting decision logic from 199 characters of content
+
+      at POST (app/api/agents/decision-logic/route.ts:61:13)
+
+  console.warn
+    Failed to generate decision tree: Error: Missing AZURE_OPENAI_ENDPOINT environment variable. Please configure Azure OpenAI credentials.
+        at getConfigFromEnv (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:108:11)
+        at getOpenAIClient (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:144:18)
+        at chat (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:197:18)
+        at generateDecisionTree (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:423:32)
+        at extractDecisionLogic (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:471:27)
+        at POST (D:\perplexitydownloads\green-sourcing-b2b-app\app\api\agents\decision-logic\route.ts:85:42)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at Object.<anonymous> (D:\perplexitydownloads\green-sourcing-b2b-app\tests\unit\api\agents\decision-logic\route.test.ts:40:22)
+
+    [0m [90m 438 |[39m
+     [90m 439 |[39m   } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 440 |[39m     console[33m.[39mwarn([32m"Failed to generate decision tree:"[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 441 |[39m     [36mreturn[39m undefined[33m;[39m
+     [90m 442 |[39m   }
+     [90m 443 |[39m }[0m
+
+      at generateDecisionTree (lib/agents/decision-logic-extractor.ts:440:13)
+      at extractDecisionLogic (lib/agents/decision-logic-extractor.ts:471:21)
+      at POST (app/api/agents/decision-logic/route.ts:85:16)
+      at Object.<anonymous> (tests/unit/api/agents/decision-logic/route.test.ts:40:22)
+
+  console.log
+    Γ£à Decision logic extracted: Insulation (Medium)
+
+      at POST (app/api/agents/decision-logic/route.ts:88:13)
+
+  console.log
+    ≡ƒöì Extracting decision logic from 206 characters of content
+
+      at POST (app/api/agents/decision-logic/route.ts:61:13)
+
+  console.warn
+    Failed to generate decision tree: Error: Missing AZURE_OPENAI_ENDPOINT environment variable. Please configure Azure OpenAI credentials.
+        at getConfigFromEnv (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:108:11)
+        at getOpenAIClient (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:144:18)
+        at chat (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:197:18)
+        at generateDecisionTree (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:423:32)
+        at extractDecisionLogic (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:471:27)
+        at POST (D:\perplexitydownloads\green-sourcing-b2b-app\app\api\agents\decision-logic\route.ts:85:42)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at Object.<anonymous> (D:\perplexitydownloads\green-sourcing-b2b-app\tests\unit\api\agents\decision-logic\route.test.ts:63:22)
+
+    [0m [90m 438 |[39m
+     [90m 439 |[39m   } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 440 |[39m     console[33m.[39mwarn([32m"Failed to generate decision tree:"[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 441 |[39m     [36mreturn[39m undefined[33m;[39m
+     [90m 442 |[39m   }
+     [90m 443 |[39m }[0m
+
+      at generateDecisionTree (lib/agents/decision-logic-extractor.ts:440:13)
+      at extractDecisionLogic (lib/agents/decision-logic-extractor.ts:471:21)
+      at POST (app/api/agents/decision-logic/route.ts:85:16)
+      at Object.<anonymous> (tests/unit/api/agents/decision-logic/route.test.ts:63:22)
+
+  console.log
+    Γ£à Decision logic extracted: Structure (High)
+
+      at POST (app/api/agents/decision-logic/route.ts:88:13)
+
+  console.log
+    ≡ƒöì Extracting decision logic from 55 characters of content
+
+      at POST (app/api/agents/decision-logic/route.ts:61:13)
+
+  console.log
+    Γ£à Decision logic extracted: Flooring (Low)
+
+      at POST (app/api/agents/decision-logic/route.ts:88:13)
+
+PASS tests/unit/api/agents/decision-logic/route.test.ts
+  POST /api/agents/decision-logic
+    ΓêÜ should extract decision logic from flooring content (115 ms)
+    ΓêÜ should extract decision logic from insulation content (11 ms)
+    ΓêÜ should extract decision logic from structural content (10 ms)
+    ΓêÜ should use provided material category when specified (3 ms)
+    ΓêÜ should return 400 if documentContent is missing (2 ms)
+    ΓêÜ should return 400 if documentContent is too short (1 ms)
+  GET /api/agents/decision-logic
+    ΓêÜ should return API documentation (1 ms)
+
+  console.log
+    ≡ƒñû Orchestrating agents for EcoFloor LVT: decision-logic, defensibility, extraction
+
+      at POST (app/api/agents/orchestrate/route.ts:124:13)
+
+  console.log
+    Analyzing defensibility for decision: {"id":1}
+
+      at POST (app/api/agents/defensibility-analyzer/route.ts:34:13)
+
+PASS tests/unit/auth/jwt.test.ts
+  JWT Authentication
+    generateToken
+      ΓêÜ should generate a valid JWT token with user payload (5 ms)
+      ΓêÜ should include all payload fields in the token (2 ms)
+    generateRefreshToken
+      ΓêÜ should generate a valid refresh token (1 ms)
+      ΓêÜ should generate different tokens for access and refresh (1 ms)
+    verifyToken
+      ΓêÜ should verify and decode a valid token (2 ms)
+      ΓêÜ should return null for an invalid token
+      ΓêÜ should return null for a malformed token
+      ΓêÜ should return null for an empty token (1 ms)
+      ΓêÜ should return null for a token signed with different secret
+    Token Round-Trip
+      ΓêÜ should successfully round-trip generate and verify for architect role (1 ms)
+      ΓêÜ should successfully round-trip generate and verify for supplier role (1 ms)
+
+  console.log
+    Γ£à Defensibility: 100/100
+
+      at app/api/agents/orchestrate/route.ts:162:21
+
+FAIL tests/unit/azure/config.test.ts
+  Azure Config
+    retry utilities
+      sleep
+        ΓêÜ should delay execution (138 ms)
+      calculateBackoffDelay
+        ΓêÜ should calculate exponential backoff delay (5 ms)
+        ΓêÜ should respect maxDelayMs (5 ms)
+      withRetry
+        ΓêÜ should return result on success (6 ms)
+        ΓêÜ should retry on transient errors (144 ms)
+        ΓêÜ should throw after max retries (69 ms)
+      isTransientError
+        ΓêÜ should identify transient errors (1 ms)
+        ΓêÜ should not identify non-transient errors (1 ms)
+    isAzureSQLConfigured
+      ΓêÜ should return true when all credentials are set (1 ms)
+    getAzureSQLPool
+      ├ù should create a connection pool (1 ms)
+      ├ù should return the same pool on subsequent calls (1 ms)
+    runQuery
+      ├ù should execute a parameterized query (1 ms)
+    runQueryOne
+      ├ù should return a single row (2 ms)
+    runScalar
+      ├ù should return a scalar value (2 ms)
+    sqlHealthCheck
+      ΓêÜ should return health status (2 ms)
+  Blob Storage (legacy)
+    getBlobServiceClient
+      ├ù should create a blob service client
+    uploadFileToBlob
+      ├ù should upload a file and return URL
+  module exports
+    ├ù should export all required functions
+
+  ΓùÅ Azure Config ΓÇ║ getAzureSQLPool ΓÇ║ should create a connection pool
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at Object.getAzureSQLPool (lib/azure/config.ts:240:11)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:154:38)
+
+  ΓùÅ Azure Config ΓÇ║ getAzureSQLPool ΓÇ║ should return the same pool on subsequent calls
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at Object.getAzureSQLPool (lib/azure/config.ts:240:11)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:160:39)
+
+  ΓùÅ Azure Config ΓÇ║ runQuery ΓÇ║ should execute a parameterized query
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at Object.runQuery (lib/azure/config.ts:299:12)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:168:41)
+
+  ΓùÅ Azure Config ΓÇ║ runQueryOne ΓÇ║ should return a single row
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at runQuery (lib/azure/config.ts:299:12)
+      at Object.runQueryOne (lib/azure/config.ts:332:27)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:180:37)
+
+  ΓùÅ Azure Config ΓÇ║ runScalar ΓÇ║ should return a scalar value
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at runQuery (lib/azure/config.ts:299:12)
+      at runQueryOne (lib/azure/config.ts:332:27)
+      at Object.runScalar (lib/azure/config.ts:343:26)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:192:39)
+
+  ΓùÅ Blob Storage (legacy) ΓÇ║ getBlobServiceClient ΓÇ║ should create a blob service client
+
+    ReferenceError: azureConfig is not defined
+
+      211 |   describe("getBlobServiceClient", () => {
+      212 |     it("should create a blob service client", () => {
+    > 213 |       const client = azureConfig.getBlobServiceClient();
+          |                      ^
+      214 |       expect(client).toBeDefined();
+      215 |     });
+      216 |   });
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:213:22)
+
+  ΓùÅ Blob Storage (legacy) ΓÇ║ uploadFileToBlob ΓÇ║ should upload a file and return URL
+
+    ReferenceError: azureConfig is not defined
+
+      218 |   describe("uploadFileToBlob", () => {
+      219 |     it("should upload a file and return URL", async () => {
+    > 220 |       const url = await azureConfig.uploadFileToBlob(
+          |                   ^
+      221 |         "test-container",
+      222 |         "test.pdf",
+      223 |         Buffer.from("test")
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:220:19)
+
+  ΓùÅ module exports ΓÇ║ should export all required functions
+
+    ReferenceError: azureConfig is not defined
+
+      232 |   it("should export all required functions", () => {
+      233 |     // Retry utilities
+    > 234 |     expect(azureConfig.sleep).toBeDefined();
+          |            ^
+      235 |     expect(azureConfig.calculateBackoffDelay).toBeDefined();
+      236 |     expect(azureConfig.withRetry).toBeDefined();
+      237 |     expect(azureConfig.isTransientError).toBeDefined();
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:234:12)
+
+  console.error
+    Failed to fetch data from Autodesk SDA: Error: API Error
+        at Object.<anonymous> (D:\perplexitydownloads\green-sourcing-b2b-app\tests\unit\agents\assistant\azure-client.test.ts:92:52)
+        at Promise.finally.completed (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1557:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1497:10)
+        at _callCircusTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1007:40)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at _runTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:947:3)
+        at D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:849:7
+        at _runTestsForDescribeBlock (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:862:11)
+        at _runTestsForDescribeBlock (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+        at run (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:761:3)
+        at runAndTransformResultsToJestFormat (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\jestAdapterInit.js:1918:21)
+        at jestAdapter (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-circus\build\runner.js:101:19)
+        at runTestInternal (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:275:16)
+        at runTest (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:343:7)
+        at Object.worker (D:\perplexitydownloads\green-sourcing-b2b-app\node_modules\jest-runner\build\testWorker.js:497:12)
+
+    [0m [90m 82 |[39m
+     [90m 83 |[39m         } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 84 |[39m             console[33m.[39merror([32m"Failed to fetch data from Autodesk SDA:"[39m[33m,[39m error)[33m;[39m
+     [90m    |[39m                     [31m[1m^[22m[39m
+     [90m 85 |[39m             auditContext [33m=[39m [32m"Autodesk SDA Data: Error retrieving data (API might be unavailable or configured incorrectly)."[39m[33m;[39m
+     [90m 86 |[39m         }
+     [90m 87 |[39m[0m
+
+      at AzureClient.auditProduct (lib/agents/assistant/azure-client.ts:84:21)
+      at Object.<anonymous> (tests/unit/agents/assistant/azure-client.test.ts:94:24)
+
+  console.log
+    Γ£à Extraction complete
+
+      at app/api/agents/orchestrate/route.ts:182:21
+
+PASS tests/unit/api/agents/defensibility-analyzer/route.test.ts
+  POST /api/agents/defensibility-analyzer
+    ΓêÜ should analyze defensibility successfully (41 ms)
+    ΓêÜ should return 400 if decision is missing (1 ms)
+
+PASS tests/unit/agents/assistant/azure-client.test.ts
+  AzureClient
+    ΓêÜ should initialize correctly (6 ms)
+    ΓêÜ should audit a product using SDA and LLM (4 ms)
+    ΓêÜ should handle SDA failure gracefully (45 ms)
+
+  console.warn
+    Failed to generate decision tree: Error: Missing AZURE_OPENAI_ENDPOINT environment variable. Please configure Azure OpenAI credentials.
+        at getConfigFromEnv (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:108:11)
+        at getOpenAIClient (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:144:18)
+        at chat (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:197:18)
+        at generateDecisionTree (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:423:32)
+        at extractDecisionLogic (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:471:27)
+        at D:\perplexitydownloads\green-sourcing-b2b-app\app\api\agents\orchestrate\route.ts:140:63
+        at POST (D:\perplexitydownloads\green-sourcing-b2b-app\app\api\agents\orchestrate\route.ts:147:11)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at Object.<anonymous> (D:\perplexitydownloads\green-sourcing-b2b-app\tests\unit\api\agents\orchestrate\route.test.ts:24:22)
+
+    [0m [90m 438 |[39m
+     [90m 439 |[39m   } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 440 |[39m     console[33m.[39mwarn([32m"Failed to generate decision tree:"[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 441 |[39m     [36mreturn[39m undefined[33m;[39m
+     [90m 442 |[39m   }
+     [90m 443 |[39m }[0m
+
+      at generateDecisionTree (lib/agents/decision-logic-extractor.ts:440:13)
+      at extractDecisionLogic (lib/agents/decision-logic-extractor.ts:471:21)
+      at app/api/agents/orchestrate/route.ts:140:37
+          at async Promise.all (index 0)
+      at POST (app/api/agents/orchestrate/route.ts:192:5)
+      at Object.<anonymous> (tests/unit/api/agents/orchestrate/route.test.ts:24:22)
+
+  console.log
+    Orchestrating task: Send an email to an architect
+
+      at POST (app/api/agents/orchestrator/route.ts:34:13)
+
+  console.log
+    Γ£à Decision logic: Flooring
+
+      at app/api/agents/orchestrate/route.ts:142:21
+          at async Promise.all (index 0)
+
+  console.log
+    Γ£à Orchestration complete in 77ms
+
+      at POST (app/api/agents/orchestrate/route.ts:236:13)
+
+PASS tests/unit/api/agents/orchestrator/route.test.ts
+  POST /api/agents/orchestrator
+    ΓêÜ should plan a task successfully (37 ms)
+    ΓêÜ should return 400 if task is missing (1 ms)
+
+  console.log
+    ≡ƒñû Orchestrating agents for EcoFloor LVT: decision-logic
+
+      at POST (app/api/agents/orchestrate/route.ts:124:13)
+
+  console.warn
+    Failed to generate decision tree: Error: Missing AZURE_OPENAI_ENDPOINT environment variable. Please configure Azure OpenAI credentials.
+        at getConfigFromEnv (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:108:11)
+        at getOpenAIClient (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:144:18)
+        at chat (D:\perplexitydownloads\green-sourcing-b2b-app\lib\azure\openai.ts:197:18)
+        at generateDecisionTree (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:423:32)
+        at extractDecisionLogic (D:\perplexitydownloads\green-sourcing-b2b-app\lib\agents\decision-logic-extractor.ts:471:27)
+        at D:\perplexitydownloads\green-sourcing-b2b-app\app\api\agents\orchestrate\route.ts:140:63
+        at POST (D:\perplexitydownloads\green-sourcing-b2b-app\app\api\agents\orchestrate\route.ts:147:11)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at Object.<anonymous> (D:\perplexitydownloads\green-sourcing-b2b-app\tests\unit\api\agents\orchestrate\route.test.ts:74:22)
+
+    [0m [90m 438 |[39m
+     [90m 439 |[39m   } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 440 |[39m     console[33m.[39mwarn([32m"Failed to generate decision tree:"[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 441 |[39m     [36mreturn[39m undefined[33m;[39m
+     [90m 442 |[39m   }
+     [90m 443 |[39m }[0m
+
+      at generateDecisionTree (lib/agents/decision-logic-extractor.ts:440:13)
+      at extractDecisionLogic (lib/agents/decision-logic-extractor.ts:471:21)
+      at app/api/agents/orchestrate/route.ts:140:37
+          at async Promise.all (index 0)
+      at POST (app/api/agents/orchestrate/route.ts:192:5)
+      at Object.<anonymous> (tests/unit/api/agents/orchestrate/route.test.ts:74:22)
+
+  console.log
+    Γ£à Decision logic: Flooring
+
+      at app/api/agents/orchestrate/route.ts:142:21
+          at async Promise.all (index 0)
+
+  console.log
+    Γ£à Orchestration complete in 6ms
+
+      at POST (app/api/agents/orchestrate/route.ts:236:13)
+
+  console.log
+    ≡ƒñû Orchestrating agents for EcoFloor LVT: defensibility, extraction
+
+      at POST (app/api/agents/orchestrate/route.ts:124:13)
+
+  console.log
+    Γ£à Defensibility: 100/100
+
+      at app/api/agents/orchestrate/route.ts:162:21
+
+  console.log
+    Γ£à Extraction complete
+
+      at app/api/agents/orchestrate/route.ts:182:21
+
+  console.log
+    Γ£à Orchestration complete in 1ms
+
+      at POST (app/api/agents/orchestrate/route.ts:236:13)
+
+PASS tests/unit/api/agents/orchestrate/route.test.ts
+  POST /api/agents/orchestrate
+    ΓêÜ should orchestrate all agents by default (89 ms)
+    ΓêÜ should run only specified agents (7 ms)
+    ΓêÜ should run multiple specified agents (2 ms)
+    ΓêÜ should return 400 if documentContent is missing (1 ms)
+    ΓêÜ should return 400 if productName is missing (1 ms)
+    ΓêÜ should return 400 if manufacturer is missing (1 ms)
+  GET /api/agents/orchestrate
+    ΓêÜ should return API documentation (1 ms)
+
+Summary of all failing tests
+FAIL tests/unit/middleware.test.ts
+  ΓùÅ Middleware - Role-Based Dashboard Redirects ΓÇ║ Case Normalization ΓÇ║ should handle uppercase SUPPLIER role
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: null
+
+      156 |
+      157 |       const redirectUrl = getRedirectUrl(response);
+    > 158 |       expect(redirectUrl).toContain('/dashboard/supplier');
+          |                           ^
+      159 |     });
+      160 |
+      161 |     it('should handle mixed case Buyer role', () => {
+
+      at Object.<anonymous> (tests/unit/middleware.test.ts:158:27)
+
+  ΓùÅ Middleware - Role-Based Dashboard Redirects ΓÇ║ Case Normalization ΓÇ║ should handle mixed case Buyer role
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: null
+
+      170 |
+      171 |       const redirectUrl = getRedirectUrl(response);
+    > 172 |       expect(redirectUrl).toContain('/dashboard/buyer');
+          |                           ^
+      173 |     });
+      174 |   });
+      175 |
+
+      at Object.<anonymous> (tests/unit/middleware.test.ts:172:27)
+
+FAIL tests/unit/azure/config.test.ts
+  ΓùÅ Azure Config ΓÇ║ getAzureSQLPool ΓÇ║ should create a connection pool
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at Object.getAzureSQLPool (lib/azure/config.ts:240:11)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:154:38)
+
+  ΓùÅ Azure Config ΓÇ║ getAzureSQLPool ΓÇ║ should return the same pool on subsequent calls
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at Object.getAzureSQLPool (lib/azure/config.ts:240:11)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:160:39)
+
+  ΓùÅ Azure Config ΓÇ║ runQuery ΓÇ║ should execute a parameterized query
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at Object.runQuery (lib/azure/config.ts:299:12)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:168:41)
+
+  ΓùÅ Azure Config ΓÇ║ runQueryOne ΓÇ║ should return a single row
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at runQuery (lib/azure/config.ts:299:12)
+      at Object.runQueryOne (lib/azure/config.ts:332:27)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:180:37)
+
+  ΓùÅ Azure Config ΓÇ║ runScalar ΓÇ║ should return a scalar value
+
+    Azure SQL support requires the "mssql" package (not installed in this app).
+
+      21 |
+      22 | function getMssqlUnavailableError(): Error {
+    > 23 |     return new Error(
+         |            ^
+      24 |         'Azure SQL support requires the "mssql" package (not installed in this app).'
+      25 |     );
+      26 | }
+
+      at getMssqlUnavailableError (lib/azure/config.ts:23:12)
+      at getAzureSQLPool (lib/azure/config.ts:240:11)
+      at withRetry.maxRetries (lib/azure/config.ts:300:28)
+      at withRetry (lib/azure/config.ts:100:26)
+      at runQuery (lib/azure/config.ts:299:12)
+      at runQueryOne (lib/azure/config.ts:332:27)
+      at Object.runScalar (lib/azure/config.ts:343:26)
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:192:39)
+
+  ΓùÅ Blob Storage (legacy) ΓÇ║ getBlobServiceClient ΓÇ║ should create a blob service client
+
+    ReferenceError: azureConfig is not defined
+
+      211 |   describe("getBlobServiceClient", () => {
+      212 |     it("should create a blob service client", () => {
+    > 213 |       const client = azureConfig.getBlobServiceClient();
+          |                      ^
+      214 |       expect(client).toBeDefined();
+      215 |     });
+      216 |   });
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:213:22)
+
+  ΓùÅ Blob Storage (legacy) ΓÇ║ uploadFileToBlob ΓÇ║ should upload a file and return URL
+
+    ReferenceError: azureConfig is not defined
+
+      218 |   describe("uploadFileToBlob", () => {
+      219 |     it("should upload a file and return URL", async () => {
+    > 220 |       const url = await azureConfig.uploadFileToBlob(
+          |                   ^
+      221 |         "test-container",
+      222 |         "test.pdf",
+      223 |         Buffer.from("test")
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:220:19)
+
+  ΓùÅ module exports ΓÇ║ should export all required functions
+
+    ReferenceError: azureConfig is not defined
+
+      232 |   it("should export all required functions", () => {
+      233 |     // Retry utilities
+    > 234 |     expect(azureConfig.sleep).toBeDefined();
+          |            ^
+      235 |     expect(azureConfig.calculateBackoffDelay).toBeDefined();
+      236 |     expect(azureConfig.withRetry).toBeDefined();
+      237 |     expect(azureConfig.isTransientError).toBeDefined();
+
+      at Object.<anonymous> (tests/unit/azure/config.test.ts:234:12)
+
+
+Test Suites: 2 failed, 2 skipped, 19 passed, 21 of 23 total
+Tests:       10 failed, 23 skipped, 171 passed, 204 total
+Snapshots:   0 total
+Time:        2.494 s
+Ran all test suites.
