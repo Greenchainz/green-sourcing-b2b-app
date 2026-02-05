@@ -54,12 +54,12 @@ jobs:
       
       - name: Build and Push Backend Image
         run: |
-          # Uses backend/Dockerfile.azure with root context (.) to access backend/ and database-schemas/
+          # Backend uses same Next.js app with API routes (no separate backend dir)
           az acr build \
             --registry ${{ vars.CONTAINER_REGISTRY }} \
             --image greenchainz-backend:${{ github.sha }} \
             --image greenchainz-backend:latest \
-            --file backend/Dockerfile.azure \
+            --file Dockerfile \
             .
       
       - name: Deploy Backend Container App
