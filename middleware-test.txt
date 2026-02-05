@@ -1,0 +1,77 @@
+
+> green-sourcing-b2b-app@0.1.0 test
+> jest tests/unit/middleware.test.ts
+
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in D:/perplexitydownloads/green-sourcing-b2b-app/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+FAIL tests/unit/middleware.test.ts
+  Middleware - Role-Based Dashboard Redirects
+    Dashboard Base Route Redirects
+      Γùï skipped should redirect supplier to /dashboard/supplier when accessing /dashboard
+      Γùï skipped should redirect buyer to /dashboard/buyer when accessing /dashboard
+      Γùï skipped should redirect to /login when accessing /dashboard without token
+      Γùï skipped should redirect to /login when accessing /dashboard with invalid token
+    Cross-Dashboard Access Prevention
+      Γùï skipped should redirect supplier to /dashboard/supplier when accessing /dashboard/buyer
+      Γùï skipped should redirect buyer to /dashboard/buyer when accessing /dashboard/supplier
+      Γùï skipped should prevent supplier from accessing nested buyer routes
+      Γùï skipped should prevent buyer from accessing nested supplier routes
+    Case Normalization
+      ├ù should handle uppercase SUPPLIER role (9 ms)
+      ├ù should handle mixed case Buyer role (2 ms)
+    Allowed Access
+      ΓêÜ should allow supplier to access /dashboard/supplier routes (3 ms)
+      ΓêÜ should allow buyer to access /dashboard/buyer routes (1 ms)
+      ΓêÜ should allow supplier to access nested supplier routes (1 ms)
+    Existing Protected Paths
+      ΓêÜ should allow access to /architect with valid token (1 ms)
+    Unauthenticated Dashboard Access
+      ΓêÜ should redirect to /login for /dashboard/supplier without token (1 ms)
+      ΓêÜ should redirect to /login for /dashboard/buyer without token
+      ΓêÜ should redirect to /login for nested dashboard routes without token (1 ms)
+    Public Routes
+      ΓêÜ should allow access to /login without token (1 ms)
+      ΓêÜ should allow access to root / without token
+
+  ΓùÅ Middleware - Role-Based Dashboard Redirects ΓÇ║ Case Normalization ΓÇ║ should handle uppercase SUPPLIER role
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: null
+
+      156 |
+      157 |       const redirectUrl = getRedirectUrl(response);
+    > 158 |       expect(redirectUrl).toContain('/dashboard/supplier');
+          |                           ^
+      159 |     });
+      160 |
+      161 |     it('should handle mixed case Buyer role', () => {
+
+      at Object.<anonymous> (tests/unit/middleware.test.ts:158:27)
+
+  ΓùÅ Middleware - Role-Based Dashboard Redirects ΓÇ║ Case Normalization ΓÇ║ should handle mixed case Buyer role
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: null
+
+      170 |
+      171 |       const redirectUrl = getRedirectUrl(response);
+    > 172 |       expect(redirectUrl).toContain('/dashboard/buyer');
+          |                           ^
+      173 |     });
+      174 |   });
+      175 |
+
+      at Object.<anonymous> (tests/unit/middleware.test.ts:172:27)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 8 skipped, 9 passed, 19 total
+Snapshots:   0 total
+Time:        0.565 s, estimated 1 s
+Ran all test suites matching tests/unit/middleware.test.ts.
