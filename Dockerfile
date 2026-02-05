@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json pnpm-lock.yaml* ./
 
-# Install pnpm and dependencies (lockfileVersion 6 requires pnpm v8)
-RUN npm install -g pnpm@8.15.9 && \
+# Install pnpm and dependencies (lockfileVersion 9 requires pnpm v10)
+RUN npm install -g pnpm@10.28.2 && \
     pnpm install --frozen-lockfile
 
 # Stage 2: Builder
