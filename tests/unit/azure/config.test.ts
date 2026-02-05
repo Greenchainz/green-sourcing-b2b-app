@@ -252,4 +252,3 @@ describe("module exports", () => {
     expect(azureConfig.uploadFileToBlob).toBeDefined();
   });
 });
-});
