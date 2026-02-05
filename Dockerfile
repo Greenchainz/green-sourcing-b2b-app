@@ -53,10 +53,11 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Copy built application from builder
+# Copy built application from builder (Next.js standalone creates nested dir with package.json name)
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/green-sourcing-b2b-app/server.js ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/green-sourcing-b2b-app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/green-sourcing-b2b-app/package.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Switch to non-root user
 USER nextjs
