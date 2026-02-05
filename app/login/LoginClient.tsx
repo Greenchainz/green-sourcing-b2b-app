@@ -36,7 +36,7 @@ export default function LoginClient() {
   const handleOAuthLogin = async (provider: string) => {
     setError("");
     setLoading(true);
-    
+
     // Use NextAuth's built-in provider for Microsoft Entra ID
     await signIn(provider, { callbackUrl: "/dashboard" });
   };
@@ -108,14 +108,15 @@ export default function LoginClient() {
         <button
           onClick={() => handleOAuthLogin("google")}
           disabled={loading}
-          className="w-full flex items-center justify-center disabled:opacity-50 transition"
+          className="w-full flex items-center justify-center disabled:opacity-50 transition hover:opacity-90 cursor-pointer"
+          type="button"
         >
           <Image
             src="/images/oauth/google-signin.svg"
             alt="Sign in with Google"
-            width={382}
-            height={92}
-            className="w-full h-auto"
+            width={191}
+            height={46}
+            className="h-11 w-auto pointer-events-none"
           />
         </button>
 
@@ -123,7 +124,8 @@ export default function LoginClient() {
         <button
           onClick={() => handleOAuthLogin("microsoft-entra-id")}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 font-medium text-gray-700 transition"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 font-medium text-gray-700 transition cursor-pointer"
+          type="button"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
@@ -135,21 +137,22 @@ export default function LoginClient() {
         <button
           onClick={() => handleOAuthLogin("linkedin")}
           disabled={loading}
-          className="w-full flex items-center justify-center disabled:opacity-50 transition relative group"
+          className="w-full flex items-center justify-center disabled:opacity-50 transition relative group cursor-pointer"
+          type="button"
         >
           <Image
             src="/images/oauth/linkedin-signin-default.png"
             alt="Sign in with LinkedIn"
-            width={382}
-            height={66}
-            className="w-full h-auto block group-hover:hidden"
+            width={191}
+            height={33}
+            className="h-11 w-auto block group-hover:hidden pointer-events-none"
           />
           <Image
             src="/images/oauth/linkedin-signin-hover.png"
             alt="Sign in with LinkedIn"
-            width={382}
-            height={66}
-            className="w-full h-auto hidden group-hover:block"
+            width={191}
+            height={33}
+            className="h-11 w-auto hidden group-hover:block pointer-events-none"
           />
         </button>
       </div>
