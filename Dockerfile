@@ -74,5 +74,5 @@ EXPOSE 3000 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/sbin/dumb-init", "--"]
 
-# Start Next.js server
-CMD ["node", "server.js"]
+# Start Next.js server (from subdir created by standalone output)
+CMD ["node", "green-sourcing-b2b-app/server.js"]
