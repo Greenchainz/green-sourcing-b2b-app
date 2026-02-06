@@ -3,12 +3,12 @@ const nextConfig = {
   // output: 'standalone',  // Disabled - using regular production build
   typescript: {
     ignoreBuildErrors: true,
-  },
-  experimental: {
-    optimizeCss: true, // Use built-in CSS optimizer for Next.js 16
-  },
-  async headers() {
-    return [
+          {
+            key: 'Content-Security-Policy',
+            // Note: 'unsafe-inline' and 'unsafe-eval' are used here.
+            // For higher security, consider using nonces or hashes.
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn-cookieyes.com https://widget.intercom.io https://js.intercomcdn.com; script-src-elem 'self' https://static.cloudflareinsights.com https://cdn-cookieyes.com https://widget.intercom.io https://js.intercomcdn.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://static.zohocdn.com https://r2cdn.perplexity.ai; img-src 'self' data: https:; connect-src 'self' http://localhost:* https:; frame-src 'self' https://widget.intercom.io https://js.intercomcdn.com"
+          }
       {
         source: '/:path*',
         headers: [
