@@ -1,0 +1,20 @@
+{
+    "name": "ciam-sign-in-node-express-web-app",
+    "version": "1.0.0",
+    "description": "Node/Express MSAL sign-in sample",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "@azure/msal-node": "^2.15.0",
+        "axios": "^1.7.9",
+        "cookie-parser": "^1.4.6",
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "express-session": "^1.18.1",
+        "hbs": "^4.2.0",
+        "http-errors": "^2.0.0",
+        "morgan": "^1.10.0"
+    }
+}
