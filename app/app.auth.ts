@@ -1,8 +1,5 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
-import Google from "next-auth/providers/google";
-import LinkedIn from "next-auth/providers/linkedin";
 // import { PrismaAdapter } from "@auth/prisma-adapter"; // Uncomment when ready
 // import { prisma } from "@/lib/prisma";                // Uncomment when ready
 import { authConfig } from "./auth.config";
@@ -26,65 +23,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID || process.env.AZURE_AD_CLIENT_ID,
       clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET || process.env.AZURE_AD_CLIENT_SECRET,
       issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER || (process.env.AZURE_AD_TENANT_ID ? `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0` : undefined),
-      authorization: { 
-        params: { 
-          scope: "openid profile email User.Read",
-          prompt: "select_account", // Force account picker to avoid stale tokens
-        } 
-      },
-    }),
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-    }),
-    LinkedIn({
-      clientId: process.env.AUTH_LINKEDIN_ID,
-      clientSecret: process.env.AUTH_LINKEDIN_SECRET,
       authorization: {
         params: {
           scope: "openid profile email",
+          prompt: "select_account",
         },
       },
     }),
-    Credentials({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        // Explicit null check to prevent "Missing email or password" errors
-        if (!credentials) {
-          console.error("❌ Credentials object is null or undefined");
-          return null;
-        }
-        
-        if (!credentials.email || !credentials.password) {
-          console.error("❌ Missing email or password in credentials:", { 
-            hasEmail: !!credentials.email, 
-            hasPassword: !!credentials.password 
-          });
-          return null;
-        }
-        
-        // TODO: Replace with real database verification
-        // For development testing only - use environment variables in production
-        const testEmail = process.env.TEST_USER_EMAIL || "test@example.com";
-        const testPassword = process.env.TEST_USER_PASSWORD || "password";
-        
-        if (credentials.email === testEmail && credentials.password === testPassword) {
-          console.log("✅ Credentials authenticated successfully");
-          return { 
-            id: process.env.TEST_USER_ID || "1", 
-            name: process.env.TEST_USER_NAME || "Test User", 
-            email: testEmail 
-          };
-        }
-        
-        console.error("❌ Invalid credentials provided");
-        return null;
-      }
-    })
   ],
   cookies: {
     sessionToken: {
@@ -113,19 +58,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
      * Solution: Call /api/auth-callback instead
      */
     async signIn({ user, account }) {
-      // Skip OAuth database handling for Credentials provider
-      if (account?.provider === "credentials") {
-        return true;
-      }
-
       console.log("🔐 OAuth SignIn - Provider:", account?.provider, "Email:", user.email);
-      
+
       if (!user.email) return false;
 
       try {
         // Use NEXTAUTH_URL or AUTH_URL for production-ready base URL
         const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://greenchainz.com';
-        
+
         // 1. Check if user exists
         const checkResponse = await fetch(`${baseUrl}/api/auth-callback`, {
           method: 'POST',
