@@ -78,7 +78,7 @@ class AuthProvider {
         }
     }
 
-    async logout(req, res, next) {
+    async logout(req, res, _next) {
         const logoutUri = `${this.config.msalConfig.auth.authority}/oauth2/v2.0/logout?post_logout_redirect_uri=${this.config.postLogoutRedirectUri}`;
         req.session.destroy(() => {
             res.redirect(logoutUri);
