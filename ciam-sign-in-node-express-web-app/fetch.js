@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const fetch = async (endpoint, accessToken, method = 'GET', data = null) => {
+const fetch = async (endpoint, accessToken) => {
     const options = {
         headers: {
             Authorization: `Bearer ${accessToken}`,

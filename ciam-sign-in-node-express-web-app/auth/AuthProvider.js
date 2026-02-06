@@ -16,7 +16,7 @@ class AuthProvider {
         return new msal.ConfidentialClientApplication(msalConfig);
     }
 
-    async login(req, res, next, _options = {}) {
+    async login(req, res, next) {
         req.session.csrfToken = this.cryptoProvider.createNewGuid();
 
         const state = this.cryptoProvider.base64Encode(
@@ -79,8 +79,6 @@ class AuthProvider {
     }
 
     async logout(req, res, next) {
-        // const logoutUri = `${this.config.msalConfig.auth.authority}${TENANT_SUBDOMAIN}.onmicrosoft.com/oauth2/v2.0/logout?post_logout_redirect_uri=${this.config.postLogoutRedirectUri}`;
-
         const logoutUri = `${this.config.msalConfig.auth.authority}/oauth2/v2.0/logout?post_logout_redirect_uri=${this.config.postLogoutRedirectUri}`;
         req.session.destroy(() => {
             res.redirect(logoutUri);
@@ -126,8 +124,6 @@ class AuthProvider {
     }
 
     async getAuthorityMetadata() {
-        // const endpoint = `${this.config.msalConfig.auth.authority}${TENANT_SUBDOMAIN}.onmicrosoft.com/v2.0/.well-known/openid-configuration`;
-
         const endpoint = `${this.config.msalConfig.auth.authority}/v2.0/.well-known/openid-configuration`;
         try {
             const response = await axios.get(endpoint);

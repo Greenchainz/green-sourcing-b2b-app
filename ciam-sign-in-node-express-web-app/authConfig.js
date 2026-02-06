@@ -10,7 +10,6 @@ const msalConfig = {
     auth: {
         clientId: process.env.CLIENT_ID || 'Enter_the_Application_Id_Here',
         authority: process.env.AUTHORITY || `https://${TENANT_SUBDOMAIN}.ciamlogin.com/`,
-        // authority: process.env.CLOUD_INSTANCE + process.env.TENANT_ID,
         clientSecret: process.env.CLIENT_SECRET || 'Enter_the_Client_Secret_Here',
     },
     system: {
