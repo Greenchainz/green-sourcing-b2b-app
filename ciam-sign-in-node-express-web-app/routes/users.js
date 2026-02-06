@@ -12,7 +12,7 @@ function isAuthenticated(req, res, next) {
     next();
 }
 
-router.get('/id', isAuthenticated, async function (req, res, next) {
+router.get('/id', isAuthenticated, async function (req, res, _next) {
     res.render('id', { idTokenClaims: req.session.account.idTokenClaims });
 });
 
@@ -20,7 +20,7 @@ router.get(
     '/profile',
     isAuthenticated,
     authProvider.getToken(['User.Read']),
-    async function (req, res, next) {
+    async function (req, res, _next) {
         const graphResponse = await fetch(GRAPH_ME_ENDPOINT, req.session.accessToken);
 
         if (!graphResponse.id) {

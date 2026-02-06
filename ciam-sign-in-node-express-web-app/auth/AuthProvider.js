@@ -16,7 +16,7 @@ class AuthProvider {
         return new msal.ConfidentialClientApplication(msalConfig);
     }
 
-    async login(req, res, next, options = {}) {
+    async login(req, res, next, _options = {}) {
         req.session.csrfToken = this.cryptoProvider.createNewGuid();
 
         const state = this.cryptoProvider.base64Encode(
