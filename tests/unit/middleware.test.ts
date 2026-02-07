@@ -36,9 +36,8 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
     return null;
   }
 
-  // Skip role-based redirect tests - middleware doesn't implement role-based redirects yet
-  describe.skip('Dashboard Base Route Redirects', () => {
-    it('should redirect supplier to /dashboard/supplier when accessing /dashboard', () => {
+  describe('Dashboard Base Route Redirects', () => {
+    it('should redirect supplier to /dashboard/supplier when accessing /dashboard', async () => {
       const token = generateToken({
         userId: 'user-123',
         email: 'supplier@test.com',
@@ -46,13 +45,13 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/dashboard/supplier');
     });
 
-    it('should redirect buyer to /dashboard/buyer when accessing /dashboard', () => {
+    it('should redirect buyer to /dashboard/buyer when accessing /dashboard', async () => {
       const token = generateToken({
         userId: 'user-456',
         email: 'buyer@test.com',
@@ -60,32 +59,31 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/dashboard/buyer');
     });
 
-    it('should redirect to /login when accessing /dashboard without token', () => {
+    it('should redirect to /login when accessing /dashboard without token', async () => {
       const request = createRequest('http://localhost:3000/dashboard');
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/login');
     });
 
-    it('should redirect to /login when accessing /dashboard with invalid token', () => {
+    it('should redirect to /login when accessing /dashboard with invalid token', async () => {
       const request = createRequest('http://localhost:3000/dashboard', 'invalid-token');
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/login');
     });
   });
 
-  // Skip role-based access prevention tests - middleware doesn't implement role checking yet
-  describe.skip('Cross-Dashboard Access Prevention', () => {
-    it('should redirect supplier to /dashboard/supplier when accessing /dashboard/buyer', () => {
+  describe('Cross-Dashboard Access Prevention', () => {
+    it('should redirect supplier to /dashboard/supplier when accessing /dashboard/buyer', async () => {
       const token = generateToken({
         userId: 'supplier-123',
         email: 'supplier@test.com',
@@ -93,13 +91,13 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard/buyer', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/dashboard/supplier');
     });
 
-    it('should redirect buyer to /dashboard/buyer when accessing /dashboard/supplier', () => {
+    it('should redirect buyer to /dashboard/buyer when accessing /dashboard/supplier', async () => {
       const token = generateToken({
         userId: 'buyer-456',
         email: 'buyer@test.com',
@@ -107,13 +105,13 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard/supplier', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/dashboard/buyer');
     });
 
-    it('should prevent supplier from accessing nested buyer routes', () => {
+    it('should prevent supplier from accessing nested buyer routes', async () => {
       const token = generateToken({
         userId: 'supplier-789',
         email: 'supplier@test.com',
@@ -121,13 +119,13 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard/buyer/orders', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/dashboard/supplier');
     });
 
-    it('should prevent buyer from accessing nested supplier routes', () => {
+    it('should prevent buyer from accessing nested supplier routes', async () => {
       const token = generateToken({
         userId: 'buyer-789',
         email: 'buyer@test.com',
@@ -135,16 +133,15 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard/supplier/products', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/dashboard/buyer');
     });
   });
 
-  // Skip case normalization tests - middleware doesn't implement role-based redirects yet
-  describe.skip('Case Normalization', () => {
-    it('should handle uppercase SUPPLIER role', () => {
+  describe('Case Normalization', () => {
+    it('should handle uppercase SUPPLIER role', async () => {
       const token = generateToken({
         userId: 'user-123',
         email: 'supplier@test.com',
@@ -152,13 +149,13 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/dashboard/supplier');
     });
 
-    it('should handle mixed case Buyer role', () => {
+    it('should handle mixed case Buyer role', async () => {
       const token = generateToken({
         userId: 'user-456',
         email: 'buyer@test.com',
@@ -166,7 +163,7 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/dashboard/buyer');
@@ -182,7 +179,7 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard/supplier', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       // Should not redirect - allow access
       const redirectUrl = getRedirectUrl(response);
@@ -197,7 +194,7 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard/buyer', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       // Should not redirect - allow access
       const redirectUrl = getRedirectUrl(response);
@@ -212,7 +209,7 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/dashboard/supplier/products', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       // Should not redirect - allow access
       const redirectUrl = getRedirectUrl(response);
@@ -229,7 +226,7 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
       });
 
       const request = createRequest('http://localhost:3000/architects', token);
-      const response = middleware(request);
+      const response = await middleware(request);
 
       // Should not redirect - allow access
       const redirectUrl = getRedirectUrl(response);
@@ -238,25 +235,25 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
   });
 
   describe('Unauthenticated Dashboard Access', () => {
-    it('should redirect to /login for /dashboard/supplier without token', () => {
+    it('should redirect to /login for /dashboard/supplier without token', async () => {
       const request = createRequest('http://localhost:3000/dashboard/supplier');
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/login');
     });
 
-    it('should redirect to /login for /dashboard/buyer without token', () => {
+    it('should redirect to /login for /dashboard/buyer without token', async () => {
       const request = createRequest('http://localhost:3000/dashboard/buyer');
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/login');
     });
 
-    it('should redirect to /login for nested dashboard routes without token', () => {
+    it('should redirect to /login for nested dashboard routes without token', async () => {
       const request = createRequest('http://localhost:3000/dashboard/buyer/orders');
-      const response = middleware(request);
+      const response = await middleware(request);
 
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toContain('/login');
@@ -264,18 +261,18 @@ describe('Middleware - Role-Based Dashboard Redirects', () => {
   });
 
   describe('Public Routes', () => {
-    it('should allow access to /login without token', () => {
+    it('should allow access to /login without token', async () => {
       const request = createRequest('http://localhost:3000/login');
-      const response = middleware(request);
+      const response = await middleware(request);
 
       // Should not redirect - allow access
       const redirectUrl = getRedirectUrl(response);
       expect(redirectUrl).toBeNull();
     });
 
-    it('should allow access to root / without token', () => {
+    it('should allow access to root / without token', async () => {
       const request = createRequest('http://localhost:3000/');
-      const response = middleware(request);
+      const response = await middleware(request);
 
       // Should not redirect - allow access
       const redirectUrl = getRedirectUrl(response);
