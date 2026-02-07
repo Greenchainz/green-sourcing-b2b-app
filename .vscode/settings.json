@@ -10,5 +10,19 @@
   "ms-entra.extIdApplicationId": "479e2a01-70ab-4df9-baa4-560d317c3423",
   "ms-entra.walkthroughFirstTimeRunId": "",
   "ms-entra.extFirstTimeRunId": "",
-  "ms-entra.extIdTenantId": "ca4f78d4-c753-4893-9cd8-1b309922b4dc"
+  "ms-entra.extIdTenantId": "ca4f78d4-c753-4893-9cd8-1b309922b4dc",
+  "sqltools.connections": [
+    {
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "username": "founder1@greenchainz.com",
+      "password": "(az account get-access-token --resource https://ossrdbms-aad.database.windows.net --query accessToken --output tsv)",
+      "database": "greenchainz_db",
+      "name": "greenchainz-db-prod.postgres.database.azure.com",
+      "group": "rg-greenchainz"
+    }
+  ]
 }
