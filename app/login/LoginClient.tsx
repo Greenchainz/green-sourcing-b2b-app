@@ -39,12 +39,12 @@ export default function LoginClient() {
             onClick={handleSignIn}
             disabled={loading}
             type="button"
-            className="w-full h-12 flex items-center justify-center gap-3 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+            className="w-full h-10 flex items-center justify-center gap-2 bg-white border-2 border-gray-200 rounded-md hover:border-gray-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
             </svg>
-            <span className="font-medium text-gray-700">Continue with Microsoft</span>
+            <span className="text-sm font-semibold text-gray-700">Continue with Microsoft</span>
           </button>
         </div>
       </div>

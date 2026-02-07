@@ -42,9 +42,9 @@ export default function SignupPage() {
             <button
               type="button"
               onClick={handleSignUp}
-              className="btn-aurora w-full flex items-center justify-center gap-2 group"
+              className="btn-aurora w-full h-10 flex items-center justify-center gap-2 group"
             >
-              <span>Create Account</span>
+              <span className="text-sm font-semibold">Create Account</span>
             </button>
 
             <div className="text-center text-xs text-slate-500 mt-4">
