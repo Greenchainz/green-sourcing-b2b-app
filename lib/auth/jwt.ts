@@ -16,7 +16,9 @@ export interface JWTPayload {
   exp?: number;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-key';
+function getJwtSecret(): string {
+  return process.env.JWT_SECRET || 'development-secret-key';
+}
 const JWT_EXPIRY_SECONDS = 60 * 60 * 24 * 7; // 7d
 const REFRESH_EXPIRY_SECONDS = 60 * 60 * 24 * 30; // 30d
 
@@ -69,7 +71,7 @@ async function signHS256(payload: object, expiresIn: '7d' | '30d'): Promise<stri
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
   const signingInput = `${encodedHeader}.${encodedPayload}`;
 
-  const signature = await hmacSha256(signingInput, JWT_SECRET);
+  const signature = await hmacSha256(signingInput, getJwtSecret());
   const encodedSig = base64UrlEncode(signature);
 
   return `${signingInput}.${encodedSig}`;
@@ -89,7 +91,7 @@ async function verifyHS256(token: string): Promise<boolean> {
 
   const [h, p, s] = parts;
   const signingInput = `${h}.${p}`;
-  const expected = await hmacSha256(signingInput, JWT_SECRET);
+  const expected = await hmacSha256(signingInput, getJwtSecret());
   const expectedB64Url = base64UrlEncode(expected);
 
   if (expectedB64Url !== s) return false;
