@@ -11,8 +11,9 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   // Define public paths that don't require authentication
   const publicPaths = [
     '/login',
@@ -29,13 +30,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
   
-  // Get session token from cookies
-  const sessionToken = req.cookies.get('authjs.session-token')?.value ||
-    req.cookies.get('__Secure-authjs.session-token')?.value ||
-    req.cookies.get('greenchainz-auth-token')?.value ||
-    req.cookies.get('token')?.value;
-
-  const isLoggedIn = !!sessionToken;
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const isLoggedIn = !!token;
   const isProtectedRoute = 
     req.nextUrl.pathname.startsWith('/dashboard') ||
     req.nextUrl.pathname.startsWith('/suppliers') ||
@@ -46,6 +42,22 @@ export function middleware(req: NextRequest) {
 
   if (isProtectedRoute && !isLoggedIn) {
     return NextResponse.redirect(new URL('/login', req.url));
+  }
+
+  if (req.nextUrl.pathname.startsWith('/dashboard') && token) {
+    const role = (token as { role?: string }).role || 'buyer';
+
+    if (req.nextUrl.pathname === '/dashboard') {
+      return NextResponse.redirect(new URL(`/dashboard/${role}`, req.url));
+    }
+
+    if (req.nextUrl.pathname.startsWith('/dashboard/supplier') && role !== 'supplier') {
+      return NextResponse.redirect(new URL('/dashboard/buyer', req.url));
+    }
+
+    if (req.nextUrl.pathname.startsWith('/dashboard/buyer') && role !== 'buyer') {
+      return NextResponse.redirect(new URL('/dashboard/supplier', req.url));
+    }
   }
 
   return NextResponse.next();

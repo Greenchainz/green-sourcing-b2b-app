@@ -17,7 +17,11 @@ import { authConfig } from "./auth.config";
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
   // adapter: PrismaAdapter(prisma), // Add this back when DB is ready
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 8 * 60 * 60, // 8 hours absolute
+    updateAge: 15 * 60, // 15 minutes idle refresh
+  },
   providers: [
     MicrosoftEntraID({
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID || process.env.AZURE_AD_CLIENT_ID,
@@ -41,8 +45,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
-        domain: process.env.COOKIE_DOMAIN || "localhost",
-        maxAge: 30 * 24 * 60 * 60, // 30 days
+        domain: process.env.COOKIE_DOMAIN,
+        maxAge: 8 * 60 * 60,
       },
     },
   },
@@ -59,6 +63,33 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
      */
     async signIn({ user, account }) {
       console.log("🔐 OAuth SignIn - Provider:", account?.provider, "Email:", user.email);
+
+      const authAgentEndpoint = process.env.AUTH_AGENT_ENDPOINT || null;
+      if (authAgentEndpoint) {
+        try {
+          await fetch(`${authAgentEndpoint}/log-event`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              event_type: "login",
+              user_id: user.id,
+              email: user.email,
+              provider: account?.provider,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+        } catch (error) {
+          console.error("❌ Auth audit log failed:", error);
+        }
+      } else {
+        console.log("[AUTH AUDIT]", {
+          event_type: "login",
+          user_id: user.id,
+          email: user.email,
+          provider: account?.provider,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       if (!user.email) return false;
 
@@ -113,6 +144,20 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         console.error("❌ Auth callback error:", error);
         return false;
       }
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = (user as { role?: string }).role || "buyer";
+        token.userId = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.role = (token as { role?: string }).role || "buyer";
+        session.user.id = (token as { userId?: string }).userId || session.user.id;
+      }
+      return session;
     },
   },
   debug: process.env.NODE_ENV === 'development',
