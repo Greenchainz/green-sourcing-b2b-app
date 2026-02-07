@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
 
 export async function middleware(req: NextRequest) {
   // Define public paths that don't require authentication
@@ -31,7 +32,21 @@ export async function middleware(req: NextRequest) {
   }
   
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  const isLoggedIn = !!token;
+  let role: string | null = token && typeof token === 'object' && 'role' in token
+    ? String((token as { role?: string }).role || '')
+    : '';
+  let isLoggedIn = !!token;
+
+  if (!isLoggedIn) {
+    const legacyToken = req.cookies.get('greenchainz-auth-token')?.value;
+    if (legacyToken) {
+      const payload = await verifyToken(legacyToken);
+      if (payload) {
+        isLoggedIn = true;
+        role = payload.role || role;
+      }
+    }
+  }
   const isProtectedRoute = 
     req.nextUrl.pathname.startsWith('/dashboard') ||
     req.nextUrl.pathname.startsWith('/suppliers') ||
@@ -44,18 +59,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  if (req.nextUrl.pathname.startsWith('/dashboard') && token) {
-    const role = (token as { role?: string }).role || 'buyer';
+  if (req.nextUrl.pathname.startsWith('/dashboard') && isLoggedIn) {
+    const normalizedRole = (role || 'buyer').toLowerCase();
+    const safeRole = normalizedRole === 'supplier' ? 'supplier' : 'buyer';
 
     if (req.nextUrl.pathname === '/dashboard') {
-      return NextResponse.redirect(new URL(`/dashboard/${role}`, req.url));
+      return NextResponse.redirect(new URL(`/dashboard/${safeRole}`, req.url));
     }
 
-    if (req.nextUrl.pathname.startsWith('/dashboard/supplier') && role !== 'supplier') {
+    if (req.nextUrl.pathname.startsWith('/dashboard/supplier') && safeRole !== 'supplier') {
       return NextResponse.redirect(new URL('/dashboard/buyer', req.url));
     }
 
-    if (req.nextUrl.pathname.startsWith('/dashboard/buyer') && role !== 'buyer') {
+    if (req.nextUrl.pathname.startsWith('/dashboard/buyer') && safeRole !== 'buyer') {
       return NextResponse.redirect(new URL('/dashboard/supplier', req.url));
     }
   }
