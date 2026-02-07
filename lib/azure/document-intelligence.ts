@@ -12,7 +12,7 @@ if (!ENDPOINT) {
   );
 }
 
-const client = ENDPOINT
+let client: DocumentAnalysisClient | null = ENDPOINT
   ? new DocumentAnalysisClient(ENDPOINT, credential)
   : null;
 
@@ -31,6 +31,72 @@ export interface ExtractedCertData {
   expiration_date?: string;
   issuing_authority?: string;
   confidence_scores: Record<string, number>;
+}
+
+/**
+ * Get Document Intelligence client (exported for testing)
+ */
+export function getDocumentClient(): DocumentAnalysisClient | null {
+  return client;
+}
+
+/**
+ * Reset client (exported for testing)
+ */
+export function resetDocumentClient(): void {
+  client = ENDPOINT ? new DocumentAnalysisClient(ENDPOINT, credential) : null;
+}
+
+/**
+ * Check if Document Intelligence is configured
+ */
+export function isDocumentIntelligenceConfigured(): boolean {
+  return !!ENDPOINT && !!client;
+}
+
+/**
+ * Analyze a document buffer
+ */
+export async function analyzeDocument(buffer: Buffer): Promise<any> {
+  if (!client) {
+    throw new Error(
+      'Document Intelligence client not initialized. ' +
+      'Ensure DOCUMENT_INTELLIGENCE_ENDPOINT is set.'
+    );
+  }
+  
+  const poller = await client.beginAnalyzeDocument('prebuilt-document', buffer);
+  return await poller.pollUntilDone();
+}
+
+/**
+ * Analyze a document from URL
+ */
+export async function analyzeDocumentFromUrl(url: string): Promise<any> {
+  if (!client) {
+    throw new Error(
+      'Document Intelligence client not initialized. ' +
+      'Ensure DOCUMENT_INTELLIGENCE_ENDPOINT is set.'
+    );
+  }
+  
+  const poller = await client.beginAnalyzeDocumentFromUrl('prebuilt-document', url);
+  return await poller.pollUntilDone();
+}
+
+/**
+ * Extract invoice data from document
+ */
+export async function extractInvoiceData(buffer: Buffer): Promise<any> {
+  if (!client) {
+    throw new Error(
+      'Document Intelligence client not initialized. ' +
+      'Ensure DOCUMENT_INTELLIGENCE_ENDPOINT is set.'
+    );
+  }
+  
+  const poller = await client.beginAnalyzeDocument('prebuilt-invoice', buffer);
+  return await poller.pollUntilDone();
 }
 
 export async function extractEPDData(
