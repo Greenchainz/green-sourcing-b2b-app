@@ -1,14 +1,5 @@
-// app/providers.tsx
-"use client";
-
-import { SessionProvider } from "next-auth/react";
-import IntercomWidget from "./components/IntercomWidget";
+'use client';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
-  return (
-    <SessionProvider>
-      {children}
-      <IntercomWidget />
-    </SessionProvider>
-  );
+  return <>{children}</>;
 }

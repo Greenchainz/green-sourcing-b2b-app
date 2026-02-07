@@ -1,9 +1,17 @@
-import LoginClient from "./LoginClient";
-
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <LoginClient />
+    <div style={{ padding: '50px', textAlign: 'center' }}>
+      <h1>Login</h1>
+      <a href="/api/auth/signin" style={{ 
+        padding: '10px 20px', 
+        background: '#0070f3', 
+        color: 'white', 
+        textDecoration: 'none',
+        borderRadius: '5px',
+        display: 'inline-block'
+      }}>
+        Sign in with Microsoft
+      </a>
     </div>
   );
 }
