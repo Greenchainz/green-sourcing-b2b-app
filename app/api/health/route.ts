@@ -1,59 +1,35 @@
-import { NextResponse } from "next/server";
-import { getAzureSQLPool } from "@/lib/azure/config";
+// app/api/health/route.ts
+import { NextResponse } from 'next/server';
+import { azureHealthCheck } from '@/lib/azure/identity-client';
 
-/**
- * Health Check Endpoint
- * 
- * Used by:
- * - Azure Container App health checks
- * - Docker HEALTHCHECK
- * - Load balancer probes
- */
+export const dynamic = 'force-dynamic'; // Disable caching for health checks
+export const runtime = 'nodejs'; // Ensure Node.js runtime (not Edge)
+
 export async function GET() {
-    try {
-        // Check Azure SQL connectivity
-        const pool = await getAzureSQLPool();
-        const result = await pool.request().query("SELECT 1 AS healthy");
+  try {
+    const azureStatus = await azureHealthCheck();
 
-        if (!result.recordset || result.recordset.length === 0) {
-            throw new Error("Database query returned no results");
-        }
+    const isHealthy = azureStatus.keyVault && azureStatus.appConfig;
 
-        // Check Document Intelligence configuration
-        const docIntelEndpoint = process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
-        const docIntelStatus = docIntelEndpoint ? "configured" : "not_configured";
+    return NextResponse.json(
+      {
+        status: isHealthy ? 'healthy' : 'degraded',
+        timestamp: new Date().toISOString(),
+        azure: azureStatus,
+      },
+      { status: isHealthy ? 200 : 503 }
+    );
+  } catch (error) {
+    console.error('[Health] Error during health check:', error);
 
-        // Check other Azure services
-        const storageAccount = process.env.AZURE_STORAGE_ACCOUNT_NAME || process.env.AZURE_STORAGE_CONNECTION_STRING;
-        const storageStatus = storageAccount ? "available" : "not_configured";
-
-        const openaiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
-        const openaiStatus = openaiEndpoint ? "configured" : "not_configured";
-
-        return NextResponse.json(
-            {
-                status: "healthy",
-                timestamp: new Date().toISOString(),
-                azure: {
-                    sql: "connected",
-                    storage: storageStatus,
-                    openai: openaiStatus,
-                    documentIntelligence: docIntelStatus,
-                },
-            },
-            { status: 200 }
-        );
-    } catch (error) {
-        console.error("Health check failed:", error);
-
-        return NextResponse.json(
-            {
-                status: "unhealthy",
-                error:
-                    error instanceof Error ? error.message : "Unknown error",
-                timestamp: new Date().toISOString(),
-            },
-            { status: 503 }
-        );
-    }
+    return NextResponse.json(
+      {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 503 }
+    );
+  }
 }
+
