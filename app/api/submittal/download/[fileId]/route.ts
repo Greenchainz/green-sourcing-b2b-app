@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIProjectClient } from "@azure/ai-projects";
-import { DefaultAzureCredential } from "@azure/identity";
+import { getAzureCredential } from "@/lib/azure/credentials";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export async function GET(
             throw new Error("Missing Azure AI Foundry endpoint");
         }
 
-        const credential = new DefaultAzureCredential();
+        const credential = getAzureCredential();
         const client = AIProjectClient.fromEndpoint(endpoint, credential);
 
         // Get file metadata

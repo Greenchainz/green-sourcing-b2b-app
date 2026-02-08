@@ -1,8 +1,8 @@
-import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
+import { getAzureCredential } from "./credentials";
 
-// This automatically uses your VS Code login (local) or Managed Identity (Azure)
-const credential = new DefaultAzureCredential();
+// Use centralized credential with User-Assigned Managed Identity
+const credential = getAzureCredential();
 
 const vaultName = process.env.AZURE_KEY_VAULT_NAME;
 const url = `https://${vaultName}.vault.azure.net`;
