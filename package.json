@@ -22,7 +22,9 @@
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.1.0",
     "@azure/ai-projects": "^1.0.1",
+    "@azure/app-configuration": "^1.11.0",
     "@azure/identity": "^4.13.0",
+    "@azure/keyvault-secrets": "^4.10.0",
     "@azure/msal-node": "^5.0.3",
     "@azure/search-documents": "^12.2.0",
     "@azure/storage-blob": "^12.29.1",
@@ -69,7 +71,7 @@
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mssql": "^9.1.9",
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.33",
     "@types/pg": "^8.16.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
