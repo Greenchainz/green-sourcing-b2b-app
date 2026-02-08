@@ -316,14 +316,20 @@ npm test -- tests/unit/auth/easy-auth.test.ts
 
 5. **HTTPS only** - Easy Auth requires HTTPS in production (automatic with Container Apps)
 
-## Migration from NextAuth
+## Migration Complete
 
-If migrating from NextAuth:
+GreenChainz has fully migrated to Azure Easy Auth. All NextAuth.js dependencies and code have been removed.
 
-1. **Remove NextAuth configuration** - Delete `auth.config.ts` or similar files
-2. **Update API routes** - Replace NextAuth session checks with Easy Auth
-3. **Update client components** - Use `/api/auth/me` instead of NextAuth hooks
-4. **Remove NextAuth dependencies** - Uninstall `next-auth` from `package.json`
+**Current authentication setup:**
+- ✅ Server-side: `lib/auth/easy-auth.ts` - Functions to parse Easy Auth headers
+- ✅ Client-side: `lib/auth/use-easy-auth.ts` - React hook (`useAuth()`) for client components
+- ✅ Middleware: `middleware.ts` - Protects routes automatically
+- ✅ Example endpoint: `/api/auth/me` - Returns current user info
+
+**For new features:**
+1. **Server components/API routes** - Import from `@/lib/auth/easy-auth`
+2. **Client components** - Use `useAuth()` hook from `@/lib/auth`
+3. **Protected routes** - Already configured in `middleware.ts`
 
 ## Additional Resources
 

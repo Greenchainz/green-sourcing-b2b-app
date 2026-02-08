@@ -27,7 +27,7 @@ interface BackendRFQ {
 
 export default function RFQsListingPage() {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [rfqs, setRfqs] = useState<RFQSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,7 +36,7 @@ export default function RFQsListingPage() {
   useEffect(() => {
     const fetchRFQs = async () => {
       try {
-        if (!token) return;
+        if (!user) return;
 
         // Determine endpoint based on filter
         // "my" -> fetch user's own RFQs
@@ -46,7 +46,7 @@ export default function RFQsListingPage() {
           : `${BACKEND_URL}/api/v2/rfqs?status=open`;
 
         const response = await fetch(endpoint, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include', // Easy Auth handles authentication via headers
         });
 
         if (!response.ok) throw new Error("Failed to fetch RFQs");
@@ -84,12 +84,12 @@ export default function RFQsListingPage() {
       }
     };
 
-    if (user && token) {
+    if (user) {
       fetchRFQs();
     } else {
        setLoading(false); // Stop loading if not auth
     }
-  }, [user, token, filter]);
+  }, [user, filter]);
 
   const handleRespond = (rfqId: string) => {
     router.push(`/rfqs/${rfqId}`);

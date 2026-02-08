@@ -10,7 +10,7 @@ const BACKEND_URL =
 
 export default function CreateRFQPage() {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,14 +46,14 @@ export default function CreateRFQPage() {
     setError("");
 
     try {
-      if (!token) throw new Error("Not authenticated");
+      if (!user) throw new Error("Not authenticated");
 
       const response = await fetch(`${BACKEND_URL}/api/v2/rfqs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include', // Easy Auth handles authentication
         body: JSON.stringify({
           project_name: formData.projectName,
           message: formData.description,
