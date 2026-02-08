@@ -6,6 +6,7 @@
  * 
  * Features:
  * - Singleton BlobServiceClient with connection pooling
+ * - User-Assigned Managed Identity authentication (id-greenchainz-backend)
  * - Automatic retries with exponential backoff
  * - Content type detection
  * - Upload progress tracking
@@ -22,6 +23,7 @@ import {
   generateBlobSASQueryParameters,
   StorageSharedKeyCredential,
 } from "@azure/storage-blob";
+import { getAzureCredential } from "./credentials";
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -95,37 +97,65 @@ const CONTENT_TYPE_MAP: Record<string, string> = {
 // ============================================================================
 
 let blobServiceClient: BlobServiceClient | null = null;
-let connectionString: string | null = null;
+let accountUrl: string | null = null;
 
 /**
- * Get or create the singleton BlobServiceClient with connection pooling
+ * Get or create the singleton BlobServiceClient with Managed Identity
  * 
  * @returns Configured BlobServiceClient instance
- * @throws Error if AZURE_STORAGE_CONNECTION_STRING is not set
+ * @throws Error if AZURE_STORAGE_ACCOUNT_NAME is not set
  */
 export function getBlobServiceClient(): BlobServiceClient {
-  const currentConnectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  const storageAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
+  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 
-  if (!currentConnectionString) {
+  if (!storageAccountName && !connectionString) {
     throw new Error(
-      "Missing AZURE_STORAGE_CONNECTION_STRING environment variable. " +
-      "Please configure Azure Blob Storage credentials."
+      "Missing AZURE_STORAGE_ACCOUNT_NAME or AZURE_STORAGE_CONNECTION_STRING environment variable. " +
+      "For managed identity, set AZURE_STORAGE_ACCOUNT_NAME. " +
+      "For connection string (local dev), set AZURE_STORAGE_CONNECTION_STRING."
     );
   }
 
-  // Recreate client if connection string changed (useful for testing)
-  if (blobServiceClient && connectionString === currentConnectionString) {
+  // Use managed identity if account name is provided (production)
+  if (storageAccountName) {
+    const currentAccountUrl = `https://${storageAccountName}.blob.core.windows.net`;
+    
+    // Recreate client if account URL changed (useful for testing)
+    if (blobServiceClient && accountUrl === currentAccountUrl) {
+      return blobServiceClient;
+    }
+
+    accountUrl = currentAccountUrl;
+    const credential = getAzureCredential();
+    blobServiceClient = new BlobServiceClient(
+      currentAccountUrl,
+      credential,
+      { retryOptions: RETRY_OPTIONS }
+    );
+
+    console.log("✅ Azure Blob Storage client initialized with Managed Identity");
     return blobServiceClient;
   }
 
-  connectionString = currentConnectionString;
-  blobServiceClient = BlobServiceClient.fromConnectionString(
-    currentConnectionString,
-    { retryOptions: RETRY_OPTIONS }
-  );
+  // Fallback to connection string (local development)
+  if (connectionString) {
+    // Recreate client if connection string changed (useful for testing)
+    if (blobServiceClient && accountUrl === connectionString) {
+      return blobServiceClient;
+    }
 
-  console.log("✅ Azure Blob Storage client initialized with connection pooling");
-  return blobServiceClient;
+    accountUrl = connectionString; // Reuse variable for cache key
+    blobServiceClient = BlobServiceClient.fromConnectionString(
+      connectionString,
+      { retryOptions: RETRY_OPTIONS }
+    );
+
+    console.log("✅ Azure Blob Storage client initialized with connection string (local dev)");
+    return blobServiceClient;
+  }
+
+  throw new Error("Unable to initialize Azure Blob Storage client");
 }
 
 /**
@@ -390,7 +420,11 @@ export async function listBlobs(
 
 /**
  * Generate a SAS URL for temporary blob access
- * Note: This requires the connection string to contain the account key
+ * Note: This requires either the connection string (with account key) or 
+ * User Delegation Key (available with managed identity in Azure).
+ * 
+ * For production with managed identity, this function requires additional setup.
+ * For local dev with connection string, it works as-is.
  * 
  * @param containerName - Container name
  * @param blobName - Blob name
@@ -405,35 +439,48 @@ export async function generateBlobSasUrl(
   const container = await getContainer(containerName);
   const blobClient = container.getBlobClient(blobName);
 
-  // Parse connection string to get account name and key
-  const connStr = process.env.AZURE_STORAGE_CONNECTION_STRING || "";
-  const accountNameMatch = connStr.match(/AccountName=([^;]+)/);
-  const accountKeyMatch = connStr.match(/AccountKey=([^;]+)/);
+  // For connection string authentication, parse account key
+  const connStr = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  
+  if (connStr) {
+    // Local dev with connection string - use account key
+    const accountNameMatch = connStr.match(/AccountName=([^;]+)/);
+    const accountKeyMatch = connStr.match(/AccountKey=([^;]+)/);
 
-  if (!accountNameMatch || !accountKeyMatch) {
-    throw new Error("Cannot generate SAS URL: connection string must contain AccountName and AccountKey");
+    if (!accountNameMatch || !accountKeyMatch) {
+      throw new Error("Cannot generate SAS URL: connection string must contain AccountName and AccountKey");
+    }
+
+    const accountName = accountNameMatch[1];
+    const accountKey = accountKeyMatch[1];
+    const credential = new StorageSharedKeyCredential(accountName, accountKey);
+
+    const expiryDate = new Date();
+    expiryDate.setMinutes(expiryDate.getMinutes() + (options.expiryMinutes || 60));
+
+    const permissions = BlobSASPermissions.parse(options.permissions || "r");
+
+    const sasToken = generateBlobSASQueryParameters(
+      {
+        containerName,
+        blobName,
+        permissions,
+        expiresOn: expiryDate,
+      },
+      credential
+    ).toString();
+
+    return `${blobClient.url}?${sasToken}`;
   }
 
-  const accountName = accountNameMatch[1];
-  const accountKey = accountKeyMatch[1];
-  const credential = new StorageSharedKeyCredential(accountName, accountKey);
-
-  const expiryDate = new Date();
-  expiryDate.setMinutes(expiryDate.getMinutes() + (options.expiryMinutes || 60));
-
-  const permissions = BlobSASPermissions.parse(options.permissions || "r");
-
-  const sasToken = generateBlobSASQueryParameters(
-    {
-      containerName,
-      blobName,
-      permissions,
-      expiresOn: expiryDate,
-    },
-    credential
-  ).toString();
-
-  return `${blobClient.url}?${sasToken}`;
+  // For managed identity in production, we should use User Delegation Key
+  // This requires additional Azure permissions and is more complex
+  // For now, throw an error to indicate this needs implementation
+  throw new Error(
+    "SAS URL generation with managed identity requires User Delegation Key implementation. " +
+    "For now, use connection string for local dev or implement User Delegation Key for production. " +
+    "See: https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-nodejs"
+  );
 }
 
 // ============================================================================
@@ -445,6 +492,6 @@ export async function generateBlobSasUrl(
  */
 export function resetBlobServiceClient(): void {
   blobServiceClient = null;
-  connectionString = null;
+  accountUrl = null;
   console.log("✅ Azure Blob Storage client reset");
 }

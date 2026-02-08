@@ -79,18 +79,16 @@ export async function azureHealthCheck(): Promise<{
   }
 
   // Check App Config access
-// Check App Config access
-try {
-  const iterator = appConfigClient.listConfigurationSettings();
-  await iterator.next();
-  result.appConfig = true;
-} catch (error) {
-  console.error('[Azure] App Config health check failed:');
-  console.error('Error name:', error instanceof Error ? error.name : 'Unknown');
-  console.error('Error message:', error instanceof Error ? error.message : 'Unknown');
-  console.error('Full error:', error);
-}
-
+  // Check App Config access
+  try {
+    const iterator = appConfigClient.listConfigurationSettings();
+    await iterator.next();
+    result.appConfig = true;
+  } catch (error) {
+    console.error('[Azure] App Config health check failed:');
+    console.error('Error name:', error instanceof Error ? error.name : 'Unknown');
+    console.error('Error message:', error instanceof Error ? error.message : 'Unknown');
+    console.error('Full error:', error);
   }
 
   return result;
