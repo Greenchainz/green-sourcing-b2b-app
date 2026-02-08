@@ -17,6 +17,7 @@
  */
 
 import { BlobServiceClient } from "@azure/storage-blob";
+import { getAzureCredential } from "./credentials";
 let sql: any;
 
 function getMssqlUnavailableError(): Error {
@@ -161,7 +162,7 @@ export function getBlobServiceClient(): BlobServiceClient {
         // Use managed identity if account name is provided (production)
         if (storageAccountName) {
             const accountUrl = `https://${storageAccountName}.blob.core.windows.net`;
-            const credential = require('./credentials').getAzureCredential();
+            const credential = getAzureCredential();
             blobService = new BlobServiceClient(accountUrl, credential);
             console.log("✅ Legacy blob service client initialized with Managed Identity");
         } else if (connectionString) {
