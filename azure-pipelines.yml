@@ -15,7 +15,7 @@ stages:
         steps:
           - task: NodeTool@0
             inputs:
-              versionSpec: '18.x'
+              versionSpec: '20.x'
             displayName: 'Install Node.js'
 
           - script: |
@@ -63,7 +63,7 @@ stages:
                 echo "✅ Created App Service plan $(SVCPLANNAME)"
 
                 # Create Web App
-                az webapp create -g $(RESOURCEGROUPNAME) -p $(SVCPLANNAME) -n $(WEBAPPNAMETEST) -r "NODE|18-lts"
+                az webapp create -g $(RESOURCEGROUPNAME) -p $(SVCPLANNAME) -n $(WEBAPPNAMETEST) -r "NODE|20-lts"
                 echo "✅ Created Web App $(WEBAPPNAMETEST)"
 
   # STAGE 3: DEPLOY WEB APP
