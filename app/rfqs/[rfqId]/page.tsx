@@ -50,7 +50,7 @@ const getStatusClass = (status: string): string => {
 export default function RFQDetailPage() {
   const params = useParams();
   const rfqId = params.rfqId as string;
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
   const [rfq, setRfq] = useState<RFQ | null>(null);
   const [responses, setResponses] = useState<RFQResponse[]>([]);
@@ -67,9 +67,9 @@ export default function RFQDetailPage() {
   useEffect(() => {
     const fetchRFQ = async () => {
       try {
-        if (!token) throw new Error("Not authenticated. Please log in first.");
+        if (!user) throw new Error("Not authenticated. Please log in first.");
         const response = await fetch(`${BACKEND_URL}/api/v2/rfqs/${rfqId}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include', // Easy Auth handles authentication
         });
         if (!response.ok) throw new Error("Failed to fetch RFQ");
         const data = await response.json();
@@ -81,9 +81,9 @@ export default function RFQDetailPage() {
 
     const fetchResponses = async () => {
       try {
-        if (!token) return;
+        if (!user) return;
         const response = await fetch(`${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include', // Easy Auth handles authentication
         });
         if (!response.ok) return;
         const data = await response.json();
@@ -99,7 +99,7 @@ export default function RFQDetailPage() {
       await fetchResponses();
       setLoading(false);
     })();
-  }, [rfqId, token]);
+  }, [rfqId, user]);
 
   const handleSubmitBid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +107,7 @@ export default function RFQDetailPage() {
     setError("");
 
     try {
-      if (!token) throw new Error("Not authenticated. Please log in first.");
+      if (!user) throw new Error("Not authenticated. Please log in first.");
       const price = parseFloat(bidForm.quotedPrice);
       if (Number.isNaN(price)) throw new Error("Please enter a valid price.");
 
@@ -117,8 +117,8 @@ export default function RFQDetailPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
+          credentials: 'include', // Easy Auth handles authentication
           body: JSON.stringify({
             total_price: price,
             line_items: [],
@@ -135,7 +135,7 @@ export default function RFQDetailPage() {
       setBidForm({ quotedPrice: "", notes: "" });
       // Refresh responses
       const refreshResponse = await fetch(`${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();
@@ -150,14 +150,12 @@ export default function RFQDetailPage() {
 
   const handleBidAction = async (bidId: string | number, action: "accept" | "reject") => {
     try {
-      if (!token) throw new Error("Not authenticated");
+      if (!user) throw new Error("Not authenticated");
       const response = await fetch(
         `${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids/${bidId}/${action}`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include', // Easy Auth handles authentication
         }
       );
 
@@ -165,7 +163,7 @@ export default function RFQDetailPage() {
 
       // Refresh responses
       const refreshResponse = await fetch(`${BACKEND_URL}/api/v2/rfqs/${rfqId}/bids`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();

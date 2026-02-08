@@ -9,14 +9,8 @@ module.exports = {
       isolatedModules: true,
     }],
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!(next-auth)/)',
-  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
-    '^next-auth$': '<rootDir>/tests/mocks/next-auth.ts',
-    '^next-auth/react$': '<rootDir>/tests/mocks/next-auth-react.ts',
-    '^next-auth/providers/(.*)$': '<rootDir>/tests/mocks/next-auth-providers.ts',
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverageFrom: [

@@ -21,7 +21,7 @@ interface RFQ {
 export default function RFQsPage() {
    const [rfqs, setRfqs] = useState<RFQ[]>([]);
    const [loading, setLoading] = useState(true);
-   const { user, token } = useAuth() as {
+   const { user } = useAuth() as {
       user: { id: string } | null;
       token: string | null;
    };
@@ -29,13 +29,13 @@ export default function RFQsPage() {
    useEffect(() => {
       const loadInbox = async () => {
          try {
-            if (!token || !user?.id) {
+            if (!user?.id) {
                setLoading(false);
                return;
             }
             const res = await fetch(
                `${BACKEND_URL}/api/v2/suppliers/${user.id}/inbox`,
-               { headers: { Authorization: `Bearer ${token}` } }
+               { credentials: 'include' } // Easy Auth handles authentication
             );
             if (!res.ok) throw new Error('Failed to load inbox');
             const data = await res.json();
@@ -48,7 +48,7 @@ export default function RFQsPage() {
       };
 
       loadInbox();
-   }, [token, user?.id]);
+   }, [user?.id]);
 
    return (
       <div className="space-y-6">
