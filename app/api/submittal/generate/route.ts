@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIProjectClient } from "@azure/ai-projects";
 import { uploadBlob } from "@/lib/azure/blob-storage";
-import { DefaultAzureCredential } from "@azure/identity";
+import { getAzureCredential } from "@/lib/azure/credentials";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
             throw new Error("Missing Azure AI Foundry configuration (Endpoint or Agent ID)");
         }
 
-        const credential = new DefaultAzureCredential();
+        const credential = getAzureCredential();
         const client = AIProjectClient.fromEndpoint(endpoint, credential);
 
         // 3. Create Thread

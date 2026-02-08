@@ -1,9 +1,9 @@
 // lib/docIntel.ts
-import { DefaultAzureCredential } from "@azure/identity";
 import { DocumentAnalysisClient } from "@azure/ai-form-recognizer";
+import { getAzureCredential } from "./azure/credentials";
 
 const endpoint = process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
-const credential = new DefaultAzureCredential();
+const credential = getAzureCredential();
 
 export function getDocIntelClient() {
   if (!endpoint) {
