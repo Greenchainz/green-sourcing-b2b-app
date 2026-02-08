@@ -1,0 +1,96 @@
+// lib/azure/identity-client.ts
+import { DefaultAzureCredential } from '@azure/identity';
+import { SecretClient } from '@azure/keyvault-secrets';
+import { AppConfigurationClient } from '@azure/app-configuration';
+
+/**
+ * Singleton credential instance
+ * Uses User-Assigned Managed Identity in Azure (id-greenchainz-backend)
+ * Uses local developer credentials when running locally
+ */
+const credential = new DefaultAzureCredential({
+  managedIdentityClientId: process.env.AZURE_CLIENT_ID,
+});
+
+// Key Vault client
+const keyVaultName = process.env.KEY_VAULT_NAME || 'greenchainz-vault';
+const keyVaultUrl = `https://${keyVaultName}.vault.azure.net`;
+const secretClient = new SecretClient(keyVaultUrl, credential);
+
+// App Configuration client
+const appConfigEndpoint =
+  process.env.APP_CONFIG_ENDPOINT || 'https://app-config-green.azconfig.io';
+const appConfigClient = new AppConfigurationClient(appConfigEndpoint, credential);
+
+/**
+ * Retrieve secret from Key Vault
+ * @param name Secret name (e.g., "db-connection-string")
+ * @returns Secret value
+ */
+export async function getSecret(name: string): Promise<string> {
+  try {
+    const result = await secretClient.getSecret(name);
+    if (!result.value) {
+      throw new Error(`Secret "${name}" has no value`);
+    }
+    return result.value;
+  } catch (error) {
+    console.error(`[Azure] Failed to retrieve secret "${name}":`, error);
+    throw error;
+  }
+}
+
+/**
+ * Retrieve configuration value from App Configuration
+ * @param key Configuration key (e.g., "FeatureFlags:RFQEnabled")
+ * @returns Configuration value
+ */
+export async function getConfigValue(key: string): Promise<string> {
+  try {
+    const setting = await appConfigClient.getConfigurationSetting({ key });
+    if (!setting.value) {
+      throw new Error(`Config key "${key}" has no value`);
+    }
+    return setting.value;
+  } catch (error) {
+    console.error(`[Azure] Failed to retrieve config "${key}":`, error);
+    throw error;
+  }
+}
+
+/**
+ * Health check for Azure dependencies
+ * Returns connectivity status for Key Vault and App Config
+ */
+export async function azureHealthCheck(): Promise<{
+  keyVault: boolean;
+  appConfig: boolean;
+}> {
+  const result = {
+    keyVault: false,
+    appConfig: false,
+  };
+
+  // Check Key Vault access
+  try {
+    const iterator = secretClient.listPropertiesOfSecrets();
+    await iterator.next();
+    result.keyVault = true;
+  } catch (error) {
+    console.error('[Azure] Key Vault health check failed:', error);
+  }
+
+  // Check App Config access
+  try {
+    const iterator = appConfigClient.listConfigurationSettings();
+    await iterator.next();
+    result.appConfig = true;
+  } catch (error) {
+    console.error('[Azure] App Config health check failed:', error);
+  }
+
+  return result;
+}
+
+// Export clients if needed for advanced use cases
+export { credential, secretClient, appConfigClient };
