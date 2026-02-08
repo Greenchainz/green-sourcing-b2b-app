@@ -61,6 +61,9 @@ Additionally, the Microsoft Entra ID authentication configuration needed to be v
 | `Dockerfile` | node:20-alpine | node:20-alpine | ✅ Already compliant |
 | `Dockerfile.azure` | node:20-alpine | node:20-alpine | ✅ Already compliant |
 | `main_greenchainz-scraper.yml` | 22.x | 20.x | ✅ Fixed |
+| `azure-pipelines.yml` (NodeTool) | 18.x | 20.x | ✅ Fixed |
+| `azure-pipelines.yml` (Web App) | NODE\|18-lts | NODE\|20-lts | ✅ Fixed |
+| `ciam-sign-in-node-express-web-app/package.json` | (none) | >=20.0.0 | ✅ Added |
 
 **Result:** All configurations standardized on Node 20 LTS
 
@@ -333,8 +336,9 @@ All Node.js version requirements have been validated and updated to meet Azure C
 
 ---
 
-**Last Updated:** 2026-02-02  
+**Last Updated:** 2026-02-08  
 **Status:** ✅ All Requirements Met  
+**Latest Changes:** Fixed remaining Node.js 18.x references in `azure-pipelines.yml` and added engines to `ciam-sign-in-node-express-web-app/package.json`  
 **Next Review:** Before production deployment
 
 **Azure Build Enforcer Agent:** Task Complete ✅

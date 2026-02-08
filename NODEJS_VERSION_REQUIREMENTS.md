@@ -32,9 +32,11 @@ All configurations have been standardized to Node 20 LTS:
 | File/Config | Node Version | Status |
 |-------------|--------------|--------|
 | `package.json` engines | `>=20.0.0` | ✅ Updated |
+| `ciam-sign-in-node-express-web-app/package.json` | `>=20.0.0` | ✅ Added |
 | `.oryx-node-version` | `20.18.0` | ✅ Updated |
 | `Dockerfile` | `node:20-alpine` | ✅ Compliant |
 | `Dockerfile.azure` | `node:20-alpine` | ✅ Compliant |
+| `azure-pipelines.yml` | `20.x` / `NODE\|20-lts` | ✅ Updated |
 | GitHub Workflows | `20.x` | ✅ Updated |
 
 ## Azure Oryx Build Platform
@@ -178,7 +180,8 @@ Consider upgrading to Node 22 LTS when:
 
 ## Last Updated
 
-**Date:** 2026-02-02  
+**Date:** 2026-02-08  
 **Updated By:** Azure Build Enforcer Agent  
 **Node Version:** 20.18.0 LTS  
+**Changes:** Fixed remaining Node.js 18.x references in `azure-pipelines.yml` and added engines to CIAM package.json  
 **Status:** ✅ Compliant with Azure Container Apps requirements
