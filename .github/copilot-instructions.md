@@ -302,10 +302,10 @@ export async function GET(
 - Handle errors gracefully with try-catch
 
 **Authentication & Authorization**:
-- Azure AD for authentication (via NextAuth or custom)
-- JWT tokens for API authentication
-- Middleware for protected routes
-- Multi-tenant + personal account support
+- Azure Container Apps Easy Auth for authentication
+- Easy Auth headers automatically injected by infrastructure
+- Middleware protects routes and validates Easy Auth headers
+- Multi-tenant + personal account support via Azure AD
 
 **Azure Services Integration**:
 ```typescript
@@ -395,8 +395,7 @@ import { User } from 'lucide-react';
    - `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE`, `AZURE_SQL_USER`, `AZURE_SQL_PASSWORD` - Azure SQL credentials
    - `AZURE_STORAGE_CONNECTION_STRING` - Blob storage connection
    - `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT` - Azure OpenAI
-   - `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID` - Azure AD auth
-   - `NEXTAUTH_URL`, `NEXTAUTH_SECRET` - NextAuth configuration
+   - `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID` - Azure AD credentials (for legacy services)
 
 3. **Environment-specific configs**:
    - Development: Use `.env.local` with localhost/Docker database
