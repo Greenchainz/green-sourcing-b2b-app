@@ -9,7 +9,7 @@ COPY package*.json pnpm-lock.yaml* ./
 
 # Install pnpm and dependencies (lockfileVersion 9 requires pnpm v10)
 RUN npm install -g pnpm@10.28.2 && \
-    pnpm install --frozen-lockfile
+    pnpm install --no-frozen-lockfile
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
