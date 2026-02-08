@@ -1,8 +1,8 @@
 import { DocumentAnalysisClient } from '@azure/ai-form-recognizer';
-import { DefaultAzureCredential } from '@azure/identity';
+import { getAzureCredential } from './credentials';
 
 const ENDPOINT = process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
-const credential = new DefaultAzureCredential();
+const credential = getAzureCredential();
 
 if (!ENDPOINT) {
   console.warn(

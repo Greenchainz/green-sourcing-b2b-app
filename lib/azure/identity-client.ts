@@ -1,16 +1,14 @@
 // lib/azure/identity-client.ts
-import { DefaultAzureCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
 import { AppConfigurationClient } from '@azure/app-configuration';
+import { getAzureCredential } from './credentials';
 
 /**
  * Singleton credential instance
  * Uses User-Assigned Managed Identity in Azure (id-greenchainz-backend)
  * Uses local developer credentials when running locally
  */
-const credential = new DefaultAzureCredential({
-  managedIdentityClientId: process.env.AZURE_CLIENT_ID,
-});
+const credential = getAzureCredential();
 
 // Key Vault client
 const keyVaultName = process.env.KEY_VAULT_NAME || 'greenchainz-vault';
