@@ -3,6 +3,10 @@
     "version": "1.0.0",
     "description": "Node/Express MSAL sign-in sample",
     "main": "server.js",
+    "engines": {
+        "node": ">=20.0.0",
+        "npm": ">=10.0.0"
+    },
     "scripts": {
         "start": "node server.js"
     },
