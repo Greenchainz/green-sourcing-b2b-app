@@ -29,6 +29,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Determine primary role (for backward compatibility)
+    const isAdmin = hasRole(user, 'admin');
+    const isSupplier = hasRole(user, 'supplier');
+    const primaryRole = isAdmin ? 'admin' : isSupplier ? 'supplier' : (user.roles[0] || null);
+
     // Return user information
     return NextResponse.json({
       user: {
@@ -36,9 +41,10 @@ export async function GET(request: NextRequest) {
         email: user.email,
         name: user.name,
         roles: user.roles,
+        role: primaryRole, // Primary role for compatibility
         // Don't expose all claims to the client for security
-        isAdmin: hasRole(user, 'admin'),
-        isSupplier: hasRole(user, 'supplier'),
+        isAdmin,
+        isSupplier,
       },
       authentication: {
         provider: 'Azure AD',

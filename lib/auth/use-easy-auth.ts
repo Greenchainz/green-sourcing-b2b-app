@@ -14,6 +14,7 @@ export interface EasyAuthUser {
   email: string;
   name: string;
   roles: string[];
+  role: string | null; // Primary role for compatibility (first role or null)
   isAdmin: boolean;
   isSupplier: boolean;
 }
