@@ -17,6 +17,8 @@ export interface EasyAuthUser {
   role: string | null; // Primary role for compatibility (first role or null)
   isAdmin: boolean;
   isSupplier: boolean;
+  isArchitect: boolean;
+  isBuyer: boolean;
 }
 
 interface UseAuthResult {

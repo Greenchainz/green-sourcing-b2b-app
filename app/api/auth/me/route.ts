@@ -30,9 +30,28 @@ export async function GET(request: NextRequest) {
     }
 
     // Determine primary role (for backward compatibility)
+    // Priority: admin > supplier > architect > buyer > user > first role > null
     const isAdmin = hasRole(user, 'admin');
     const isSupplier = hasRole(user, 'supplier');
-    const primaryRole = isAdmin ? 'admin' : isSupplier ? 'supplier' : (user.roles[0] || null);
+    const isArchitect = hasRole(user, 'architect');
+    const isBuyer = hasRole(user, 'buyer');
+    
+    // Determine primary role based on priority
+    let primaryRole: string | null = null;
+    if (isAdmin) {
+      primaryRole = 'admin';
+    } else if (isSupplier) {
+      primaryRole = 'supplier';
+    } else if (isArchitect) {
+      primaryRole = 'architect';
+    } else if (isBuyer) {
+      primaryRole = 'buyer';
+    } else if (hasRole(user, 'user')) {
+      primaryRole = 'user';
+    } else if (user.roles.length > 0) {
+      // Fallback to first role if none of the known roles match
+      primaryRole = user.roles[0];
+    }
 
     // Return user information
     return NextResponse.json({
@@ -41,10 +60,12 @@ export async function GET(request: NextRequest) {
         email: user.email,
         name: user.name,
         roles: user.roles,
-        role: primaryRole, // Primary role for compatibility
-        // Don't expose all claims to the client for security
+        role: primaryRole, // Primary role for compatibility (prioritized)
+        // Role flags for easy checking
         isAdmin,
         isSupplier,
+        isArchitect,
+        isBuyer,
       },
       authentication: {
         provider: 'Azure AD',

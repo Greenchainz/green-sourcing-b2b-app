@@ -9,7 +9,14 @@ const PROTECTED_PAGE_ROUTES = ['/dashboard', '/rfqs', '/supplier'];
 const PROTECTED_API_ROUTES = ['/api/'];
 
 // Public API routes that don't require authentication
-const PUBLIC_API_ROUTES = ['/api/health', '/api/auth/debug', '/api/public-config', '/api/sentry-example-api'];
+// Note: /api/auth/debug is only public in development for debugging
+const PUBLIC_API_ROUTES = [
+  '/api/health', 
+  '/api/public-config', 
+  '/api/sentry-example-api',
+  // Debug endpoint only available in non-production environments
+  ...(process.env.NODE_ENV !== 'production' ? ['/api/auth/debug'] : []),
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
