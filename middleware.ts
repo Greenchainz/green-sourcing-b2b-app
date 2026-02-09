@@ -25,5 +25,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|public/).*)'],
+  // Exclude .auth paths (Azure Easy Auth), static assets, and favicon
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|public/|\\.auth).*)'],
 };
