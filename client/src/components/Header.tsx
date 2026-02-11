@@ -26,6 +26,11 @@ export default function Header() {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
+          <Link href="/about">
+            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              About
+            </a>
+          </Link>
           <Link href="/materials">
             <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Materials

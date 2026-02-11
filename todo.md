@@ -170,3 +170,11 @@
 - [x] Add Intercom widget script to index.html
 - [x] Configure Intercom app ID (cqtm1euj)
 - [x] Test widget appears in bottom right
+
+### About Page
+- [x] Create About page with company story
+- [x] Add mission and vision sections
+- [x] Add team section with founder info
+- [x] Add video placeholder for founder message
+- [x] Add route to App.tsx
+- [x] Add About link to Header navigation
