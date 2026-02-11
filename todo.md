@@ -104,3 +104,32 @@
 - [x] ChainBot floating widget with suggested prompts, minimize, close
 - [x] Agent specialist badges in chat (Material Intelligence, RFQ Assistant, Support)
 - [x] Intercom widget removed from frontend (kept as backend escalation channel)
+
+
+## RFQ Marketplace System (Phase 2)
+
+- [x] Database schema: suppliers, supplier_subscriptions, supplier_filters, rfq_bids, rfq_messages, rfq_threads tables (schema defined, migrations pending DB)
+- [x] RFQ service with supplier matching algorithm (premium window, location, filters, CCPS alignment)
+- [x] Supplier matching with match score calculation (0-100)
+- [x] RFQ submission with auto-enrichment via CCPS
+- [x] Bid submission and tracking with 7-day expiration
+- [x] Bid acceptance and RFQ closure logic
+- [x] Message thread creation and management (buyer + supplier private 1:1 conversations)
+- [x] Message sending with 1000-char limit (encourages brevity)
+- [x] Message read tracking and thread analytics
+- [x] RFQ analytics (total bids, avg/min/max price, winning bid, purchase date)
+- [x] tRPC API procedures for all RFQ marketplace operations (rfqMarketplace router)
+- [x] RFQ service unit tests (21 tests passing)
+- [ ] Database migrations (create supplier and RFQ tables)
+- [ ] Supplier registration and profile management UI
+- [ ] Premium tier subscription flow (Microsoft payment processing)
+- [ ] Supplier filter setup UI (location, material types, lead time, price range)
+- [ ] Real-time messaging with Azure Web PubSub (WebSocket)
+- [ ] Message thread UI (buyer + supplier private conversation)
+- [ ] Buyer bid comparison dashboard (side-by-side view)
+- [ ] Direct purchase option (buy now at listed price)
+- [ ] Supplier dashboard (matching RFQs, active threads, bids)
+- [ ] Email notifications (RFQ match, new message, bid accepted)
+- [ ] SMS notifications using Azure Communication Services
+- [ ] In-app notification badges and center
+- [ ] Commission tracking for Azure service usage

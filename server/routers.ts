@@ -21,10 +21,12 @@ import { eq, like, and, gte, lte, desc, asc, sql, or } from "drizzle-orm";
 import { calculateCcps, personaToWeights, calcCarbonDelta } from "./ccps-engine";
 import type { PersonaWeights } from "./ccps-engine";
 import { handleChat } from "./agent";
+import { rfqMarketplaceRouter } from "./rfq-router";
 import { agentConversations } from "../drizzle/schema";
 
 export const appRouter = router({
   system: systemRouter,
+  rfqMarketplace: rfqMarketplaceRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

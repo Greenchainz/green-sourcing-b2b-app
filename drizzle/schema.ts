@@ -284,3 +284,146 @@ export const agentAnalytics = mysqlTable("agent_analytics", {
 });
 
 export type AgentAnalytic = typeof agentAnalytics.$inferSelect;
+
+// ─── Suppliers ──────────────────────────────────────────────────────────────
+
+export const suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(), // Link to users table (supplier account)
+  companyName: varchar("companyName", { length: 255 }).notNull(),
+  website: text("website"),
+  logoUrl: text("logoUrl"),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 320 }).notNull(),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 50 }),
+  zipCode: varchar("zipCode", { length: 20 }),
+  country: varchar("country", { length: 100 }),
+  isPremium: tinyint("isPremium").default(0),
+  premiumExpiresAt: timestamp("premiumExpiresAt"),
+  sustainabilityScore: decimal("sustainabilityScore", { precision: 3, scale: 2 }), // 0-100, from D&B
+  verified: tinyint("verified").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = typeof suppliers.$inferInsert;
+
+// ─── Supplier Subscriptions ─────────────────────────────────────────────────
+
+export const supplierSubscriptions = mysqlTable("supplier_subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  supplierId: int("supplierId").notNull(),
+  tier: mysqlEnum("tier", ["free", "premium"]).default("free"),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  status: mysqlEnum("status", ["active", "canceled", "past_due"]).default("active"),
+  renewalDate: timestamp("renewalDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SupplierSubscription = typeof supplierSubscriptions.$inferSelect;
+
+// ─── Supplier Filters ───────────────────────────────────────────────────────
+
+export const supplierFilters = mysqlTable("supplier_filters", {
+  id: int("id").autoincrement().primaryKey(),
+  supplierId: int("supplierId").notNull(),
+  materialTypeId: int("materialTypeId"), // e.g., "insulation", "flooring"
+  minPrice: decimal("minPrice", { precision: 10, scale: 2 }),
+  maxPrice: decimal("maxPrice", { precision: 10, scale: 2 }),
+  minLeadDays: int("minLeadDays"),
+  maxLeadDays: int("maxLeadDays"),
+  serviceRadius: int("serviceRadius"), // miles from supplier location
+  acceptedLocations: text("acceptedLocations"), // JSON array of states/regions
+  minOrderQuantity: decimal("minOrderQuantity", { precision: 12, scale: 2 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SupplierFilter = typeof supplierFilters.$inferSelect;
+
+// ─── RFQ Bids ───────────────────────────────────────────────────────────────
+
+export const rfqBids = mysqlTable("rfq_bids", {
+  id: int("id").autoincrement().primaryKey(),
+  rfqId: int("rfqId").notNull(),
+  supplierId: int("supplierId").notNull(),
+  status: mysqlEnum("status", ["submitted", "accepted", "rejected", "expired"]).default("submitted"),
+  bidPrice: decimal("bidPrice", { precision: 12, scale: 2 }),
+  leadDays: int("leadDays"),
+  notes: text("notes"),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RfqBid = typeof rfqBids.$inferSelect;
+
+// ─── RFQ Message Threads ────────────────────────────────────────────────────
+
+export const rfqThreads = mysqlTable("rfq_threads", {
+  id: int("id").autoincrement().primaryKey(),
+  rfqId: int("rfqId").notNull(),
+  supplierId: int("supplierId").notNull(),
+  buyerId: int("buyerId").notNull(), // Link to users table
+  status: mysqlEnum("status", ["active", "closed", "archived"]).default("active"),
+  lastMessageAt: timestamp("lastMessageAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RfqThread = typeof rfqThreads.$inferSelect;
+
+// ─── RFQ Messages ───────────────────────────────────────────────────────────
+
+export const rfqMessages = mysqlTable("rfq_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  threadId: int("threadId").notNull(),
+  senderId: int("senderId").notNull(), // Link to users table (buyer or supplier)
+  senderType: mysqlEnum("senderType", ["buyer", "supplier"]).notNull(),
+  content: text("content").notNull(),
+  isRead: tinyint("isRead").default(0),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RfqMessage = typeof rfqMessages.$inferSelect;
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", ["rfq_match", "new_message", "bid_accepted", "bid_rejected", "rfq_closed"]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content"),
+  relatedRfqId: int("relatedRfqId"),
+  relatedThreadId: int("relatedThreadId"),
+  isRead: tinyint("isRead").default(0),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+
+// ─── RFQ Analytics ──────────────────────────────────────────────────────────
+
+export const rfqAnalytics = mysqlTable("rfq_analytics", {
+  id: int("id").autoincrement().primaryKey(),
+  rfqId: int("rfqId").notNull(),
+  totalBidsReceived: int("totalBidsReceived").default(0),
+  avgBidPrice: decimal("avgBidPrice", { precision: 12, scale: 2 }),
+  lowestBidPrice: decimal("lowestBidPrice", { precision: 12, scale: 2 }),
+  highestBidPrice: decimal("highestBidPrice", { precision: 12, scale: 2 }),
+  avgResponseTimeHours: decimal("avgResponseTimeHours", { precision: 5, scale: 2 }),
+  winningBidId: int("winningBidId"),
+  purchasedAt: timestamp("purchasedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RfqAnalytic = typeof rfqAnalytics.$inferSelect;
