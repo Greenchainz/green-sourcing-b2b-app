@@ -204,3 +204,40 @@
 - [x] Allow any origin for development flexibility
 - [x] Handle preflight OPTIONS requests
 - [ ] Test cross-origin requests (needs backend deployment)
+
+
+### Scraper Setup
+- [x] Analyze existing scraper endpoints in backend
+- [x] Check Azure Function App (greenchainz-scraper) configuration
+- [x] Create automated scheduler script (30 material categories)
+- [x] Set up Azure Function timer trigger (runs daily at 2 AM UTC)
+- [x] Create deployment README with monitoring instructions
+- [ ] Deploy scraper scheduler to Azure Function App
+- [ ] Test scraper execution and verify data ingestion
+
+
+### Autodesk SDA Integration
+- [x] Add Autodesk SDA API to scraper sources
+- [x] Leverage existing Autodesk Forge authentication
+- [x] Create autodesk-sda-scraper.ts with search and sync functions
+- [x] Add to automated scheduler (now 4 sources: Autodesk, EC3, EPD, Building Transparency)
+- [ ] Test Autodesk material data extraction after deployment
+- [ ] Verify Autodesk API credentials are in Azure Key Vault
+
+
+### Azure Deployment (CURRENT PRIORITY)
+- [ ] Trigger Azure Container Apps redeployment from GitHub
+- [ ] Run database migration (create leads table)
+- [ ] Verify CORS headers are working
+- [ ] Test /api/leads endpoint
+- [ ] Deploy scraper scheduler to Azure Function App
+- [ ] Test scraper execution
+
+
+### Materials Catalog with CCPS (CURRENT PRIORITY)
+- [ ] Add CCPS metrics to Materials table (carbon, compliance, certification, cost, supply, health)
+- [ ] Create /api/materials endpoint with CCPS calculation
+- [ ] Build beautiful materials catalog UI with "sweets" design
+- [ ] Add architect-focused metric cards (sourcing difficulty, lead time, availability, cost)
+- [ ] Implement filtering by CCPS score and individual metrics
+- [ ] Test end-to-end with real EPD data
