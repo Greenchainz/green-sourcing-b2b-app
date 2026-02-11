@@ -24,11 +24,25 @@ export default function LeadCaptureForm({ toolName, onSuccess }: LeadCaptureForm
     setIsSubmitting(true);
 
     try {
-      // TODO: Connect to backend API to store lead
-      // await apiClient.leads.create({ email, name, company, toolName });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // POST to Azure backend
+      const response = await fetch('https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io/api/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim(),
+          company: company.trim() || undefined,
+          toolName
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit');
+      }
 
       setSubmitted(true);
       setEmail('');
@@ -39,7 +53,8 @@ export default function LeadCaptureForm({ toolName, onSuccess }: LeadCaptureForm
         onSuccess();
       }
     } catch (error) {
-      alert('Something went wrong. Please try again or contact us directly.');
+      console.error('Lead submission error:', error);
+      alert(error instanceof Error ? error.message : 'Something went wrong. Please try again or contact us directly.');
     } finally {
       setIsSubmitting(false);
     }
