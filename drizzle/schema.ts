@@ -252,3 +252,35 @@ export const leads = mysqlTable("leads", {
 });
 
 export type Lead = typeof leads.$inferSelect;
+
+// ─── Agent Conversations ───────────────────────────────────────────────────
+
+export const agentConversations = mysqlTable("agent_conversations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  sessionId: varchar("sessionId", { length: 255 }).notNull(),
+  agent: varchar("agent", { length: 50 }).notNull(),
+  role: mysqlEnum("role", ["user", "assistant", "system"]).notNull(),
+  content: text("content").notNull(),
+  metadata: text("metadata"), // JSON string: context, tool calls, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AgentConversation = typeof agentConversations.$inferSelect;
+
+// ─── Agent Analytics ───────────────────────────────────────────────────────
+
+export const agentAnalytics = mysqlTable("agent_analytics", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: varchar("sessionId", { length: 255 }).notNull(),
+  agent: varchar("agent", { length: 50 }).notNull(),
+  intentClassified: varchar("intentClassified", { length: 100 }),
+  confidence: decimal("confidence", { precision: 3, scale: 2 }),
+  toolsUsed: text("toolsUsed"), // JSON array of tool names
+  responseTimeMs: int("responseTimeMs"),
+  escalated: tinyint("escalated").default(0),
+  handedOffToHuman: tinyint("handedOffToHuman").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AgentAnalytic = typeof agentAnalytics.$inferSelect;
