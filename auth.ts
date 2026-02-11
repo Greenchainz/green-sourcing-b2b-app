@@ -2,6 +2,11 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
 import LinkedIn from "next-auth/providers/linkedin"
+import { loadSecrets, getSecret } from "./lib/secrets"
+
+// Load secrets from Key Vault (production) or .env.local (development)
+// This must be called before NextAuth is initialized
+await loadSecrets();
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
