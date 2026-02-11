@@ -29,6 +29,13 @@
       "when": 1770803814243,
       "tag": "0003_crazy_payback",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1770812871179,
+      "tag": "0004_complete_sentry",
+      "breakpoints": true
     }
   ]
 }
