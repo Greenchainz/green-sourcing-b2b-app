@@ -66,6 +66,11 @@ const MATERIAL_CATEGORIES = [
  */
 const SUPPLIER_SOURCES = [
   {
+    name: 'Autodesk SDA (Sustainable Design API)',
+    url: 'https://developer.api.autodesk.com/construction/carbon/v1',
+    type: 'autodesk_sda'
+  },
+  {
     name: 'EC3 Database',
     url: 'https://buildingtransparency.org/ec3',
     type: 'ec3'
