@@ -28,8 +28,33 @@ export async function middleware(request: NextRequest) {
   // Check if the current path is public
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
 
-  // Allow API routes and static files
-  if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.startsWith("/.auth")) {
+  // Handle CORS for API routes
+  if (pathname.startsWith("/api")) {
+    // Handle preflight requests
+    if (request.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          "Access-Control-Allow-Origin": request.headers.get("origin") || "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+          "Access-Control-Allow-Credentials": "true",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    }
+
+    // Add CORS headers to API responses
+    const response = NextResponse.next();
+    response.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+    return response;
+  }
+
+  // Allow static files
+  if (pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.startsWith("/.auth")) {
     return NextResponse.next();
   }
 
