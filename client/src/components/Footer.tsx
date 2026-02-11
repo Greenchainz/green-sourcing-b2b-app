@@ -7,22 +7,12 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-5 h-5 text-primary-foreground"
-                >
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-              </div>
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/greenchainz-icon.png" 
+                alt="GreenChainz Logo" 
+                className="h-10 w-auto"
+              />
               <span className="text-lg font-bold text-foreground">GreenChainz</span>
             </div>
             <p className="text-sm text-muted-foreground">

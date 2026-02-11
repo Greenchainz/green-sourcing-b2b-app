@@ -137,3 +137,36 @@
 - [x] Add footer with company links and social icons
 - [x] Ensure responsive design on mobile
 - [x] Create AuthContext for user authentication state
+
+### Logo Integration (CURRENT)
+- [ ] Copy real GreenChainz logo files to public folder
+- [ ] Replace placeholder SVG with actual logo in Header
+- [ ] Replace placeholder SVG with actual logo in Footer
+- [ ] Update favicon with greenchainz-logo-icon.ico
+
+### Video Placeholders (CURRENT)
+- [ ] Add video placeholder section on Home page
+- [ ] Create About page with video section
+- [ ] Add video embed placeholder component
+- [ ] Verify favicon displays correctly
+
+### Design Enhancements
+- [x] Add multiple green color variations (bright, dark, gradients)
+- [x] Implement glassmorphism effects (frosted glass, blur)
+- [x] Add hover animations and transitions
+- [x] Create gradient backgrounds
+- [x] Add micro-interactions on buttons and cards
+
+### Tool Landing Pages (CURRENT PRIORITY)
+- [x] Create /tools/excel page with email capture
+- [ ] Create /tools/extension page with email capture
+- [ ] Create /tools/revit page with email capture
+- [ ] Create /tools/submittal page with email capture
+- [x] Add video placeholders to each tool page
+- [x] Create reusable email capture form component
+- [ ] Store leads in database
+
+### Intercom Integration
+- [x] Add Intercom widget script to index.html
+- [x] Configure Intercom app ID (cqtm1euj)
+- [x] Test widget appears in bottom right

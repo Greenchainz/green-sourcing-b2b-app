@@ -11,22 +11,12 @@ export default function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/">
-          <a className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-6 h-6 text-primary-foreground"
-              >
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
+          <a className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+            <img 
+              src="/greenchainz-icon.png" 
+              alt="GreenChainz Logo" 
+              className="h-12 w-auto"
+            />
             <div className="flex flex-col">
               <span className="text-lg font-bold text-foreground">GreenChainz</span>
               <span className="text-xs text-muted-foreground">Verified Sustainable Sourcing</span>
