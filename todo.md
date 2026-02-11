@@ -191,3 +191,16 @@
 - [x] Link to all four tool pages from home
 - [x] Add tool preview cards with icons
 - [x] Ensure smooth navigation flow
+
+
+### Auth Fix
+- [x] Fix AuthContext to use Azure backend /api/auth/me endpoint
+- [x] Update api-client.ts to handle auth properly
+- [x] Transform backend response format to match frontend expectations
+
+
+### CORS Fix
+- [x] Add CORS middleware to Azure backend
+- [x] Allow any origin for development flexibility
+- [x] Handle preflight OPTIONS requests
+- [ ] Test cross-origin requests (needs backend deployment)
