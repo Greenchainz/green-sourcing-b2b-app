@@ -157,11 +157,11 @@
 - [x] Create gradient backgrounds
 - [x] Add micro-interactions on buttons and cards
 
-### Tool Landing Pages (CURRENT PRIORITY)
+### Tool Landing Pages
 - [x] Create /tools/excel page with email capture
-- [ ] Create /tools/extension page with email capture
-- [ ] Create /tools/revit page with email capture
-- [ ] Create /tools/submittal page with email capture
+- [x] Create /tools/extension page with email capture
+- [x] Create /tools/revit page with email capture
+- [x] Create /tools/submittal page with email capture
 - [x] Add video placeholders to each tool page
 - [x] Create reusable email capture form component
 - [ ] Store leads in database

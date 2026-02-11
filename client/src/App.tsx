@@ -9,6 +9,9 @@ import Home from "./pages/Home";
 import ApiTest from "./pages/ApiTest";
 import ExcelAudit from "./pages/ExcelAudit";
 import About from "./pages/About";
+import BrowserExtension from "./pages/BrowserExtension";
+import RevitPlugin from "./pages/RevitPlugin";
+import SubmittalGenerator from "./pages/SubmittalGenerator";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -18,6 +21,9 @@ function Router() {
       <Route path={"/api-test"} component={ApiTest} />
       <Route path={"/tools/excel"} component={ExcelAudit} />
       <Route path={"/about"} component={About} />
+      <Route path={"/tools/extension"} component={BrowserExtension} />
+      <Route path={"/tools/revit"} component={RevitPlugin} />
+      <Route path={"/tools/submittal"} component={SubmittalGenerator} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
