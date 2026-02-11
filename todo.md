@@ -128,7 +128,7 @@
 - [ ] Message thread UI (buyer + supplier private conversation)
 - [ ] Buyer bid comparison dashboard (side-by-side view)
 - [ ] Direct purchase option (buy now at listed price)
-- [ ] Supplier dashboard (matching RFQs, active threads, bids)
+- [x] Supplier dashboard UI (matching RFQs, active threads, bids, bid submission form)
 - [ ] Email notifications (RFQ match, new message, bid accepted)
 - [ ] SMS notifications using Azure Communication Services
 - [ ] In-app notification badges and center
