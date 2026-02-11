@@ -21,6 +21,16 @@ export async function loadSecrets(): Promise<void> {
     return; // Already loaded
   }
 
+  // Skip Key Vault access during build time (Managed Identity not available)
+  const isBuildTime = process.env.NEXT_PHASE === "phase-production-build" || 
+                      process.env.npm_lifecycle_event === "build";
+  
+  if (isBuildTime) {
+    console.log("[Secrets] Skipping Key Vault during build time");
+    secretsLoaded = true;
+    return;
+  }
+
   const keyVaultName = process.env.KEY_VAULT_NAME || "greenchainz-vault";
   const isProduction = process.env.NODE_ENV === "production";
 
