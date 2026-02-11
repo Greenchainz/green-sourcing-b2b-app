@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
-import Microsoft from "next-auth/providers/microsoft"
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
 import LinkedIn from "next-auth/providers/linkedin"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -9,7 +9,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    Microsoft({
+    MicrosoftEntraID({
       clientId: process.env.MICROSOFT_CLIENT_ID!,
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
       authorization: {
