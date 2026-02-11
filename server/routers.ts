@@ -1,28 +1,415 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import { getDb } from "./db";
+import {
+  materials,
+  manufacturers,
+  assemblies,
+  assemblyComponents,
+  materialCertifications,
+  ccpsBaselines,
+  ccpsScores,
+  decisionMakerPersonas,
+  rfqs,
+  rfqItems,
+  leads,
+} from "../drizzle/schema";
+import { eq, like, and, gte, lte, desc, asc, sql, or } from "drizzle-orm";
+import { calculateCcps, personaToWeights, calcCarbonDelta } from "./ccps-engine";
+import type { PersonaWeights } from "./ccps-engine";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  // ─── Materials ─────────────────────────────────────────────────────────────
+  materials: router({
+    list: publicProcedure
+      .input(
+        z.object({
+          search: z.string().optional(),
+          category: z.string().optional(),
+          persona: z.string().default("default"),
+          sortBy: z.enum(["ccps", "carbon", "price", "name", "leadTime"]).default("ccps"),
+          sortOrder: z.enum(["asc", "desc"]).default("desc"),
+          limit: z.number().min(1).max(100).default(20),
+          offset: z.number().min(0).default(0),
+          hasEpd: z.boolean().optional(),
+          usManufactured: z.boolean().optional(),
+          maxGwp: z.number().optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { items: [], total: 0 };
+
+        const conditions: any[] = [];
+        if (input.search) {
+          conditions.push(
+            or(
+              like(materials.name, `%${input.search}%`),
+              like(materials.productName, `%${input.search}%`),
+              like(materials.category, `%${input.search}%`)
+            )
+          );
+        }
+        if (input.category) conditions.push(eq(materials.category, input.category));
+        if (input.hasEpd !== undefined) conditions.push(eq(materials.hasEpd, input.hasEpd ? 1 : 0));
+        if (input.usManufactured !== undefined) conditions.push(eq(materials.usManufactured, input.usManufactured ? 1 : 0));
+        if (input.maxGwp !== undefined) conditions.push(lte(materials.gwpValue, String(input.maxGwp)));
+
+        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+        const rows = await db
+          .select({
+            material: materials,
+            manufacturerName: manufacturers.name,
+            manufacturerWebsite: manufacturers.website,
+            manufacturerLogoUrl: manufacturers.logoUrl,
+          })
+          .from(materials)
+          .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+          .where(whereClause)
+          .limit(input.limit)
+          .offset(input.offset);
+
+        const countResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(materials)
+          .where(whereClause);
+        const total = Number(countResult[0]?.count) || 0;
+
+        const baselineRows = await db.select().from(ccpsBaselines);
+        const baselineMap: Record<string, any> = {};
+        for (const b of baselineRows) baselineMap[b.category] = b;
+
+        let weights: PersonaWeights | undefined;
+        if (input.persona && input.persona !== "default") {
+          const personaRows = await db
+            .select()
+            .from(decisionMakerPersonas)
+            .where(eq(decisionMakerPersonas.personaKey, input.persona))
+            .limit(1);
+          if (personaRows.length > 0) weights = personaToWeights(personaRows[0]);
+        }
+
+        const items = rows.map((row) => {
+          const baseline = baselineMap[row.material.category] || {};
+          const ccps = calculateCcps(row.material, baseline, weights);
+          return {
+            ...row.material,
+            manufacturerName: row.manufacturerName,
+            manufacturerWebsite: row.manufacturerWebsite,
+            manufacturerLogoUrl: row.manufacturerLogoUrl,
+            ccps,
+          };
+        });
+
+        if (input.sortBy === "ccps") {
+          items.sort((a, b) =>
+            input.sortOrder === "desc"
+              ? b.ccps.ccpsTotal - a.ccps.ccpsTotal
+              : a.ccps.ccpsTotal - b.ccps.ccpsTotal
+          );
+        } else if (input.sortBy === "carbon") {
+          items.sort((a, b) => {
+            const aVal = Number(a.gwpValue) || 0;
+            const bVal = Number(b.gwpValue) || 0;
+            return input.sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+          });
+        } else if (input.sortBy === "price") {
+          items.sort((a, b) => {
+            const aVal = Number(a.pricePerUnit) || 0;
+            const bVal = Number(b.pricePerUnit) || 0;
+            return input.sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+          });
+        } else if (input.sortBy === "name") {
+          items.sort((a, b) =>
+            input.sortOrder === "asc"
+              ? a.name.localeCompare(b.name)
+              : b.name.localeCompare(a.name)
+          );
+        } else if (input.sortBy === "leadTime") {
+          items.sort((a, b) => {
+            const aVal = a.leadTimeDays || 0;
+            const bVal = b.leadTimeDays || 0;
+            return input.sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+          });
+        }
+
+        return { items, total };
+      }),
+
+    getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const rows = await db
+        .select({
+          material: materials,
+          manufacturerName: manufacturers.name,
+          manufacturerWebsite: manufacturers.website,
+          manufacturerLogoUrl: manufacturers.logoUrl,
+          manufacturerPhone: manufacturers.phone,
+          manufacturerEmail: manufacturers.email,
+        })
+        .from(materials)
+        .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+        .where(eq(materials.id, input.id))
+        .limit(1);
+
+      if (rows.length === 0) return null;
+
+      const certs = await db
+        .select()
+        .from(materialCertifications)
+        .where(eq(materialCertifications.materialId, input.id));
+
+      const baselineRows = await db
+        .select()
+        .from(ccpsBaselines)
+        .where(eq(ccpsBaselines.category, rows[0].material.category))
+        .limit(1);
+      const baseline = baselineRows[0] || {};
+
+      const personaRows = await db.select().from(decisionMakerPersonas);
+      const ccpsByPersona: Record<string, any> = {};
+      for (const p of personaRows) {
+        ccpsByPersona[p.personaKey] = calculateCcps(rows[0].material, baseline, personaToWeights(p));
+      }
+
+      const altRows = await db
+        .select({
+          material: materials,
+          manufacturerName: manufacturers.name,
+        })
+        .from(materials)
+        .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+        .where(
+          and(
+            eq(materials.category, rows[0].material.category),
+            sql`${materials.id} != ${input.id}`
+          )
+        )
+        .limit(5);
+
+      const alternatives = altRows.map((r) => {
+        const altCcps = calculateCcps(r.material, baseline);
+        const carbonDelta = calcCarbonDelta(
+          Number(rows[0].material.embodiedCarbonPer1000sf) || 0,
+          Number(r.material.embodiedCarbonPer1000sf) || 0
+        );
+        return {
+          ...r.material,
+          manufacturerName: r.manufacturerName,
+          ccps: altCcps,
+          carbonDelta,
+        };
+      });
+
+      return {
+        ...rows[0].material,
+        manufacturerName: rows[0].manufacturerName,
+        manufacturerWebsite: rows[0].manufacturerWebsite,
+        manufacturerLogoUrl: rows[0].manufacturerLogoUrl,
+        manufacturerPhone: rows[0].manufacturerPhone,
+        manufacturerEmail: rows[0].manufacturerEmail,
+        certifications: certs,
+        ccpsByPersona,
+        alternatives,
+      };
+    }),
+
+    categories: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db
+        .select({
+          category: materials.category,
+          count: sql<number>`count(*)`,
+        })
+        .from(materials)
+        .groupBy(materials.category);
+      return rows;
+    }),
+  }),
+
+  // ─── Assemblies ────────────────────────────────────────────────────────────
+  assemblies: router({
+    list: publicProcedure
+      .input(
+        z.object({
+          assemblyType: z.string().optional(),
+          tier: z.enum(["good", "better", "best"]).optional(),
+        }).optional()
+      )
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+
+        const conditions: any[] = [];
+        if (input?.assemblyType) conditions.push(eq(assemblies.assemblyType, input.assemblyType));
+        if (input?.tier) conditions.push(eq(assemblies.sustainabilityTier, input.tier));
+
+        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+        return db.select().from(assemblies).where(whereClause).orderBy(asc(assemblies.totalGwpPer1000Sqft));
+      }),
+
+    getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const rows = await db.select().from(assemblies).where(eq(assemblies.id, input.id)).limit(1);
+      if (rows.length === 0) return null;
+
+      const components = await db
+        .select({
+          component: assemblyComponents,
+          materialName: materials.name,
+          materialProductName: materials.productName,
+        })
+        .from(assemblyComponents)
+        .leftJoin(materials, eq(assemblyComponents.materialId, materials.id))
+        .where(eq(assemblyComponents.assemblyId, input.id))
+        .orderBy(asc(assemblyComponents.layerOrder));
+
+      return { ...rows[0], components };
+    }),
+  }),
+
+  // ─── Personas ──────────────────────────────────────────────────────────────
+  personas: router({
+    list: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(decisionMakerPersonas);
+    }),
+  }),
+
+  // ─── RFQ ───────────────────────────────────────────────────────────────────
+  rfq: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          projectName: z.string().min(1),
+          projectLocation: z.string().optional(),
+          projectType: z.string().optional(),
+          notes: z.string().optional(),
+          dueDate: z.date().optional(),
+          items: z.array(
+            z.object({
+              materialId: z.number().optional(),
+              assemblyId: z.number().optional(),
+              quantity: z.number().optional(),
+              quantityUnit: z.string().optional(),
+              notes: z.string().optional(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const result = await db.insert(rfqs).values({
+          userId: ctx.user.id,
+          projectName: input.projectName,
+          projectLocation: input.projectLocation || null,
+          projectType: input.projectType || null,
+          notes: input.notes || null,
+          dueDate: input.dueDate || null,
+          status: "draft",
+        });
+
+        const rfqId = Number(result[0].insertId);
+
+        if (input.items.length > 0) {
+          await db.insert(rfqItems).values(
+            input.items.map((item) => ({
+              rfqId,
+              materialId: item.materialId || null,
+              assemblyId: item.assemblyId || null,
+              quantity: item.quantity ? String(item.quantity) : null,
+              quantityUnit: item.quantityUnit || null,
+              notes: item.notes || null,
+            }))
+          );
+        }
+
+        return { id: rfqId, status: "draft" };
+      }),
+
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(rfqs)
+        .where(eq(rfqs.userId, ctx.user.id))
+        .orderBy(desc(rfqs.createdAt));
+    }),
+
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const rows = await db
+        .select()
+        .from(rfqs)
+        .where(and(eq(rfqs.id, input.id), eq(rfqs.userId, ctx.user.id)))
+        .limit(1);
+      if (rows.length === 0) return null;
+
+      const items = await db
+        .select({
+          item: rfqItems,
+          materialName: materials.name,
+          assemblyName: assemblies.name,
+          assemblyCode: assemblies.code,
+        })
+        .from(rfqItems)
+        .leftJoin(materials, eq(rfqItems.materialId, materials.id))
+        .leftJoin(assemblies, eq(rfqItems.assemblyId, assemblies.id))
+        .where(eq(rfqItems.rfqId, input.id));
+
+      return { ...rows[0], items };
+    }),
+  }),
+
+  // ─── Leads ─────────────────────────────────────────────────────────────────
+  leads: router({
+    submit: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email(),
+          name: z.string().optional(),
+          company: z.string().optional(),
+          source: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { success: false };
+        await db.insert(leads).values({
+          email: input.email,
+          name: input.name || null,
+          company: input.company || null,
+          source: input.source || null,
+        });
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

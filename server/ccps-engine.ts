@@ -1,590 +1,219 @@
-import { db } from './db';
-import { 
-  materials, 
-  ccpsScores, 
-  ccpsBaselines, 
-  decisionMakerPersonas,
-  materialCertifications,
-  materialSuppliers,
-  manufacturers
-} from '../drizzle/ccps-schema';
-import { eq, and, sql } from 'drizzle-orm';
-
 /**
- * CCPS (Composite Compliance-Performance Score) Calculation Engine
- * 
- * Calculates material scores across 6 metrics:
- * 1. Carbon Score (25% weight) - Environmental impact vs. baseline
- * 2. Compliance Score (20% weight) - Code compliance, warranties, durability
- * 3. Certification Score (20% weight) - EPD, HPD, FSC, C2C, GREENGUARD, LEED
- * 4. Cost Score (15% weight) - Price vs. category average
- * 5. Supply Chain Score (12% weight) - Lead time, regional availability, US production
- * 6. Health Score (8% weight) - VOC, Red List status, ingredient disclosure, biophilic
+ * CCPS — Composite Compliance-Performance Score Engine
+ *
+ * Calculates a 0-100 composite score for each material based on 6 pillars:
+ *   1. Carbon (GWP relative to category baseline)
+ *   2. Compliance (code standards, fire rating, building code)
+ *   3. Certification (EPD, HPD, FSC, C2C, GREENGUARD, Declare)
+ *   4. Cost (price relative to category baseline)
+ *   5. Supply Chain (lead time, US manufacturing, regional availability)
+ *   6. Health (VOC level, Red List, take-back program)
+ *
+ * Weights are persona-specific — an Architect weights Compliance 35%,
+ * while a GC PM weights Cost 35%.
  */
 
-export interface CCPSMetrics {
+import type { Material, CcpsBaseline, DecisionMakerPersona } from "../drizzle/schema";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface CcpsBreakdown {
   carbonScore: number;
   complianceScore: number;
   certificationScore: number;
   costScore: number;
   supplyChainScore: number;
   healthScore: number;
-  ccpsScore: number;
+  ccpsTotal: number;
   sourcingDifficulty: number;
 }
 
-export interface CCPSWeights {
-  carbon: number;
-  compliance: number;
-  certification: number;
-  cost: number;
-  supplyChain: number;
-  health: number;
+export interface PersonaWeights {
+  carbonWeight: number;
+  complianceWeight: number;
+  certificationWeight: number;
+  costWeight: number;
+  supplyChainWeight: number;
+  healthWeight: number;
 }
 
-// Default weights for all personas
-const DEFAULT_WEIGHTS: CCPSWeights = {
-  carbon: 25,
-  compliance: 20,
-  certification: 20,
-  cost: 15,
-  supplyChain: 12,
-  health: 8,
+// Default balanced weights
+const DEFAULT_WEIGHTS: PersonaWeights = {
+  carbonWeight: 0.25,
+  complianceWeight: 0.20,
+  certificationWeight: 0.15,
+  costWeight: 0.15,
+  supplyChainWeight: 0.15,
+  healthWeight: 0.10,
 };
 
-// Persona-specific weights
-const PERSONA_WEIGHTS: Record<string, CCPSWeights> = {
-  'Architect': {
-    carbon: 15,
-    compliance: 35,
-    certification: 20,
-    cost: 10,
-    supplyChain: 10,
-    health: 10,
-  },
-  'Spec_Writer': {
-    carbon: 15,
-    compliance: 30,
-    certification: 30,
-    cost: 10,
-    supplyChain: 10,
-    health: 5,
-  },
-  'LEED_AP': {
-    carbon: 20,
-    compliance: 20,
-    certification: 40,
-    cost: 10,
-    supplyChain: 5,
-    health: 5,
-  },
-  'Interior_Designer': {
-    carbon: 10,
-    compliance: 15,
-    certification: 20,
-    cost: 15,
-    supplyChain: 15,
-    health: 25,
-  },
-  'Quantity_Surveyor': {
-    carbon: 30,
-    compliance: 15,
-    certification: 10,
-    cost: 25,
-    supplyChain: 10,
-    health: 10,
-  },
-  'General_Contractor': {
-    carbon: 10,
-    compliance: 15,
-    certification: 5,
-    cost: 20,
-    supplyChain: 30,
-    health: 20,
-  },
-  'Facility_Manager': {
-    carbon: 15,
-    compliance: 20,
-    certification: 10,
-    cost: 15,
-    supplyChain: 15,
-    health: 25,
-  },
-};
+// ─── Individual Score Calculators (each returns 0-100) ───────────────────────
 
 /**
- * Calculate Carbon Score (0-100)
- * Formula: ((baseline_gwp - product_gwp) / baseline_gwp) * 100
+ * Carbon Score: Lower GWP = higher score.
+ * Uses category baseline for normalization.
  */
-async function calculateCarbonScore(
-  materialId: string,
-  materialCategory: string,
-  productGwp: number | null
-): Promise<number> {
-  if (!productGwp) return 50; // Neutral score if no data
-
-  
-  const baseline = await db
-    .select()
-    .from(ccpsBaselines)
-    .where(eq(ccpsBaselines.category, materialCategory))
-    .limit(1);
-
-  if (!baseline.length || !baseline[0].baselineGwpPerUnit) return 50;
-
-  const baselineGwp = parseFloat(baseline[0].baselineGwpPerUnit.toString());
-  const score = ((baselineGwp - productGwp) / baselineGwp) * 100;
-  
-  return Math.max(0, Math.min(100, score)); // Cap at 0-100
+export function calcCarbonScore(material: Partial<Material>, baseline: Partial<CcpsBaseline>): number {
+  const gwp = Number(material.gwpValue) || 0;
+  const baseGwp = Number(baseline.baselineGwpPerUnit) || 1;
+  if (baseGwp <= 0) return 50;
+  const ratio = gwp / baseGwp;
+  const score = Math.round(Math.max(0, Math.min(100, 100 * (1 - (ratio - 1) * 0.5))));
+  return score;
 }
 
 /**
- * Calculate Compliance Score (0-100)
- * Submetrics: EPD validity, code compliance, warranty, durability
+ * Compliance Score: Based on standards coverage.
+ * +25 for fire rating, +25 for ASTM standards, +25 for Title 24, +25 for IECC
  */
-async function calculateComplianceScore(material: any): Promise<number> {
+export function calcComplianceScore(material: Partial<Material>): number {
   let score = 0;
-  let maxPoints = 100;
-
-  // EPD Validity (0-30 points)
-  if (material.hasEpd && material.epdValidUntil) {
-    const epdExpiry = new Date(material.epdValidUntil);
-    if (epdExpiry > new Date()) {
-      score += 30;
-    } else {
-      score += 10; // Expired EPD still counts for something
-    }
-  }
-
-  // Code Compliance (0-25 points)
-  if (material.fireRating) score += 15;
-  if (material.thermalRValue || material.thermalUValue) score += 10;
-
-  // Warranty (0-20 points)
-  if (material.manufacturerWarrantyYears) {
-    if (material.manufacturerWarrantyYears >= 10) {
-      score += 20;
-    } else if (material.manufacturerWarrantyYears >= 5) {
+  if (material.fireRating && material.fireRating !== "N/A") score += 25;
+  if (material.astmStandards) {
+    try {
+      const standards = JSON.parse(material.astmStandards as string);
+      score += Math.min(25, standards.length * 8);
+    } catch {
       score += 10;
-    } else {
-      score += 5;
     }
   }
-
-  // Durability (0-25 points)
-  if (material.expectedLifecycleYears) {
-    if (material.expectedLifecycleYears >= 25) {
-      score += 25;
-    } else if (material.expectedLifecycleYears >= 15) {
-      score += 15;
-    } else if (material.expectedLifecycleYears >= 10) {
-      score += 10;
-    } else {
-      score += 5;
-    }
-  }
-
+  if (material.meetsTitle24) score += 25;
+  if (material.meetsIecc) score += 25;
   return Math.min(100, score);
 }
 
 /**
- * Calculate Certification Score (0-100)
- * Submetrics: EPD, HPD, FSC/C2C, GREENGUARD, LEED contribution
+ * Certification Score: Each certification adds points.
+ * EPD=20, HPD=15, FSC=15, C2C=15, GREENGUARD=15, Declare=10, RecycledContent bonus=10
  */
-async function calculateCertificationScore(materialId: string): Promise<number> {
+export function calcCertificationScore(material: Partial<Material>): number {
   let score = 0;
-
-  // Get all certifications for this material
-  
-  const certs = await db
-    .select()
-    .from(materialCertifications)
-    .where(eq(materialCertifications.materialId, materialId));
-
-  // EPD (0-25 points)
-  if (certs.some((c: any) => c.certificationType === 'EPD')) score += 25;
-
-  // HPD (0-25 points)
-  if (certs.some((c: any) => c.certificationType === 'HPD')) score += 25;
-
-  // FSC or C2C (0-20 points)
-  if (certs.some((c: any) => c.certificationType === 'FSC' || c.certificationType === 'C2C')) score += 20;
-
-  // GREENGUARD (0-20 points)
-  if (certs.some((c: any) => c.certificationType === 'GREENGUARD')) score += 20;
-
-  // LEED Contribution (0-10 points)
-  if (certs.some((c: any) => c.leedCreditNumber)) score += 10;
-
+  if (material.hasEpd) score += 20;
+  if (material.hasHpd) score += 15;
+  if (material.hasFsc) score += 15;
+  if (material.hasC2c) score += 15;
+  if (material.hasGreenguard) score += 15;
+  if (material.hasDeclare) score += 10;
+  const recycled = Number(material.recycledContentPct) || 0;
+  if (recycled >= 50) score += 10;
+  else if (recycled >= 25) score += 5;
   return Math.min(100, score);
 }
 
 /**
- * Calculate Cost Score (0-100)
- * Formula: ((category_avg_price - product_price) / category_avg_price) * 100
- * Can be negative for premium products
+ * Cost Score: Lower price relative to baseline = higher score.
  */
-async function calculateCostScore(
-  materialCategory: string,
-  productPrice: number | null
-): Promise<number> {
-  if (!productPrice) return 50; // Neutral score if no data
-
-  
-  const baseline = await db
-    .select()
-    .from(ccpsBaselines)
-    .where(eq(ccpsBaselines.category, materialCategory))
-    .limit(1);
-
-  if (!baseline.length || !baseline[0].categoryAvgPrice) return 50;
-
-  const categoryAvgPrice = parseFloat(baseline[0].categoryAvgPrice.toString());
-  const score = ((categoryAvgPrice - productPrice) / categoryAvgPrice) * 100;
-  
-  return score; // Allow negative scores for premium products
+export function calcCostScore(material: Partial<Material>, baseline: Partial<CcpsBaseline>): number {
+  const price = Number(material.pricePerUnit) || 0;
+  const basePrice = Number(baseline.baselinePricePerUnit) || 1;
+  if (basePrice <= 0) return 50;
+  const ratio = price / basePrice;
+  const score = Math.round(Math.max(0, Math.min(100, 100 * (2 - ratio))));
+  return score;
 }
 
 /**
- * Calculate Supply Chain Score (0-100)
- * Submetrics: Lead time, regional availability, US production, supplier reliability
+ * Supply Chain Score: Based on lead time, US manufacturing, regional availability.
  */
-async function calculateSupplyChainScore(
-  materialId: string,
-  material: any,
-  manufacturerId: string | null
-): Promise<number> {
-  
+export function calcSupplyChainScore(material: Partial<Material>, baseline: Partial<CcpsBaseline>): number {
   let score = 0;
-
-  // Lead Time (0-30 points)
-  if (material.leadTimeDays) {
-    if (material.leadTimeDays <= 14) score += 30;
-    else if (material.leadTimeDays <= 28) score += 20;
-    else if (material.leadTimeDays <= 56) score += 10;
-    else score += 5;
-  }
-
-  // Regional Availability (0-30 points)
-  if (material.regionalAvailabilityMiles) {
-    if (material.regionalAvailabilityMiles <= 500) score += 30;
-    else if (material.regionalAvailabilityMiles <= 1000) score += 15;
-    else score += 5;
-  }
-
-  // US Production (0-20 points)
-  if (material.usManufactured) score += 20;
-
-  // Supplier Reliability (0-20 points)
-  if (manufacturerId) {
-    const manufacturer = await db
-      .select()
-      .from(manufacturers)
-      .where(eq(manufacturers.id, manufacturerId))
-      .limit(1);
-
-    if (manufacturer.length && manufacturer[0].yearsInBusiness) {
-      if (manufacturer[0].yearsInBusiness >= 10) score += 20;
-      else if (manufacturer[0].yearsInBusiness >= 5) score += 15;
-      else score += 10;
-    }
-  }
-
+  const lead = material.leadTimeDays || 0;
+  const baseLead = Number(baseline.baselineLeadTimeDays) || 30;
+  const leadRatio = lead / baseLead;
+  score += Math.round(Math.max(0, Math.min(40, 40 * (2 - leadRatio))));
+  if (material.usManufactured) score += 30;
+  const miles = material.regionalAvailabilityMiles || 500;
+  if (miles <= 500) score += 30;
+  else if (miles <= 1000) score += 15;
   return Math.min(100, score);
 }
 
 /**
- * Calculate Health Score (0-100)
- * Submetrics: VOC emissions, Red List status, ingredient disclosure, biophilic
+ * Health Score: Based on VOC level, Red List, take-back program.
  */
-async function calculateHealthScore(material: any): Promise<number> {
+export function calcHealthScore(material: Partial<Material>): number {
   let score = 0;
-
-  // VOC Emissions (0-25 points)
-  if (material.vocCertification) {
-    if (material.vocCertification.includes('No-VOC') || material.vocCertification.includes('GREENGUARD')) {
-      score += 25;
-    } else if (material.vocCertification.includes('Low-VOC')) {
-      score += 15;
-    } else {
-      score += 5;
-    }
-  }
-
-  // Red List Status (0-25 points)
-  if (!material.onRedList) score += 25;
-
-  // Ingredient Disclosure (0-25 points)
-  // Assume materials with HPD have ingredient disclosure
-  if (material.hasHpd) score += 25;
-
-  // Biophilic Properties (0-25 points)
-  // Check if material is natural/biophilic (wood, stone, cork, etc.)
-  const biophilicKeywords = ['wood', 'cork', 'stone', 'natural', 'bio', 'moss', 'plant'];
-  if (biophilicKeywords.some(keyword => material.name?.toLowerCase().includes(keyword))) {
-    score += 25;
-  }
-
+  const voc = (material.vocLevel || "").toLowerCase();
+  if (voc === "none") score += 40;
+  else if (voc === "low") score += 25;
+  else if (voc === "medium") score += 10;
+  if (!material.onRedList) score += 30;
+  if (material.hasTakeBackProgram) score += 15;
+  if (material.hasGreenguard) score += 15;
   return Math.min(100, score);
 }
 
-/**
- * Calculate Sourcing Difficulty (1-5 scale)
- * 1 = Easy to source, 5 = Difficult to source
- */
-async function calculateSourcingDifficulty(
-  material: any,
-  manufacturerId: string | null
-): Promise<number> {
-  
-  let difficulty = 0;
+// ─── Sourcing Difficulty (1-5 scale) ─────────────────────────────────────────
 
-  // Lead Time Factor (0-2)
-  if (material.leadTimeDays) {
-    if (material.leadTimeDays > 56) difficulty += 2;
-    else if (material.leadTimeDays > 28) difficulty += 1;
-  }
-
-  // Regional Availability Factor (0-2)
-  if (material.regionalAvailabilityMiles) {
-    if (material.regionalAvailabilityMiles > 1000) difficulty += 2;
-    else if (material.regionalAvailabilityMiles > 500) difficulty += 1;
-  }
-
-  // US Production Factor (-1)
-  if (material.usManufactured) difficulty -= 1;
-
-  // Supplier Reliability Factor (0-1)
-  if (manufacturerId) {
-    const manufacturer = await db
-      .select()
-      .from(manufacturers)
-      .where(eq(manufacturers.id, manufacturerId))
-      .limit(1);
-
-    if (manufacturer.length && (!manufacturer[0].yearsInBusiness || manufacturer[0].yearsInBusiness < 5)) {
-      difficulty += 1;
-    }
-  }
-
-  // Cap at 1-5 scale
-  return Math.max(1, Math.min(5, difficulty));
+export function calcSourcingDifficulty(material: Partial<Material>): number {
+  let difficulty = 1;
+  const lead = material.leadTimeDays || 0;
+  if (lead > 90) difficulty += 2;
+  else if (lead > 45) difficulty += 1;
+  if (!material.usManufactured) difficulty += 1;
+  if (!material.hasEpd) difficulty += 1;
+  return Math.min(5, difficulty);
 }
 
-/**
- * Calculate CCPS for a single material and persona
- */
-export async function calculateCCPS(
-  materialId: string,
-  personaName: string = 'Default'
-): Promise<CCPSMetrics> {
-  // Get material data
-  
-  const materialData = await db
-    .select()
-    .from(materials)
-    .where(eq(materials.id, materialId))
-    .limit(1);
+// ─── Composite Score ─────────────────────────────────────────────────────────
 
-  if (!materialData.length) {
-    throw new Error(`Material ${materialId} not found`);
-  }
+export function calculateCcps(
+  material: Partial<Material>,
+  baseline: Partial<CcpsBaseline>,
+  weights: PersonaWeights = DEFAULT_WEIGHTS
+): CcpsBreakdown {
+  const carbonScore = calcCarbonScore(material, baseline);
+  const complianceScore = calcComplianceScore(material);
+  const certificationScore = calcCertificationScore(material);
+  const costScore = calcCostScore(material, baseline);
+  const supplyChainScore = calcSupplyChainScore(material, baseline);
+  const healthScore = calcHealthScore(material);
 
-  const material = materialData[0];
-
-  // Calculate individual metric scores
-  const carbonScore = await calculateCarbonScore(
-    materialId,
-    material.category,
-    material.globalWarmingPotential ? parseFloat(material.globalWarmingPotential.toString()) : null
+  const ccpsTotal = Math.round(
+    carbonScore * weights.carbonWeight +
+    complianceScore * weights.complianceWeight +
+    certificationScore * weights.certificationWeight +
+    costScore * weights.costWeight +
+    supplyChainScore * weights.supplyChainWeight +
+    healthScore * weights.healthWeight
   );
 
-  const complianceScore = await calculateComplianceScore(material);
-  const certificationScore = await calculateCertificationScore(materialId);
-  const costScore = await calculateCostScore(
-    material.category,
-    material.pricePerUnit ? parseFloat(material.pricePerUnit.toString()) : null
-  );
-  const supplyChainScore = await calculateSupplyChainScore(
-    materialId,
-    material,
-    material.manufacturerId
-  );
-  const healthScore = await calculateHealthScore(material);
-  const sourcingDifficulty = await calculateSourcingDifficulty(material, material.manufacturerId);
-
-  // Get weights for persona
-  const weights = PERSONA_WEIGHTS[personaName] || DEFAULT_WEIGHTS;
-
-  // Calculate weighted CCPS
-  const ccpsScore = Math.round(
-    (carbonScore * weights.carbon +
-      complianceScore * weights.compliance +
-      certificationScore * weights.certification +
-      costScore * weights.cost +
-      supplyChainScore * weights.supplyChain +
-      healthScore * weights.health) / 100
-  );
+  const sourcingDifficulty = calcSourcingDifficulty(material);
 
   return {
-    carbonScore: Math.round(carbonScore),
-    complianceScore: Math.round(complianceScore),
-    certificationScore: Math.round(certificationScore),
-    costScore: Math.round(costScore),
-    supplyChainScore: Math.round(supplyChainScore),
-    healthScore: Math.round(healthScore),
-    ccpsScore: Math.max(0, Math.min(100, ccpsScore)), // Cap at 0-100
-    sourcingDifficulty: Math.round(sourcingDifficulty),
+    carbonScore,
+    complianceScore,
+    certificationScore,
+    costScore,
+    supplyChainScore,
+    healthScore,
+    ccpsTotal: Math.min(100, Math.max(0, ccpsTotal)),
+    sourcingDifficulty,
   };
 }
 
 /**
- * Batch calculate CCPS for all materials and all personas
+ * Convert a DecisionMakerPersona row to PersonaWeights.
  */
-export async function calculateAllCCPS(): Promise<void> {
-  // Get all materials
-  
-  const allMaterials = await db.select().from(materials);
-
-  // Get all personas
-  const allPersonas = await db.select().from(decisionMakerPersonas);
-
-  console.log(`Calculating CCPS for ${allMaterials.length} materials across ${allPersonas.length} personas...`);
-
-  for (const material of allMaterials) {
-    for (const persona of allPersonas) {
-      try {
-        const metrics = await calculateCCPS(material.id, persona.personaName);
-
-        // Save to database
-        await db
-          .insert(ccpsScores)
-          .values({
-            materialId: material.id,
-            decisionMakerPersona: persona.personaName,
-            carbonScore: metrics.carbonScore,
-            complianceScore: metrics.complianceScore,
-            certificationScore: metrics.certificationScore,
-            costScore: metrics.costScore,
-            supplyChainScore: metrics.supplyChainScore,
-            healthScore: metrics.healthScore,
-            ccpsScore: metrics.ccpsScore,
-            sourcingDifficulty: metrics.sourcingDifficulty,
-            carbonWeight: persona.carbonWeight,
-            complianceWeight: persona.complianceWeight,
-            certificationWeight: persona.certificationWeight,
-            costWeight: persona.costWeight,
-            supplyChainWeight: persona.supplyChainWeight,
-            healthWeight: persona.healthWeight,
-            validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000), // Valid for 24 hours
-          })
-          .onConflictDoUpdate({
-            target: [ccpsScores.materialId, ccpsScores.decisionMakerPersona],
-            set: {
-              carbonScore: metrics.carbonScore,
-              complianceScore: metrics.complianceScore,
-              certificationScore: metrics.certificationScore,
-              costScore: metrics.costScore,
-              supplyChainScore: metrics.supplyChainScore,
-              healthScore: metrics.healthScore,
-              ccpsScore: metrics.ccpsScore,
-              sourcingDifficulty: metrics.sourcingDifficulty,
-              calculatedAt: new Date(),
-              validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            },
-          });
-      } catch (error) {
-        console.error(`Error calculating CCPS for material ${material.id}, persona ${persona.personaName}:`, error);
-      }
-    }
-  }
-
-  console.log('CCPS calculation complete');
-}
-
-/**
- * Get top N materials by CCPS for a specific persona
- */
-export async function getTopMaterialsByPersona(
-  personaName: string,
-  limit: number = 20
-): Promise<any[]> {
-  
-  return db
-    .select({
-      material: materials,
-      ccps: ccpsScores,
-    })
-    .from(ccpsScores)
-    .innerJoin(materials, eq(ccpsScores.materialId, materials.id))
-    .where(eq(ccpsScores.decisionMakerPersona, personaName))
-    .orderBy(sql`${ccpsScores.ccpsScore} DESC`)
-    .limit(limit);
-}
-
-/**
- * Get materials by category and persona
- */
-export async function getMaterialsByCategory(
-  category: string,
-  personaName: string = 'Default',
-  limit: number = 50
-): Promise<any[]> {
-  
-  return db
-    .select({
-      material: materials,
-      ccps: ccpsScores,
-    })
-    .from(materials)
-    .leftJoin(
-      ccpsScores,
-      and(
-        eq(ccpsScores.materialId, materials.id),
-        eq(ccpsScores.decisionMakerPersona, personaName)
-      )
-    )
-    .where(eq(materials.category, category))
-    .orderBy(sql`COALESCE(${ccpsScores.ccpsScore}, 0) DESC`)
-    .limit(limit);
-}
-
-/**
- * Get material details with all certifications and suppliers
- */
-export async function getMaterialDetails(materialId: string): Promise<any> {
-  
-  const material = await db
-    .select()
-    .from(materials)
-    .where(eq(materials.id, materialId))
-    .limit(1);
-
-  if (!material.length) return null;
-
-  const certifications = await db
-    .select()
-    .from(materialCertifications)
-    .where(eq(materialCertifications.materialId, materialId));
-
-  const suppliers = await db
-    .select({
-      supplier: materialSuppliers,
-      manufacturer: manufacturers,
-    })
-    .from(materialSuppliers)
-    .leftJoin(manufacturers, eq(materialSuppliers.supplierId, manufacturers.id))
-    .where(eq(materialSuppliers.materialId, materialId));
-
-  const ccpsData = await db
-    .select()
-    .from(ccpsScores)
-    .where(eq(ccpsScores.materialId, materialId));
-
+export function personaToWeights(persona: Partial<DecisionMakerPersona>): PersonaWeights {
   return {
-    ...material[0],
-    certifications,
-    suppliers,
-    ccpsScores: ccpsData,
+    carbonWeight: Number(persona.carbonWeight) || 0.25,
+    complianceWeight: Number(persona.complianceWeight) || 0.20,
+    certificationWeight: Number(persona.certificationWeight) || 0.15,
+    costWeight: Number(persona.costWeight) || 0.15,
+    supplyChainWeight: Number(persona.supplyChainWeight) || 0.15,
+    healthWeight: Number(persona.healthWeight) || 0.10,
   };
+}
+
+/**
+ * Calculate carbon delta between two materials or a material and an assembly.
+ */
+export function calcCarbonDelta(
+  originalEc1000: number,
+  alternativeEc1000: number
+): { delta: number; deltaPct: number } {
+  const delta = originalEc1000 - alternativeEc1000;
+  const deltaPct = originalEc1000 > 0 ? (delta / originalEc1000) * 100 : 0;
+  return { delta: Math.round(delta), deltaPct: Math.round(deltaPct * 10) / 10 };
 }

@@ -1,243 +1,85 @@
-# GreenChainz B2B App - Frontend Development TODO
+# GreenChainz B2B App - TODO
 
-**Last Updated:** February 11, 2026  
-**Architecture:** Frontend (Manus webdev) → Backend API (Azure Container Apps)  
-**Backend URL:** https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
+## Core Platform
 
----
+- [x] Authentication system (Manus OAuth)
+- [x] Dev server running
+- [x] Branded landing page with hero, tools section, CTA
+- [x] Header navigation (About, Materials, Assemblies, RFQ, Compare)
+- [x] Footer with product/company/legal links and social icons
+- [x] About page with company story
+- [x] Intercom chat widget integrated (cqtm1euj)
 
-## ✅ COMPLETED
+## CCPS Algorithm & Database
 
-- [x] Authentication system (Manus OAuth working)
-- [x] Backend deployed to Azure Container Apps (greenchainz-container)
-- [x] PostgreSQL database with 30+ tables (786 lines SQL)
-- [x] Azure integration layer (Blob Storage, OpenAI, Document Intelligence, Key Vault)
-- [x] AI agent library (5 agents in backend)
-- [x] Backend landing page (visible at backend URL)
-- [x] Dev server running without errors
+- [x] Database schema: 12 tables (users, manufacturers, materials, assemblies, assembly_components, material_certifications, ccps_baselines, ccps_scores, decision_maker_personas, rfqs, rfq_items, leads)
+- [x] CCPS scoring engine with 6 metrics (Carbon, Compliance, Certification, Cost, Supply Chain, Health)
+- [x] Persona-specific weighting (Architect, LEED AP, GC PM, Spec Writer, Owner, Facility Manager)
+- [x] Seed data: 22 materials, 7 manufacturers, 10 assemblies, 5 baselines, 7 personas
+- [x] tRPC API procedures for materials, assemblies, CCPS, RFQ, personas, leads
+- [x] CCPS engine unit tests (48 tests passing)
 
----
+## Materials Catalog (Sweets-Style)
 
-## 🚧 IN PROGRESS
+- [x] Materials Catalog page with search bar, role selector, filters
+- [x] Material cards with CCPS gauge, 6 sub-scores, certification badges
+- [x] GWP, Price, Lead Time displayed per card
+- [x] Compare and RFQ buttons on each card
+- [x] Material Detail page with full CCPS breakdown
+- [x] Score by Decision-Maker Persona section on detail page
+- [x] Manufacturer sidebar with website link
+- [x] EPD information section
+- [x] Tabs: CCPS Breakdown, Specifications, Certifications, Alternatives
 
-### Phase 1: API Client & Backend Integration (Current Priority)
-- [x] Document backend API endpoints (check /api routes)
-- [x] Create API client library (client/src/lib/api-client.ts)
-- [x] Set up fetch with backend base URL
-- [ ] Test authentication flow with backend
-- [x] Create TypeScript types for API responses
-- [x] Add error handling and retry logic
+## Assembly Systems
 
-### Phase 2: Buyer Dashboard
-- [ ] Build dashboard layout with navigation
-- [ ] Display active RFQs from backend API
-- [ ] Show recent orders
-- [ ] Display saved suppliers
-- [ ] Add project settings panel
-- [ ] Wire all data to real backend endpoints
+- [x] Assemblies page with EWS assembly types
+- [x] Good/Better/Best sustainability tier badges
+- [x] Embodied Carbon per 1000 SF display
+- [x] Assembly type and tier filters
+- [x] Assembly detail view with component breakdown
 
-### Phase 3: RFQ Creation Flow
-- [ ] Build multi-step RFQ form (project details, material specs, supplier selection)
-- [ ] Connect form submission to backend POST /api/rfqs
-- [ ] Display RFQ preview before submission
-- [ ] Show submission confirmation
-- [ ] List user's RFQs with status tracking
-- [ ] Add RFQ detail view with responses
+## RFQ System
 
-### Phase 4: Material Catalog
-- [ ] Build material search with filters (category, certifications, carbon score)
-- [ ] Display material cards with sustainability scores
-- [ ] Show certification badges (EPD, HPD, FSC, C2C, GREENGUARD)
-- [ ] Add material comparison feature
-- [ ] Connect to backend /api/materials endpoint
-- [ ] Implement pagination and sorting
+- [x] RFQ Cart page with project details form
+- [x] Add to RFQ from material cards and detail page
+- [x] Project Name, Location, Type, Notes fields
+- [x] Submit RFQ button (requires auth)
+- [ ] RFQ submission notification to owner
+- [ ] RFQ status tracking dashboard
+- [ ] Supplier response flow
 
-### Phase 5: Supplier Portal
-- [ ] Build supplier dashboard
-- [ ] Display incoming RFQs
-- [ ] Create RFQ response form
-- [ ] Build product management (add/edit/delete products)
-- [ ] Add certification upload
-- [ ] Show supplier analytics (RFQ views, response rate)
+## Material Comparison
 
-### Phase 6: Admin Dashboard
-- [ ] Build admin user management
-- [ ] Create supplier verification queue
-- [ ] Add product moderation interface
-- [ ] Display platform analytics
-- [ ] Build subscription management UI
+- [x] Compare page with side-by-side CCPS comparison
+- [x] Add to Compare from material cards
+- [x] Empty state with Browse Materials CTA
 
-### Phase 7: Branding & Design
-- [ ] Extract color scheme from backend landing page (mint green #A8D5A2)
-- [ ] Apply GreenChainz logo consistently
-- [ ] Style all pages to match backend design
-- [ ] Add navigation menu (About, Blog, Careers, Contact, etc.)
-- [ ] Create footer with links and social icons
-- [ ] Ensure responsive design on mobile
+## Tool Landing Pages
 
-### Phase 8: Testing
-- [ ] Test authentication flow
-- [ ] Test RFQ creation end-to-end
-- [ ] Test material search and filtering
-- [ ] Test supplier RFQ response flow
-- [ ] Test admin verification workflows
-- [ ] Cross-browser testing (Chrome, Firefox, Safari)
-- [ ] Mobile responsiveness testing
+- [x] Excel Audit tool page with email capture
+- [x] Browser Extension tool page with email capture
+- [x] Revit Plugin tool page with email capture
+- [x] Submittal Generator tool page with email capture
 
-### Phase 9: Deployment
-- [ ] Create checkpoint in Manus
-- [ ] Deploy frontend to production
-- [ ] Verify frontend can reach backend in production
-- [ ] Test CORS configuration
-- [ ] Smoke test all critical flows
-- [ ] Monitor for errors
+## Lead Capture
 
----
+- [x] Leads table in database
+- [x] Lead capture form component
+- [x] tRPC lead.capture procedure
 
-## 🔮 FUTURE ENHANCEMENTS (Post-MVP)
+## Agent Data Access Layer
 
-- [ ] Real-time notifications (Intercom integration)
-- [ ] Email notifications (Resend integration)
-- [ ] Advanced analytics dashboards
-- [ ] Mobile app (React Native)
-- [ ] Revit plugin UI improvements
-- [ ] Excel add-in enhancements
-- [ ] Chrome extension updates
-- [ ] Multi-language support
+- [ ] API endpoints accessible by Azure AI agents
+- [ ] Material search API for agent queries
+- [ ] CCPS calculation API for agent use
+- [ ] RFQ creation API for agent-initiated quotes
 
----
+## Future Enhancements
 
-## 📝 ARCHITECTURE NOTES
-
-**Frontend (This Project):**
-- Next.js 14 + React 19 + Tailwind CSS 4
-- Manus OAuth for authentication
-- API client calls to backend container
-- Hosted on Manus platform
-
-**Backend (Separate Container):**
-- Azure Container Apps (greenchainz-container)
-- PostgreSQL database with Managed Identity
-- AI agents (Azure OpenAI)
-- Document Intelligence
-- Blob Storage
-- All business logic and data access
-
-**Integration:**
-- Frontend makes HTTP requests to backend API
-- Backend handles all database queries
-- Backend runs AI agents
-- Backend manages file storage
-- Frontend is purely presentational + API calls
-
-### Phase 7: Branding & Design
-- [x] Update color palette in index.css with mint green #A8D5A2
-- [x] Create branded navigation header with GreenChainz logo
-- [x] Redesign home page to match backend landing page style
-- [x] Add footer with company links and social icons
-- [x] Ensure responsive design on mobile
-- [x] Create AuthContext for user authentication state
-
-### Logo Integration (CURRENT)
-- [ ] Copy real GreenChainz logo files to public folder
-- [ ] Replace placeholder SVG with actual logo in Header
-- [ ] Replace placeholder SVG with actual logo in Footer
-- [ ] Update favicon with greenchainz-logo-icon.ico
-
-### Video Placeholders (CURRENT)
-- [ ] Add video placeholder section on Home page
-- [ ] Create About page with video section
-- [ ] Add video embed placeholder component
-- [ ] Verify favicon displays correctly
-
-### Design Enhancements
-- [x] Add multiple green color variations (bright, dark, gradients)
-- [x] Implement glassmorphism effects (frosted glass, blur)
-- [x] Add hover animations and transitions
-- [x] Create gradient backgrounds
-- [x] Add micro-interactions on buttons and cards
-
-### Tool Landing Pages
-- [x] Create /tools/excel page with email capture
-- [x] Create /tools/extension page with email capture
-- [x] Create /tools/revit page with email capture
-- [x] Create /tools/submittal page with email capture
-- [x] Add video placeholders to each tool page
-- [x] Create reusable email capture form component
-- [ ] Store leads in database
-
-### Intercom Integration
-- [x] Add Intercom widget script to index.html
-- [x] Configure Intercom app ID (cqtm1euj)
-- [x] Test widget appears in bottom right
-
-### About Page
-- [x] Create About page with company story
-- [x] Add mission and vision sections
-- [x] Add team section with founder info
-- [x] Add video placeholder for founder message
-- [x] Add route to App.tsx
-- [x] Add About link to Header navigation
-
-
-### Lead Capture Backend
-- [x] Create leads table in database schema
-- [x] Create /api/leads POST endpoint in backend
-- [x] Update LeadCaptureForm to POST to backend endpoint
-- [ ] Test lead submission flow end-to-end (needs backend deployment)
-
-### Home Page Navigation
-- [x] Add "Our Tools" section to home page
-- [x] Link to all four tool pages from home
-- [x] Add tool preview cards with icons
-- [x] Ensure smooth navigation flow
-
-
-### Auth Fix
-- [x] Fix AuthContext to use Azure backend /api/auth/me endpoint
-- [x] Update api-client.ts to handle auth properly
-- [x] Transform backend response format to match frontend expectations
-
-
-### CORS Fix
-- [x] Add CORS middleware to Azure backend
-- [x] Allow any origin for development flexibility
-- [x] Handle preflight OPTIONS requests
-- [ ] Test cross-origin requests (needs backend deployment)
-
-
-### Scraper Setup
-- [x] Analyze existing scraper endpoints in backend
-- [x] Check Azure Function App (greenchainz-scraper) configuration
-- [x] Create automated scheduler script (30 material categories)
-- [x] Set up Azure Function timer trigger (runs daily at 2 AM UTC)
-- [x] Create deployment README with monitoring instructions
-- [ ] Deploy scraper scheduler to Azure Function App
-- [ ] Test scraper execution and verify data ingestion
-
-
-### Autodesk SDA Integration
-- [x] Add Autodesk SDA API to scraper sources
-- [x] Leverage existing Autodesk Forge authentication
-- [x] Create autodesk-sda-scraper.ts with search and sync functions
-- [x] Add to automated scheduler (now 4 sources: Autodesk, EC3, EPD, Building Transparency)
-- [ ] Test Autodesk material data extraction after deployment
-- [ ] Verify Autodesk API credentials are in Azure Key Vault
-
-
-### Azure Deployment (CURRENT PRIORITY)
-- [ ] Trigger Azure Container Apps redeployment from GitHub
-- [ ] Run database migration (create leads table)
-- [ ] Verify CORS headers are working
-- [ ] Test /api/leads endpoint
-- [ ] Deploy scraper scheduler to Azure Function App
-- [ ] Test scraper execution
-
-
-### Materials Catalog with CCPS (CURRENT PRIORITY)
-- [ ] Add CCPS metrics to Materials table (carbon, compliance, certification, cost, supply, health)
-- [ ] Create /api/materials endpoint with CCPS calculation
-- [ ] Build beautiful materials catalog UI with "sweets" design
-- [ ] Add architect-focused metric cards (sourcing difficulty, lead time, availability, cost)
-- [ ] Implement filtering by CCPS score and individual metrics
-- [ ] Test end-to-end with real EPD data
+- [ ] Supplier Portal (dashboard, RFQ responses, product management)
+- [ ] Admin Dashboard (user management, verification queue)
+- [ ] Real-time notifications
+- [ ] Mobile responsiveness improvements
+- [ ] EPD data scraper integration (EC3, Building Transparency, Autodesk SDA)
+- [ ] Pricing API integration (RS Means, Dodge)
