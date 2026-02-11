@@ -12,12 +12,22 @@ import About from "./pages/About";
 import BrowserExtension from "./pages/BrowserExtension";
 import RevitPlugin from "./pages/RevitPlugin";
 import SubmittalGenerator from "./pages/SubmittalGenerator";
+import MaterialsCatalog from "./pages/MaterialsCatalog";
+import MaterialDetail from "./pages/MaterialDetail";
+import Assemblies from "./pages/Assemblies";
+import RfqCart from "./pages/RfqCart";
+import Compare from "./pages/Compare";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/materials"} component={MaterialsCatalog} />
+      <Route path={"/materials/:id"} component={MaterialDetail} />
+      <Route path={"/assemblies"} component={Assemblies} />
+      <Route path={"/assemblies/:id"} component={Assemblies} />
+      <Route path={"/rfq"} component={RfqCart} />
+      <Route path={"/compare"} component={Compare} />
       <Route path={"/api-test"} component={ApiTest} />
       <Route path={"/tools/excel"} component={ExcelAudit} />
       <Route path={"/about"} component={About} />
@@ -25,24 +35,15 @@ function Router() {
       <Route path={"/tools/revit"} component={RevitPlugin} />
       <Route path={"/tools/submittal"} component={SubmittalGenerator} />
       <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="light">
         <AuthProvider>
           <TooltipProvider>
             <Toaster />

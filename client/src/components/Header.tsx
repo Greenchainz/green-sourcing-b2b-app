@@ -36,19 +36,19 @@ export default function Header() {
               Materials
             </a>
           </Link>
-          <Link href="/suppliers">
+          <Link href="/assemblies">
             <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Suppliers
+              Assemblies
             </a>
           </Link>
-          <Link href="/how-it-works">
+          <Link href="/rfq">
             <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              How It Works
+              RFQ
             </a>
           </Link>
-          <Link href="/pricing">
+          <Link href="/compare">
             <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Pricing
+              Compare
             </a>
           </Link>
         </nav>

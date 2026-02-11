@@ -1,0 +1,37 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM materials; SELECT COUNT(*) as cnt FROM manufacturers; SELECT COUNT(*) as cnt FROM assemblies; SELECT COUNT(*) as cnt FROM ccps_baselines; SELECT COUNT(*) as cnt FROM decision_maker_personas;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute SELECT COUNT(*) as cnt FROM materials; SELECT COUNT(*) as cnt FROM manufacturers; SELECT COUNT(*) as cnt FROM assemblies; SELECT COUNT(*) as cnt FROM ccps_baselines; SELECT COUNT(*) as cnt FROM decision_maker_personas;",
+  "rows": [
+    {
+      "cnt": "22"
+    },
+    {
+      "cnt": "cnt"
+    },
+    {
+      "cnt": "25"
+    },
+    {
+      "cnt": "cnt"
+    },
+    {
+      "cnt": "10"
+    },
+    {
+      "cnt": "cnt"
+    },
+    {
+      "cnt": "8"
+    },
+    {
+      "cnt": "cnt"
+    },
+    {
+      "cnt": "7"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n22\ncnt\n25\ncnt\n10\ncnt\n8\ncnt\n7\n",
+  "stderr": "",
+  "execution_time_ms": 806
+}
