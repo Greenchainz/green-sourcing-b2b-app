@@ -20,6 +20,8 @@ import {
 import { eq, like, and, gte, lte, desc, asc, sql, or } from "drizzle-orm";
 import { calculateCcps, personaToWeights, calcCarbonDelta } from "./ccps-engine";
 import type { PersonaWeights } from "./ccps-engine";
+import { handleChat } from "./agent";
+import { agentConversations } from "../drizzle/schema";
 
 export const appRouter = router({
   system: systemRouter,
@@ -385,6 +387,63 @@ export const appRouter = router({
 
       return { ...rows[0], items };
     }),
+  }),
+
+  // ─── Agent (ChainBot) ──────────────────────────────────────────────────────
+  agent: router({
+    chat: publicProcedure
+      .input(
+        z.object({
+          message: z.string().min(1).max(2000),
+          sessionId: z.string().min(1),
+          context: z.object({
+            currentPage: z.string().default("/"),
+            materialId: z.number().optional(),
+            assemblyId: z.number().optional(),
+            cartItems: z.array(z.number()).optional(),
+            projectName: z.string().optional(),
+            projectLocation: z.string().optional(),
+          }),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const userPersona = ctx.user?.persona || "default";
+        const userName = ctx.user?.name || undefined;
+        const response = await handleChat(
+          input.message,
+          input.sessionId,
+          {
+            ...input.context,
+            userPersona,
+            userName: userName || undefined,
+          },
+          ctx.user?.id
+        );
+        return {
+          content: response.content,
+          agent: response.agent,
+          toolsUsed: response.toolsUsed,
+        };
+      }),
+
+    history: publicProcedure
+      .input(z.object({ sessionId: z.string() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        const rows = await db
+          .select({
+            role: agentConversations.role,
+            content: agentConversations.content,
+            agent: agentConversations.agent,
+            createdAt: agentConversations.createdAt,
+          })
+          .from(agentConversations)
+          .where(eq(agentConversations.sessionId, input.sessionId))
+          .orderBy(asc(agentConversations.createdAt))
+          .limit(50);
+        return rows;
+      }),
   }),
 
   // ─── Leads ─────────────────────────────────────────────────────────────────

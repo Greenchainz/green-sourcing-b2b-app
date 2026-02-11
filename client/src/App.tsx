@@ -17,6 +17,7 @@ import MaterialDetail from "./pages/MaterialDetail";
 import Assemblies from "./pages/Assemblies";
 import RfqCart from "./pages/RfqCart";
 import Compare from "./pages/Compare";
+import { ChainBot } from "./components/ChainBot";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <ChainBot />
           </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>

@@ -8,7 +8,7 @@
 - [x] Header navigation (About, Materials, Assemblies, RFQ, Compare)
 - [x] Footer with product/company/legal links and social icons
 - [x] About page with company story
-- [x] Intercom chat widget integrated (cqtm1euj)
+- [x] Intercom chat widget integrated (cqtm1euj) — REPLACED by ChainBot AI
 
 ## CCPS Algorithm & Database
 
@@ -70,10 +70,10 @@
 
 ## Agent Data Access Layer
 
-- [ ] API endpoints accessible by Azure AI agents
-- [ ] Material search API for agent queries
-- [ ] CCPS calculation API for agent use
-- [ ] RFQ creation API for agent-initiated quotes
+- [x] API endpoints accessible by Azure AI agents (same tRPC endpoints)
+- [x] Material search API for agent queries
+- [x] CCPS calculation API for agent use
+- [x] RFQ creation API for agent-initiated quotes
 
 ## Future Enhancements
 
@@ -83,3 +83,24 @@
 - [ ] Mobile responsiveness improvements
 - [ ] EPD data scraper integration (EC3, Building Transparency, Autodesk SDA)
 - [ ] Pricing API integration (RS Means, Dodge)
+
+
+## AI Agent Architecture
+
+- [x] Design comprehensive agent architecture document (AGENT_ARCHITECTURE.md)
+- [x] Replace dual Intercom+AI widget with single branded GreenChainz AI chat
+- [x] Build unified chat widget (ChainBot — replaces Intercom for user-facing)
+- [x] Implement Triage/Router agent that classifies user intent (keyword + LLM + context routing)
+- [x] Implement Material Intelligence agent (CCPS queries, search_materials, get_material_detail tools)
+- [x] Implement RFQ Assistant agent (validates cart, enriches RFQ, matches suppliers)
+- [ ] Implement Compliance Advisor agent (code checks, LEED credit calculations) — scaffolded, needs tools
+- [ ] Implement Supplier Concierge agent (for supplier-side interactions)
+- [ ] Agent-assisted RFQ workflow (validation, enrichment, supplier matching, response analysis)
+- [ ] Human handoff to Intercom when agent can't resolve
+- [x] tRPC agent.chat procedure with LLM integration
+- [x] Agent context injection (user persona, current page, cart state)
+- [x] Agent system unit tests (16 tests passing)
+- [x] Database tables for agent conversations and analytics
+- [x] ChainBot floating widget with suggested prompts, minimize, close
+- [x] Agent specialist badges in chat (Material Intelligence, RFQ Assistant, Support)
+- [x] Intercom widget removed from frontend (kept as backend escalation channel)
