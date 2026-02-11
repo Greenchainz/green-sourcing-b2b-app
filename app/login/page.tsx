@@ -1,9 +1,29 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get role from URL parameter (e.g., /login?role=buyer)
+    const roleParam = searchParams.get("role");
+    if (roleParam) {
+      setRole(roleParam);
+      // Store role in sessionStorage so we can use it after OAuth callback
+      sessionStorage.setItem("pendingUserRole", roleParam);
+    }
+  }, [searchParams]);
+
+  const handleSignIn = (provider: string) => {
+    const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+    signIn(provider, { callbackUrl });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8F5E9] to-[#C8E6C9] flex flex-col items-center justify-center p-4">
       {/* Logo */}
@@ -20,17 +40,25 @@ export default function LoginPage() {
       {/* Login Card */}
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <h1 className="text-3xl font-bold text-center text-gray-900 mb-2">
-          Welcome Back
+          {role === "buyer"
+            ? "Buyer Sign In"
+            : role === "supplier"
+            ? "Supplier Sign In"
+            : "Welcome Back"}
         </h1>
         <p className="text-center text-gray-600 mb-8">
-          Sign in to access your GreenChainz dashboard
+          {role === "buyer"
+            ? "Access your buyer dashboard and RFQs"
+            : role === "supplier"
+            ? "Manage your products and quotes"
+            : "Sign in to access your GreenChainz dashboard"}
         </p>
 
         {/* OAuth Buttons */}
         <div className="space-y-4">
           {/* Google */}
           <button
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            onClick={() => handleSignIn("google")}
             className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -56,7 +84,7 @@ export default function LoginPage() {
 
           {/* Microsoft */}
           <button
-            onClick={() => signIn("microsoft", { callbackUrl: "/dashboard" })}
+            onClick={() => handleSignIn("microsoft-entra-id")}
             className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
           >
             <svg className="w-5 h-5" viewBox="0 0 23 23">
@@ -71,7 +99,7 @@ export default function LoginPage() {
 
           {/* LinkedIn */}
           <button
-            onClick={() => signIn("linkedin", { callbackUrl: "/dashboard" })}
+            onClick={() => handleSignIn("linkedin")}
             className="w-full flex items-center justify-center gap-3 bg-[#0A66C2] hover:bg-[#004182] text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

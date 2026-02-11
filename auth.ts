@@ -27,11 +27,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
+    async jwt({ token, user, trigger, session }) {
+      // On sign in, set default role from sessionStorage or default to buyer
+      if (user) {
+        token.role = user.role || "buyer"; // Default to buyer if no role specified
+      }
+      // Allow role updates from session
+      if (trigger === "update" && session?.role) {
+        token.role = session.role;
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (token.sub) {
-        session.user.id = token.sub
+        session.user.id = token.sub;
       }
-      return session
+      if (token.role) {
+        session.user.role = token.role as string;
+      }
+      return session;
     },
   },
 })
