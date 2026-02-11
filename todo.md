@@ -178,3 +178,16 @@
 - [x] Add video placeholder for founder message
 - [x] Add route to App.tsx
 - [x] Add About link to Header navigation
+
+
+### Lead Capture Backend
+- [x] Create leads table in database schema
+- [x] Create /api/leads POST endpoint in backend
+- [x] Update LeadCaptureForm to POST to backend endpoint
+- [ ] Test lead submission flow end-to-end (needs backend deployment)
+
+### Home Page Navigation
+- [x] Add "Our Tools" section to home page
+- [x] Link to all four tool pages from home
+- [x] Add tool preview cards with icons
+- [x] Ensure smooth navigation flow
