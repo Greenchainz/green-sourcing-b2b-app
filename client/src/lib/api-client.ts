@@ -113,12 +113,25 @@ export async function checkHealth() {
  * Get current user
  */
 export async function getCurrentUser() {
-  return get<{
-    id: string;
-    email: string;
-    name: string;
-    role: 'buyer' | 'supplier' | 'admin';
+  const response = await get<{
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      roles: string[];
+      isAdmin: boolean;
+      isSupplier: boolean;
+    };
   }>('/api/auth/me');
+  
+  // Transform backend response to frontend format
+  const { user } = response;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'buyer') as 'buyer' | 'supplier' | 'admin'
+  };
 }
 
 /**
