@@ -383,3 +383,13 @@
 - [x] Send real-time notifications via WebPubSub to matched suppliers
 - [ ] Test RFQ notification delivery end-to-end (requires test data)
 - [ ] Add email notifications for suppliers (optional enhancement)
+
+
+## Email Notification System
+
+- [x] Create email service with HTML template support
+- [x] Design email templates for RFQ notifications
+- [x] Add email sending to RFQ notification flow
+- [ ] Implement notification preferences table in database (future enhancement)
+- [ ] Add supplier notification preferences UI (future enhancement)
+- [ ] Test email delivery for critical events (requires SMTP configuration)

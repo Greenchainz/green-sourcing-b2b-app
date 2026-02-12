@@ -77,21 +77,38 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
 
   // Send notifications to matched suppliers
   const { sendInAppNotification } = await import("./notification-service");
+  const { sendRfqNotificationEmail } = await import("./email-service");
+  
   for (const match of matchedSuppliers) {
-    // Get supplier's userId
+    // Get supplier's userId and company name
     const [supplierRecord] = await db
-      .select({ userId: suppliers.userId, companyName: suppliers.companyName })
+      .select({ 
+        userId: suppliers.userId, 
+        companyName: suppliers.companyName,
+        email: suppliers.email 
+      })
       .from(suppliers)
       .where(eq(suppliers.id, match.supplierId))
       .execute();
 
     if (supplierRecord) {
+      // Send in-app notification
       await sendInAppNotification({
         userId: supplierRecord.userId,
         type: "rfq_new",
         title: "New RFQ Available",
-        content: `${input.projectName} - ${input.materials.length} material${input.materials.length > 1 ? 's' : ''} requested`,
-        metadata: JSON.stringify({ rfqId, matchScore: match.matchScore }),
+        content: `${input.projectName} - ${input.materials.length} material${input.materials.length > 1 ? 's' : ''} requested. Match score: ${match.matchScore}%`,
+        relatedId: rfqId,
+      });
+
+      // Send email notification
+      await sendRfqNotificationEmail({
+        supplierEmail: supplierRecord.email,
+        supplierName: supplierRecord.companyName,
+        projectName: input.projectName,
+        materialCount: input.materials.length,
+        matchScore: match.matchScore,
+        rfqId,
       });
     }
   }
