@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -12,8 +12,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Search, SlidersHorizontal, ShoppingCart, Scale, X } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export default function MaterialsCatalog() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [persona, setPersona] = useState("default");
@@ -22,6 +25,18 @@ export default function MaterialsCatalog() {
   const [hasEpd, setHasEpd] = useState<boolean|undefined>(undefined);
   const [usManufactured, setUsManufactured] = useState<boolean|undefined>(undefined);
   const [showFilters, setShowFilters] = useState(false);
+  const [hasShownToast, setHasShownToast] = useState(false);
+
+  // Show toast for anonymous users
+  useEffect(() => {
+    if (!user && !hasShownToast) {
+      toast.info("Login to get personalized recommendations", {
+        description: "Browse freely or sign in for AI-powered material matching",
+        duration: 5000,
+      });
+      setHasShownToast(true);
+    }
+  }, [user, hasShownToast]);
 
   const { data, isLoading } = trpc.materials.list.useQuery({
     search: search || undefined,

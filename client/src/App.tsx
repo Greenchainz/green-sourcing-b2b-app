@@ -22,12 +22,14 @@ import BuyerRfqDashboard from "./pages/BuyerRfqDashboard";
 import RfqDashboard from "./pages/RfqDashboard";
 import { SupplierRegistration } from "./pages/SupplierRegistration";
 import { SupplierProfileDashboard } from "./pages/SupplierProfileDashboard";
+import GetStarted from "./pages/GetStarted";
 import { ChainBot } from "./components/ChainBot";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/get-started"} component={GetStarted} />
       <Route path={"/materials"} component={MaterialsCatalog} />
       <Route path={"/materials/:id"} component={MaterialDetail} />
       <Route path={"/assemblies"} component={Assemblies} />

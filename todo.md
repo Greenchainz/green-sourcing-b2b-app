@@ -339,3 +339,11 @@
 - [x] Fix pnpm dependency resolution error (zod version conflict)
 - [ ] Test Docker build locally
 - [ ] Verify deployment succeeds
+
+
+## Navigation Issues
+
+- [x] Create GetStarted page with role selection (Buyer vs Supplier)
+- [x] Implement role-based login flow (redirect to appropriate dashboard after auth)
+- [x] Add anonymous browsing toast for materials catalog ("Login to get personalized recommendations")
+- [x] Add /get-started route to App.tsx
