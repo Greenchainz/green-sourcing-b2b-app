@@ -171,3 +171,15 @@
 - [ ] Compliance grades display (fire rating, building code compliance)
 - [ ] LEED credit contributions display
 - [ ] Agent integration for swap suggestions (Material Intelligence Agent tool)
+
+
+## ChainBot Material Swap Integration
+
+- [x] Review existing ChainBot agent architecture and tool registry
+- [x] Create suggest_material_swaps tool function (checks saved swaps first, then calculates on-the-fly)
+- [x] Add tool schema definition with material ID and limit parameters
+- [x] Integrate tool into ChainBot's available tools list (MATERIAL_TOOLS array)
+- [x] Update ChainBot system prompt to mention swap recommendation capability
+- [x] Add tool dispatch case in executeToolCall switch
+- [x] Write unit tests for suggest_material_swaps tool (3 tests passing)
+- [x] Verify tool returns Good/Better/Best tier recommendations with scores, confidence, and business data

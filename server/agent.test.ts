@@ -459,3 +459,129 @@ describe("Agent System", () => {
     });
   });
 });
+
+describe("Material Swap Tool Integration", () => {
+  it("should call suggest_material_swaps tool when requested", async () => {
+    const mockDb = createMockDb();
+    mockGetDb.mockResolvedValue(mockDb as any);
+
+    // Router classifies as materials
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeRouterResponse("materials", 0.95)
+    );
+
+    // Specialist calls suggest_material_swaps tool
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse("", [
+        {
+          id: "call_1",
+          type: "function",
+          function: {
+            name: "suggest_material_swaps",
+            arguments: JSON.stringify({ material_id: 1, limit: 3 }),
+          },
+        },
+      ])
+    );
+
+    // Specialist responds with swap recommendations
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse(
+        "Here are the top 3 swap recommendations for this material: Good tier (score 75), Better tier (score 85), Best tier (score 95)."
+      )
+    );
+
+    const result = await handleChat(
+      "What are some swap recommendations for material 1?",
+      "test-session-swap-1",
+      { ...defaultContext, materialId: 1 }
+    );
+
+    expect(result.agent).toBe("materials");
+    expect(result.toolsUsed).toContain("suggest_material_swaps");
+    expect(result.content).toContain("swap");
+  });
+
+  it("should distinguish between find_alternatives and suggest_material_swaps", async () => {
+    const mockDb = createMockDb();
+    mockGetDb.mockResolvedValue(mockDb as any);
+
+    // Router classifies as materials
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeRouterResponse("materials", 0.95)
+    );
+
+    // Specialist calls find_alternatives (CCPS-based)
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse("", [
+        {
+          id: "call_2",
+          type: "function",
+          function: {
+            name: "find_alternatives",
+            arguments: JSON.stringify({ material_id: 1, limit: 5 }),
+          },
+        },
+      ])
+    );
+
+    // Specialist responds with CCPS alternatives
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse(
+        "Here are CCPS-ranked alternatives with carbon delta calculations."
+      )
+    );
+
+    const result = await handleChat(
+      "Show me CCPS alternatives for this material",
+      "test-session-swap-2",
+      { ...defaultContext, materialId: 1 }
+    );
+
+    expect(result.agent).toBe("materials");
+    expect(result.toolsUsed).toContain("find_alternatives");
+    expect(result.toolsUsed).not.toContain("suggest_material_swaps");
+  });
+
+  it("should handle swap tool with Good/Better/Best tier context", async () => {
+    const mockDb = createMockDb();
+    mockGetDb.mockResolvedValue(mockDb as any);
+
+    // Router classifies as materials
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeRouterResponse("materials", 0.95)
+    );
+
+    // Specialist calls suggest_material_swaps
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse("", [
+        {
+          id: "call_3",
+          type: "function",
+          function: {
+            name: "suggest_material_swaps",
+            arguments: JSON.stringify({ material_id: 5 }),
+          },
+        },
+      ])
+    );
+
+    // Specialist formats response with tier information
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse(
+        "I found 3 swap recommendations:\n\n**Good Tier** (Score: 72, Confidence: 85%)\n- Material A: Lower embodied carbon\n\n**Better Tier** (Score: 84, Confidence: 90%)\n- Material B: Better certifications\n\n**Best Tier** (Score: 93, Confidence: 95%)\n- Material C: Optimal balance"
+      )
+    );
+
+    const result = await handleChat(
+      "What are the best material swaps for material 5?",
+      "test-session-swap-3",
+      { ...defaultContext, materialId: 5 }
+    );
+
+    expect(result.agent).toBe("materials");
+    expect(result.toolsUsed).toContain("suggest_material_swaps");
+    expect(result.content).toMatch(/Good Tier|Better Tier|Best Tier/);
+    expect(result.content).toMatch(/Score:|Confidence:/);
+  });
+});

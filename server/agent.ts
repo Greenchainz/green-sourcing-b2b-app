@@ -304,6 +304,114 @@ async function toolListAssemblies(): Promise<string> {
   );
 }
 
+async function toolSuggestMaterialSwaps(materialId: number, limit = 5): Promise<string> {
+  const db = await getDb();
+  if (!db) return "Database unavailable.";
+
+  // Import material swap service
+  const { findSwapCandidates, getSavedSwaps } = await import('./material-swap-service');
+
+  try {
+    // First, check for saved swap recommendations
+    const savedSwaps = await getSavedSwaps(materialId);
+    
+    if (savedSwaps.length > 0) {
+      // Use pre-computed swaps from database
+      const swapsWithDetails = await Promise.all(
+        savedSwaps.slice(0, limit).map(async (swap) => {
+          const swapMaterial = await db
+            .select({
+              material: materials,
+              manufacturerName: manufacturers.name,
+            })
+            .from(materials)
+            .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+            .where(eq(materials.id, swap.materialId))
+            .limit(1);
+
+          if (swapMaterial.length === 0) return null;
+
+          const mat = swapMaterial[0].material;
+          return {
+            id: mat.id,
+            name: mat.name,
+            manufacturer: swapMaterial[0].manufacturerName,
+            tier: swap.swapTier,
+            score: swap.swapScore,
+            confidence: `${(Number(swap.confidence) * 100).toFixed(0)}%`,
+            reason: swap.swapReason,
+            embodiedCarbon: `${mat.embodiedCarbonPer1000sf} kgCO2e/1000SF`,
+            price: `${mat.pricePerUnit} ${mat.priceUnit}`,
+            leadTime: `${mat.leadTimeDays} days`,
+            source: "saved",
+          };
+        })
+      );
+
+      const validSwaps = swapsWithDetails.filter((s) => s !== null);
+      if (validSwaps.length > 0) {
+        return JSON.stringify({
+          source: "saved_recommendations",
+          materialId,
+          swaps: validSwaps,
+        }, null, 2);
+      }
+    }
+
+    // If no saved swaps, calculate on-the-fly
+    const candidates = await findSwapCandidates(materialId, limit);
+    
+    if (candidates.length === 0) {
+      return JSON.stringify({
+        source: "algorithm",
+        materialId,
+        message: "No suitable swap candidates found. The material may already be optimal for its category.",
+        swaps: [],
+      }, null, 2);
+    }
+
+    const swapsWithDetails = await Promise.all(
+      candidates.map(async (candidate) => {
+        const swapMaterial = await db
+          .select({
+            material: materials,
+            manufacturerName: manufacturers.name,
+          })
+          .from(materials)
+          .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+          .where(eq(materials.id, candidate.materialId))
+          .limit(1);
+
+        if (swapMaterial.length === 0) return null;
+
+        const mat = swapMaterial[0].material;
+        return {
+          id: mat.id,
+          name: mat.name,
+          manufacturer: swapMaterial[0].manufacturerName,
+          tier: candidate.swapTier,
+          score: candidate.swapScore,
+          confidence: `${(candidate.confidence * 100).toFixed(0)}%`,
+          reason: candidate.swapReason,
+          embodiedCarbon: `${mat.embodiedCarbonPer1000sf} kgCO2e/1000SF`,
+          price: `${mat.pricePerUnit} ${mat.priceUnit}`,
+          leadTime: `${mat.leadTimeDays} days`,
+          source: "algorithm",
+        };
+      })
+    );
+
+    const validSwaps = swapsWithDetails.filter((s) => s !== null);
+    return JSON.stringify({
+      source: "algorithm",
+      materialId,
+      swaps: validSwaps,
+    }, null, 2);
+  } catch (error: any) {
+    return `Error finding material swaps: ${error.message}`;
+  }
+}
+
 async function toolCompareMaterials(id1: number, id2: number): Promise<string> {
   const db = await getDb();
   if (!db) return "Database unavailable.";
@@ -395,6 +503,21 @@ const MATERIAL_TOOLS = [
   {
     type: "function" as const,
     function: {
+      name: "suggest_material_swaps",
+      description: "Get intelligent material swap recommendations with Good/Better/Best tier rankings. Uses pre-computed swaps from the Material Intelligence system or calculates on-the-fly. Returns swap score (0-100), confidence level, tier classification, and business-relevant data (carbon, price, lead time). Ideal for presenting architects with drop-in replacement options.",
+      parameters: {
+        type: "object",
+        properties: {
+          material_id: { type: "number", description: "The material ID to find swaps for" },
+          limit: { type: "number", description: "Max swap recommendations to return (default 5)" },
+        },
+        required: ["material_id"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "compare_materials",
       description: "Compare two materials side-by-side with CCPS scores and carbon delta.",
       parameters: {
@@ -454,7 +577,9 @@ KEY PRINCIPLES:
   * GC PMs → Cost + Lead Time + Regional Availability
   * Spec Writers → EPD validity + ASTM standards + Fire Rating
 - When comparing materials, always show the Carbon Delta (% savings vs baseline).
-- When recommending alternatives, explain WHY in business terms, not environmental terms.
+- When recommending alternatives or swaps, explain WHY in business terms, not environmental terms.
+- Use suggest_material_swaps to get intelligent Good/Better/Best tier recommendations with confidence scores. These are pre-computed or algorithm-generated drop-in replacements.
+- Use find_alternatives for CCPS-based alternatives when you need carbon delta calculations.
 - If you don't have data for a specific material, say so and suggest the user submit an RFQ to get supplier-verified data.
 - Use the tools available to look up real data from the database. Never make up material data.
 - Format responses clearly with key metrics highlighted. Use tables when comparing multiple materials.
@@ -588,6 +713,8 @@ async function executeToolCall(name: string, args: Record<string, any>): Promise
       return toolGetMaterialDetail(args.material_id);
     case "find_alternatives":
       return toolFindAlternatives(args.material_id, args.limit);
+    case "suggest_material_swaps":
+      return toolSuggestMaterialSwaps(args.material_id, args.limit);
     case "compare_materials":
       return toolCompareMaterials(args.material_id_1, args.material_id_2);
     case "get_assembly_info":
