@@ -220,6 +220,8 @@ export const rfqs = mysqlTable("rfqs", {
   status: mysqlEnum("status", ["draft", "submitted", "responded", "awarded", "closed"]).default("draft"),
   notes: text("notes"),
   requiredCertifications: json("requiredCertifications").$type<string[]>(), // ["ISO 9001", "LEED", etc.]
+  latitude: decimal("latitude", { precision: 10, scale: 7 }), // Geocoded latitude for distance calculation
+  longitude: decimal("longitude", { precision: 10, scale: 7 }), // Geocoded longitude for distance calculation
   dueDate: timestamp("dueDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -309,6 +311,8 @@ export const suppliers = mysqlTable("suppliers", {
   certifications: json("certifications").$type<string[]>(), // ["ISO 9001", "LEED", "FSC", etc.]
   maxOrderValue: decimal("maxOrderValue", { precision: 12, scale: 2 }), // Maximum order value supplier can handle
   currentCapacity: int("currentCapacity").default(100), // Current capacity percentage (0-100)
+  latitude: decimal("latitude", { precision: 10, scale: 7 }), // Geocoded latitude for distance calculation
+  longitude: decimal("longitude", { precision: 10, scale: 7 }), // Geocoded longitude for distance calculation
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
