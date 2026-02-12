@@ -217,3 +217,17 @@
 - [x] Add loading and empty states (skeleton + sparkles icon)
 - [x] Add "Sustainable Swaps" tab to Material Detail page
 - [x] Test Material Swap UI on Material Detail page (all 125 tests passing)
+
+
+## Supplier Portal Registration
+
+- [x] Review supplier and supplier_subscriptions schema
+- [x] Create supplier registration tRPC procedures (register, getProfile, updateProfile)
+- [x] Create subscription tier tRPC procedures (getSubscriptionTier, upgradeToPremium, downgradeToFree)
+- [x] Create supplier service with all CRUD operations
+- [x] Write comprehensive tests for supplier registration and profile management (15 tests)
+- [ ] Build supplier registration page (email, company name, location, materials)
+- [ ] Build subscription tier selection page (Free vs Premium with features comparison)
+- [ ] Build supplier profile management page (edit company info, materials, certifications)
+- [ ] Add supplier dashboard link to header navigation
+- [ ] Run database migrations to create suppliers table
