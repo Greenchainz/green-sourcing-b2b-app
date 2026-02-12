@@ -374,3 +374,12 @@
 - [x] Add notification badge to header navigation
 - [ ] Test real-time notification updates (requires RFQ submission integration)
 - [ ] Write unit tests for notification components
+
+
+## RFQ Notification Integration
+
+- [x] Implement supplier matching logic (find suppliers based on RFQ materials)
+- [x] Add notification sending to RFQ submission flow
+- [x] Send real-time notifications via WebPubSub to matched suppliers
+- [ ] Test RFQ notification delivery end-to-end (requires test data)
+- [ ] Add email notifications for suppliers (optional enhancement)
