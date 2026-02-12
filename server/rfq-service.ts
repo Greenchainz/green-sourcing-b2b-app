@@ -75,8 +75,26 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
   // Match to suppliers (premium first, then others)
   const matchedSuppliers = await matchSuppliersToRfq(rfqId, input.projectLocation, input.materials);
 
-  // Create notification entries for matched suppliers (skip for now - userId mapping needed)
-  // TODO: Map supplierId to userId for notifications
+  // Send notifications to matched suppliers
+  const { sendInAppNotification } = await import("./notification-service");
+  for (const match of matchedSuppliers) {
+    // Get supplier's userId
+    const [supplierRecord] = await db
+      .select({ userId: suppliers.userId, companyName: suppliers.companyName })
+      .from(suppliers)
+      .where(eq(suppliers.id, match.supplierId))
+      .execute();
+
+    if (supplierRecord) {
+      await sendInAppNotification({
+        userId: supplierRecord.userId,
+        type: "rfq_new",
+        title: "New RFQ Available",
+        content: `${input.projectName} - ${input.materials.length} material${input.materials.length > 1 ? 's' : ''} requested`,
+        metadata: JSON.stringify({ rfqId, matchScore: match.matchScore }),
+      });
+    }
+  }
 
   // Create RFQ analytics entry
   await db
