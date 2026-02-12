@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -11,6 +12,7 @@ import { Leaf, Shield, Award, DollarSign, Truck, Heart, ArrowLeft, ShoppingCart,
 import MaterialSwapCard from "@/components/MaterialSwapCard";
 import { Link, useParams } from "wouter";
 import { toast } from "sonner";
+import { PaywallGate } from "@/components/paywall/PaywallGate";
 
 const SCORE_ROWS = [
   { key: "carbonScore" as const, icon: Leaf, color: "text-green-600", label: "Carbon" },
@@ -26,6 +28,7 @@ export default function MaterialDetail() {
   const id = Number(params.id);
   const { data: m, isLoading } = trpc.materials.getById.useQuery({ id }, { enabled: !!id });
   const { data: swaps, isLoading: swapsLoading } = trpc.materialSwaps.getSavedSwaps.useQuery({ materialId: id }, { enabled: !!id });
+  const [swapAnalysisAttempted, setSwapAnalysisAttempted] = useState(false);
 
   const addToRfq = () => {
     try {
@@ -84,17 +87,18 @@ export default function MaterialDetail() {
             <Tabs defaultValue="scores">
               <TabsList><TabsTrigger value="scores">CCPS Breakdown</TabsTrigger><TabsTrigger value="swaps"><Sparkles className="w-3.5 h-3.5 mr-1.5 inline" />Sustainable Swaps</TabsTrigger><TabsTrigger value="specs">Specifications</TabsTrigger><TabsTrigger value="certs">Certifications</TabsTrigger><TabsTrigger value="alternatives">Alternatives</TabsTrigger></TabsList>
               <TabsContent value="swaps">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-purple-600" />
-                      Sustainable Swap Recommendations
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Intelligent material swaps ranked by sustainability, performance, and cost. Good/Better/Best tiers help you make informed decisions.
-                    </p>
-                  </CardHeader>
-                  <CardContent>
+                <PaywallGate dimension="swap_analyses" mode="soft">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-purple-600" />
+                        Sustainable Swap Recommendations
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Intelligent material swaps ranked by sustainability, performance, and cost. Good/Better/Best tiers help you make informed decisions.
+                      </p>
+                    </CardHeader>
+                    <CardContent>
                     {swapsLoading ? (
                       <div className="space-y-4">
                         <Skeleton className="h-64" />
@@ -153,6 +157,7 @@ export default function MaterialDetail() {
                     )}
                   </CardContent>
                 </Card>
+                </PaywallGate>
               </TabsContent>
               <TabsContent value="scores">
                 <Card><CardHeader><CardTitle className="text-base">CCPS Score Breakdown</CardTitle></CardHeader>

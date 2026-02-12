@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { cn } from "@/lib/utils";
+import { usePaywallCheck } from "@/components/paywall/PaywallGate";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -147,8 +148,17 @@ export function ChainBot() {
     }
   }, [messages, chatMutation.isPending]);
 
-  const handleSend = (content: string) => {
+  const { checkUsage, setShowUpgradeModal } = usePaywallCheck();
+
+  const handleSend = async (content: string) => {
     if (!content.trim() || chatMutation.isPending) return;
+
+    // Check AI query usage limit
+    const allowed = await checkUsage("ai_queries");
+    if (!allowed) {
+      setShowUpgradeModal(true);
+      return;
+    }
 
     const userMessage: ChatMessage = {
       role: "user",

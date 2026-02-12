@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { handleLandingPage } from "../marketplace-landing";
+import { handleWebhook } from "../marketplace-webhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,6 +37,10 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  
+  // Microsoft Marketplace endpoints
+  app.get("/api/marketplace/landing", handleLandingPage);
+  app.post("/api/marketplace/webhook", handleWebhook);
   // tRPC API
   app.use(
     "/api/trpc",

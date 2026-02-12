@@ -43,6 +43,13 @@
       "when": 1770873638329,
       "tag": "0005_chubby_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1770920313411,
+      "tag": "0006_certain_synch",
+      "breakpoints": true
     }
   ]
 }
