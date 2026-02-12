@@ -532,6 +532,68 @@ export const appRouter = router({
       }),
   }),
 
+  // ─── Real-Time Messaging ──────────────────────────────────────────────────
+  messaging: router({
+    getAccessToken: protectedProcedure
+      .input(z.object({ threadId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const { getWebSocketAccessToken } = await import('./webpubsub-manager');
+        return getWebSocketAccessToken(ctx.user.id, input.threadId);
+      }),
+
+    sendMessage: protectedProcedure
+      .input(
+        z.object({
+          threadId: z.number(),
+          message: z.string().min(1).max(1000),
+          isBuyer: z.boolean(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { sendMessageToThread } = await import('./webpubsub-manager');
+        return sendMessageToThread(input.threadId, ctx.user.id, input.message, input.isBuyer);
+      }),
+
+    getThreadMessages: protectedProcedure
+      .input(
+        z.object({
+          threadId: z.number(),
+          limit: z.number().min(1).max(100).default(50),
+          offset: z.number().min(0).default(0),
+        })
+      )
+      .query(async ({ input }) => {
+        const { getThreadMessages } = await import('./webpubsub-manager');
+        return getThreadMessages(input.threadId, input.limit, input.offset);
+      }),
+
+    markAsRead: protectedProcedure
+      .input(z.object({ messageId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { markMessageAsRead } = await import('./webpubsub-manager');
+        return markMessageAsRead(input.messageId);
+      }),
+
+    broadcastTyping: protectedProcedure
+      .input(
+        z.object({
+          threadId: z.number(),
+          isBuyer: z.boolean(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { broadcastTypingIndicator } = await import('./webpubsub-manager');
+        return broadcastTypingIndicator(input.threadId, ctx.user.id, input.isBuyer);
+      }),
+
+    closeThread: protectedProcedure
+      .input(z.object({ threadId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { closeThread } = await import('./webpubsub-manager');
+        return closeThread(input.threadId);
+      }),
+  }),
+
   // ─── Notifications ────────────────────────────────────────────────────────
   notifications: router({
     getUnread: protectedProcedure.query(async ({ ctx }) => {

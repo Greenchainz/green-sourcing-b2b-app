@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, MessageSquare, TrendingDown, DollarSign, Clock, CheckCircle, X } from "lucide-react";
+import { RealTimeMessageThread } from "@/components/RealTimeMessageThread";
 
 export default function BuyerRfqDashboard() {
   const { user } = useAuth();
@@ -336,40 +337,17 @@ export default function BuyerRfqDashboard() {
 
             {/* Chat Area */}
             <div className="lg:col-span-2">
-              {selectedThread ? (
-                <Card className="p-6 h-full flex flex-col">
-                  <div className="flex-1 mb-4 space-y-4 max-h-96 overflow-y-auto">
-                    <div className="bg-muted p-3 rounded">
-                      <p className="text-sm">
-                        <strong>Supplier:</strong> Can you confirm the delivery address?
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Today at 10:30 AM</p>
-                    </div>
-                    <div className="bg-primary text-primary-foreground p-3 rounded ml-8">
-                      <p className="text-sm">
-                        <strong>You:</strong> Yes, 123 Main St, New York, NY 10001
-                      </p>
-                      <p className="text-xs opacity-75 mt-1">Today at 10:45 AM</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Textarea
-                      placeholder="Type your message..."
-                      value={messageContent}
-                      onChange={(e) => setMessageContent(e.target.value)}
-                      className="min-h-20"
-                    />
-                    <Button
-                      onClick={() => handleSendMessage(selectedThread)}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      Send Message
-                    </Button>
-                  </div>
-                </Card>
+              {selectedThread && user ? (
+                <RealTimeMessageThread
+                  threadId={selectedThread}
+                  isBuyer={true}
+                  currentUserId={parseInt(user.id, 10)}
+                />
               ) : (
                 <Card className="p-6 h-full flex items-center justify-center">
-                  <p className="text-muted-foreground">Select a conversation to view messages</p>
+                  <p className="text-muted-foreground">
+                    {!user ? "Please sign in to view messages" : "Select a conversation to view messages"}
+                  </p>
                 </Card>
               )}
             </div>

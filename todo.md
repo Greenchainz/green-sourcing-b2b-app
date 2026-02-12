@@ -140,13 +140,18 @@
 
 ## Azure Web PubSub Real-Time Messaging
 
-- [ ] Set up Azure Web PubSub service credentials and environment variables
-- [ ] Build WebSocket connection manager (authenticate, route messages, handle disconnects)
-- [ ] Implement message routing (buyer thread → supplier, supplier thread → buyer)
-- [ ] Build frontend WebSocket client with reconnection logic
-- [ ] Create real-time chat component with typing indicators
-- [ ] Add read receipts and message status (sent, delivered, read)
-- [ ] Test real-time messaging between buyer and supplier
+- [x] Verify Azure Web PubSub credentials and connection string
+- [x] Enhance WebPubSubManager with message routing and thread management
+- [x] Build real-time message tRPC procedures (getAccessToken, sendMessage, getThreadMessages, markAsRead, broadcastTyping, closeThread)
+- [x] Create RealTimeMessageThread component with typing indicators and read receipts
+- [x] Add message status tracking (sent, delivered, read)
+- [x] Integrate real-time messaging into Supplier Dashboard
+- [x] Integrate real-time messaging into Buyer RFQ Dashboard
+- [x] Add typing indicator broadcast and display (animated dots)
+- [x] Add read receipt tracking and display
+- [x] Build WebSocket reconnection logic with exponential backoff (5 attempts, max 30s delay)
+- [x] Write comprehensive tests for real-time messaging (13 tests passing)
+- [x] Test end-to-end buyer-supplier real-time communication
 
 
 ## Material Swap Intelligence
