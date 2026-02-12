@@ -470,7 +470,36 @@ export const appRouter = router({
         });
         return { success: true };
       }),
+   }),
+  
+  // ─── Notifications ────────────────────────────────────────────────────────
+  notifications: router({
+    getUnread: protectedProcedure.query(async ({ ctx }) => {
+      const { getUnreadNotifications } = await import('./notification-service');
+      return getUnreadNotifications(ctx.user.id);
+    }),
+    
+    markAsRead: protectedProcedure
+      .input(z.object({ notificationId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { markNotificationAsRead } = await import('./notification-service');
+        return markNotificationAsRead(input.notificationId);
+      }),
+    
+    send: protectedProcedure
+      .input(z.object({
+        userId: z.number(),
+        type: z.enum(['rfq_match', 'new_message', 'bid_accepted', 'bid_rejected', 'rfq_closed']),
+        title: z.string(),
+        content: z.string(),
+        relatedId: z.number().optional(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendNotification } = await import('./notification-service');
+        return sendNotification(input);
+      }),
   }),
 });
-
 export type AppRouter = typeof appRouter;

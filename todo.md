@@ -120,16 +120,19 @@
 - [x] RFQ analytics (total bids, avg/min/max price, winning bid, purchase date)
 - [x] tRPC API procedures for all RFQ marketplace operations (rfqMarketplace router)
 - [x] RFQ service unit tests (21 tests passing)
-- [ ] Database migrations (create supplier and RFQ tables)
+- [x] Database migrations (create supplier and RFQ tables)
+- [x] Supplier dashboard UI (matching RFQs, active threads, bids, bid submission form)
+- [x] Buyer RFQ dashboard UI (view RFQs, compare bids, accept/reject, track status)
+- [x] Notification service (email, SMS, in-app templates and delivery)
+- [x] Notification tRPC procedures (getUnread, markAsRead, send)
+- [x] Notification service unit tests (14 tests passing)
 - [ ] Supplier registration and profile management UI
 - [ ] Premium tier subscription flow (Microsoft payment processing)
 - [ ] Supplier filter setup UI (location, material types, lead time, price range)
 - [ ] Real-time messaging with Azure Web PubSub (WebSocket)
 - [ ] Message thread UI (buyer + supplier private conversation)
-- [ ] Buyer bid comparison dashboard (side-by-side view)
 - [ ] Direct purchase option (buy now at listed price)
-- [x] Supplier dashboard UI (matching RFQs, active threads, bids, bid submission form)
-- [ ] Email notifications (RFQ match, new message, bid accepted)
-- [ ] SMS notifications using Azure Communication Services
-- [ ] In-app notification badges and center
+- [ ] Email notifications via Azure SendGrid (RFQ match, new message, bid accepted)
+- [ ] SMS notifications via Azure Communication Services
+- [ ] In-app notification center with badge counts
 - [ ] Commission tracking for Azure service usage
