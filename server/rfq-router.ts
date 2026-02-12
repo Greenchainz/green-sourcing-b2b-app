@@ -68,30 +68,54 @@ export const rfqMarketplaceRouter = router({
       return getOrCreateThread(input.rfqId, input.supplierId, ctx.user.id);
     }),
 
-  // Send a message in a thread
-  sendMessage: protectedProcedure
-    .input(
-      z.object({
-        threadId: z.number(),
-        content: z.string().min(1).max(1000),
-        senderType: z.enum(["buyer", "supplier"]),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      return sendMessage(input.threadId, ctx.user.id, input.senderType, input.content);
-    }),
-
-  // Get all messages in a thread
-  getThreadMessages: protectedProcedure
-    .input(z.object({ threadId: z.number(), limit: z.number().default(50) }))
-    .query(async ({ input }) => {
-      return getThreadMessages(input.threadId, input.limit);
-    }),
-
   // Enrich RFQ with CCPS data (for agent)
   enrichWithCcps: protectedProcedure
     .input(z.object({ rfqId: z.number(), buyerPersona: z.string().optional() }))
     .query(async ({ input }) => {
       return enrichRfqWithCcps(input.rfqId, input.buyerPersona);
+    }),
+
+  // Get WebSocket access token for real-time messaging
+  getWebSocketToken: protectedProcedure
+    .input(z.object({ threadId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getWebSocketAccessToken } = await import("./webpubsub-manager");
+      return getWebSocketAccessToken(ctx.user.id, input.threadId);
+    }),
+
+  // Send message via Web PubSub
+  sendMessage: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+        message: z.string().max(1000),
+        isBuyer: z.boolean(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { sendMessageToThread } = await import("./webpubsub-manager");
+      return sendMessageToThread(input.threadId, ctx.user.id, input.message, input.isBuyer);
+    }),
+
+  // Mark message as read
+  markMessageAsRead: protectedProcedure
+    .input(z.object({ messageId: z.number() }))
+    .mutation(async ({ input }) => {
+      const { markMessageAsRead } = await import("./webpubsub-manager");
+      return markMessageAsRead(input.messageId);
+    }),
+
+  // Get message history
+  getThreadMessages: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+        limit: z.number().default(50),
+        offset: z.number().default(0),
+      })
+    )
+    .query(async ({ input }) => {
+      const { getThreadMessages } = await import("./webpubsub-manager");
+      return getThreadMessages(input.threadId, input.limit, input.offset);
     }),
 });

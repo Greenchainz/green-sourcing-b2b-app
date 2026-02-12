@@ -472,6 +472,66 @@ export const appRouter = router({
       }),
    }),
   
+  // ─── Material Swaps ───────────────────────────────────────────────────────
+  materialSwaps: router({
+    findCandidates: publicProcedure
+      .input(
+        z.object({
+          materialId: z.number(),
+          limit: z.number().min(1).max(20).default(5),
+        })
+      )
+      .query(async ({ input }) => {
+        const { findSwapCandidates } = await import('./material-swap-service');
+        return findSwapCandidates(input.materialId, input.limit);
+      }),
+
+    getSavedSwaps: publicProcedure
+      .input(z.object({ materialId: z.number() }))
+      .query(async ({ input }) => {
+        const { getSavedSwaps } = await import('./material-swap-service');
+        return getSavedSwaps(input.materialId);
+      }),
+
+    saveSwap: protectedProcedure
+      .input(
+        z.object({
+          materialId: z.number(),
+          swapMaterialId: z.number(),
+          swapReason: z.string(),
+          swapScore: z.number().min(0).max(100),
+          swapTier: z.enum(["good", "better", "best"]),
+          confidence: z.number().min(0).max(100),
+          createdBy: z.enum(["algorithm", "agent", "admin"]).default("admin"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { saveSwapRecommendation } = await import('./material-swap-service');
+        const swapId = await saveSwapRecommendation(
+          input.materialId,
+          input.swapMaterialId,
+          input.swapReason,
+          input.swapScore,
+          input.swapTier,
+          input.confidence,
+          input.createdBy
+        );
+        return { swapId, success: swapId > 0 };
+      }),
+
+    calculateScore: publicProcedure
+      .input(
+        z.object({
+          originalMaterialId: z.number(),
+          candidateMaterialId: z.number(),
+        })
+      )
+      .query(async ({ input }) => {
+        const { calculateSwapScore } = await import('./material-swap-service');
+        return calculateSwapScore(input.originalMaterialId, input.candidateMaterialId);
+      }),
+  }),
+
   // ─── Notifications ────────────────────────────────────────────────────────
   notifications: router({
     getUnread: protectedProcedure.query(async ({ ctx }) => {
