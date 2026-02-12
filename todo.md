@@ -283,3 +283,23 @@
 - [ ] Add bid history view (submitted bids, status, pricing)
 - [ ] Integrate real-time bid status updates
 - [ ] Add notifications for new RFQs and bid responses
+
+
+## Paywall Middleware & Subscription Management
+
+- [x] Review existing subscription schema (supplier_subscriptions, buyer_subscriptions)
+- [x] Update schema to use Microsoft marketplace fields (msSubscriptionId, msPlanId)
+- [x] Add usage_tracking table for metered billing dimensions (userId, supplierId, dimension, quantity)
+- [x] Build subscription service (getBuyerSubscription, createBuyerSubscription, upgradeBuyerSubscription, cancelBuyerSubscription)
+- [x] Build tier-based middleware (checkBuyerFeatureAccess, checkSupplierFeatureAccess, getBuyerTierLimits, getSupplierTierLimits)
+- [x] Define TIER_LIMITS with feature gates and usage limits for all tiers
+- [x] Create usage tracking service (trackBuyerUsage, trackSupplierUsage, getBuyerUsage, getSupplierUsage, checkUsageLimit)
+- [ ] Add tRPC procedures for subscription management (getSubscription, upgradeSubscription)
+- [ ] Add tRPC procedures for usage tracking (getUsage, checkLimit)
+- [ ] Build paywall UI components (usage counter, upgrade modal, feature gate)
+- [ ] Write tests for subscription service and usage tracking
+- [ ] Integrate paywall into RFQ submission (5/mo Standard limit)
+- [ ] Integrate paywall into ChainBot AI queries (25/mo Standard limit)
+- [ ] Integrate paywall into Material Swap analysis (20/mo Standard limit)
+- [ ] Integrate paywall into CCPS exports (10/mo Standard limit)
+- [ ] Integrate paywall into Material Comparison (50 vs unlimited)

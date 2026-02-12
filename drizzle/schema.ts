@@ -317,15 +317,61 @@ export const supplierSubscriptions = mysqlTable("supplier_subscriptions", {
   id: int("id").autoincrement().primaryKey(),
   supplierId: int("supplierId").notNull(),
   tier: mysqlEnum("tier", ["free", "premium"]).default("free"),
-  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
-  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
-  status: mysqlEnum("status", ["active", "canceled", "past_due"]).default("active"),
+  msSubscriptionId: varchar("msSubscriptionId", { length: 255 }), // Microsoft Marketplace subscription ID
+  msPlanId: varchar("msPlanId", { length: 255 }), // Microsoft Marketplace plan ID
+  status: mysqlEnum("status", ["active", "canceled", "past_due", "suspended", "pending"]).default("active"),
   renewalDate: timestamp("renewalDate"),
+  isBeta: tinyint("isBeta").default(0), // Founding member beta flag
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type SupplierSubscription = typeof supplierSubscriptions.$inferSelect;
+
+// ─── Buyer Subscriptions ───────────────────────────────────────────────────
+
+export const buyerSubscriptions = mysqlTable("buyer_subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  tier: mysqlEnum("tier", ["free", "standard", "premium"]).default("free"),
+  msSubscriptionId: varchar("msSubscriptionId", { length: 255 }), // Microsoft Marketplace subscription ID
+  msPlanId: varchar("msPlanId", { length: 255 }), // Microsoft Marketplace plan ID
+  status: mysqlEnum("status", ["active", "canceled", "past_due", "suspended", "pending", "trial"]).default("active"),
+  trialEndsAt: timestamp("trialEndsAt"),
+  renewalDate: timestamp("renewalDate"),
+  isBeta: tinyint("isBeta").default(0), // Founding member beta flag
+  maxSeats: int("maxSeats").default(1), // Standard=3, Premium=10
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BuyerSubscription = typeof buyerSubscriptions.$inferSelect;
+
+// ─── Usage Tracking (Metered Billing) ──────────────────────────────────────
+
+export const usageTracking = mysqlTable("usage_tracking", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  supplierId: int("supplierId"),
+  dimension: mysqlEnum("dimension", [
+    "rfq_submission",
+    "ai_query",
+    "swap_analysis",
+    "ccps_export",
+    "material_comparison",
+    "supplier_match",
+    "message_thread",
+    "bid_submission",
+  ]).notNull(),
+  quantity: int("quantity").default(0).notNull(),
+  periodStart: timestamp("periodStart").notNull(), // Start of billing period
+  periodEnd: timestamp("periodEnd").notNull(), // End of billing period
+  reportedToMs: tinyint("reportedToMs").default(0), // Whether overage was reported to Microsoft metering API
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UsageTracking = typeof usageTracking.$inferSelect;
 
 // ─── Supplier Filters ───────────────────────────────────────────────────────
 

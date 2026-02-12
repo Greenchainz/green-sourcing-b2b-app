@@ -253,8 +253,8 @@ export async function getSubscriptionTier(supplierId: number): Promise<"free" | 
  */
 export async function upgradeToPremium(
   supplierId: number,
-  stripeSubscriptionId: string,
-  stripeCustomerId: string,
+  msSubscriptionId: string,
+  msPlanId: string,
   renewalDate: Date
 ): Promise<void> {
   const db = await getDb();
@@ -282,8 +282,8 @@ export async function upgradeToPremium(
       .update(supplierSubscriptions)
       .set({
         tier: "premium",
-        stripeSubscriptionId,
-        stripeCustomerId,
+        msSubscriptionId,
+        msPlanId,
         status: "active",
         renewalDate,
         updatedAt: new Date(),
@@ -293,8 +293,8 @@ export async function upgradeToPremium(
     await db.insert(supplierSubscriptions).values({
       supplierId,
       tier: "premium",
-      stripeSubscriptionId,
-      stripeCustomerId,
+      msSubscriptionId,
+      msPlanId,
       status: "active",
       renewalDate,
     });
@@ -324,8 +324,8 @@ export async function downgradeToFree(supplierId: number): Promise<void> {
     .set({
       tier: "free",
       status: "active",
-      stripeSubscriptionId: undefined,
-      stripeCustomerId: undefined,
+      msSubscriptionId: undefined,
+      msPlanId: undefined,
       renewalDate: undefined,
       updatedAt: new Date(),
     })
