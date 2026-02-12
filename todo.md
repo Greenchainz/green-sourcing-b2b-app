@@ -393,3 +393,17 @@
 - [ ] Implement notification preferences table in database (future enhancement)
 - [ ] Add supplier notification preferences UI (future enhancement)
 - [ ] Test email delivery for critical events (requires SMTP configuration)
+
+
+## Supplier RFQ Dashboard
+
+- [x] Create SupplierRfqDashboard page component
+- [x] Add tRPC procedure to fetch matched RFQs for supplier (getMatchedRfqs)
+- [x] Build RFQ list table with sortable columns (match score, date, status)
+- [x] Add status filter (All, New, Active, Closed)
+- [x] Add sort controls (Match Score, Date Posted, Due Date)
+- [x] Display match score with visual indicator (progress bar)
+- [x] Add quick actions (View Details, Submit Bid)
+- [ ] Create RFQ detail modal/panel (uses existing /rfq/:id page)
+- [x] Integrate with bid submission flow (links to existing bid form)
+- [x] Add route to App.tsx (/supplier/rfqs)

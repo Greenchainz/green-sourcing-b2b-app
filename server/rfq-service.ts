@@ -453,3 +453,104 @@ export async function enrichRfqWithCcps(rfqId: number, buyerPersona: string = "d
     },
   };
 }
+
+
+/**
+ * Get all RFQs matched to a supplier with match scores
+ */
+export async function getSupplierMatchedRfqs(supplierId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all open RFQs
+  const openRfqs = await db
+    .select({
+      id: rfqs.id,
+      projectName: rfqs.projectName,
+      projectLocation: rfqs.projectLocation,
+      projectType: rfqs.projectType,
+      status: rfqs.status,
+      notes: rfqs.notes,
+      dueDate: rfqs.dueDate,
+      createdAt: rfqs.createdAt,
+    })
+    .from(rfqs)
+    .execute();
+
+  // Get supplier's existing bids
+  const supplierBids = await db
+    .select({ rfqId: rfqBids.rfqId })
+    .from(rfqBids)
+    .where(eq(rfqBids.supplierId, supplierId))
+    .execute();
+
+  const bidRfqIds = new Set(supplierBids.map((b) => b.rfqId));
+
+  // Calculate match scores for each RFQ
+  const matchedRfqs = [];
+  for (const rfq of openRfqs) {
+    // Get RFQ items
+    const items = await db
+      .select()
+      .from(rfqItems)
+      .where(eq(rfqItems.rfqId, rfq.id))
+      .execute();
+
+    // Calculate match score (simplified - use actual matching logic)
+    const matchScore = await calculateMatchScore(supplierId, rfq.id, rfq.projectLocation || "");
+
+    matchedRfqs.push({
+      ...rfq,
+      materialCount: items.length,
+      matchScore,
+      hasBid: bidRfqIds.has(rfq.id),
+    });
+  }
+
+  // Sort by match score descending
+  return matchedRfqs.sort((a, b) => b.matchScore - a.matchScore);
+}
+
+/**
+ * Calculate match score between supplier and RFQ
+ */
+async function calculateMatchScore(
+  supplierId: number,
+  rfqId: number,
+  projectLocation: string
+): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  let score = 50; // Base score
+
+  // Get supplier filters
+  const [supplierFilter] = await db
+    .select()
+    .from(supplierFilters)
+    .where(eq(supplierFilters.supplierId, supplierId))
+    .execute();
+
+  if (!supplierFilter) return score;
+
+  // Location match (+30 points)
+  if (supplierFilter.acceptedLocations) {
+    const locations = supplierFilter.acceptedLocations.split(",").map((l: string) => l.trim());
+    if (locations.some((loc: string) => projectLocation.toLowerCase().includes(loc.toLowerCase()))) {
+      score += 30;
+    }
+  }
+
+  // Material match (+20 points)
+  const rfqMaterials = await db
+    .select({ materialId: rfqItems.materialId })
+    .from(rfqItems)
+    .where(eq(rfqItems.rfqId, rfqId))
+    .execute();
+
+  if (rfqMaterials.length > 0) {
+    score += 20;
+  }
+
+  return Math.min(score, 100);
+}
