@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Leaf, Shield, Award, DollarSign, Truck, Heart, ArrowLeft, ShoppingCart, Scale, ExternalLink, CheckCircle2, XCircle, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Leaf, Shield, Award, DollarSign, Truck, Heart, ArrowLeft, ShoppingCart, Scale, ExternalLink, CheckCircle2, XCircle, ArrowDownRight, ArrowUpRight, Sparkles } from "lucide-react";
+import MaterialSwapCard from "@/components/MaterialSwapCard";
 import { Link, useParams } from "wouter";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ export default function MaterialDetail() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
   const { data: m, isLoading } = trpc.materials.getById.useQuery({ id }, { enabled: !!id });
+  const { data: swaps, isLoading: swapsLoading } = trpc.materialSwaps.getSavedSwaps.useQuery({ materialId: id }, { enabled: !!id });
 
   const addToRfq = () => {
     try {
@@ -80,7 +82,78 @@ export default function MaterialDetail() {
             </Card>
 
             <Tabs defaultValue="scores">
-              <TabsList><TabsTrigger value="scores">CCPS Breakdown</TabsTrigger><TabsTrigger value="specs">Specifications</TabsTrigger><TabsTrigger value="certs">Certifications</TabsTrigger><TabsTrigger value="alternatives">Alternatives</TabsTrigger></TabsList>
+              <TabsList><TabsTrigger value="scores">CCPS Breakdown</TabsTrigger><TabsTrigger value="swaps"><Sparkles className="w-3.5 h-3.5 mr-1.5 inline" />Sustainable Swaps</TabsTrigger><TabsTrigger value="specs">Specifications</TabsTrigger><TabsTrigger value="certs">Certifications</TabsTrigger><TabsTrigger value="alternatives">Alternatives</TabsTrigger></TabsList>
+              <TabsContent value="swaps">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-purple-600" />
+                      Sustainable Swap Recommendations
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Intelligent material swaps ranked by sustainability, performance, and cost. Good/Better/Best tiers help you make informed decisions.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {swapsLoading ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-64" />
+                        <Skeleton className="h-64" />
+                      </div>
+                    ) : swaps && swaps.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {swaps.map((swap: any) => (
+                          <MaterialSwapCard
+                            key={swap.swapId}
+                            swap={{
+                              id: swap.materialId,
+                              name: swap.materialName,
+                              manufacturer: null, // TODO: Join with manufacturers table
+                              tier: swap.swapTier,
+                              score: swap.swapScore,
+                              confidence: `${swap.confidence}%`,
+                              reason: swap.swapReason,
+                              embodiedCarbon: swap.embodiedCarbonPer1000sf ? `${Number(swap.embodiedCarbonPer1000sf).toFixed(2)} kgCO₂e/1000SF` : "—",
+                              price: swap.pricePerUnit ? `$${Number(swap.pricePerUnit).toFixed(2)}` : "—",
+                              leadTime: "—", // TODO: Add leadTime to swap query
+                              source: "saved",
+                            }}
+                            originalCarbon={Number(m?.embodiedCarbonPer1000sf) || 0}
+                            originalPrice={Number(m?.pricePerUnit) || undefined}
+                            onAddToRfq={(materialId) => {
+                              try {
+                                const existing = JSON.parse(localStorage.getItem("rfq-items") || "[]");
+                                if (existing.some((item: any) => item.materialId === materialId)) {
+                                  toast.info("Already in RFQ cart");
+                                  return;
+                                }
+                                const swapMaterial = swaps.find((s: any) => s.materialId === materialId);
+                                existing.push({
+                                  materialId,
+                                  name: swapMaterial?.materialName,
+                                  manufacturerName: "Unknown", // TODO: Join with manufacturers
+                                  quantity: 1,
+                                  quantityUnit: "unit",
+                                });
+                                localStorage.setItem("rfq-items", JSON.stringify(existing));
+                                toast.success("Added to RFQ cart");
+                              } catch {
+                                toast.error("Failed to add");
+                              }
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Sparkles className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                        <p className="text-sm text-muted-foreground mb-2">No swap recommendations available yet.</p>
+                        <p className="text-xs text-muted-foreground">Our Material Intelligence system is analyzing this material. Check back soon!</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
               <TabsContent value="scores">
                 <Card><CardHeader><CardTitle className="text-base">CCPS Score Breakdown</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
