@@ -8,6 +8,7 @@ import {
   decimal,
   boolean,
   tinyint,
+  json,
 } from "drizzle-orm/mysql-core";
 
 // ─── Users ──────────────────────────────────────────────────────────────────
@@ -218,6 +219,7 @@ export const rfqs = mysqlTable("rfqs", {
   projectType: varchar("projectType", { length: 100 }),
   status: mysqlEnum("status", ["draft", "submitted", "responded", "awarded", "closed"]).default("draft"),
   notes: text("notes"),
+  requiredCertifications: json("requiredCertifications").$type<string[]>(), // ["ISO 9001", "LEED", etc.]
   dueDate: timestamp("dueDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -304,6 +306,9 @@ export const suppliers = mysqlTable("suppliers", {
   premiumExpiresAt: timestamp("premiumExpiresAt"),
   sustainabilityScore: decimal("sustainabilityScore", { precision: 3, scale: 2 }), // 0-100, from D&B
   verified: tinyint("verified").default(0),
+  certifications: json("certifications").$type<string[]>(), // ["ISO 9001", "LEED", "FSC", etc.]
+  maxOrderValue: decimal("maxOrderValue", { precision: 12, scale: 2 }), // Maximum order value supplier can handle
+  currentCapacity: int("currentCapacity").default(100), // Current capacity percentage (0-100)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -385,6 +390,7 @@ export const supplierFilters = mysqlTable("supplier_filters", {
   maxLeadDays: int("maxLeadDays"),
   serviceRadius: int("serviceRadius"), // miles from supplier location
   acceptedLocations: text("acceptedLocations"), // JSON array of states/regions
+  materialTypePreferences: json("materialTypePreferences").$type<string[]>(), // ["concrete", "steel", "insulation", etc.]
   minOrderQuantity: decimal("minOrderQuantity", { precision: 12, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

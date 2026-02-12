@@ -522,7 +522,16 @@ async function calculateMatchScore(
   const db = await getDb();
   if (!db) return 0;
 
-  let score = 50; // Base score
+  let score = 30; // Base score (reduced from 50 to make room for new factors)
+
+  // Get supplier data
+  const [supplier] = await db
+    .select()
+    .from(suppliers)
+    .where(eq(suppliers.id, supplierId))
+    .execute();
+
+  if (!supplier) return score;
 
   // Get supplier filters
   const [supplierFilter] = await db
@@ -531,25 +540,89 @@ async function calculateMatchScore(
     .where(eq(supplierFilters.supplierId, supplierId))
     .execute();
 
-  if (!supplierFilter) return score;
+  // Get RFQ data
+  const [rfq] = await db
+    .select()
+    .from(rfqs)
+    .where(eq(rfqs.id, rfqId))
+    .execute();
 
-  // Location match (+30 points)
-  if (supplierFilter.acceptedLocations) {
+  if (!rfq) return score;
+
+  // 1. Location match (+20 points)
+  if (supplierFilter?.acceptedLocations) {
     const locations = supplierFilter.acceptedLocations.split(",").map((l: string) => l.trim());
     if (locations.some((loc: string) => projectLocation.toLowerCase().includes(loc.toLowerCase()))) {
-      score += 30;
+      score += 20;
     }
   }
 
-  // Material match (+20 points)
-  const rfqMaterials = await db
-    .select({ materialId: rfqItems.materialId })
-    .from(rfqItems)
-    .where(eq(rfqItems.rfqId, rfqId))
-    .execute();
+  // 2. Certification matching (+15 points)
+  if (rfq.requiredCertifications && supplier.certifications) {
+    const requiredCerts = rfq.requiredCertifications as string[];
+    const supplierCerts = supplier.certifications as string[];
+    const matchedCerts = requiredCerts.filter((cert) =>
+      supplierCerts.some((sc) => sc.toLowerCase() === cert.toLowerCase())
+    );
+    if (matchedCerts.length > 0) {
+      // Award points based on percentage of required certs matched
+      const certMatchPercentage = matchedCerts.length / requiredCerts.length;
+      score += Math.round(15 * certMatchPercentage);
+    }
+  }
 
-  if (rfqMaterials.length > 0) {
-    score += 20;
+  // 3. Material type preference matching (+15 points)
+  if (supplierFilter?.materialTypePreferences) {
+    const rfqMaterials = await db
+      .select({ materialId: rfqItems.materialId })
+      .from(rfqItems)
+      .where(eq(rfqItems.rfqId, rfqId))
+      .execute();
+
+    if (rfqMaterials.length > 0) {
+      // Get material types for RFQ items
+      const materialIds = rfqMaterials.map((m) => m.materialId).filter(Boolean);
+      if (materialIds.length > 0) {
+        const rfqMaterialTypes = await db
+          .select({ category: materials.category })
+          .from(materials)
+          .where(eq(materials.id, materialIds[0]!))
+          .execute();
+
+        const preferences = supplierFilter.materialTypePreferences as string[];
+        if (rfqMaterialTypes.length > 0 && rfqMaterialTypes[0].category) {
+          const categoryMatch = preferences.some((pref) =>
+            rfqMaterialTypes[0].category?.toLowerCase().includes(pref.toLowerCase())
+          );
+          if (categoryMatch) {
+            score += 15;
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Supplier capacity factor (+10 points)
+  if (supplier.currentCapacity !== null && supplier.currentCapacity !== undefined) {
+    // Award points based on available capacity (higher capacity = more points)
+    if (supplier.currentCapacity >= 70) {
+      score += 10; // High capacity
+    } else if (supplier.currentCapacity >= 40) {
+      score += 5; // Medium capacity
+    } else if (supplier.currentCapacity >= 20) {
+      score += 2; // Low capacity
+    }
+    // Below 20% capacity gets 0 points
+  }
+
+  // 5. Premium supplier bonus (+5 points)
+  if (supplier.isPremium) {
+    score += 5;
+  }
+
+  // 6. Verification bonus (+5 points)
+  if (supplier.verified) {
+    score += 5;
   }
 
   return Math.min(score, 100);
