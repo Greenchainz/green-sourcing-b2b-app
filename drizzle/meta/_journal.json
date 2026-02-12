@@ -50,6 +50,13 @@
       "when": 1770920313411,
       "tag": "0006_certain_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1770925761597,
+      "tag": "0007_military_scarecrow",
+      "breakpoints": true
     }
   ]
 }
