@@ -427,3 +427,21 @@ export const rfqAnalytics = mysqlTable("rfq_analytics", {
 });
 
 export type RfqAnalytic = typeof rfqAnalytics.$inferSelect;
+
+// ─── Material Swaps ─────────────────────────────────────────────────────────
+
+export const materialSwaps = mysqlTable("material_swaps", {
+  id: int("id").autoincrement().primaryKey(),
+  materialId: int("materialId").notNull(), // Original material
+  swapMaterialId: int("swapMaterialId").notNull(), // Recommended swap
+  swapReason: text("swapReason"), // Why this is a good swap
+  swapScore: int("swapScore").notNull(), // 0-100, how good the swap is
+  swapTier: mysqlEnum("swapTier", ["good", "better", "best"]).notNull(), // Good/Better/Best ranking
+  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(), // 0.00-1.00, algorithm confidence
+  createdBy: mysqlEnum("createdBy", ["algorithm", "agent", "admin"]).notNull(),
+  usageCount: int("usageCount").default(0), // How many times this swap was used in RFQs
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MaterialSwap = typeof materialSwaps.$inferSelect;

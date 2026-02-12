@@ -136,3 +136,33 @@
 - [ ] SMS notifications via Azure Communication Services
 - [ ] In-app notification center with badge counts
 - [ ] Commission tracking for Azure service usage
+
+
+## Azure Web PubSub Real-Time Messaging
+
+- [ ] Set up Azure Web PubSub service credentials and environment variables
+- [ ] Build WebSocket connection manager (authenticate, route messages, handle disconnects)
+- [ ] Implement message routing (buyer thread → supplier, supplier thread → buyer)
+- [ ] Build frontend WebSocket client with reconnection logic
+- [ ] Create real-time chat component with typing indicators
+- [ ] Add read receipts and message status (sent, delivered, read)
+- [ ] Test real-time messaging between buyer and supplier
+
+
+## Material Swap Intelligence
+
+- [x] Fix TypeScript errors in RealTimeChat component
+- [x] Fix JSX syntax error in App.tsx
+- [x] Database: material_swaps table (materialId, swapMaterialId, swapReason, swapScore, swapTier, createdBy, confidence, usageCount)
+- [x] Swap matching algorithm (compare specs: category, embodied carbon, certifications, price)
+- [x] Swap score calculation (0-100 with confidence level)
+- [x] Manual swap override (admin/agent can mark materials as swaps)
+- [x] Track swap usage in RFQs (usageCount field, trackSwapUsage function)
+- [x] Material swap service (calculateSwapScore, findSwapCandidates, saveSwapRecommendation, getSavedSwaps)
+- [x] Material swap tRPC procedures (findCandidates, getSavedSwaps, saveSwap, calculateScore)
+- [x] Material swap intelligence unit tests (15 tests passing)
+- [ ] Swap recommendations UI on Material Detail page (Good/Better/Best ranking)
+- [ ] Full EPD breakdown on Material Detail page (embodied carbon, GWP, lifecycle stages)
+- [ ] Compliance grades display (fire rating, building code compliance)
+- [ ] LEED credit contributions display
+- [ ] Agent integration for swap suggestions (Material Intelligence Agent tool)
