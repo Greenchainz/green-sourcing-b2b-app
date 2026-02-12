@@ -64,6 +64,13 @@
       "when": 1770927931028,
       "tag": "0008_flowery_gunslinger",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1770928763092,
+      "tag": "0009_mysterious_talon",
+      "breakpoints": true
     }
   ]
 }

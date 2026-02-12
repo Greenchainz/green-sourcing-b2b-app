@@ -407,3 +407,18 @@
 - [ ] Create RFQ detail modal/panel (uses existing /rfq/:id page)
 - [x] Integrate with bid submission flow (links to existing bid form)
 - [x] Add route to App.tsx (/supplier/rfqs)
+
+
+## Enhanced Match Score Algorithm
+
+- [x] Add certifications field to suppliers table (JSON array: ISO, LEED, FSC, etc.)
+- [x] Add requiredCertifications field to rfqs table
+- [x] Update calculateMatchScore to include certification matching (+15 points)
+- [x] Add capacity fields to suppliers table (maxOrderValue, currentCapacity)
+- [x] Implement capacity factor calculation (+10 points)
+- [x] Add materialTypePreferences to supplier_filters table
+- [x] Implement material type preference matching (+15 points)
+- [x] Rebalance scoring weights (total still 100 points)
+- [x] Document algorithm in MATCH_SCORE_ALGORITHM.md
+- [ ] Update SupplierRfqDashboard to show certification badges (future enhancement)
+- [ ] Write unit tests for enhanced match score algorithm
