@@ -264,3 +264,19 @@
 - [x] Add responsive grid layout with gradient background
 - [ ] Implement S3 logo upload with storagePut helper
 - [ ] Add link to supplier dashboard from header (when logged in as supplier)
+
+
+## Supplier RFQ & Bid Management
+
+- [x] Create tRPC procedures for supplier RFQ queries (getAvailableRfqs, getRfqDetails)
+- [x] Create tRPC procedures for bid management (submitBid, getBidHistory, getBid, updateBid)
+- [x] Create supplier-rfq-router.ts with 5 procedures
+- [x] Add supplierRfq router to appRouter in routers.ts
+- [ ] Build SupplierRfqDashboard page with RFQ list and filtering
+- [ ] Add RFQ list with status badges (Open, Bidding, Awarded, Closed)
+- [ ] Add RFQ detail modal with materials, quantities, and buyer info
+- [ ] Create BidSubmission form component (pricing, lead time, notes)
+- [ ] Add bid history view (submitted bids, status, pricing)
+- [ ] Integrate real-time bid status updates
+- [ ] Add notifications for new RFQs and bid responses
+- [ ] Write tests for supplier RFQ and bid management

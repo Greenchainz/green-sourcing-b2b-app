@@ -23,12 +23,14 @@ import type { PersonaWeights } from "./ccps-engine";
 import { handleChat } from "./agent";
 import { rfqMarketplaceRouter } from "./rfq-router";
 import { supplierRouter } from "./supplier-router";
+import { supplierRfqRouter } from "./supplier-rfq-router";
 import { agentConversations } from "../drizzle/schema";
 
 export const appRouter = router({
   system: systemRouter,
   rfqMarketplace: rfqMarketplaceRouter,
   supplier: supplierRouter,
+  supplierRfq: supplierRfqRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
