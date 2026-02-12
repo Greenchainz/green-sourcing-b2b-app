@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Calendar, MapPin, Package, TrendingUp, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { CertificationBadge } from "@/components/CertificationBadge";
 
 type SortBy = "matchScore" | "datePosted" | "dueDate";
 type StatusFilter = "all" | "new" | "active" | "closed";
@@ -134,6 +135,19 @@ export default function SupplierRfqDashboard() {
                         </div>
                       )}
                     </div>
+
+                    {/* Certification Badges */}
+                    {(rfq.matchedCertifications?.length > 0 || rfq.missingCertifications?.length > 0) && (
+                      <div className="pt-2">
+                        <CertificationBadge
+                          certifications={{
+                            matched: rfq.matchedCertifications || [],
+                            missing: rfq.missingCertifications || [],
+                          }}
+                          compact
+                        />
+                      </div>
+                    )}
 
                     {rfq.notes && (
                       <p className="text-sm text-gray-600 line-clamp-2">{rfq.notes}</p>

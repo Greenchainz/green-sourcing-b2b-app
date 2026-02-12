@@ -462,6 +462,15 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
   const db = await getDb();
   if (!db) return [];
 
+  // Get supplier data for certification matching
+  const [supplier] = await db
+    .select()
+    .from(suppliers)
+    .where(eq(suppliers.id, supplierId))
+    .execute();
+
+  if (!supplier) return [];
+
   // Get all open RFQs
   const openRfqs = await db
     .select({
@@ -471,6 +480,7 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       projectType: rfqs.projectType,
       status: rfqs.status,
       notes: rfqs.notes,
+      requiredCertifications: rfqs.requiredCertifications,
       dueDate: rfqs.dueDate,
       createdAt: rfqs.createdAt,
     })
@@ -496,14 +506,27 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       .where(eq(rfqItems.rfqId, rfq.id))
       .execute();
 
-    // Calculate match score (simplified - use actual matching logic)
+    // Calculate match score
     const matchScore = await calculateMatchScore(supplierId, rfq.id, rfq.projectLocation || "");
+
+    // Calculate matched certifications
+    const requiredCerts = (rfq.requiredCertifications as string[]) || [];
+    const supplierCerts = (supplier.certifications as string[]) || [];
+    const matchedCertifications = requiredCerts.filter((cert) =>
+      supplierCerts.some((sc) => sc.toLowerCase() === cert.toLowerCase())
+    );
+    const missingCertifications = requiredCerts.filter(
+      (cert) => !matchedCertifications.some((mc) => mc.toLowerCase() === cert.toLowerCase())
+    );
 
     matchedRfqs.push({
       ...rfq,
       materialCount: items.length,
       matchScore,
       hasBid: bidRfqIds.has(rfq.id),
+      matchedCertifications,
+      missingCertifications,
+      requiredCertifications: requiredCerts,
     });
   }
 
