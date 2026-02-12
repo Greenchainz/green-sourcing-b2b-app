@@ -319,3 +319,23 @@
 - [ ] Test subscription activation flow (requires Partner Center setup)
 - [ ] Test webhook event handling (requires Partner Center setup)
 - [ ] Test metering API reporting (requires Partner Center setup)
+
+
+## Real-Time Notification System
+
+- [ ] Create notification tRPC procedures (getUnreadCount, getNotifications, markAsRead, markAllAsRead)
+- [ ] Integrate Azure Web PubSub for real-time notification delivery
+- [ ] Create NotificationBadge component with unread count
+- [ ] Create NotificationCenter component with notification list
+- [ ] Create toast notification system for real-time alerts
+- [ ] Integrate notifications into RFQ submission flow (notify matched suppliers)
+- [ ] Add notification icon to header with badge count
+- [ ] Test real-time notification delivery
+- [ ] Write unit tests for notification system
+
+
+## Deployment Issues
+
+- [x] Fix pnpm dependency resolution error (zod version conflict)
+- [ ] Test Docker build locally
+- [ ] Verify deployment succeeds

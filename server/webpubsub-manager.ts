@@ -13,6 +13,24 @@ if (!connectionString) {
 const client = new WebPubSubServiceClient(connectionString, hubName);
 
 /**
+ * Broadcast notification to a specific user
+ * @param userId - User ID to receive notification
+ * @param notification - Notification payload
+ */
+export async function broadcastNotification(userId: number, notification: any) {
+  try {
+    await client.sendToUser(`user-${userId}`, {
+      type: "notification",
+      data: notification,
+    });
+    
+    console.log(`✅ Notification broadcast to user-${userId}`);
+  } catch (error) {
+    console.error("❌ Failed to broadcast notification:", error);
+  }
+}
+
+/**
  * Get access token for WebSocket client connection
  * @param userId - User ID connecting to the chat
  * @param threadId - RFQ thread ID
