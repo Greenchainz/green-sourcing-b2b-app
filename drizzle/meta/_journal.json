@@ -78,6 +78,13 @@
       "when": 1770929406508,
       "tag": "0010_chief_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1770935009616,
+      "tag": "0011_sharp_tiger_shark",
+      "breakpoints": true
     }
   ]
 }

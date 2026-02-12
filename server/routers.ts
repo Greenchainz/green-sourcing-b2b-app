@@ -598,6 +598,63 @@ export const appRouter = router({
         const { closeThread } = await import('./webpubsub-manager');
         return closeThread(input.threadId);
       }),
+
+    // ─── Conversation-based messaging ─────────────────────────────────────────
+    getOrCreateConversation: protectedProcedure
+      .input(
+        z.object({
+          rfqId: z.number(),
+          buyerId: z.number(),
+          supplierId: z.number(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { getOrCreateConversation } = await import('./messaging-service');
+        return await getOrCreateConversation(input);
+      }),
+
+    getConversations: protectedProcedure.query(async ({ ctx }) => {
+      const { getUserConversations } = await import('./messaging-service');
+      return await getUserConversations(ctx.user.id);
+    }),
+
+    getMessages: protectedProcedure
+      .input(z.object({ conversationId: z.number() }))
+      .query(async ({ input }) => {
+        const { getConversationMessages } = await import('./messaging-service');
+        return await getConversationMessages(input.conversationId);
+      }),
+
+    send: protectedProcedure
+      .input(
+        z.object({
+          conversationId: z.number(),
+          content: z.string().min(1),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { sendMessage } = await import('./messaging-service');
+        return await sendMessage({
+          conversationId: input.conversationId,
+          senderId: ctx.user.id,
+          content: input.content,
+        });
+      }),
+
+    markConversationAsRead: protectedProcedure
+      .input(z.object({ conversationId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const { markMessagesAsRead } = await import('./messaging-service');
+        return await markMessagesAsRead({
+          conversationId: input.conversationId,
+          userId: ctx.user.id,
+        });
+      }),
+
+    getUnreadMessageCount: protectedProcedure.query(async ({ ctx }) => {
+      const { getUnreadMessageCount } = await import('./messaging-service');
+      return await getUnreadMessageCount(ctx.user.id);
+    }),
   }),
 
   // ─── Notifications ────────────────────────────────────────────────────────
