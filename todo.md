@@ -481,3 +481,20 @@
 
 - [x] Fix TypeScript error in NotificationCenter.tsx - replaced getAll with getUnread
 - [x] Fix TypeScript error in useNotifications hook - replaced getAll with getUnread
+
+
+## Real-Time Messaging System
+
+- [ ] Create conversations table (id, rfqId, buyerId, supplierId, createdAt, updatedAt)
+- [ ] Create messages table (id, conversationId, senderId, content, createdAt, isRead)
+- [ ] Add database migration for messaging tables
+- [ ] Create messaging-service.ts with CRUD operations
+- [ ] Add messaging tRPC router (getConversations, getMessages, sendMessage, markAsRead)
+- [ ] Create ConversationList component (sidebar with conversation threads)
+- [ ] Create MessageThread component (message list with sender bubbles)
+- [ ] Create MessageInput component (text input with send button)
+- [ ] Create ChatPanel component (combines all chat UI)
+- [ ] Integrate Azure Web PubSub for real-time message delivery
+- [ ] Add "Message Supplier" button to RFQ detail page
+- [ ] Add "Message Buyer" button to supplier RFQ dashboard
+- [ ] Test real-time messaging between buyer and supplier accounts

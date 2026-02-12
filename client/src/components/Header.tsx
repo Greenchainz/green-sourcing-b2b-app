@@ -59,6 +59,11 @@ export default function Header() {
               Compare
             </a>
           </Link>
+          <Link href="/messages">
+            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Messages
+            </a>
+          </Link>
           <Link href="/supplier/register">
             <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Become a Supplier

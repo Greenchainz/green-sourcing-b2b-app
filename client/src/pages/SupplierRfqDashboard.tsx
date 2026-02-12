@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Calendar, MapPin, Package, TrendingUp, Clock, Map, List } from "lucide-react";
+import { FileText, Calendar, MapPin, Package, TrendingUp, Clock, Map, List, MessageCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { CertificationBadge } from "@/components/CertificationBadge";
 import { RfqMapView } from "@/components/RfqMapView";
@@ -273,6 +273,15 @@ export default function SupplierRfqDashboard() {
                           Submit Bid
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => window.location.href = `/messages?rfq=${rfq.id}`}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Message Buyer
+                      </Button>
                     </div>
                   </div>
                 </div>
