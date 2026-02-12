@@ -31,7 +31,7 @@ export default function Home() {
                   </Button>
                 </a>
               </Link>
-              <Link href="/how-it-works">
+              <Link href="/about">
                 <a>
                   <Button size="lg" variant="outline" className="text-lg px-8 py-6">
                     See How It Works
