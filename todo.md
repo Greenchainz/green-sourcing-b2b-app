@@ -422,3 +422,12 @@
 - [x] Document algorithm in MATCH_SCORE_ALGORITHM.md
 - [ ] Update SupplierRfqDashboard to show certification badges (future enhancement)
 - [ ] Write unit tests for enhanced match score algorithm
+
+
+## Certification Badges on Supplier Dashboard
+
+- [x] Update getSupplierMatchedRfqs to return matched certifications
+- [x] Create CertificationBadge component with green checkmark for matched, gray for missing
+- [x] Add tooltip to show full certification names
+- [x] Integrate badges into SupplierRfqDashboard RFQ cards
+- [ ] Test certification badge display with sample data (requires test RFQs with certifications)
