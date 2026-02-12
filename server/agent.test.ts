@@ -585,3 +585,144 @@ describe("Material Swap Tool Integration", () => {
     expect(result.content).toMatch(/Score:|Confidence:/);
   });
 });
+
+describe("Proactive ChainBot Suggestions", () => {
+  it("should proactively suggest swaps for high-carbon materials (>50 kgCO2e/1000SF)", async () => {
+    const mockDb = createMockDb();
+    mockGetDb.mockResolvedValue(mockDb as any);
+
+    // Router classifies as materials
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeRouterResponse("materials", 0.95)
+    );
+
+    // Specialist calls get_material_detail to check carbon
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse("", [
+        {
+          id: "call_1",
+          type: "function",
+          function: {
+            name: "get_material_detail",
+            arguments: JSON.stringify({ material_id: 10 }),
+          },
+        },
+      ])
+    );
+
+    // Specialist sees high carbon (75 kgCO2e/1000SF) and calls suggest_material_swaps
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse("", [
+        {
+          id: "call_2",
+          type: "function",
+          function: {
+            name: "suggest_material_swaps",
+            arguments: JSON.stringify({ material_id: 10, limit: 3 }),
+          },
+        },
+      ])
+    );
+
+    // Specialist responds with proactive suggestion
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse(
+        "I noticed this material has high embodied carbon (75 kgCO2e/1000SF), which could impact your LEED certification and increase project liability. Here are 3 lower-carbon alternatives:\n\n**Best Tier** (Score: 92)\n- Material A: 28 kgCO2e/1000SF"
+      )
+    );
+
+    const result = await handleChat(
+      "Tell me about this material",
+      "test-session-proactive-1",
+      { ...defaultContext, materialId: 10 }
+    );
+
+    expect(result.agent).toBe("materials");
+    expect(result.toolsUsed).toContain("get_material_detail");
+    expect(result.toolsUsed).toContain("suggest_material_swaps");
+    expect(result.content).toMatch(/high embodied carbon|LEED|liability/i);
+  });
+
+  it("should acknowledge low-carbon materials (<30 kgCO2e/1000SF) without suggesting swaps", async () => {
+    const mockDb = createMockDb();
+    mockGetDb.mockResolvedValue(mockDb as any);
+
+    // Router classifies as materials
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeRouterResponse("materials", 0.95)
+    );
+
+    // Specialist calls get_material_detail
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse("", [
+        {
+          id: "call_1",
+          type: "function",
+          function: {
+            name: "get_material_detail",
+            arguments: JSON.stringify({ material_id: 5 }),
+          },
+        },
+      ])
+    );
+
+    // Specialist sees low carbon (22 kgCO2e/1000SF) and responds positively
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse(
+        "This material already has low embodied carbon (22 kgCO2e/1000SF), making it a good choice for LEED projects. It has strong certifications and competitive pricing."
+      )
+    );
+
+    const result = await handleChat(
+      "What do you think of this material?",
+      "test-session-proactive-2",
+      { ...defaultContext, materialId: 5 }
+    );
+
+    expect(result.agent).toBe("materials");
+    expect(result.toolsUsed).toContain("get_material_detail");
+    expect(result.toolsUsed).not.toContain("suggest_material_swaps");
+    expect(result.content).toMatch(/low embodied carbon|low-carbon/i);
+  });
+
+  it("should mention moderate carbon materials (30-50 kgCO2e/1000SF) and offer swaps if interested", async () => {
+    const mockDb = createMockDb();
+    mockGetDb.mockResolvedValue(mockDb as any);
+
+    // Router classifies as materials
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeRouterResponse("materials", 0.95)
+    );
+
+    // Specialist calls get_material_detail
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse("", [
+        {
+          id: "call_1",
+          type: "function",
+          function: {
+            name: "get_material_detail",
+            arguments: JSON.stringify({ material_id: 8 }),
+          },
+        },
+      ])
+    );
+
+    // Specialist sees moderate carbon (42 kgCO2e/1000SF) and offers optimization
+    mockInvokeLLM.mockResolvedValueOnce(
+      makeLLMResponse(
+        "This material has moderate embodied carbon (42 kgCO2e/1000SF). It meets basic sustainability requirements, but if you're targeting LEED Gold or Platinum, I can show you lower-carbon alternatives. Would you like to see them?"
+      )
+    );
+
+    const result = await handleChat(
+      "How sustainable is this material?",
+      "test-session-proactive-3",
+      { ...defaultContext, materialId: 8 }
+    );
+
+    expect(result.agent).toBe("materials");
+    expect(result.toolsUsed).toContain("get_material_detail");
+    expect(result.content).toMatch(/moderate|Would you like to see/i);
+  });
+});
