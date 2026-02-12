@@ -360,5 +360,6 @@
 - [x] Implement role assignment after OAuth callback (buyer vs supplier)
 - [x] Create post-login redirection logic based on user role
 - [x] Update database schema to support buyer and supplier roles
+- [x] Test complete login flow for both buyer and supplier roles
+- [x] Document test results in LOGIN_FLOW_TEST_RESULTS.md
 - [ ] Handle first-time user onboarding (profile completion) - Future enhancement
-- [ ] Test complete login flow for both buyer and supplier roles

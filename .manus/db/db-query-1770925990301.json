@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, openId, name, email, role, createdAt FROM users ORDER BY createdAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute SELECT id, openId, name, email, role, createdAt FROM users ORDER BY createdAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "150005",
+      "openId": "ceQCawfX6x9PbxiBRumTxm",
+      "name": "NULL",
+      "email": "NULL",
+      "role": "user",
+      "createdAt": "2026-02-12 18:25:11"
+    },
+    {
+      "id": "150004",
+      "openId": "ceQCawfX6x9PbxiBRumTxm",
+      "name": "NULL",
+      "email": "NULL",
+      "role": "user",
+      "createdAt": "2026-02-12 18:25:08"
+    },
+    {
+      "id": "150003",
+      "openId": "ceQCawfX6x9PbxiBRumTxm",
+      "name": "NULL",
+      "email": "NULL",
+      "role": "user",
+      "createdAt": "2026-02-12 18:25:07"
+    },
+    {
+      "id": "150002",
+      "openId": "ceQCawfX6x9PbxiBRumTxm",
+      "name": "NULL",
+      "email": "NULL",
+      "role": "user",
+      "createdAt": "2026-02-12 18:24:58"
+    },
+    {
+      "id": "150001",
+      "openId": "ceQCawfX6x9PbxiBRumTxm",
+      "name": "NULL",
+      "email": "NULL",
+      "role": "user",
+      "createdAt": "2026-02-12 18:24:54"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\tcreatedAt\n150005\tceQCawfX6x9PbxiBRumTxm\tNULL\tNULL\tuser\t2026-02-12 18:25:11\n150004\tceQCawfX6x9PbxiBRumTxm\tNULL\tNULL\tuser\t2026-02-12 18:25:08\n150003\tceQCawfX6x9PbxiBRumTxm\tNULL\tNULL\tuser\t2026-02-12 18:25:07\n150002\tceQCawfX6x9PbxiBRumTxm\tNULL\tNULL\tuser\t2026-02-12 18:24:58\n150001\tceQCawfX6x9PbxiBRumTxm\tNULL\tNULL\tuser\t2026-02-12 18:24:54\n",
+  "stderr": "",
+  "execution_time_ms": 359
+}
