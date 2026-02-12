@@ -547,6 +547,10 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       missingCertifications,
       requiredCertifications: requiredCerts,
       distanceMiles,
+      latitude: rfqData?.latitude ? Number(rfqData.latitude) : null,
+      longitude: rfqData?.longitude ? Number(rfqData.longitude) : null,
+      supplierLatitude: supplier.latitude ? Number(supplier.latitude) : null,
+      supplierLongitude: supplier.longitude ? Number(supplier.longitude) : null,
     });
   }
 
