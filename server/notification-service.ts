@@ -34,6 +34,21 @@ export async function sendInAppNotification(payload: NotificationPayload) {
       isRead: 0,
     });
     
+    // Broadcast notification in real-time via WebPubSub
+    try {
+      const { broadcastNotification } = await import('./webpubsub-manager');
+      await broadcastNotification(payload.userId, {
+        id: Date.now(), // Use timestamp as temp ID for real-time notification
+        type: payload.type,
+        title: payload.title,
+        content: payload.content,
+        relatedRfqId: payload.relatedId,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (broadcastError) {
+      console.warn("⚠️ Failed to broadcast notification (non-critical):", broadcastError);
+    }
+    
     console.log(`✅ In-app notification sent to user ${payload.userId}`);
     return { success: true, notificationId: 0 };
   } catch (error) {
@@ -198,6 +213,53 @@ export async function getUnreadNotifications(userId: number) {
   } catch (error) {
     console.error("❌ Failed to fetch unread notifications:", error);
     return [];
+  }
+}
+
+/**
+ * Get count of user's unread notifications
+ */
+export async function getUnreadNotificationCount(userId: number): Promise<number> {
+  const db = await getDb();
+  
+  if (!db) {
+    return 0;
+  }
+  
+  try {
+    const unread = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId));
+    
+    return unread.length;
+  } catch (error) {
+    console.error("❌ Failed to count unread notifications:", error);
+    return 0;
+  }
+}
+
+/**
+ * Mark all notifications as read for a user
+ */
+export async function markAllNotificationsAsRead(userId: number) {
+  const db = await getDb();
+  
+  if (!db) {
+    return { success: false, error: "Database connection failed" };
+  }
+  
+  try {
+    await db
+      .update(notifications)
+      .set({ isRead: 1 })
+      .where(eq(notifications.userId, userId));
+    
+    console.log(`✅ Marked all notifications as read for user ${userId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Failed to mark all notifications as read:", error);
+    return { success: false, error: String(error) };
   }
 }
 

@@ -607,11 +607,22 @@ export const appRouter = router({
       return getUnreadNotifications(ctx.user.id);
     }),
     
+    getUnreadCount: protectedProcedure.query(async ({ ctx }) => {
+      const { getUnreadNotificationCount } = await import('./notification-service');
+      return getUnreadNotificationCount(ctx.user.id);
+    }),
+    
     markAsRead: protectedProcedure
       .input(z.object({ notificationId: z.number() }))
       .mutation(async ({ input }) => {
         const { markNotificationAsRead } = await import('./notification-service');
         return markNotificationAsRead(input.notificationId);
+      }),
+    
+    markAllAsRead: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const { markAllNotificationsAsRead } = await import('./notification-service');
+        return markAllNotificationsAsRead(ctx.user.id);
       }),
     
     send: protectedProcedure
