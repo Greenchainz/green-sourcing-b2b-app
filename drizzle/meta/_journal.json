@@ -71,6 +71,13 @@
       "when": 1770928763092,
       "tag": "0009_mysterious_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1770929406508,
+      "tag": "0010_chief_solo",
+      "breakpoints": true
     }
   ]
 }

@@ -431,3 +431,19 @@
 - [x] Add tooltip to show full certification names
 - [x] Integrate badges into SupplierRfqDashboard RFQ cards
 - [ ] Test certification badge display with sample data (requires test RFQs with certifications)
+
+
+## Azure Maps Distance Calculation
+
+- [x] Create Azure Maps service module with geocoding and distance matrix API
+- [ ] Add AZURE_MAPS_SUBSCRIPTION_KEY environment variable (requires user configuration)
+- [x] Add latitude/longitude fields to suppliers table
+- [x] Add latitude/longitude fields to rfqs table
+- [x] Implement geocoding for supplier locations (cache coordinates)
+- [x] Implement geocoding for RFQ project locations (cache coordinates)
+- [x] Update calculateMatchScore to use distance-based scoring instead of binary location match
+- [x] Add distance field to getSupplierMatchedRfqs response
+- [x] Add distance filter to SupplierRfqDashboard UI (25/50/100/250/500 miles radius)
+- [x] Add distance display on RFQ cards
+- [x] Add "Sort by Distance" option
+- [ ] Test distance calculation with real addresses (requires Azure Maps API key)

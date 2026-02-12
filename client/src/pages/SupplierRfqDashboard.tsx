@@ -15,12 +15,14 @@ import { FileText, Calendar, MapPin, Package, TrendingUp, Clock } from "lucide-r
 import { formatDistanceToNow } from "date-fns";
 import { CertificationBadge } from "@/components/CertificationBadge";
 
-type SortBy = "matchScore" | "datePosted" | "dueDate";
+type SortBy = "matchScore" | "datePosted" | "dueDate" | "distance";
 type StatusFilter = "all" | "new" | "active" | "closed";
+type DistanceFilter = "all" | "25" | "50" | "100" | "250" | "500";
 
 export default function SupplierRfqDashboard() {
   const [sortBy, setSortBy] = useState<SortBy>("matchScore");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>("all");
 
   // Fetch matched RFQs for current supplier
   const { data: rfqs, isLoading } = trpc.supplierRfq.getMatchedRfqs.useQuery();
@@ -28,14 +30,29 @@ export default function SupplierRfqDashboard() {
   // Filter and sort RFQs
   const filteredRfqs = rfqs
     ?.filter((rfq: any) => {
-      if (statusFilter === "all") return true;
-      if (statusFilter === "new") return rfq.status === "open" && !rfq.hasBid;
-      if (statusFilter === "active") return rfq.status === "open" && rfq.hasBid;
-      if (statusFilter === "closed") return rfq.status === "closed";
+      // Status filter
+      if (statusFilter !== "all") {
+        if (statusFilter === "new" && (rfq.status !== "open" || rfq.hasBid)) return false;
+        if (statusFilter === "active" && (rfq.status !== "open" || !rfq.hasBid)) return false;
+        if (statusFilter === "closed" && rfq.status !== "closed") return false;
+      }
+      
+      // Distance filter
+      if (distanceFilter !== "all" && rfq.distanceMiles !== null) {
+        const maxDistance = parseInt(distanceFilter);
+        if (rfq.distanceMiles > maxDistance) return false;
+      }
+      
       return true;
     })
     .sort((a: any, b: any) => {
       if (sortBy === "matchScore") return b.matchScore - a.matchScore;
+      if (sortBy === "distance") {
+        // Sort by distance (nulls last)
+        if (a.distanceMiles === null) return 1;
+        if (b.distanceMiles === null) return -1;
+        return a.distanceMiles - b.distanceMiles;
+      }
       if (sortBy === "datePosted") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       if (sortBy === "dueDate") {
         if (!a.dueDate) return 1;
@@ -89,8 +106,23 @@ export default function SupplierRfqDashboard() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="matchScore">Match Score</SelectItem>
+              <SelectItem value="distance">Distance (Nearest First)</SelectItem>
               <SelectItem value="datePosted">Date Posted</SelectItem>
               <SelectItem value="dueDate">Due Date</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={distanceFilter} onValueChange={(v) => setDistanceFilter(v as DistanceFilter)}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Max Distance" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Distances</SelectItem>
+              <SelectItem value="25">Within 25 miles</SelectItem>
+              <SelectItem value="50">Within 50 miles</SelectItem>
+              <SelectItem value="100">Within 100 miles</SelectItem>
+              <SelectItem value="250">Within 250 miles</SelectItem>
+              <SelectItem value="500">Within 500 miles</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -111,9 +143,12 @@ export default function SupplierRfqDashboard() {
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900">{rfq.projectName}</h3>
-                        <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 text-gray-600">
                           <MapPin className="w-4 h-4" />
                           {rfq.projectLocation}
+                          {rfq.distanceMiles !== null && (
+                            <span className="text-xs text-gray-500">({rfq.distanceMiles} mi)</span>
+                          )}
                         </div>
                       </div>
                       {getStatusBadge(rfq)}

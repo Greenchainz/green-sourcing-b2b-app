@@ -3,6 +3,7 @@ import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFi
 import { eq, and, or, gte, lte, desc, sql } from "drizzle-orm";
 import { calculateCcps, personaToWeights } from "./ccps-engine";
 import type { PersonaWeights } from "./ccps-engine";
+import { geocodeAddress, calculateDistance, getDistanceScore, type Coordinates } from "./azure-maps-service";
 
 /**
  * RFQ Service — Handles RFQ lifecycle, supplier matching, bidding, and messaging
@@ -519,6 +520,24 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       (cert) => !matchedCertifications.some((mc) => mc.toLowerCase() === cert.toLowerCase())
     );
 
+    // Calculate distance if coordinates are available
+    let distanceMiles: number | null = null;
+    const [rfqData] = await db.select().from(rfqs).where(eq(rfqs.id, rfq.id)).execute();
+    if (supplier.latitude && supplier.longitude && rfqData?.latitude && rfqData?.longitude) {
+      const supplierCoords: Coordinates = {
+        latitude: Number(supplier.latitude),
+        longitude: Number(supplier.longitude),
+      };
+      const rfqCoords: Coordinates = {
+        latitude: Number(rfqData.latitude),
+        longitude: Number(rfqData.longitude),
+      };
+      const distanceResult = await calculateDistance(supplierCoords, rfqCoords);
+      if (distanceResult) {
+        distanceMiles = distanceResult.distanceMiles;
+      }
+    }
+
     matchedRfqs.push({
       ...rfq,
       materialCount: items.length,
@@ -527,6 +546,7 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       matchedCertifications,
       missingCertifications,
       requiredCertifications: requiredCerts,
+      distanceMiles,
     });
   }
 
@@ -572,11 +592,67 @@ async function calculateMatchScore(
 
   if (!rfq) return score;
 
-  // 1. Location match (+20 points)
-  if (supplierFilter?.acceptedLocations) {
-    const locations = supplierFilter.acceptedLocations.split(",").map((l: string) => l.trim());
-    if (locations.some((loc: string) => projectLocation.toLowerCase().includes(loc.toLowerCase()))) {
-      score += 20;
+  // 1. Distance-based location match (+20 points)
+  // Use cached coordinates or geocode if needed
+  let rfqCoords: Coordinates | null = null;
+  let supplierCoords: Coordinates | null = null;
+
+  // Get RFQ coordinates (from cache or geocode)
+  if (rfq.latitude && rfq.longitude) {
+    rfqCoords = {
+      latitude: Number(rfq.latitude),
+      longitude: Number(rfq.longitude),
+    };
+  } else if (projectLocation) {
+    rfqCoords = await geocodeAddress(projectLocation);
+    // Cache coordinates for future use
+    if (rfqCoords) {
+      await db
+        .update(rfqs)
+        .set({
+          latitude: String(rfqCoords.latitude),
+          longitude: String(rfqCoords.longitude),
+        })
+        .where(eq(rfqs.id, rfqId))
+        .execute();
+    }
+  }
+
+  // Get supplier coordinates (from cache or geocode)
+  if (supplier.latitude && supplier.longitude) {
+    supplierCoords = {
+      latitude: Number(supplier.latitude),
+      longitude: Number(supplier.longitude),
+    };
+  } else if (supplier.address) {
+    const fullAddress = `${supplier.address}, ${supplier.city || ""}, ${supplier.state || ""} ${supplier.zipCode || ""}`;
+    supplierCoords = await geocodeAddress(fullAddress);
+    // Cache coordinates for future use
+    if (supplierCoords) {
+      await db
+        .update(suppliers)
+        .set({
+          latitude: String(supplierCoords.latitude),
+          longitude: String(supplierCoords.longitude),
+        })
+        .where(eq(suppliers.id, supplierId))
+        .execute();
+    }
+  }
+
+  // Calculate distance and award points
+  if (rfqCoords && supplierCoords) {
+    const distanceResult = await calculateDistance(supplierCoords, rfqCoords);
+    if (distanceResult) {
+      score += getDistanceScore(distanceResult.distanceMiles);
+    }
+  } else {
+    // Fallback to text-based location matching if geocoding fails
+    if (supplierFilter?.acceptedLocations) {
+      const locations = supplierFilter.acceptedLocations.split(",").map((l: string) => l.trim());
+      if (locations.some((loc: string) => projectLocation.toLowerCase().includes(loc.toLowerCase()))) {
+        score += 10; // Reduced score for text-based match
+      }
     }
   }
 

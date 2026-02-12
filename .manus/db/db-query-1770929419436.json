@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `rfqs` ADD `latitude` decimal(10,7);\nALTER TABLE `rfqs` ADD `longitude` decimal(10,7);\nALTER TABLE `suppliers` ADD `latitude` decimal(10,7);\nALTER TABLE `suppliers` ADD `longitude` decimal(10,7);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute ALTER TABLE `rfqs` ADD `latitude` decimal(10,7);\nALTER TABLE `rfqs` ADD `longitude` decimal(10,7);\nALTER TABLE `suppliers` ADD `latitude` decimal(10,7);\nALTER TABLE `suppliers` ADD `longitude` decimal(10,7);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2892
+}
