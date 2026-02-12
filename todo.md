@@ -183,3 +183,15 @@
 - [x] Add tool dispatch case in executeToolCall switch
 - [x] Write unit tests for suggest_material_swaps tool (3 tests passing)
 - [x] Verify tool returns Good/Better/Best tier recommendations with scores, confidence, and business data
+
+
+## Proactive ChainBot Suggestions
+
+- [x] Define high-carbon material threshold (>50 kgCO2e/1000SF = high, 30-50 = moderate, <30 = low)
+- [x] Add proactive suggestion logic to ChainBot system prompt
+- [x] Detect when user views material (materialId in context triggers get_material_detail)
+- [x] Auto-trigger suggest_material_swaps when threshold exceeded
+- [x] Format proactive message with business-focused contextual prompt (LEED impact, liability, compliance)
+- [x] Test proactive suggestions with high-carbon materials (3 tests covering high/moderate/low carbon)
+- [x] Write unit tests for proactive suggestion triggers (all 125 tests passing)
+- [ ] Add UI indicator for proactive suggestions (icon, badge, or highlight) - Future enhancement
