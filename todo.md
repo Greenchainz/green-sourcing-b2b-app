@@ -347,3 +347,8 @@
 - [x] Implement role-based login flow (redirect to appropriate dashboard after auth)
 - [x] Add anonymous browsing toast for materials catalog ("Login to get personalized recommendations")
 - [x] Add /get-started route to App.tsx
+
+
+## Navigation Fixes
+
+- [x] Fix "See How It Works" button 404 error (redirects to /about page)
