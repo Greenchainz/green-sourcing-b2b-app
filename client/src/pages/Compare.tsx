@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Scale, Trash2, ArrowLeft, Leaf, Shield, Award, DollarSign, Truck, Heart, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { PaywallGate } from "@/components/paywall/PaywallGate";
 
 const METRICS = [
   { key: "carbonScore" as const, icon: Leaf, color: "text-green-600", label: "Carbon" },
@@ -35,6 +36,7 @@ export default function Compare() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
+      <PaywallGate dimension="material_comparisons" mode="soft">
       <div className="container py-6 flex-1">
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4"><Link href="/materials" className="hover:text-foreground">Materials</Link><span>/</span><span className="text-foreground">Compare</span></div>
         <div className="flex items-center justify-between mb-6">
@@ -91,6 +93,7 @@ export default function Compare() {
           </div>
         )}
       </div>
+      </PaywallGate>
       <Footer />
     </div>
   );

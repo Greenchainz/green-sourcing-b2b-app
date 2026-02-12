@@ -294,12 +294,28 @@
 - [x] Build tier-based middleware (checkBuyerFeatureAccess, checkSupplierFeatureAccess, getBuyerTierLimits, getSupplierTierLimits)
 - [x] Define TIER_LIMITS with feature gates and usage limits for all tiers
 - [x] Create usage tracking service (trackBuyerUsage, trackSupplierUsage, getBuyerUsage, getSupplierUsage, checkUsageLimit)
-- [ ] Add tRPC procedures for subscription management (getSubscription, upgradeSubscription)
-- [ ] Add tRPC procedures for usage tracking (getUsage, checkLimit)
-- [ ] Build paywall UI components (usage counter, upgrade modal, feature gate)
+- [x] Add tRPC procedures for subscription management (getBuyerSubscription, upgradeBuyerSubscription, getBuyerTierLimits, checkBuyerFeatureAccess)
+- [x] Add tRPC procedures for usage tracking (getBuyerUsage, getSupplierUsage, checkUsageLimit, trackBuyerUsage, trackSupplierUsage)
+- [x] Build UsageCounter component with progress bars and upgrade CTAs
+- [x] Build UpgradeModal component with tier comparison (Free/Standard/Premium)
+- [x] Build PaywallGate wrapper component (soft/hard modes)
+- [x] Build usePaywallCheck hook for programmatic checks
 - [ ] Write tests for subscription service and usage tracking
-- [ ] Integrate paywall into RFQ submission (5/mo Standard limit)
-- [ ] Integrate paywall into ChainBot AI queries (25/mo Standard limit)
-- [ ] Integrate paywall into Material Swap analysis (20/mo Standard limit)
-- [ ] Integrate paywall into CCPS exports (10/mo Standard limit)
-- [ ] Integrate paywall into Material Comparison (50 vs unlimited)
+- [x] Integrate paywall into RFQ submission (5/mo Standard limit)
+- [x] Integrate paywall into ChainBot AI queries (25/mo Standard limit)
+- [x] Integrate paywall into Material Swap analysis (20/mo Standard limit)
+- [ ] Integrate paywall into CCPS exports (10/mo Standard limit) - TODO: Add export buttons
+- [x] Integrate paywall into Material Comparison (50 vs unlimited)
+
+
+## Microsoft SaaS Accelerator Integration
+
+- [x] Create landing page endpoint (/api/marketplace/landing) for subscription activation
+- [x] Create webhook endpoint (/api/marketplace/webhook) for lifecycle events (purchased, suspended, canceled, renewed)
+- [x] Implement Azure AD token validation for Microsoft Marketplace requests
+- [x] Implement Microsoft Metering API integration to report usage
+- [x] Add environment variables for Azure AD (AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET)
+- [x] Document Partner Center configuration (Landing Page URL, Webhook URL, Connection Webhook URL)
+- [ ] Test subscription activation flow (requires Partner Center setup)
+- [ ] Test webhook event handling (requires Partner Center setup)
+- [ ] Test metering API reporting (requires Partner Center setup)

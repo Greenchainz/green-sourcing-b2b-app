@@ -24,6 +24,7 @@ import { handleChat } from "./agent";
 import { rfqMarketplaceRouter } from "./rfq-router";
 import { supplierRouter } from "./supplier-router";
 import { supplierRfqRouter } from "./supplier-rfq-router";
+import { subscriptionRouter } from "./subscription-router";
 import { agentConversations } from "../drizzle/schema";
 
 export const appRouter = router({
@@ -31,6 +32,7 @@ export const appRouter = router({
   rfqMarketplace: rfqMarketplaceRouter,
   supplier: supplierRouter,
   supplierRfq: supplierRfqRouter,
+  subscription: subscriptionRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

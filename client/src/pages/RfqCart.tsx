@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Trash2, Send, ArrowLeft, LogIn } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { PaywallGate } from "@/components/paywall/PaywallGate";
 
 interface RfqItem { materialId: number; name: string; manufacturerName?: string; quantity: number; quantityUnit: string; }
 
@@ -76,7 +77,9 @@ export default function RfqCart() {
             </Card>
             <Card><CardContent className="p-4">
               {user ? (
-                <Button className="w-full" onClick={handleSubmit} disabled={createRfq.isPending || items.length === 0}><Send className="w-4 h-4 mr-2" />{createRfq.isPending ? "Submitting..." : "Submit RFQ"}</Button>
+                <PaywallGate dimension="rfq_submissions" mode="soft">
+                  <Button className="w-full" onClick={handleSubmit} disabled={createRfq.isPending || items.length === 0}><Send className="w-4 h-4 mr-2" />{createRfq.isPending ? "Submitting..." : "Submit RFQ"}</Button>
+                </PaywallGate>
               ) : (
                 <div className="text-center space-y-2"><p className="text-xs text-muted-foreground">Sign in to submit your RFQ</p><a href={getLoginUrl()}><Button className="w-full"><LogIn className="w-4 h-4 mr-2" />Sign In</Button></a></div>
               )}

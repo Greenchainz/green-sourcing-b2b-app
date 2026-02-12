@@ -256,15 +256,23 @@ export async function checkSupplierUsageLimit(
  */
 export async function reportUsageToMicrosoft(
   msSubscriptionId: string,
+  msPlanId: string,
   dimension: string,
   quantity: number,
   effectiveStartTime: Date
 ): Promise<void> {
-  // TODO: Implement Microsoft Marketplace Metering API integration
-  // Reference: https://learn.microsoft.com/en-us/partner-center/marketplace-offers/marketplace-metering-service-apis
+  // Import metering API at runtime to avoid circular dependencies
+  const { reportBuyerUsage } = await import("./marketplace-metering");
   
-  // This will be called after SaaS Accelerator is deployed and credentials are available
-  // For now, we just track usage locally in the database
+  // Report usage to Microsoft Marketplace
+  const success = await reportBuyerUsage(
+    msSubscriptionId,
+    msPlanId,
+    dimension as any, // Type assertion since dimension is validated elsewhere
+    quantity
+  );
   
-  console.log(`[Metering API] Would report usage: ${dimension} = ${quantity} for subscription ${msSubscriptionId}`);
+  if (!success) {
+    console.error(`[Metering API] Failed to report usage: ${dimension} = ${quantity} for subscription ${msSubscriptionId}`);
+  }
 }
