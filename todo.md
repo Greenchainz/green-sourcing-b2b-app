@@ -247,3 +247,20 @@
 - [x] Add "Become a Supplier" link to header navigation
 - [x] Progress indicator with step tracking
 - [x] Responsive design with gradient background
+
+
+## Supplier Profile Dashboard
+
+- [x] Create SupplierProfileDashboard component with tabs (544 lines)
+- [x] Tab 1: Company Information (edit form with validation)
+- [x] Tab 2: Logo Upload (file preview and upload)
+- [x] Tab 3: Materials & Certifications (12 materials, 6 certifications)
+- [x] Tab 4: Subscription & Billing (tier display, upgrade button, expiration date)
+- [x] Integrate supplier.getProfile tRPC query
+- [x] Integrate supplier.updateProfile tRPC mutation
+- [x] Add logo upload file input with preview
+- [x] Add route to App.tsx (/supplier/dashboard)
+- [x] Add loading state with spinner
+- [x] Add responsive grid layout with gradient background
+- [ ] Implement S3 logo upload with storagePut helper
+- [ ] Add link to supplier dashboard from header (when logged in as supplier)

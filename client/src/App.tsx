@@ -21,6 +21,7 @@ import SupplierDashboard from "./pages/SupplierDashboard";
 import BuyerRfqDashboard from "./pages/BuyerRfqDashboard";
 import RfqDashboard from "./pages/RfqDashboard";
 import { SupplierRegistration } from "./pages/SupplierRegistration";
+import { SupplierProfileDashboard } from "./pages/SupplierProfileDashboard";
 import { ChainBot } from "./components/ChainBot";
 
 function Router() {
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
       <Route path="/supplier/register" component={SupplierRegistration} />
+      <Route path="/supplier/dashboard" component={SupplierProfileDashboard} />
       <Route path={"/api-test"} component={ApiTest} />
       <Route path={"/tools/excel"} component={ExcelAudit} />
       <Route path={"/about"} component={About} />
