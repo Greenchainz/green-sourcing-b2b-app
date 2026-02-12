@@ -300,4 +300,49 @@ export const supplierRfqRouter = router({
 
       return { success: true, message: "Bid updated successfully" };
     }),
+
+  /**
+   * Get route from supplier to RFQ location
+   */
+  getRoute: protectedProcedure
+    .input(z.object({ rfqId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database connection failed");
+
+      // Get supplier location
+      const [supplier] = await db
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.userId, ctx.user.id))
+        .limit(1);
+
+      if (!supplier || !supplier.latitude || !supplier.longitude) {
+        throw new Error("Supplier location not found");
+      }
+
+      // Get RFQ location
+      const [rfq] = await db
+        .select()
+        .from(rfqs)
+        .where(eq(rfqs.id, input.rfqId))
+        .limit(1);
+
+      if (!rfq || !rfq.latitude || !rfq.longitude) {
+        throw new Error("RFQ location not found");
+      }
+
+      // Calculate route
+      const { calculateRoute } = await import("./azure-maps-service");
+      const route = await calculateRoute(
+        { latitude: Number(supplier.latitude), longitude: Number(supplier.longitude) },
+        { latitude: Number(rfq.latitude), longitude: Number(rfq.longitude) }
+      );
+
+      if (!route) {
+        throw new Error("Failed to calculate route");
+      }
+
+      return route;
+    }),
 });

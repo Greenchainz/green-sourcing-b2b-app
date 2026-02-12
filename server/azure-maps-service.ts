@@ -164,3 +164,66 @@ export function getDistanceScore(distanceMiles: number): number {
   if (distanceMiles <= 250) return 5;
   return 2;
 }
+
+
+export interface RouteResult {
+  distanceMiles: number;
+  durationMinutes: number;
+  polyline: string; // Encoded polyline for map visualization
+}
+
+/**
+ * Calculate route with polyline for visualization
+ */
+export async function calculateRoute(
+  origin: Coordinates,
+  destination: Coordinates
+): Promise<RouteResult | null> {
+  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
+    console.warn("Azure Maps subscription key not configured");
+    return null;
+  }
+
+  try {
+    const response = await axios.get(`${AZURE_MAPS_BASE_URL}/route/directions/json`, {
+      params: {
+        "api-version": "1.0",
+        "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
+        query: `${origin.latitude},${origin.longitude}:${destination.latitude},${destination.longitude}`,
+      },
+    });
+
+    const routes = response.data?.routes;
+    if (!routes || routes.length === 0) {
+      console.warn("No route found");
+      return null;
+    }
+
+    const route = routes[0];
+    const summary = route.summary;
+    const legs = route.legs;
+
+    // Extract polyline points from route legs
+    const points: [number, number][] = [];
+    for (const leg of legs) {
+      for (const point of leg.points) {
+        points.push([point.longitude, point.latitude]);
+      }
+    }
+
+    // Simple polyline encoding (Azure Maps uses GeoJSON LineString format)
+    const polyline = JSON.stringify({
+      type: "LineString",
+      coordinates: points,
+    });
+
+    return {
+      distanceMiles: metersToMiles(summary.lengthInMeters),
+      durationMinutes: Math.round(summary.travelTimeInSeconds / 60),
+      polyline,
+    };
+  } catch (error) {
+    console.error("Azure Maps route calculation error:", error);
+    return null;
+  }
+}

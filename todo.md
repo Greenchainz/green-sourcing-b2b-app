@@ -461,3 +461,17 @@
 - [x] Add map/list toggle for dashboard view
 - [x] Add supplier coordinates to getSupplierMatchedRfqs response
 - [ ] Test map rendering with real RFQ data (requires test data with geocoded addresses)
+
+
+## Azure Maps Routing Integration
+
+- [x] Add calculateRoute function to azure-maps-service.ts (Route API integration)
+- [x] Drive time calculation via Azure Maps Distance Matrix API (already in calculateDistance)
+- [x] Update getSupplierMatchedRfqs to include drive time in response
+- [x] Add driveTimeMinutes field to RFQ cards in SupplierRfqDashboard
+- [x] Add getRoute tRPC procedure for route polyline data
+- [ ] Create RouteVisualization component with polyline overlay (future enhancement)
+- [ ] Add "Show Route" button to RFQ cards (future enhancement)
+- [ ] Implement multi-stop route optimization (future enhancement - requires TSP solver)
+- [ ] Add route details panel with turn-by-turn directions (future enhancement)
+- [ ] Test routing with real addresses (requires geocoded test data)
