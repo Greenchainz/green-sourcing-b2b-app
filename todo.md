@@ -195,3 +195,19 @@
 - [x] Test proactive suggestions with high-carbon materials (3 tests covering high/moderate/low carbon)
 - [x] Write unit tests for proactive suggestion triggers (all 125 tests passing)
 - [ ] Add UI indicator for proactive suggestions (icon, badge, or highlight) - Future enhancement
+
+
+## Material Swap UI Cards
+
+- [x] Locate Material Detail page component (MaterialDetail.tsx)
+- [x] Create MaterialSwapCard component with tier badges (Good/Better/Best with distinct colors and icons)
+- [x] Add side-by-side comparison layout (2-column grid on desktop)
+- [x] Display carbon savings (kgCO2e/1000SF and percentage with visual indicators)
+- [x] Show price comparison (delta percentage with up/down arrows)
+- [x] Add confidence indicator (percentage with visual progress bar)
+- [x] Display swap score (0-100 in badge)
+- [x] Add swap reason/explanation text (italic border-left quote style)
+- [x] Integrate tRPC materialSwaps.getSavedSwaps query
+- [x] Add loading and empty states (skeleton + sparkles icon)
+- [x] Add "Sustainable Swaps" tab to Material Detail page
+- [x] Test Material Swap UI on Material Detail page (all 125 tests passing)
