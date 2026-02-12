@@ -447,3 +447,17 @@
 - [x] Add distance display on RFQ cards
 - [x] Add "Sort by Distance" option
 - [ ] Test distance calculation with real addresses (requires Azure Maps API key)
+
+
+## Map Visualization for Supplier Dashboard
+
+- [x] Create RfqMapView component with Azure Maps SDK integration
+- [x] Add supplier location marker with custom icon (blue pin)
+- [x] Add RFQ origin marker with different icon (red pin)
+- [x] Display distance labels on markers
+- [x] Implement radius circle overlay for distance filter
+- [x] Add click handlers for marker interactions
+- [x] Integrate map view into SupplierRfqDashboard layout
+- [x] Add map/list toggle for dashboard view
+- [x] Add supplier coordinates to getSupplierMatchedRfqs response
+- [ ] Test map rendering with real RFQ data (requires test data with geocoded addresses)

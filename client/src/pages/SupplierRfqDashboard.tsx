@@ -11,21 +11,31 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Calendar, MapPin, Package, TrendingUp, Clock } from "lucide-react";
+import { FileText, Calendar, MapPin, Package, TrendingUp, Clock, Map, List } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { CertificationBadge } from "@/components/CertificationBadge";
+import { RfqMapView } from "@/components/RfqMapView";
+import { useAuth } from "@/contexts/AuthContext";
 
 type SortBy = "matchScore" | "datePosted" | "dueDate" | "distance";
 type StatusFilter = "all" | "new" | "active" | "closed";
 type DistanceFilter = "all" | "25" | "50" | "100" | "250" | "500";
+type ViewMode = "list" | "map";
 
 export default function SupplierRfqDashboard() {
   const [sortBy, setSortBy] = useState<SortBy>("matchScore");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const { user } = useAuth();
 
   // Fetch matched RFQs for current supplier
   const { data: rfqs, isLoading } = trpc.supplierRfq.getMatchedRfqs.useQuery();
+  
+  // Get supplier location from first RFQ's supplier data (will be null if no RFQs)
+  const supplierLocation = rfqs && rfqs.length > 0 && rfqs[0].supplierLatitude && rfqs[0].supplierLongitude
+    ? { latitude: rfqs[0].supplierLatitude, longitude: rfqs[0].supplierLongitude }
+    : null;
 
   // Filter and sort RFQs
   const filteredRfqs = rfqs
@@ -91,6 +101,28 @@ export default function SupplierRfqDashboard() {
       <div className="container py-8">
         {/* Filters and Sort */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          {/* View Mode Toggle */}
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="flex items-center gap-2"
+            >
+              <List className="w-4 h-4" />
+              List
+            </Button>
+            <Button
+              variant={viewMode === "map" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("map")}
+              className="flex items-center gap-2"
+            >
+              <Map className="w-4 h-4" />
+              Map
+            </Button>
+          </div>
+
           <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)} className="w-full sm:w-auto">
             <TabsList>
               <TabsTrigger value="all">All RFQs</TabsTrigger>
@@ -127,12 +159,25 @@ export default function SupplierRfqDashboard() {
           </Select>
         </div>
 
-        {/* RFQ List */}
+        {/* Map or List View */}
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
             <p className="text-gray-600 mt-4">Loading RFQs...</p>
           </div>
+        ) : viewMode === "map" ? (
+          <RfqMapView
+            rfqs={filteredRfqs?.map((rfq: any) => ({
+              id: rfq.id,
+              projectName: rfq.projectName,
+              latitude: rfq.latitude,
+              longitude: rfq.longitude,
+              distanceMiles: rfq.distanceMiles,
+            })) || []}
+            supplierLocation={supplierLocation}
+            radiusFilter={distanceFilter !== "all" ? parseInt(distanceFilter) : null}
+            onRfqClick={(rfqId) => window.location.href = `/rfq/${rfqId}`}
+          />
         ) : filteredRfqs && filteredRfqs.length > 0 ? (
           <div className="grid gap-4">
             {filteredRfqs.map((rfq: any) => (
