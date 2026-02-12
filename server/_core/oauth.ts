@@ -28,12 +28,24 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
+      // Parse state to extract role and returnPath
+      let role: 'buyer' | 'supplier' | null = null;
+      let returnPath = '/';
+      try {
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        role = stateData.role || null;
+        returnPath = stateData.returnPath || '/';
+      } catch (e) {
+        // Legacy state format (just redirectUri), ignore
+      }
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
         email: userInfo.email ?? null,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
+        role: role || undefined, // Assign role if provided
       });
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
@@ -44,7 +56,7 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.redirect(302, "/");
+      res.redirect(302, returnPath);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });
