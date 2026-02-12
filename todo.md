@@ -46,7 +46,13 @@
 - [x] Project Name, Location, Type, Notes fields
 - [x] Submit RFQ button (requires auth)
 - [ ] RFQ submission notification to owner
-- [ ] RFQ status tracking dashboard
+- [x] RFQ status tracking dashboard (view submitted RFQs, bid status, timeline)
+- [x] Bid comparison UI (side-by-side bid cards with supplier info, price, lead time)
+- [x] Bid analytics (total bids, avg/min/max price, winning bid)
+- [x] tRPC procedures: getUserRfqs, getRfqDetails
+- [x] RFQ Dashboard page with tabs (All, Active, Awarded)
+- [x] Add RFQ Status link to header navigation
+- [ ] Bid acceptance/rejection flow with confirmation
 - [ ] Supplier response flow
 
 ## Material Comparison
