@@ -192,7 +192,10 @@ export default function SupplierRfqDashboard() {
                           <MapPin className="w-4 h-4" />
                           {rfq.projectLocation}
                           {rfq.distanceMiles !== null && (
-                            <span className="text-xs text-gray-500">({rfq.distanceMiles} mi)</span>
+                            <span className="text-xs text-gray-500">
+                              ({rfq.distanceMiles} mi
+                              {rfq.driveTimeMinutes && ` • ${Math.floor(rfq.driveTimeMinutes / 60)}h ${rfq.driveTimeMinutes % 60}m drive`})
+                            </span>
                           )}
                         </div>
                       </div>

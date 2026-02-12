@@ -520,8 +520,9 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       (cert) => !matchedCertifications.some((mc) => mc.toLowerCase() === cert.toLowerCase())
     );
 
-    // Calculate distance if coordinates are available
+    // Calculate distance and drive time if coordinates are available
     let distanceMiles: number | null = null;
+    let driveTimeMinutes: number | null = null;
     const [rfqData] = await db.select().from(rfqs).where(eq(rfqs.id, rfq.id)).execute();
     if (supplier.latitude && supplier.longitude && rfqData?.latitude && rfqData?.longitude) {
       const supplierCoords: Coordinates = {
@@ -535,6 +536,7 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       const distanceResult = await calculateDistance(supplierCoords, rfqCoords);
       if (distanceResult) {
         distanceMiles = distanceResult.distanceMiles;
+        driveTimeMinutes = distanceResult.durationMinutes;
       }
     }
 
@@ -547,6 +549,7 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       missingCertifications,
       requiredCertifications: requiredCerts,
       distanceMiles,
+      driveTimeMinutes,
       latitude: rfqData?.latitude ? Number(rfqData.latitude) : null,
       longitude: rfqData?.longitude ? Number(rfqData.longitude) : null,
       supplierLatitude: supplier.latitude ? Number(supplier.latitude) : null,
