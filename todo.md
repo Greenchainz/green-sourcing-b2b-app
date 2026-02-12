@@ -231,3 +231,19 @@
 - [ ] Build supplier profile management page (edit company info, materials, certifications)
 - [ ] Add supplier dashboard link to header navigation
 - [ ] Run database migrations to create suppliers table
+
+
+## Supplier Registration Page
+
+- [x] Create SupplierRegistration multi-step form component (504 lines)
+- [x] Step 1: Company Information (name, email, phone, website)
+- [x] Step 2: Location (address, city, state, zipCode, country)
+- [x] Step 3: Materials (12 material types, 6 certifications)
+- [x] Step 4: Subscription Tier (Free vs Premium comparison with features)
+- [x] Form validation and error handling
+- [x] Integrate supplier.register tRPC mutation
+- [x] Success confirmation page with auto-login
+- [x] Add route to App.tsx (/supplier/register)
+- [x] Add "Become a Supplier" link to header navigation
+- [x] Progress indicator with step tracking
+- [x] Responsive design with gradient background
