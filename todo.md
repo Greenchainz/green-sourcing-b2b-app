@@ -272,11 +272,14 @@
 - [x] Create tRPC procedures for bid management (submitBid, getBidHistory, getBid, updateBid)
 - [x] Create supplier-rfq-router.ts with 5 procedures
 - [x] Add supplierRfq router to appRouter in routers.ts
+- [x] Create BidSubmissionForm component (pricing, lead time, notes) with full validation
+- [x] Add form validation (bid price, lead days, notes length)
+- [x] Integrate tRPC submitBid and updateBid mutations
+- [x] Add loading states, error handling, and success feedback
+- [x] Write comprehensive tests for BidSubmissionForm (35 tests passing)
 - [ ] Build SupplierRfqDashboard page with RFQ list and filtering
 - [ ] Add RFQ list with status badges (Open, Bidding, Awarded, Closed)
 - [ ] Add RFQ detail modal with materials, quantities, and buyer info
-- [ ] Create BidSubmission form component (pricing, lead time, notes)
 - [ ] Add bid history view (submitted bids, status, pricing)
 - [ ] Integrate real-time bid status updates
 - [ ] Add notifications for new RFQs and bid responses
-- [ ] Write tests for supplier RFQ and bid management
