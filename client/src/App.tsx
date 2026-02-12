@@ -17,6 +17,8 @@ import MaterialDetail from "./pages/MaterialDetail";
 import Assemblies from "./pages/Assemblies";
 import RfqCart from "./pages/RfqCart";
 import Compare from "./pages/Compare";
+import SupplierDashboard from "./pages/SupplierDashboard";
+import BuyerRfqDashboard from "./pages/BuyerRfqDashboard";
 import { ChainBot } from "./components/ChainBot";
 
 function Router() {
@@ -28,7 +30,9 @@ function Router() {
       <Route path={"/assemblies"} component={Assemblies} />
       <Route path={"/assemblies/:id"} component={Assemblies} />
       <Route path={"/rfq"} component={RfqCart} />
-      <Route path={"/compare"} component={Compare} />
+       <Route path="/compare" component={Compare} />
+      <Route path="/supplier-dashboard" component={SupplierDashboard} />
+      <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path={"/api-test"} component={ApiTest} />
       <Route path={"/tools/excel"} component={ExcelAudit} />
       <Route path={"/about"} component={About} />
