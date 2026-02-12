@@ -2,9 +2,12 @@ import { Link } from 'wouter';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { getLoginUrl } from '../const';
+import { NotificationCenter } from './NotificationCenter';
+import { useNotifications } from '../hooks/useNotifications';
 
 export default function Header() {
   const { user, isLoading } = useAuth();
+  useNotifications(); // Initialize real-time notifications
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -69,6 +72,7 @@ export default function Header() {
             <div className="w-20 h-9 bg-muted animate-pulse rounded-md" />
           ) : user ? (
             <>
+              <NotificationCenter />
               <Link href="/dashboard">
                 <a>
                   <Button variant="ghost" size="sm">
