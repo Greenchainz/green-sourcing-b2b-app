@@ -6,6 +6,31 @@ import { eq, and } from "drizzle-orm";
 
 export const supplierRfqRouter = router({
   /**
+   * Get matched RFQs for the current supplier with match scores
+   */
+  getMatchedRfqs: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database connection failed");
+
+    // Get supplier record
+    const [supplier] = await db
+      .select()
+      .from(suppliers)
+      .where(eq(suppliers.userId, ctx.user.id))
+      .limit(1);
+
+    if (!supplier) {
+      return [];
+    }
+
+    // Import matchSuppliersToRfq to get match scores
+    const { getSupplierMatchedRfqs } = await import("./rfq-service");
+    const matchedRfqs = await getSupplierMatchedRfqs(supplier.id);
+
+    return matchedRfqs;
+  }),
+
+  /**
    * Get available RFQs for a supplier
    */
   getAvailableRfqs: protectedProcedure
