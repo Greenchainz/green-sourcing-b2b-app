@@ -16,7 +16,7 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const utils = trpc.useUtils();
 
-  const { data: notifications = [], isLoading } = trpc.notifications.getAll.useQuery(
+  const { data: notifications = [], isLoading } = trpc.notifications.getUnread.useQuery(
     undefined,
     {
       enabled: open, // Only fetch when popover is open
@@ -25,14 +25,14 @@ export function NotificationCenter() {
 
   const markAsReadMutation = trpc.notifications.markAsRead.useMutation({
     onSuccess: () => {
-      utils.notifications.getAll.invalidate();
+      utils.notifications.getUnread.invalidate();
       utils.notifications.getUnreadCount.invalidate();
     },
   });
 
   const markAllAsReadMutation = trpc.notifications.markAllAsRead.useMutation({
     onSuccess: () => {
-      utils.notifications.getAll.invalidate();
+      utils.notifications.getUnread.invalidate();
       utils.notifications.getUnreadCount.invalidate();
     },
   });
@@ -87,7 +87,7 @@ export function NotificationCenter() {
             </div>
           ) : (
             <div className="divide-y">
-              {notifications.map((notification) => (
+              {notifications.map((notification: any) => (
                 <div
                   key={notification.id}
                   className={`group relative px-4 py-3 transition-colors hover:bg-accent ${

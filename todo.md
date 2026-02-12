@@ -475,3 +475,9 @@
 - [ ] Implement multi-stop route optimization (future enhancement - requires TSP solver)
 - [ ] Add route details panel with turn-by-turn directions (future enhancement)
 - [ ] Test routing with real addresses (requires geocoded test data)
+
+
+## Bug Fixes
+
+- [x] Fix TypeScript error in NotificationCenter.tsx - replaced getAll with getUnread
+- [x] Fix TypeScript error in useNotifications hook - replaced getAll with getUnread

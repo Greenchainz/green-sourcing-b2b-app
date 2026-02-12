@@ -22,7 +22,7 @@ export function useNotifications() {
       });
 
       // Invalidate queries to refresh notification list and count
-      utils.notifications.getAll.invalidate();
+      utils.notifications.getUnread.invalidate();
       utils.notifications.getUnreadCount.invalidate();
     },
     [utils]
