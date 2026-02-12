@@ -1,13 +1,14 @@
-import { eq, and, desc, or } from "drizzle-orm";
+import { eq, and, desc, or, isNull } from "drizzle-orm";
 import { getDb } from "./db";
 import { conversations, messages, users, rfqs } from "../drizzle/schema";
 import { broadcastNotification } from "./webpubsub-manager";
 
 /**
- * Get or create a conversation between buyer and supplier for an RFQ
+ * Get or create a conversation between buyer and supplier
+ * rfqId is optional - null for direct company messaging
  */
 export async function getOrCreateConversation(params: {
-  rfqId: number;
+  rfqId?: number | null;
   buyerId: number;
   supplierId: number;
 }) {
@@ -17,16 +18,22 @@ export async function getOrCreateConversation(params: {
   const { rfqId, buyerId, supplierId } = params;
 
   // Check if conversation already exists
+  const whereConditions = [
+    eq(conversations.buyerId, buyerId),
+    eq(conversations.supplierId, supplierId),
+  ];
+  
+  // Add rfqId condition only if provided
+  if (rfqId !== undefined && rfqId !== null) {
+    whereConditions.push(eq(conversations.rfqId, rfqId));
+  } else {
+    whereConditions.push(isNull(conversations.rfqId));
+  }
+
   const existing = await db
     .select()
     .from(conversations)
-    .where(
-      and(
-        eq(conversations.rfqId, rfqId),
-        eq(conversations.buyerId, buyerId),
-        eq(conversations.supplierId, supplierId)
-      )
-    )
+    .where(and(...whereConditions))
     .limit(1);
 
   if (existing.length > 0) {

@@ -371,10 +371,14 @@ export const usageTracking = mysqlTable("usage_tracking", {
     "supplier_match",
     "message_thread",
     "bid_submission",
-  ]).notNull(),
+    "video_call", // Video calling usage
+    "message_sent", // Message sending usage
+  ]),
   quantity: int("quantity").default(0).notNull(),
-  periodStart: timestamp("periodStart").notNull(), // Start of billing period
-  periodEnd: timestamp("periodEnd").notNull(), // End of billing period
+  videoMinutesUsed: int("videoMinutesUsed").default(0), // Track video call duration
+  messagesCount: int("messagesCount").default(0), // Track message count
+  periodStart: timestamp("periodStart"), // Start of billing period
+  periodEnd: timestamp("periodEnd"), // End of billing period
   reportedToMs: tinyint("reportedToMs").default(0), // Whether overage was reported to Microsoft metering API
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -507,7 +511,7 @@ export type MaterialSwap = typeof materialSwaps.$inferSelect;
 
 export const conversations = mysqlTable("conversations", {
   id: int("id").autoincrement().primaryKey(),
-  rfqId: int("rfqId").notNull(),
+  rfqId: int("rfqId"), // Optional - null for direct company messaging
   buyerId: int("buyerId").notNull(),
   supplierId: int("supplierId").notNull(),
   lastMessageAt: timestamp("lastMessageAt").defaultNow().notNull(),

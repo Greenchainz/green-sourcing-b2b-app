@@ -126,7 +126,9 @@ export async function getBuyerUsage(userId: number) {
   // Convert to object for easy access
   const usageMap: Record<string, number> = {};
   usage.forEach((record) => {
-    usageMap[record.dimension] = record.quantity;
+    if (record.dimension) {
+      usageMap[record.dimension] = record.quantity;
+    }
   });
 
   return {
@@ -161,7 +163,9 @@ export async function getSupplierUsage(supplierId: number) {
   // Convert to object for easy access
   const usageMap: Record<string, number> = {};
   usage.forEach((record) => {
-    usageMap[record.dimension] = record.quantity;
+    if (record.dimension) {
+      usageMap[record.dimension] = record.quantity;
+    }
   });
 
   return {

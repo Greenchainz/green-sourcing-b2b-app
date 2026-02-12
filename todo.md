@@ -498,3 +498,36 @@
 - [ ] Add "Message Supplier" button to RFQ detail page
 - [ ] Add "Message Buyer" button to supplier RFQ dashboard
 - [ ] Test real-time messaging between buyer and supplier accounts
+
+
+## Direct Company Messaging with Paywall
+
+- [x] Make rfqId optional in conversations table schema
+- [x] Update messaging service to support direct company messaging (no RFQ required)
+- [ ] Add "Message Company" buttons on supplier profile pages
+- [x] Implement message count tracking in usage_tracking table
+- [x] Create PaywallGate for message sending with tier checks
+- [x] Free tier: 1 response per conversation limit
+- [x] Standard tier: Limited messages per month (50 messages)
+- [x] Premium tier: Unlimited messages
+- [x] Block message sending when limit reached with upgrade prompt
+- [x] Allow buyers unlimited messaging (no paywall)
+- [x] Update MessageInput component with PaywallGate integration
+- [ ] Test messaging paywall with all three tiers
+
+## Video Calling Integration (Dual System)
+
+- [x] WebRTC video service for Standard tier (peer-to-peer, 10hr/month)
+- [x] Azure Communication Services integration for Premium tier (enterprise, 50hr/month)
+- [x] Track video call duration per user in usage_tracking table
+- [x] Free tier: No video calling access
+- [x] Standard tier: 10 hours WebRTC video per month
+- [x] Premium tier: 50 hours Azure ACS video per month (HD, recording, group calls)
+- [x] Build tier-aware VideoCallButton component
+- [ ] Build WebRTCVideoCall component for Standard tier (full UI with peer connection)
+- [ ] Build ACSVideoCall component for Premium tier (full UI with ACS SDK)
+- [x] Smart video router that selects system based on user tier
+- [x] Display remaining video hours and current tier in UI
+- [x] Block video call initiation when limit reached
+- [x] Show upgrade prompt: Standard→Premium for enterprise features
+- [ ] Test both video systems with all three tiers
