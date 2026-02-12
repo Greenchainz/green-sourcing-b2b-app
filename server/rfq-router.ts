@@ -2,6 +2,9 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { submitRfq, getRfqWithBids, submitBid, getOrCreateThread, sendMessage, getThreadMessages, acceptBid, enrichRfqWithCcps } from "./rfq-service";
 import type { RfqSubmissionInput } from "./rfq-service";
+import { getDb } from "./db";
+import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers } from "../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 
 /**
  * RFQ Marketplace Router
@@ -117,5 +120,92 @@ export const rfqMarketplaceRouter = router({
     .query(async ({ input }) => {
       const { getThreadMessages } = await import("./webpubsub-manager");
       return getThreadMessages(input.threadId, input.limit, input.offset);
+    }),
+
+  // Get all RFQs for a user
+  getUserRfqs: protectedProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const userRfqs = await db
+        .select({
+          id: rfqs.id,
+          projectName: rfqs.projectName,
+          projectLocation: rfqs.projectLocation,
+          projectType: rfqs.projectType,
+          status: rfqs.status,
+          createdAt: rfqs.createdAt,
+          updatedAt: rfqs.updatedAt,
+        })
+        .from(rfqs)
+        .where(eq(rfqs.userId, input.userId))
+        .orderBy(desc(rfqs.createdAt));
+
+      // Get bid count and item count for each RFQ
+      const enriched = await Promise.all(
+        userRfqs.map(async (rfq) => {
+          const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, rfq.id));
+          const bids = await db.select().from(rfqBids).where(eq(rfqBids.rfqId, rfq.id));
+          return {
+            ...rfq,
+            itemCount: items.length,
+            bidCount: bids.length,
+          };
+        })
+      );
+
+      return enriched;
+    }),
+
+  // Get detailed RFQ with items, bids, and analytics
+  getRfqDetails: protectedProcedure
+    .input(z.object({ rfqId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      // Get RFQ
+      const rfq = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+      if (!rfq.length) return null;
+
+      // Get items
+      const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, input.rfqId));
+
+      // Get bids with supplier info
+      const bids = await db
+        .select({
+          id: rfqBids.id,
+          rfqId: rfqBids.rfqId,
+          supplierId: rfqBids.supplierId,
+          status: rfqBids.status,
+          bidPrice: rfqBids.bidPrice,
+          leadDays: rfqBids.leadDays,
+          notes: rfqBids.notes,
+          expiresAt: rfqBids.expiresAt,
+          createdAt: rfqBids.createdAt,
+          supplierName: suppliers.companyName,
+          supplierLocation: suppliers.city,
+        })
+        .from(rfqBids)
+        .leftJoin(suppliers, eq(rfqBids.supplierId, suppliers.id))
+        .where(eq(rfqBids.rfqId, input.rfqId))
+        .orderBy(desc(rfqBids.createdAt));
+
+      // Get analytics
+      const analytics = await db
+        .select()
+        .from(rfqAnalytics)
+        .where(eq(rfqAnalytics.rfqId, input.rfqId))
+        .limit(1);
+
+      return {
+        ...rfq[0],
+        itemCount: items.length,
+        items,
+        bids,
+        analytics: analytics.length > 0 ? analytics[0] : null,
+      };
     }),
 });

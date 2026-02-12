@@ -46,6 +46,11 @@ export default function Header() {
               RFQ
             </a>
           </Link>
+          <Link href="/rfq-status">
+            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              RFQ Status
+            </a>
+          </Link>
           <Link href="/compare">
             <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Compare
