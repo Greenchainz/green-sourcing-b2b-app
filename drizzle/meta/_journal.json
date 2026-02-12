@@ -85,6 +85,20 @@
       "when": 1770935009616,
       "tag": "0011_sharp_tiger_shark",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1770935967766,
+      "tag": "0012_true_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1770938113693,
+      "tag": "0013_pale_skin",
+      "breakpoints": true
     }
   ]
 }
