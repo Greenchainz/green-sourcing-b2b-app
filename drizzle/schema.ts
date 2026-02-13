@@ -520,7 +520,13 @@ export const conversations = mysqlTable("conversations", {
   agentMessageCount: int("agentMessageCount").default(0).notNull(),
   handoffRequestedAt: timestamp("handoffRequestedAt"),
   handoffReason: text("handoffReason"),
+  // eBay-style features
+  lastMessage: text("lastMessage"),
   lastMessageAt: timestamp("lastMessageAt").defaultNow().notNull(),
+  isPinned: tinyint("isPinned").default(0).notNull(),
+  isArchived: tinyint("isArchived").default(0).notNull(),
+  label: varchar("label", { length: 50 }), // "urgent", "follow_up", "negotiating", "closed"
+  labelColor: varchar("labelColor", { length: 20 }), // hex color for label
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -537,7 +543,12 @@ export const messages = mysqlTable("messages", {
   senderType: mysqlEnum("senderType", ["user", "agent", "support"]).default("user").notNull(),
   agentType: varchar("agentType", { length: 100 }), // "material", "rfq", "supplier", "triage"
   content: text("content").notNull(),
+  // eBay-style features
   isRead: tinyint("isRead").default(0).notNull(),
+  readAt: timestamp("readAt"),
+  attachmentUrl: text("attachmentUrl"),
+  attachmentType: varchar("attachmentType", { length: 50 }), // "image", "pdf", "document"
+  attachmentName: varchar("attachmentName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -616,3 +627,16 @@ export const agentHandoffRules = mysqlTable("agent_handoff_rules", {
 
 export type AgentHandoffRule = typeof agentHandoffRules.$inferSelect;
 export type InsertAgentHandoffRule = typeof agentHandoffRules.$inferInsert;
+
+// ─── Message Reactions ──────────────────────────────────────────────────────
+
+export const messageReactions = mysqlTable("message_reactions", {
+  id: int("id").autoincrement().primaryKey(),
+  messageId: int("messageId").notNull(),
+  userId: int("userId").notNull(),
+  reactionType: varchar("reactionType", { length: 20 }).notNull(), // "thumbs_up", "thumbs_down", "heart", "party", "check"
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MessageReaction = typeof messageReactions.$inferSelect;
+export type InsertMessageReaction = typeof messageReactions.$inferInsert;

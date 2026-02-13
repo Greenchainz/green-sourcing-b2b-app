@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageCircle, X, Minimize2, Send, Phone, Video, User, Bot, Plus } from "lucide-react";
+import { MessageCircle, X, Minimize2, Send, Phone, Video, User, Bot, Plus, Paperclip, FileText, Image as ImageIcon, X as XIcon, Smile, Pin, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { SupplierSearchModal } from "@/components/SupplierSearchModal";
+import { getRelativeTime } from "@/lib/timeUtils";
 
 interface Message {
   id: number;
@@ -19,6 +20,10 @@ interface Message {
   content: string;
   createdAt: Date;
   isRead: number;
+  readAt?: Date | null;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
+  attachmentName?: string | null;
 }
 
 interface Conversation {
@@ -27,6 +32,8 @@ interface Conversation {
   buyerId: number;
   supplierId: number;
   agentMode: "agent_first" | "human_only" | "hybrid";
+  isPinned: number;
+  isArchived: number;
   handoffStatus: "agent" | "pending_handoff" | "human";
   agentMessageCount: number;
   otherPartyName?: string;
@@ -40,9 +47,14 @@ export function UnifiedChatWidget() {
   const [messageInput, setMessageInput] = useState("");
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [conversationFilter, setConversationFilter] = useState<"all" | "rfq" | "direct" | "agent" | "human">("all");
+  const [conversationSort, setConversationSort] = useState<"newest" | "oldest" | "unread">("newest");
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showReactionPicker, setShowReactionPicker] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: conversations } = trpc.messaging.getConversations.useQuery(undefined, {
+  const { data: conversations, refetch: refetchConversations } = trpc.messaging.getConversations.useQuery(undefined, {
     enabled: !!user,
     refetchInterval: 5000, // Poll every 5 seconds
   });
@@ -63,6 +75,107 @@ export function UnifiedChatWidget() {
       refetchMessages();
     },
   });
+
+  const sendMessageWithAttachmentMutation = trpc.messaging.sendMessageWithAttachment.useMutation({
+    onSuccess: () => {
+      setMessageInput("");
+      setSelectedFile(null);
+      setUploadingFile(false);
+      refetchMessages();
+    },
+  });
+
+  const addReactionMutation = trpc.messaging.addReaction.useMutation({
+    onSuccess: () => {
+      refetchMessages();
+      setShowReactionPicker(null);
+    },
+  });
+
+  const pinConversationMutation = trpc.messaging.pinConversation.useMutation({
+    onSuccess: () => {
+      refetchConversations();
+    },
+  });
+
+  const archiveConversationMutation = trpc.messaging.archiveConversation.useMutation({
+    onSuccess: () => {
+      refetchConversations();
+      selectConversation(null);
+    },
+  });
+
+  const handlePinConversation = (conversationId: number, pinned: boolean) => {
+    pinConversationMutation.mutate({ conversationId, pinned });
+  };
+
+  const handleArchiveConversation = (conversationId: number, archived: boolean) => {
+    archiveConversationMutation.mutate({ conversationId, archived });
+  };
+
+  const handleAddReaction = (messageId: number, reactionType: "thumbs_up" | "thumbs_down" | "heart" | "party" | "check") => {
+    addReactionMutation.mutate({ messageId, reactionType });
+  };
+
+  const reactionEmojis = {
+    thumbs_up: "👍",
+    thumbs_down: "👎",
+    heart: "❤️",
+    party: "🎉",
+    check: "✅",
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File size must be less than 10MB");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSendWithAttachment = async () => {
+    if (!selectedConversationId || !selectedFile) return;
+
+    setUploadingFile(true);
+    try {
+      // Upload file to S3
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      
+      const uploadResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) throw new Error("Upload failed");
+      
+      const { url } = await uploadResponse.json();
+
+      // Send message with attachment
+      await sendMessageWithAttachmentMutation.mutateAsync({
+        conversationId: selectedConversationId,
+        content: messageInput || "Sent an attachment",
+        attachmentUrl: url,
+        attachmentType: selectedFile.type.startsWith("image/") ? "image" : "document",
+        attachmentName: selectedFile.name,
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      alert("Failed to upload file");
+      setUploadingFile(false);
+    }
+  };
 
   const requestHumanMutation = trpc.messaging.sendWithAgent.useMutation({
     onSuccess: () => {
@@ -122,6 +235,11 @@ export function UnifiedChatWidget() {
   }, [selectedConversationId, isOpen, isMinimized]);
 
   const handleSendMessage = () => {
+    if (selectedFile) {
+      handleSendWithAttachment();
+      return;
+    }
+
     if (!messageInput.trim() || !selectedConversationId) return;
 
     const context = selectedConversation?.rfqTitle
@@ -176,15 +294,32 @@ export function UnifiedChatWidget() {
     }
   };
 
-  // Filter conversations based on selected filter
-  const filteredConversations = conversations?.filter((conv) => {
-    if (conversationFilter === "all") return true;
-    if (conversationFilter === "rfq") return conv.rfqId !== null;
-    if (conversationFilter === "direct") return conv.rfqId === null;
-    if (conversationFilter === "agent") return conv.handoffStatus === "agent";
-    if (conversationFilter === "human") return conv.handoffStatus === "human" || conv.handoffStatus === "pending_handoff";
-    return true;
-  });
+  // Filter and sort conversations
+  const filteredConversations = conversations
+    ?.filter((conv) => {
+      if (conversationFilter === "all") return true;
+      if (conversationFilter === "rfq") return conv.rfqId !== null;
+      if (conversationFilter === "direct") return conv.rfqId === null;
+      if (conversationFilter === "agent") return conv.handoffStatus === "agent";
+      if (conversationFilter === "human") return conv.handoffStatus === "human" || conv.handoffStatus === "pending_handoff";
+      return true;
+    })
+    .sort((a, b) => {
+      // Pinned conversations always first
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      
+      // Then sort by selected option
+      if (conversationSort === "newest") {
+        return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+      } else if (conversationSort === "oldest") {
+        return new Date(a.lastMessageAt).getTime() - new Date(b.lastMessageAt).getTime();
+      } else if (conversationSort === "unread") {
+        // Unread first (assuming we'll add unread count later)
+        return 0; // For now, no unread sorting
+      }
+      return 0;
+    });
 
   const selectedConversation = conversations?.find((c) => c.id === selectedConversationId);
 
@@ -225,6 +360,28 @@ export function UnifiedChatWidget() {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {selectedConversation && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-white hover:bg-white/20"
+                    onClick={() => handlePinConversation(selectedConversation.id, !selectedConversation.isPinned)}
+                    title={selectedConversation.isPinned ? "Unpin conversation" : "Pin conversation"}
+                  >
+                    <Pin className={`h-4 w-4 ${selectedConversation.isPinned ? "fill-white" : ""}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-white hover:bg-white/20"
+                    onClick={() => handleArchiveConversation(selectedConversation.id, true)}
+                    title="Archive conversation"
+                  >
+                    <Archive className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -260,19 +417,31 @@ export function UnifiedChatWidget() {
                       New Conversation
                     </Button>
 
-                    {/* Filter Dropdown */}
-                    <Select value={conversationFilter} onValueChange={(value: any) => setConversationFilter(value)}>
-                      <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue placeholder="Filter conversations" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Conversations</SelectItem>
-                        <SelectItem value="rfq">RFQ Only</SelectItem>
-                        <SelectItem value="direct">Direct Only</SelectItem>
-                        <SelectItem value="agent">AI Agent</SelectItem>
-                        <SelectItem value="human">Human Support</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {/* Filter & Sort Dropdowns */}
+                    <div className="flex gap-2">
+                      <Select value={conversationFilter} onValueChange={(value: any) => setConversationFilter(value)}>
+                        <SelectTrigger className="flex-1 h-8 text-xs">
+                          <SelectValue placeholder="Filter" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="rfq">RFQ</SelectItem>
+                          <SelectItem value="direct">Direct</SelectItem>
+                          <SelectItem value="agent">AI</SelectItem>
+                          <SelectItem value="human">Human</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={conversationSort} onValueChange={(value: any) => setConversationSort(value)}>
+                        <SelectTrigger className="flex-1 h-8 text-xs">
+                          <SelectValue placeholder="Sort" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="newest">Newest</SelectItem>
+                          <SelectItem value="oldest">Oldest</SelectItem>
+                          <SelectItem value="unread">Unread</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <ScrollArea className="flex-1 px-4 pb-4">
@@ -286,7 +455,12 @@ export function UnifiedChatWidget() {
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
-                              <p className="font-semibold text-sm">{conv.otherPartyName || "Unknown"}</p>
+                              <div className="flex items-center justify-between">
+                                <p className="font-semibold text-sm">{conv.otherPartyName || "Unknown"}</p>
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  {getRelativeTime(conv.lastMessageAt)}
+                                </span>
+                              </div>
                               <div className="flex items-center gap-2 mt-1">
                                 {conv.rfqId ? (
                                   <Badge variant="outline" className="text-xs">
@@ -297,13 +471,18 @@ export function UnifiedChatWidget() {
                                     💬 Direct Inquiry
                                   </Badge>
                                 )}
+                                {conv.handoffStatus === "agent" && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    🤖 AI
+                                  </Badge>
+                                )}
                               </div>
+                              {conv.lastMessage && (
+                                <p className="text-xs text-muted-foreground mt-1 truncate">
+                                  {conv.lastMessage}
+                                </p>
+                              )}
                             </div>
-                            {conv.handoffStatus === "agent" && (
-                              <Badge variant="secondary" className="text-xs">
-                                🤖 AI
-                              </Badge>
-                            )}
                           </div>
                         </button>
                       ))}
@@ -327,9 +506,7 @@ export function UnifiedChatWidget() {
                       {messages?.map((msg) => (
                         <div
                           key={msg.id}
-                          className={`flex gap-3 ${
-                            msg.senderId === Number(user.id) ? "flex-row-reverse" : "flex-row"
-                          }`}
+                          className={`flex gap-3 group ${msg.senderId === Number(user.id) ? "flex-row-reverse" : ""}`}
                         >
                           <Avatar className="h-8 w-8">
                             <AvatarFallback>{getSenderIcon(msg)}</AvatarFallback>
@@ -349,14 +526,70 @@ export function UnifiedChatWidget() {
                                   : "bg-muted"
                               }`}
                             >
+                              {msg.attachmentUrl && (
+                                <div className="mb-2">
+                                  {msg.attachmentType === "image" ? (
+                                    <img
+                                      src={msg.attachmentUrl}
+                                      alt={msg.attachmentName || "Attachment"}
+                                      className="max-w-full rounded-lg max-h-64 object-contain"
+                                    />
+                                  ) : (
+                                    <a
+                                      href={msg.attachmentUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 p-2 bg-white/10 rounded hover:bg-white/20 transition-colors"
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                      <span className="text-xs">{msg.attachmentName || "Download"}</span>
+                                    </a>
+                                  )}
+                                </div>
+                              )}
                               <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                             </div>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(msg.createdAt).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(msg.createdAt).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                              {msg.senderId === Number(user.id) && (
+                                <span className="text-xs text-muted-foreground">
+                                  {msg.isRead ? (
+                                    <span className="text-blue-500" title={msg.readAt ? `Seen ${new Date(msg.readAt).toLocaleString()}` : "Seen"}>
+                                      ✓✓
+                                    </span>
+                                  ) : (
+                                    <span title="Sent">✓</span>
+                                  )}
+                                </span>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id)}
+                              >
+                                <Smile className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            {/* Reaction Picker */}
+                            {showReactionPicker === msg.id && (
+                              <div className="flex gap-1 mt-1 p-1 bg-white border rounded-lg shadow-lg">
+                                {Object.entries(reactionEmojis).map(([type, emoji]) => (
+                                  <button
+                                    key={type}
+                                    onClick={() => handleAddReaction(msg.id, type as any)}
+                                    className="hover:bg-accent rounded p-1 text-lg"
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -365,7 +598,46 @@ export function UnifiedChatWidget() {
 
                   {/* Message Input */}
                   <div className="p-4 border-t">
+                    {/* File Preview */}
+                    {selectedFile && (
+                      <div className="mb-2 p-2 bg-accent rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {selectedFile.type.startsWith("image/") ? (
+                            <ImageIcon className="h-4 w-4 text-blue-500" />
+                          ) : (
+                            <FileText className="h-4 w-4 text-gray-500" />
+                          )}
+                          <span className="text-xs truncate max-w-[200px]">{selectedFile.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({(selectedFile.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={handleRemoveFile}
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,.pdf,.doc,.docx"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingFile}
+                      >
+                        <Paperclip className="h-4 w-4" />
+                      </Button>
                       <Input
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
@@ -377,13 +649,18 @@ export function UnifiedChatWidget() {
                         }}
                         placeholder="Type a message..."
                         className="flex-1"
+                        disabled={uploadingFile}
                       />
                       <Button
                         onClick={handleSendMessage}
-                        disabled={!messageInput.trim() || sendMessageMutation.isPending}
+                        disabled={(!messageInput.trim() && !selectedFile) || uploadingFile}
                         size="icon"
                       >
-                        <Send className="h-4 w-4" />
+                        {uploadingFile ? (
+                          <div className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                     <div className="flex items-center justify-between mt-2">

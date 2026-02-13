@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { handleLandingPage } from "../marketplace-landing";
 import { handleWebhook } from "../marketplace-webhook";
 import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
+import { uploadRouter } from "../upload-route";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -45,6 +46,9 @@ async function startServer() {
   
   // Microsoft AppSource subscription webhook
   app.post("/api/microsoft/subscription-webhook", handleMicrosoftWebhook);
+  
+  // File upload route
+  app.use("/api", uploadRouter);
   // tRPC API
   app.use(
     "/api/trpc",
