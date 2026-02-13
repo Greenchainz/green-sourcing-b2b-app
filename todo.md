@@ -790,3 +790,46 @@
 - [ ] Establish ACS call → Show CallModal with video/audio
 - [ ] Track duration in real-time → Update usage on hang-up
 - [ ] Save call history record with duration and status
+
+
+## Mobile Responsiveness
+
+### Navigation & Header
+- [x] Add hamburger menu for mobile (< 768px)
+- [x] Make header stack vertically on small screens
+- [x] Ensure logo and nav items are touch-friendly (min 44x44px)
+- [x] Add mobile-friendly dropdown menus
+
+### Messaging Widget
+- [ ] Make chat widget full-screen on mobile
+- [ ] Optimize message bubbles for narrow screens
+- [ ] Make file upload button larger and touch-friendly
+- [ ] Fix conversation list for mobile scrolling
+- [ ] Ensure call buttons work on mobile
+
+### RFQ Forms & Dashboards
+- [ ] Stack form fields vertically on mobile
+- [ ] Make input fields larger for touch input
+- [ ] Optimize date/location pickers for mobile
+- [ ] Make RFQ cards stack on small screens
+- [ ] Fix bid submission form for mobile
+
+### Materials Catalog
+- [ ] Make material cards responsive (1 column on mobile)
+- [ ] Optimize filters for mobile (collapsible)
+- [ ] Make search bar full-width on mobile
+- [ ] Enable swipe gestures for material details
+- [ ] Fix CCPS scoring display for small screens
+
+### Supplier Portal & Admin
+- [ ] Make supplier dashboard mobile-friendly
+- [ ] Optimize admin verification queue for mobile
+- [ ] Fix tables to scroll horizontally on mobile
+- [ ] Make action buttons larger and stackable
+
+### Global Mobile Optimizations
+- [ ] Add viewport meta tag for proper scaling
+- [ ] Test on 320px, 375px, 414px, 768px breakpoints
+- [ ] Ensure all buttons are min 44x44px (Apple guidelines)
+- [ ] Fix any horizontal scroll issues
+- [ ] Optimize images for mobile bandwidth
