@@ -24,6 +24,7 @@
     "@azure/ai-projects": "^1.0.1",
     "@azure/app-configuration": "^1.11.0",
     "@azure/identity": "^4.13.0",
+    "@azure/web-pubsub": "^1.1.4",
     "@azure/keyvault-secrets": "^4.10.0",
     "@azure/msal-node": "^5.0.3",
     "@azure/search-documents": "^12.2.0",
