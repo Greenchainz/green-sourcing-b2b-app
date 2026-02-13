@@ -30,6 +30,13 @@ export const PoweredBy: React.FC<PoweredByProps> = ({
         <span>EPD certified by</span>
         <strong>EPD International</strong>
       </div>
+      <div className="powered-by-badge">
+        <img
+          src="/trust/microsoft-partner.png"
+          alt="Microsoft Partner"
+          className="h-7 w-auto"
+        />
+      </div>
     </div>
   );
 };

@@ -209,6 +209,31 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Video Section - Platform Demo */}
+      <section className="py-20 px-6 bg-white relative overflow-hidden">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">
+              See GreenChainz in Action
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Watch how teams are cutting compliance time by 85% and saving thousands per project.
+            </p>
+          </div>
+          <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 shadow-2xl">
+            {/* VIDEO PLACEHOLDER - Replace src with actual video URL */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-300/50 cursor-pointer hover:scale-110 transition-transform duration-300">
+                <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <p className="text-slate-500 text-sm font-medium">Platform Demo Coming Soon</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Tools Section - Premium Cards */}
       <section id="tools" className="py-24 px-6 section-gradient-2 relative overflow-hidden">
         {/* Decorative blobs */}

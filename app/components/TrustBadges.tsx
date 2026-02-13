@@ -78,6 +78,14 @@ const BADGES: TrustBadge[] = [
     height: 36,
     unoptimized: true,
   },
+  {
+    src: '/trust/microsoft-partner.png',
+    alt: 'Microsoft Partner',
+    label: 'Microsoft Partner',
+    href: 'https://partner.microsoft.com/',
+    width: 170,
+    height: 44,
+  },
 ]
 
 export default function TrustBadges({
