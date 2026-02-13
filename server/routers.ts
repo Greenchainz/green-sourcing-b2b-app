@@ -795,6 +795,18 @@ export const appRouter = router({
       const { checkVideoLimit } = await import('./messaging-paywall');
       return await checkVideoLimit(ctx.user.id);
     }),
+
+    createDirectConversation: protectedProcedure
+      .input(z.object({ supplierId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const { getOrCreateConversation } = await import('./messaging-service');
+        const conversation = await getOrCreateConversation({
+          rfqId: null,
+          buyerId: ctx.user.id,
+          supplierId: input.supplierId,
+        });
+        return { conversationId: conversation.id };
+      }),
   }),
 
   // ─── Video Calling (Dual System: WebRTC for Standard, ACS for Premium) ────

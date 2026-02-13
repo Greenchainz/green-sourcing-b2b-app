@@ -644,3 +644,13 @@
 - [x] Wire buyer dashboard "Message Supplier" button to context method
 - [x] Wire supplier dashboard "Message Buyer" button to context method
 - [x] Test: Click "Message" button → Widget opens → Correct conversation selected
+
+
+## New Conversation Feature
+
+- [x] Add "New Conversation" button to UnifiedChatWidget header
+- [x] Create SupplierSearchModal component with search/filter functionality
+- [x] Add tRPC procedure: createDirectConversation(supplierId) → creates conversation with rfqId=null
+- [x] Update conversation list to show both RFQ-linked and direct conversations
+- [x] Add visual badges: "RFQ: Project Name" vs "Direct Inquiry"
+- [x] Test: Click "New Conversation" → Search supplier → Select → Conversation created → Widget shows it
