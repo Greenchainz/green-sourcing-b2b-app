@@ -16,6 +16,7 @@ import { formatDistanceToNow } from "date-fns";
 import { CertificationBadge } from "@/components/CertificationBadge";
 import { RfqMapView } from "@/components/RfqMapView";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChatWidget } from "@/contexts/ChatWidgetContext";
 
 type SortBy = "matchScore" | "datePosted" | "dueDate" | "distance";
 type StatusFilter = "all" | "new" | "active" | "closed";
@@ -28,6 +29,7 @@ export default function SupplierRfqDashboard() {
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const { user } = useAuth();
+  const { openWithConversation } = useChatWidget();
 
   // Fetch matched RFQs for current supplier
   const { data: rfqs, isLoading } = trpc.supplierRfq.getMatchedRfqs.useQuery();
@@ -89,10 +91,7 @@ export default function SupplierRfqDashboard() {
   };
 
   const handleOpenConversation = (rfqId: number, buyerId: number) => {
-    // The UnifiedChatWidget will automatically show the conversation
-    // This function triggers the widget to open with the specific conversation
-    console.log("Opening conversation:", { rfqId, buyerId });
-    // TODO: Emit event or use state management to open chat widget with specific conversation
+    openWithConversation({ rfqId, buyerId });
   };
 
   return (

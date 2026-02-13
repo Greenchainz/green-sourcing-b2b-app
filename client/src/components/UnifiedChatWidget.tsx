@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChatWidget } from "@/contexts/ChatWidgetContext";
 
 interface Message {
   id: number;
@@ -32,10 +33,9 @@ interface Conversation {
 
 export function UnifiedChatWidget() {
   const { user } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, selectedConversationId, pendingConversation, openWidget, closeWidget, toggleWidget, selectConversation, clearPendingConversation } = useChatWidget();
   const [isMinimized, setIsMinimized] = useState(false);
   const [messageInput, setMessageInput] = useState("");
-  const [selectedConversationId, setSelectedConversationId] = useState<number | undefined>();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: conversations } = trpc.messaging.getConversations.useQuery(undefined, {
@@ -74,6 +74,30 @@ export function UnifiedChatWidget() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Handle pending conversation from context (when opened via external trigger)
+  useEffect(() => {
+    if (isOpen && pendingConversation && conversations) {
+      // Find conversation matching the pending params
+      const matchingConv = conversations.find((conv) => {
+        if (pendingConversation.rfqId && conv.rfqId === pendingConversation.rfqId) {
+          // Match by RFQ and either buyer or supplier
+          if (pendingConversation.supplierId && conv.supplierId === pendingConversation.supplierId) {
+            return true;
+          }
+          if (pendingConversation.buyerId && conv.buyerId === pendingConversation.buyerId) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (matchingConv) {
+        selectConversation(matchingConv.id);
+        clearPendingConversation();
+      }
+    }
+  }, [isOpen, pendingConversation, conversations]);
 
   // Mark messages as read when conversation is selected
   useEffect(() => {
@@ -146,7 +170,7 @@ export function UnifiedChatWidget() {
       {/* Floating Chat Bubble */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={openWidget}
           className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-50"
         >
           <MessageCircle className="h-6 w-6" />
@@ -188,7 +212,7 @@ export function UnifiedChatWidget() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-white hover:bg-white/20"
-                onClick={() => setIsOpen(false)}
+                onClick={closeWidget}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -205,7 +229,7 @@ export function UnifiedChatWidget() {
                       {conversations.map((conv) => (
                         <button
                           key={conv.id}
-                          onClick={() => setSelectedConversationId(conv.id)}
+                          onClick={() => selectConversation(conv.id)}
                           className="w-full p-3 rounded-lg border hover:bg-accent transition-colors text-left"
                         >
                           <div className="flex items-start justify-between">
@@ -305,7 +329,7 @@ export function UnifiedChatWidget() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSelectedConversationId(undefined)}
+                        onClick={() => selectConversation(null)}
                         className="text-xs"
                       >
                         ← Back to conversations

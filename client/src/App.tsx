@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ChatWidgetProvider } from "./contexts/ChatWidgetContext";
 import Home from "./pages/Home";
 import ApiTest from "./pages/ApiTest";
 import ExcelAudit from "./pages/ExcelAudit";
@@ -86,11 +87,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-            <UnifiedChatWidget />
-            <IncomingCallNotification onAccept={handleAcceptCall} />
+          <ChatWidgetProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+              <UnifiedChatWidget />
+              <IncomingCallNotification onAccept={handleAcceptCall} />
             {activeCall && (
               <WebRTCVideoCall
                 conversationId={activeCall.conversationId}
@@ -100,6 +102,7 @@ function App() {
               />
             )}
           </TooltipProvider>
+          </ChatWidgetProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -633,3 +633,14 @@
 - [ ] Add widget to supplier profile pages
 - [ ] Test agent routing with all conversation types
 - [ ] Test human handoff with different supplier configurations
+
+
+## Chat Widget State Management
+
+- [x] Create ChatWidgetContext for global state (isOpen, selectedConversationId, openWithConversation method)
+- [x] Wrap App.tsx with ChatWidgetProvider
+- [x] Update UnifiedChatWidget to consume ChatWidgetContext
+- [x] Add openConversation method that finds/creates conversation and opens widget
+- [x] Wire buyer dashboard "Message Supplier" button to context method
+- [x] Wire supplier dashboard "Message Buyer" button to context method
+- [x] Test: Click "Message" button → Widget opens → Correct conversation selected
