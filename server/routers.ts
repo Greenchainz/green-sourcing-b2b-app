@@ -796,15 +796,70 @@ export const appRouter = router({
       return await checkVideoLimit(ctx.user.id);
     }),
 
+    getRecentSuppliers: protectedProcedure.query(async ({ ctx }) => {
+      const { getDb } = await import('./db');
+      const { conversations, suppliers } = await import('../drizzle/schema');
+      const { eq, or, desc } = await import('drizzle-orm');
+
+      const db = await getDb();
+      if (!db) return [];
+
+      // Get conversations where user is buyer (recent suppliers are the supplierId)
+      const recentConvs = await db
+        .select({
+          supplierId: conversations.supplierId,
+          companyName: suppliers.companyName,
+          city: suppliers.city,
+          state: suppliers.state,
+          isPremium: suppliers.isPremium,
+          verified: suppliers.verified,
+          certifications: suppliers.certifications,
+        })
+        .from(conversations)
+        .innerJoin(suppliers, eq(conversations.supplierId, suppliers.id))
+        .where(eq(conversations.buyerId, ctx.user.id))
+        .orderBy(desc(conversations.createdAt))
+        .limit(5);
+
+      // Deduplicate by supplierId
+      const uniqueSuppliers = Array.from(
+        new Map(recentConvs.map((s) => [s.supplierId, { id: s.supplierId, ...s }])).values()
+      );
+
+      return uniqueSuppliers;
+    }),
+
     createDirectConversation: protectedProcedure
       .input(z.object({ supplierId: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const { getOrCreateConversation } = await import('./messaging-service');
+        const { sendInAppNotification } = await import('./notification-service');
+        const { getDb } = await import('./db');
+        const { suppliers } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+
         const conversation = await getOrCreateConversation({
           rfqId: null,
           buyerId: ctx.user.id,
           supplierId: input.supplierId,
         });
+
+        // Get supplier user ID for notification
+        const db = await getDb();
+        if (db) {
+          const supplier = await db.select().from(suppliers).where(eq(suppliers.id, input.supplierId)).limit(1);
+          if (supplier.length > 0 && supplier[0].userId) {
+            // Create notification for supplier
+            await sendInAppNotification({
+              userId: supplier[0].userId,
+              type: 'new_message',
+              title: 'New Direct Conversation',
+              content: `${ctx.user.name} started a conversation with you`,
+              relatedId: conversation.id,
+            });
+          }
+        }
+
         return { conversationId: conversation.id };
       }),
   }),

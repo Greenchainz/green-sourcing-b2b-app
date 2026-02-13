@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
@@ -38,6 +39,7 @@ export function UnifiedChatWidget() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [conversationFilter, setConversationFilter] = useState<"all" | "rfq" | "direct" | "agent" | "human">("all");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: conversations } = trpc.messaging.getConversations.useQuery(undefined, {
@@ -174,6 +176,16 @@ export function UnifiedChatWidget() {
     }
   };
 
+  // Filter conversations based on selected filter
+  const filteredConversations = conversations?.filter((conv) => {
+    if (conversationFilter === "all") return true;
+    if (conversationFilter === "rfq") return conv.rfqId !== null;
+    if (conversationFilter === "direct") return conv.rfqId === null;
+    if (conversationFilter === "agent") return conv.handoffStatus === "agent";
+    if (conversationFilter === "human") return conv.handoffStatus === "human" || conv.handoffStatus === "pending_handoff";
+    return true;
+  });
+
   const selectedConversation = conversations?.find((c) => c.id === selectedConversationId);
 
   if (!user) return null;
@@ -238,7 +250,7 @@ export function UnifiedChatWidget() {
               {!selectedConversationId ? (
                 <div className="flex-1 flex flex-col">
                   {/* New Conversation Button */}
-                  <div className="p-4 pb-2">
+                  <div className="p-4 pb-2 space-y-2">
                     <Button
                       onClick={() => setShowNewConversationModal(true)}
                       className="w-full bg-green-600 hover:bg-green-700"
@@ -247,12 +259,26 @@ export function UnifiedChatWidget() {
                       <Plus className="h-4 w-4 mr-2" />
                       New Conversation
                     </Button>
+
+                    {/* Filter Dropdown */}
+                    <Select value={conversationFilter} onValueChange={(value: any) => setConversationFilter(value)}>
+                      <SelectTrigger className="w-full h-8 text-xs">
+                        <SelectValue placeholder="Filter conversations" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Conversations</SelectItem>
+                        <SelectItem value="rfq">RFQ Only</SelectItem>
+                        <SelectItem value="direct">Direct Only</SelectItem>
+                        <SelectItem value="agent">AI Agent</SelectItem>
+                        <SelectItem value="human">Human Support</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <ScrollArea className="flex-1 px-4 pb-4">
-                    {conversations && conversations.length > 0 ? (
+                    {filteredConversations && filteredConversations.length > 0 ? (
                     <div className="space-y-2">
-                      {conversations.map((conv) => (
+                      {filteredConversations.map((conv) => (
                         <button
                           key={conv.id}
                           onClick={() => selectConversation(conv.id)}

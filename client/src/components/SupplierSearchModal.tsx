@@ -21,6 +21,10 @@ export function SupplierSearchModal({ isOpen, onClose, onSelectSupplier }: Suppl
     { enabled: isOpen }
   );
 
+  const { data: recentSuppliers } = trpc.messaging.getRecentSuppliers.useQuery(undefined, {
+    enabled: isOpen,
+  });
+
   const handleSelectSupplier = (supplierId: number, supplierName: string) => {
     onSelectSupplier(supplierId, supplierName);
     setSearchQuery("");
@@ -48,6 +52,48 @@ export function SupplierSearchModal({ isOpen, onClose, onSelectSupplier }: Suppl
 
           {/* Supplier List */}
           <ScrollArea className="h-[400px] pr-4">
+            {/* Recent Suppliers Section */}
+            {!searchQuery && recentSuppliers && recentSuppliers.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2 px-1">Recently Contacted</h3>
+                <div className="space-y-2">
+                  {recentSuppliers.map((supplier: any) => (
+                    <button
+                      key={supplier.id}
+                      onClick={() => handleSelectSupplier(supplier.id, supplier.companyName)}
+                      className="w-full p-3 border rounded-lg hover:bg-accent transition-colors text-left bg-blue-50/50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-sm">{supplier.companyName}</h3>
+                          {supplier.city && supplier.state && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3" />
+                              {supplier.city}, {supplier.state}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          {supplier.isPremium === 1 && (
+                            <Badge className="bg-yellow-500 text-xs h-5">
+                              <Star className="h-2 w-2" />
+                            </Badge>
+                          )}
+                          {supplier.verified === 1 && (
+                            <Badge variant="secondary" className="text-xs h-5">
+                              <Award className="h-2 w-2" />
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t my-3" />
+              </div>
+            )}
+
+            {/* Search Results */}
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading suppliers...</div>
             ) : suppliers && suppliers.length > 0 ? (
