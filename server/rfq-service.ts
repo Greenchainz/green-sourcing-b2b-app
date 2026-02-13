@@ -316,6 +316,39 @@ export async function submitBid(
       content: `You received a new bid of $${bidPrice.toFixed(2)} for your RFQ`,
       relatedId: rfqId,
     });
+
+    // Send email notification to buyer
+    const { sendBidReceivedEmail } = await import("./email-service");
+    const { users } = await import("../drizzle/schema");
+    
+    const [buyerInfo] = await db
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(eq(users.id, buyerId))
+      .execute();
+    
+    const [rfqInfo] = await db
+      .select({ projectName: rfqs.projectName })
+      .from(rfqs)
+      .where(eq(rfqs.id, rfqId))
+      .execute();
+    
+    const [supplierInfo] = await db
+      .select({ companyName: suppliers.companyName })
+      .from(suppliers)
+      .where(eq(suppliers.id, supplierId))
+      .execute();
+
+    if (buyerInfo && buyerInfo.email && rfqInfo && supplierInfo) {
+      await sendBidReceivedEmail({
+        buyerEmail: buyerInfo.email,
+        buyerName: buyerInfo.name || "Buyer",
+        supplierName: supplierInfo.companyName,
+        projectName: rfqInfo.projectName,
+        bidAmount: `$${bidPrice.toFixed(2)}`,
+        rfqId,
+      });
+    }
   }
 
   return { bidId };
@@ -430,8 +463,73 @@ export async function acceptBid(rfqId: number, bidId: number): Promise<{ success
     .where(eq(rfqAnalytics.rfqId, rfqId))
     .execute();
 
-  // Notify all suppliers (skip for now - userId mapping needed)
-  // TODO: Send notifications to all suppliers whose bids were rejected
+  // Get bid and supplier info for accepted bid
+  const [acceptedBid] = await db
+    .select({ supplierId: rfqBids.supplierId, bidPrice: rfqBids.bidPrice })
+    .from(rfqBids)
+    .where(eq(rfqBids.id, bidId))
+    .execute();
+
+  const [rfqInfo] = await db
+    .select({ projectName: rfqs.projectName, userId: rfqs.userId })
+    .from(rfqs)
+    .where(eq(rfqs.id, rfqId))
+    .execute();
+
+  if (acceptedBid && rfqInfo) {
+    // Get supplier info
+    const [supplierInfo] = await db
+      .select({ email: suppliers.email, companyName: suppliers.companyName, userId: suppliers.userId })
+      .from(suppliers)
+      .where(eq(suppliers.id, acceptedBid.supplierId))
+      .execute();
+
+    // Get buyer info
+    const { users } = await import("../drizzle/schema");
+    const [buyerInfo] = await db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, rfqInfo.userId!))
+      .execute();
+
+    // Send acceptance email to winning supplier
+    if (supplierInfo && supplierInfo.email && buyerInfo) {
+      const { sendBidAcceptedEmail } = await import("./email-service");
+      await sendBidAcceptedEmail({
+        supplierEmail: supplierInfo.email,
+        supplierName: supplierInfo.companyName,
+        buyerName: buyerInfo.name || "Buyer",
+        projectName: rfqInfo.projectName,
+        bidAmount: `$${parseFloat(acceptedBid.bidPrice || "0").toFixed(2)}`,
+        rfqId,
+      });
+    }
+
+    // Send rejection emails to other suppliers
+    const rejectedBids = await db
+      .select({ supplierId: rfqBids.supplierId })
+      .from(rfqBids)
+      .where(and(eq(rfqBids.rfqId, rfqId), sql`id != ${bidId}`))
+      .execute();
+
+    const { sendBidRejectedEmail } = await import("./email-service");
+    for (const rejectedBid of rejectedBids) {
+      const [rejectedSupplier] = await db
+        .select({ email: suppliers.email, companyName: suppliers.companyName })
+        .from(suppliers)
+        .where(eq(suppliers.id, rejectedBid.supplierId))
+        .execute();
+
+      if (rejectedSupplier && rejectedSupplier.email && buyerInfo) {
+        await sendBidRejectedEmail({
+          supplierEmail: rejectedSupplier.email,
+          supplierName: rejectedSupplier.companyName,
+          buyerName: buyerInfo.name || "Buyer",
+          projectName: rfqInfo.projectName,
+        });
+      }
+    }
+  }
 
   return { success: true };
 }

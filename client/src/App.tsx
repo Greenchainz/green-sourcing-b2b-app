@@ -31,6 +31,7 @@ import { ChainBot } from "./components/ChainBot";
 import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
 import { UnifiedChatWidget } from "./components/UnifiedChatWidget";
+import AdminVerificationQueue from "./pages/AdminVerificationQueue";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/supplier/rfqs" component={SupplierRfqDashboard} />
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />
+      <Route path="/admin/verification" component={AdminVerificationQueue} />
       <Route path={"/api-test"} component={ApiTest} />
       <Route path={"/tools/excel"} component={ExcelAudit} />
       <Route path={"/about"} component={About} />
