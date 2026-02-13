@@ -654,3 +654,35 @@
 - [x] Update conversation list to show both RFQ-linked and direct conversations
 - [x] Add visual badges: "RFQ: Project Name" vs "Direct Inquiry"
 - [x] Test: Click "New Conversation" → Search supplier → Select → Conversation created → Widget shows it
+
+
+## Unread Message Badge
+
+- [ ] Add unread count badge to floating chat bubble (when widget is closed)
+- [ ] Badge shows number of unread messages with red background
+- [ ] Badge positioned at top-right corner of chat icon
+- [ ] Test: Receive message → Badge appears with count → Open widget → Badge disappears
+
+
+## Conversation Filters
+
+- [x] Add filter dropdown above conversation list (All/RFQ Only/Direct Only/Agent/Human)
+- [x] Filter conversations based on selected filter type
+- [x] Persist filter selection in component state
+- [x] Test: Select "RFQ Only" → Only RFQ conversations shown
+
+## Direct Conversation Notifications
+
+- [x] Add notification creation in createDirectConversation mutation
+- [x] Send in-app notification to supplier when buyer starts direct conversation
+- [x] Send email notification to supplier (optional, based on supplier preferences)
+- [x] Include buyer name and conversation link in notification
+- [x] Test: Create direct conversation → Supplier receives notification
+
+## Recent Suppliers Section
+
+- [x] Add "Recently Contacted" section to SupplierSearchModal
+- [x] Query conversations to get unique supplier IDs user has messaged
+- [x] Display recent suppliers at top of modal (before search results)
+- [x] Limit to 5 most recent suppliers
+- [x] Test: Message supplier → Close modal → Reopen → Supplier appears in "Recent" section
