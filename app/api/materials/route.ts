@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { calculateCcps } from "@/lib/greenchainz";
 const pool = getPool();
 
 /**
@@ -164,9 +165,39 @@ export async function GET(request: NextRequest) {
     const countResult = await pool.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0]?.total || "0");
 
+    // Calculate CCPS scores for each material
+    const materialsWithScores = await Promise.all(
+      result.rows.map(async (material: any) => {
+        try {
+          const ccpsScore = await calculateCcps({
+            materialId: material.id,
+            gwp: material.gwp,
+            category: material.category,
+            certifications: material.certifications || [],
+            epdUrl: material.epd_url,
+            manufacturer: material.manufacturer,
+          });
+          return {
+            ...material,
+            ccps_score: ccpsScore.composite,
+            ccps_breakdown: ccpsScore.breakdown,
+            ccps_grade: ccpsScore.grade,
+          };
+        } catch (error) {
+          console.error(`[CCPS] Failed to calculate score for material ${material.id}:`, error);
+          return {
+            ...material,
+            ccps_score: null,
+            ccps_breakdown: null,
+            ccps_grade: null,
+          };
+        }
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      data: result.rows,
+      data: materialsWithScores,
       pagination: {
         total,
         limit,
