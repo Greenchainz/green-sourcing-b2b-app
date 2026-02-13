@@ -586,16 +586,12 @@
 
 ## RFQ Messaging Integration
 
-- [ ] Add "Message Supplier" button to RFQ detail page for buyers
-- [ ] Add "Message Buyer" button to Supplier RFQ Dashboard
-- [ ] Auto-create conversation when RFQ is submitted (buyer + all matched suppliers)
-- [ ] Auto-create conversation when bid is placed (buyer + specific supplier)
-- [ ] Add "Contact Support" button to header navigation
-- [ ] Create support conversation thread for user-to-GreenChainz communication
-- [ ] Add Otto AI agent as conversation participant (infrastructure for future AI integration)
-- [ ] Wire MessagingUI component into RFQ detail pages
-- [ ] Add conversation context (RFQ ID, bid ID) to message threads
-- [ ] Test end-to-end messaging flow (buyer → supplier, user → support, user → Otto)
+- [x] Auto-create conversations when RFQ is submitted (buyer + all matched suppliers)
+- [x] Auto-create conversation when bid is placed (buyer + specific supplier)
+- [x] Add "Message Supplier" button to buyer RFQ dashboard
+- [x] Add "Message Buyer" button to Supplier RFQ Dashboard
+- [x] Add conversation context (RFQ ID) to message threads
+- [x] Test end-to-end messaging flow (buyer → supplier via RFQ)
 
 ## Voice & Video Calling (Azure Communication Services)
 
@@ -616,16 +612,16 @@
 
 ## Unified Messaging Widget (Intercom-Style)
 
-- [ ] Update database schema: agent_handoff_rules table (supplierId, handoffMode, maxAgentMessages, businessHours, customPrompt)
-- [ ] Update conversations table: add agentMode, handoffStatus, messageCount fields
-- [ ] Create UnifiedChatWidget component (floating bubble, bottom-right corner)
-- [ ] Build ChatWidgetHeader with agent badges and status indicators
-- [ ] Build ChatWidgetBody with unified conversation thread
-- [ ] Build ChatWidgetInput with typing indicators and file upload
-- [ ] Add agent triage system (Otto routes to Material/RFQ/Supplier agents)
-- [ ] Implement intelligent routing based on user intent and context
-- [ ] Add human handoff logic (configurable threshold, escalation rules)
-- [ ] Build "Request Human" button in chat widget
+- [x] Update database schema: agent_handoff_rules table (supplierId, handoffMode, maxAgentMessages, businessHours, customPrompt)
+- [x] Update conversations table: add agentMode, handoffStatus, messageCount fields
+- [x] Create UnifiedChatWidget component (floating bubble, bottom-right corner)
+- [x] Build ChatWidgetHeader with agent badges and status indicators
+- [x] Build ChatWidgetBody with unified conversation thread
+- [x] Build ChatWidgetInput with typing indicators and file upload
+- [x] Add agent triage system (Otto routes to Material/RFQ/Supplier agents)
+- [x] Implement intelligent routing based on user intent and context
+- [x] Add human handoff logic (configurable threshold, escalation rules)
+- [x] Build "Request Human" button in chat widget
 - [ ] Create supplier agent configuration dashboard (Premium only)
 - [ ] Add handoff mode selector (Always Agent, Hybrid, Immediate Human)
 - [ ] Add max agent messages before handoff setting

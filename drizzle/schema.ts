@@ -458,7 +458,7 @@ export type RfqMessage = typeof rfqMessages.$inferSelect;
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["rfq_new", "rfq_match", "new_message", "bid_accepted", "bid_rejected", "rfq_closed"]).notNull(),
+  type: mysqlEnum("type", ["rfq_new", "rfq_match", "new_message", "bid_accepted", "bid_rejected", "rfq_closed", "rfq_bid_received"]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content"),
   relatedRfqId: int("relatedRfqId"),

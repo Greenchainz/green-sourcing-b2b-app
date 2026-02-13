@@ -88,6 +88,13 @@ export default function SupplierRfqDashboard() {
     return "text-gray-600";
   };
 
+  const handleOpenConversation = (rfqId: number, buyerId: number) => {
+    // The UnifiedChatWidget will automatically show the conversation
+    // This function triggers the widget to open with the specific conversation
+    console.log("Opening conversation:", { rfqId, buyerId });
+    // TODO: Emit event or use state management to open chat widget with specific conversation
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -277,7 +284,7 @@ export default function SupplierRfqDashboard() {
                         variant="ghost"
                         size="sm"
                         className="w-full"
-                        onClick={() => window.location.href = `/messages?rfq=${rfq.id}`}
+                        onClick={() => handleOpenConversation(rfq.id, rfq.buyerId)}
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Message Buyer

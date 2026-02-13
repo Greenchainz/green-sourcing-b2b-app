@@ -2,7 +2,7 @@ import { getDb } from "./db";
 import { notifications } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-export type NotificationType = "rfq_new" | "rfq_match" | "new_message" | "bid_accepted" | "bid_rejected" | "rfq_closed";
+export type NotificationType = "rfq_new" | "rfq_match" | "new_message" | "bid_accepted" | "bid_rejected" | "rfq_closed" | "rfq_bid_received";
 
 export interface NotificationPayload {
   userId: number;

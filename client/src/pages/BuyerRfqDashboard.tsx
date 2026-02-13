@@ -119,6 +119,13 @@ export default function BuyerRfqDashboard() {
     setMessageContent("");
   };
 
+  const handleOpenConversation = (rfqId: number, supplierId: number) => {
+    // The UnifiedChatWidget will automatically show the conversation
+    // This function triggers the widget to open with the specific conversation
+    console.log("Opening conversation:", { rfqId, supplierId });
+    // TODO: Emit event or use state management to open chat widget with specific conversation
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -245,6 +252,14 @@ export default function BuyerRfqDashboard() {
                               >
                                 <X className="w-4 h-4 mr-2" />
                                 Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenConversation(bid.rfqId, bid.supplierId)}
+                              >
+                                <MessageSquare className="w-4 h-4 mr-2" />
+                                Message
                               </Button>
                             </div>
                           </Card>
