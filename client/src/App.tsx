@@ -27,6 +27,10 @@ import GetStarted from "./pages/GetStarted";
 import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
 import { ChainBot } from "./components/ChainBot";
+import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
+import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
+import { useState } from "react";
+import { useWebPubSub } from "./hooks/useWebPubSub";
 
 function Router() {
   return (
@@ -60,6 +64,23 @@ function Router() {
 }
 
 function App() {
+  // Initialize WebPubSub connection for real-time notifications
+  useWebPubSub();
+
+  const [activeCall, setActiveCall] = useState<{
+    conversationId: number;
+    calleeId: number;
+    calleeName: string;
+  } | null>(null);
+
+  const handleAcceptCall = (callData: any) => {
+    setActiveCall({
+      conversationId: callData.conversationId,
+      calleeId: callData.callerId,
+      calleeName: callData.callerName,
+    });
+  };
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
@@ -68,6 +89,15 @@ function App() {
             <Toaster />
             <Router />
             <ChainBot />
+            <IncomingCallNotification onAccept={handleAcceptCall} />
+            {activeCall && (
+              <WebRTCVideoCall
+                conversationId={activeCall.conversationId}
+                calleeId={activeCall.calleeId}
+                calleeName={activeCall.calleeName}
+                onCallEnd={() => setActiveCall(null)}
+              />
+            )}
           </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>

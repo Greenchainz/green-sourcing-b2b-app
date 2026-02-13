@@ -568,3 +568,17 @@
 - [ ] Test peer-to-peer video call between two users (requires two logged-in users)
 - [ ] Test call controls (mute, camera off, hang up) (requires active call)
 - [ ] Test duration tracking and paywall limit enforcement (requires active call)
+
+
+## Incoming Call Notification UI
+
+- [x] Build IncomingCallNotification modal component
+- [x] Add accept/decline buttons with visual feedback
+- [x] Display caller name and avatar
+- [x] Add ringing animation (bouncing dots)
+- [x] Integrate WebSocket listener for incoming call events (useWebPubSub hook)
+- [x] Handle accept action (open WebRTCVideoCall component)
+- [x] Handle decline action (send rejection to caller)
+- [x] Auto-dismiss notification after timeout (30 seconds)
+- [x] Show notification in all pages (global component in App.tsx)
+- [ ] Test incoming call notification flow (requires two logged-in users)
