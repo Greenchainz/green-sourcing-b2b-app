@@ -37,7 +37,7 @@
     "@sentry/nextjs": "^10.36.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/office-js": "^1.0.1",
-    "axios": "^1.13.4",
+    "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.2",
     "connect-redis": "^7.1.1",
