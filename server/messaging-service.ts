@@ -205,6 +205,24 @@ export async function sendMessage(params: {
       type: "message",
       createdAt: newMessage[0].createdAt.toISOString(),
     });
+
+    // Send email notification to recipient
+    const [recipientInfo] = await db
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(eq(users.id, recipientId))
+      .execute();
+
+    if (recipientInfo && recipientInfo.email) {
+      const { sendNewMessageEmail } = await import("./email-service");
+      await sendNewMessageEmail({
+        recipientEmail: recipientInfo.email,
+        recipientName: recipientInfo.name || "User",
+        senderName: newMessage[0].senderName || "Someone",
+        messagePreview: content.length > 100 ? content.substring(0, 100) + "..." : content,
+        conversationId,
+      });
+    }
   }
 
   return newMessage[0];

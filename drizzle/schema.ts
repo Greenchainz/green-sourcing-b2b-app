@@ -308,6 +308,10 @@ export const suppliers = mysqlTable("suppliers", {
   premiumExpiresAt: timestamp("premiumExpiresAt"),
   sustainabilityScore: decimal("sustainabilityScore", { precision: 3, scale: 2 }), // 0-100, from D&B
   verified: tinyint("verified").default(0),
+  verificationStatus: mysqlEnum("verificationStatus", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  description: text("description"), // Company description for admin review
+  location: varchar("location", { length: 255 }), // Human-readable location (City, State)
   certifications: json("certifications").$type<string[]>(), // ["ISO 9001", "LEED", "FSC", etc.]
   maxOrderValue: decimal("maxOrderValue", { precision: 12, scale: 2 }), // Maximum order value supplier can handle
   currentCapacity: int("currentCapacity").default(100), // Current capacity percentage (0-100)

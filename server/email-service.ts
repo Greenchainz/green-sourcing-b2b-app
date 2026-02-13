@@ -19,20 +19,20 @@ interface EmailOptions {
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    // Create transporter (configure with your SMTP details)
+    // Zoho SMTP transporter
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
+      host: 'smtp.zoho.com',
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: process.env.ZOHO_EMAIL_USER,
+        pass: process.env.ZOHO_EMAIL_PASSWORD,
       },
     });
 
     // Send email
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"GreenChainz" <noreply@greenchainz.com>',
+      from: `"GreenChainz" <${process.env.ZOHO_EMAIL_USER}>`,
       to: options.to,
       subject: options.subject,
       text: options.text,
@@ -203,5 +203,227 @@ View and submit your bid: ${rfqUrl}
     subject: `New RFQ: ${data.projectName}`,
     html,
     text,
+  });
+}
+
+
+/**
+ * Send bid received notification to buyer
+ */
+export async function sendBidReceivedEmail(data: {
+  buyerEmail: string;
+  buyerName: string;
+  supplierName: string;
+  projectName: string;
+  bidAmount: string;
+  rfqId: number;
+}): Promise<boolean> {
+  const dashboardUrl = `${process.env.FRONTEND_URL || 'https://greenchainz.com'}/buyer/rfqs/${data.rfqId}`;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #3b82f6; color: white; padding: 20px; text-align: center; }
+    .content { background: #f9fafb; padding: 30px; }
+    .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    .highlight { background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📋 New Bid Received</h1>
+    </div>
+    <div class="content">
+      <p>Hi ${data.buyerName},</p>
+      <p>You've received a new bid for your RFQ: <strong>${data.projectName}</strong></p>
+      <div class="highlight">
+        <p><strong>Supplier:</strong> ${data.supplierName}</p>
+        <p><strong>Bid Amount:</strong> ${data.bidAmount}</p>
+      </div>
+      <p>Review the full bid details, compare with other bids, and message the supplier directly if you have questions.</p>
+      <center><a href="${dashboardUrl}" class="button">View Bid Details</a></center>
+    </div>
+    <div class="footer">
+      <p>GreenChainz - Sustainable Building Materials Marketplace</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  return sendEmail({
+    to: data.buyerEmail,
+    subject: `New Bid Received: ${data.projectName}`,
+    html,
+    text: `Hi ${data.buyerName}, You've received a new bid from ${data.supplierName} for ${data.projectName}. Bid Amount: ${data.bidAmount}. View details: ${dashboardUrl}`,
+  });
+}
+
+/**
+ * Send new message notification
+ */
+export async function sendNewMessageEmail(data: {
+  recipientEmail: string;
+  recipientName: string;
+  senderName: string;
+  messagePreview: string;
+  conversationId: number;
+}): Promise<boolean> {
+  const conversationUrl = `${process.env.FRONTEND_URL || 'https://greenchainz.com'}/messages?conversation=${data.conversationId}`;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #8b5cf6; color: white; padding: 20px; text-align: center; }
+    .content { background: #f9fafb; padding: 30px; }
+    .message { background: white; border-left: 4px solid #8b5cf6; padding: 15px; margin: 20px 0; font-style: italic; }
+    .button { display: inline-block; background: #8b5cf6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💬 New Message</h1>
+    </div>
+    <div class="content">
+      <p>Hi ${data.recipientName},</p>
+      <p><strong>${data.senderName}</strong> sent you a message:</p>
+      <div class="message">"${data.messagePreview}"</div>
+      <center><a href="${conversationUrl}" class="button">Reply to Message</a></center>
+    </div>
+    <div class="footer">
+      <p>GreenChainz - Sustainable Building Materials Marketplace</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  return sendEmail({
+    to: data.recipientEmail,
+    subject: `New message from ${data.senderName}`,
+    html,
+    text: `Hi ${data.recipientName}, ${data.senderName} sent you a message: "${data.messagePreview}". Reply: ${conversationUrl}`,
+  });
+}
+
+/**
+ * Send bid accepted notification to supplier
+ */
+export async function sendBidAcceptedEmail(data: {
+  supplierEmail: string;
+  supplierName: string;
+  buyerName: string;
+  projectName: string;
+  bidAmount: string;
+  rfqId: number;
+}): Promise<boolean> {
+  const dashboardUrl = `${process.env.FRONTEND_URL || 'https://greenchainz.com'}/supplier/rfqs/${data.rfqId}`;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #10b981; color: white; padding: 20px; text-align: center; }
+    .content { background: #f9fafb; padding: 30px; }
+    .success { background: #d1fae5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; }
+    .button { display: inline-block; background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎉 Congratulations!</h1>
+    </div>
+    <div class="content">
+      <p>Hi ${data.supplierName},</p>
+      <p>Great news! Your bid has been accepted by ${data.buyerName}.</p>
+      <div class="success">
+        <p><strong>Project:</strong> ${data.projectName}</p>
+        <p><strong>Accepted Bid:</strong> ${data.bidAmount}</p>
+      </div>
+      <p>The buyer will reach out to you shortly to coordinate next steps. You can also message them directly through the platform.</p>
+      <center><a href="${dashboardUrl}" class="button">View Project Details</a></center>
+    </div>
+    <div class="footer">
+      <p>GreenChainz - Sustainable Building Materials Marketplace</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  return sendEmail({
+    to: data.supplierEmail,
+    subject: `🎉 Your bid was accepted: ${data.projectName}`,
+    html,
+    text: `Hi ${data.supplierName}, Congratulations! Your bid for ${data.projectName} has been accepted by ${data.buyerName}. Bid Amount: ${data.bidAmount}. View details: ${dashboardUrl}`,
+  });
+}
+
+/**
+ * Send bid rejected notification to supplier
+ */
+export async function sendBidRejectedEmail(data: {
+  supplierEmail: string;
+  supplierName: string;
+  buyerName: string;
+  projectName: string;
+}): Promise<boolean> {
+  const dashboardUrl = `${process.env.FRONTEND_URL || 'https://greenchainz.com'}/supplier/rfqs`;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #6b7280; color: white; padding: 20px; text-align: center; }
+    .content { background: #f9fafb; padding: 30px; }
+    .button { display: inline-block; background: #6b7280; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Bid Update</h1>
+    </div>
+    <div class="content">
+      <p>Hi ${data.supplierName},</p>
+      <p>Thank you for submitting your bid for <strong>${data.projectName}</strong>.</p>
+      <p>Unfortunately, ${data.buyerName} has decided to move forward with another supplier for this project.</p>
+      <p>Don't be discouraged! There are many more opportunities on GreenChainz. Keep an eye out for new RFQ matches.</p>
+      <center><a href="${dashboardUrl}" class="button">View New RFQs</a></center>
+    </div>
+    <div class="footer">
+      <p>GreenChainz - Sustainable Building Materials Marketplace</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  return sendEmail({
+    to: data.supplierEmail,
+    subject: `Bid Update: ${data.projectName}`,
+    html,
+    text: `Hi ${data.supplierName}, Thank you for your bid on ${data.projectName}. ${data.buyerName} has decided to move forward with another supplier. View new RFQs: ${dashboardUrl}`,
   });
 }

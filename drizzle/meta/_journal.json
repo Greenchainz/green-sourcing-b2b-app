@@ -141,6 +141,13 @@
       "when": 1770998929917,
       "tag": "0019_orange_gorilla_man",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1771023908949,
+      "tag": "0020_blue_sue_storm",
+      "breakpoints": true
     }
   ]
 }
