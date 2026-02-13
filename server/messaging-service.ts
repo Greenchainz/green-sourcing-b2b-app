@@ -1,4 +1,4 @@
-import { eq, and, desc, or, isNull } from "drizzle-orm";
+import { eq, and, desc, or, isNull, ne } from "drizzle-orm";
 import { getDb } from "./db";
 import { conversations, messages, users, rfqs } from "../drizzle/schema";
 import { broadcastNotification } from "./webpubsub-manager";
@@ -73,6 +73,11 @@ export async function getUserConversations(userId: number) {
       handoffStatus: conversations.handoffStatus,
       agentMessageCount: conversations.agentMessageCount,
       lastMessageAt: conversations.lastMessageAt,
+      lastMessage: conversations.lastMessage,
+      isPinned: conversations.isPinned,
+      isArchived: conversations.isArchived,
+      label: conversations.label,
+      labelColor: conversations.labelColor,
       createdAt: conversations.createdAt,
       // Join RFQ details
       rfqTitle: rfqs.projectName,
@@ -118,6 +123,10 @@ export async function getConversationMessages(conversationId: number) {
       agentType: messages.agentType,
       content: messages.content,
       isRead: messages.isRead,
+      readAt: messages.readAt,
+      attachmentUrl: messages.attachmentUrl,
+      attachmentType: messages.attachmentType,
+      attachmentName: messages.attachmentName,
       createdAt: messages.createdAt,
       senderName: users.name,
       senderEmail: users.email,
@@ -150,10 +159,14 @@ export async function sendMessage(params: {
     content,
   });
 
-  // Update conversation lastMessageAt
+  // Update conversation lastMessageAt and lastMessage preview
+  const messagePreview = content.length > 50 ? content.substring(0, 50) + "..." : content;
   await db
     .update(conversations)
-    .set({ lastMessageAt: new Date() })
+    .set({ 
+      lastMessageAt: new Date(),
+      lastMessage: messagePreview,
+    })
     .where(eq(conversations.id, conversationId));
 
   // Get the new message with sender details
@@ -211,11 +224,15 @@ export async function markMessagesAsRead(params: {
 
   await db
     .update(messages)
-    .set({ isRead: 1 })
+    .set({ 
+      isRead: 1,
+      readAt: new Date(),
+    })
     .where(
       and(
         eq(messages.conversationId, conversationId),
-        eq(messages.senderId, userId)
+        ne(messages.senderId, userId), // Mark messages NOT sent by current user
+        eq(messages.isRead, 0), // Only mark unread messages
       )
     );
 

@@ -686,3 +686,76 @@
 - [x] Display recent suppliers at top of modal (before search results)
 - [x] Limit to 5 most recent suppliers
 - [x] Test: Message supplier → Close modal → Reopen → Supplier appears in "Recent" section
+
+
+## eBay-Style Messaging Features
+
+### Message Previews & Timestamps
+- [x] Add lastMessage and lastMessageTime to conversations query
+- [x] Display message preview (first 50 chars) under conversation name
+- [x] Add relative timestamps ("Just now", "5 min ago", "Yesterday 3:45 PM")
+- [x] Update conversation list to show preview + timestamp
+
+### Conversation Sorting
+- [x] Add sort dropdown (Newest First / Oldest First / Unread First)
+- [x] Sort conversations based on selected option
+- [x] Persist sort preference in component state
+
+### Typing Indicators
+- [ ] Add typing status to messages table or use WebPubSub events
+- [ ] Broadcast typing events via WebPubSub when user types
+- [ ] Display "Supplier is typing..." indicator in chat
+- [ ] Auto-clear typing indicator after 3 seconds of inactivity
+
+### Read Receipts
+- [x] Add readAt timestamp to messages table
+- [x] Update message as read when recipient views it
+- [x] Display "Seen" status with timestamp under sent messages
+- [x] Show double checkmark (✓✓) for read messages
+
+### Attachment Support
+- [x] Add attachmentUrl and attachmentType to messages table
+- [x] Add file upload button to message input
+- [x] Upload files to S3 via storagePut
+- [x] Display image previews inline, PDFs as download links
+- [x] Support image, PDF, document attachments
+
+### Quick Replies
+- [ ] Add quick reply buttons above message input
+- [ ] Pre-defined responses: "Thanks!", "Interested", "Need more info", "Can you send specs?"
+- [ ] Click quick reply → auto-fills message input
+
+### Message Reactions
+- [x] Add reactions table (messageId, userId, reactionType)
+- [x] Add reaction picker (👍 👎 ❤️ 🎉 ✅) on message hover
+- [x] Display reactions under messages with count
+- [x] Allow users to add/remove reactions
+
+### Conversation Actions
+- [ ] Add "Mark as Unread" button to conversation header
+- [x] Add "Archive" button to hide completed conversations
+- [x] Add "Pin Conversation" to keep important threads at top
+- [x] Show archived conversations in separate tab/filter
+
+### Conversation Labels/Tags
+- [ ] Add conversationLabels table (conversationId, label, color)
+- [ ] Add label dropdown: "Urgent", "Follow-up", "Negotiating", "Closed"
+- [ ] Display label badges on conversation cards
+- [ ] Filter conversations by label
+
+### Bulk Actions
+- [ ] Add checkbox selection to conversation list
+- [ ] Add bulk action bar: "Mark all as read", "Archive selected", "Delete selected"
+- [ ] Execute bulk operations on selected conversations
+
+### Message Search
+- [ ] Add search input in widget header
+- [ ] Search messages by content, sender name, or RFQ title
+- [ ] Highlight search results in conversation list
+- [ ] Jump to message in thread when clicked
+
+### RFQ/Bid Inline Cards
+- [ ] Detect RFQ/bid references in messages
+- [ ] Display rich cards with RFQ details (title, budget, deadline)
+- [ ] Show bid details (price, delivery time, status)
+- [ ] Add "View RFQ" / "View Bid" buttons in cards

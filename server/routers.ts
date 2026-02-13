@@ -764,6 +764,48 @@ export const appRouter = router({
         return { success: true, handedOff: false, agentType: triageResult.agentType };
       }),
 
+    sendMessageWithAttachment: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        content: z.string(),
+        attachmentUrl: z.string().optional(),
+        attachmentType: z.string().optional(),
+        attachmentName: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import('./db');
+        const { messages, conversations } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Insert message with attachment
+        const result = await db.insert(messages).values({
+          conversationId: input.conversationId,
+          senderId: ctx.user.id,
+          content: input.content,
+          attachmentUrl: input.attachmentUrl,
+          attachmentType: input.attachmentType,
+          attachmentName: input.attachmentName,
+        });
+
+        // Update conversation lastMessage and lastMessageAt
+        const messagePreview = input.attachmentType 
+          ? `📎 ${input.attachmentName || 'Attachment'}`
+          : (input.content.length > 50 ? input.content.substring(0, 50) + "..." : input.content);
+        
+        await db
+          .update(conversations)
+          .set({ 
+            lastMessageAt: new Date(),
+            lastMessage: messagePreview,
+          })
+          .where(eq(conversations.id, input.conversationId));
+
+        return { success: true, messageId: Number(result[0].insertId) };
+      }),
+
     markConversationAsRead: protectedProcedure
       .input(z.object({ conversationId: z.number() }))
       .mutation(async ({ input, ctx }) => {
@@ -778,6 +820,141 @@ export const appRouter = router({
       const { getUnreadMessageCount } = await import('./messaging-service');
       return await getUnreadMessageCount(ctx.user.id);
     }),
+
+    addReaction: protectedProcedure
+      .input(z.object({
+        messageId: z.number(),
+        reactionType: z.enum(["thumbs_up", "thumbs_down", "heart", "party", "check"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import('./db');
+        const { messageReactions } = await import('../drizzle/schema');
+        const { eq, and } = await import('drizzle-orm');
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Check if user already reacted with this type
+        const existing = await db
+          .select()
+          .from(messageReactions)
+          .where(
+            and(
+              eq(messageReactions.messageId, input.messageId),
+              eq(messageReactions.userId, ctx.user.id),
+              eq(messageReactions.reactionType, input.reactionType)
+            )
+          )
+          .limit(1);
+
+        if (existing.length > 0) {
+          // Remove reaction if already exists (toggle)
+          await db
+            .delete(messageReactions)
+            .where(eq(messageReactions.id, existing[0].id));
+          return { added: false };
+        }
+
+        // Add new reaction
+        await db.insert(messageReactions).values({
+          messageId: input.messageId,
+          userId: ctx.user.id,
+          reactionType: input.reactionType,
+        });
+
+        return { added: true };
+      }),
+
+    getMessageReactions: protectedProcedure
+      .input(z.object({ messageId: z.number() }))
+      .query(async ({ input }) => {
+        const { getDb } = await import('./db');
+        const { messageReactions } = await import('../drizzle/schema');
+        const { eq, sql } = await import('drizzle-orm');
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Get reaction counts grouped by type
+        const reactions = await db
+          .select({
+            reactionType: messageReactions.reactionType,
+            count: sql<number>`COUNT(*)`
+          })
+          .from(messageReactions)
+          .where(eq(messageReactions.messageId, input.messageId))
+          .groupBy(messageReactions.reactionType);
+
+        return reactions;
+      }),
+
+    pinConversation: protectedProcedure
+      .input(z.object({ conversationId: z.number(), pinned: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import('./db');
+        const { conversations } = await import('../drizzle/schema');
+        const { eq, and } = await import('drizzle-orm');
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Verify user is part of conversation
+        const conversation = await db
+          .select()
+          .from(conversations)
+          .where(eq(conversations.id, input.conversationId))
+          .limit(1);
+
+        if (conversation.length === 0) {
+          throw new Error("Conversation not found");
+        }
+
+        const conv = conversation[0];
+        if (conv.buyerId !== ctx.user.id && conv.supplierId !== ctx.user.id) {
+          throw new Error("Unauthorized");
+        }
+
+        await db
+          .update(conversations)
+          .set({ isPinned: input.pinned ? 1 : 0 })
+          .where(eq(conversations.id, input.conversationId));
+
+        return { success: true };
+      }),
+
+    archiveConversation: protectedProcedure
+      .input(z.object({ conversationId: z.number(), archived: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        const { getDb } = await import('./db');
+        const { conversations } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Verify user is part of conversation
+        const conversation = await db
+          .select()
+          .from(conversations)
+          .where(eq(conversations.id, input.conversationId))
+          .limit(1);
+
+        if (conversation.length === 0) {
+          throw new Error("Conversation not found");
+        }
+
+        const conv = conversation[0];
+        if (conv.buyerId !== ctx.user.id && conv.supplierId !== ctx.user.id) {
+          throw new Error("Unauthorized");
+        }
+
+        await db
+          .update(conversations)
+          .set({ isArchived: input.archived ? 1 : 0 })
+          .where(eq(conversations.id, input.conversationId));
+
+        return { success: true };
+      }),
 
     getUserUsageStats: protectedProcedure.query(async ({ ctx }) => {
       const { getUserUsageStats } = await import('./messaging-paywall');

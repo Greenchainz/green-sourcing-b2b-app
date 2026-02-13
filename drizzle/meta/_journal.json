@@ -127,6 +127,13 @@
       "when": 1770989129573,
       "tag": "0017_brainy_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1770997515028,
+      "tag": "0018_new_dragon_man",
+      "breakpoints": true
     }
   ]
 }
