@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `video_calls` (\n  `id` int AUTO_INCREMENT PRIMARY KEY,\n  `callId` varchar(255) NOT NULL UNIQUE,\n  `callerId` int NOT NULL,\n  `calleeId` int NOT NULL,\n  `conversationId` int NOT NULL,\n  `status` enum('initiated', 'ringing', 'connected', 'ended', 'failed') NOT NULL DEFAULT 'initiated',\n  `startedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `endedAt` timestamp NULL,\n  `durationSeconds` int NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute CREATE TABLE IF NOT EXISTS `video_calls` (\n  `id` int AUTO_INCREMENT PRIMARY KEY,\n  `callId` varchar(255) NOT NULL UNIQUE,\n  `callerId` int NOT NULL,\n  `calleeId` int NOT NULL,\n  `conversationId` int NOT NULL,\n  `status` enum('initiated', 'ringing', 'connected', 'ended', 'failed') NOT NULL DEFAULT 'initiated',\n  `startedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `endedAt` timestamp NULL,\n  `durationSeconds` int NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 559
+}
