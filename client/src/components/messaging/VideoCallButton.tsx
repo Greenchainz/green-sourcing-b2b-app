@@ -3,6 +3,7 @@ import { Video, VideoOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { WebRTCVideoCall } from "./WebRTCVideoCall";
 
 interface VideoCallButtonProps {
   conversationId: number;
@@ -13,6 +14,7 @@ interface VideoCallButtonProps {
 export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }: VideoCallButtonProps) {
 
   const [isInitiating, setIsInitiating] = useState(false);
+  const [isInCall, setIsInCall] = useState(false);
 
   // Get user's usage stats to determine tier and remaining video hours
   const { data: usageStats } = trpc.messaging.getUserUsageStats.useQuery();
@@ -57,8 +59,8 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
 
         toast.success(`Calling ${otherPartyName}...`);
 
-        // TODO: Open WebRTC video call UI
-        console.log("WebRTC call initiated:", result);
+        // Open WebRTC video call UI
+        setIsInCall(true);
       } else {
         // Free tier - should not reach here due to videoLimit.canCall check
         toast.error("Video calling is available on Standard and Premium plans.");
@@ -85,7 +87,17 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
     : 0;
 
   return (
-    <div className="flex items-center gap-2">
+    <>
+      {isInCall && (
+        <WebRTCVideoCall
+          conversationId={conversationId}
+          calleeId={otherPartyId}
+          calleeName={otherPartyName}
+          onCallEnd={() => setIsInCall(false)}
+        />
+      )}
+
+      <div className="flex items-center gap-2">
       <Button
         variant="outline"
         size="sm"
@@ -106,5 +118,6 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
         </span>
       )}
     </div>
+    </>
   );
 }

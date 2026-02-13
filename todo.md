@@ -549,3 +549,22 @@
 - [ ] Test tier upgrade/downgrade flows (requires Microsoft credentials)
 - [ ] Write unit tests for subscription service
 - [ ] Document Microsoft Partner Center setup steps
+
+
+## WebRTC Video Call UI (Complete Implementation)
+
+- [x] Build WebRTCVideoCall component with peer connection setup
+- [x] Implement local and remote video stream rendering
+- [x] Add camera on/off toggle with visual feedback
+- [x] Add microphone mute/unmute toggle with visual feedback
+- [x] Build call duration timer (minutes:seconds format)
+- [x] Add hang-up button with confirmation
+- [x] Implement call initiation flow (offer/answer/ICE candidates)
+- [x] Handle incoming call acceptance
+- [x] Add connection status indicator (connecting, connected, disconnected)
+- [x] Implement automatic call cleanup on disconnect
+- [x] Track call duration and report to backend for paywall enforcement
+- [x] Add error handling for camera/mic permissions
+- [ ] Test peer-to-peer video call between two users (requires two logged-in users)
+- [ ] Test call controls (mute, camera off, hang up) (requires active call)
+- [ ] Test duration tracking and paywall limit enforcement (requires active call)

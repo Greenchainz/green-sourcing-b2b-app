@@ -553,3 +553,21 @@ export const subscriptions = mysqlTable("subscriptions", {
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+// ─── Video Calls ────────────────────────────────────────────────────────────
+
+export const videoCalls = mysqlTable("video_calls", {
+  id: int("id").autoincrement().primaryKey(),
+  callId: varchar("callId", { length: 255 }).notNull().unique(),
+  callerId: int("callerId").notNull(),
+  calleeId: int("calleeId").notNull(),
+  conversationId: int("conversationId").notNull(),
+  status: mysqlEnum("status", ["initiated", "ringing", "connected", "ended", "failed"]).default("initiated").notNull(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  endedAt: timestamp("endedAt"),
+  durationSeconds: int("durationSeconds"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VideoCall = typeof videoCalls.$inferSelect;
+export type InsertVideoCall = typeof videoCalls.$inferInsert;
