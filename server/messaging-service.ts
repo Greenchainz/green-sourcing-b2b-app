@@ -69,6 +69,9 @@ export async function getUserConversations(userId: number) {
       rfqId: conversations.rfqId,
       buyerId: conversations.buyerId,
       supplierId: conversations.supplierId,
+      agentMode: conversations.agentMode,
+      handoffStatus: conversations.handoffStatus,
+      agentMessageCount: conversations.agentMessageCount,
       lastMessageAt: conversations.lastMessageAt,
       createdAt: conversations.createdAt,
       // Join RFQ details
@@ -111,6 +114,8 @@ export async function getConversationMessages(conversationId: number) {
       id: messages.id,
       conversationId: messages.conversationId,
       senderId: messages.senderId,
+      senderType: messages.senderType,
+      agentType: messages.agentType,
       content: messages.content,
       isRead: messages.isRead,
       createdAt: messages.createdAt,

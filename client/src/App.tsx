@@ -29,6 +29,7 @@ import Subscription from "./pages/Subscription";
 import { ChainBot } from "./components/ChainBot";
 import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
+import { UnifiedChatWidget } from "./components/UnifiedChatWidget";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 
@@ -88,7 +89,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
-            <ChainBot />
+            <UnifiedChatWidget />
             <IncomingCallNotification onAccept={handleAcceptCall} />
             {activeCall && (
               <WebRTCVideoCall

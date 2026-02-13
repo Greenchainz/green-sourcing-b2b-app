@@ -649,6 +649,121 @@ export const appRouter = router({
         });
       }),
 
+    // Send message with agent response
+    sendWithAgent: protectedProcedure
+      .input(
+        z.object({
+          conversationId: z.number(),
+          content: z.string().min(1),
+          conversationContext: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { triageMessage, incrementAgentMessageCount, checkHandoffRules, updateHandoffStatus } = await import('./agent-triage-service');
+        const { generateAgentResponse } = await import('./agent-response-handler');
+        const { sendMessage, getConversationMessages } = await import('./messaging-service');
+        const { getDb } = await import('./db');
+        const { conversations } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+
+        // Save user message
+        await sendMessage({
+          conversationId: input.conversationId,
+          senderId: ctx.user.id,
+          content: input.content,
+        });
+
+        // Get conversation details
+        const db = await getDb();
+        if (!db) throw new Error('Database not available');
+
+        const conv = await db
+          .select()
+          .from(conversations)
+          .where(eq(conversations.id, input.conversationId))
+          .limit(1);
+
+        if (conv.length === 0) throw new Error('Conversation not found');
+
+        const conversation = conv[0];
+
+        // Check if conversation should be handed off to human
+        const handoffCheck = await checkHandoffRules({
+          conversationId: input.conversationId,
+          supplierId: conversation.supplierId,
+          agentMessageCount: conversation.agentMessageCount,
+        });
+
+        if (handoffCheck.shouldHandoff) {
+          await updateHandoffStatus({
+            conversationId: input.conversationId,
+            handoffStatus: 'pending_handoff',
+            handoffReason: handoffCheck.reason,
+          });
+
+          // Send handoff message
+          await sendMessage({
+            conversationId: input.conversationId,
+            senderId: ctx.user.id, // System message
+            content: `I've handled your initial questions, but I think you'd benefit from speaking with a human representative. ${handoffCheck.reason}. A team member will respond shortly.`,
+          });
+
+          return { success: true, handedOff: true };
+        }
+
+        // Triage message to determine agent type
+        const triageResult = await triageMessage({
+          userId: ctx.user.id,
+          conversationId: input.conversationId,
+          messageContent: input.content,
+          conversationContext: input.conversationContext,
+        });
+
+        if (triageResult.shouldHandoff) {
+          await updateHandoffStatus({
+            conversationId: input.conversationId,
+            handoffStatus: 'pending_handoff',
+            handoffReason: 'User requested human contact',
+          });
+
+          await sendMessage({
+            conversationId: input.conversationId,
+            senderId: ctx.user.id,
+            content: "I'll connect you with a human representative right away. Someone from our team will respond shortly.",
+          });
+
+          return { success: true, handedOff: true };
+        }
+
+        // Get message history for context
+        const messageHistory = await getConversationMessages(input.conversationId);
+        const formattedHistory = messageHistory.slice(-10).map((msg) => ({
+          role: (msg.senderId === ctx.user.id ? 'user' : 'assistant') as 'user' | 'assistant',
+          content: msg.content,
+        }));
+
+        // Generate agent response
+        const agentResponse = await generateAgentResponse({
+          userId: ctx.user.id,
+          conversationId: input.conversationId,
+          agentType: triageResult.agentType,
+          messageHistory: formattedHistory,
+          conversationContext: input.conversationContext,
+        });
+
+        // Save agent response
+        await sendMessage({
+          conversationId: input.conversationId,
+          senderId: ctx.user.id, // Use system user ID in production
+          content: agentResponse,
+        });
+
+        // Increment agent message count
+        await incrementAgentMessageCount(input.conversationId);
+
+        return { success: true, handedOff: false, agentType: triageResult.agentType };
+      }),
+
     markConversationAsRead: protectedProcedure
       .input(z.object({ conversationId: z.number() }))
       .mutation(async ({ input, ctx }) => {
