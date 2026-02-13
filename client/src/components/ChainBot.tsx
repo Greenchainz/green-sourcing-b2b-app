@@ -13,7 +13,7 @@ import {
   Loader2,
   Sparkles,
   User,
-  Leaf,
+
   ChevronDown,
   Minimize2,
 } from "lucide-react";
@@ -243,8 +243,8 @@ export function ChainBot() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Leaf className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                <img src="/brand/greenchainz-icon.png" alt="ChainBot" className="w-5 h-5 object-contain" />
               </div>
               <div>
                 <h3 className="font-semibold text-sm">ChainBot</h3>
@@ -321,8 +321,8 @@ export function ChainBot() {
                           )}
                         >
                           {msg.role === "assistant" && (
-                            <div className="w-7 h-7 shrink-0 mt-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                              <Leaf className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <div className="w-7 h-7 shrink-0 mt-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center overflow-hidden">
+                              <img src="/brand/greenchainz-icon.png" alt="ChainBot" className="w-4 h-4 object-contain" />
                             </div>
                           )}
 
@@ -367,8 +367,8 @@ export function ChainBot() {
 
                       {chatMutation.isPending && (
                         <div className="flex items-start gap-2.5">
-                          <div className="w-7 h-7 shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                            <Leaf className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <div className="w-7 h-7 shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center overflow-hidden">
+                            <img src="/brand/greenchainz-icon.png" alt="ChainBot" className="w-4 h-4 object-contain" />
                           </div>
                           <div className="rounded-2xl rounded-bl-md bg-gray-100 dark:bg-gray-800 px-4 py-3">
                             <div className="flex items-center gap-2">
@@ -431,7 +431,7 @@ export function ChainBot() {
           <X className="w-6 h-6 text-white" />
         ) : (
           <>
-            <MessageCircle className="w-6 h-6 text-white" />
+            <img src="/brand/greenchainz-icon.png" alt="ChainBot" className="w-7 h-7 object-contain" />
             {hasNewMessage && (
               <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white" />
             )}
