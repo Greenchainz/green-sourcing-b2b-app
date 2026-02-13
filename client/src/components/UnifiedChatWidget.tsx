@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageCircle, X, Minimize2, Send, Phone, Video, User, Bot } from "lucide-react";
+import { MessageCircle, X, Minimize2, Send, Phone, Video, User, Bot, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
+import { SupplierSearchModal } from "@/components/SupplierSearchModal";
 
 interface Message {
   id: number;
@@ -36,6 +37,7 @@ export function UnifiedChatWidget() {
   const { isOpen, selectedConversationId, pendingConversation, openWidget, closeWidget, toggleWidget, selectConversation, clearPendingConversation } = useChatWidget();
   const [isMinimized, setIsMinimized] = useState(false);
   const [messageInput, setMessageInput] = useState("");
+  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: conversations } = trpc.messaging.getConversations.useQuery(undefined, {
@@ -67,6 +69,17 @@ export function UnifiedChatWidget() {
   });
 
   const markAsReadMutation = trpc.messaging.markConversationAsRead.useMutation();
+
+  const createDirectConversationMutation = trpc.messaging.createDirectConversation.useMutation({
+    onSuccess: (data: { conversationId: number }) => {
+      selectConversation(data.conversationId);
+      setShowNewConversationModal(false);
+    },
+  });
+
+  const handleSelectSupplier = (supplierId: number, supplierName: string) => {
+    createDirectConversationMutation.mutate({ supplierId });
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -223,8 +236,21 @@ export function UnifiedChatWidget() {
             <>
               {/* Conversation List or Message Thread */}
               {!selectedConversationId ? (
-                <ScrollArea className="flex-1 p-4">
-                  {conversations && conversations.length > 0 ? (
+                <div className="flex-1 flex flex-col">
+                  {/* New Conversation Button */}
+                  <div className="p-4 pb-2">
+                    <Button
+                      onClick={() => setShowNewConversationModal(true)}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Conversation
+                    </Button>
+                  </div>
+
+                  <ScrollArea className="flex-1 px-4 pb-4">
+                    {conversations && conversations.length > 0 ? (
                     <div className="space-y-2">
                       {conversations.map((conv) => (
                         <button
@@ -232,12 +258,20 @@ export function UnifiedChatWidget() {
                           onClick={() => selectConversation(conv.id)}
                           className="w-full p-3 rounded-lg border hover:bg-accent transition-colors text-left"
                         >
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <p className="font-semibold text-sm">{conv.otherPartyName || "Unknown"}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {conv.rfqTitle || "Direct Message"}
-                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                {conv.rfqId ? (
+                                  <Badge variant="outline" className="text-xs">
+                                    📋 RFQ: {conv.rfqTitle}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs bg-blue-50">
+                                    💬 Direct Inquiry
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                             {conv.handoffStatus === "agent" && (
                               <Badge variant="secondary" className="text-xs">
@@ -248,16 +282,17 @@ export function UnifiedChatWidget() {
                         </button>
                       ))}
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                      <MessageCircle className="h-12 w-12 text-muted-foreground mb-3" />
-                      <p className="text-sm text-muted-foreground">No conversations yet</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Start chatting with suppliers or get help from our AI assistant
-                      </p>
-                    </div>
-                  )}
-                </ScrollArea>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                        <MessageCircle className="h-12 w-12 text-muted-foreground mb-3" />
+                        <p className="text-sm text-muted-foreground">No conversations yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Click "New Conversation" to start chatting
+                        </p>
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
               ) : (
                 <>
                   {/* Message Thread */}
@@ -363,6 +398,12 @@ export function UnifiedChatWidget() {
           )}
         </div>
       )}
+      {/* Supplier Search Modal */}
+      <SupplierSearchModal
+        isOpen={showNewConversationModal}
+        onClose={() => setShowNewConversationModal(false)}
+        onSelectSupplier={handleSelectSupplier}
+      />
     </>
   );
 }

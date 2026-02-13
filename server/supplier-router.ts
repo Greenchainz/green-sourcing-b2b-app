@@ -96,4 +96,37 @@ export const supplierRouter = router({
     await downgradeToFree(profile.id);
     return { success: true };
   }),
+
+  // Search suppliers for direct messaging
+  searchSuppliers: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { getDb } = await import("./db");
+      const { suppliers } = await import("../drizzle/schema");
+      const { like, or } = await import("drizzle-orm");
+      
+      const db = await getDb();
+      if (!db) throw new Error("Database connection failed");
+
+      let query = db.select().from(suppliers);
+
+      // Filter by search query if provided
+      if (input.query && input.query.trim()) {
+        const searchTerm = `%${input.query.trim()}%`;
+        query = query.where(
+          or(
+            like(suppliers.companyName, searchTerm),
+            like(suppliers.city, searchTerm),
+            like(suppliers.state, searchTerm)
+          )
+        ) as any;
+      }
+
+      const results = await query.limit(20).execute();
+      return results;
+    }),
 });
