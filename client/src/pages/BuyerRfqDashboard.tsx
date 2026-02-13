@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +13,7 @@ import { RealTimeMessageThread } from "@/components/RealTimeMessageThread";
 
 export default function BuyerRfqDashboard() {
   const { user } = useAuth();
+  const { openWithConversation } = useChatWidget();
   const [activeTab, setActiveTab] = useState("active");
   const [selectedRfq, setSelectedRfq] = useState<number | null>(null);
   const [selectedBids, setSelectedBids] = useState<Set<number>>(new Set());
@@ -120,10 +122,7 @@ export default function BuyerRfqDashboard() {
   };
 
   const handleOpenConversation = (rfqId: number, supplierId: number) => {
-    // The UnifiedChatWidget will automatically show the conversation
-    // This function triggers the widget to open with the specific conversation
-    console.log("Opening conversation:", { rfqId, supplierId });
-    // TODO: Emit event or use state management to open chat widget with specific conversation
+    openWithConversation({ rfqId, supplierId });
   };
 
   if (!user) {
