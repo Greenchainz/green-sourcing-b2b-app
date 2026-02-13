@@ -1039,6 +1039,52 @@ export const appRouter = router({
 
         return { conversationId: conversation.id };
       }),
+
+    // ─── Voice/Video Calling ──────────────────────────────────────────────────
+    checkCallLimit: protectedProcedure.query(async ({ ctx }) => {
+      const { checkCallLimit } = await import('./calling-service');
+      return await checkCallLimit(ctx.user.id);
+    }),
+
+    initiateCall: protectedProcedure
+      .input(
+        z.object({
+          conversationId: z.number(),
+          receiverId: z.number(),
+          callType: z.enum(["voice", "video"]),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { initiateCall } = await import('./calling-service');
+        return await initiateCall({
+          conversationId: input.conversationId,
+          callerId: ctx.user.id,
+          receiverId: input.receiverId,
+          callType: input.callType,
+        });
+      }),
+
+    acceptCall: protectedProcedure
+      .input(z.object({ callId: z.string() }))
+      .mutation(async ({ input }) => {
+        const { acceptCall } = await import('./calling-service');
+        return await acceptCall(input.callId);
+      }),
+
+    rejectCall: protectedProcedure
+      .input(z.object({ callId: z.string() }))
+      .mutation(async ({ input }) => {
+        const { rejectCall } = await import('./calling-service');
+        await rejectCall(input.callId);
+        return { success: true };
+      }),
+
+    endCall: protectedProcedure
+      .input(z.object({ callId: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const { endCall } = await import('./calling-service');
+        return await endCall(input.callId, ctx.user.id);
+      }),
   }),
 
   // ─── Video Calling (Dual System: WebRTC for Standard, ACS for Premium) ────

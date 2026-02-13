@@ -759,3 +759,34 @@
 - [ ] Display rich cards with RFQ details (title, budget, deadline)
 - [ ] Show bid details (price, delivery time, status)
 - [ ] Add "View RFQ" / "View Bid" buttons in cards
+
+
+## Voice/Video Calling Integration
+
+### Database Schema
+- [x] Add call_history table (id, conversationId, callerId, receiverId, callType, startTime, endTime, duration, status)
+- [x] Add monthly_call_usage table (userId, month, totalMinutes)
+- [x] Add supplier tier limits to subscription tiers (Free: 0, Standard: 30, Premium: unlimited)
+
+### Backend Implementation
+- [x] Create calling-service.ts with tier-based limit checking
+- [x] Add initiateCall tRPC procedure (checks tier limits before allowing call)
+- [x] Add endCall procedure (calculates duration, updates usage)
+- [x] Add checkCallLimit procedure (returns remaining minutes for current month)
+- [x] Add call notification system (notify receiver when call incoming via WebPubSub)
+
+### Frontend UI
+- [x] Add Voice/Video call buttons to conversation header
+- [x] Check supplier tier before showing call buttons
+- [x] Show remaining minutes badge for Standard tier users
+- [x] Build CallModal component (video feed, controls, duration timer)
+- [x] Add incoming call notification/modal
+- [ ] Display "Call in progress" status in conversation
+- [ ] Handle call rejection, missed calls, busy status
+
+### Call Flow
+- [ ] Caller clicks Voice/Video button → Check tier limit → Generate ACS tokens
+- [ ] Notify receiver via WebPubSub → Receiver accepts/rejects
+- [ ] Establish ACS call → Show CallModal with video/audio
+- [ ] Track duration in real-time → Update usage on hang-up
+- [ ] Save call history record with duration and status
