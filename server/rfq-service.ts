@@ -76,9 +76,10 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
   // Match to suppliers (premium first, then others)
   const matchedSuppliers = await matchSuppliersToRfq(rfqId, input.projectLocation, input.materials);
 
-  // Send notifications to matched suppliers
+  // Send notifications and create conversations with matched suppliers
   const { sendInAppNotification } = await import("./notification-service");
   const { sendRfqNotificationEmail } = await import("./email-service");
+  const { getOrCreateConversation } = await import("./messaging-service");
   
   for (const match of matchedSuppliers) {
     // Get supplier's userId and company name
@@ -93,6 +94,13 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
       .execute();
 
     if (supplierRecord) {
+      // Create conversation between buyer and supplier for this RFQ
+      await getOrCreateConversation({
+        rfqId: rfqId || null,
+        buyerId: userId,
+        supplierId: match.supplierId,
+      });
+
       // Send in-app notification
       await sendInAppNotification({
         userId: supplierRecord.userId,
@@ -281,8 +289,34 @@ export async function submitBid(
       .execute();
   }
 
-  // Notify buyer of new bid (skip for now - userId mapping needed)
-  // TODO: Send notification to buyer when bid is submitted
+  // Get buyer's userId from RFQ
+  const [rfqRecord] = await db
+    .select({ userId: rfqs.userId })
+    .from(rfqs)
+    .where(eq(rfqs.id, rfqId))
+    .execute();
+
+  if (rfqRecord && rfqRecord.userId) {
+    const buyerId = rfqRecord.userId;
+    
+    // Create conversation between buyer and supplier (if not exists)
+    const { getOrCreateConversation } = await import("./messaging-service");
+    await getOrCreateConversation({
+      rfqId: rfqId || null,
+      buyerId,
+      supplierId,
+    });
+
+    // Notify buyer of new bid
+    const { sendInAppNotification } = await import("./notification-service");
+    await sendInAppNotification({
+      userId: buyerId,
+      type: "rfq_bid_received",
+      title: "New Bid Received",
+      content: `You received a new bid of $${bidPrice.toFixed(2)} for your RFQ`,
+      relatedId: rfqId,
+    });
+  }
 
   return { bidId };
 }
