@@ -535,3 +535,21 @@ export const messages = mysqlTable("messages", {
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
+
+// ─── Subscriptions (Microsoft AppSource) ────────────────────────────────────
+
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  microsoftSubscriptionId: varchar("microsoftSubscriptionId", { length: 255 }).notNull().unique(),
+  tier: mysqlEnum("tier", ["free", "standard", "premium"]).default("free").notNull(),
+  status: mysqlEnum("status", ["active", "suspended", "cancelled", "expired"]).default("active").notNull(),
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate"),
+  lastRenewalDate: timestamp("lastRenewalDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;

@@ -99,6 +99,13 @@
       "when": 1770938113693,
       "tag": "0013_pale_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1770946980778,
+      "tag": "0014_natural_maginty",
+      "breakpoints": true
     }
   ]
 }

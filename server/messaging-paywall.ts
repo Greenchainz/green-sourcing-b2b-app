@@ -26,7 +26,7 @@ export interface VideoLimitResult {
 }
 
 /**
- * Get user's subscription tier from supplier_subscriptions table
+ * Get user's subscription tier from Microsoft subscriptions table
  */
 async function getUserTier(userId: number): Promise<SubscriptionTier> {
   const db = await getDb();
@@ -43,22 +43,9 @@ async function getUserTier(userId: number): Promise<SubscriptionTier> {
     return "premium"; // Treat buyers as premium for unlimited access
   }
 
-  // Check supplier subscription
-  const { supplierSubscriptions } = await import("../drizzle/schema");
-  const subscription = await db
-    .select({ tier: supplierSubscriptions.tier })
-    .from(supplierSubscriptions)
-    .where(
-      and(
-        eq(supplierSubscriptions.supplierId, userId),
-        eq(supplierSubscriptions.status, "active")
-      )
-    )
-    .limit(1);
-
-  if (subscription.length === 0) return "free";
-
-  return subscription[0].tier as SubscriptionTier;
+  // Check Microsoft subscription
+  const { getUserTier: getMicrosoftTier } = await import("./microsoft-subscription-service");
+  return await getMicrosoftTier(userId);
 }
 
 /**

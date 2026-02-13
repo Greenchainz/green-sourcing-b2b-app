@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handleLandingPage } from "../marketplace-landing";
 import { handleWebhook } from "../marketplace-webhook";
+import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -41,6 +42,9 @@ async function startServer() {
   // Microsoft Marketplace endpoints
   app.get("/api/marketplace/landing", handleLandingPage);
   app.post("/api/marketplace/webhook", handleWebhook);
+  
+  // Microsoft AppSource subscription webhook
+  app.post("/api/microsoft/subscription-webhook", handleMicrosoftWebhook);
   // tRPC API
   app.use(
     "/api/trpc",

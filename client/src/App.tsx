@@ -25,6 +25,7 @@ import { SupplierProfileDashboard } from "./pages/SupplierProfileDashboard";
 import SupplierRfqDashboard from "./pages/SupplierRfqDashboard";
 import GetStarted from "./pages/GetStarted";
 import Messages from "./pages/Messages";
+import Subscription from "./pages/Subscription";
 import { ChainBot } from "./components/ChainBot";
 
 function Router() {
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/supplier/dashboard" component={SupplierProfileDashboard} />
       <Route path="/supplier/rfqs" component={SupplierRfqDashboard} />
       <Route path="/messages" component={Messages} />
+      <Route path="/subscription" component={Subscription} />
       <Route path={"/api-test"} component={ApiTest} />
       <Route path={"/tools/excel"} component={ExcelAudit} />
       <Route path={"/about"} component={About} />

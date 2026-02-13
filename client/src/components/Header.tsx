@@ -64,6 +64,11 @@ export default function Header() {
               Messages
             </a>
           </Link>
+          <Link href="/subscription">
+            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Subscription
+            </a>
+          </Link>
           <Link href="/supplier/register">
             <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Become a Supplier
