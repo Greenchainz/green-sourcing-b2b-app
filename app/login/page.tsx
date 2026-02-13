@@ -2,10 +2,10 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const [role, setRole] = useState<string | null>(null);
 
@@ -142,5 +142,19 @@ export default function LoginPage() {
         </a>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-[#E8F5E9] to-[#C8E6C9] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#66BB6A]"></div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
