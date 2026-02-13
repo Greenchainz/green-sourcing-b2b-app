@@ -531,3 +531,21 @@
 - [x] Block video call initiation when limit reached
 - [x] Show upgrade prompt: Standard→Premium for enterprise features
 - [ ] Test both video systems with all three tiers
+
+
+## Microsoft AppSource Subscription Integration
+
+- [x] Create subscription management service (microsoft-subscription-service.ts)
+- [x] Add subscription webhook handler for lifecycle events (activated, renewed, cancelled, suspended)
+- [x] Create subscriptions table in database (id, userId, microsoftSubscriptionId, tier, status, startDate, endDate)
+- [x] Integrate tier checking into existing paywall logic (messaging, video calling)
+- [x] Add subscription status to user profile
+- [x] Build subscription management UI (view status, upgrade, cancel)
+- [x] Build admin panel for subscription management (view all subscriptions, manual tier changes)
+- [ ] Add Microsoft Marketplace API client (fulfillment API, metering API) - Future enhancement
+- [ ] Test subscription activation flow (requires Microsoft credentials)
+- [ ] Test subscription renewal flow (requires Microsoft credentials)
+- [ ] Test subscription cancellation flow (requires Microsoft credentials)
+- [ ] Test tier upgrade/downgrade flows (requires Microsoft credentials)
+- [ ] Write unit tests for subscription service
+- [ ] Document Microsoft Partner Center setup steps

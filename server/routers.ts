@@ -825,6 +825,56 @@ export const appRouter = router({
       }),
   }),
 
+  // ─── Microsoft Subscriptions ──────────────────────────────────────────────
+  microsoftSubscription: router({
+    // Get current user's subscription status
+    getMySubscription: protectedProcedure.query(async ({ ctx }) => {
+      const { getUserSubscription } = await import('./microsoft-subscription-service');
+      return await getUserSubscription(ctx.user.id);
+    }),
+
+    // Get current user's tier
+    getMyTier: protectedProcedure.query(async ({ ctx }) => {
+      const { getUserTier } = await import('./microsoft-subscription-service');
+      return await getUserTier(ctx.user.id);
+    }),
+
+    // Check if user has access to a specific tier
+    checkAccess: protectedProcedure
+      .input(z.object({ requiredTier: z.enum(['free', 'standard', 'premium']) }))
+      .query(async ({ input, ctx }) => {
+        const { userHasAccess } = await import('./microsoft-subscription-service');
+        return await userHasAccess(ctx.user.id, input.requiredTier);
+      }),
+
+    // Admin: Get all subscriptions
+    getAllSubscriptions: protectedProcedure.query(async ({ ctx }) => {
+      // TODO: Add admin role check
+      if (ctx.user.role !== 'admin') {
+        throw new Error('Unauthorized: Admin access required');
+      }
+      const { getAllSubscriptions } = await import('./microsoft-subscription-service');
+      return await getAllSubscriptions();
+    }),
+
+    // Admin: Manually update user tier
+    updateUserTier: protectedProcedure
+      .input(
+        z.object({
+          userId: z.number(),
+          tier: z.enum(['free', 'standard', 'premium']),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        // TODO: Add admin role check
+        if (ctx.user.role !== 'admin') {
+          throw new Error('Unauthorized: Admin access required');
+        }
+        const { updateUserTier } = await import('./microsoft-subscription-service');
+        return await updateUserTier(input.userId, input.tier);
+      }),
+  }),
+
   // ─── Notifications ────────────────────────────────────────────────────────
   notifications: router({
     getUnread: protectedProcedure.query(async ({ ctx }) => {
