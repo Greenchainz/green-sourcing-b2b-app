@@ -640,3 +640,36 @@ export const messageReactions = mysqlTable("message_reactions", {
 
 export type MessageReaction = typeof messageReactions.$inferSelect;
 export type InsertMessageReaction = typeof messageReactions.$inferInsert;
+
+
+// ─── Call History ───────────────────────────────────────────────────────────
+
+export const callHistory = mysqlTable("call_history", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").notNull(),
+  callerId: int("callerId").notNull(),
+  receiverId: int("receiverId").notNull(),
+  callType: mysqlEnum("callType", ["voice", "video"]).notNull(),
+  status: mysqlEnum("status", ["completed", "missed", "rejected", "failed"]).notNull(),
+  startTime: timestamp("startTime").notNull(),
+  endTime: timestamp("endTime"),
+  durationSeconds: int("durationSeconds").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CallHistory = typeof callHistory.$inferSelect;
+export type InsertCallHistory = typeof callHistory.$inferInsert;
+
+// ─── Monthly Call Usage ─────────────────────────────────────────────────────
+
+export const monthlyCallUsage = mysqlTable("monthly_call_usage", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  month: varchar("month", { length: 7 }).notNull(), // Format: "2026-02"
+  totalMinutes: int("totalMinutes").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MonthlyCallUsage = typeof monthlyCallUsage.$inferSelect;
+export type InsertMonthlyCallUsage = typeof monthlyCallUsage.$inferInsert;

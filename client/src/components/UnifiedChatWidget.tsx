@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { SupplierSearchModal } from "@/components/SupplierSearchModal";
+import { CallModal } from "@/components/CallModal";
 import { getRelativeTime } from "@/lib/timeUtils";
 
 interface Message {
@@ -48,6 +49,14 @@ export function UnifiedChatWidget() {
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [conversationFilter, setConversationFilter] = useState<"all" | "rfq" | "direct" | "agent" | "human">("all");
   const [conversationSort, setConversationSort] = useState<"newest" | "oldest" | "unread">("newest");
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [activeCallType, setActiveCallType] = useState<"voice" | "video" | null>(null);
+  const [activeCallId, setActiveCallId] = useState<string | null>(null);
+
+  // Check call limits
+  const { data: callLimit } = trpc.messaging.checkCallLimit.useQuery(undefined, {
+    enabled: !!user,
+  });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showReactionPicker, setShowReactionPicker] = useState<number | null>(null);
@@ -111,6 +120,31 @@ export function UnifiedChatWidget() {
 
   const handleArchiveConversation = (conversationId: number, archived: boolean) => {
     archiveConversationMutation.mutate({ conversationId, archived });
+  };
+
+  const initiateCallMutation = trpc.messaging.initiateCall.useMutation({
+    onSuccess: (data) => {
+      setActiveCallType(data.session.callType);
+      setActiveCallId(data.callId);
+      setShowCallModal(true);
+    },
+    onError: (error) => {
+      alert(error.message);
+    },
+  });
+
+  const handleInitiateCall = (callType: "voice" | "video") => {
+    if (!selectedConversation) return;
+    
+    const receiverId = selectedConversation.buyerId === Number(user?.id) 
+      ? selectedConversation.supplierId 
+      : selectedConversation.buyerId;
+
+    initiateCallMutation.mutate({
+      conversationId: selectedConversation.id,
+      receiverId,
+      callType,
+    });
   };
 
   const handleAddReaction = (messageId: number, reactionType: "thumbs_up" | "thumbs_down" | "heart" | "party" | "check") => {
@@ -362,6 +396,28 @@ export function UnifiedChatWidget() {
             <div className="flex items-center gap-2">
               {selectedConversation && (
                 <>
+                  {/* Voice Call Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-white hover:bg-white/20"
+                    onClick={() => handleInitiateCall("voice")}
+                    title={callLimit?.allowed ? `Voice call (${callLimit.remainingMinutes !== null ? `${callLimit.remainingMinutes} min remaining` : "unlimited"})` : "Upgrade to make calls"}
+                    disabled={!callLimit?.allowed}
+                  >
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                  {/* Video Call Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-white hover:bg-white/20"
+                    onClick={() => handleInitiateCall("video")}
+                    title={callLimit?.allowed ? `Video call (${callLimit.remainingMinutes !== null ? `${callLimit.remainingMinutes} min remaining` : "unlimited"})` : "Upgrade to make calls"}
+                    disabled={!callLimit?.allowed}
+                  >
+                    <Video className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -707,6 +763,21 @@ export function UnifiedChatWidget() {
         onClose={() => setShowNewConversationModal(false)}
         onSelectSupplier={handleSelectSupplier}
       />
+
+      {/* Call Modal */}
+      {showCallModal && activeCallType && selectedConversation && (
+        <CallModal
+          isOpen={showCallModal}
+          onClose={() => {
+            setShowCallModal(false);
+            setActiveCallType(null);
+          }}
+          callType={activeCallType}
+          callId={activeCallId || ""}
+          otherPartyName={selectedConversation.otherPartyName || "Unknown"}
+          isOutgoing={true}
+        />
+      )}
     </>
   );
 }

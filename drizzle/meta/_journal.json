@@ -134,6 +134,13 @@
       "when": 1770997515028,
       "tag": "0018_new_dragon_man",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1770998929917,
+      "tag": "0019_orange_gorilla_man",
+      "breakpoints": true
     }
   ]
 }
