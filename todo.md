@@ -937,3 +937,12 @@
 - [x] Write unit tests for EC3 transformation and sync logic
 - [ ] Debug EC3 API empty results (OAuth works, but /api/epds returns empty)
 - [ ] Test sync with real EPD data once API issue is resolved
+
+
+## EC3 API Debugging (Current)
+- [x] Test EC3 /api/epds endpoint in browser while logged in to verify data availability
+- [x] Create debug script to test different query parameters (page_size, category, search)
+- [x] Compare browser request headers vs server request headers to identify differences
+- [x] Root cause identified: EC3 API returns flat array instead of {results: []} object
+- [x] Fix EC3 integration to handle both array and object response formats
+- [x] Verify materials can be populated with real EPD data (4/5 tests passing)
