@@ -7,4 +7,9 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  ec3ApiKey: process.env.EC3_API_KEY ?? "",
+  ec3ClientId: process.env.EC3_CLIENT_ID ?? "",
+  ec3ClientSecret: process.env.EC3_CLIENT_SECRET ?? "",
+  ec3Username: process.env.EC3_USERNAME ?? "",
+  ec3Password: process.env.EC3_PASSWORD ?? "",
 };
