@@ -984,3 +984,14 @@
 - [x] Add route to App.tsx (/material-swap)
 - [ ] Write vitest tests for swap procedures
 - [ ] Test swap UI with real materials from EC3
+
+
+## ChainBot Deployment (Current)
+- [x] Deploy ChainBot component to App.tsx (render after UnifiedChatWidget)
+- [x] Position ChainBot at bottom-left to avoid overlap with UnifiedChatWidget
+- [ ] Add "Ask AI" button to header navigation
+- [ ] Test ChainBot on material detail pages (proactive suggestions)
+- [ ] Test ChainBot suggested prompts
+- [ ] Verify agent routing works (Material/RFQ/Supplier/Support)
+- [ ] Test agent badges display correctly
+- [ ] Verify session persistence across page navigation
