@@ -866,3 +866,63 @@
 - [x] Categories: App Features, Azure Setup, Autodesk SDA, Microsoft AppSource, Legal & Docs, Testing & QA
 - [x] Owner column: Manus vs You vs Both
 - [x] Priority + estimated hours for each item
+
+## GitHub Repo Audit + Autodesk API Research (Feb 14)
+- [ ] Audit all 5 GitHub repos for SDA connector / API hooks
+- [ ] Research all Autodesk APS APIs for GreenChainz opportunities
+- [ ] Update Excel tracker to reflect actual state (Azure/Entra/Key Vault/AI Foundry all DONE)
+- [ ] Identify Autodesk tools beyond Revit that GreenChainz could integrate with
+- [ ] Explore Autodesk chemical/material listing API for data enrichment
+
+
+## Autodesk API Opportunities (Future)
+- [ ] Evaluate Informed Design API for publishing supplier components to Revit/Inventor
+- [ ] Evaluate AEC Data Model API for direct Revit data extraction (alternative to plugin)
+- [ ] Evaluate Automation API for cloud-based batch carbon analysis
+- [ ] Evaluate Model Derivative API for 3D model viewing with carbon heatmaps on web
+
+## Compliance & Infrastructure
+- [ ] Build simple cookie consent banner (in-house, no paid provider needed)
+- [ ] Review Cloudflare WAF settings (optional - Manus already has built-in protection)
+- [ ] Skip Zaraz unless using third-party tracking scripts
+- [ ] Verify GDPR/CCPA compliance for EU customers (required for Autodesk marketplace)
+
+## Bot/AI Opportunities (Future)
+- [ ] Design RAG system for GreenChainz data (EPD, carbon factors, supplier specs)
+- [ ] Evaluate building GreenChainz AI bot using Azure AI Foundry + GPT-4o
+- [ ] Set up vector database for material/supplier data retrieval
+
+
+## EC3 Scraper Integration (Phase 1)
+- [x] Register OAuth2 app in EC3 (GreenChainz B2B Platform)
+- [x] Store EC3 OAuth2 credentials (Client ID, Client Secret, Username, Password)
+- [x] Build EC3 service with OAuth2 password grant authentication
+- [x] Test EC3 API integration (fetchEPDs, searchEPDs working)
+- [ ] Wire EC3 scraper from greenchainz-intelligence repo
+- [ ] Create tRPC endpoint to trigger EC3 scraper
+- [ ] Map EC3 data to materials table (embodied carbon, lifecycle stages A1-D)
+- [ ] Add carbon range query endpoint for swap recommendations
+- [ ] Test EC3 data population with real materials
+
+## Supplier Spec Submission Form (Phase 2)
+- [ ] Design supplier spec submission form (compliance, cost, lead time, health)
+- [ ] Add fields: fire rating, R-value, compressive strength, VOCs, toxicity
+- [ ] Add cost fields: $/unit, price range, bulk pricing
+- [ ] Add supply chain fields: lead time, availability, local sourcing
+- [ ] Link submitted specs to materials table
+- [ ] Build admin approval workflow for submitted specs
+- [ ] Create supplier dashboard to manage submitted specs
+
+## Certification API Integration (Phase 3)
+- [ ] Research HPD (Health Product Declaration) API access
+- [ ] Research Declare label API access
+- [ ] Research FSC (Forest Stewardship Council) registry API
+- [ ] Integrate certification data into materials table
+- [ ] Display certification badges on material cards
+
+## LinkedIn Decision-Maker Scraper (Phase 4)
+- [ ] Map 35 decision-maker roles to LinkedIn job titles/keywords
+- [ ] Configure Apify LinkedIn scraper for each role category
+- [ ] Extract contact info (name, company, email, LinkedIn profile)
+- [ ] Create CSV export organized by decision-maker category
+- [ ] Build automated outreach workflow (email sequences)
