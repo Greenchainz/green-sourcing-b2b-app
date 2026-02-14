@@ -99,6 +99,13 @@ export const materials = mysqlTable("materials", {
   verified: tinyint("verified").default(0),
   imageUrl: text("imageUrl"),
   specSheetUrl: text("specSheetUrl"),
+  // EC3 (Building Transparency) tracking fields
+  ec3Id: varchar("ec3Id", { length: 100 }), // EC3 EPD ID or open_xpd_uuid
+  ec3SyncedAt: timestamp("ec3SyncedAt"), // Last sync timestamp from EC3 API
+  ec3Category: varchar("ec3Category", { length: 100 }), // EC3 category name
+  ec3ConservativeEstimate: varchar("ec3ConservativeEstimate", { length: 50 }), // Conservative GWP estimate
+  ec3BestPractice: varchar("ec3BestPractice", { length: 50 }), // Best practice GWP
+  ec3IndustryMedian: varchar("ec3IndustryMedian", { length: 50 }), // Industry median (pct50_gwp)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

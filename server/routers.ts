@@ -27,6 +27,7 @@ import { supplierRfqRouter } from "./supplier-rfq-router";
 import { subscriptionRouter } from "./subscription-router";
 import { agentConversations } from "../drizzle/schema";
 import { adminRouter } from "./admin-router";
+import { ec3Router } from "./routers/ec3-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -35,6 +36,7 @@ export const appRouter = router({
   supplierRfq: supplierRfqRouter,
   subscription: subscriptionRouter,
   admin: adminRouter,
+  ec3: ec3Router,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
