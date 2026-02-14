@@ -968,3 +968,19 @@
 - [x] Write vitest tests for admin review (approve, reject with feedback)
 - [x] Tests skip gracefully when database not available in test environment
 - [ ] Manual browser testing (form loads at /supplier/submit-spec, all tabs render, submission works)
+
+
+## Material Swap UI (Current)
+- [x] Build tRPC procedure: materials.search (query by name, category, carbon range)
+- [x] Build tRPC procedure: materials.findSwaps (find alternatives with constraints)
+- [x] Build tRPC procedure: materials.compareScorecard (side-by-side CCPS comparison)
+- [x] Build tRPC procedure: materials.getSwapRecommendations (AI-powered suggestions)
+- [x] Create MaterialSwap page component with search bar and filters
+- [x] Create CCPS Scorecard component (6 metric categories with visual indicators)
+- [x] Create Material Comparison Table component (side-by-side view)
+- [x] Add constraint filters (fire rating, R-value, price range, lead time, region)
+- [x] Add trade-off indicators (better/worse badges for each metric)
+- [x] Integrate LLM for swap recommendations based on project requirements
+- [x] Add route to App.tsx (/material-swap)
+- [ ] Write vitest tests for swap procedures
+- [ ] Test swap UI with real materials from EC3
