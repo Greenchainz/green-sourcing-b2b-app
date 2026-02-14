@@ -833,3 +833,36 @@
 - [ ] Ensure all buttons are min 44x44px (Apple guidelines)
 - [ ] Fix any horizontal scroll issues
 - [ ] Optimize images for mobile bandwidth
+
+
+## Zoho Scraper Integration
+- [ ] Connect supplier scraper to Zoho Contacts API (auto-create contacts from scraped data)
+- [ ] Tag scraped suppliers by source (Azure Maps, EPD, Building Transparency)
+- [ ] Trigger Zoho Campaigns welcome email for new scraped suppliers
+
+## Comprehensive Excel Tracker
+- [ ] Build Excel spreadsheet itemizing ALL remaining work
+- [ ] Categorize: Manus-doable vs Azure/Autodesk setup vs Legal/Business
+- [ ] Include settings, Azure Foundry, Autodesk SDA, marketplace requirements
+
+## Widget Bug Fix
+- [x] Diagnose why messaging/communications widget is not visible in the app
+- [x] Fix widget rendering issue (useWebPubSub called outside AuthProvider)
+- [x] Verify widget appears on all authenticated pages
+
+## Legal Docs for Autodesk + Azure Marketplace
+- [ ] Terms of Service (required for marketplace approval)
+- [ ] Privacy Policy (required for marketplace approval)
+- [ ] Data Processing Agreement
+- [ ] Support/SLA documentation
+
+## Bug Fixes (Feb 14)
+- [x] Fix nested <a> tags error (Link wrapping anchor) - fixed in Header, Footer, Home
+- [x] Improve 401 auth error handling (graceful for unauthenticated users) - suppressed console.error for 401s
+- [x] Vite WebSocket connection warning (proxy environment - cosmetic, not fixable in Manus proxy)
+
+## Excel Tracker (Feb 14)
+- [x] Create comprehensive Excel spreadsheet with all remaining work itemized
+- [x] Categories: App Features, Azure Setup, Autodesk SDA, Microsoft AppSource, Legal & Docs, Testing & QA
+- [x] Owner column: Manus vs You vs Both
+- [x] Priority + estimated hours for each item

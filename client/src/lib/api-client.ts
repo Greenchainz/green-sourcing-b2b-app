@@ -31,9 +31,14 @@ async function apiFetch<T>(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
+      const err = new Error(
         `API Error (${response.status}): ${errorText || response.statusText}`
       );
+      // Don't log 401s - expected for unauthenticated users on public pages
+      if (response.status !== 401) {
+        console.error(`API request failed: ${endpoint}`, err);
+      }
+      throw err;
     }
 
     // Handle empty responses
@@ -42,7 +47,10 @@ async function apiFetch<T>(
     
     return JSON.parse(text) as T;
   } catch (error) {
-    console.error(`API request failed: ${endpoint}`, error);
+    // Only log non-auth errors (401s already handled above)
+    if (!(error instanceof Error && error.message.includes('API Error (401)'))) {
+      console.error(`API request failed: ${endpoint}`, error);
+    }
     throw error;
   }
 }
