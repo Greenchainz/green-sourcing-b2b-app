@@ -34,6 +34,7 @@ import { UnifiedChatWidget } from "./components/UnifiedChatWidget";
 import AdminVerificationQueue from "./pages/AdminVerificationQueue";
 import SupplierSpecSubmission from "./pages/SupplierSpecSubmission";
 import MaterialSwap from "./pages/MaterialSwap";
+import SupplierAgentConfig from "./pages/SupplierAgentConfig";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/supplier/dashboard" component={SupplierProfileDashboard} />
       <Route path="/supplier/rfqs" component={SupplierRfqDashboard} />
       <Route path="/supplier/submit-spec" component={SupplierSpecSubmission} />
+      <Route path="/supplier/agent-config" component={SupplierAgentConfig} />
       <Route path="/material-swap" component={MaterialSwap} />
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />

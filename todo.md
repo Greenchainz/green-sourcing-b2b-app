@@ -995,3 +995,17 @@
 - [ ] Verify agent routing works (Material/RFQ/Supplier/Support)
 - [ ] Test agent badges display correctly
 - [ ] Verify session persistence across page navigation
+
+
+## Premium Supplier Agent Dashboard (Current)
+- [x] Create tRPC procedures: agentConfig.getConfig, agentConfig.updateConfig, agentConfig.getAnalytics
+- [x] Build SupplierAgentConfig page component (/supplier/agent-config)
+- [x] Add handoff mode selector (Always Agent / Hybrid / Immediate Human)
+- [x] Add max messages slider (1-20 before handoff)
+- [x] Add custom agent prompt editor (textarea with character limit)
+- [x] Add agent analytics display (resolution rate, handoff rate, avg messages, total conversations)
+- [x] Add real-time preview of agent behavior
+- [x] Add Premium-only access check (redirect non-Premium suppliers)
+- [x] Add route to App.tsx
+- [ ] Write vitest tests for agent config procedures (deferred - Drizzle ORM mocking complexity)
+- [ ] Test configuration flow end-to-end with Premium supplier account
