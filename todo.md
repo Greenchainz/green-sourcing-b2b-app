@@ -1022,3 +1022,14 @@
 - [ ] Test handoff behavior with hybrid mode (5 messages)
 - [ ] Test handoff behavior with immediate_human mode
 - [ ] Test custom agent prompt application
+
+
+## Business Hours Configuration UI (Current)
+- [x] Add business hours toggle to SupplierAgentConfig page
+- [x] Add day selector (Mon-Sun checkboxes)
+- [x] Add time pickers (start time and end time)
+- [x] Update agent behavior preview to show business hours logic
+- [x] Backend already supports business hours fields (no changes needed)
+- [x] Add validation for business hours (at least one day selected - UI validation)
+- [ ] Test business hours configuration saves correctly (requires Premium supplier account)
+- [ ] Test business hours preview updates dynamically
