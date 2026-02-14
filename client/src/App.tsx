@@ -32,6 +32,7 @@ import { IncomingCallNotification } from "./components/messaging/IncomingCallNot
 import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
 import { UnifiedChatWidget } from "./components/UnifiedChatWidget";
 import AdminVerificationQueue from "./pages/AdminVerificationQueue";
+import SupplierSpecSubmission from "./pages/SupplierSpecSubmission";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/supplier/register" component={SupplierRegistration} />
       <Route path="/supplier/dashboard" component={SupplierProfileDashboard} />
       <Route path="/supplier/rfqs" component={SupplierRfqDashboard} />
+      <Route path="/supplier/submit-spec" component={SupplierSpecSubmission} />
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/admin/verification" component={AdminVerificationQueue} />

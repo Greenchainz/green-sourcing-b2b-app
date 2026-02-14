@@ -155,6 +155,13 @@
       "when": 1771048001128,
       "tag": "0021_dashing_ego",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1771105649074,
+      "tag": "0022_lowly_magneto",
+      "breakpoints": true
     }
   ]
 }

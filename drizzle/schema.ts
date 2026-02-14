@@ -165,6 +165,82 @@ export const materialCertifications = mysqlTable("material_certifications", {
 
 export type MaterialCertification = typeof materialCertifications.$inferSelect;
 
+// ─── Material Specifications (Supplier-Submitted) ───────────────────────────
+
+export const materialSpecs = mysqlTable("material_specs", {
+  id: int("id").autoincrement().primaryKey(),
+  materialId: int("materialId").notNull(), // Link to materials table
+  supplierId: int("supplierId").notNull(), // Link to suppliers table
+  submittedBy: int("submittedBy").notNull(), // User ID who submitted
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  
+  // Compliance metrics
+  fireRating: varchar("fireRating", { length: 50 }),
+  fireRatingStandard: varchar("fireRatingStandard", { length: 100 }),
+  rValue: decimal("rValue", { precision: 8, scale: 2 }),
+  thermalUValue: decimal("thermalUValue", { precision: 8, scale: 4 }),
+  compressiveStrength: varchar("compressiveStrength", { length: 100 }), // e.g., "3000 psi"
+  tensileStrength: varchar("tensileStrength", { length: 100 }),
+  astmStandards: text("astmStandards"), // JSON array of ASTM standards
+  meetsTitle24: tinyint("meetsTitle24").default(0),
+  meetsIecc: tinyint("meetsIecc").default(0),
+  buildingCodes: text("buildingCodes"), // JSON array of applicable codes
+  
+  // Cost metrics
+  pricePerUnit: decimal("pricePerUnit", { precision: 10, scale: 2 }),
+  priceUnit: varchar("priceUnit", { length: 50 }), // e.g., "per SF", "per unit"
+  minimumOrderQuantity: int("minimumOrderQuantity"),
+  moqUnit: varchar("moqUnit", { length: 50 }),
+  bulkDiscountAvailable: tinyint("bulkDiscountAvailable").default(0),
+  
+  // Supply chain metrics
+  leadTimeDays: int("leadTimeDays"),
+  manufacturingLocation: varchar("manufacturingLocation", { length: 255 }),
+  usManufactured: tinyint("usManufactured").default(0),
+  regionalAvailabilityMiles: int("regionalAvailabilityMiles"),
+  shippingRegions: text("shippingRegions"), // JSON array of regions
+  inStock: tinyint("inStock").default(1),
+  stockQuantity: int("stockQuantity"),
+  
+  // Health metrics
+  vocLevel: varchar("vocLevel", { length: 50 }), // e.g., "< 50 g/L"
+  vocCertification: varchar("vocCertification", { length: 100 }),
+  onRedList: tinyint("onRedList").default(0),
+  toxicityRating: varchar("toxicityRating", { length: 50 }),
+  indoorAirQualityRating: varchar("indoorAirQualityRating", { length: 50 }),
+  
+  // Certifications
+  hasEpd: tinyint("hasEpd").default(0),
+  hasHpd: tinyint("hasHpd").default(0),
+  hasFsc: tinyint("hasFsc").default(0),
+  hasC2c: tinyint("hasC2c").default(0),
+  hasGreenguard: tinyint("hasGreenguard").default(0),
+  hasDeclare: tinyint("hasDeclare").default(0),
+  certificationUrls: text("certificationUrls"), // JSON object {"EPD": "url", "HPD": "url"}
+  
+  // Supporting documents
+  datasheetUrl: text("datasheetUrl"), // Uploaded PDF/doc
+  specSheetUrl: text("specSheetUrl"),
+  testReportUrls: text("testReportUrls"), // JSON array of URLs
+  
+  // Additional info
+  notes: text("notes"),
+  recycledContentPct: decimal("recycledContentPct", { precision: 5, scale: 2 }),
+  warrantyYears: int("warrantyYears"),
+  expectedLifecycleYears: int("expectedLifecycleYears"),
+  
+  // Admin review
+  reviewedBy: int("reviewedBy"), // Admin user ID
+  reviewedAt: timestamp("reviewedAt"),
+  rejectionReason: text("rejectionReason"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MaterialSpec = typeof materialSpecs.$inferSelect;
+export type InsertMaterialSpec = typeof materialSpecs.$inferInsert;
+
 // ─── CCPS Baselines ─────────────────────────────────────────────────────────
 
 export const ccpsBaselines = mysqlTable("ccps_baselines", {

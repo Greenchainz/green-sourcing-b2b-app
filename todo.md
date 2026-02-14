@@ -946,3 +946,16 @@
 - [x] Root cause identified: EC3 API returns flat array instead of {results: []} object
 - [x] Fix EC3 integration to handle both array and object response formats
 - [x] Verify materials can be populated with real EPD data (4/5 tests passing)
+
+
+## Supplier Specification Submission Form (Current)
+- [x] Design database schema for supplier specifications (compliance, cost, supply chain, health, certifications)
+- [x] Add materialSpecs table with foreign key to materials table
+- [x] Build tRPC procedures: submitSpec, updateSpec, getSpecsByMaterial, getSpecsBySupplier, reviewSpec, getPending
+- [x] Create frontend form UI with shadcn/ui components (5 tabs: Compliance, Cost, Supply Chain, Health, Certifications)
+- [x] Add file upload for datasheets (PDF, images) - placeholder for S3 integration
+- [x] Implement form validation (required fields, format checks)
+- [x] Add certification checkboxes (LEED, Declare, HPD, FSC, etc.)
+- [x] Add route to App.tsx (/supplier/submit-spec)
+- [ ] Test form submission and verify data storage (next step)
+- [ ] Write vitest tests for spec submission and validation
