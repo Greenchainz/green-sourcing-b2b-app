@@ -752,6 +752,21 @@ export const appRouter = router({
           content: msg.content,
         }));
 
+        // Get custom agent prompt for supplier agent (if Premium)
+        let customPrompt: string | undefined;
+        if (triageResult.agentType === 'supplier' && conversation.supplierId) {
+          const { agentHandoffRules } = await import('../drizzle/agent-handoff-schema');
+          const rules = await db
+            .select({ customAgentPrompt: agentHandoffRules.customAgentPrompt })
+            .from(agentHandoffRules)
+            .where(eq(agentHandoffRules.supplierId, conversation.supplierId))
+            .limit(1);
+
+          if (rules.length > 0 && rules[0].customAgentPrompt) {
+            customPrompt = rules[0].customAgentPrompt;
+          }
+        }
+
         // Generate agent response
         const agentResponse = await generateAgentResponse({
           userId: ctx.user.id,
@@ -759,6 +774,7 @@ export const appRouter = router({
           agentType: triageResult.agentType,
           messageHistory: formattedHistory,
           conversationContext: input.conversationContext,
+          customPrompt,
         });
 
         // Save agent response

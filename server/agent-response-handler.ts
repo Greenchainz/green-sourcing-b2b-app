@@ -16,6 +16,7 @@ interface AgentContext {
     content: string;
   }>;
   conversationContext?: string; // RFQ details, supplier info, etc.
+  customPrompt?: string; // Custom agent prompt (for supplier agent)
 }
 
 /**
@@ -24,7 +25,7 @@ interface AgentContext {
 export async function generateAgentResponse(
   context: AgentContext
 ): Promise<string> {
-  const { agentType, messageHistory, conversationContext } = context;
+  const { agentType, messageHistory, conversationContext, customPrompt } = context;
 
   const systemPrompts: Record<AgentType, string> = {
     material: `You are the Material Intelligence Agent for GreenChainz.
@@ -66,7 +67,11 @@ Keep responses actionable and process-focused.
 
 ${conversationContext ? `\nContext: ${conversationContext}` : ""}`,
 
-    supplier: `You are a Supplier Agent for GreenChainz.
+    supplier: customPrompt
+      ? `${customPrompt}
+
+${conversationContext ? `Context: ${conversationContext}` : ""}`
+      : `You are a Supplier Agent for GreenChainz.
 
 You represent a specific supplier and help buyers with:
 - Product catalog and capabilities
