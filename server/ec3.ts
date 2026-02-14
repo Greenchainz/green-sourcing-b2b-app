@@ -128,8 +128,12 @@ export async function fetchEC3EPDs(
     throw new Error(`EC3 API error (${response.status}): ${errorText}`);
   }
 
-  const data: EC3EPDListResponse = await response.json();
-  return data.results || [];
+  const data = await response.json();
+  // EC3 API returns either an array directly or an object with results property
+  if (Array.isArray(data)) {
+    return data as EC3EPD[];
+  }
+  return (data as EC3EPDListResponse).results || [];
 }
 
 /**
@@ -186,8 +190,12 @@ export async function searchEC3EPDs(
     throw new Error(`EC3 API error (${response.status}): ${errorText}`);
   }
 
-  const data: EC3EPDListResponse = await response.json();
-  return data.results || [];
+  const data = await response.json();
+  // EC3 API returns either an array directly or an object with results property
+  if (Array.isArray(data)) {
+    return data as EC3EPD[];
+  }
+  return (data as EC3EPDListResponse).results || [];
 }
 
 /**
