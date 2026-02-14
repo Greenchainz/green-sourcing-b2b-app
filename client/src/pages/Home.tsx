@@ -25,18 +25,14 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link href="/get-started">
-                <a>
-                  <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90">
-                    Start Saving Today →
-                  </Button>
-                </a>
+                <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90">
+                  Start Saving Today →
+                </Button>
               </Link>
               <Link href="/about">
-                <a>
-                  <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                    See How It Works
-                  </Button>
-                </a>
+                <Button size="lg" variant="outline" className="text-lg px-8 py-6">
+                  See How It Works
+                </Button>
               </Link>
             </div>
             <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground pt-4">
@@ -167,9 +163,7 @@ export default function Home() {
                 </li>
               </ul>
               <Link href="/tools/excel">
-                <a>
-                  <Button className="w-full">Launch Audit</Button>
-                </a>
+                <Button className="w-full">Launch Audit</Button>
               </Link>
             </Card>
 
@@ -199,9 +193,7 @@ export default function Home() {
                 </li>
               </ul>
               <Link href="/tools/extension">
-                <a>
-                  <Button className="w-full">Get Extension</Button>
-                </a>
+                <Button className="w-full">Get Extension</Button>
               </Link>
             </Card>
 
@@ -231,9 +223,7 @@ export default function Home() {
                 </li>
               </ul>
               <Link href="/tools/revit">
-                <a>
-                  <Button className="w-full">Download Plugin</Button>
-                </a>
+                <Button className="w-full">Download Plugin</Button>
               </Link>
             </Card>
 
@@ -263,9 +253,7 @@ export default function Home() {
                 </li>
               </ul>
               <Link href="/tools/submittal">
-                <a>
-                  <Button className="w-full">Try It Now</Button>
-                </a>
+                <Button className="w-full">Try It Now</Button>
               </Link>
             </Card>
           </div>
@@ -311,11 +299,9 @@ export default function Home() {
             </p>
             <div className="pt-4">
               <Link href="/get-started">
-                <a>
-                  <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90">
-                    Get Started Free
-                  </Button>
-                </a>
+                <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90">
+                  Get Started Free
+                </Button>
               </Link>
             </div>
             <p className="text-sm text-muted-foreground">

@@ -16,18 +16,16 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/">
-          <a className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-            <img 
-              src="/greenchainz-icon.png" 
-              alt="GreenChainz Logo" 
-              className="h-12 w-auto"
-            />
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-foreground">GreenChainz</span>
-              <span className="text-xs text-muted-foreground">Verified Sustainable Sourcing</span>
-            </div>
-          </a>
+        <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+          <img 
+            src="/greenchainz-icon.png" 
+            alt="GreenChainz Logo" 
+            className="h-12 w-auto"
+          />
+          <div className="flex flex-col">
+            <span className="text-lg font-bold text-foreground">GreenChainz</span>
+            <span className="text-xs text-muted-foreground">Verified Sustainable Sourcing</span>
+          </div>
         </Link>
 
         {/* Mobile Menu Button */}
@@ -41,50 +39,32 @@ export default function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          <Link href="/about">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              About
-            </a>
+          <Link href="/about" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            About
           </Link>
-          <Link href="/materials">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Materials
-            </a>
+          <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Materials
           </Link>
-          <Link href="/assemblies">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Assemblies
-            </a>
+          <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Assemblies
           </Link>
-          <Link href="/rfq">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              RFQ
-            </a>
+          <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            RFQ
           </Link>
-          <Link href="/rfq-status">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              RFQ Status
-            </a>
+          <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            RFQ Status
           </Link>
-          <Link href="/compare">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Compare
-            </a>
+          <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Compare
           </Link>
-          <Link href="/messages">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Messages
-            </a>
+          <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Messages
           </Link>
-          <Link href="/subscription">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Subscription
-            </a>
+          <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Subscription
           </Link>
-          <Link href="/supplier/register">
-            <a className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Become a Supplier
-            </a>
+          <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Become a Supplier
           </Link>
         </nav>
 
@@ -96,11 +76,9 @@ export default function Header() {
             <>
               <NotificationCenter />
               <Link href="/dashboard">
-                <a>
-                  <Button variant="ghost" size="sm">
-                    Dashboard
-                  </Button>
-                </a>
+                <Button variant="ghost" size="sm">
+                  Dashboard
+                </Button>
               </Link>
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
@@ -131,59 +109,41 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background">
           <nav className="container py-4 flex flex-col space-y-3">
-            <Link href="/about">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                About
-              </a>
+            <Link href="/about" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              About
             </Link>
-            <Link href="/materials">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                Materials
-              </a>
+            <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Materials
             </Link>
-            <Link href="/assemblies">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                Assemblies
-              </a>
+            <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Assemblies
             </Link>
-            <Link href="/rfq">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                RFQ
-              </a>
+            <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              RFQ
             </Link>
-            <Link href="/rfq-status">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                RFQ Status
-              </a>
+            <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              RFQ Status
             </Link>
-            <Link href="/compare">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                Compare
-              </a>
+            <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Compare
             </Link>
-            <Link href="/messages">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                Messages
-              </a>
+            <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Messages
             </Link>
-            <Link href="/subscription">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                Subscription
-              </a>
+            <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Subscription
             </Link>
-            <Link href="/supplier/register">
-              <a className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                Become a Supplier
-              </a>
+            <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Become a Supplier
             </Link>
             {!user && (
               <div className="flex flex-col space-y-2 pt-2">

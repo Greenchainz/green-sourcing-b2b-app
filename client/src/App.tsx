@@ -67,8 +67,10 @@ function Router() {
   );
 }
 
-function App() {
+// Inner component that uses hooks requiring AuthProvider context
+function AppInner() {
   // Initialize WebPubSub connection for real-time notifications
+  // This hook calls useAuth() so it MUST be inside AuthProvider
   useWebPubSub();
 
   const [activeCall, setActiveCall] = useState<{
@@ -86,25 +88,31 @@ function App() {
   };
 
   return (
+    <ChatWidgetProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+        <UnifiedChatWidget />
+        <IncomingCallNotification onAccept={handleAcceptCall} />
+        {activeCall && (
+          <WebRTCVideoCall
+            conversationId={activeCall.conversationId}
+            calleeId={activeCall.calleeId}
+            calleeName={activeCall.calleeName}
+            onCallEnd={() => setActiveCall(null)}
+          />
+        )}
+      </TooltipProvider>
+    </ChatWidgetProvider>
+  );
+}
+
+function App() {
+  return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <AuthProvider>
-          <ChatWidgetProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Router />
-              <UnifiedChatWidget />
-              <IncomingCallNotification onAccept={handleAcceptCall} />
-            {activeCall && (
-              <WebRTCVideoCall
-                conversationId={activeCall.conversationId}
-                calleeId={activeCall.calleeId}
-                calleeName={activeCall.calleeName}
-                onCallEnd={() => setActiveCall(null)}
-              />
-            )}
-          </TooltipProvider>
-          </ChatWidgetProvider>
+          <AppInner />
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

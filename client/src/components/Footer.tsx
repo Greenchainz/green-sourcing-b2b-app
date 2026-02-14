@@ -57,31 +57,23 @@ export default function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Product</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/materials">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Materials Catalog
-                  </a>
+                <Link href="/materials" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Materials Catalog
                 </Link>
               </li>
               <li>
-                <Link href="/assemblies">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Assemblies
-                  </a>
+                <Link href="/assemblies" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Assemblies
                 </Link>
               </li>
               <li>
-                <Link href="/rfq">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Request Quote (RFQ)
-                  </a>
+                <Link href="/rfq" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Request Quote (RFQ)
                 </Link>
               </li>
               <li>
-                <Link href="/compare">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Compare Materials
-                  </a>
+                <Link href="/compare" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Compare Materials
                 </Link>
               </li>
             </ul>
@@ -92,31 +84,23 @@ export default function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Company</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/about">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    About
-                  </a>
+                <Link href="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  About
                 </Link>
               </li>
               <li>
-                <Link href="/blog">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Blog
-                  </a>
+                <Link href="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Blog
                 </Link>
               </li>
               <li>
-                <Link href="/careers">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Careers
-                  </a>
+                <Link href="/careers" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Careers
                 </Link>
               </li>
               <li>
-                <Link href="/contact">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Contact
-                  </a>
+                <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Contact
                 </Link>
               </li>
             </ul>
@@ -127,31 +111,23 @@ export default function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Legal</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/privacy">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Privacy Policy
-                  </a>
+                <Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Terms of Service
-                  </a>
+                <Link href="/terms" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/supplier-agreement">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Supplier Agreement
-                  </a>
+                <Link href="/supplier-agreement" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Supplier Agreement
                 </Link>
               </li>
               <li>
-                <Link href="/help">
-                  <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                    Help Center
-                  </a>
+                <Link href="/help" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Help Center
                 </Link>
               </li>
             </ul>
