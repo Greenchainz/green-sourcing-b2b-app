@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Save, Bot, TrendingUp, MessageSquare, Clock, CheckCircle, AlertCircle } from "lucide-react";
@@ -17,6 +20,10 @@ export default function SupplierAgentConfig() {
   const [handoffMode, setHandoffMode] = useState<"always_agent" | "hybrid" | "immediate_human">("hybrid");
   const [maxMessages, setMaxMessages] = useState(5);
   const [customPrompt, setCustomPrompt] = useState("");
+  const [businessHoursEnabled, setBusinessHoursEnabled] = useState(false);
+  const [businessDays, setBusinessDays] = useState<string[]>(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+  const [businessHoursStart, setBusinessHoursStart] = useState("09:00");
+  const [businessHoursEnd, setBusinessHoursEnd] = useState("17:00");
   const [isSaving, setIsSaving] = useState(false);
 
   const { data: config, isLoading, refetch } = trpc.agentConfig.getConfig.useQuery();
@@ -39,6 +46,16 @@ export default function SupplierAgentConfig() {
       setHandoffMode(config.handoffMode);
       setMaxMessages(config.maxAgentMessages);
       setCustomPrompt(config.customAgentPrompt || "");
+      setBusinessHoursEnabled(config.businessHoursEnabled === 1);
+      if (config.businessDays) {
+        setBusinessDays(config.businessDays.split(","));
+      }
+      if (config.businessHoursStart) {
+        setBusinessHoursStart(config.businessHoursStart);
+      }
+      if (config.businessHoursEnd) {
+        setBusinessHoursEnd(config.businessHoursEnd);
+      }
     }
   }, [config]);
 
@@ -48,8 +65,20 @@ export default function SupplierAgentConfig() {
       handoffMode,
       maxAgentMessages: maxMessages,
       customAgentPrompt: customPrompt || undefined,
+      businessHoursEnabled: businessHoursEnabled ? 1 : 0,
+      businessDays: businessDays.join(","),
+      businessHoursStart,
+      businessHoursEnd,
     });
   };
+
+  const toggleBusinessDay = (day: string) => {
+    setBusinessDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
+  const allDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   if (isLoading) {
     return (
@@ -241,6 +270,89 @@ export default function SupplierAgentConfig() {
           </CardContent>
         </Card>
 
+        {/* Business Hours Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Business Hours Handoff</CardTitle>
+            <CardDescription>
+              Automatically hand off to human during business hours (optional)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="business-hours-toggle">Enable Business Hours Handoff</Label>
+                <p className="text-sm text-muted-foreground">
+                  When enabled, buyers will be connected to a human during your business hours
+                </p>
+              </div>
+              <Switch
+                id="business-hours-toggle"
+                checked={businessHoursEnabled}
+                onCheckedChange={setBusinessHoursEnabled}
+              />
+            </div>
+
+            {businessHoursEnabled && (
+              <>
+                <div className="space-y-2">
+                  <Label>Business Days</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {allDays.map((day) => (
+                      <div key={day} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`day-${day}`}
+                          checked={businessDays.includes(day)}
+                          onCheckedChange={() => toggleBusinessDay(day)}
+                        />
+                        <Label
+                          htmlFor={`day-${day}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {day}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  {businessDays.length === 0 && (
+                    <p className="text-sm text-destructive">Select at least one business day</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="start-time">Start Time</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={businessHoursStart}
+                      onChange={(e) => setBusinessHoursStart(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="end-time">End Time</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={businessHoursEnd}
+                      onChange={(e) => setBusinessHoursEnd(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <Alert>
+                  <Clock className="h-4 w-4" />
+                  <AlertDescription>
+                    During business hours on selected days ({businessDays.join(", ")}), buyers will be 
+                    connected to a human representative immediately. Outside business hours, the AI agent 
+                    will handle conversations according to your handoff mode settings.
+                  </AlertDescription>
+                </Alert>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Agent Behavior Preview */}
         <Card>
           <CardHeader>
@@ -294,6 +406,19 @@ export default function SupplierAgentConfig() {
                     <p className="font-medium">Fully Automated</p>
                     <p className="text-muted-foreground">
                       AI handles all conversations end-to-end, including RFQ submissions and product recommendations.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {businessHoursEnabled && (
+                <div className="flex items-start space-x-2">
+                  <Clock className="w-4 h-4 mt-0.5 text-purple-500" />
+                  <div>
+                    <p className="font-medium">Business Hours Override</p>
+                    <p className="text-muted-foreground">
+                      During business hours ({businessDays.join(", ")} {businessHoursStart}-{businessHoursEnd}), 
+                      buyers are immediately connected to a human. Outside these hours, normal handoff rules apply.
                     </p>
                   </div>
                 </div>
