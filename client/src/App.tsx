@@ -97,6 +97,7 @@ function AppInner() {
         <Toaster />
         <Router />
         <UnifiedChatWidget />
+        <ChainBot />
         <IncomingCallNotification onAccept={handleAcceptCall} />
         {activeCall && (
           <WebRTCVideoCall
