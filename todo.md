@@ -1009,3 +1009,16 @@
 - [x] Add route to App.tsx
 - [ ] Write vitest tests for agent config procedures (deferred - Drizzle ORM mocking complexity)
 - [ ] Test configuration flow end-to-end with Premium supplier account
+
+
+## Agent Handoff Rules Integration (Current)
+- [x] Modify agent-response-handler.ts to read handoff rules from agent_handoff_rules table
+- [x] Add handoff mode logic (always_agent / hybrid / immediate_human)
+- [x] Add message count tracking per conversation (already implemented in agent-triage-service.ts)
+- [x] Implement handoff trigger after maxAgentMessages in hybrid mode (already implemented)
+- [x] Apply custom agent prompt to Supplier Agent responses
+- [x] Skip agent routing in immediate_human mode (connect directly to human)
+- [ ] Test handoff behavior with always_agent mode (requires Premium supplier account)
+- [ ] Test handoff behavior with hybrid mode (5 messages)
+- [ ] Test handoff behavior with immediate_human mode
+- [ ] Test custom agent prompt application
