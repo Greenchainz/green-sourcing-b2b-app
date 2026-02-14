@@ -926,3 +926,14 @@
 - [ ] Extract contact info (name, company, email, LinkedIn profile)
 - [ ] Create CSV export organized by decision-maker category
 - [ ] Build automated outreach workflow (email sequences)
+
+
+## EC3 Database Integration (Current)
+- [x] Map EC3 EPD structure to materials table schema
+- [x] Build transformation logic (EC3EPD → Material model)
+- [x] Create tRPC procedure: ec3.syncMaterials (fetch + transform + bulk insert)
+- [x] Create tRPC procedure: ec3.searchByCarbon (carbon range query for swaps)
+- [x] Add EC3 source tracking fields to materials table (ec3_id, ec3_synced_at)
+- [x] Write unit tests for EC3 transformation and sync logic
+- [ ] Debug EC3 API empty results (OAuth works, but /api/epds returns empty)
+- [ ] Test sync with real EPD data once API issue is resolved
