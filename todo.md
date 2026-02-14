@@ -959,3 +959,12 @@
 - [x] Add route to App.tsx (/supplier/submit-spec)
 - [ ] Test form submission and verify data storage (next step)
 - [ ] Write vitest tests for spec submission and validation
+
+
+## Supplier Spec Form E2E Testing (Current)
+- [x] Write vitest tests for material spec submission (complete spec, minimal spec, JSON fields)
+- [x] Write vitest tests for querying specs (by material, by supplier, pending specs)
+- [x] Write vitest tests for updating specs (fields, status)
+- [x] Write vitest tests for admin review (approve, reject with feedback)
+- [x] Tests skip gracefully when database not available in test environment
+- [ ] Manual browser testing (form loads at /supplier/submit-spec, all tabs render, submission works)
