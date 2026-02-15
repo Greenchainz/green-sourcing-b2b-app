@@ -32,6 +32,7 @@ import { materialSpecRouter } from "./routers/material-spec-router";
 import { materialSwapRouter } from "./routers/material-swap-router";
 import { agentConfigRouter } from "./agent-config-router";
 import { legalRouter } from "./legal-router";
+import { autodesksDARouter } from "./autodesk-sda-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -45,6 +46,7 @@ export const appRouter = router({
   materialSwap: materialSwapRouter,
   agentConfig: agentConfigRouter,
   legal: legalRouter,
+  autodesk: autodesksDARouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
