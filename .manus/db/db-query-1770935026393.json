@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `conversations` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`rfqId` int NOT NULL,\n\t`buyerId` int NOT NULL,\n\t`supplierId` int NOT NULL,\n\t`lastMessageAt` timestamp NOT NULL DEFAULT (now()),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `conversations_id` PRIMARY KEY(`id`)\n);\n\nCREATE TABLE `messages` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`conversationId` int NOT NULL,\n\t`senderId` int NOT NULL,\n\t`content` text NOT NULL,\n\t`isRead` tinyint NOT NULL DEFAULT 0,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `messages_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute CREATE TABLE `conversations` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`rfqId` int NOT NULL,\n\t`buyerId` int NOT NULL,\n\t`supplierId` int NOT NULL,\n\t`lastMessageAt` timestamp NOT NULL DEFAULT (now()),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `conversations_id` PRIMARY KEY(`id`)\n);\n\nCREATE TABLE `messages` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`conversationId` int NOT NULL,\n\t`senderId` int NOT NULL,\n\t`content` text NOT NULL,\n\t`isRead` tinyint NOT NULL DEFAULT 0,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `messages_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2451
+}

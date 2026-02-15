@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `subscriptions` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`microsoftSubscriptionId` varchar(255) NOT NULL,\n\t`tier` enum('free','standard','premium') NOT NULL DEFAULT 'free',\n\t`status` enum('active','suspended','cancelled','expired') NOT NULL DEFAULT 'active',\n\t`startDate` timestamp NOT NULL,\n\t`endDate` timestamp,\n\t`lastRenewalDate` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `subscriptions_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `subscriptions_microsoftSubscriptionId_unique` UNIQUE(`microsoftSubscriptionId`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute CREATE TABLE IF NOT EXISTS `subscriptions` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`microsoftSubscriptionId` varchar(255) NOT NULL,\n\t`tier` enum('free','standard','premium') NOT NULL DEFAULT 'free',\n\t`status` enum('active','suspended','cancelled','expired') NOT NULL DEFAULT 'active',\n\t`startDate` timestamp NOT NULL,\n\t`endDate` timestamp,\n\t`lastRenewalDate` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `subscriptions_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `subscriptions_microsoftSubscriptionId_unique` UNIQUE(`microsoftSubscriptionId`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 555
+}
