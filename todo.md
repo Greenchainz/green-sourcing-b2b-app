@@ -1095,3 +1095,24 @@
 - [x] Add Footer links to /terms and /privacy (already existed)
 - [x] Update App.tsx routing for legal pages
 - [ ] Test legal acceptance flow end-to-end
+
+
+## Supplier Portal
+
+- [x] Supplier registration page (multi-step form)
+- [x] Supplier profile dashboard (company info management)
+- [x] Supplier RFQ dashboard (view matching RFQs, list + map view)
+- [ ] Bid submission workflow (submit pricing/terms on RFQs)
+- [ ] Supplier analytics (bid performance, win rate, response time)
+- [ ] Email notifications for new matching RFQs
+- [ ] Supplier verification workflow (admin approval)
+- [ ] Supplier onboarding checklist
+- [ ] Supplier performance metrics dashboard
+
+## Cookie Consent
+
+- [x] Cookieyes script integration
+- [x] Fallback cookie consent banner component
+- [x] Fixed dark theme with lime green colors (#9FE870)
+- [ ] Connect banner to legal acceptance tracking (trpc.legal.acceptCookieConsent)
+- [ ] Test cookie consent flow end-to-end
