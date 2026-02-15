@@ -578,7 +578,9 @@ export function UnifiedChatWidget() {
                                 msg.senderId === Number(user.id)
                                   ? "bg-green-500 text-white"
                                   : msg.senderType === "agent"
-                                  ? "bg-blue-50 border border-blue-200"
+                                  ? msg.content.includes("I've handled your initial questions") || msg.content.includes("connect you with a human")
+                                    ? "bg-amber-50 border-2 border-amber-300"
+                                    : "bg-blue-50 border border-blue-200"
                                   : "bg-muted"
                               }`}
                             >
@@ -603,7 +605,12 @@ export function UnifiedChatWidget() {
                                   )}
                                 </div>
                               )}
-                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                              <p className="text-sm whitespace-pre-wrap">
+                                {(msg.content.includes("I've handled your initial questions") || msg.content.includes("connect you with a human")) && (
+                                  <span className="inline-block mr-2">🔄</span>
+                                )}
+                                {msg.content}
+                              </p>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-muted-foreground">
