@@ -1045,3 +1045,14 @@
 - [ ] Add typing indicator with different styles for agent vs human (deferred - requires WebSocket integration)
 - [ ] Test handoff status UI with real conversation data (requires Premium supplier account)
 - [ ] Test status badge updates when handoff occurs (requires Premium supplier account)
+
+
+## GreenChainz Color Scheme Update (Current)
+- [x] Update global CSS variables in index.css (primary: #9FE870 lime green, background: dark)
+- [x] Update ChainBot button with lime green + glow effect (pulsing animation + shadow)
+- [x] Update UnifiedChatWidget with lime green theme + glow effect
+- [x] Header component automatically uses semantic variables (dark bg + lime accents)
+- [x] All buttons automatically use lime green via semantic variables
+- [x] Homepage hero section automatically uses new theme (lime green text + dark bg)
+- [x] Card components automatically use dark theme via semantic variables
+- [x] Tested color scheme on homepage - lime green + dark theme working perfectly

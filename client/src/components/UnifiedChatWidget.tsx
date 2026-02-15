@@ -365,7 +365,10 @@ export function UnifiedChatWidget() {
       {!isOpen && (
         <button
           onClick={openWidget}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-50"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-[#9FE870] hover:bg-[#8DD85F] text-gray-900 transition-all duration-300 hover:scale-110 flex items-center justify-center z-50 animate-pulse"
+          style={{
+            boxShadow: '0 0 20px rgba(159, 232, 112, 0.6), 0 0 40px rgba(159, 232, 112, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.2)'
+          }}
         >
           <MessageCircle className="h-6 w-6" />
           {unreadCount && unreadCount > 0 && (
