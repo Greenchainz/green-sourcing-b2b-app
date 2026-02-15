@@ -9,6 +9,7 @@ import {
   boolean,
   tinyint,
   json,
+  index,
 } from "drizzle-orm/mysql-core";
 
 // ─── Users ──────────────────────────────────────────────────────────────────
@@ -784,3 +785,169 @@ export const legalAcceptances = mysqlTable("legal_acceptances", {
 
 export type LegalAcceptance = typeof legalAcceptances.$inferSelect;
 export type InsertLegalAcceptance = typeof legalAcceptances.$inferInsert;
+
+
+// ─── Location-Based Tables ──────────────────────────────────────────────────
+
+/**
+ * Suppliers with geolocation support
+ * Stores supplier information with coordinates for distance-based queries
+ */
+export const suppliersLocation = mysqlTable(
+  "suppliers_location",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    supplierId: int("supplier_id").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    state: varchar("state", { length: 2 }).notNull(),
+    city: varchar("city", { length: 100 }).notNull(),
+    zipCode: varchar("zip_code", { length: 10 }).notNull(),
+    latitude: decimal("latitude", { precision: 10, scale: 6 }).notNull(),
+    longitude: decimal("longitude", { precision: 10, scale: 6 }).notNull(),
+    materialsAvailable: json("materials_available").$type<string[]>().default([]),
+    carbonScore: decimal("carbon_score", { precision: 5, scale: 2 }).default("0"),
+    pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }),
+    leadTimeDays: int("lead_time_days").default(7),
+    contactEmail: varchar("contact_email", { length: 255 }),
+    contactPhone: varchar("contact_phone", { length: 20 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    stateIdx: index("idx_suppliers_location_state").on(table.state),
+    cityIdx: index("idx_suppliers_location_city").on(table.city),
+    latLngIdx: index("idx_suppliers_location_latlng").on(table.latitude, table.longitude),
+  })
+);
+
+export type SuppliersLocation = typeof suppliersLocation.$inferSelect;
+export type InsertSuppliersLocation = typeof suppliersLocation.$inferInsert;
+
+/**
+ * Compliance rules table
+ * Stores state-specific building codes and compliance requirements
+ */
+export const complianceRules = mysqlTable(
+  "compliance_rules",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    state: varchar("state", { length: 2 }).notNull(),
+    buildingCode: varchar("building_code", { length: 100 }).notNull(),
+    ruleName: varchar("rule_name", { length: 255 }).notNull(),
+    ruleDescription: text("rule_description"),
+    appliesToMaterials: json("applies_to_materials").$type<string[]>().default([]),
+    complianceType: varchar("compliance_type", { length: 50 }),
+    complianceValue: varchar("compliance_value", { length: 100 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    stateIdx: index("idx_compliance_rules_state").on(table.state),
+    codeIdx: index("idx_compliance_rules_code").on(table.buildingCode),
+  })
+);
+
+export type ComplianceRules = typeof complianceRules.$inferSelect;
+export type InsertComplianceRules = typeof complianceRules.$inferInsert;
+
+/**
+ * Regional swap patterns table
+ * Tracks which material swaps are approved/used in each region
+ */
+export const regionalSwapPatterns = mysqlTable(
+  "regional_swap_patterns",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    state: varchar("state", { length: 2 }).notNull(),
+    originalMaterial: varchar("original_material", { length: 255 }).notNull(),
+    alternativeMaterial: varchar("alternative_material", { length: 255 }).notNull(),
+    approvalRate: decimal("approval_rate", { precision: 5, scale: 2 }).default("0"),
+    usageCount: int("usage_count").default(0),
+    avgCarbonReduction: decimal("avg_carbon_reduction", { precision: 5, scale: 2 }).default("0"),
+    avgCostDelta: decimal("avg_cost_delta", { precision: 10, scale: 2 }).default("0"),
+    avgPaybackYears: decimal("avg_payback_years", { precision: 5, scale: 2 }).default("0"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    stateIdx: index("idx_swap_patterns_state").on(table.state),
+    materialIdx: index("idx_swap_patterns_material").on(table.originalMaterial),
+  })
+);
+
+export type RegionalSwapPatterns = typeof regionalSwapPatterns.$inferSelect;
+export type InsertRegionalSwapPatterns = typeof regionalSwapPatterns.$inferInsert;
+
+/**
+ * Shipping cost matrix table
+ * Stores shipping costs between regions for different material types
+ */
+export const shippingCosts = mysqlTable(
+  "shipping_costs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    originState: varchar("origin_state", { length: 2 }).notNull(),
+    destinationState: varchar("destination_state", { length: 2 }).notNull(),
+    materialType: varchar("material_type", { length: 100 }).notNull(),
+    costPerUnit: decimal("cost_per_unit", { precision: 10, scale: 2 }).notNull(),
+    daysToDelivery: int("days_to_delivery").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    routeIdx: index("idx_shipping_route").on(table.originState, table.destinationState),
+    materialIdx: index("idx_shipping_material").on(table.materialType),
+  })
+);
+
+export type ShippingCosts = typeof shippingCosts.$inferSelect;
+export type InsertShippingCosts = typeof shippingCosts.$inferInsert;
+
+/**
+ * Climate zone adjustments table
+ * Stores material performance adjustments based on climate zone
+ */
+export const climateZoneAdjustments = mysqlTable(
+  "climate_zone_adjustments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    climateZone: varchar("climate_zone", { length: 10 }).notNull(),
+    materialType: varchar("material_type", { length: 100 }).notNull(),
+    durabilityMultiplier: decimal("durability_multiplier", { precision: 3, scale: 2 }).default("1.0"),
+    rValueMultiplier: decimal("r_value_multiplier", { precision: 3, scale: 2 }).default("1.0"),
+    carbonImpactMultiplier: decimal("carbon_impact_multiplier", { precision: 3, scale: 2 }).default("1.0"),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    zoneIdx: index("idx_climate_zone").on(table.climateZone),
+    materialIdx: index("idx_climate_material").on(table.materialType),
+  })
+);
+
+export type ClimateZoneAdjustments = typeof climateZoneAdjustments.$inferSelect;
+export type InsertClimateZoneAdjustments = typeof climateZoneAdjustments.$inferInsert;
+
+/**
+ * Location-based pricing adjustments table
+ * Stores regional pricing variations for materials
+ */
+export const locationPricingAdjustments = mysqlTable(
+  "location_pricing_adjustments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    state: varchar("state", { length: 2 }).notNull(),
+    materialType: varchar("material_type", { length: 100 }).notNull(),
+    priceMultiplier: decimal("price_multiplier", { precision: 3, scale: 2 }).default("1.0"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    stateIdx: index("idx_pricing_state").on(table.state),
+    materialIdx: index("idx_pricing_material").on(table.materialType),
+  })
+);
+
+export type LocationPricingAdjustments = typeof locationPricingAdjustments.$inferSelect;
+export type InsertLocationPricingAdjustments = typeof locationPricingAdjustments.$inferInsert;
