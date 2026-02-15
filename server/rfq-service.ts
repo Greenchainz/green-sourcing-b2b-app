@@ -131,6 +131,17 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
     })
     .execute();
 
+  // Notify owner of new RFQ submission
+  const { notifyOwner } = await import("./_core/notification");
+  const materialLabel = input.materials.length > 1 ? "materials" : "material";
+  const supplierLabel = matchedSuppliers.length > 1 ? "suppliers" : "supplier";
+  await notifyOwner({
+    title: "New RFQ Submitted",
+    content: `${input.projectName} - ${input.materials.length} ${materialLabel} requested. ${matchedSuppliers.length} ${supplierLabel} matched.`,
+  }).catch((error: unknown) => {
+    console.error("Failed to notify owner of RFQ submission:", error);
+  });
+
   return { rfqId, matchedSuppliers };
 }
 

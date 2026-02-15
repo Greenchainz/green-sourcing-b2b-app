@@ -51,10 +51,9 @@
 - [x] Bid analytics (total bids, avg/min/max price, winning bid)
 - [x] tRPC procedures: getUserRfqs, getRfqDetails
 - [x] RFQ Dashboard page with tabs (All, Active, Awarded)
-- [x] Add RFQ Status link to header navigation
-- [ ] Bid acceptance/rejection flow with confirmation
-- [ ] Supplier response flow
-
+- [x]- [x] RFQ submission notification to owner (notifyOwner integration)
+- [x] Bid acceptance/rejection flow with confirmation (BuyerRfqDashboard mutations)
+- [x] Supplier response flow (RfqDetail.tsx page)
 ## Material Comparison
 
 - [x] Compare page with side-by-side CCPS comparison

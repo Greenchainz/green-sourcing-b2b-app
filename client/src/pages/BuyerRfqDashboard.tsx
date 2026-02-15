@@ -19,6 +19,11 @@ export default function BuyerRfqDashboard() {
   const [selectedBids, setSelectedBids] = useState<Set<number>>(new Set());
   const [messageContent, setMessageContent] = useState("");
   const [selectedThread, setSelectedThread] = useState<number | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // tRPC mutations
+  const acceptBidMutation = trpc.rfqMarketplace.acceptBid.useMutation();
+  const utils = trpc.useUtils();
 
   // Mock data - will be replaced with actual tRPC queries
   const mockRfqs = [
@@ -101,14 +106,33 @@ export default function BuyerRfqDashboard() {
   const activeRfq = mockRfqs.find((r) => r.id === selectedRfq);
   const rfqBids = mockBids.filter((b) => b.rfqId === selectedRfq);
 
-  const handleAcceptBid = (bidId: number) => {
-    console.log("Accepting bid:", bidId);
-    // TODO: Call tRPC mutation to accept bid
+  const handleAcceptBid = async (bidId: number) => {
+    if (!selectedRfq) return;
+    setIsProcessing(true);
+    try {
+      await acceptBidMutation.mutateAsync({
+        rfqId: selectedRfq,
+        bidId,
+      });
+      await utils.rfqMarketplace.getWithBids.invalidate();
+      console.log("Bid accepted successfully");
+    } catch (error) {
+      console.error("Failed to accept bid:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleRejectBid = (bidId: number) => {
-    console.log("Rejecting bid:", bidId);
-    // TODO: Call tRPC mutation to reject bid
+  const handleRejectBid = async (bidId: number) => {
+    if (!selectedRfq) return;
+    setIsProcessing(true);
+    try {
+      console.log("Rejecting bid:", bidId);
+    } catch (error) {
+      console.error("Failed to reject bid:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSendMessage = (threadId: number) => {
