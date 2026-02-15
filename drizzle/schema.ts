@@ -760,3 +760,26 @@ export const monthlyCallUsage = mysqlTable("monthly_call_usage", {
 
 export type MonthlyCallUsage = typeof monthlyCallUsage.$inferSelect;
 export type InsertMonthlyCallUsage = typeof monthlyCallUsage.$inferInsert;
+
+
+// ─── Legal Acceptances ──────────────────────────────────────────────────────
+
+export const legalAcceptances = mysqlTable("legal_acceptances", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  termsAccepted: tinyint("termsAccepted").default(0).notNull(),
+  termsAcceptedAt: timestamp("termsAcceptedAt"),
+  termsVersion: varchar("termsVersion", { length: 50 }).default("1.0"),
+  privacyAccepted: tinyint("privacyAccepted").default(0).notNull(),
+  privacyAcceptedAt: timestamp("privacyAcceptedAt"),
+  privacyVersion: varchar("privacyVersion", { length: 50 }).default("1.0"),
+  cookieConsentGiven: tinyint("cookieConsentGiven").default(0).notNull(),
+  cookieConsentAt: timestamp("cookieConsentAt"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LegalAcceptance = typeof legalAcceptances.$inferSelect;
+export type InsertLegalAcceptance = typeof legalAcceptances.$inferInsert;
