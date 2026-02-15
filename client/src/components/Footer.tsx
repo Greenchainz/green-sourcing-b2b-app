@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <img 
-                src="/greenchainz-icon.png" 
+                src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663343505136/zgZDqySaTSwFXoZl.png" 
                 alt="GreenChainz Logo" 
                 className="h-10 w-auto"
               />
