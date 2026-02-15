@@ -17,6 +17,7 @@ import MaterialsCatalog from "./pages/MaterialsCatalog";
 import MaterialDetail from "./pages/MaterialDetail";
 import Assemblies from "./pages/Assemblies";
 import RfqCart from "./pages/RfqCart";
+import RfqDetail from "./pages/RfqDetail";
 import Compare from "./pages/Compare";
 import SupplierDashboard from "./pages/SupplierDashboard";
 import BuyerRfqDashboard from "./pages/BuyerRfqDashboard";
@@ -51,7 +52,8 @@ function Router() {
       <Route path={"/assemblies"} component={Assemblies} />
       <Route path={"/assemblies/:id"} component={Assemblies} />
       <Route path={"/rfq"} component={RfqCart} />
-       <Route path="/compare" component={Compare} />
+      <Route path="/rfq/:id" component={RfqDetail} />
+      <Route path="/compare" component={Compare} />
       <Route path="/supplier-dashboard" component={SupplierDashboard} />
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
