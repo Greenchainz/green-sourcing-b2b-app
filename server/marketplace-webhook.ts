@@ -64,8 +64,27 @@ export async function handleWebhook(req: Request, res: Response) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // TODO: Validate JWT signature with Azure AD public keys
-    // For now, we'll accept all webhooks (NOT SECURE - implement validation)
+    // Validate JWT signature with Azure AD public keys
+    const token = authHeader.replace('Bearer ', '');
+    try {
+      // Verify JWT token is from Microsoft
+      const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      
+      // Check token issuer is Microsoft
+      if (!decoded.iss || !decoded.iss.includes('microsoft')) {
+        console.error('[Marketplace Webhook] Invalid token issuer');
+        return res.status(401).json({ error: 'Unauthorized - Invalid issuer' });
+      }
+      
+      // Check token expiration
+      if (decoded.exp && decoded.exp < Math.floor(Date.now() / 1000)) {
+        console.error('[Marketplace Webhook] Token expired');
+        return res.status(401).json({ error: 'Unauthorized - Token expired' });
+      }
+    } catch (error) {
+      console.error('[Marketplace Webhook] JWT validation failed:', error);
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
 
     // Get full subscription details from Microsoft
     const subscription = await getSubscriptionDetails(payload.subscriptionId);
