@@ -35,6 +35,8 @@ import AdminVerificationQueue from "./pages/AdminVerificationQueue";
 import SupplierSpecSubmission from "./pages/SupplierSpecSubmission";
 import MaterialSwap from "./pages/MaterialSwap";
 import SupplierAgentConfig from "./pages/SupplierAgentConfig";
+import { Terms } from "./pages/Terms";
+import { Privacy } from "./pages/Privacy";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 
@@ -67,7 +69,9 @@ function Router() {
       <Route path={"/tools/extension"} component={BrowserExtension} />
       <Route path={"/tools/revit"} component={RevitPlugin} />
       <Route path={"/tools/submittal"} component={SubmittalGenerator} />
-      <Route path={"/404"} component={NotFound} />
+       <Route path={"/terms"} component={Terms} />
+      <Route path={"/privacy"} component={Privacy} />
+      <Route path={"404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );

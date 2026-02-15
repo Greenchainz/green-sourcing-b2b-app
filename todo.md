@@ -1083,3 +1083,15 @@
 - [x] Add hover glow to table rows and interactive rows
 - [x] Test glow effects across all pages (verified on homepage)
 - [x] Verify glow effects work on dark background (working perfectly)
+
+
+## Legal Documents & Compliance
+
+- [x] Set up Cookieyes integration (free tier, 1 site/year)
+- [x] Create /terms page with Terms of Service markdown rendering
+- [x] Create /privacy page with Privacy Policy markdown rendering
+- [x] Add legal_acceptances table to track ToS/Privacy acceptance
+- [x] Implement legal acceptance tracking in signup flow (legal-router.ts with 5 procedures)
+- [x] Add Footer links to /terms and /privacy (already existed)
+- [x] Update App.tsx routing for legal pages
+- [ ] Test legal acceptance flow end-to-end

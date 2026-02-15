@@ -31,6 +31,7 @@ import { ec3Router } from "./routers/ec3-router";
 import { materialSpecRouter } from "./routers/material-spec-router";
 import { materialSwapRouter } from "./routers/material-swap-router";
 import { agentConfigRouter } from "./agent-config-router";
+import { legalRouter } from "./legal-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -43,6 +44,7 @@ export const appRouter = router({
   materialSpec: materialSpecRouter,
   materialSwap: materialSwapRouter,
   agentConfig: agentConfigRouter,
+  legal: legalRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

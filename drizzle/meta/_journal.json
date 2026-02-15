@@ -162,6 +162,13 @@
       "when": 1771105649074,
       "tag": "0022_lowly_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1771119745653,
+      "tag": "0023_sour_blizzard",
+      "breakpoints": true
     }
   ]
 }
