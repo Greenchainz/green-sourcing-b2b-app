@@ -75,11 +75,19 @@ export default function Header() {
           ) : user ? (
             <>
               <NotificationCenter />
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  Dashboard
-                </Button>
-              </Link>
+              {user.role === 'supplier' ? (
+                <Link href="/supplier/rfqs">
+                  <Button variant="ghost" size="sm">
+                    My Bids
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
+              )}
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                   <span className="text-sm font-medium text-primary-foreground">
