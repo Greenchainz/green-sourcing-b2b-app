@@ -1,7 +1,8 @@
 import { eq, and, gte, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { usageTracking } from "../drizzle/schema";
+import { usageTracking, buyerSubscriptions } from "../drizzle/schema";
 import { getBuyerTierLimits, getSupplierTierLimits } from "./subscription-service";
+import { reportUsageEvent } from "./marketplace-metering";
 
 // ─── Usage Tracking Service ─────────────────────────────────────────────────
 
@@ -51,6 +52,37 @@ export async function trackBuyerUsage(
       periodStart,
       periodEnd,
     });
+  }
+
+  // Report usage to Microsoft Marketplace Metering API
+  try {
+    const subscription = await db
+      .select()
+      .from(buyerSubscriptions)
+      .where(eq(buyerSubscriptions.userId, userId))
+      .limit(1);
+
+    if (subscription.length > 0 && subscription[0].msSubscriptionId && subscription[0].msPlanId) {
+      // Map internal dimension names to Microsoft dimension IDs
+      const dimensionMap: Record<string, string> = {
+        rfq_submission: 'rfq_submissions',
+        ai_query: 'ai_queries',
+        swap_analysis: 'swap_analyses',
+        ccps_export: 'ccps_exports',
+        material_comparison: 'material_comparisons',
+      };
+
+      await reportUsageEvent({
+        resourceId: subscription[0].msSubscriptionId,
+        quantity,
+        dimension: dimensionMap[dimension] as any,
+        effectiveStartTime: new Date().toISOString(),
+        planId: subscription[0].msPlanId,
+      });
+    }
+  } catch (error) {
+    console.error('[Usage Tracking] Failed to report usage to Microsoft:', error);
+    // Don't throw - usage tracking should not fail if metering fails
   }
 }
 
