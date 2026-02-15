@@ -1072,3 +1072,14 @@
 - [x] Add lime green logo to Footer component
 - [x] Test glow effects on hover (working - lime green shadow on hover)
 - [x] Test footer logo displays correctly (verified in status check)
+
+
+## Global Glow Effects (Current)
+- [x] Add hover glow to all button variants (primary, secondary, outline, ghost)
+- [x] Add focus glow to all input fields (text, email, number, select, textarea)
+- [x] Add hover glow to all links and navigation items
+- [x] Add hover glow to card components
+- [x] Add focus glow to form controls (checkboxes, toggles, radio buttons)
+- [x] Add hover glow to table rows and interactive rows
+- [x] Test glow effects across all pages (verified on homepage)
+- [x] Verify glow effects work on dark background (working perfectly)

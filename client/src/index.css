@@ -178,7 +178,72 @@
   }
 }
 
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(159, 232, 112, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(159, 232, 112, 0.1); }
+}
+
+@keyframes glow-focus {
+  0% { box-shadow: 0 0 0 0 rgba(159, 232, 112, 0.5); }
+  100% { box-shadow: 0 0 0 6px rgba(159, 232, 112, 0); }
+}
+
 @layer components {
+  /* Glow effects for buttons */
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover,
+  [type="button"]:not(:disabled):hover,
+  [type="submit"]:not(:disabled):hover,
+  [type="reset"]:not(:disabled):hover {
+    @apply shadow-lg;
+    box-shadow: 0 0 20px rgba(159, 232, 112, 0.4), 0 0 40px rgba(159, 232, 112, 0.2);
+  }
+
+  button:not(:disabled):focus,
+  [role="button"]:not([aria-disabled="true"]):focus,
+  [type="button"]:not(:disabled):focus,
+  [type="submit"]:not(:disabled):focus,
+  [type="reset"]:not(:disabled):focus {
+    animation: glow-focus 0.6s ease-out;
+  }
+
+  /* Glow effects for input fields */
+  input:not(:disabled):focus,
+  textarea:not(:disabled):focus,
+  select:not(:disabled):focus {
+    @apply outline-none ring-2;
+    ring-color: rgba(159, 232, 112, 0.5);
+    box-shadow: 0 0 20px rgba(159, 232, 112, 0.3), inset 0 0 10px rgba(159, 232, 112, 0.1);
+  }
+
+  /* Glow effects for links */
+  a[href]:hover {
+    @apply text-primary;
+    text-shadow: 0 0 10px rgba(159, 232, 112, 0.4);
+  }
+
+  a[href]:focus {
+    @apply outline-none;
+    box-shadow: 0 0 15px rgba(159, 232, 112, 0.4);
+    border-radius: 0.25rem;
+  }
+
+  /* Glow effects for checkboxes and radio buttons */
+  input[type="checkbox"]:not(:disabled):focus,
+  input[type="radio"]:not(:disabled):focus {
+    box-shadow: 0 0 15px rgba(159, 232, 112, 0.4);
+  }
+
+  /* Glow effects for cards on hover */
+  .card:hover,
+  [role="region"]:hover {
+    box-shadow: 0 0 20px rgba(159, 232, 112, 0.2);
+  }
+
+  /* Glow pulse animation for interactive elements */
+  .glow-pulse {
+    animation: glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
   /**
    * Custom container utility that centers content and adds responsive padding.
    *
