@@ -315,6 +315,27 @@
   - [x] getSupplierStats tests
   - [x] Authorization tests (admin, non-admin, supplier roles)
 
+## Location Wiring Fixes (IN PROGRESS)
+
+- [ ] Update ORCHESTRATOR agent prompt to pass location to downstream agents
+- [ ] Update CARBON-OPTIMIZER agent prompt to include location and shipping cost calculation
+- [ ] Update COMPLIANCE-VALIDATOR agent prompt to include state-specific compliance rules
+- [ ] Update RFQ-MATCHING agent prompt to query suppliers by distance
+- [ ] Update DEFENSIBILITY-ANALYZER agent prompt to include regional swap patterns
+- [x] Create suppliers table with PostGIS coordinates (location-schema.ts)
+- [x] Create compliance_rules table for state-specific building codes (location-schema.ts)
+- [x] Create regional_swap_patterns table for regional swap history (location-schema.ts)
+- [ ] Build location-aware query functions for supplier distance calculation
+- [ ] Build location-aware query functions for compliance rule lookup
+- [ ] Build location-aware query functions for regional swap patterns
+- [ ] Seed suppliers table with initial US supplier data (100+ suppliers)
+- [ ] Seed compliance_rules table with state-specific rules
+- [ ] Update agent routes to pass location through entire pipeline
+- [ ] Write unit tests for location-based supplier queries
+- [ ] Write unit tests for location-based compliance validation
+- [ ] Write unit tests for location-based defensibility analysis
+- [ ] Test end-to-end location wiring with sample material swap
+
 ## Paywall Middleware & Subscription Management
 
 - [x] Review existing subscription schema (supplier_subscriptions, buyer_subscriptions)
