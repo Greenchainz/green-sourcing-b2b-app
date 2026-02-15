@@ -467,6 +467,28 @@ export async function acceptBid(rfqId: number, bidId: number): Promise<{ success
     .where(and(eq(rfqBids.rfqId, rfqId), sql`id != ${bidId}`))
     .execute();
 
+  // Broadcast bid status updates via WebPubSub
+  try {
+    const { broadcastNotification } = await import("./webpubsub-manager");
+    const allBids = await db
+      .select({ id: rfqBids.id, supplierId: rfqBids.supplierId, status: rfqBids.status })
+      .from(rfqBids)
+      .where(eq(rfqBids.rfqId, rfqId))
+      .execute();
+    
+    for (const bid of allBids) {
+      await broadcastNotification(bid.supplierId, {
+        type: "bid_status_update",
+        rfqId,
+        bidId: bid.id,
+        status: bid.status,
+        message: bid.status === "accepted" ? "Your bid has been accepted!" : "Your bid has been rejected.",
+      });
+    }
+  } catch (error) {
+    console.error("Failed to broadcast bid status updates:", error);
+  }
+
   // Update analytics
   await db
     .update(rfqAnalytics)
