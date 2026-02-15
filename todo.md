@@ -1146,3 +1146,17 @@
 - [x] Fixed dark theme with lime green colors (#9FE870)
 - [ ] Connect banner to legal acceptance tracking (trpc.legal.acceptCookieConsent)
 - [ ] Test cookie consent flow end-to-end
+
+
+## EPD Compliance Checks (IN PROGRESS)
+
+- [ ] Analyze supplier schema and EPD/certification data structure
+- [ ] Design compliance check logic and risk scoring algorithm
+- [ ] Create database queries for compliance validation
+- [ ] Create tRPC procedures for compliance validation
+- [ ] Build ComplianceChecks component with visual indicators
+- [ ] Integrate compliance checks into supplier detail modal
+- [ ] Write unit tests for compliance validation
+- [ ] Test EPD expiration detection
+- [ ] Test certification validity checks
+- [ ] Test risk scoring algorithm

@@ -1,9 +1,10 @@
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { suppliers, users } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { suppliers, users, materials, materialCertifications } from "../drizzle/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { generateComplianceReport } from "./compliance-service";
 
 /**
  * Admin Router — Admin-only operations
@@ -250,4 +251,46 @@ export const adminRouter = router({
 
     return stats;
   }),
+
+  /**
+   * Get compliance report for a supplier
+   */
+  getSupplierCompliance: adminProcedure
+    .input(z.object({ supplierId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [supplier] = await db
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.id, input.supplierId));
+
+      if (!supplier) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found" });
+      }
+
+      const supplierMaterials = await db
+        .select({
+          id: materials.id,
+          name: materials.name,
+          epdExpiry: materials.epdExpiry,
+        })
+        .from(materials)
+        .limit(10);
+
+      const certs = await db
+        .select()
+        .from(materialCertifications)
+        .where(
+          inArray(
+            materialCertifications.materialId,
+            supplierMaterials.map((m) => m.id)
+          )
+        );
+
+      const report = generateComplianceReport(supplier, supplierMaterials, certs);
+
+      return report;
+    }),
 });
