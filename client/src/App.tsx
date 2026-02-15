@@ -33,6 +33,7 @@ import { IncomingCallNotification } from "./components/messaging/IncomingCallNot
 import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
 import { UnifiedChatWidget } from "./components/UnifiedChatWidget";
 import AdminVerificationQueue from "./pages/AdminVerificationQueue";
+import { AdminSupplierDashboard } from "./pages/AdminSupplierDashboard";
 import SupplierSpecSubmission from "./pages/SupplierSpecSubmission";
 import MaterialSwap from "./pages/MaterialSwap";
 import SupplierAgentConfig from "./pages/SupplierAgentConfig";
@@ -66,6 +67,7 @@ function Router() {
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/admin/verification" component={AdminVerificationQueue} />
+      <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
       <Route path={"/api-test"} component={ApiTest} />
       <Route path={"/tools/excel"} component={ExcelAudit} />
       <Route path={"/about"} component={About} />

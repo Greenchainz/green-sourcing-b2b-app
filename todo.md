@@ -284,6 +284,37 @@
 - [ ] Add notifications for new RFQs and bid responses
 
 
+## Supplier Verification Dashboard (COMPLETED)
+
+- [x] Enhanced admin router with comprehensive supplier management procedures
+  - [x] getPendingSuppliers - Fetch suppliers awaiting verification
+  - [x] approveSupplier - Approve supplier with optional notes and email notification
+  - [x] rejectSupplier - Reject supplier with required reason and email notification
+  - [x] getAllSuppliers - Fetch all suppliers with status breakdown
+  - [x] getSupplierDetail - Get full supplier information for review
+  - [x] getSupplierStats - Dashboard statistics (total, pending, approved, rejected, premium, avg sustainability score)
+- [x] Created AdminSupplierDashboard component with:
+  - [x] Statistics cards showing supplier metrics
+  - [x] Search functionality by company name/email
+  - [x] Tab-based filtering (Pending, Approved, Rejected, All)
+  - [x] Supplier list view with status badges
+  - [x] Detail modal with full supplier information
+  - [x] Approval workflow with optional notes
+  - [x] Rejection workflow with required reason
+  - [x] Email contact button for suppliers
+  - [x] Loading states and error handling
+- [x] Added route /admin/suppliers to App.tsx
+- [x] Integrated with tRPC for data fetching and mutations
+- [x] Admin-only access control via adminProcedure
+- [x] Created comprehensive unit tests (13 tests, all passing)
+  - [x] getPendingSuppliers test
+  - [x] approveSupplier tests
+  - [x] rejectSupplier tests
+  - [x] getAllSuppliers test
+  - [x] getSupplierDetail tests
+  - [x] getSupplierStats tests
+  - [x] Authorization tests (admin, non-admin, supplier roles)
+
 ## Paywall Middleware & Subscription Management
 
 - [x] Review existing subscription schema (supplier_subscriptions, buyer_subscriptions)
