@@ -106,6 +106,7 @@ export const materials = mysqlTable("materials", {
   ec3ConservativeEstimate: varchar("ec3ConservativeEstimate", { length: 50 }), // Conservative GWP estimate
   ec3BestPractice: varchar("ec3BestPractice", { length: 50 }), // Best practice GWP
   ec3IndustryMedian: varchar("ec3IndustryMedian", { length: 50 }), // Industry median (pct50_gwp)
+  complianceGrade: mysqlEnum("complianceGrade", ["A", "B", "C", "D", "F"]).default("C"), // Compliance grade (A=best, F=worst)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
