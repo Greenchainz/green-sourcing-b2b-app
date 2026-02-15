@@ -18,7 +18,7 @@ export default function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
           <img 
-            src="/greenchainz-icon.png" 
+            src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663343505136/zgZDqySaTSwFXoZl.png" 
             alt="GreenChainz Logo" 
             className="h-12 w-auto"
           />
