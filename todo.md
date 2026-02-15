@@ -1064,3 +1064,11 @@
 - [x] Logo displays correctly on dark background
 - [ ] Update favicon files in client/public (use lime green version)
 - [ ] Update any other logo references (Footer, etc.)
+
+
+## Button Glow Effects and Footer Logo (Current)
+- [x] Add hover glow effect to "Get Started" button (lime green pulsing)
+- [x] Add hover glow effect to "Start Saving Today" button (lime green pulsing)
+- [x] Add lime green logo to Footer component
+- [x] Test glow effects on hover (working - lime green shadow on hover)
+- [x] Test footer logo displays correctly (verified in status check)

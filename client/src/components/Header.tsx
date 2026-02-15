@@ -96,7 +96,7 @@ export default function Header() {
                 </Button>
               </a>
               <a href={getLoginUrl()}>
-                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_15px_rgba(159,232,112,0.6)] transition-all duration-300">
                   Get Started
                 </Button>
               </a>
