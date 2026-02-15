@@ -37,6 +37,7 @@ import MaterialSwap from "./pages/MaterialSwap";
 import SupplierAgentConfig from "./pages/SupplierAgentConfig";
 import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 
@@ -105,6 +106,7 @@ function AppInner() {
         <UnifiedChatWidget />
         <ChainBot />
         <IncomingCallNotification onAccept={handleAcceptCall} />
+        <CookieConsentBanner />
         {activeCall && (
           <WebRTCVideoCall
             conversationId={activeCall.conversationId}
@@ -121,7 +123,7 @@ function AppInner() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="dark">
         <AuthProvider>
           <AppInner />
         </AuthProvider>
