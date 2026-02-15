@@ -1056,3 +1056,11 @@
 - [x] Homepage hero section automatically uses new theme (lime green text + dark bg)
 - [x] Card components automatically use dark theme via semantic variables
 - [x] Tested color scheme on homepage - lime green + dark theme working perfectly
+
+
+## Logo and Icon Update (Current)
+- [x] Upload actual GreenChainz logo files to S3 (lime green fleur-de-lis)
+- [x] Update Header component to use lime green logo from CDN
+- [x] Logo displays correctly on dark background
+- [ ] Update favicon files in client/public (use lime green version)
+- [ ] Update any other logo references (Footer, etc.)
