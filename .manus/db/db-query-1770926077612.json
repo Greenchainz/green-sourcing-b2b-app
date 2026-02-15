@@ -1,0 +1,22 @@
+{
+  "query": "SELECT openId, name, role, createdAt FROM users WHERE openId LIKE 'test-%' ORDER BY createdAt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute SELECT openId, name, role, createdAt FROM users WHERE openId LIKE 'test-%' ORDER BY createdAt DESC;",
+  "rows": [
+    {
+      "openId": "test-buyer-123",
+      "name": "Test Buyer",
+      "role": "buyer",
+      "createdAt": "2026-02-12 19:53:58"
+    },
+    {
+      "openId": "test-supplier-456",
+      "name": "Test Supplier",
+      "role": "supplier",
+      "createdAt": "2026-02-12 19:53:58"
+    }
+  ],
+  "messages": [],
+  "stdout": "openId\tname\trole\tcreatedAt\ntest-buyer-123\tTest Buyer\tbuyer\t2026-02-12 19:53:58\ntest-supplier-456\tTest Supplier\tsupplier\t2026-02-12 19:53:58\n",
+  "stderr": "",
+  "execution_time_ms": 358
+}
