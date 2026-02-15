@@ -1,4 +1,4 @@
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { suppliers, users, materials, materialCertifications } from "../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";

@@ -1181,3 +1181,18 @@
 - [ ] Test EPD expiration detection
 - [ ] Test certification validity checks
 - [ ] Test risk scoring algorithm
+
+
+## RFQ End-to-End Flow (IN PROGRESS)
+
+- [ ] Create RFQ tRPC procedures (create, list, getDetail, updateStatus)
+- [ ] Build RFQ creation form UI (material selection, quantity, location, certifications)
+- [ ] Implement supplier matching algorithm (distance, certifications, capacity)
+- [ ] Create supplier notification system (email + in-app)
+- [ ] Build supplier bid submission form (price, lead days, notes)
+- [ ] Create bid review UI for buyers (compare prices, lead times, supplier ratings)
+- [ ] Implement bid acceptance workflow (create order, notify supplier)
+- [ ] Build RFQ message thread UI (real-time chat between buyer/supplier)
+- [ ] Create RFQ analytics dashboard (bids received, avg price, response time)
+- [ ] Write unit tests for RFQ procedures
+- [ ] Test end-to-end RFQ flow (create → match → bid → accept)
