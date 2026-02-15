@@ -169,6 +169,13 @@
       "when": 1771119745653,
       "tag": "0023_sour_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1771135856963,
+      "tag": "0024_lowly_star_brand",
+      "breakpoints": true
     }
   ]
 }

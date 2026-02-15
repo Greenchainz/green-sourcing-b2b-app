@@ -1,7 +1,9 @@
-import { trpc } from "@/lib/trpc";
+import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { MessageCircle, Loader2 } from "lucide-react";
+import { MessageCircle, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { trpc } from "@/lib/trpc";
 
 interface ConversationListProps {
   selectedConversationId?: number;
@@ -12,7 +14,13 @@ export function ConversationList({
   selectedConversationId,
   onSelectConversation,
 }: ConversationListProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: conversations, isLoading } = trpc.messaging.getConversations.useQuery();
+  
+  const filteredConversations = conversations?.filter((conv: any) =>
+    conv.otherPartyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.rfqTitle?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   if (isLoading) {
     return (
@@ -35,8 +43,26 @@ export function ConversationList({
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      {conversations.map((conversation: any) => (
+    <div className="flex flex-col h-full">
+      <div className="p-3 border-b">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-9"
+          />
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {filteredConversations.length === 0 && searchQuery && (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <MessageCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-sm text-muted-foreground">No conversations match your search</p>
+          </div>
+        )}
+        {filteredConversations.map((conversation: any) => (
         <button
           key={conversation.id}
           onClick={() => onSelectConversation(conversation.id)}
@@ -62,6 +88,7 @@ export function ConversationList({
           </div>
         </button>
       ))}
+      </div>
     </div>
   );
 }

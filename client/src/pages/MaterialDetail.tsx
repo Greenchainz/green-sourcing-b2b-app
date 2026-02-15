@@ -58,11 +58,12 @@ export default function MaterialDetail() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <Badge variant="secondary">{m.category}</Badge>
                       {m.subcategory && <Badge variant="outline" className="text-xs">{m.subcategory}</Badge>}
-                      {m.usManufactured ? <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">🇺🇸 US Made</Badge> : null}
+                      {m.usManufactured ? <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">US Made</Badge> : null}
                       {m.verified ? <Badge className="text-xs bg-green-600">Verified</Badge> : null}
+                      {m.complianceGrade && <Badge className="text-xs font-bold bg-lime-600">Grade {m.complianceGrade}</Badge>}
                     </div>
                     <h1 className="text-2xl font-bold text-foreground">{m.name}</h1>
                     {m.productName && <p className="text-sm text-muted-foreground mt-1">{m.productName}</p>}
