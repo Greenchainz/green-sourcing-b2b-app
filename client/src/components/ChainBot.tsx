@@ -421,11 +421,14 @@ export function ChainBot() {
       <button
         onClick={toggleOpen}
         className={cn(
-          "fixed bottom-4 left-4 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105",
+          "fixed bottom-4 left-4 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110",
           isOpen
-            ? "bg-gray-600 hover:bg-gray-700"
-            : "bg-emerald-600 hover:bg-emerald-700"
+            ? "bg-gray-700 hover:bg-gray-800 shadow-lg"
+            : "bg-[#9FE870] hover:bg-[#8DD85F] shadow-[0_0_20px_rgba(159,232,112,0.6)] hover:shadow-[0_0_30px_rgba(159,232,112,0.8)] animate-pulse"
         )}
+        style={!isOpen ? {
+          boxShadow: '0 0 20px rgba(159, 232, 112, 0.6), 0 0 40px rgba(159, 232, 112, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.2)'
+        } : undefined}
       >
         {isOpen ? (
           <X className="w-6 h-6 text-white" />
