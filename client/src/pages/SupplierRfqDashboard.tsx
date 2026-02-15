@@ -17,6 +17,8 @@ import { CertificationBadge } from "@/components/CertificationBadge";
 import { RfqMapView } from "@/components/RfqMapView";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
+import { BidSubmissionForm } from "@/components/BidSubmissionForm";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type SortBy = "matchScore" | "datePosted" | "dueDate" | "distance";
 type StatusFilter = "all" | "new" | "active" | "closed";
@@ -28,6 +30,8 @@ export default function SupplierRfqDashboard() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
+  const [showBidForm, setShowBidForm] = useState(false);
   const { user } = useAuth();
   const { openWithConversation } = useChatWidget();
 
@@ -94,8 +98,30 @@ export default function SupplierRfqDashboard() {
     openWithConversation({ rfqId, buyerId });
   };
 
+  const handleSubmitBid = async () => {
+    setShowBidForm(false);
+    setSelectedRfqId(null);
+  };
+
+  const selectedRfq = selectedRfqId ? filteredRfqs?.find((r: any) => r.id === selectedRfqId) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Bid Submission Modal */}
+      <Dialog open={showBidForm} onOpenChange={setShowBidForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Submit Bid</DialogTitle>
+            <DialogDescription>
+              {selectedRfq ? `Submit your bid for ${selectedRfq.projectName}` : "Submit your bid"}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRfqId && (
+            <BidSubmissionForm rfqId={selectedRfqId} onSuccess={handleSubmitBid} />
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="bg-white border-b">
         <div className="container py-8">
@@ -110,49 +136,37 @@ export default function SupplierRfqDashboard() {
           {/* View Mode Toggle */}
           <div className="flex gap-2">
             <Button
-              variant={viewMode === "list" ? "default" : "outline"}
               size="sm"
+              variant={viewMode === "list" ? "default" : "outline"}
               onClick={() => setViewMode("list")}
-              className="flex items-center gap-2"
             >
               <List className="w-4 h-4" />
-              List
             </Button>
             <Button
-              variant={viewMode === "map" ? "default" : "outline"}
               size="sm"
+              variant={viewMode === "map" ? "default" : "outline"}
               onClick={() => setViewMode("map")}
-              className="flex items-center gap-2"
             >
               <Map className="w-4 h-4" />
-              Map
             </Button>
           </div>
 
-          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)} className="w-full sm:w-auto">
-            <TabsList>
-              <TabsTrigger value="all">All RFQs</TabsTrigger>
-              <TabsTrigger value="new">New</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="closed">Closed</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Sort by" />
+          {/* Filters */}
+          <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="matchScore">Match Score</SelectItem>
-              <SelectItem value="distance">Distance (Nearest First)</SelectItem>
-              <SelectItem value="datePosted">Date Posted</SelectItem>
-              <SelectItem value="dueDate">Due Date</SelectItem>
+              <SelectItem value="all">All RFQs</SelectItem>
+              <SelectItem value="new">New RFQs</SelectItem>
+              <SelectItem value="active">Active Bids</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
             </SelectContent>
           </Select>
 
-          <Select value={distanceFilter} onValueChange={(v) => setDistanceFilter(v as DistanceFilter)}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Max Distance" />
+          <Select value={distanceFilter} onValueChange={(value: any) => setDistanceFilter(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Distance" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Distances</SelectItem>
@@ -163,146 +177,146 @@ export default function SupplierRfqDashboard() {
               <SelectItem value="500">Within 500 miles</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="matchScore">Match Score</SelectItem>
+              <SelectItem value="datePosted">Date Posted</SelectItem>
+              <SelectItem value="dueDate">Due Date</SelectItem>
+              <SelectItem value="distance">Distance</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Map or List View */}
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-            <p className="text-gray-600 mt-4">Loading RFQs...</p>
-          </div>
-        ) : viewMode === "map" ? (
-          <RfqMapView
-            rfqs={filteredRfqs?.map((rfq: any) => ({
-              id: rfq.id,
-              projectName: rfq.projectName,
-              latitude: rfq.latitude,
-              longitude: rfq.longitude,
-              distanceMiles: rfq.distanceMiles,
-            })) || []}
-            supplierLocation={supplierLocation}
-            radiusFilter={distanceFilter !== "all" ? parseInt(distanceFilter) : null}
-            onRfqClick={(rfqId) => window.location.href = `/rfq/${rfqId}`}
-          />
-        ) : filteredRfqs && filteredRfqs.length > 0 ? (
-          <div className="grid gap-4">
-            {filteredRfqs.map((rfq: any) => (
-              <Card key={rfq.id} className="p-6 hover:shadow-lg transition-shadow">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  {/* Left: RFQ Info */}
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900">{rfq.projectName}</h3>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <MapPin className="w-4 h-4" />
-                          {rfq.projectLocation}
-                          {rfq.distanceMiles !== null && (
-                            <span className="text-xs text-gray-500">
-                              ({rfq.distanceMiles} mi
-                              {rfq.driveTimeMinutes && ` • ${Math.floor(rfq.driveTimeMinutes / 60)}h ${rfq.driveTimeMinutes % 60}m drive`})
-                            </span>
+        {/* Content */}
+        {viewMode === "list" ? (
+          // List View
+          <div className="space-y-4">
+            {isLoading ? (
+              <Card className="p-12 text-center">
+                <p className="text-gray-600">Loading RFQs...</p>
+              </Card>
+            ) : filteredRfqs && filteredRfqs.length > 0 ? (
+              filteredRfqs.map((rfq: any) => (
+                <Card key={rfq.id} className="p-6 hover:shadow-lg transition-shadow">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {/* Left Column - RFQ Info */}
+                    <div className="md:col-span-2">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{rfq.projectName}</h3>
+                          <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                            <MapPin className="w-4 h-4" />
+                            {rfq.projectLocation}
+                          </p>
+                        </div>
+                        {getStatusBadge(rfq)}
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <p className="flex items-center gap-2 text-gray-700">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          Posted {formatDistanceToNow(new Date(rfq.createdAt), { addSuffix: true })}
+                        </p>
+                        {rfq.dueDate && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            Due {formatDistanceToNow(new Date(rfq.dueDate), { addSuffix: true })}
+                          </p>
+                        )}
+                        {rfq.distanceMiles !== null && (
+                          <p className="flex items-center gap-2 text-gray-700">
+                            <MapPin className="w-4 h-4 text-gray-500" />
+                            {rfq.distanceMiles.toFixed(1)} miles away
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Materials */}
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Materials Needed:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {rfq.materials?.slice(0, 3).map((material: string, idx: number) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {material}
+                            </Badge>
+                          ))}
+                          {rfq.materials?.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{rfq.materials.length - 3} more
+                            </Badge>
                           )}
                         </div>
                       </div>
-                      {getStatusBadge(rfq)}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Package className="w-4 h-4" />
-                        <span>{rfq.materialCount} material{rfq.materialCount > 1 ? 's' : ''}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span>Posted {formatDistanceToNow(new Date(rfq.createdAt), { addSuffix: true })}</span>
-                      </div>
-                      {rfq.dueDate && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Clock className="w-4 h-4" />
-                          <span>Due {formatDistanceToNow(new Date(rfq.dueDate), { addSuffix: true })}</span>
+                    {/* Right Column - Score and Actions */}
+                    <div className="md:col-span-2 flex flex-col justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Match Score</p>
+                        <p className={`text-3xl font-bold ${getMatchScoreColor(rfq.matchScore)}`}>
+                          {rfq.matchScore}%
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                          <div
+                            className="bg-green-600 h-2 rounded-full transition-all"
+                            style={{ width: `${rfq.matchScore}%` }}
+                          />
                         </div>
-                      )}
-                    </div>
-
-                    {/* Certification Badges */}
-                    {(rfq.matchedCertifications?.length > 0 || rfq.missingCertifications?.length > 0) && (
-                      <div className="pt-2">
-                        <CertificationBadge
-                          certifications={{
-                            matched: rfq.matchedCertifications || [],
-                            missing: rfq.missingCertifications || [],
-                          }}
-                          compact
-                        />
                       </div>
-                    )}
 
-                    {rfq.notes && (
-                      <p className="text-sm text-gray-600 line-clamp-2">{rfq.notes}</p>
-                    )}
-                  </div>
-
-                  {/* Right: Match Score & Actions */}
-                  <div className="flex flex-col items-center gap-4 lg:w-48">
-                    <div className="text-center">
-                      <div className="flex items-center gap-2 mb-1">
-                        <TrendingUp className="w-4 h-4 text-gray-600" />
-                        <span className="text-xs text-gray-600 uppercase tracking-wide">Match Score</span>
-                      </div>
-                      <div className={`text-4xl font-bold ${getMatchScoreColor(rfq.matchScore)}`}>
-                        {rfq.matchScore}%
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div
-                          className="bg-green-600 h-2 rounded-full transition-all"
-                          style={{ width: `${rfq.matchScore}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2 w-full">
-                      <Button
-                        variant="default"
-                        className="w-full"
-                        onClick={() => window.location.href = `/rfq/${rfq.id}`}
-                      >
-                        <FileText className="w-4 h-4 mr-2" />
-                        View Details
-                      </Button>
-                      {rfq.status === "open" && !rfq.hasBid && (
+                      <div className="flex flex-col gap-2 w-full mt-4">
                         <Button
-                          variant="outline"
+                          variant="default"
                           className="w-full"
-                          onClick={() => window.location.href = `/rfq/${rfq.id}#bid`}
+                          onClick={() => window.location.href = `/rfq/${rfq.id}`}
                         >
-                          Submit Bid
+                          <FileText className="w-4 h-4 mr-2" />
+                          View Details
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => handleOpenConversation(rfq.id, rfq.buyerId)}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Message Buyer
-                      </Button>
+                        {rfq.status === "open" && !rfq.hasBid && (
+                          <Button
+                            variant="outline"
+                            className="w-full bg-green-50 border-green-300 hover:bg-green-100"
+                            onClick={() => { setSelectedRfqId(rfq.id); setShowBidForm(true); }}
+                          >
+                            Submit Bid
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleOpenConversation(rfq.id, rfq.buyerId)}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Message Buyer
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Card>
+              ))
+            ) : (
+              <Card className="p-12 text-center">
+                <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No RFQs match your criteria</p>
               </Card>
-            ))}
+            )}
           </div>
         ) : (
-          <Card className="p-12 text-center">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No RFQs Found</h3>
-            <p className="text-gray-600">
-              {statusFilter === "all"
-                ? "No RFQs have been matched to your company yet."
-                : `No ${statusFilter} RFQs found.`}
-            </p>
+          // Map View
+          <Card className="p-6">
+            {supplierLocation && filteredRfqs ? (
+              <RfqMapView rfqs={filteredRfqs.filter((r: any) => r.latitude && r.longitude) as any} supplierLocation={supplierLocation} />
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-600">Map view requires location data</p>
+              </div>
+            )}
           </Card>
         )}
       </div>

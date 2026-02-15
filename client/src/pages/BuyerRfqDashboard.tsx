@@ -1,38 +1,49 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { AlertCircle, MessageSquare, TrendingDown, DollarSign, Clock, CheckCircle, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+import { AlertCircle, MessageSquare, TrendingDown, DollarSign, Clock, CheckCircle, Plus } from "lucide-react";
 import { RealTimeMessageThread } from "@/components/RealTimeMessageThread";
+import { RfqCreationForm } from "@/components/RfqCreationForm";
+import { BidComparison } from "@/components/BidComparison";
 
 export default function BuyerRfqDashboard() {
   const { user } = useAuth();
   const { openWithConversation } = useChatWidget();
   const [activeTab, setActiveTab] = useState("active");
-  const [selectedRfq, setSelectedRfq] = useState<number | null>(null);
+  const [showCreateRfq, setShowCreateRfq] = useState(false);
+  const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
   const [selectedBids, setSelectedBids] = useState<Set<number>>(new Set());
   const [messageContent, setMessageContent] = useState("");
   const [selectedThread, setSelectedThread] = useState<number | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
 
-  // tRPC mutations
+  // tRPC queries and mutations
   const acceptBidMutation = trpc.rfqMarketplace.acceptBid.useMutation();
   const utils = trpc.useUtils();
 
-  // Mock data - will be replaced with actual tRPC queries
+  // Fetch buyer's RFQs
+  const { data: buyerRfqs, isLoading: rfqsLoading, refetch: refetchRfqs } = trpc.rfqMarketplace.getUserRfqs.useQuery({ 
+    userId: typeof user?.id === 'string' ? parseInt(user.id) : (user?.id || 0)
+  });
+
+  // Fetch bids for selected RFQ
+  const { data: rfqDetails } = selectedRfqId ? trpc.rfqMarketplace.getRfqDetails.useQuery({ rfqId: selectedRfqId }) : { data: undefined };
+  const rfqBids = rfqDetails?.bids || [];
+
+  // Mock data for demonstration
   const mockRfqs = [
     {
       id: 1,
       projectName: "Downtown Office Renovation",
       projectLocation: "New York, NY",
       materials: ["Insulation", "Drywall", "Paint"],
-      submittedAt: "2026-02-10",
+      submittedAt: new Date("2026-02-10"),
       status: "active",
       totalBids: 3,
       lowestBid: 42000,
@@ -44,7 +55,7 @@ export default function BuyerRfqDashboard() {
       projectName: "Residential Complex",
       projectLocation: "Austin, TX",
       materials: ["Flooring", "Roofing"],
-      submittedAt: "2026-02-08",
+      submittedAt: new Date("2026-02-08"),
       status: "closed",
       totalBids: 2,
       lowestBid: 30000,
@@ -64,8 +75,10 @@ export default function BuyerRfqDashboard() {
       bidPrice: 42000,
       leadDays: 14,
       notes: "In stock, ready to ship",
-      status: "submitted",
-      submittedAt: "2026-02-10T09:30:00Z",
+      status: "pending",
+      createdAt: new Date("2026-02-10T09:30:00Z"),
+      supplierRating: 4.8,
+      supplierVerified: true,
     },
     {
       id: 2,
@@ -75,8 +88,10 @@ export default function BuyerRfqDashboard() {
       bidPrice: 45000,
       leadDays: 10,
       notes: "Premium eco-certified materials",
-      status: "submitted",
-      submittedAt: "2026-02-10T11:15:00Z",
+      status: "pending",
+      createdAt: new Date("2026-02-10T11:15:00Z"),
+      supplierRating: 4.9,
+      supplierVerified: true,
     },
     {
       id: 3,
@@ -86,312 +101,198 @@ export default function BuyerRfqDashboard() {
       bidPrice: 48000,
       leadDays: 7,
       notes: "Expedited delivery available",
-      status: "submitted",
-      submittedAt: "2026-02-10T14:45:00Z",
+      status: "pending",
+      createdAt: new Date("2026-02-10T14:45:00Z"),
+      supplierRating: 4.6,
+      supplierVerified: true,
     },
   ];
 
-  const mockThreads = [
-    {
-      id: 1,
-      rfqId: 1,
-      supplierId: 1,
-      supplierName: "BuildRight Materials",
-      lastMessage: "Can you confirm the delivery address?",
-      lastMessageAt: "2026-02-11T10:30:00Z",
-      unreadCount: 1,
-    },
-  ];
+  const displayRfqs = buyerRfqs || mockRfqs;
+  const selectedRfq = displayRfqs.find((r: any) => r.id === selectedRfqId);
+  const displayBids = rfqBids || (selectedRfqId === 1 ? mockBids : []);
 
-  const activeRfq = mockRfqs.find((r) => r.id === selectedRfq);
-  const rfqBids = mockBids.filter((b) => b.rfqId === selectedRfq);
+  // Filter RFQs by status
+  const activeRfqs = displayRfqs?.filter((r: any) => r.status === "active") || [];
+  const closedRfqs = displayRfqs?.filter((r: any) => r.status === "closed") || [];
+
+  const handleCreateRfq = async () => {
+    setShowCreateRfq(false);
+    await refetchRfqs();
+  };
 
   const handleAcceptBid = async (bidId: number) => {
-    if (!selectedRfq) return;
-    setIsProcessing(true);
+    if (!selectedRfqId) return;
     try {
-      await acceptBidMutation.mutateAsync({
-        rfqId: selectedRfq,
-        bidId,
-      });
-      await utils.rfqMarketplace.getWithBids.invalidate();
-      console.log("Bid accepted successfully");
+      await acceptBidMutation.mutateAsync({ rfqId: selectedRfqId, bidId });
+      await refetchRfqs();
+      alert("Bid accepted successfully!");
     } catch (error) {
-      console.error("Failed to accept bid:", error);
-    } finally {
-      setIsProcessing(false);
+      alert(`Error: ${error instanceof Error ? error.message : "Failed to accept bid"}`);
     }
   };
-
-  const handleRejectBid = async (bidId: number) => {
-    if (!selectedRfq) return;
-    setIsProcessing(true);
-    try {
-      console.log("Rejecting bid:", bidId);
-    } catch (error) {
-      console.error("Failed to reject bid:", error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleSendMessage = (threadId: number) => {
-    if (!messageContent.trim()) return;
-    if (!user) {
-      alert("Please sign in to send a message");
-      return;
-    }
-    console.log("Sending message:", { threadId, content: messageContent });
-    setMessageContent("");
-  };
-
-  const handleOpenConversation = (rfqId: number, supplierId: number) => {
-    openWithConversation({ rfqId, supplierId });
-  };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Sign in required</h1>
-          <p className="text-muted-foreground">Please sign in to access your RFQ dashboard.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container py-6">
-          <h1 className="text-3xl font-bold">My RFQs</h1>
-          <p className="text-muted-foreground mt-2">Manage your requests for quotes and compare bids</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">RFQ Dashboard</h1>
+          <p className="text-gray-600">Manage your requests for quotation and compare supplier bids</p>
         </div>
+        <Button onClick={() => setShowCreateRfq(true)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
+          <Plus className="w-4 h-4" /> Create RFQ
+        </Button>
       </div>
 
-      {/* Main Content */}
-      <div className="container py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="active">Active RFQs</TabsTrigger>
-            <TabsTrigger value="closed">Closed RFQs</TabsTrigger>
-          </TabsList>
+      {/* RFQ Creation Modal */}
+      <Dialog open={showCreateRfq} onOpenChange={setShowCreateRfq}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New RFQ</DialogTitle>
+            <DialogDescription>Submit a request for quotation to find the best suppliers for your materials</DialogDescription>
+          </DialogHeader>
+          <RfqCreationForm onSuccess={handleCreateRfq} />
+        </DialogContent>
+      </Dialog>
 
-          {/* Active RFQs Tab */}
-          <TabsContent value="active" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* RFQ List */}
-              <div className="lg:col-span-1 space-y-2">
-                {mockRfqs
-                  .filter((r) => r.status === "active")
-                  .map((rfq) => (
-                    <Card
-                      key={rfq.id}
-                      className={`p-4 cursor-pointer transition ${
-                        selectedRfq === rfq.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                      }`}
-                      onClick={() => setSelectedRfq(rfq.id)}
-                    >
-                      <h4 className="font-semibold mb-2">{rfq.projectName}</h4>
-                      <p className="text-sm opacity-75 mb-3">{rfq.projectLocation}</p>
-                      <div className="flex items-center justify-between text-xs">
-                        <Badge className="bg-blue-100 text-blue-800">{rfq.totalBids} bids</Badge>
-                        <span className="opacity-50">{new Date(rfq.submittedAt).toLocaleDateString()}</span>
-                      </div>
-                    </Card>
-                  ))}
-              </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="active">
+            Active RFQs ({activeRfqs.length})
+          </TabsTrigger>
+          <TabsTrigger value="closed">
+            Closed RFQs ({closedRfqs.length})
+          </TabsTrigger>
+        </TabsList>
 
-              {/* Bid Comparison */}
-              <div className="lg:col-span-2">
-                {selectedRfq && activeRfq ? (
-                  <Card className="p-6 space-y-6">
-                    {/* RFQ Summary */}
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4">{activeRfq.projectName}</h3>
-                      <div className="grid grid-cols-4 gap-4">
-                        <div className="bg-muted p-4 rounded">
-                          <p className="text-sm text-muted-foreground">Total Bids</p>
-                          <p className="text-2xl font-bold mt-2">{activeRfq.totalBids}</p>
-                        </div>
-                        <div className="bg-muted p-4 rounded">
-                          <p className="text-sm text-muted-foreground">Lowest Bid</p>
-                          <p className="text-2xl font-bold mt-2 text-green-600">${activeRfq.lowestBid.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-muted p-4 rounded">
-                          <p className="text-sm text-muted-foreground">Average Bid</p>
-                          <p className="text-2xl font-bold mt-2">${activeRfq.averageBid.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-muted p-4 rounded">
-                          <p className="text-sm text-muted-foreground">Highest Bid</p>
-                          <p className="text-2xl font-bold mt-2 text-red-600">${activeRfq.highestBid.toLocaleString()}</p>
-                        </div>
+        {/* Active RFQs Tab */}
+        <TabsContent value="active" className="space-y-4">
+          {activeRfqs.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-4">No active RFQs yet</p>
+                <Button onClick={() => setShowCreateRfq(true)} className="bg-green-600 hover:bg-green-700">
+                  Create Your First RFQ
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {activeRfqs.map((rfq: any) => (
+                <Card key={rfq.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedRfqId(rfq.id)}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <CardTitle>{rfq.projectName}</CardTitle>
+                        <CardDescription>{rfq.projectLocation}</CardDescription>
                       </div>
+                      <Badge className="bg-blue-100 text-blue-800">Active</Badge>
                     </div>
-
-                    {/* Bid Comparison Table */}
-                    <div>
-                      <h4 className="font-semibold mb-4">Bid Comparison</h4>
-                      <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {rfqBids.map((bid) => (
-                          <Card key={bid.id} className="p-4">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h5 className="font-semibold">{bid.supplierName}</h5>
-                                <p className="text-sm text-muted-foreground">{bid.notes}</p>
-                              </div>
-                              <Badge className={bid.bidPrice === activeRfq.lowestBid ? "bg-green-100 text-green-800" : ""}>
-                                {bid.status}
-                              </Badge>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
-                              <div>
-                                <p className="text-muted-foreground">Bid Price</p>
-                                <p className="font-semibold text-lg">${bid.bidPrice.toLocaleString()}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Lead Time</p>
-                                <p className="font-semibold">{bid.leadDays} days</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Submitted</p>
-                                <p className="font-semibold">{new Date(bid.submittedAt).toLocaleDateString()}</p>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleAcceptBid(bid.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Accept
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRejectBid(bid.id)}
-                              >
-                                <X className="w-4 h-4 mr-2" />
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleOpenConversation(bid.rfqId, bid.supplierId)}
-                              >
-                                <MessageSquare className="w-4 h-4 mr-2" />
-                                Message
-                              </Button>
-                            </div>
-                          </Card>
-                        ))}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Materials</p>
+                        <p className="font-semibold">{rfq.materials?.length || 0} items</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Bids Received</p>
+                        <p className="font-semibold text-green-600">{rfq.totalBids}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Price Range</p>
+                        <p className="font-semibold">${rfq.lowestBid?.toLocaleString()} - ${rfq.highestBid?.toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <Button size="sm" onClick={(e) => { e.stopPropagation(); setSelectedRfqId(rfq.id); }}>
+                          View Bids
+                        </Button>
                       </div>
                     </div>
-                  </Card>
-                ) : (
-                  <Card className="p-6 h-full flex items-center justify-center">
-                    <p className="text-muted-foreground">Select an RFQ to view bids</p>
-                  </Card>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Closed RFQs Tab */}
-          <TabsContent value="closed" className="space-y-4">
-            {mockRfqs
-              .filter((r) => r.status === "closed")
-              .map((rfq) => (
-                <Card key={rfq.id} className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold">{rfq.projectName}</h3>
-                      <p className="text-sm text-muted-foreground mb-3">{rfq.projectLocation}</p>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {rfq.materials.map((material) => (
-                          <Badge key={material} variant="secondary">
-                            {material}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800">Closed</Badge>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-4 pt-4 border-t">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Bids</p>
-                      <p className="font-semibold mt-1">{rfq.totalBids}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Accepted Bid</p>
-                      <p className="font-semibold mt-1 text-green-600">${rfq.acceptedBid?.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Supplier</p>
-                      <p className="font-semibold mt-1">{rfq.acceptedSupplier}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Savings</p>
-                      <p className="font-semibold mt-1 text-green-600">
-                        ${(rfq.highestBid - rfq.acceptedBid!).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-          </TabsContent>
-        </Tabs>
-
-        {/* Messages Section */}
-        <div className="mt-12 pt-8 border-t">
-          <h2 className="text-2xl font-bold mb-6">Supplier Messages</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Thread List */}
-            <div className="lg:col-span-1 space-y-2">
-              {mockThreads.map((thread) => (
-                <Card
-                  key={thread.id}
-                  className={`p-4 cursor-pointer transition ${
-                    selectedThread === thread.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                  }`}
-                  onClick={() => setSelectedThread(thread.id)}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold">{thread.supplierName}</h4>
-                    {thread.unreadCount > 0 && (
-                      <Badge className="bg-red-600">{thread.unreadCount}</Badge>
-                    )}
-                  </div>
-                  <p className="text-sm opacity-75 line-clamp-2">{thread.lastMessage}</p>
-                  <p className="text-xs opacity-50 mt-2">
-                    {new Date(thread.lastMessageAt).toLocaleDateString()}
-                  </p>
+                  </CardContent>
                 </Card>
               ))}
             </div>
+          )}
+        </TabsContent>
 
-            {/* Chat Area */}
-            <div className="lg:col-span-2">
-              {selectedThread && user ? (
-                <RealTimeMessageThread
-                  threadId={selectedThread}
-                  isBuyer={true}
-                  currentUserId={parseInt(user.id, 10)}
-                />
-              ) : (
-                <Card className="p-6 h-full flex items-center justify-center">
-                  <p className="text-muted-foreground">
-                    {!user ? "Please sign in to view messages" : "Select a conversation to view messages"}
-                  </p>
+        {/* Closed RFQs Tab */}
+        <TabsContent value="closed" className="space-y-4">
+          {closedRfqs.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No closed RFQs yet</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {closedRfqs.map((rfq: any) => (
+                <Card key={rfq.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <CardTitle>{rfq.projectName}</CardTitle>
+                        <CardDescription>{rfq.projectLocation}</CardDescription>
+                      </div>
+                      <Badge className="bg-gray-100 text-gray-800">Closed</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Accepted Bid</p>
+                        <p className="font-semibold text-green-600">${rfq.acceptedBid?.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Supplier</p>
+                        <p className="font-semibold">{rfq.acceptedSupplier}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Total Bids</p>
+                        <p className="font-semibold">{rfq.totalBids}</p>
+                      </div>
+                      <div className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => setSelectedRfqId(rfq.id)}>
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
-              )}
+              ))}
             </div>
-          </div>
-        </div>
-      </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Bid Comparison View */}
+      {selectedRfqId && selectedRfq && (
+        <Card className="border-2 border-blue-500">
+          <CardHeader>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>Bid Comparison: {selectedRfq.projectName}</CardTitle>
+                <CardDescription>{selectedRfq.projectLocation}</CardDescription>
+              </div>
+              <Button variant="outline" onClick={() => setSelectedRfqId(null)}>
+                Close
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <BidComparison
+              rfqId={selectedRfqId}
+              bids={displayBids as any}
+              onAcceptBid={handleAcceptBid}
+              onMessage={(supplierId) => openWithConversation({ supplierId })}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
