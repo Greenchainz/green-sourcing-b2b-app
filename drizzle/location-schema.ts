@@ -1,29 +1,28 @@
-import { pgTable, serial, varchar, text, decimal, integer, timestamp, jsonb, index, real } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { mysqlTable, serial, varchar, text, decimal, int, timestamp, json, index, float } from "drizzle-orm/mysql-core";
 
 /**
  * Suppliers table with geolocation support
  * Stores supplier information with coordinates for distance-based queries
  */
-export const suppliersLocation = pgTable(
+export const suppliersLocation = mysqlTable(
   "suppliers_location",
   {
     id: serial("id").primaryKey(),
-    supplierId: integer("supplier_id").notNull(),
+    supplierId: int("supplier_id").notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     state: varchar("state", { length: 2 }).notNull(), // "CA", "NY", "TX"
     city: varchar("city", { length: 100 }).notNull(),
     zipCode: varchar("zip_code", { length: 10 }).notNull(),
-    latitude: real("latitude").notNull(),
-    longitude: real("longitude").notNull(),
+    latitude: float("latitude").notNull(),
+    longitude: float("longitude").notNull(),
     
     // Material availability
-    materialsAvailable: jsonb("materials_available").default([]), // ["concrete", "steel", "insulation"]
+    materialsAvailable: json("materials_available").$type<string[]>().default([]), // ["concrete", "steel", "insulation"]
     
     // Supplier metrics
     carbonScore: decimal("carbon_score", { precision: 5, scale: 2 }).default("0"), // 0-100
     pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }),
-    leadTimeDays: integer("lead_time_days").default(7),
+    leadTimeDays: int("lead_time_days").default(7),
     
     // Contact
     contactEmail: varchar("contact_email", { length: 255 }),
@@ -31,15 +30,12 @@ export const suppliersLocation = pgTable(
     
     // Metadata
     createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
   },
   (table) => ({
-    // Spatial index for distance queries (requires PostGIS)
-    locationIndex: index("idx_suppliers_location_geo").on(
-      sql`ST_GeomFromText('POINT(' || longitude || ' ' || latitude || ')')`
-    ),
     stateIndex: index("idx_suppliers_location_state").on(table.state),
     cityIndex: index("idx_suppliers_location_city").on(table.city),
+    latLngIndex: index("idx_suppliers_location_latlng").on(table.latitude, table.longitude),
   })
 );
 
@@ -47,7 +43,7 @@ export const suppliersLocation = pgTable(
  * Compliance rules table
  * Stores state-specific building codes and compliance requirements
  */
-export const complianceRules = pgTable(
+export const complianceRules = mysqlTable(
   "compliance_rules",
   {
     id: serial("id").primaryKey(),
@@ -57,7 +53,7 @@ export const complianceRules = pgTable(
     ruleDescription: text("rule_description"),
     
     // What materials this applies to
-    appliesToMaterials: jsonb("applies_to_materials").default([]), // ["concrete", "steel"]
+    appliesToMaterials: json("applies_to_materials").$type<string[]>().default([]), // ["concrete", "steel"]
     
     // Compliance details
     complianceType: varchar("compliance_type", { length: 50 }), // "voc_limit", "fire_rating", "carbon_limit"
@@ -65,7 +61,7 @@ export const complianceRules = pgTable(
     
     // Metadata
     createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
   },
   (table) => ({
     stateIndex: index("idx_compliance_rules_state").on(table.state),
@@ -77,7 +73,7 @@ export const complianceRules = pgTable(
  * Regional swap patterns table
  * Tracks which material swaps are approved/used in each region
  */
-export const regionalSwapPatterns = pgTable(
+export const regionalSwapPatterns = mysqlTable(
   "regional_swap_patterns",
   {
     id: serial("id").primaryKey(),
@@ -87,7 +83,7 @@ export const regionalSwapPatterns = pgTable(
     
     // Approval metrics
     approvalRate: decimal("approval_rate", { precision: 5, scale: 2 }).default("0"), // 0-100 %
-    usageCount: integer("usage_count").default(0), // How many times this swap was used
+    usageCount: int("usage_count").default(0), // How many times this swap was used
     
     // Performance metrics
     avgCarbonReduction: decimal("avg_carbon_reduction", { precision: 5, scale: 2 }).default("0"), // %
@@ -96,7 +92,7 @@ export const regionalSwapPatterns = pgTable(
     
     // Metadata
     createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
   },
   (table) => ({
     stateIndex: index("idx_swap_patterns_state").on(table.state),
@@ -108,7 +104,7 @@ export const regionalSwapPatterns = pgTable(
  * Shipping cost matrix table
  * Stores shipping costs between regions for different material types
  */
-export const shippingCosts = pgTable(
+export const shippingCosts = mysqlTable(
   "shipping_costs",
   {
     id: serial("id").primaryKey(),
@@ -118,11 +114,11 @@ export const shippingCosts = pgTable(
     
     // Cost and time
     costPerUnit: decimal("cost_per_unit", { precision: 10, scale: 2 }).notNull(),
-    daysToDelivery: integer("days_to_delivery").notNull(),
+    daysToDelivery: int("days_to_delivery").notNull(),
     
     // Metadata
     createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
   },
   (table) => ({
     routeIndex: index("idx_shipping_route").on(table.originState, table.destinationState),
@@ -134,7 +130,7 @@ export const shippingCosts = pgTable(
  * Climate zone adjustments table
  * Stores material performance adjustments based on climate zone
  */
-export const climateZoneAdjustments = pgTable(
+export const climateZoneAdjustments = mysqlTable(
   "climate_zone_adjustments",
   {
     id: serial("id").primaryKey(),
@@ -151,7 +147,7 @@ export const climateZoneAdjustments = pgTable(
     
     // Metadata
     createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
   },
   (table) => ({
     zoneIndex: index("idx_climate_zone").on(table.climateZone),
@@ -163,7 +159,7 @@ export const climateZoneAdjustments = pgTable(
  * Location-based pricing adjustments table
  * Stores regional pricing variations for materials
  */
-export const locationPricingAdjustments = pgTable(
+export const locationPricingAdjustments = mysqlTable(
   "location_pricing_adjustments",
   {
     id: serial("id").primaryKey(),
@@ -175,7 +171,7 @@ export const locationPricingAdjustments = pgTable(
     
     // Metadata
     createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
   },
   (table) => ({
     stateIndex: index("idx_pricing_state").on(table.state),
