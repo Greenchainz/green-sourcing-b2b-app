@@ -8,8 +8,8 @@ on:
 
 env:
   AZURE_CONTAINER_APP_NAME: greenchainz-frontend
-  AZURE_RESOURCE_GROUP: greenchainz-rg
-  AZURE_CONTAINER_REGISTRY: greenchainzacr
+  AZURE_RESOURCE_GROUP: rg-greenchainz-prod-container
+  AZURE_CONTAINER_REGISTRY: acrgreenchainzprod916
   IMAGE_NAME: greenchainz-app
 
 jobs:
