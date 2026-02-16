@@ -1380,3 +1380,38 @@
 - [ ] Deploy to production via Azure pipeline
 - [ ] Verify greenchainz.com shows updated features
 - [ ] Monitor logs and performance
+
+
+## Swap Validation UI Dashboard
+
+### Phase 1: Admin Dashboard Page Layout
+- [x] Create `/app/admin/swap-validation/page.tsx` with admin layout
+- [ ] Add navigation link to swap validation dashboard in admin menu (post-deployment)
+- [ ] Set up page authentication (admin-only access) (post-deployment)
+- [x] Create responsive grid layout for search + results
+
+### Phase 2: Material Search Interface
+- [x] Build material search autocomplete component
+- [x] Add incumbent material selector with category filters
+- [x] Add sustainable material selector with EPD data display
+- [x] Show selected materials side-by-side comparison preview
+
+### Phase 3: Validation Trigger Form
+- [x] Create validation form with project context inputs (location, climate zone, application)
+- [x] Add "Run Validation" button that calls `/api/swap-validation`
+- [x] Implement loading state with progress indicator
+- [x] Display validation results in expandable card
+
+### Phase 4: Validation Results Table
+- [x] Build results table with columns: Date, Incumbent, Sustainable, Status, Score, Actions
+- [x] Add status badges (APPROVED=green, EXPERIMENTAL=yellow, REJECTED=red)
+- [x] Create expandable row details showing all 12 showstopper checks
+- [x] Add export to CSV button for validation history
+- [x] Implement pagination and filtering (by status, date range, material category)
+
+### Phase 5: Testing & Polish
+- [x] Create SWAP_DASHBOARD_DEPLOYMENT.md with deployment instructions
+- [ ] Test validation workflow end-to-end with real materials (post-deployment)
+- [ ] Add empty states for no results (post-deployment)
+- [ ] Add error handling for API failures
+- [ ] Create checkpoint with working dashboard
