@@ -12,6 +12,7 @@ import { AlertCircle, MessageSquare, TrendingDown, DollarSign, Clock, CheckCircl
 import { RealTimeMessageThread } from "@/components/RealTimeMessageThread";
 import { RfqCreationForm } from "@/components/RfqCreationForm";
 import { BidComparison } from "@/components/BidComparison";
+import { AiRecommendations } from "@/components/AiRecommendations";
 
 export default function BuyerRfqDashboard() {
   const { user } = useAuth();
@@ -22,14 +23,16 @@ export default function BuyerRfqDashboard() {
   const [selectedBids, setSelectedBids] = useState<Set<number>>(new Set());
   const [messageContent, setMessageContent] = useState("");
   const [selectedThread, setSelectedThread] = useState<number | null>(null);
+  const [showAiAnalysis, setShowAiAnalysis] = useState(false);
+  const [aiAnalysisData, setAiAnalysisData] = useState<any>(null);
 
   // tRPC queries and mutations
   const acceptBidMutation = trpc.rfqMarketplace.acceptBid.useMutation();
   const utils = trpc.useUtils();
 
   // Fetch buyer's RFQs
-  const { data: buyerRfqs, isLoading: rfqsLoading, refetch: refetchRfqs } = trpc.rfqMarketplace.getUserRfqs.useQuery({ 
-    userId: typeof user?.id === 'string' ? parseInt(user.id) : (user?.id || 0)
+  const { data: buyerRfqs, isLoading: rfqsLoading, refetch: refetchRfqs } = trpc.rfqMarketplace.getBuyerRfqs.useQuery({ 
+    buyerId: typeof user?.id === 'string' ? parseInt(user.id) : (user?.id || 0)
   });
 
   // Fetch bids for selected RFQ
@@ -284,12 +287,34 @@ export default function BuyerRfqDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <BidComparison
-              rfqId={selectedRfqId}
-              bids={displayBids as any}
-              onAcceptBid={handleAcceptBid}
-              onMessage={(supplierId) => openWithConversation({ supplierId })}
-            />
+            <div className="space-y-6">
+              {/* AI Analysis Section */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">AI-Powered Analysis</h3>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAiAnalysis(!showAiAnalysis)}
+                  >
+                    {showAiAnalysis ? "Hide Analysis" : "Show AI Recommendations"}
+                  </Button>
+                </div>
+                {showAiAnalysis && (
+                  <AiRecommendations
+                    analysis={aiAnalysisData}
+                    isLoading={false}
+                  />
+                )}
+              </div>
+
+              {/* Bid Comparison */}
+              <BidComparison
+                rfqId={selectedRfqId}
+                bids={displayBids as any}
+                onAcceptBid={handleAcceptBid}
+                onMessage={(supplierId) => openWithConversation({ supplierId })}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
