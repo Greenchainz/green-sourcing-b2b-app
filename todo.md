@@ -284,6 +284,58 @@
 - [ ] Add notifications for new RFQs and bid responses
 
 
+## Supplier Verification Dashboard (COMPLETED)
+
+- [x] Enhanced admin router with comprehensive supplier management procedures
+  - [x] getPendingSuppliers - Fetch suppliers awaiting verification
+  - [x] approveSupplier - Approve supplier with optional notes and email notification
+  - [x] rejectSupplier - Reject supplier with required reason and email notification
+  - [x] getAllSuppliers - Fetch all suppliers with status breakdown
+  - [x] getSupplierDetail - Get full supplier information for review
+  - [x] getSupplierStats - Dashboard statistics (total, pending, approved, rejected, premium, avg sustainability score)
+- [x] Created AdminSupplierDashboard component with:
+  - [x] Statistics cards showing supplier metrics
+  - [x] Search functionality by company name/email
+  - [x] Tab-based filtering (Pending, Approved, Rejected, All)
+  - [x] Supplier list view with status badges
+  - [x] Detail modal with full supplier information
+  - [x] Approval workflow with optional notes
+  - [x] Rejection workflow with required reason
+  - [x] Email contact button for suppliers
+  - [x] Loading states and error handling
+- [x] Added route /admin/suppliers to App.tsx
+- [x] Integrated with tRPC for data fetching and mutations
+- [x] Admin-only access control via adminProcedure
+- [x] Created comprehensive unit tests (13 tests, all passing)
+  - [x] getPendingSuppliers test
+  - [x] approveSupplier tests
+  - [x] rejectSupplier tests
+  - [x] getAllSuppliers test
+  - [x] getSupplierDetail tests
+  - [x] getSupplierStats tests
+  - [x] Authorization tests (admin, non-admin, supplier roles)
+
+## Location Wiring Fixes (IN PROGRESS)
+
+- [ ] Update ORCHESTRATOR agent prompt to pass location to downstream agents
+- [ ] Update CARBON-OPTIMIZER agent prompt to include location and shipping cost calculation
+- [ ] Update COMPLIANCE-VALIDATOR agent prompt to include state-specific compliance rules
+- [ ] Update RFQ-MATCHING agent prompt to query suppliers by distance
+- [ ] Update DEFENSIBILITY-ANALYZER agent prompt to include regional swap patterns
+- [x] Create suppliers table with PostGIS coordinates (location-schema.ts)
+- [x] Create compliance_rules table for state-specific building codes (location-schema.ts)
+- [x] Create regional_swap_patterns table for regional swap history (location-schema.ts)
+- [ ] Build location-aware query functions for supplier distance calculation
+- [ ] Build location-aware query functions for compliance rule lookup
+- [ ] Build location-aware query functions for regional swap patterns
+- [ ] Seed suppliers table with initial US supplier data (100+ suppliers)
+- [ ] Seed compliance_rules table with state-specific rules
+- [ ] Update agent routes to pass location through entire pipeline
+- [ ] Write unit tests for location-based supplier queries
+- [ ] Write unit tests for location-based compliance validation
+- [ ] Write unit tests for location-based defensibility analysis
+- [ ] Test end-to-end location wiring with sample material swap
+
 ## Paywall Middleware & Subscription Management
 
 - [x] Review existing subscription schema (supplier_subscriptions, buyer_subscriptions)
@@ -1115,3 +1167,183 @@
 - [x] Fixed dark theme with lime green colors (#9FE870)
 - [ ] Connect banner to legal acceptance tracking (trpc.legal.acceptCookieConsent)
 - [ ] Test cookie consent flow end-to-end
+
+
+## EPD Compliance Checks (IN PROGRESS)
+
+- [ ] Analyze supplier schema and EPD/certification data structure
+- [ ] Design compliance check logic and risk scoring algorithm
+- [ ] Create database queries for compliance validation
+- [ ] Create tRPC procedures for compliance validation
+- [ ] Build ComplianceChecks component with visual indicators
+- [ ] Integrate compliance checks into supplier detail modal
+- [ ] Write unit tests for compliance validation
+- [ ] Test EPD expiration detection
+- [ ] Test certification validity checks
+- [ ] Test risk scoring algorithm
+
+
+## RFQ End-to-End Flow (IN PROGRESS)
+
+- [ ] Create RFQ tRPC procedures (create, list, getDetail, updateStatus)
+- [ ] Build RFQ creation form UI (material selection, quantity, location, certifications)
+- [ ] Implement supplier matching algorithm (distance, certifications, capacity)
+- [ ] Create supplier notification system (email + in-app)
+- [ ] Build supplier bid submission form (price, lead days, notes)
+- [ ] Create bid review UI for buyers (compare prices, lead times, supplier ratings)
+- [ ] Implement bid acceptance workflow (create order, notify supplier)
+- [ ] Build RFQ message thread UI (real-time chat between buyer/supplier)
+- [ ] Create RFQ analytics dashboard (bids received, avg price, response time)
+- [ ] Write unit tests for RFQ procedures
+- [ ] Test end-to-end RFQ flow (create → match → bid → accept)
+
+
+## AI Recommendations UI Component (IN PROGRESS)
+
+- [ ] Design AI recommendations component layout and data structure
+- [ ] Build AiRecommendations component with material cards showing carbon reduction %, compliance status, defensibility scores
+- [ ] Add sustainability score visualization (0-100 scale with color coding)
+- [ ] Integrate component into RFQ detail modal
+- [ ] Add loading states and error handling for AI analysis calls
+- [ ] Test component with sample AI analysis data
+
+
+## Swap Engine: Functional Equivalence Validation (Architecture of Equivalence)
+
+### Sprint 1: Database Schema (Week 1)
+- [x] Create material_technical_specs table (ASTM codes, fire ratings, UL listings, structural specs, thermal/acoustic performance, labor units, lifecycle data)
+- [x] Create material_assembly_specs table (assembly-level specs: thickness, R-value, fire rating, UL design)
+- [x] Create assembly_spec_components junction table (links materials to assemblies with layer order and quantities)
+- [x] Create pricing_data table (regional pricing from DOT bid tabs, Craftsman, RSMeans, Home Depot)
+- [x] Create swap_validations table (tracks validation results, showstopper checks, cost/carbon comparison, CSI form URLs)
+- [ ] Migrate existing materials data to new schema (populate material_technical_specs for existing materials)
+
+### Sprint 2: Data Sourcing (Week 2-3)
+- [ ] Build TXDOT bid tab scraper (extract material name, unit price, unit, date, project location from PDF bid tabs)
+- [ ] Build WSDOT unit bid analysis scraper
+- [ ] Build Caltrans contract cost data scraper
+- [ ] Purchase Craftsman National Construction Estimator ($100) and parse into pricing_data table
+- [ ] Build Home Depot local pricing scraper (ZIP code-based commodity pricing)
+- [ ] Apply for UL Product iQ API access (fire ratings and safety certifications)
+- [ ] Build PDF parser for manufacturer data sheets using LlamaIndex or Unstructured.io (extract ASTM codes, specs)
+- [ ] Scrape ICC-ES Evaluation Reports for code compliance verification
+- [ ] Populate material_specifications with ASTM codes, UL listings, ICC-ES reports for top 100 materials
+
+### Sprint 3: Swap Validation Engine (Week 4-5)
+- [ ] Implement validateSwap() function with showstopper checks (ASTM match, fire rating, UL listing, strength, R-value, STC)
+- [ ] Implement checkAstmMatch() helper (compares ASTM code arrays)
+- [ ] Implement getRegionalPricing() helper (fetches pricing from pricing_data table by location)
+- [ ] Implement cost comparison logic (material cost + labor cost = total cost of ownership)
+- [ ] Implement carbon comparison logic (GWP reduction percentage)
+- [ ] Implement warning generation (labor units increase, cure time, lead time)
+- [ ] Create tRPC procedure rfq.validateSwap (accepts incumbentId, sustainableId, projectLocation)
+- [ ] Write comprehensive unit tests for swap validation engine (15+ tests covering all showstopper checks)
+
+### Sprint 4: CSI Form 13.1A Auto-Generation (Week 6)
+- [ ] Design CSI Form 13.1A PDF template (sections: materials comparison, functional equivalence, cost comparison, sustainability benefits, architect approval)
+- [ ] Implement generateCsiForm() function (accepts incumbentId, sustainableId, validationData)
+- [ ] Integrate PDF generation library (use existing PDF tools or add new dependency)
+- [ ] Upload generated CSI forms to S3 storage
+- [ ] Add CSI form URL to swap_validations table
+- [ ] Add "Download CSI Form 13.1A" button to swap validation UI
+- [ ] Test CSI form generation with real material data (verify all sections populated correctly)
+
+### Sprint 5: AI Agent Prompt Updates (Week 7)
+- [ ] Update CARBON-OPTIMIZER agent prompt to validate functional equivalence BEFORE recommending swaps
+- [ ] Add showstopper validation rules to agent prompt (NEVER recommend swap unless all checks pass)
+- [ ] Add total cost of ownership calculation to agent prompt (material + labor + maintenance + disposal)
+- [ ] Update agent output format to include validationStatus, showstopperChecks, costComparison, carbonComparison, warnings, csiFormUrl
+- [ ] Update COMPLIANCE-VALIDATOR agent to check ASTM codes, UL listings, ICC-ES reports
+- [ ] Test agent responses with real material data (verify agents reject swaps that fail showstopper checks)
+- [ ] Integrate swap validation engine with AI agent service (call validateSwap from enrichRfqWithAiAnalysis)
+
+### Sprint 6: UI Integration (Week 8)
+- [ ] Build SwapValidationCard.tsx component (side-by-side comparison with showstopper checks, cost/carbon charts, warnings, CSI form download)
+- [ ] Add SwapValidationCard to RFQ detail modal (replace or enhance existing AiRecommendations component)
+- [ ] Create swap validation dashboard for buyers (filter by validation status: Approved/Experimental/Rejected)
+- [ ] Add validation status badges to material cards (✓ APPROVED, ⚠ EXPERIMENTAL, ✗ REJECTED)
+- [ ] Add showstopper check indicators to material detail page (✓/✗ for ASTM, fire rating, UL listing, etc.)
+- [ ] Test UI with real swap validation data (verify all showstopper checks display correctly)
+
+### Data Quality & Risk Mitigation
+- [ ] Cross-validate scraped DOT bid tab data with Craftsman and Home Depot pricing
+- [ ] Flag low-confidence pricing data in UI (show data source and date)
+- [ ] Add legal disclaimer to swap recommendations ("Final approval by licensed architect required")
+- [ ] Manual data entry for top 100 materials if UL Product iQ API access denied
+- [ ] Build proprietary dataset from State DOT bid tabs as competitive moat
+
+### Success Metrics & Monitoring
+- [ ] Track swap validation accuracy (>95% target validated against architect feedback)
+- [ ] Monitor data coverage (>80% of top 100 materials have complete specifications)
+- [ ] Measure API response time for swap validation (<2s target)
+- [ ] Track CSI form generation time (<5s per form target)
+- [ ] Monitor swap approval rate (>60% of recommended swaps approved by architects)
+- [ ] Track time saved per swap (2 hours target from CSI form auto-generation)
+- [ ] Collect user feedback (NPS >50, feature satisfaction >4.5/5)
+
+
+
+## TXDOT Bid Tab Scraper Implementation
+
+- [x] Research TXDOT bid tab PDF format and identify data columns (item number, description, quantity, unit, unit price, amount)
+- [x] Download sample TXDOT bid tab PDFs for testing
+- [x] Build HTML parsing service using cheerio library (MVP approach - no PDF parsing yet)
+- [x] Implement material name extraction and normalization logic
+- [x] Implement unit price extraction with decimal parsing
+- [x] Implement project location extraction (city, county, state)
+- [x] Create database service to insert pricing data into pricing_data table
+- [x] Build tRPC procedures for manual scraper trigger and status tracking
+- [x] Add error handling for malformed data and missing fields
+- [x] Test scraper with real TXDOT HTML pages
+- [x] Create scraper documentation with usage examples
+- [ ] Schedule periodic scraper runs (monthly or quarterly)
+
+
+## Swap Validation Engine Implementation
+
+### Phase 1: Design Validation Logic
+- [x] Define showstopper criteria thresholds (ASTM exact match, fire rating ±1 hour, strength ±10%, R-value ±5%, STC ±3 points)
+- [x] Design validation result classification logic (APPROVED/EXPERIMENTAL/REJECTED)
+- [x] Create validation scoring system (0-100 points based on showstopper pass/fail)
+- [x] Document validation decision tree and edge cases
+
+### Phase 2: Core Validation Service
+- [x] Create swapValidationService.ts with validateSwap() function
+- [x] Implement ASTM code matching logic (exact match required for APPROVED)
+- [x] Implement fire rating comparison (±1 hour tolerance for APPROVED)
+- [x] Implement structural checks (compressive strength, tensile strength, modulus of elasticity ±10%)
+- [x] Implement thermal checks (R-value ±5%, perm rating within range)
+- [x] Implement acoustic checks (STC ±3 points, IIC ±3 points)
+- [x] Implement installability checks (labor units ±20%, cure time comparison)
+- [x] Implement lifecycle checks (warranty years, maintenance cycle, expected lifespan)
+- [x] Calculate overall validation score and determine classification
+- [x] Generate validation report with pass/fail details for each check
+
+### Phase 3: tRPC API Procedures
+- [x] Create swapValidation router with validateMaterialSwap mutation
+- [x] Add getValidationHistory query (filter by material, project, status)
+- [x] Add getValidationById query (retrieve single validation result)
+- [x] Add revalidateSwap mutation (re-run validation with updated data)
+- [x] Integrate with existing materials and materialSpecs tables
+
+### Phase 4: Validation Storage
+- [x] Store validation results in swap_validations table
+- [x] Link validation to incumbent and sustainable materials
+- [x] Store individual showstopper check results (JSON field)
+- [x] Calculate and store cost comparison (total cost delta)
+- [x] Calculate and store carbon comparison (GWP reduction percentage)
+- [x] Add validation expiration logic (revalidate after 6 months)
+
+### Phase 5: Testing
+- [x] Create test material pairs (concrete, asphalt, insulation, steel)
+- [x] Test APPROVED scenario (all showstoppers pass)
+- [x] Test EXPERIMENTAL scenario (1-2 showstoppers fail)
+- [x] Test REJECTED scenario (3+ showstoppers fail)
+- [x] Validate scoring algorithm accuracy
+- [x] Test edge cases (missing data, null values, extreme values)
+
+### Phase 6: Documentation
+- [x] Create SWAP_VALIDATION_ENGINE.md with validation criteria
+- [x] Document showstopper thresholds and classification logic
+- [x] Add API usage examples for all tRPC procedures
+- [x] Document edge cases and error handling

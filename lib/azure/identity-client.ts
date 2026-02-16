@@ -4,21 +4,42 @@ import { AppConfigurationClient } from '@azure/app-configuration';
 import { getAzureCredential } from './credentials';
 
 /**
- * Singleton credential instance
- * Uses User-Assigned Managed Identity in Azure (id-greenchainz-backend)
- * Uses local developer credentials when running locally
+ * Lazy-loaded singleton instances
+ * These are only initialized when first used, preventing browser/edge execution errors
  */
-const credential = getAzureCredential();
+let credential: ReturnType<typeof getAzureCredential> | null = null;
+let secretClient: SecretClient | null = null;
+let appConfigClient: AppConfigurationClient | null = null;
 
-// Key Vault client
-const keyVaultName = process.env.KEY_VAULT_NAME || 'greenchainz-vault';
-const keyVaultUrl = `https://${keyVaultName}.vault.azure.net`;
-const secretClient = new SecretClient(keyVaultUrl, credential);
+/**
+ * Initialize Azure clients on first use (lazy loading)
+ * This prevents DefaultAzureCredential from running in browser/edge contexts
+ */
+function initializeClients() {
+  if (credential && secretClient && appConfigClient) {
+    return; // Already initialized
+  }
 
-// App Configuration client
-const appConfigEndpoint =
-  process.env.APP_CONFIG_ENDPOINT || 'https://app-config-green.azconfig.io';
-const appConfigClient = new AppConfigurationClient(appConfigEndpoint, credential);
+  // Only initialize if we're in a server context
+  if (typeof window !== 'undefined') {
+    throw new Error(
+      '[Azure] Cannot initialize Azure clients in browser context. ' +
+      'These clients must only be used in server-side code (API routes, server functions).'
+    );
+  }
+
+  credential = getAzureCredential();
+
+  // Key Vault client
+  const keyVaultName = process.env.KEY_VAULT_NAME || 'greenchainz-vault';
+  const keyVaultUrl = `https://${keyVaultName}.vault.azure.net`;
+  secretClient = new SecretClient(keyVaultUrl, credential);
+
+  // App Configuration client
+  const appConfigEndpoint =
+    process.env.APP_CONFIG_ENDPOINT || 'https://app-config-green.azconfig.io';
+  appConfigClient = new AppConfigurationClient(appConfigEndpoint, credential);
+}
 
 /**
  * Retrieve secret from Key Vault
@@ -27,6 +48,10 @@ const appConfigClient = new AppConfigurationClient(appConfigEndpoint, credential
  */
 export async function getSecret(name: string): Promise<string> {
   try {
+    initializeClients();
+    if (!secretClient) {
+      throw new Error('Secret client not initialized');
+    }
     const result = await secretClient.getSecret(name);
     if (!result.value) {
       throw new Error(`Secret "${name}" has no value`);
@@ -45,6 +70,10 @@ export async function getSecret(name: string): Promise<string> {
  */
 export async function getConfigValue(key: string): Promise<string> {
   try {
+    initializeClients();
+    if (!appConfigClient) {
+      throw new Error('App config client not initialized');
+    }
     const setting = await appConfigClient.getConfigurationSetting({ key });
     if (!setting.value) {
       throw new Error(`Config key "${key}" has no value`);
@@ -71,6 +100,10 @@ export async function azureHealthCheck(): Promise<{
 
   // Check Key Vault access
   try {
+    initializeClients();
+    if (!secretClient) {
+      throw new Error('Secret client not initialized');
+    }
     const iterator = secretClient.listPropertiesOfSecrets();
     await iterator.next();
     result.keyVault = true;
@@ -79,8 +112,11 @@ export async function azureHealthCheck(): Promise<{
   }
 
   // Check App Config access
-  // Check App Config access
   try {
+    initializeClients();
+    if (!appConfigClient) {
+      throw new Error('App config client not initialized');
+    }
     const iterator = appConfigClient.listConfigurationSettings();
     await iterator.next();
     result.appConfig = true;
@@ -94,5 +130,15 @@ export async function azureHealthCheck(): Promise<{
   return result;
 }
 
-// Export clients if needed for advanced use cases
-export { credential, secretClient, appConfigClient };
+/**
+ * Get initialized clients (for advanced use cases)
+ * Only call from server-side code
+ */
+export function getClients() {
+  initializeClients();
+  return {
+    credential: credential!,
+    secretClient: secretClient!,
+    appConfigClient: appConfigClient!,
+  };
+}
