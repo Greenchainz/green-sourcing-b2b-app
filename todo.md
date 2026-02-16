@@ -1415,3 +1415,41 @@
 - [ ] Add empty states for no results (post-deployment)
 - [ ] Add error handling for API failures
 - [ ] Create checkpoint with working dashboard
+
+
+## CSI Form 13.1A PDF Generator
+
+### Phase 1: Research & Design
+- [x] Research CSI Form 13.1A format and AIA G716 requirements
+- [x] Document required sections (project info, materials comparison, justification, cost analysis)
+- [x] Design PDF layout with GreenChainz branding
+
+### Phase 2: PDF Generation Service
+- [x] Install PDF generation library (pdfkit)
+- [x] Create CSI form template with header/footer
+- [x] Implement section 1: Project Information
+- [x] Implement section 2: Materials Comparison Table (incumbent vs sustainable)
+- [x] Implement section 3: Technical Specifications Comparison (showstopper checks)
+- [x] Implement section 4: Cost Analysis (material cost, labor cost, total cost delta)
+- [x] Implement section 5: Environmental Impact (GWP reduction, carbon savings)
+- [x] Implement section 6: Justification Statement
+- [x] Add signature blocks and approval workflow placeholders
+
+### Phase 3: API Integration
+- [x] Create `/api/swap-validation/[id]/export-csi-form` endpoint
+- [x] Fetch validation data from database
+- [x] Generate PDF with validation results
+- [x] Return PDF as downloadable file
+
+### Phase 4: Dashboard Integration
+- [x] Add "Export CSI Form" button to validation results table
+- [ ] Add "Generate CSI Form" button to validation detail view (optional enhancement)
+- [x] Implement PDF download with proper filename (project-material-date.pdf)
+- [ ] Add loading state during PDF generation (optional enhancement)
+
+### Phase 5: Testing & Documentation
+- [ ] Test PDF generation with APPROVED validation (post-deployment)
+- [ ] Test PDF generation with EXPERIMENTAL validation (post-deployment)
+- [ ] Test PDF generation with REJECTED validation (post-deployment)
+- [x] Create CSI_FORM_GENERATOR.md documentation
+- [ ] Add sample PDF to documentation (post-deployment)
