@@ -1,9 +1,10 @@
-import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { suppliers, users } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { suppliers, users, materials, materialCertifications } from "../drizzle/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import { generateComplianceReport } from "./compliance-service";
 
 /**
  * Admin Router — Admin-only operations
@@ -177,5 +178,119 @@ export const adminRouter = router({
       }
 
       return { success: true };
+    }),
+
+  /**
+   * Get all suppliers with verification status breakdown
+   */
+  getAllSuppliers: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    const allSuppliers = await db
+      .select({
+        id: suppliers.id,
+        companyName: suppliers.companyName,
+        email: suppliers.email,
+        phone: suppliers.phone,
+        location: suppliers.location,
+        website: suppliers.website,
+        description: suppliers.description,
+        verificationStatus: suppliers.verificationStatus,
+        certifications: suppliers.certifications,
+        sustainabilityScore: suppliers.sustainabilityScore,
+        createdAt: suppliers.createdAt,
+        verifiedAt: suppliers.verifiedAt,
+      })
+      .from(suppliers)
+      .orderBy(suppliers.createdAt);
+
+    return allSuppliers;
+  }),
+
+  /**
+   * Get supplier detail with full information
+   */
+  getSupplierDetail: adminProcedure
+    .input(z.object({ supplierId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [supplier] = await db
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.id, input.supplierId));
+
+      if (!supplier) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found" });
+      }
+
+      return supplier;
+    }),
+
+  /**
+   * Get statistics for admin dashboard
+   */
+  getSupplierStats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    const allSuppliers = await db.select().from(suppliers);
+
+    const stats = {
+      total: allSuppliers.length,
+      pending: allSuppliers.filter(s => s.verificationStatus === "pending").length,
+      approved: allSuppliers.filter(s => s.verificationStatus === "approved").length,
+      rejected: allSuppliers.filter(s => s.verificationStatus === "rejected").length,
+      premium: allSuppliers.filter(s => s.isPremium).length,
+      avgSustainabilityScore: allSuppliers.length > 0
+        ? (allSuppliers.reduce((sum, s) => sum + (parseFloat(s.sustainabilityScore?.toString() || "0")), 0) / allSuppliers.length).toFixed(2)
+        : "0",
+    };
+
+    return stats;
+  }),
+
+  /**
+   * Get compliance report for a supplier
+   */
+  getSupplierCompliance: adminProcedure
+    .input(z.object({ supplierId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [supplier] = await db
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.id, input.supplierId));
+
+      if (!supplier) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found" });
+      }
+
+      const supplierMaterials = await db
+        .select({
+          id: materials.id,
+          name: materials.name,
+          epdExpiry: materials.epdExpiry,
+        })
+        .from(materials)
+        .limit(10);
+
+      const certs = await db
+        .select()
+        .from(materialCertifications)
+        .where(
+          inArray(
+            materialCertifications.materialId,
+            supplierMaterials.map((m) => m.id)
+          )
+        );
+
+      const report = generateComplianceReport(supplier, supplierMaterials, certs);
+
+      return report;
     }),
 });

@@ -33,6 +33,8 @@ import { materialSwapRouter } from "./routers/material-swap-router";
 import { agentConfigRouter } from "./agent-config-router";
 import { legalRouter } from "./legal-router";
 import { autodesksDARouter } from "./autodesk-sda-router";
+import { txdotScraperRouter } from "./routers/txdotScraper";
+import { swapValidationRouter } from "./routers/swapValidation";
 
 export const appRouter = router({
   system: systemRouter,
@@ -47,6 +49,8 @@ export const appRouter = router({
   agentConfig: agentConfigRouter,
   legal: legalRouter,
   autodesk: autodesksDARouter,
+  txdotScraper: txdotScraperRouter,
+  swapValidation: swapValidationRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
