@@ -1347,3 +1347,35 @@
 - [x] Document showstopper thresholds and classification logic
 - [x] Add API usage examples for all tRPC procedures
 - [x] Document edge cases and error handling
+
+## Azure Migration: Consolidate Manus → Next.js
+
+### Sprint 1: Backend Migration
+- [x] Convert Drizzle schema to Prisma schema (material_technical_specs, pricing_data, swap_validations, material_assembly_specs, assembly_spec_components)
+- [x] Generate Prisma migrations for PostgreSQL
+- [x] Port swapValidationService.ts to Next.js compatible module
+- [ ] Port pricingDataService.ts to Next.js compatible module
+- [ ] Port txdotScraper.ts to Next.js compatible module
+- [ ] Convert swapValidation tRPC router to Next.js API route
+- [ ] Convert txdotScraper tRPC router to Next.js API route
+- [ ] Test all backend services with Prisma + PostgreSQL
+- [ ] Update environment variables for Azure PostgreSQL connection
+- [ ] Deploy backend to Azure staging environment
+
+### Sprint 2: Database Migration
+- [ ] Export data from TiDB (material_technical_specs, pricing_data, swap_validations)
+- [ ] Import data to Azure PostgreSQL (greenchainz-db-prod)
+- [ ] Verify data integrity and relationships
+- [ ] Update connection strings in Azure App Configuration
+
+### Sprint 3: Frontend Integration
+- [ ] Port swap validation UI components to Next.js app directory
+- [ ] Integrate TXDOT scraper admin UI into Next.js dashboard
+- [ ] Update authentication to use Azure Entra ID
+- [ ] Test end-to-end flows in staging
+
+### Sprint 4: Production Deployment
+- [ ] Run final tests on staging environment
+- [ ] Deploy to production via Azure pipeline
+- [ ] Verify greenchainz.com shows updated features
+- [ ] Monitor logs and performance
