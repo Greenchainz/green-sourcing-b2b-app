@@ -1297,3 +1297,53 @@
 - [x] Test scraper with real TXDOT HTML pages
 - [x] Create scraper documentation with usage examples
 - [ ] Schedule periodic scraper runs (monthly or quarterly)
+
+
+## Swap Validation Engine Implementation
+
+### Phase 1: Design Validation Logic
+- [x] Define showstopper criteria thresholds (ASTM exact match, fire rating ±1 hour, strength ±10%, R-value ±5%, STC ±3 points)
+- [x] Design validation result classification logic (APPROVED/EXPERIMENTAL/REJECTED)
+- [x] Create validation scoring system (0-100 points based on showstopper pass/fail)
+- [x] Document validation decision tree and edge cases
+
+### Phase 2: Core Validation Service
+- [x] Create swapValidationService.ts with validateSwap() function
+- [x] Implement ASTM code matching logic (exact match required for APPROVED)
+- [x] Implement fire rating comparison (±1 hour tolerance for APPROVED)
+- [x] Implement structural checks (compressive strength, tensile strength, modulus of elasticity ±10%)
+- [x] Implement thermal checks (R-value ±5%, perm rating within range)
+- [x] Implement acoustic checks (STC ±3 points, IIC ±3 points)
+- [x] Implement installability checks (labor units ±20%, cure time comparison)
+- [x] Implement lifecycle checks (warranty years, maintenance cycle, expected lifespan)
+- [x] Calculate overall validation score and determine classification
+- [x] Generate validation report with pass/fail details for each check
+
+### Phase 3: tRPC API Procedures
+- [x] Create swapValidation router with validateMaterialSwap mutation
+- [x] Add getValidationHistory query (filter by material, project, status)
+- [x] Add getValidationById query (retrieve single validation result)
+- [x] Add revalidateSwap mutation (re-run validation with updated data)
+- [x] Integrate with existing materials and materialSpecs tables
+
+### Phase 4: Validation Storage
+- [x] Store validation results in swap_validations table
+- [x] Link validation to incumbent and sustainable materials
+- [x] Store individual showstopper check results (JSON field)
+- [x] Calculate and store cost comparison (total cost delta)
+- [x] Calculate and store carbon comparison (GWP reduction percentage)
+- [x] Add validation expiration logic (revalidate after 6 months)
+
+### Phase 5: Testing
+- [x] Create test material pairs (concrete, asphalt, insulation, steel)
+- [x] Test APPROVED scenario (all showstoppers pass)
+- [x] Test EXPERIMENTAL scenario (1-2 showstoppers fail)
+- [x] Test REJECTED scenario (3+ showstoppers fail)
+- [x] Validate scoring algorithm accuracy
+- [x] Test edge cases (missing data, null values, extreme values)
+
+### Phase 6: Documentation
+- [x] Create SWAP_VALIDATION_ENGINE.md with validation criteria
+- [x] Document showstopper thresholds and classification logic
+- [x] Add API usage examples for all tRPC procedures
+- [x] Document edge cases and error handling

@@ -1093,21 +1093,22 @@ export const swapValidations = mysqlTable(
     // Materials
     incumbentMaterialId: int("incumbent_material_id").notNull(),
     sustainableMaterialId: int("sustainable_material_id").notNull(),
+    projectId: int("project_id"),
     
     // Validation Results
-    isValidSwap: boolean("is_valid_swap").notNull(),
     validationStatus: mysqlEnum("validation_status", ["APPROVED", "EXPERIMENTAL", "REJECTED"]).notNull(),
+    overallScore: decimal("overall_score", { precision: 5, scale: 2 }).notNull(),
     
-    // Showstopper Checks
-    astmMatch: boolean("astm_match").notNull(),
-    fireRatingMatch: boolean("fire_rating_match").notNull(),
-    ulListingMatch: boolean("ul_listing_match").notNull(),
-    strengthAdequate: boolean("strength_adequate").notNull(),
-    rValueAdequate: boolean("r_value_adequate").notNull(),
-    stcAdequate: boolean("stc_adequate").notNull(),
+    // Showstopper Results (JSON object with all check details)
+    showstopperResults: json("showstopper_results").notNull(),
     
-    // Warnings (JSON array)
-    warnings: json("warnings").$type<string[]>().default([]),
+    // Check Counts
+    passedChecks: int("passed_checks").notNull(),
+    failedChecks: int("failed_checks").notNull(),
+    skippedChecks: int("skipped_checks").notNull(),
+    
+    // Recommendation
+    recommendation: text("recommendation").notNull(),
     
     // Cost Comparison
     incumbentTotalCost: decimal("incumbent_total_cost", { precision: 10, scale: 2 }),
@@ -1119,14 +1120,13 @@ export const swapValidations = mysqlTable(
     sustainableGwp: decimal("sustainable_gwp", { precision: 10, scale: 2 }),
     carbonReductionPercentage: decimal("carbon_reduction_percentage", { precision: 5, scale: 2 }),
     
-    // Project Context
-    projectState: varchar("project_state", { length: 2 }),
-    projectCity: varchar("project_city", { length: 100 }),
-    projectType: varchar("project_type", { length: 100 }),
-    
     // Generated Documentation
     csiFormUrl: text("csi_form_url"),
     csiFormGeneratedAt: timestamp("csi_form_generated_at"),
+    
+    // Validation Metadata
+    validatedAt: timestamp("validated_at").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at"),
     
     // User Tracking
     requestedBy: int("requested_by"),
