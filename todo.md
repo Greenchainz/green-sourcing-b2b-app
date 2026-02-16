@@ -1356,7 +1356,8 @@
 - [x] Port swapValidationService.ts to Next.js compatible module
 - [ ] Port pricingDataService.ts to Next.js compatible module
 - [ ] Port txdotScraper.ts to Next.js compatible module
-- [ ] Convert swapValidation tRPC router to Next.js API route
+- [x] Convert swapValidation tRPC router to Next.js API route (/api/swap-validation, /api/swap-validation/[id])
+- [x] Convert pricing data queries to Next.js API routes (/api/pricing-data, /api/pricing-data/regional-average)
 - [ ] Convert txdotScraper tRPC router to Next.js API route
 - [ ] Test all backend services with Prisma + PostgreSQL
 - [ ] Update environment variables for Azure PostgreSQL connection
