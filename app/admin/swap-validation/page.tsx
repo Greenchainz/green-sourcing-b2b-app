@@ -279,20 +279,31 @@ export default function SwapValidationDashboard() {
                         {validation.costDelta > 0 ? "+" : ""}{validation.costDelta}%
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => setExpandedRow(expandedRow === validation.id ? null : validation.id)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
-                        >
-                          {expandedRow === validation.id ? (
-                            <>
-                              <ChevronUp className="w-4 h-4" /> Hide Details
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="w-4 h-4" /> Show Details
-                            </>
-                          )}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setExpandedRow(expandedRow === validation.id ? null : validation.id)}
+                            className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
+                          >
+                            {expandedRow === validation.id ? (
+                              <>
+                                <ChevronUp className="w-4 h-4" /> Hide
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-4 h-4" /> Show
+                              </>
+                            )}
+                          </button>
+                          <a
+                            href={`/api/swap-validation/${validation.id}/export-csi-form`}
+                            download
+                            className="text-sm px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 inline-flex items-center gap-1"
+                            title="Export CSI Form 13.1A"
+                          >
+                            <Download className="w-4 h-4" />
+                            CSI Form
+                          </a>
+                        </div>
                       </td>
                     </tr>
                     {expandedRow === validation.id && (
