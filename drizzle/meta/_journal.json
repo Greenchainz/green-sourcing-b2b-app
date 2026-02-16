@@ -183,6 +183,13 @@
       "when": 1771177114071,
       "tag": "0025_lonely_charles_xavier",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1771207445000,
+      "tag": "0026_bright_wolverine",
+      "breakpoints": true
     }
   ]
 }
