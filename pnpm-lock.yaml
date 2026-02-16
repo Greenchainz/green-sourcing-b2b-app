@@ -28,6 +28,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.64.0(react@19.2.1))
+      '@prisma/client':
+        specifier: '5'
+        version: 5.22.0(prisma@5.22.0)
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.1(@types/react@19.2.1))(@types/react@19.2.1)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -126,7 +129,7 @@ importers:
         version: 1.12.2
       better-auth:
         specifier: ^1.4.18
-        version: 1.4.18(drizzle-kit@0.31.5)(drizzle-orm@0.44.6(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0))(mysql2@3.15.1)(pg@8.18.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@2.1.9(@types/node@24.7.0)(lightningcss@1.30.2))
+        version: 1.4.18(@prisma/client@5.22.0(prisma@5.22.0))(drizzle-kit@0.31.5)(drizzle-orm@0.44.6(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0))(mysql2@3.15.1)(pg@8.18.0)(prisma@5.22.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@2.1.9(@types/node@24.7.0)(lightningcss@1.30.2))
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
@@ -150,7 +153,7 @@ importers:
         version: 17.2.3
       drizzle-orm:
         specifier: ^0.44.5
-        version: 0.44.6(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0)
+        version: 0.44.6(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0)
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.1)
@@ -293,6 +296,9 @@ importers:
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
+      prisma:
+        specifier: '5'
+        version: 5.22.0
       tailwindcss:
         specifier: ^4.1.14
         version: 4.1.14
@@ -665,6 +671,9 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@electric-sql/pglite@0.3.15':
+    resolution: {integrity: sha512-Cj++n1Mekf9ETfdc16TlDi+cDDQF0W7EcbyRHYOAeZdsAe8M/FJg18itDTSwyHfar2WIezawM9o0EKaRGVKygQ==}
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
@@ -1159,6 +1168,30 @@ packages:
   '@noble/hashes@2.0.1':
     resolution: {integrity: sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==}
     engines: {node: '>= 20.19.0'}
+
+  '@prisma/client@5.22.0':
+    resolution: {integrity: sha512-M0SVXfyHnQREBKxCgyo7sffrKttwE6R8PMq330MIUF0pTwjUhLbW84pFDlf06B27XyCR++VtjugEnIHdr07SVA==}
+    engines: {node: '>=16.13'}
+    peerDependencies:
+      prisma: '*'
+    peerDependenciesMeta:
+      prisma:
+        optional: true
+
+  '@prisma/debug@5.22.0':
+    resolution: {integrity: sha512-AUt44v3YJeggO2ZU5BkXI7M4hu9BF2zzH2iF2V5pyXT/lRTyWiElZ7It+bRH1EshoMRxHgpYg4VB6rCM+mG5jQ==}
+
+  '@prisma/engines-version@5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2':
+    resolution: {integrity: sha512-2PTmxFR2yHW/eB3uqWtcgRcgAbG1rwG9ZriSvQw+nnb7c4uCr3RAcGMb6/zfE88SKlC1Nj2ziUvc96Z379mHgQ==}
+
+  '@prisma/engines@5.22.0':
+    resolution: {integrity: sha512-UNjfslWhAt06kVL3CjkuYpHAWSO6L4kDCVPegV6itt7nD1kSJavd3vhgAEhjglLJJKEdJ7oIqDJ+yHk6qO8gPA==}
+
+  '@prisma/fetch-engine@5.22.0':
+    resolution: {integrity: sha512-bkrD/Mc2fSvkQBV5EpoFcZ87AvOgDxbG99488a5cexp5Ccny+UM6MAe/UFkUC0wLYD9+9befNOqGiIJhhq+HbA==}
+
+  '@prisma/get-platform@5.22.0':
+    resolution: {integrity: sha512-pHhpQdr1UPFpt+zFfnPazhulaZYCUqeIcPpJViYoq9R+D/yw4fjE+CtnsnKzPYm0ddUbeXUzjGVGIRVgPDCk4Q==}
 
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
@@ -4257,9 +4290,18 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
+  postgres@3.4.7:
+    resolution: {integrity: sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw==}
+    engines: {node: '>=12'}
+
   prettier@3.6.2:
     resolution: {integrity: sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ==}
     engines: {node: '>=14'}
+    hasBin: true
+
+  prisma@5.22.0:
+    resolution: {integrity: sha512-vtpjW3XuYCSnMsNVBjLMNkTj6OZbudcPPTPYHqX0CJfpcdWciI1dM8uHETwmDxxiqEwCIE6WvXucWUetJgfu/A==}
+    engines: {node: '>=16.13'}
     hasBin: true
 
   prop-types@15.8.1:
@@ -5665,6 +5707,9 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
+  '@electric-sql/pglite@0.3.15':
+    optional: true
+
   '@esbuild-kit/core-utils@3.3.2':
     dependencies:
       esbuild: 0.18.20
@@ -5957,6 +6002,31 @@ snapshots:
   '@noble/ciphers@2.1.1': {}
 
   '@noble/hashes@2.0.1': {}
+
+  '@prisma/client@5.22.0(prisma@5.22.0)':
+    optionalDependencies:
+      prisma: 5.22.0
+
+  '@prisma/debug@5.22.0': {}
+
+  '@prisma/engines-version@5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2': {}
+
+  '@prisma/engines@5.22.0':
+    dependencies:
+      '@prisma/debug': 5.22.0
+      '@prisma/engines-version': 5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2
+      '@prisma/fetch-engine': 5.22.0
+      '@prisma/get-platform': 5.22.0
+
+  '@prisma/fetch-engine@5.22.0':
+    dependencies:
+      '@prisma/debug': 5.22.0
+      '@prisma/engines-version': 5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2
+      '@prisma/get-platform': 5.22.0
+
+  '@prisma/get-platform@5.22.0':
+    dependencies:
+      '@prisma/debug': 5.22.0
 
   '@radix-ui/number@1.1.1': {}
 
@@ -7593,7 +7663,7 @@ snapshots:
 
   baseline-browser-mapping@2.8.12: {}
 
-  better-auth@1.4.18(drizzle-kit@0.31.5)(drizzle-orm@0.44.6(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0))(mysql2@3.15.1)(pg@8.18.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@2.1.9(@types/node@24.7.0)(lightningcss@1.30.2)):
+  better-auth@1.4.18(@prisma/client@5.22.0(prisma@5.22.0))(drizzle-kit@0.31.5)(drizzle-orm@0.44.6(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0))(mysql2@3.15.1)(pg@8.18.0)(prisma@5.22.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@2.1.9(@types/node@24.7.0)(lightningcss@1.30.2)):
     dependencies:
       '@better-auth/core': 1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.11)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.11)(nanostores@1.1.0))
@@ -7608,10 +7678,12 @@ snapshots:
       nanostores: 1.1.0
       zod: 4.3.6
     optionalDependencies:
+      '@prisma/client': 5.22.0(prisma@5.22.0)
       drizzle-kit: 0.31.5
-      drizzle-orm: 0.44.6(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0)
+      drizzle-orm: 0.44.6(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0)
       mysql2: 3.15.1
       pg: 8.18.0
+      prisma: 5.22.0
       react: 19.2.1
       react-dom: 19.2.1(react@19.2.1)
       vitest: 2.1.9(@types/node@24.7.0)(lightningcss@1.30.2)
@@ -8086,12 +8158,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.44.6(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0):
+  drizzle-orm@0.44.6(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.11)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0):
     optionalDependencies:
+      '@electric-sql/pglite': 0.3.15
+      '@prisma/client': 5.22.0(prisma@5.22.0)
       '@types/pg': 8.16.0
       kysely: 0.28.11
       mysql2: 3.15.1
       pg: 8.18.0
+      postgres: 3.4.7
+      prisma: 5.22.0
 
   dunder-proto@1.0.1:
     dependencies:
@@ -9437,7 +9513,16 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
+  postgres@3.4.7:
+    optional: true
+
   prettier@3.6.2: {}
+
+  prisma@5.22.0:
+    dependencies:
+      '@prisma/engines': 5.22.0
+    optionalDependencies:
+      fsevents: 2.3.3
 
   prop-types@15.8.1:
     dependencies:

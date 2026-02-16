@@ -1,18 +1,5 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-// Note: Authentication is handled by Azure Container Apps Easy Auth
-// User data is stored in the "Users" table (see database-schemas/schema.sql)
-
-// ============================================================================
-// SWAP ENGINE TABLES
-// ============================================================================
+// Swap Engine Tables for PostgreSQL
+// This schema extends the existing Prisma schema with swap validation infrastructure
 
 model MaterialTechnicalSpec {
   id        Int      @id @default(autoincrement())
@@ -121,10 +108,10 @@ model SwapValidation {
   projectId              Int?     @map("project_id")
   
   // Validation Results
-  validationStatus       String   @map("validation_status") @db.VarChar(20)
+  validationStatus       String   @map("validation_status") @db.VarChar(20) // APPROVED, EXPERIMENTAL, REJECTED
   overallScore           Decimal  @map("overall_score") @db.Decimal(5, 2)
   
-  // Showstopper Results (JSON object)
+  // Showstopper Results (JSON object with all check details)
   showstopperResults     Json     @map("showstopper_results")
   
   // Check Counts
