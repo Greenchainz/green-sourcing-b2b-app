@@ -1,10 +1,11 @@
-import { protectedProcedure, router } from "./_core/trpc";
+import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { submitRfq, getRfqWithBids, submitBid, getOrCreateThread, sendMessage, getThreadMessages, acceptBid, enrichRfqWithCcps } from "./rfq-service";
 import type { RfqSubmissionInput } from "./rfq-service";
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
+import { enrichRfqWithAiAnalysis } from "./ai-agent-service";
 
 /**
  * RFQ Marketplace Router
@@ -51,103 +52,65 @@ export const rfqMarketplaceRouter = router({
         bidPrice: z.number().positive(),
         leadDays: z.number().positive(),
         notes: z.string().optional(),
+        expiresAt: z.date().optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      return submitBid(input.rfqId, input.supplierId, input.bidPrice, input.leadDays, input.notes);
+    .mutation(async ({ ctx, input }) => {
+      return submitBid(input);
     }),
 
-  // Accept a bid and close RFQ
-  acceptBid: protectedProcedure
-    .input(z.object({ rfqId: z.number(), bidId: z.number() }))
-    .mutation(async ({ input }) => {
-      return acceptBid(input.rfqId, input.bidId);
-    }),
-
-  // Get or create a message thread between buyer and supplier
+  // Get or create messaging thread for RFQ
   getOrCreateThread: protectedProcedure
     .input(z.object({ rfqId: z.number(), supplierId: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      return getOrCreateThread(input.rfqId, input.supplierId, ctx.user.id);
-    }),
-
-  // Enrich RFQ with CCPS data (for agent)
-  enrichWithCcps: protectedProcedure
-    .input(z.object({ rfqId: z.number(), buyerPersona: z.string().optional() }))
     .query(async ({ input }) => {
-      return enrichRfqWithCcps(input.rfqId, input.buyerPersona);
+      return getOrCreateThread(input.rfqId, input.supplierId);
     }),
 
-  // Get WebSocket access token for real-time messaging
-  getWebSocketToken: protectedProcedure
-    .input(z.object({ threadId: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const { getWebSocketAccessToken } = await import("./webpubsub-manager");
-      return getWebSocketAccessToken(ctx.user.id, input.threadId);
-    }),
-
-  // Send message via Web PubSub
+  // Send message in RFQ thread
   sendMessage: protectedProcedure
     .input(
       z.object({
         threadId: z.number(),
-        message: z.string().max(1000),
-        isBuyer: z.boolean(),
+        message: z.string(),
+        senderId: z.number(),
       })
     )
-    .mutation(async ({ ctx, input }) => {
-      const { sendMessageToThread } = await import("./webpubsub-manager");
-      return sendMessageToThread(input.threadId, ctx.user.id, input.message, input.isBuyer);
-    }),
-
-  // Mark message as read
-  markMessageAsRead: protectedProcedure
-    .input(z.object({ messageId: z.number() }))
     .mutation(async ({ input }) => {
-      const { markMessageAsRead } = await import("./webpubsub-manager");
-      return markMessageAsRead(input.messageId);
+      return sendMessage(input.threadId, input.senderId, input.message);
     }),
 
-  // Get message history
-  getThreadMessages: protectedProcedure
-    .input(
-      z.object({
-        threadId: z.number(),
-        limit: z.number().default(50),
-        offset: z.number().default(0),
-      })
-    )
+  // Get messages from thread
+  getMessages: protectedProcedure
+    .input(z.object({ threadId: z.number() }))
     .query(async ({ input }) => {
-      const { getThreadMessages } = await import("./webpubsub-manager");
-      return getThreadMessages(input.threadId, input.limit, input.offset);
+      return getThreadMessages(input.threadId);
     }),
 
-  // Get all RFQs for a user
-  getUserRfqs: protectedProcedure
-    .input(z.object({ userId: z.number() }))
+  // Accept a bid and create order
+  acceptBid: protectedProcedure
+    .input(z.object({ bidId: z.number() }))
+    .mutation(async ({ input }) => {
+      return acceptBid(input.bidId);
+    }),
+
+  // Get RFQs for buyer with CCPS enrichment
+  getBuyerRfqs: protectedProcedure
+    .input(z.object({ buyerId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
 
       const userRfqs = await db
-        .select({
-          id: rfqs.id,
-          projectName: rfqs.projectName,
-          projectLocation: rfqs.projectLocation,
-          projectType: rfqs.projectType,
-          status: rfqs.status,
-          createdAt: rfqs.createdAt,
-          updatedAt: rfqs.updatedAt,
-        })
+        .select()
         .from(rfqs)
-        .where(eq(rfqs.userId, input.userId))
+        .where(eq(rfqs.buyerId, input.buyerId))
         .orderBy(desc(rfqs.createdAt));
 
-      // Get bid count and item count for each RFQ
       const enriched = await Promise.all(
         userRfqs.map(async (rfq) => {
           const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, rfq.id));
           const bids = await db.select().from(rfqBids).where(eq(rfqBids.rfqId, rfq.id));
+
           return {
             ...rfq,
             itemCount: items.length,
@@ -207,5 +170,17 @@ export const rfqMarketplaceRouter = router({
         bids,
         analytics: analytics.length > 0 ? analytics[0] : null,
       };
+    }),
+
+  // Analyze RFQ with AI agents for material recommendations and compliance
+  analyzeWithAi: protectedProcedure
+    .input(
+      z.object({
+        projectLocation: z.string(),
+        materials: z.array(z.string()),
+      })
+    )
+    .mutation(async ({ input }) => {
+      return enrichRfqWithAiAnalysis(0, input.projectLocation, input.materials);
     }),
 });
