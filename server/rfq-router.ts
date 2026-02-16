@@ -56,14 +56,14 @@ export const rfqMarketplaceRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return submitBid(input);
+      return submitBid(input.rfqId, input.supplierId, input.bidPrice, input.leadDays, input.notes);
     }),
 
   // Get or create messaging thread for RFQ
   getOrCreateThread: protectedProcedure
-    .input(z.object({ rfqId: z.number(), supplierId: z.number() }))
+    .input(z.object({ rfqId: z.number(), supplierId: z.number(), buyerId: z.number() }))
     .query(async ({ input }) => {
-      return getOrCreateThread(input.rfqId, input.supplierId);
+      return getOrCreateThread(input.rfqId, input.supplierId, input.buyerId);
     }),
 
   // Send message in RFQ thread
@@ -73,24 +73,25 @@ export const rfqMarketplaceRouter = router({
         threadId: z.number(),
         message: z.string(),
         senderId: z.number(),
+        senderType: z.enum(["buyer", "supplier"]),
       })
     )
     .mutation(async ({ input }) => {
-      return sendMessage(input.threadId, input.senderId, input.message);
+      return sendMessage(input.threadId, input.senderId, input.senderType, input.message);
     }),
 
   // Get messages from thread
   getMessages: protectedProcedure
-    .input(z.object({ threadId: z.number() }))
+    .input(z.object({ threadId: z.number(), limit: z.number().optional() }))
     .query(async ({ input }) => {
-      return getThreadMessages(input.threadId);
+      return getThreadMessages(input.threadId, input.limit);
     }),
 
   // Accept a bid and create order
   acceptBid: protectedProcedure
-    .input(z.object({ bidId: z.number() }))
+    .input(z.object({ rfqId: z.number(), bidId: z.number() }))
     .mutation(async ({ input }) => {
-      return acceptBid(input.bidId);
+      return acceptBid(input.rfqId, input.bidId);
     }),
 
   // Get RFQs for buyer with CCPS enrichment
@@ -103,7 +104,7 @@ export const rfqMarketplaceRouter = router({
       const userRfqs = await db
         .select()
         .from(rfqs)
-        .where(eq(rfqs.buyerId, input.buyerId))
+        .where(eq(rfqs.userId, input.buyerId))
         .orderBy(desc(rfqs.createdAt));
 
       const enriched = await Promise.all(

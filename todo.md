@@ -1196,3 +1196,13 @@
 - [ ] Create RFQ analytics dashboard (bids received, avg price, response time)
 - [ ] Write unit tests for RFQ procedures
 - [ ] Test end-to-end RFQ flow (create → match → bid → accept)
+
+
+## AI Recommendations UI Component (IN PROGRESS)
+
+- [ ] Design AI recommendations component layout and data structure
+- [ ] Build AiRecommendations component with material cards showing carbon reduction %, compliance status, defensibility scores
+- [ ] Add sustainability score visualization (0-100 scale with color coding)
+- [ ] Integrate component into RFQ detail modal
+- [ ] Add loading states and error handling for AI analysis calls
+- [ ] Test component with sample AI analysis data
