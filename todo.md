@@ -1281,3 +1281,19 @@
 - [ ] Track time saved per swap (2 hours target from CSI form auto-generation)
 - [ ] Collect user feedback (NPS >50, feature satisfaction >4.5/5)
 
+
+
+## TXDOT Bid Tab Scraper Implementation
+
+- [x] Research TXDOT bid tab PDF format and identify data columns (item number, description, quantity, unit, unit price, amount)
+- [x] Download sample TXDOT bid tab PDFs for testing
+- [x] Build HTML parsing service using cheerio library (MVP approach - no PDF parsing yet)
+- [x] Implement material name extraction and normalization logic
+- [x] Implement unit price extraction with decimal parsing
+- [x] Implement project location extraction (city, county, state)
+- [x] Create database service to insert pricing data into pricing_data table
+- [x] Build tRPC procedures for manual scraper trigger and status tracking
+- [x] Add error handling for malformed data and missing fields
+- [x] Test scraper with real TXDOT HTML pages
+- [x] Create scraper documentation with usage examples
+- [ ] Schedule periodic scraper runs (monthly or quarterly)
