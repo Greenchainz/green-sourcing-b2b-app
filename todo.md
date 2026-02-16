@@ -1206,3 +1206,78 @@
 - [ ] Integrate component into RFQ detail modal
 - [ ] Add loading states and error handling for AI analysis calls
 - [ ] Test component with sample AI analysis data
+
+
+## Swap Engine: Functional Equivalence Validation (Architecture of Equivalence)
+
+### Sprint 1: Database Schema (Week 1)
+- [x] Create material_technical_specs table (ASTM codes, fire ratings, UL listings, structural specs, thermal/acoustic performance, labor units, lifecycle data)
+- [x] Create material_assembly_specs table (assembly-level specs: thickness, R-value, fire rating, UL design)
+- [x] Create assembly_spec_components junction table (links materials to assemblies with layer order and quantities)
+- [x] Create pricing_data table (regional pricing from DOT bid tabs, Craftsman, RSMeans, Home Depot)
+- [x] Create swap_validations table (tracks validation results, showstopper checks, cost/carbon comparison, CSI form URLs)
+- [ ] Migrate existing materials data to new schema (populate material_technical_specs for existing materials)
+
+### Sprint 2: Data Sourcing (Week 2-3)
+- [ ] Build TXDOT bid tab scraper (extract material name, unit price, unit, date, project location from PDF bid tabs)
+- [ ] Build WSDOT unit bid analysis scraper
+- [ ] Build Caltrans contract cost data scraper
+- [ ] Purchase Craftsman National Construction Estimator ($100) and parse into pricing_data table
+- [ ] Build Home Depot local pricing scraper (ZIP code-based commodity pricing)
+- [ ] Apply for UL Product iQ API access (fire ratings and safety certifications)
+- [ ] Build PDF parser for manufacturer data sheets using LlamaIndex or Unstructured.io (extract ASTM codes, specs)
+- [ ] Scrape ICC-ES Evaluation Reports for code compliance verification
+- [ ] Populate material_specifications with ASTM codes, UL listings, ICC-ES reports for top 100 materials
+
+### Sprint 3: Swap Validation Engine (Week 4-5)
+- [ ] Implement validateSwap() function with showstopper checks (ASTM match, fire rating, UL listing, strength, R-value, STC)
+- [ ] Implement checkAstmMatch() helper (compares ASTM code arrays)
+- [ ] Implement getRegionalPricing() helper (fetches pricing from pricing_data table by location)
+- [ ] Implement cost comparison logic (material cost + labor cost = total cost of ownership)
+- [ ] Implement carbon comparison logic (GWP reduction percentage)
+- [ ] Implement warning generation (labor units increase, cure time, lead time)
+- [ ] Create tRPC procedure rfq.validateSwap (accepts incumbentId, sustainableId, projectLocation)
+- [ ] Write comprehensive unit tests for swap validation engine (15+ tests covering all showstopper checks)
+
+### Sprint 4: CSI Form 13.1A Auto-Generation (Week 6)
+- [ ] Design CSI Form 13.1A PDF template (sections: materials comparison, functional equivalence, cost comparison, sustainability benefits, architect approval)
+- [ ] Implement generateCsiForm() function (accepts incumbentId, sustainableId, validationData)
+- [ ] Integrate PDF generation library (use existing PDF tools or add new dependency)
+- [ ] Upload generated CSI forms to S3 storage
+- [ ] Add CSI form URL to swap_validations table
+- [ ] Add "Download CSI Form 13.1A" button to swap validation UI
+- [ ] Test CSI form generation with real material data (verify all sections populated correctly)
+
+### Sprint 5: AI Agent Prompt Updates (Week 7)
+- [ ] Update CARBON-OPTIMIZER agent prompt to validate functional equivalence BEFORE recommending swaps
+- [ ] Add showstopper validation rules to agent prompt (NEVER recommend swap unless all checks pass)
+- [ ] Add total cost of ownership calculation to agent prompt (material + labor + maintenance + disposal)
+- [ ] Update agent output format to include validationStatus, showstopperChecks, costComparison, carbonComparison, warnings, csiFormUrl
+- [ ] Update COMPLIANCE-VALIDATOR agent to check ASTM codes, UL listings, ICC-ES reports
+- [ ] Test agent responses with real material data (verify agents reject swaps that fail showstopper checks)
+- [ ] Integrate swap validation engine with AI agent service (call validateSwap from enrichRfqWithAiAnalysis)
+
+### Sprint 6: UI Integration (Week 8)
+- [ ] Build SwapValidationCard.tsx component (side-by-side comparison with showstopper checks, cost/carbon charts, warnings, CSI form download)
+- [ ] Add SwapValidationCard to RFQ detail modal (replace or enhance existing AiRecommendations component)
+- [ ] Create swap validation dashboard for buyers (filter by validation status: Approved/Experimental/Rejected)
+- [ ] Add validation status badges to material cards (✓ APPROVED, ⚠ EXPERIMENTAL, ✗ REJECTED)
+- [ ] Add showstopper check indicators to material detail page (✓/✗ for ASTM, fire rating, UL listing, etc.)
+- [ ] Test UI with real swap validation data (verify all showstopper checks display correctly)
+
+### Data Quality & Risk Mitigation
+- [ ] Cross-validate scraped DOT bid tab data with Craftsman and Home Depot pricing
+- [ ] Flag low-confidence pricing data in UI (show data source and date)
+- [ ] Add legal disclaimer to swap recommendations ("Final approval by licensed architect required")
+- [ ] Manual data entry for top 100 materials if UL Product iQ API access denied
+- [ ] Build proprietary dataset from State DOT bid tabs as competitive moat
+
+### Success Metrics & Monitoring
+- [ ] Track swap validation accuracy (>95% target validated against architect feedback)
+- [ ] Monitor data coverage (>80% of top 100 materials have complete specifications)
+- [ ] Measure API response time for swap validation (<2s target)
+- [ ] Track CSI form generation time (<5s per form target)
+- [ ] Monitor swap approval rate (>60% of recommended swaps approved by architects)
+- [ ] Track time saved per swap (2 hours target from CSI form auto-generation)
+- [ ] Collect user feedback (NPS >50, feature satisfaction >4.5/5)
+
