@@ -1,4 +1,4 @@
-# Multi-stage build for Next.js on Azure
+# Multi-stage build for Vite + Express on Azure
 
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
@@ -25,25 +25,11 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy application files
 COPY . .
 
-# Accept build-time environment variables for Next.js
-ARG NEXT_PUBLIC_AZURE_CLIENT_ID
-ARG NEXT_PUBLIC_AZURE_TENANT_ID
-ARG NEXT_PUBLIC_BACKEND_URL
-ARG NEXT_PUBLIC_INTERCOM_APP_ID
-ARG NEXT_PUBLIC_SITE_URL
-
-# Make them available during build
-ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
-    NEXT_PUBLIC_AZURE_TENANT_ID=$NEXT_PUBLIC_AZURE_TENANT_ID \
-    NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL \
-    NEXT_PUBLIC_INTERCOM_APP_ID=$NEXT_PUBLIC_INTERCOM_APP_ID \
-    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
-    NODE_ENV=production
-
-# Build Next.js app
+# Build: Vite frontend + esbuild server → dist/
+ENV NODE_ENV=production
 RUN pnpm run build
 
-# Stage 3: Runtime (Azure App Service optimized)
+# Stage 3: Runtime
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
@@ -52,30 +38,28 @@ RUN apk add --no-cache dumb-init
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+    adduser -S appuser -u 1001
 
-# Copy full Next.js production build (NOT standalone)
-COPY --from=builder --chown=nextjs:nodejs /app/.next /app/.next
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules /app/node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/public /app/public
-COPY --from=builder --chown=nextjs:nodejs /app/package*.json /app/
+# Copy built application from builder
+COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:nodejs /app/package*.json ./
 
 # Switch to non-root user
-USER nextjs
+USER appuser
 
 # Set environment variables (PORT will be set by container runtime)
-ENV NODE_ENV=production \
-    NODE_PG_FORCE_NATIVE=""
+ENV NODE_ENV=production
 
-# Health check endpoint (uses PORT env var from runtime)
+# Health check endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Expose ports
-EXPOSE 3000 3001
+# Expose port
+EXPOSE 3000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-# Start Next.js production server
-CMD ["npx", "next", "start"]
+# Start the server (matches package.json "start" script)
+CMD ["node", "dist/index.js"]
