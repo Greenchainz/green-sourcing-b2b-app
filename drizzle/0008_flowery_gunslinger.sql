@@ -1,1 +1,0 @@
-ALTER TABLE `notifications` MODIFY COLUMN `type` enum('rfq_new','rfq_match','new_message','bid_accepted','bid_rejected','rfq_closed') NOT NULL;

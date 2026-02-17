@@ -1,1 +1,0 @@
-ALTER TABLE `materials` ADD `complianceGrade` enum('A','B','C','D','F') DEFAULT 'C';
