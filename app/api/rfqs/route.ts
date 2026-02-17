@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       // Run supplier matching
       const matchedSuppliers = await findMatchingSuppliers({
         rfqId: rfq_id,
-        materials: materials.map((m) => m.material_id),
+        materials: materials.map((m: any) => m.material_id),
         deliveryLocation: delivery_location,
         requiredCertifications: required_certifications,
         budgetRange: budget_range,
