@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
-import { rfqSupplierMatch, sendNotification } from "@/lib/greenchainz";
+import { findMatchingSuppliers, sendInAppNotification } from "@/lib/greenchainz";
 
 const pool = getPool();
 
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Run supplier matching
-      const matchedSuppliers = await rfqSupplierMatch({
+      const matchedSuppliers = await findMatchingSuppliers({
         rfqId: rfq_id,
         materials: materials.map((m) => m.material_id),
         deliveryLocation: delivery_location,
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         );
 
         // Send notification to supplier
-        await sendNotification({
+        await sendInAppNotification({
           userId: match.supplierId,
           type: "rfq_match",
           title: "New RFQ Match",
