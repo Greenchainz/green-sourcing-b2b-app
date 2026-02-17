@@ -185,7 +185,7 @@ export default function RFQForm() {
   if (success) {
     return (
       <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+        <div className="bg-[#111111] rounded-lg shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
@@ -275,7 +275,7 @@ export default function RFQForm() {
       )}
 
       {/* Form Card */}
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8">
+      <div className="bg-[#111111] rounded-lg shadow-lg border border-gray-200 p-8">
         {/* Step 1: Project Details */}
         {currentStep === 1 && (
           <div className="space-y-6">

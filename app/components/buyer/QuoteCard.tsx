@@ -24,11 +24,11 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
     <div className="gc-card p-5 hover:transform hover:-translate-y-1 transition-transform duration-200">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-bold text-slate-800">
+          <h3 className="text-lg font-bold text-slate-100">
             {quote.productName}
           </h3>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-slate-600 text-sm font-medium">
+            <span className="text-slate-400 text-sm font-medium">
               {quote.supplierName}
             </span>
             {quote.supplierVerified && (
@@ -77,7 +77,7 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
           <div className="text-slate-500 font-semibold text-xs uppercase tracking-wide mb-1">
             Lead Time
           </div>
-          <div className="font-bold text-slate-700">
+          <div className="font-bold text-slate-300">
             {quote.leadTimeWeeks} weeks
           </div>
         </div>
@@ -85,7 +85,7 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
           <div className="text-slate-500 font-semibold text-xs uppercase tracking-wide mb-1">
             Carbon Impact
           </div>
-          <div className="font-bold text-slate-700 flex items-center gap-1">
+          <div className="font-bold text-slate-300 flex items-center gap-1">
             {quote.carbonScore}{" "}
             <span className="text-xs font-normal text-slate-500">kgCO2e</span>
             {quote.carbonScore < 50 && (

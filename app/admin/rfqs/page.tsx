@@ -48,7 +48,7 @@ export default function AdminRFQsPage() {
       header: "Project Title",
       sortable: true,
       render: (r) => (
-        <span className="font-bold text-slate-700">{r.title}</span>
+        <span className="font-bold text-slate-300">{r.title}</span>
       ),
     },
     { key: "buyer", header: "Buyer", sortable: true },
@@ -87,7 +87,7 @@ export default function AdminRFQsPage() {
   return (
     <div className="gc-page min-h-screen p-6 md:p-10">
       <div className="gc-container">
-        <h1 className="text-2xl font-bold text-slate-900 mb-6">
+        <h1 className="text-2xl font-bold text-white mb-6">
           RFQ Management
         </h1>
 

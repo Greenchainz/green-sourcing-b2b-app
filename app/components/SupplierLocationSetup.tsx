@@ -77,7 +77,7 @@ export default function SupplierLocationSetup() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8">
+      <div className="bg-[#111111] rounded-lg shadow-lg border border-gray-200 p-8">
         <div className="flex items-start gap-4 mb-6">
           <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <MapPin className="w-6 h-6 text-green-600" />

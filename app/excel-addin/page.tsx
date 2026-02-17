@@ -159,7 +159,7 @@ export default function ExcelTaskPane() {
     };
 
     return (
-        <div className="w-full min-h-screen bg-white">
+        <div className="w-full min-h-screen bg-[#111111]">
             <Script
                 src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"
                 strategy="afterInteractive"
@@ -168,7 +168,7 @@ export default function ExcelTaskPane() {
             <div className="w-full max-w-sm mx-auto p-4 bg-gradient-to-b from-slate-50 to-white rounded-lg shadow-sm">
                 {/* Header */}
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-slate-900 mb-1">GreenChainz</h1>
+                    <h1 className="text-2xl font-bold text-white mb-1">GreenChainz</h1>
                     <p className="text-xs text-slate-500 uppercase tracking-wide">Carbon Audit for Excel</p>
                 </div>
 
@@ -192,7 +192,7 @@ export default function ExcelTaskPane() {
                 </div>
 
                 {/* Instructions */}
-                <div className="mb-6 bg-slate-100 p-3 rounded-md text-xs text-slate-700">
+                <div className="mb-6 bg-[#1a1a1a] p-3 rounded-md text-xs text-slate-300">
                     <strong>How to use:</strong>
                     <ol className="mt-2 space-y-1 ml-3 list-decimal">
                         <li>Select a column of material names in your spreadsheet</li>
@@ -220,15 +220,15 @@ export default function ExcelTaskPane() {
                 {/* Results Preview */}
                 {results.length > 0 && (
                     <div className="mt-6 border-t pt-4">
-                        <h3 className="text-sm font-semibold text-slate-900 mb-3">Results Preview</h3>
+                        <h3 className="text-sm font-semibold text-white mb-3">Results Preview</h3>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                             {results.slice(0, 5).map((result, idx) => (
                                 <div
                                     key={idx}
-                                    className="p-2 bg-slate-50 rounded text-xs border border-slate-200"
+                                    className="p-2 bg-[#0a0a0a] rounded text-xs border border-[#aaff00]/10"
                                 >
-                                    <p className="font-medium text-slate-900 truncate">{result.original}</p>
-                                    <div className="mt-1 grid grid-cols-2 gap-2 text-slate-600">
+                                    <p className="font-medium text-white truncate">{result.original}</p>
+                                    <div className="mt-1 grid grid-cols-2 gap-2 text-slate-400">
                                         <span>
                                             Carbon:{" "}
                                             <span className="font-semibold">{result.carbon_score?.toFixed(1) ?? "N/A"}</span>

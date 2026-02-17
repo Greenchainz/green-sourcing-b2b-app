@@ -3,7 +3,7 @@ import { Box, Download } from "lucide-react";
 
 export default function RevitPage() {
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-[#0a0a0a]">
             {/* Hero */}
             <section className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white py-20 px-6">
                 <div className="max-w-4xl mx-auto">
@@ -16,7 +16,7 @@ export default function RevitPage() {
                         missing EPDs, high-carbon materials, and LEED-ineligible products.
                     </p>
                     <div className="flex gap-4 flex-wrap">
-                        <button className="bg-white text-purple-700 px-8 py-4 rounded-lg font-bold hover:bg-purple-50 flex items-center gap-2">
+                        <button className="bg-[#111111] text-purple-700 px-8 py-4 rounded-lg font-bold hover:bg-purple-50 flex items-center gap-2">
                             <Download className="w-5 h-5" />
                             Download Plugin
                         </button>
@@ -30,7 +30,7 @@ export default function RevitPage() {
             {/* What It Does */}
             <section className="py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-4xl font-black text-center mb-16 text-slate-900">
+                    <h2 className="text-4xl font-black text-center mb-16 text-white">
                         Real-Time Model Scanning
                     </h2>
                     <div className="grid md:grid-cols-2 gap-8">
@@ -52,9 +52,9 @@ export default function RevitPage() {
                                 desc: "Swap high-carbon materials to green alternatives. Update model in batch.",
                             },
                         ].map((feature) => (
-                            <div key={feature.title} className="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
-                                <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-                                <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
+                            <div key={feature.title} className="bg-[#111111] p-8 rounded-xl shadow-sm border border-white/5">
+                                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                                <p className="text-slate-400 leading-relaxed">{feature.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -62,9 +62,9 @@ export default function RevitPage() {
             </section>
 
             {/* How It Works */}
-            <section id="how-it-works" className="bg-white py-20 px-6">
+            <section id="how-it-works" className="bg-[#111111] py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-4xl font-black text-center mb-16 text-slate-900">
+                    <h2 className="text-4xl font-black text-center mb-16 text-white">
                         Installation & Setup
                     </h2>
                     <div className="space-y-12">
@@ -95,8 +95,8 @@ export default function RevitPage() {
                                     {item.step}
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{item.title}</h3>
-                                    <p className="text-slate-600 text-lg leading-relaxed">{item.desc}</p>
+                                    <h3 className="text-2xl font-bold text-white mb-2">{item.title}</h3>
+                                    <p className="text-slate-400 text-lg leading-relaxed">{item.desc}</p>
                                 </div>
                             </div>
                         ))}
@@ -105,9 +105,9 @@ export default function RevitPage() {
             </section>
 
             {/* Technical Details */}
-            <section className="bg-slate-50 py-20 px-6">
+            <section className="bg-[#0a0a0a] py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-3xl font-black text-center mb-12 text-slate-900">
+                    <h2 className="text-3xl font-black text-center mb-12 text-white">
                         System Requirements
                     </h2>
                     <div className="grid md:grid-cols-2 gap-8">
@@ -121,11 +121,11 @@ export default function RevitPage() {
                                 items: ["Windows 10/11 only", "2GB+ RAM recommended"],
                             },
                         ].map((req) => (
-                            <div key={req.title} className="bg-white p-8 rounded-xl border border-slate-200">
-                                <h3 className="font-bold text-slate-900 mb-4">{req.title}</h3>
+                            <div key={req.title} className="bg-[#111111] p-8 rounded-xl border border-[#aaff00]/10">
+                                <h3 className="font-bold text-white mb-4">{req.title}</h3>
                                 <ul className="space-y-2">
                                     {req.items.map((item) => (
-                                        <li key={item} className="text-slate-700">• {item}</li>
+                                        <li key={item} className="text-slate-300">• {item}</li>
                                     ))}
                                 </ul>
                             </div>
@@ -137,11 +137,11 @@ export default function RevitPage() {
             {/* LEED Integration */}
             <section className="py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-4xl font-black text-center mb-12 text-slate-900">
+                    <h2 className="text-4xl font-black text-center mb-12 text-white">
                         LEED Credit Calculation
                     </h2>
                     <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-10 rounded-xl border-2 border-purple-200">
-                        <p className="text-lg text-slate-700 mb-6">
+                        <p className="text-lg text-slate-300 mb-6">
                             The plugin automatically calculates your project's eligibility for:
                         </p>
                         <ul className="grid md:grid-cols-2 gap-6">
@@ -153,7 +153,7 @@ export default function RevitPage() {
                                 "LEED EAc5: Renewable Energy",
                                 "LEED Embodied Carbon Credit",
                             ].map((credit) => (
-                                <li key={credit} className="text-slate-700 flex items-start gap-3">
+                                <li key={credit} className="text-slate-300 flex items-start gap-3">
                                     <span className="text-purple-600 font-bold mt-1">✓</span>
                                     {credit}
                                 </li>
@@ -170,7 +170,7 @@ export default function RevitPage() {
                     <p className="text-xl text-purple-50 mb-8">
                         Free for non-commercial use. Professional licensing available.
                     </p>
-                    <button className="bg-white text-purple-700 px-10 py-4 rounded-lg font-bold text-lg hover:bg-purple-50 inline-block flex items-center gap-2 mx-auto">
+                    <button className="bg-[#111111] text-purple-700 px-10 py-4 rounded-lg font-bold text-lg hover:bg-purple-50 inline-block flex items-center gap-2 mx-auto">
                         <Download className="w-5 h-5" />
                         Download Revit Plugin
                     </button>

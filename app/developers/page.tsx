@@ -17,8 +17,8 @@ export default function DevelopersPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-3">API Documentation</h3>
-                        <p className="text-slate-600 mb-4">RESTful APIs for supplier data, certifications, and RFQ management.</p>
+                        <h3 className="text-xl font-bold text-white mb-3">API Documentation</h3>
+                        <p className="text-slate-400 mb-4">RESTful APIs for supplier data, certifications, and RFQ management.</p>
                         <span className="text-sm text-emerald-600 font-semibold">Coming Soon</span>
                     </div>
 
@@ -28,8 +28,8 @@ export default function DevelopersPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                             </svg>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-3">SDK Libraries</h3>
-                        <p className="text-slate-600 mb-4">Official SDKs for Node.js, Python, Ruby, and .NET platforms.</p>
+                        <h3 className="text-xl font-bold text-white mb-3">SDK Libraries</h3>
+                        <p className="text-slate-400 mb-4">Official SDKs for Node.js, Python, Ruby, and .NET platforms.</p>
                         <span className="text-sm text-emerald-600 font-semibold">Coming Soon</span>
                     </div>
 
@@ -39,15 +39,15 @@ export default function DevelopersPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-3">Webhooks</h3>
-                        <p className="text-slate-600 mb-4">Real-time event notifications for RFQ updates and matches.</p>
+                        <h3 className="text-xl font-bold text-white mb-3">Webhooks</h3>
+                        <p className="text-slate-400 mb-4">Real-time event notifications for RFQ updates and matches.</p>
                         <span className="text-sm text-emerald-600 font-semibold">Coming Soon</span>
                     </div>
                 </div>
 
                 <div className="gc-card max-w-3xl mx-auto p-8 text-center bg-gradient-to-br from-slate-50 to-slate-100">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-4">Want Early API Access?</h2>
-                    <p className="text-slate-600 mb-6">We're currently developing our API platform. Join the waitlist to get notified when it's ready.</p>
+                    <h2 className="text-2xl font-bold text-white mb-4">Want Early API Access?</h2>
+                    <p className="text-slate-400 mb-6">We're currently developing our API platform. Join the waitlist to get notified when it's ready.</p>
                     <Link href="/contact" className="gc-btn gc-btn-primary">Request API Access</Link>
                 </div>
             </div>

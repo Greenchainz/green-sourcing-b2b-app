@@ -128,7 +128,7 @@ export default function MessagingUI() {
     <div className="flex h-[600px] border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
       {/* Conversations List */}
       <div
-        className={`w-full md:w-1/3 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 ${
+        className={`w-full md:w-1/3 border-r border-gray-200 dark:border-gray-700 bg-[#111111] dark:bg-gray-900 ${
           selectedConversation ? "hidden md:block" : ""
         }`}
       >
@@ -196,7 +196,7 @@ export default function MessagingUI() {
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+            <div className="p-4 bg-[#111111] dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
               <button
                 onClick={() => setSelectedConversation(null)}
                 className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
@@ -235,7 +235,7 @@ export default function MessagingUI() {
                       className={`max-w-[70%] rounded-lg px-4 py-2 ${
                         message.sender_id === "default-user-id"
                           ? "bg-blue-600 text-white"
-                          : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          : "bg-[#111111] dark:bg-gray-700 text-gray-900 dark:text-white"
                       }`}
                     >
                       <p className="text-sm">{message.content}</p>
@@ -256,7 +256,7 @@ export default function MessagingUI() {
             </div>
 
             {/* Message Input */}
-            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+            <div className="p-4 bg-[#111111] dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
               <div className="flex gap-2">
                 <input
                   type="text"

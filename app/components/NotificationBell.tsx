@@ -117,7 +117,7 @@ export default function NotificationBell() {
           />
 
           {/* Notification Panel */}
-          <div className="absolute right-0 z-50 mt-2 w-96 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-[500px] flex flex-col">
+          <div className="absolute right-0 z-50 mt-2 w-96 bg-[#111111] dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-[500px] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">

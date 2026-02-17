@@ -65,7 +65,7 @@ export default function DataTable<T extends Record<string, unknown>>({
   return (
     <div className="gc-card overflow-hidden flex flex-col">
       {/* Header / Controls */}
-      <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white/50">
+      <div className="p-4 border-b border-white/5 flex flex-col sm:flex-row gap-4 justify-between items-center bg-[#111111]/50">
         {/* Search */}
         {searchable && (
           <div className="relative w-full sm:w-64">
@@ -101,13 +101,13 @@ export default function DataTable<T extends Record<string, unknown>>({
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-[#0a0a0a] border-b border-[#aaff00]/10">
             <tr>
               {columns.map((col, idx) => (
                 <th
                   key={idx}
                   className={`p-4 text-xs font-bold text-slate-500 uppercase tracking-wider 
-                    ${col.sortable ? "cursor-pointer hover:bg-slate-100 transition-colors select-none" : ""}`}
+                    ${col.sortable ? "cursor-pointer hover:bg-[#1a1a1a] transition-colors select-none" : ""}`}
                   onClick={() => col.sortable && handleSort(col.key)}
                 >
                   <div className="flex items-center gap-1">
@@ -126,10 +126,10 @@ export default function DataTable<T extends Record<string, unknown>>({
                 <tr
                   key={String(row[keyField])}
                   onClick={() => onRowClick && onRowClick(row)}
-                  className={`group transition-colors ${onRowClick ? "cursor-pointer hover:bg-emerald-50/30" : "hover:bg-slate-50/50"}`}
+                  className={`group transition-colors ${onRowClick ? "cursor-pointer hover:bg-emerald-50/30" : "hover:bg-[#1a1a1a]/50"}`}
                 >
                   {columns.map((col, colIdx) => (
-                    <td key={colIdx} className="p-4 text-sm text-slate-700">
+                    <td key={colIdx} className="p-4 text-sm text-slate-300">
                       {col.render ? col.render(row) : String(row[col.key as keyof T] ?? '')}
                     </td>
                   ))}
@@ -150,7 +150,7 @@ export default function DataTable<T extends Record<string, unknown>>({
       </div>
 
       {/* Footer / Pagination (simplified) */}
-      <div className="p-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500 font-medium text-right">
+      <div className="p-3 border-t border-white/5 bg-slate-50/50 text-xs text-slate-500 font-medium text-right">
         Showing {filteredData.length} records
       </div>
     </div>

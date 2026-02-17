@@ -7,7 +7,7 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="gc-page min-h-screen p-6 md:p-10">
       <div className="gc-container">
-        <h1 className="text-2xl font-bold text-slate-900 mb-8">
+        <h1 className="text-2xl font-bold text-white mb-8">
           Platform Analytics
         </h1>
 
@@ -33,11 +33,11 @@ export default function AdminAnalyticsPage() {
 
         {/* Charts Placeholder */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <div className="gc-card p-6 h-80 flex flex-col items-center justify-center bg-white/60">
+          <div className="gc-card p-6 h-80 flex flex-col items-center justify-center bg-[#111111]/60">
             <div className="text-slate-400 font-bold mb-2">Revenue vs Time</div>
-            <div className="w-full h-full bg-slate-50 border border-slate-100 rounded flex flex-col items-center justify-center text-xs text-slate-400 gap-2">
+            <div className="w-full h-full bg-[#0a0a0a] border border-white/5 rounded flex flex-col items-center justify-center text-xs text-slate-400 gap-2">
               <span>[Line Chart: Revenue Growth]</span>
-              <div className="flex gap-4 items-end h-32 w-48 justify-between px-4 pb-2 border-b border-l border-slate-300">
+              <div className="flex gap-4 items-end h-32 w-48 justify-between px-4 pb-2 border-b border-l border-[#aaff00]/15">
                    <div className="w-4 bg-emerald-200 h-10"></div>
                    <div className="w-4 bg-emerald-300 h-16"></div>
                    <div className="w-4 bg-emerald-400 h-24"></div>
@@ -46,11 +46,11 @@ export default function AdminAnalyticsPage() {
               </div>
             </div>
           </div>
-          <div className="gc-card p-6 h-80 flex flex-col items-center justify-center bg-white/60">
+          <div className="gc-card p-6 h-80 flex flex-col items-center justify-center bg-[#111111]/60">
             <div className="text-slate-400 font-bold mb-2">
               Supplier Tier Distribution
             </div>
-            <div className="w-full h-full bg-slate-50 border border-slate-100 rounded flex flex-col items-center justify-center text-xs text-slate-400 gap-4">
+            <div className="w-full h-full bg-[#0a0a0a] border border-white/5 rounded flex flex-col items-center justify-center text-xs text-slate-400 gap-4">
                <span>[Pie Chart]</span>
                <div className="relative w-32 h-32 rounded-full border-8 border-emerald-500 border-t-emerald-300 border-r-emerald-200 transform rotate-45"></div>
                <div className="flex gap-4 text-[10px]">
@@ -64,10 +64,10 @@ export default function AdminAnalyticsPage() {
 
         {/* Search Terms Table */}
          <div className="gc-card p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Top Search Terms</h2>
+            <h2 className="text-lg font-bold text-slate-100 mb-4">Top Search Terms</h2>
             <div className="w-full overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                    <thead className="text-slate-500 font-bold border-b border-slate-100">
+                    <thead className="text-slate-500 font-bold border-b border-white/5">
                         <tr>
                             <th className="pb-2">Term</th>
                             <th className="pb-2 text-right">Searches</th>
@@ -81,9 +81,9 @@ export default function AdminAnalyticsPage() {
                             { term: "bamboo flooring", count: 620, conv: "15%" },
                             { term: "solar glass", count: 410, conv: "5%" },
                         ].map((row, i) => (
-                            <tr key={i} className="hover:bg-slate-50/50">
-                                <td className="py-2 font-medium text-slate-700">{row.term}</td>
-                                <td className="py-2 text-right text-slate-600">{row.count}</td>
+                            <tr key={i} className="hover:bg-[#1a1a1a]/50">
+                                <td className="py-2 font-medium text-slate-300">{row.term}</td>
+                                <td className="py-2 text-right text-slate-400">{row.count}</td>
                                 <td className="py-2 text-right text-emerald-600 font-semibold">{row.conv}</td>
                             </tr>
                         ))}

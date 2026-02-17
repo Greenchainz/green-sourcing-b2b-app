@@ -108,8 +108,8 @@ export default function SupplierProfilePage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Profile Management</h1>
-        <p className="text-slate-600">
+        <h1 className="text-2xl font-bold text-white">Profile Management</h1>
+        <p className="text-slate-400">
           Manage your company profile and contact information.
         </p>
       </div>
@@ -132,17 +132,17 @@ export default function SupplierProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Company Information */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
               <div className="flex items-center gap-2 mb-6">
                 <Building2 className="h-5 w-5 text-forest-600" />
-                <h2 className="font-semibold text-slate-900">
+                <h2 className="font-semibold text-white">
                   Company Information
                 </h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Company Name *
                   </label>
                   <input
@@ -151,12 +151,12 @@ export default function SupplierProfilePage() {
                     value={profile.company_name}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Website
                   </label>
                   <div className="relative">
@@ -166,14 +166,14 @@ export default function SupplierProfilePage() {
                       name="website"
                       value={profile.website}
                       onChange={handleChange}
-                      className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                      className="w-full pl-10 pr-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                       placeholder="https://example.com"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Year Founded
                   </label>
                   <input
@@ -181,20 +181,20 @@ export default function SupplierProfilePage() {
                     name="year_founded"
                     value={profile.year_founded}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                     placeholder="e.g., 2015"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Company Size
                   </label>
                   <select
                     name="employee_count"
                     value={profile.employee_count}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none bg-white"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none bg-[#111111]"
                   >
                     <option value="">Select size</option>
                     <option value="1-10">1-10 employees</option>
@@ -206,7 +206,7 @@ export default function SupplierProfilePage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Company Description
                   </label>
                   <textarea
@@ -214,7 +214,7 @@ export default function SupplierProfilePage() {
                     value={profile.description}
                     onChange={handleChange}
                     rows={4}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none resize-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none resize-none"
                     placeholder="Describe your company and the products you offer..."
                   />
                 </div>
@@ -222,17 +222,17 @@ export default function SupplierProfilePage() {
             </div>
 
             {/* Contact Information */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
               <div className="flex items-center gap-2 mb-6">
                 <User className="h-5 w-5 text-forest-600" />
-                <h2 className="font-semibold text-slate-900">
+                <h2 className="font-semibold text-white">
                   Contact Information
                 </h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Contact Name *
                   </label>
                   <input
@@ -241,12 +241,12 @@ export default function SupplierProfilePage() {
                     value={profile.contact_name}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Email *
                   </label>
                   <div className="relative">
@@ -257,13 +257,13 @@ export default function SupplierProfilePage() {
                       value={profile.email}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                      className="w-full pl-10 pr-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Phone
                   </label>
                   <div className="relative">
@@ -273,7 +273,7 @@ export default function SupplierProfilePage() {
                       name="phone"
                       value={profile.phone}
                       onChange={handleChange}
-                      className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                      className="w-full pl-10 pr-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                     />
                   </div>
                 </div>
@@ -281,15 +281,15 @@ export default function SupplierProfilePage() {
             </div>
 
             {/* Location */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
               <div className="flex items-center gap-2 mb-6">
                 <MapPin className="h-5 w-5 text-forest-600" />
-                <h2 className="font-semibold text-slate-900">Location</h2>
+                <h2 className="font-semibold text-white">Location</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Street Address
                   </label>
                   <input
@@ -297,12 +297,12 @@ export default function SupplierProfilePage() {
                     name="address"
                     value={profile.address}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     City
                   </label>
                   <input
@@ -310,12 +310,12 @@ export default function SupplierProfilePage() {
                     name="city"
                     value={profile.city}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     State / Province
                   </label>
                   <input
@@ -323,12 +323,12 @@ export default function SupplierProfilePage() {
                     name="state"
                     value={profile.state}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Country
                   </label>
                   <input
@@ -336,7 +336,7 @@ export default function SupplierProfilePage() {
                     name="country"
                     value={profile.country}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   />
                 </div>
               </div>
@@ -346,16 +346,16 @@ export default function SupplierProfilePage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Profile Completion */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-              <h3 className="font-semibold text-slate-900 mb-4">
+            <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
+              <h3 className="font-semibold text-white mb-4">
                 Profile Completion
               </h3>
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-600">Progress</span>
+                  <span className="text-slate-400">Progress</span>
                   <span className="font-medium text-forest-600">75%</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="w-full bg-[#1a1a1a] rounded-full h-2">
                   <div
                     className="bg-forest-600 h-2 rounded-full"
                     style={{ width: "75%" }}

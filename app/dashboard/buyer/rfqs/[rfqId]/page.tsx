@@ -79,11 +79,11 @@ export default function RFQDetailPage() {
         <div className="gc-card p-6 mb-8">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
                 Recycled Steel Beams for Office Complex
               </h1>
               <div className="flex gap-3 text-sm text-slate-500">
-                <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">
+                <span className="font-mono bg-[#1a1a1a] px-2 py-0.5 rounded text-slate-400">
                   {rfqId}
                 </span>
                 <span>•</span>
@@ -104,25 +104,25 @@ export default function RFQDetailPage() {
               <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">
                 Quantity
               </div>
-              <div className="font-bold text-slate-800">50 Tons</div>
+              <div className="font-bold text-slate-100">50 Tons</div>
             </div>
             <div>
               <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">
                 Delivery Loc
               </div>
-              <div className="font-bold text-slate-800">New York, NY</div>
+              <div className="font-bold text-slate-100">New York, NY</div>
             </div>
             <div>
               <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">
                 Required By
               </div>
-              <div className="font-bold text-slate-800">Mar 01, 2025</div>
+              <div className="font-bold text-slate-100">Mar 01, 2025</div>
             </div>
             <div>
               <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">
                 Budget
               </div>
-              <div className="font-bold text-slate-800">$40k - $50k</div>
+              <div className="font-bold text-slate-100">$40k - $50k</div>
             </div>
           </div>
         </div>

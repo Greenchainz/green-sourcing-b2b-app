@@ -102,8 +102,8 @@ export default function SupplierCertificationsPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Certifications</h1>
-          <p className="text-slate-600">
+          <h1 className="text-2xl font-bold text-white">Certifications</h1>
+          <p className="text-slate-400">
             Manage and showcase your sustainability certifications.
           </p>
         </div>
@@ -118,35 +118,35 @@ export default function SupplierCertificationsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-50 rounded-lg">
               <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{verifiedCount}</p>
+              <p className="text-2xl font-bold text-white">{verifiedCount}</p>
               <p className="text-sm text-slate-500">Verified</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-amber-50 rounded-lg">
               <Clock className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{pendingCount}</p>
+              <p className="text-2xl font-bold text-white">{pendingCount}</p>
               <p className="text-sm text-slate-500">Pending Review</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-50 rounded-lg">
               <Calendar className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{expiringCount}</p>
+              <p className="text-2xl font-bold text-white">{expiringCount}</p>
               <p className="text-sm text-slate-500">Expiring Soon</p>
             </div>
           </div>
@@ -155,9 +155,9 @@ export default function SupplierCertificationsPage() {
 
       {/* Certifications List */}
       {certifications.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-12 text-center">
           <Award className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">
+          <h3 className="text-lg font-medium text-white mb-2">
             No certifications yet
           </h3>
           <p className="text-slate-500 mb-6">
@@ -181,7 +181,7 @@ export default function SupplierCertificationsPage() {
             return (
               <div
                 key={cert.id}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"
+                className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6"
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex items-start gap-4">
@@ -190,7 +190,7 @@ export default function SupplierCertificationsPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-semibold text-lg text-slate-900">
+                        <h3 className="font-semibold text-lg text-white">
                           {cert.name}
                         </h3>
                         <span
@@ -201,7 +201,7 @@ export default function SupplierCertificationsPage() {
                         </span>
                       </div>
                       <p className="text-sm text-slate-500 mb-2">{cert.type}</p>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
                         <span className="flex items-center gap-1">
                           <FileText className="h-4 w-4 text-slate-400" />
                           Issued by: {cert.issuer}
@@ -225,13 +225,13 @@ export default function SupplierCertificationsPage() {
                         href={cert.document_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium"
+                        className="flex items-center gap-2 px-4 py-2 border border-[#aaff00]/10 rounded-lg text-slate-400 hover:bg-[#0a0a0a] transition-colors text-sm font-medium"
                       >
                         <ExternalLink className="h-4 w-4" />
                         View Document
                       </a>
                     )}
-                    <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 transition-colors text-sm font-medium">
+                    <button className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] hover:bg-[#1a1a1a] rounded-lg text-slate-300 transition-colors text-sm font-medium">
                       <Upload className="h-4 w-4" />
                       Update
                     </button>
@@ -263,9 +263,9 @@ export default function SupplierCertificationsPage() {
           ].map((rec) => (
             <div
               key={rec.name}
-              className="bg-white rounded-lg p-4 border border-blue-200"
+              className="bg-[#111111] rounded-lg p-4 border border-blue-200"
             >
-              <p className="font-medium text-slate-900">{rec.name}</p>
+              <p className="font-medium text-white">{rec.name}</p>
               <p className="text-sm text-slate-500">{rec.desc}</p>
             </div>
           ))}
@@ -275,14 +275,14 @@ export default function SupplierCertificationsPage() {
       {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6">
+          <div className="bg-[#111111] rounded-2xl max-w-lg w-full p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-white">
                 Add Certification
               </h2>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="p-2 hover:bg-slate-100 rounded-lg"
+                className="p-2 hover:bg-[#1a1a1a] rounded-lg"
               >
                 <X className="h-5 w-5 text-slate-400" />
               </button>
@@ -290,21 +290,21 @@ export default function SupplierCertificationsPage() {
 
             <form className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Certification Name *
                 </label>
                 <input
                   type="text"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   placeholder="e.g., ISO 14001:2015"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Certification Type *
                 </label>
-                <select className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none bg-white">
+                <select className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none bg-[#111111]">
                   <option value="">Select type</option>
                   <option value="environmental">Environmental Management</option>
                   <option value="green_building">Green Building</option>
@@ -315,44 +315,44 @@ export default function SupplierCertificationsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Issuing Organization *
                 </label>
                 <input
                   type="text"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   placeholder="e.g., Bureau Veritas"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Issue Date *
                   </label>
                   <input
                     type="date"
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Expiry Date *
                   </label>
                   <input
                     type="date"
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Upload Document
                 </label>
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 text-center hover:border-forest-400 transition-colors cursor-pointer">
+                <div className="border-2 border-dashed border-[#aaff00]/10 rounded-lg p-8 text-center hover:border-forest-400 transition-colors cursor-pointer">
                   <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-slate-400">
                     Drag and drop or{" "}
                     <span className="text-forest-600 font-medium">browse</span>
                   </p>
@@ -366,7 +366,7 @@ export default function SupplierCertificationsPage() {
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                  className="flex-1 px-4 py-2.5 border border-[#aaff00]/10 rounded-lg text-slate-300 font-medium hover:bg-[#0a0a0a] transition-colors"
                 >
                   Cancel
                 </button>

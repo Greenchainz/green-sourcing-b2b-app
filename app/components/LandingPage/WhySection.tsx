@@ -27,7 +27,7 @@ const VALUE_PROPS = [
 
 export default function WhySection() {
   return (
-    <section className="py-24 bg-white border-t border-gray-100">
+    <section className="py-24 bg-[#111111] border-t border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
@@ -42,7 +42,7 @@ export default function WhySection() {
           {VALUE_PROPS.map((prop, idx) => (
             <div
               key={idx}
-              className="group relative bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              className="group relative bg-[#111111] p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
             >
               <div className="inline-flex items-center justify-center p-3 rounded-xl bg-emerald-50 text-emerald-600 mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                 <prop.icon className="h-8 w-8" />

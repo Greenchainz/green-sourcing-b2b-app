@@ -9,20 +9,20 @@ export default function PrivacyPage() {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-12">
-            <h1 className="text-5xl font-bold text-slate-900 mb-4">Privacy Policy</h1>
-            <p className="text-lg text-slate-600">
+            <h1 className="text-5xl font-bold text-white mb-4">Privacy Policy</h1>
+            <p className="text-lg text-slate-400">
               Last updated: <span className="font-semibold">{lastUpdated}</span>
             </p>
-            <p className="text-slate-600 mt-4">
+            <p className="text-slate-400 mt-4">
               GreenChainz is committed to protecting your privacy and ensuring transparency in how we collect, use, and protect your data.
             </p>
           </div>
 
           {/* Content */}
-          <div className="gc-card p-8 space-y-8 text-slate-700">
+          <div className="gc-card p-8 space-y-8 text-slate-300">
             {/* Combined Introduction */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">1. Introduction</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">1. Introduction</h2>
               <p className="mb-3">
                 GreenChainz ("we," "our," or "us") operates the GreenChainz B2B marketplace platform. This Privacy Policy explains how we collect,
                 use, disclose, and safeguard your information when you use our services.
@@ -34,9 +34,9 @@ export default function PrivacyPage() {
 
             {/* Data Collection */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">2. Information We Collect</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">2. Information We Collect</h2>
 
-              <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.1 Account Information</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-6">2.1 Account Information</h3>
               <p className="mb-3">When you create an account, we may collect:</p>
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li><strong>Personal Details:</strong> Name, email address, company name, job title/role</li>
@@ -45,18 +45,18 @@ export default function PrivacyPage() {
                 <li><strong>SSO Profile Data:</strong> Profile information provided by SSO providers (Microsoft Entra ID, Google, LinkedIn)</li>
               </ul>
 
-              <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.2 OAuth / SSO Data</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-6">2.2 OAuth / SSO Data</h3>
               <p className="mb-3">When you authenticate via a third-party SSO (LinkedIn, Microsoft Entra ID, Google), we collect only the profile data you consent to share:</p>
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li>Name and email address</li>
                 <li>Company name and job title (used for buyer verification)</li>
                 <li>Profile URL (to verify professional credentials)</li>
               </ul>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-400">
                 Note: We only access data you explicitly authorize via the provider's consent screen. We do not access private messages or connections.
               </p>
 
-              <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.3 Usage Data</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-6">2.3 Usage Data</h3>
               <p className="mb-3">We automatically collect information about how you interact with our platform:</p>
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li><strong>RFQ Activity:</strong> Requests for Quotes you create or respond to</li>
@@ -66,12 +66,12 @@ export default function PrivacyPage() {
                 <li><strong>Device Information:</strong> IP address, browser type, operating system, device identifiers</li>
               </ul>
 
-              <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.4 Payment Information</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-6">2.4 Payment Information</h3>
               <p className="mb-3">
                 Payment processing for RFQ deposits and other transactions is handled securely by our payment processors. We do not store credit card numbers, CVV codes, or other sensitive payment details on our servers.
               </p>
 
-              <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.5 Uploaded Documents</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-6">2.5 Uploaded Documents</h3>
               <p className="mb-3">We collect files you upload, including:</p>
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li><strong>Certifications:</strong> EPDs, FSC certificates, LEED documents</li>
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
 
             {/* Azure + Third-Party */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">3. Cloud & Third-Party Services</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">3. Cloud & Third-Party Services</h2>
               <p className="mb-4">
                 GreenChainz uses a combination of Microsoft Azure services and other third-party tools. All such services operate under their respective Data Processing Agreements and privacy policies.
               </p>
@@ -98,14 +98,14 @@ export default function PrivacyPage() {
                 <li><strong>Google Analytics (optional):</strong> Anonymous site analytics (pages visited, time on site). We do not use it to collect personal data unless you have authorized it.</li>
               </ul>
 
-              <p className="mt-4 text-sm text-slate-600">
+              <p className="mt-4 text-sm text-slate-400">
                 Data residency: By default, data is stored in Azure's <strong>US East</strong> region (Virginia) for compliance with US data protection laws unless otherwise stated.
               </p>
             </section>
 
             {/* Third-Party Integrations Summary */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">4. Third-Party Integrations</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">4. Third-Party Integrations</h2>
               <ul className="list-disc pl-6 space-y-3">
                 <li>
                   <strong>Microsoft Entra ID:</strong> SSO provider (data governed by Microsoft's DPA).
@@ -133,13 +133,13 @@ export default function PrivacyPage() {
 
             {/* Cookies */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">5. Cookies and Tracking Technologies</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">5. Cookies and Tracking Technologies</h2>
               <p className="mb-4">
                 We use strictly necessary cookies to provide authentication and security. We may also use analytics cookies to collect anonymous usage data. You can opt out of analytics tracking where applicable.
               </p>
 
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Cookies We Use</h3>
-              <div className="bg-slate-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-white mb-3">Cookies We Use</h3>
+              <div className="bg-[#0a0a0a] p-4 rounded-lg">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left">
@@ -172,59 +172,59 @@ export default function PrivacyPage() {
                 </table>
               </div>
 
-              <p className="mt-4 text-sm text-slate-600">
+              <p className="mt-4 text-sm text-slate-400">
                 <strong>No tracking or advertising cookies by default:</strong> We do not use cookies for profiling or advertising unless you explicitly opt in. All authentication cookies are cleared on logout or per their expiration.
               </p>
             </section>
 
             {/* User Rights */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">6. Your Privacy Rights</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">6. Your Privacy Rights</h2>
               <p className="mb-4">
                 Under GDPR (Europe) and CCPA (California), you have the following rights:
               </p>
 
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Right to Access</h3>
-                  <p className="text-slate-700">Request a copy of all personal data we hold about you. We'll provide this in a structured, machine-readable format (JSON or CSV).</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">Right to Access</h3>
+                  <p className="text-slate-300">Request a copy of all personal data we hold about you. We'll provide this in a structured, machine-readable format (JSON or CSV).</p>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Right to Deletion ("Right to Be Forgotten")</h3>
-                  <p className="text-slate-700">Request permanent deletion of your account and all associated data. See Section 7 for our deletion timelines.</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">Right to Deletion ("Right to Be Forgotten")</h3>
+                  <p className="text-slate-300">Request permanent deletion of your account and all associated data. See Section 7 for our deletion timelines.</p>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Right to Data Portability</h3>
-                  <p className="text-slate-700">Export your data to use with another service. Available formats: JSON, CSV.</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">Right to Data Portability</h3>
+                  <p className="text-slate-300">Export your data to use with another service. Available formats: JSON, CSV.</p>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Right to Opt-Out of Analytics</h3>
-                  <p className="text-slate-700">You may opt out of analytics tracking where provided, or contact us to request disabling analytics for your account.</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">Right to Opt-Out of Analytics</h3>
+                  <p className="text-slate-300">You may opt out of analytics tracking where provided, or contact us to request disabling analytics for your account.</p>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Right to Correction</h3>
-                  <p className="text-slate-700">Update incorrect or incomplete personal information via your account settings or by contacting us.</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">Right to Correction</h3>
+                  <p className="text-slate-300">Update incorrect or incomplete personal information via your account settings or by contacting us.</p>
                 </div>
               </div>
 
-              <p className="mt-6 font-semibold text-slate-900">
+              <p className="mt-6 font-semibold text-white">
                 To exercise any of these rights, email:{' '}
                 <a href="mailto:privacy@greenchainz.com" className="text-emerald-600 hover:text-emerald-700 underline">
                   privacy@greenchainz.com
                 </a>
               </p>
-              <p className="text-sm text-slate-600 mt-2">
+              <p className="text-sm text-slate-400 mt-2">
                 We will respond within 30 days (GDPR) or 45 days (CCPA).
               </p>
             </section>
 
             {/* Data Retention */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">7. Data Retention</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">7. Data Retention</h2>
               <ul className="list-disc pl-6 space-y-2">
                 <li><strong>Active Accounts:</strong> Data is retained while your account is active.</li>
                 <li><strong>Deleted Accounts:</strong> 90-day grace period for account recovery, then permanent deletion from primary systems; anonymized transaction records may persist as described below.</li>
@@ -232,14 +232,14 @@ export default function PrivacyPage() {
                 <li><strong>Analytics Data:</strong> Aggregated, anonymized usage data retained for 24 months.</li>
                 <li><strong>Security Logs:</strong> IP addresses and access logs retained for 90 days for fraud prevention and security audits.</li>
               </ul>
-              <p className="mt-4 text-sm text-slate-600">
+              <p className="mt-4 text-sm text-slate-400">
                 Note: Transaction records required for compliance (e.g., invoices) are retained even after account deletion, but we anonymize personal identifiers where permitted.
               </p>
             </section>
 
             {/* Security */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">8. Data Security</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">8. Data Security</h2>
               <p className="mb-4">We implement industry-standard security measures to protect your data:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li><strong>Encryption in Transit:</strong> TLS 1.3 for all data transmitted over the internet</li>
@@ -249,14 +249,14 @@ export default function PrivacyPage() {
                 <li><strong>Security Audits:</strong> Quarterly penetration testing and vulnerability scans</li>
                 <li><strong>Compliance:</strong> SOC 2 Type II certification (in progress - expected Q2 2026)</li>
               </ul>
-              <p className="mt-4 text-sm text-slate-600">
+              <p className="mt-4 text-sm text-slate-400">
                 Despite our best efforts, no method of transmission over the internet or electronic storage is 100% secure. We cannot guarantee absolute security.
               </p>
             </section>
 
             {/* Data Sharing */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">9. How We Share Your Information</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">9. How We Share Your Information</h2>
               <p className="mb-4">We do not sell your personal data. We share data only in the following circumstances:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li><strong>With Other Users:</strong> Your name, company, and contact information are visible to users you engage with (RFQ responses, messages).</li>
@@ -268,7 +268,7 @@ export default function PrivacyPage() {
 
             {/* Children's Privacy */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">10. Children's Privacy</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">10. Children's Privacy</h2>
               <p>
                 GreenChainz is a B2B platform for professionals. We do not knowingly collect data from individuals under 18 years of age. If we discover we have collected data from a minor, we will delete it promptly and notify the appropriate parties as required by law.
               </p>
@@ -276,18 +276,18 @@ export default function PrivacyPage() {
 
             {/* International Data Transfers */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">11. International Data Transfers</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">11. International Data Transfers</h2>
               <p className="mb-3">
                 GreenChainz operates primarily in the United States. If you access our platform from outside the US, your data may be transferred to and processed in the US.
               </p>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-400">
                 For EU users: Microsoft Azure supports the EU-US Data Privacy Framework and provides Standard Contractual Clauses (SCCs) for data transfers where applicable.
               </p>
             </section>
 
             {/* Changes */}
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">12. Changes to This Privacy Policy</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">12. Changes to This Privacy Policy</h2>
               <p className="mb-3">
                 We may update this Privacy Policy periodically. We will notify you of significant changes via email or a prominent notice on our platform.
               </p>
@@ -295,18 +295,18 @@ export default function PrivacyPage() {
             </section>
 
             {/* Contact */}
-            <section className="border-t border-slate-200 pt-8">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">13. Contact Us</h2>
+            <section className="border-t border-[#aaff00]/10 pt-8">
+              <h2 className="text-2xl font-bold text-white mb-4">13. Contact Us</h2>
               <p className="mb-4">For questions about this Privacy Policy or to exercise your privacy rights, contact:</p>
               <div className="bg-emerald-50 p-6 rounded-lg">
-                <p className="font-semibold text-slate-900 mb-2">GreenChainz Privacy Team</p>
-                <p className="text-slate-700">
+                <p className="font-semibold text-white mb-2">GreenChainz Privacy Team</p>
+                <p className="text-slate-300">
                   Email:{' '}
                   <a href="mailto:privacy@greenchainz.com" className="text-emerald-600 hover:text-emerald-700 underline font-semibold">
                     privacy@greenchainz.com
                   </a>
                 </p>
-                <p className="text-slate-700 mt-1">
+                <p className="text-slate-300 mt-1">
                   General inquiries:{' '}
                   <a href="mailto:founder@greenchainz.com" className="text-emerald-600 hover:text-emerald-700 underline">
                     founder@greenchainz.com

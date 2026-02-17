@@ -222,7 +222,7 @@ export default function SupplierComparisonPage() {
     const config = {
       premium: "bg-purple-100 text-purple-700",
       standard: "bg-blue-100 text-blue-700",
-      free: "bg-slate-100 text-slate-600",
+      free: "bg-[#1a1a1a] text-slate-400",
     };
     return config[tier];
   };
@@ -231,7 +231,7 @@ export default function SupplierComparisonPage() {
     if (score >= 90) return "text-emerald-600";
     if (score >= 75) return "text-blue-600";
     if (score >= 60) return "text-amber-600";
-    return "text-slate-600";
+    return "text-slate-400";
   };
 
   return (
@@ -247,7 +247,7 @@ export default function SupplierComparisonPage() {
           </Link>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
                 <BarChart3 className="w-8 h-8 text-emerald-600" />
                 Supplier Comparison
               </h1>
@@ -292,7 +292,7 @@ export default function SupplierComparisonPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     tierFilter === tier
                       ? "bg-emerald-600 text-white"
-                      : "bg-white text-slate-600 border border-slate-200 hover:bg-emerald-50"
+                      : "bg-[#111111] text-slate-400 border border-[#aaff00]/10 hover:bg-emerald-50"
                   }`}
                 >
                   {tier === "all" ? "All Tiers" : tier.charAt(0).toUpperCase() + tier.slice(1)}
@@ -318,7 +318,7 @@ export default function SupplierComparisonPage() {
           </div>
 
           {selectedSuppliers.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="mt-4 pt-4 border-t border-white/5">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-slate-500">Selected for comparison:</span>
                 {selectedSuppliersData.map((s) => (
@@ -359,7 +359,7 @@ export default function SupplierComparisonPage() {
               {/* Header */}
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                     {supplier.name}
                     {supplier.verified && (
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -382,7 +382,7 @@ export default function SupplierComparisonPage() {
                   className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
                     selectedSuppliers.includes(supplier.id)
                       ? "bg-emerald-500 border-emerald-500 text-white"
-                      : "border-slate-300 hover:border-emerald-500"
+                      : "border-[#aaff00]/15 hover:border-emerald-500"
                   }`}
                 >
                   {selectedSuppliers.includes(supplier.id) && (
@@ -391,21 +391,21 @@ export default function SupplierComparisonPage() {
                 </button>
               </div>
 
-              <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+              <p className="text-sm text-slate-400 mb-4 line-clamp-2">
                 {supplier.description}
               </p>
 
               {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-slate-50 rounded-lg p-3">
+                <div className="bg-[#0a0a0a] rounded-lg p-3">
                   <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
                     <Star className="w-3 h-3" /> Rating
                   </div>
-                  <div className="font-bold text-slate-800">
+                  <div className="font-bold text-slate-100">
                     {supplier.rating} <span className="text-xs font-normal text-slate-500">({supplier.reviewCount})</span>
                   </div>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3">
+                <div className="bg-[#0a0a0a] rounded-lg p-3">
                   <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
                     <Leaf className="w-3 h-3" /> Eco Score
                   </div>
@@ -413,17 +413,17 @@ export default function SupplierComparisonPage() {
                     {supplier.carbonScore}/100
                   </div>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3">
+                <div className="bg-[#0a0a0a] rounded-lg p-3">
                   <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
                     <Clock className="w-3 h-3" /> Response
                   </div>
-                  <div className="font-bold text-slate-800">{supplier.responseTime}</div>
+                  <div className="font-bold text-slate-100">{supplier.responseTime}</div>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3">
+                <div className="bg-[#0a0a0a] rounded-lg p-3">
                   <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
                     <TrendingUp className="w-3 h-3" /> On-Time
                   </div>
-                  <div className="font-bold text-slate-800">{supplier.onTimeDelivery}%</div>
+                  <div className="font-bold text-slate-100">{supplier.onTimeDelivery}%</div>
                 </div>
               </div>
 
@@ -457,7 +457,7 @@ export default function SupplierComparisonPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-4 border-t border-slate-100">
+              <div className="flex gap-2 pt-4 border-t border-white/5">
                 <Link
                   href={`/supplier/${supplier.id}`}
                   className="gc-btn gc-btn-secondary flex-1 text-sm justify-center"
@@ -480,7 +480,7 @@ export default function SupplierComparisonPage() {
             <div className="text-slate-400 mb-4">
               <Search className="w-12 h-12 mx-auto" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-2">No suppliers found</h3>
+            <h3 className="text-lg font-bold text-slate-100 mb-2">No suppliers found</h3>
             <p className="text-slate-500">
               Try adjusting your search or filter criteria.
             </p>
@@ -498,12 +498,12 @@ export default function SupplierComparisonPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-xl font-bold text-white">
                   Supplier Comparison
                 </h2>
                 <button
                   onClick={() => setShowCompareModal(false)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-slate-400 hover:text-slate-400"
                 >
                   ✕
                 </button>
@@ -512,18 +512,18 @@ export default function SupplierComparisonPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-slate-200">
+                    <tr className="border-b border-[#aaff00]/10">
                       <th className="p-4 font-bold text-slate-500 text-sm">Criteria</th>
                       {selectedSuppliersData.map((s) => (
-                        <th key={s.id} className="p-4 font-bold text-slate-800">
+                        <th key={s.id} className="p-4 font-bold text-slate-100">
                           {s.name}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-b border-slate-100">
-                      <td className="p-4 font-semibold text-slate-700">Tier</td>
+                    <tr className="border-b border-white/5">
+                      <td className="p-4 font-semibold text-slate-300">Tier</td>
                       {selectedSuppliersData.map((s) => (
                         <td key={s.id} className="p-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${getTierBadge(s.tier)}`}>
@@ -532,8 +532,8 @@ export default function SupplierComparisonPage() {
                         </td>
                       ))}
                     </tr>
-                    <tr className="border-b border-slate-100">
-                      <td className="p-4 font-semibold text-slate-700">Rating</td>
+                    <tr className="border-b border-white/5">
+                      <td className="p-4 font-semibold text-slate-300">Rating</td>
                       {selectedSuppliersData.map((s) => {
                         const best = Math.max(...selectedSuppliersData.map((x) => x.rating));
                         return (
@@ -550,8 +550,8 @@ export default function SupplierComparisonPage() {
                         );
                       })}
                     </tr>
-                    <tr className="border-b border-slate-100">
-                      <td className="p-4 font-semibold text-slate-700">Eco Score</td>
+                    <tr className="border-b border-white/5">
+                      <td className="p-4 font-semibold text-slate-300">Eco Score</td>
                       {selectedSuppliersData.map((s) => {
                         const best = Math.max(...selectedSuppliersData.map((x) => x.carbonScore));
                         return (
@@ -568,8 +568,8 @@ export default function SupplierComparisonPage() {
                         );
                       })}
                     </tr>
-                    <tr className="border-b border-slate-100">
-                      <td className="p-4 font-semibold text-slate-700">Response Time</td>
+                    <tr className="border-b border-white/5">
+                      <td className="p-4 font-semibold text-slate-300">Response Time</td>
                       {selectedSuppliersData.map((s) => {
                         const best = Math.min(...selectedSuppliersData.map((x) => x.avgResponseHours));
                         return (
@@ -586,8 +586,8 @@ export default function SupplierComparisonPage() {
                         );
                       })}
                     </tr>
-                    <tr className="border-b border-slate-100">
-                      <td className="p-4 font-semibold text-slate-700">On-Time Delivery</td>
+                    <tr className="border-b border-white/5">
+                      <td className="p-4 font-semibold text-slate-300">On-Time Delivery</td>
                       {selectedSuppliersData.map((s) => {
                         const best = Math.max(...selectedSuppliersData.map((x) => x.onTimeDelivery));
                         return (
@@ -604,8 +604,8 @@ export default function SupplierComparisonPage() {
                         );
                       })}
                     </tr>
-                    <tr className="border-b border-slate-100">
-                      <td className="p-4 font-semibold text-slate-700">Orders Completed</td>
+                    <tr className="border-b border-white/5">
+                      <td className="p-4 font-semibold text-slate-300">Orders Completed</td>
                       {selectedSuppliersData.map((s) => {
                         const best = Math.max(...selectedSuppliersData.map((x) => x.ordersCompleted));
                         return (
@@ -622,8 +622,8 @@ export default function SupplierComparisonPage() {
                         );
                       })}
                     </tr>
-                    <tr className="border-b border-slate-100">
-                      <td className="p-4 font-semibold text-slate-700">Price Competitiveness</td>
+                    <tr className="border-b border-white/5">
+                      <td className="p-4 font-semibold text-slate-300">Price Competitiveness</td>
                       {selectedSuppliersData.map((s) => {
                         const best = Math.max(...selectedSuppliersData.map((x) => x.priceCompetitiveness));
                         return (
@@ -640,8 +640,8 @@ export default function SupplierComparisonPage() {
                         );
                       })}
                     </tr>
-                    <tr className="border-b border-slate-100">
-                      <td className="p-4 font-semibold text-slate-700">Certifications</td>
+                    <tr className="border-b border-white/5">
+                      <td className="p-4 font-semibold text-slate-300">Certifications</td>
                       {selectedSuppliersData.map((s) => (
                         <td key={s.id} className="p-4">
                           <div className="flex flex-wrap gap-1">

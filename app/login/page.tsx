@@ -38,7 +38,7 @@ function LoginContent() {
       </div>
 
       {/* Login Card */}
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+      <div className="bg-[#111111] rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <h1 className="text-3xl font-bold text-center text-gray-900 mb-2">
           {role === "buyer"
             ? "Buyer Sign In"
@@ -59,7 +59,7 @@ function LoginContent() {
           {/* Google */}
           <button
             onClick={() => handleSignIn("google")}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+            className="w-full flex items-center justify-center gap-3 bg-[#111111] border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -85,7 +85,7 @@ function LoginContent() {
           {/* Microsoft */}
           <button
             onClick={() => handleSignIn("microsoft-entra-id")}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+            className="w-full flex items-center justify-center gap-3 bg-[#111111] border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
           >
             <svg className="w-5 h-5" viewBox="0 0 23 23">
               <path fill="#f3f3f3" d="M0 0h23v23H0z" />
@@ -115,7 +115,7 @@ function LoginContent() {
             <div className="w-full border-t border-gray-300"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">
+            <span className="px-2 bg-[#111111] text-gray-500">
               Secure authentication powered by NextAuth
             </span>
           </div>

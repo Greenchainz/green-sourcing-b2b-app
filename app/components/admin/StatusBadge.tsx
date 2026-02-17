@@ -24,9 +24,9 @@ const STATUS_STYLES: Record<string, string> = {
   awarded: "bg-purple-100 text-purple-700 border-purple-200",
   pending: "bg-amber-100 text-amber-700 border-amber-200",
   reviewing: "bg-amber-100 text-amber-700 border-amber-200",
-  draft: "bg-slate-100 text-slate-600 border-slate-200",
-  unverified: "bg-slate-100 text-slate-600 border-slate-200",
-  closed: "bg-slate-100 text-slate-600 border-slate-200",
+  draft: "bg-[#1a1a1a] text-slate-400 border-[#aaff00]/10",
+  unverified: "bg-[#1a1a1a] text-slate-400 border-[#aaff00]/10",
+  closed: "bg-[#1a1a1a] text-slate-400 border-[#aaff00]/10",
   suspended: "bg-red-100 text-red-700 border-red-200",
   banned: "bg-red-100 text-red-700 border-red-200",
   rejected: "bg-red-100 text-red-700 border-red-200",
@@ -42,7 +42,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
   const normalizedStatus = status.toLowerCase();
   const styleClass =
     STATUS_STYLES[normalizedStatus] ||
-    "bg-slate-100 text-slate-600 border-slate-200";
+    "bg-[#1a1a1a] text-slate-400 border-[#aaff00]/10";
 
   return (
     <span

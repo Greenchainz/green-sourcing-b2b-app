@@ -96,7 +96,7 @@ export default function AdminDashboard() {
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value as any)}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-[#111111] dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="day">Last 24 Hours</option>
           <option value="week">Last 7 Days</option>
@@ -149,7 +149,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Revenue Breakdown */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-[#111111] dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Revenue by Tier
         </h2>
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* RFQ Statistics */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-[#111111] dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           RFQ Status Distribution
         </h2>
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Top Materials */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-[#111111] dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Top Requested Materials
         </h2>
@@ -254,7 +254,7 @@ function MetricCard({ icon, title, value, subtitle, color }: MetricCardProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-[#111111] dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center gap-4">
         <div className={`p-3 rounded-lg ${colorClasses[color]}`}>{icon}</div>
         <div className="flex-1">

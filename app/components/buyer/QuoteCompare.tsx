@@ -23,14 +23,14 @@ const QuoteCompare: React.FC<QuoteCompareProps> = ({ quotes, onAward }) => {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left bg-white/50 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm">
+      <table className="w-full text-left bg-[#111111]/50 backdrop-blur-sm rounded-xl border border-[#aaff00]/10 shadow-sm">
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-[#aaff00]/10">
             <th className="p-4 font-bold text-slate-500 text-xs uppercase tracking-wider w-1/4">
               Criteria
             </th>
             {quotes.map((quote) => (
-              <th key={quote.id} className="p-4 font-bold text-slate-800 w-1/4">
+              <th key={quote.id} className="p-4 font-bold text-slate-100 w-1/4">
                 {quote.supplierName}
               </th>
             ))}
@@ -38,12 +38,12 @@ const QuoteCompare: React.FC<QuoteCompareProps> = ({ quotes, onAward }) => {
         </thead>
         <tbody>
           {/* Price Row */}
-          <tr className="border-b border-slate-100 hover:bg-white/40 transition-colors">
-            <td className="p-4 font-bold text-slate-700 text-sm">Total Cost</td>
+          <tr className="border-b border-white/5 hover:bg-[#111111]/40 transition-colors">
+            <td className="p-4 font-bold text-slate-300 text-sm">Total Cost</td>
             {quotes.map((quote) => (
               <td key={`price-${quote.id}`} className="p-4 relative">
                 <span
-                  className={`font-bold ${quote.price === bestPrice ? "text-emerald-700 text-lg" : "text-slate-700"}`}
+                  className={`font-bold ${quote.price === bestPrice ? "text-emerald-700 text-lg" : "text-slate-300"}`}
                 >
                   ${quote.price.toLocaleString()}
                 </span>
@@ -57,12 +57,12 @@ const QuoteCompare: React.FC<QuoteCompareProps> = ({ quotes, onAward }) => {
           </tr>
 
           {/* Lead Time Row */}
-          <tr className="border-b border-slate-100 hover:bg-white/40 transition-colors">
-            <td className="p-4 font-bold text-slate-700 text-sm">Lead Time</td>
+          <tr className="border-b border-white/5 hover:bg-[#111111]/40 transition-colors">
+            <td className="p-4 font-bold text-slate-300 text-sm">Lead Time</td>
             {quotes.map((quote) => (
               <td key={`time-${quote.id}`} className="p-4 relative">
                 <span
-                  className={`font-medium ${quote.leadTimeWeeks === bestLeadTime ? "text-emerald-700" : "text-slate-600"}`}
+                  className={`font-medium ${quote.leadTimeWeeks === bestLeadTime ? "text-emerald-700" : "text-slate-400"}`}
                 >
                   {quote.leadTimeWeeks} weeks
                 </span>
@@ -76,14 +76,14 @@ const QuoteCompare: React.FC<QuoteCompareProps> = ({ quotes, onAward }) => {
           </tr>
 
           {/* Carbon Score Row */}
-          <tr className="border-b border-slate-100 hover:bg-white/40 transition-colors">
-            <td className="p-4 font-bold text-slate-700 text-sm">
+          <tr className="border-b border-white/5 hover:bg-[#111111]/40 transition-colors">
+            <td className="p-4 font-bold text-slate-300 text-sm">
               Carbon Impact
             </td>
             {quotes.map((quote) => (
               <td key={`carbon-${quote.id}`} className="p-4 relative">
                 <span
-                  className={`font-medium ${quote.carbonScore === bestCarbon ? "text-emerald-700" : "text-slate-600"}`}
+                  className={`font-medium ${quote.carbonScore === bestCarbon ? "text-emerald-700" : "text-slate-400"}`}
                 >
                   {quote.carbonScore} kgCO2e
                 </span>

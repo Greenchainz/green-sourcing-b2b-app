@@ -30,7 +30,7 @@ interface Product {
 const STATUS_STYLES: Record<string, string> = {
   approved: "bg-green-100 text-green-700 border-green-200",
   pending_approval: "bg-amber-100 text-amber-700 border-amber-200",
-  draft: "bg-slate-100 text-slate-700 border-slate-200",
+  draft: "bg-[#1a1a1a] text-slate-300 border-[#aaff00]/10",
   rejected: "bg-red-100 text-red-700 border-red-200",
 };
 
@@ -95,8 +95,8 @@ export default function SupplierProductsPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Products</h1>
-          <p className="text-slate-600">
+          <h1 className="text-2xl font-bold text-white">My Products</h1>
+          <p className="text-slate-400">
             Manage your product catalog and certifications.
           </p>
         </div>
@@ -118,11 +118,11 @@ export default function SupplierProductsPage() {
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+            className="w-full pl-10 pr-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
           />
         </div>
         <div className="flex gap-2">
-          <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1">
+          <div className="flex items-center bg-[#111111] border border-[#aaff00]/10 rounded-lg p-1">
             {["all", "approved", "pending_approval", "draft"].map((status) => (
               <button
                 key={status}
@@ -130,7 +130,7 @@ export default function SupplierProductsPage() {
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   filter === status
                     ? "bg-slate-900 text-white"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 {status === "all"
@@ -141,7 +141,7 @@ export default function SupplierProductsPage() {
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+          <button className="flex items-center gap-2 px-4 py-2 border border-[#aaff00]/10 rounded-lg text-slate-400 hover:bg-[#0a0a0a]">
             <Filter className="h-4 w-4" />
             <span className="hidden sm:inline">Filter</span>
           </button>
@@ -150,9 +150,9 @@ export default function SupplierProductsPage() {
 
       {/* Products Grid */}
       {filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-12 text-center">
           <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">
+          <h3 className="text-lg font-medium text-white mb-2">
             No products found
           </h3>
           <p className="text-slate-500 mb-6">
@@ -169,26 +169,26 @@ export default function SupplierProductsPage() {
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm overflow-hidden">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-[#0a0a0a] border-b border-[#aaff00]/10">
               <tr>
-                <th className="px-6 py-4 font-semibold text-sm text-slate-600">
+                <th className="px-6 py-4 font-semibold text-sm text-slate-400">
                   Product
                 </th>
-                <th className="px-6 py-4 font-semibold text-sm text-slate-600">
+                <th className="px-6 py-4 font-semibold text-sm text-slate-400">
                   Category
                 </th>
-                <th className="px-6 py-4 font-semibold text-sm text-slate-600">
+                <th className="px-6 py-4 font-semibold text-sm text-slate-400">
                   Carbon (kgCO2e)
                 </th>
-                <th className="px-6 py-4 font-semibold text-sm text-slate-600">
+                <th className="px-6 py-4 font-semibold text-sm text-slate-400">
                   Status
                 </th>
-                <th className="px-6 py-4 font-semibold text-sm text-slate-600">
+                <th className="px-6 py-4 font-semibold text-sm text-slate-400">
                   Source
                 </th>
-                <th className="px-6 py-4 font-semibold text-sm text-slate-600 text-right">
+                <th className="px-6 py-4 font-semibold text-sm text-slate-400 text-right">
                   Actions
                 </th>
               </tr>
@@ -197,12 +197,12 @@ export default function SupplierProductsPage() {
               {filteredProducts.map((product) => (
                 <tr
                   key={product.id}
-                  className="hover:bg-slate-50 transition-colors"
+                  className="hover:bg-[#0a0a0a] transition-colors"
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-10 h-10 rounded bg-slate-200 bg-cover bg-center flex-shrink-0"
+                        className="w-10 h-10 rounded bg-[#1a1a1a] bg-cover bg-center flex-shrink-0"
                         style={{
                           backgroundImage: product.image_url
                             ? `url(${product.image_url})`
@@ -215,15 +215,15 @@ export default function SupplierProductsPage() {
                           </div>
                         )}
                       </div>
-                      <span className="font-medium text-slate-900">
+                      <span className="font-medium text-white">
                         {product.name}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-600">
+                  <td className="px-6 py-4 text-slate-400">
                     {product.category}
                   </td>
-                  <td className="px-6 py-4 text-slate-600 font-mono">
+                  <td className="px-6 py-4 text-slate-400 font-mono">
                     {product.carbon_footprint}
                   </td>
                   <td className="px-6 py-4">
@@ -253,13 +253,13 @@ export default function SupplierProductsPage() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-2 text-slate-400 hover:text-slate-400 hover:bg-[#1a1a1a] rounded-lg transition-colors"
                         title="View"
                       >
                         <Eye size={18} />
                       </button>
                       <button
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-2 text-slate-400 hover:text-slate-400 hover:bg-[#1a1a1a] rounded-lg transition-colors"
                         title="Edit"
                       >
                         <Edit size={18} />
@@ -270,7 +270,7 @@ export default function SupplierProductsPage() {
                       >
                         <Trash2 size={18} />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                      <button className="p-2 text-slate-400 hover:text-slate-400 hover:bg-[#1a1a1a] rounded-lg transition-colors">
                         <MoreHorizontal size={18} />
                       </button>
                     </div>
@@ -284,25 +284,25 @@ export default function SupplierProductsPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <p className="text-sm text-slate-500">Total Products</p>
-          <p className="text-2xl font-bold text-slate-900">{products.length}</p>
+          <p className="text-2xl font-bold text-white">{products.length}</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <p className="text-sm text-slate-500">Active</p>
           <p className="text-2xl font-bold text-green-600">
             {products.filter((p) => p.status === "approved").length}
           </p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <p className="text-sm text-slate-500">Pending Review</p>
           <p className="text-2xl font-bold text-amber-600">
             {products.filter((p) => p.status === "pending_approval").length}
           </p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <p className="text-sm text-slate-500">Drafts</p>
-          <p className="text-2xl font-bold text-slate-600">
+          <p className="text-2xl font-bold text-slate-400">
             {products.filter((p) => p.status === "draft").length}
           </p>
         </div>

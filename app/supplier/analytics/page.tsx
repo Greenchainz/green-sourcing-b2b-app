@@ -92,14 +92,14 @@ export default function SupplierAnalyticsPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-          <p className="text-slate-600">
+          <h1 className="text-2xl font-bold text-white">Analytics</h1>
+          <p className="text-slate-400">
             Track your performance and identify opportunities.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-slate-400" />
-          <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1">
+          <div className="flex items-center bg-[#111111] border border-[#aaff00]/10 rounded-lg p-1">
             {(["7d", "30d", "90d"] as const).map((range) => (
               <button
                 key={range}
@@ -107,7 +107,7 @@ export default function SupplierAnalyticsPage() {
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   timeRange === range
                     ? "bg-slate-900 text-white"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 {range === "7d" ? "7 Days" : range === "30d" ? "30 Days" : "90 Days"}
@@ -151,10 +151,10 @@ export default function SupplierAnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Views Chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div className="lg:col-span-2 bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="font-semibold text-slate-900">Profile Views</h2>
+              <h2 className="font-semibold text-white">Profile Views</h2>
               <p className="text-sm text-slate-500">Monthly view trends</p>
             </div>
             <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
@@ -182,9 +182,9 @@ export default function SupplierAnalyticsPage() {
         </div>
 
         {/* RFQ Status Breakdown */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
           <div className="mb-6">
-            <h2 className="font-semibold text-slate-900">RFQ Status</h2>
+            <h2 className="font-semibold text-white">RFQ Status</h2>
             <p className="text-sm text-slate-500">Current breakdown</p>
           </div>
 
@@ -202,10 +202,10 @@ export default function SupplierAnalyticsPage() {
               return (
                 <div key={item.status}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-slate-600">{item.status}</span>
-                    <span className="font-medium text-slate-900">{item.count}</span>
+                    <span className="text-slate-400">{item.status}</span>
+                    <span className="font-medium text-white">{item.count}</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div className="w-full bg-[#1a1a1a] rounded-full h-2">
                     <div
                       className={`h-2 rounded-full ${colors[item.status] || "bg-slate-400"}`}
                       style={{ width: `${percentage}%` }}
@@ -216,10 +216,10 @@ export default function SupplierAnalyticsPage() {
             })}
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100">
+          <div className="mt-6 pt-4 border-t border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-500">Total RFQs</span>
-              <span className="text-lg font-bold text-slate-900">
+              <span className="text-lg font-bold text-white">
                 {data.rfq_by_status.reduce((sum, i) => sum + i.count, 0)}
               </span>
             </div>
@@ -229,10 +229,10 @@ export default function SupplierAnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
         {/* Top Materials */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="font-semibold text-slate-900">Top Requested Materials</h2>
+              <h2 className="font-semibold text-white">Top Requested Materials</h2>
               <p className="text-sm text-slate-500">Most popular in your catalog</p>
             </div>
             <button className="text-sm text-forest-600 hover:text-forest-700 font-medium flex items-center gap-1">
@@ -244,13 +244,13 @@ export default function SupplierAnalyticsPage() {
             {data.top_materials.map((material, index) => (
               <div
                 key={material.name}
-                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                className="flex items-center justify-between p-3 bg-[#0a0a0a] rounded-lg"
               >
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-full bg-forest-100 text-forest-700 text-xs font-bold flex items-center justify-center">
                     {index + 1}
                   </span>
-                  <span className="font-medium text-slate-900">{material.name}</span>
+                  <span className="font-medium text-white">{material.name}</span>
                 </div>
                 <span className="text-sm text-slate-500">{material.count} requests</span>
               </div>
@@ -261,7 +261,7 @@ export default function SupplierAnalyticsPage() {
         {/* Revenue Potential */}
         <div className="bg-gradient-to-br from-forest-600 to-forest-800 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-white/10 rounded-lg">
+            <div className="p-3 bg-[#111111]/10 rounded-lg">
               <BarChart3 className="h-6 w-6" />
             </div>
             <div>
@@ -280,11 +280,11 @@ export default function SupplierAnalyticsPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/10 rounded-lg p-4">
+            <div className="bg-[#111111]/10 rounded-lg p-4">
               <p className="text-2xl font-bold">{data.win_rate}%</p>
               <p className="text-sm text-forest-200">Win Rate</p>
             </div>
-            <div className="bg-white/10 rounded-lg p-4">
+            <div className="bg-[#111111]/10 rounded-lg p-4">
               <p className="text-2xl font-bold">
                 ${Math.round(data.revenue_potential / data.rfqs_received).toLocaleString()}
               </p>
@@ -292,7 +292,7 @@ export default function SupplierAnalyticsPage() {
             </div>
           </div>
 
-          <button className="w-full mt-6 py-3 bg-white text-forest-700 font-bold rounded-lg hover:bg-forest-50 transition-colors">
+          <button className="w-full mt-6 py-3 bg-[#111111] text-forest-700 font-bold rounded-lg hover:bg-forest-50 transition-colors">
             View Opportunities
           </button>
         </div>
@@ -338,7 +338,7 @@ function MetricCard({
   const isPositive = change >= 0;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+    <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
       <div className="flex items-start justify-between mb-4">
         <div className={`p-3 rounded-lg ${iconBg}`}>{icon}</div>
         <div
@@ -357,7 +357,7 @@ function MetricCard({
           {change}%
         </div>
       </div>
-      <p className="text-3xl font-bold text-slate-900">{value}</p>
+      <p className="text-3xl font-bold text-white">{value}</p>
       <p className="text-sm text-slate-500 mt-1">{title}</p>
     </div>
   );

@@ -63,7 +63,7 @@ export default function AdminSuppliersPage() {
       sortable: true,
       render: (s) => (
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-800">{s.company}</span>
+          <span className="font-bold text-slate-100">{s.company}</span>
           {s.founding50 && <span title="Founding 50 Member">🏆</span>}
         </div>
       ),
@@ -118,7 +118,7 @@ export default function AdminSuppliersPage() {
     <div className="gc-page min-h-screen p-6 md:p-10">
       <div className="gc-container">
         <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-white">
             Supplier Management
             </h1>
             <div className="text-sm text-slate-500">

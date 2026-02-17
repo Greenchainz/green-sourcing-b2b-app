@@ -12,7 +12,7 @@ export default function AdminPanel() {
         {/* Header */}
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-3xl font-bold text-white">
               Admin Dashboard
             </h1>
             <p className="text-slate-500 mt-1">
@@ -63,12 +63,12 @@ export default function AdminPanel() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Activity */}
           <div className="lg:col-span-2 gc-card p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-6">
+            <h2 className="text-lg font-bold text-slate-100 mb-6">
               Recent System Activity
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="text-slate-500 font-bold border-b border-slate-100">
+                <thead className="text-slate-500 font-bold border-b border-white/5">
                   <tr>
                     <th className="pb-3 pl-2">Event</th>
                     <th className="pb-3">User</th>
@@ -103,11 +103,11 @@ export default function AdminPanel() {
                       status: "closed",
                     },
                   ].map((row, i) => (
-                    <tr key={i} className="hover:bg-slate-50/50">
-                      <td className="py-3 pl-2 font-medium text-slate-700">
+                    <tr key={i} className="hover:bg-[#1a1a1a]/50">
+                      <td className="py-3 pl-2 font-medium text-slate-300">
                         {row.event}
                       </td>
-                      <td className="py-3 text-slate-600">{row.user}</td>
+                      <td className="py-3 text-slate-400">{row.user}</td>
                       <td className="py-3 text-slate-500 text-xs">
                         {row.time}
                       </td>
@@ -129,25 +129,25 @@ export default function AdminPanel() {
               </h3>
               <ul className="space-y-3">
                 <li className="flex justify-between items-center text-sm">
-                  <span className="text-slate-700">Pending Verifications</span>
-                  <span className="font-bold bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-700">
+                  <span className="text-slate-300">Pending Verifications</span>
+                  <span className="font-bold bg-[#111111] px-2 py-0.5 rounded border border-amber-200 text-amber-700">
                     3
                   </span>
                 </li>
                 <li className="flex justify-between items-center text-sm">
-                  <span className="text-slate-700">Flagged RFQs</span>
-                  <span className="font-bold bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-700">
+                  <span className="text-slate-300">Flagged RFQs</span>
+                  <span className="font-bold bg-[#111111] px-2 py-0.5 rounded border border-amber-200 text-amber-700">
                     1
                   </span>
                 </li>
               </ul>
-              <button className="w-full mt-4 gc-btn bg-white border border-amber-200 text-amber-700 hover:bg-amber-100 text-xs shadow-sm">
+              <button className="w-full mt-4 gc-btn bg-[#111111] border border-amber-200 text-amber-700 hover:bg-amber-100 text-xs shadow-sm">
                 Review Queue
               </button>
             </div>
 
             <div className="gc-card p-6">
-              <h3 className="font-bold text-slate-800 mb-4">Quick Links</h3>
+              <h3 className="font-bold text-slate-100 mb-4">Quick Links</h3>
               <div className="flex flex-col gap-2">
                 <Link
                   href="/admin/suppliers"
@@ -163,7 +163,7 @@ export default function AdminPanel() {
                 </Link>
                 <Link
                   href="/admin/settings"
-                  className="text-slate-500 hover:text-slate-700 font-medium text-sm flex items-center gap-2"
+                  className="text-slate-500 hover:text-slate-300 font-medium text-sm flex items-center gap-2"
                 >
                   <span>→</span> System Settings
                 </Link>

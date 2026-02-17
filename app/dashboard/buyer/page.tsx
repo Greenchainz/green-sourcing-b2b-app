@@ -161,7 +161,7 @@ export default function BuyerDashboardOverview() {
       case "Reviewing":
         return "bg-amber-100 text-amber-700";
       case "Draft":
-        return "bg-slate-200 text-slate-600";
+        return "bg-[#1a1a1a] text-slate-400";
       case "Delivered":
         return "bg-emerald-100 text-emerald-700";
       case "In Transit":
@@ -169,7 +169,7 @@ export default function BuyerDashboardOverview() {
       case "Processing":
         return "bg-amber-100 text-amber-700";
       default:
-        return "bg-slate-100 text-slate-600";
+        return "bg-[#1a1a1a] text-slate-400";
     }
   };
 
@@ -199,7 +199,7 @@ export default function BuyerDashboardOverview() {
       case "system":
         return "bg-purple-100 text-purple-600";
       default:
-        return "bg-slate-100 text-slate-600";
+        return "bg-[#1a1a1a] text-slate-400";
     }
   };
 
@@ -212,7 +212,7 @@ export default function BuyerDashboardOverview() {
             <h1 className="gc-hero-title text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-800 to-teal-600 mb-2">
               Buyer Dashboard
             </h1>
-            <p className="gc-hero-subtitle text-slate-600">
+            <p className="gc-hero-subtitle text-slate-400">
               Manage your sustainable sourcing projects, RFQs, and orders.
             </p>
           </div>
@@ -235,7 +235,7 @@ export default function BuyerDashboardOverview() {
                 Active RFQs
               </div>
             </div>
-            <div className="font-bold text-3xl text-slate-800">{stats.activeRfqs}</div>
+            <div className="font-bold text-3xl text-slate-100">{stats.activeRfqs}</div>
           </div>
 
           <div className="gc-card p-5 hover:scale-[1.02] transition-transform">
@@ -247,7 +247,7 @@ export default function BuyerDashboardOverview() {
                 New Quotes
               </div>
             </div>
-            <div className="font-bold text-3xl text-slate-800">{stats.totalQuotes}</div>
+            <div className="font-bold text-3xl text-slate-100">{stats.totalQuotes}</div>
           </div>
 
           <div className="gc-card p-5 hover:scale-[1.02] transition-transform">
@@ -259,7 +259,7 @@ export default function BuyerDashboardOverview() {
                 Pending Review
               </div>
             </div>
-            <div className="font-bold text-3xl text-slate-800">{stats.pendingReview}</div>
+            <div className="font-bold text-3xl text-slate-100">{stats.pendingReview}</div>
           </div>
 
           <div className="gc-card p-5 hover:scale-[1.02] transition-transform">
@@ -271,7 +271,7 @@ export default function BuyerDashboardOverview() {
                 Awarded Orders
               </div>
             </div>
-            <div className="font-bold text-3xl text-slate-800">{stats.awardedOrders}</div>
+            <div className="font-bold text-3xl text-slate-100">{stats.awardedOrders}</div>
           </div>
         </div>
 
@@ -304,13 +304,13 @@ export default function BuyerDashboardOverview() {
             <div className="text-xs text-purple-600">below market average</div>
           </div>
 
-          <div className="gc-card p-4 bg-gradient-to-br from-slate-50 to-gray-50 border-slate-100">
+          <div className="gc-card p-4 bg-gradient-to-br from-slate-50 to-gray-50 border-white/5">
             <div className="flex items-center gap-2 mb-2">
-              <Users className="w-4 h-4 text-slate-600" />
-              <span className="text-xs font-bold text-slate-700 uppercase">Suppliers</span>
+              <Users className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-bold text-slate-300 uppercase">Suppliers</span>
             </div>
-            <div className="text-2xl font-bold text-slate-700">{stats.suppliersEngaged}</div>
-            <div className="text-xs text-slate-600">engaged this year</div>
+            <div className="text-2xl font-bold text-slate-300">{stats.suppliersEngaged}</div>
+            <div className="text-xs text-slate-400">engaged this year</div>
           </div>
         </div>
 
@@ -319,7 +319,7 @@ export default function BuyerDashboardOverview() {
           {/* Recent RFQs - Takes 2 columns */}
           <div className="lg:col-span-2 gc-card p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800">RFQ Management</h2>
+              <h2 className="text-xl font-bold text-slate-100">RFQ Management</h2>
               <Link
                 href="/dashboard/buyer/rfqs"
                 className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center gap-1"
@@ -333,10 +333,10 @@ export default function BuyerDashboardOverview() {
                 <Link
                   key={rfq.id}
                   href={`/dashboard/buyer/rfqs/${rfq.id}`}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-emerald-50 transition-colors cursor-pointer border border-slate-100"
+                  className="flex items-center justify-between p-4 bg-[#0a0a0a] rounded-xl hover:bg-emerald-50 transition-colors cursor-pointer border border-white/5"
                 >
                   <div className="flex-1">
-                    <div className="font-bold text-slate-800">{rfq.title}</div>
+                    <div className="font-bold text-slate-100">{rfq.title}</div>
                     <div className="text-xs text-slate-500 font-medium mt-1">
                       {rfq.id} • Created {rfq.date} • Due: {rfq.deadline}
                     </div>
@@ -356,7 +356,7 @@ export default function BuyerDashboardOverview() {
             </div>
 
             {/* Quick Actions */}
-            <div className="mt-6 pt-4 border-t border-slate-100">
+            <div className="mt-6 pt-4 border-t border-white/5">
               <div className="flex flex-wrap gap-2">
                 <Link
                   href="/dashboard/buyer/rfqs?status=open"
@@ -382,7 +382,7 @@ export default function BuyerDashboardOverview() {
 
           {/* Activity Feed - Takes 1 column */}
           <div className="gc-card p-6">
-            <h2 className="text-xl font-bold text-slate-800 mb-6">Activity Feed</h2>
+            <h2 className="text-xl font-bold text-slate-100 mb-6">Activity Feed</h2>
             <div className="space-y-5">
               {activity.map((item) => (
                 <div key={item.id} className="flex gap-3">
@@ -392,7 +392,7 @@ export default function BuyerDashboardOverview() {
                     {getActivityIcon(item.type)}
                   </div>
                   <div>
-                    <p className="text-sm text-slate-700 font-medium leading-relaxed">
+                    <p className="text-sm text-slate-300 font-medium leading-relaxed">
                       {item.msg}
                     </p>
                     <p className="text-xs text-slate-400 mt-1">{item.time}</p>
@@ -408,8 +408,8 @@ export default function BuyerDashboardOverview() {
           {/* Recent Orders */}
           <div className="gc-card p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-slate-600" />
+              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-slate-400" />
                 Order History
               </h2>
               <Link
@@ -424,10 +424,10 @@ export default function BuyerDashboardOverview() {
               {recentOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-emerald-200 transition-colors"
+                  className="flex items-center justify-between p-4 bg-[#0a0a0a] rounded-xl border border-white/5 hover:border-emerald-200 transition-colors"
                 >
                   <div className="flex-1">
-                    <div className="font-bold text-slate-800">{order.product}</div>
+                    <div className="font-bold text-slate-100">{order.product}</div>
                     <div className="text-xs text-slate-500 font-medium mt-1">
                       {order.id} • {order.supplier} • {order.date}
                     </div>
@@ -438,7 +438,7 @@ export default function BuyerDashboardOverview() {
                     >
                       {order.status}
                     </div>
-                    <div className="text-sm font-bold text-slate-700">
+                    <div className="text-sm font-bold text-slate-300">
                       ${order.amount.toLocaleString()}
                     </div>
                   </div>
@@ -450,8 +450,8 @@ export default function BuyerDashboardOverview() {
           {/* Supplier Comparison Preview */}
           <div className="gc-card p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-slate-600" />
+              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-slate-400" />
                 Top Suppliers
               </h2>
               <Link
@@ -466,14 +466,14 @@ export default function BuyerDashboardOverview() {
               {topSuppliers.map((supplier, index) => (
                 <div
                   key={supplier.id}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-emerald-200 transition-colors"
+                  className="flex items-center justify-between p-4 bg-[#0a0a0a] rounded-xl border border-white/5 hover:border-emerald-200 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">
                       {index + 1}
                     </div>
                     <div>
-                      <div className="font-bold text-slate-800 flex items-center gap-2">
+                      <div className="font-bold text-slate-100 flex items-center gap-2">
                         {supplier.name}
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${
@@ -501,7 +501,7 @@ export default function BuyerDashboardOverview() {
               ))}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="mt-4 pt-4 border-t border-white/5">
               <Link
                 href="/dashboard/buyer/suppliers/compare"
                 className="gc-btn gc-btn-secondary w-full justify-center"

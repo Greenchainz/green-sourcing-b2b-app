@@ -41,7 +41,7 @@ export default function BuyerRFQList() {
       <div className="gc-container">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+            <h1 className="text-2xl md:text-3xl font-bold text-white">
               My RFQs
             </h1>
             <p className="text-slate-500 mt-1">
@@ -62,7 +62,7 @@ export default function BuyerRFQList() {
             <button
               key={filter}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors
-                    ${i === 0 ? "bg-emerald-600 text-white shadow-md" : "bg-white text-slate-600 hover:bg-emerald-50"}`}
+                    ${i === 0 ? "bg-emerald-600 text-white shadow-md" : "bg-[#111111] text-slate-400 hover:bg-emerald-50"}`}
             >
               {filter}
             </button>
@@ -72,7 +72,7 @@ export default function BuyerRFQList() {
         {/* List */}
         <div className="gc-card overflow-hidden">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-[#0a0a0a] border-b border-[#aaff00]/10">
               <tr>
                 <th className="p-4 md:p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   RFQ Details
@@ -92,14 +92,14 @@ export default function BuyerRFQList() {
               {MOCK_RFQS.map((rfq) => (
                 <tr
                   key={rfq.id}
-                  className="hover:bg-slate-50/50 transition-colors"
+                  className="hover:bg-[#1a1a1a]/50 transition-colors"
                 >
                   <td className="p-4 md:p-5">
                     <Link
                       href={`/dashboard/buyer/rfqs/${rfq.id}`}
                       className="block group"
                     >
-                      <div className="font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">
+                      <div className="font-bold text-slate-100 group-hover:text-[#aaff00] transition-colors">
                         {rfq.title}
                       </div>
                       <div className="text-xs text-slate-500 mt-1">
@@ -116,15 +116,15 @@ export default function BuyerRFQList() {
                                       : rfq.status === "Reviewing"
                                         ? "bg-amber-100 text-amber-700"
                                         : rfq.status === "Closed"
-                                          ? "bg-slate-200 text-slate-600"
-                                          : "bg-slate-100 text-slate-500 border border-slate-200"
+                                          ? "bg-[#1a1a1a] text-slate-400"
+                                          : "bg-[#1a1a1a] text-slate-500 border border-[#aaff00]/10"
                                   }`}
                     >
                       {rfq.status}
                     </span>
                   </td>
                   <td className="p-4 md:p-5">
-                    <div className="text-sm font-semibold text-slate-700">
+                    <div className="text-sm font-semibold text-slate-300">
                       {rfq.quotes} active
                     </div>
                   </td>

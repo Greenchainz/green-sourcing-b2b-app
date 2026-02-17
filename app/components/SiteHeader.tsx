@@ -4,7 +4,7 @@ import { ArrowRight, Sparkles } from 'lucide-react'
 
 export default function SiteHeader() {
   return (
-    <header className="gc-header sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gc-fern/10">
+    <header className="gc-header sticky top-0 z-50 backdrop-blur-xl border-b border-[#aaff00]/10" style={{ background: 'rgba(17, 17, 17, 0.85)' }}>
       <div className="gc-container">
         <div className="gc-header-inner py-4">
           {/* Logo */}
@@ -38,21 +38,21 @@ export default function SiteHeader() {
           <nav className="gc-nav flex items-center gap-2" aria-label="Primary navigation">
             <Link 
               href="/rfqs/create" 
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-700 hover:text-gc-fern-dark hover:bg-gc-fern/5 rounded-lg transition-all duration-200"
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-300 hover:text-[#aaff00] hover:bg-[#aaff00]/5 rounded-lg transition-all duration-200"
             >
               Create RFQ
             </Link>
             <Link 
               href="/login" 
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-700 hover:text-gc-fern-dark hover:bg-gc-fern/5 rounded-lg transition-all duration-200"
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-300 hover:text-[#aaff00] hover:bg-[#aaff00]/5 rounded-lg transition-all duration-200"
             >
               Log in
             </Link>
             <Link 
               href="/login" 
-              className="group flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-all duration-300 relative overflow-hidden"
+              className="group flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-black rounded-xl transition-all duration-300 relative overflow-hidden"
               style={{
-                background: 'linear-gradient(135deg, #71b340 0%, #669d31 50%, #0d9488 100%)',
+                background: 'linear-gradient(135deg, #aaff00 0%, #88cc00 50%, #aaff00 100%)',
                 backgroundSize: '200% 200%',
                 animation: 'gradientFlow 3s ease infinite',
               }}

@@ -37,8 +37,8 @@ export default function SupplierSettingsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-600">
+        <h1 className="text-2xl font-bold text-white">Settings</h1>
+        <p className="text-slate-400">
           Manage your account settings and preferences.
         </p>
       </div>
@@ -53,7 +53,7 @@ export default function SupplierSettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sidebar Navigation */}
         <div className="lg:col-span-1">
-          <nav className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <nav className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm overflow-hidden">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -61,7 +61,7 @@ export default function SupplierSettingsPage() {
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                   activeTab === tab.id
                     ? "bg-forest-50 text-forest-700 border-l-4 border-forest-600"
-                    : "text-slate-600 hover:bg-slate-50"
+                    : "text-slate-400 hover:bg-[#0a0a0a]"
                 }`}
               >
                 <tab.icon className="h-5 w-5" />
@@ -73,12 +73,12 @@ export default function SupplierSettingsPage() {
 
         {/* Settings Content */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
             {activeTab === "notifications" && (
               <div>
                 <div className="flex items-center gap-2 mb-6">
                   <Bell className="h-5 w-5 text-forest-600" />
-                  <h2 className="font-semibold text-slate-900">
+                  <h2 className="font-semibold text-white">
                     Notification Preferences
                   </h2>
                 </div>
@@ -112,7 +112,7 @@ export default function SupplierSettingsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-6">
                   <Shield className="h-5 w-5 text-forest-600" />
-                  <h2 className="font-semibold text-slate-900">
+                  <h2 className="font-semibold text-white">
                     Privacy Settings
                   </h2>
                 </div>
@@ -141,7 +141,7 @@ export default function SupplierSettingsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-6">
                   <CreditCard className="h-5 w-5 text-forest-600" />
-                  <h2 className="font-semibold text-slate-900">
+                  <h2 className="font-semibold text-white">
                     Billing & Subscription
                   </h2>
                 </div>
@@ -163,12 +163,12 @@ export default function SupplierSettingsPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="p-4 border border-slate-200 rounded-lg">
+                  <div className="p-4 border border-[#aaff00]/10 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-6 bg-gradient-to-r from-blue-600 to-blue-800 rounded" />
                         <div>
-                          <p className="font-medium text-slate-900">
+                          <p className="font-medium text-white">
                             •••• •••• •••• 4242
                           </p>
                           <p className="text-sm text-slate-500">Expires 12/26</p>
@@ -188,7 +188,7 @@ export default function SupplierSettingsPage() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <Users className="h-5 w-5 text-forest-600" />
-                    <h2 className="font-semibold text-slate-900">
+                    <h2 className="font-semibold text-white">
                       Team Members
                     </h2>
                   </div>
@@ -221,7 +221,7 @@ export default function SupplierSettingsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-6">
                   <Globe className="h-5 w-5 text-forest-600" />
-                  <h2 className="font-semibold text-slate-900">
+                  <h2 className="font-semibold text-white">
                     Integrations
                   </h2>
                 </div>
@@ -247,7 +247,7 @@ export default function SupplierSettingsPage() {
             )}
 
             {/* Save Button */}
-            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+            <div className="mt-8 pt-6 border-t border-white/5 flex justify-end">
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -285,9 +285,9 @@ function ToggleSetting({
   const [checked, setChecked] = useState(defaultChecked);
 
   return (
-    <div className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+    <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
       <div>
-        <p className="font-medium text-slate-900">{title}</p>
+        <p className="font-medium text-white">{title}</p>
         <p className="text-sm text-slate-500">{description}</p>
       </div>
       <button
@@ -297,7 +297,7 @@ function ToggleSetting({
         }`}
       >
         <span
-          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+          className={`absolute top-1 w-4 h-4 rounded-full bg-[#111111] shadow transition-transform ${
             checked ? "translate-x-7" : "translate-x-1"
           }`}
         />
@@ -316,21 +316,21 @@ function TeamMember({
   role: string;
 }) {
   return (
-    <div className="flex items-center justify-between p-4 border border-slate-200 rounded-lg">
+    <div className="flex items-center justify-between p-4 border border-[#aaff00]/10 rounded-lg">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-forest-100 flex items-center justify-center text-forest-700 font-medium">
           {name.charAt(0)}
         </div>
         <div>
-          <p className="font-medium text-slate-900">{name}</p>
+          <p className="font-medium text-white">{name}</p>
           <p className="text-sm text-slate-500">{email}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm font-medium">
+        <span className="px-3 py-1 bg-[#1a1a1a] text-slate-400 rounded-full text-sm font-medium">
           {role}
         </span>
-        <button className="text-slate-400 hover:text-slate-600">
+        <button className="text-slate-400 hover:text-slate-400">
           <Settings className="h-4 w-4" />
         </button>
       </div>
@@ -348,13 +348,13 @@ function IntegrationCard({
   connected: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between p-4 border border-slate-200 rounded-lg">
+    <div className="flex items-center justify-between p-4 border border-[#aaff00]/10 rounded-lg">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-          <Globe className="h-5 w-5 text-slate-600" />
+        <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
+          <Globe className="h-5 w-5 text-slate-400" />
         </div>
         <div>
-          <p className="font-medium text-slate-900">{name}</p>
+          <p className="font-medium text-white">{name}</p>
           <p className="text-sm text-slate-500">{description}</p>
         </div>
       </div>
@@ -362,7 +362,7 @@ function IntegrationCard({
         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
           connected
             ? "bg-green-100 text-green-700 hover:bg-green-200"
-            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            : "bg-[#1a1a1a] text-slate-300 hover:bg-slate-200"
         }`}
       >
         {connected ? "Connected" : "Connect"}

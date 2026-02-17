@@ -36,7 +36,7 @@ export default function SupplierDashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Dashboard Overview</h2>
+        <h2 className="text-2xl font-bold text-white">Dashboard Overview</h2>
         <p className="text-slate-500">Welcome back, here's what's happening with your products.</p>
       </div>
 
@@ -67,19 +67,19 @@ export default function SupplierDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Action Items */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="font-semibold text-slate-900">Action Required</h3>
+        <div className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center">
+            <h3 className="font-semibold text-white">Action Required</h3>
             <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">High Priority</span>
           </div>
           <div className="divide-y divide-slate-100">
             {stats?.actionItems?.map((item: { id: string; priority: string; message: string }) => (
-              <div key={item.id} className="p-4 hover:bg-slate-50 transition-colors flex items-start gap-4 cursor-pointer">
+              <div key={item.id} className="p-4 hover:bg-[#0a0a0a] transition-colors flex items-start gap-4 cursor-pointer">
                  <div className={`mt-1 p-2 rounded-full ${item.priority === 'high' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                     <AlertTriangle size={16} />
                  </div>
                  <div className="flex-1">
-                    <h4 className="text-sm font-medium text-slate-900">{item.message}</h4>
+                    <h4 className="text-sm font-medium text-white">{item.message}</h4>
                     <p className="text-xs text-slate-500 mt-1">Due in 2 days</p>
                  </div>
                  <ChevronRight size={16} className="text-slate-400" />
@@ -89,9 +89,9 @@ export default function SupplierDashboardPage() {
         </div>
 
         {/* Recent Activity (Placeholder) */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-           <h3 className="font-semibold text-slate-900 mb-4">Market Trends</h3>
-           <div className="h-64 bg-slate-50 rounded-lg flex items-center justify-center border border-dashed border-slate-300">
+        <div className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-6">
+           <h3 className="font-semibold text-white mb-4">Market Trends</h3>
+           <div className="h-64 bg-[#0a0a0a] rounded-lg flex items-center justify-center border border-dashed border-[#aaff00]/15">
               <p className="text-slate-400 text-sm">Analytics Graph Placeholder</p>
            </div>
         </div>
@@ -108,13 +108,13 @@ function StatCard({ label, value, trend, trendUp, icon }: {
   icon: React.ReactNode;
 }) {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+    <div className="bg-[#111111] p-6 rounded-xl shadow-sm border border-[#aaff00]/10">
       <div className="flex justify-between items-start">
         <div>
           <p className="text-sm font-medium text-slate-500">{label}</p>
-          <h3 className="text-3xl font-bold text-slate-900 mt-2">{value}</h3>
+          <h3 className="text-3xl font-bold text-white mt-2">{value}</h3>
         </div>
-        <div className="p-3 bg-slate-50 rounded-lg">
+        <div className="p-3 bg-[#0a0a0a] rounded-lg">
           {icon}
         </div>
       </div>

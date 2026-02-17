@@ -3,7 +3,7 @@ import { FileSpreadsheet, CheckCircle } from "lucide-react";
 
 export default function ExcelAuditPage() {
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-[#0a0a0a]">
             {/* Hero */}
             <section className="bg-gradient-to-r from-green-700 to-emerald-700 text-white py-20 px-6">
                 <div className="max-w-4xl mx-auto">
@@ -16,7 +16,7 @@ export default function ExcelAuditPage() {
                         and green alternatives—all in one Excel sheet.
                     </p>
                     <div className="flex gap-4 flex-wrap">
-                        <button className="bg-white text-green-700 px-8 py-4 rounded-lg font-bold hover:bg-green-50">
+                        <button className="bg-[#111111] text-green-700 px-8 py-4 rounded-lg font-bold hover:bg-green-50">
                             Add to Excel Now
                         </button>
                         <Link href="#how-it-works" className="border-2 border-white text-white px-8 py-4 rounded-lg font-bold hover:bg-green-600">
@@ -29,7 +29,7 @@ export default function ExcelAuditPage() {
             {/* Features */}
             <section className="py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-4xl font-black text-center mb-16 text-slate-900">
+                    <h2 className="text-4xl font-black text-center mb-16 text-white">
                         What You Get
                     </h2>
                     <div className="grid md:grid-cols-2 gap-8">
@@ -51,9 +51,9 @@ export default function ExcelAuditPage() {
                                 desc: "Click to see low-carbon swaps with cost + carbon comparison in real-time.",
                             },
                         ].map((feature) => (
-                            <div key={feature.title} className="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
-                                <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-                                <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
+                            <div key={feature.title} className="bg-[#111111] p-8 rounded-xl shadow-sm border border-white/5">
+                                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                                <p className="text-slate-400 leading-relaxed">{feature.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -61,9 +61,9 @@ export default function ExcelAuditPage() {
             </section>
 
             {/* How It Works */}
-            <section id="how-it-works" className="bg-white py-20 px-6">
+            <section id="how-it-works" className="bg-[#111111] py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-4xl font-black text-center mb-16 text-slate-900">
+                    <h2 className="text-4xl font-black text-center mb-16 text-white">
                         3 Steps to Audit Your BOM
                     </h2>
                     <div className="space-y-12">
@@ -89,8 +89,8 @@ export default function ExcelAuditPage() {
                                     {item.step}
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{item.title}</h3>
-                                    <p className="text-slate-600 text-lg leading-relaxed">{item.desc}</p>
+                                    <h3 className="text-2xl font-bold text-white mb-2">{item.title}</h3>
+                                    <p className="text-slate-400 text-lg leading-relaxed">{item.desc}</p>
                                 </div>
                             </div>
                         ))}
@@ -99,12 +99,12 @@ export default function ExcelAuditPage() {
             </section>
 
             {/* Requirements */}
-            <section className="py-20 px-6 bg-slate-50">
+            <section className="py-20 px-6 bg-[#0a0a0a]">
                 <div className="max-w-4xl mx-auto">
-                    <h2 className="text-3xl font-black text-center mb-12 text-slate-900">
+                    <h2 className="text-3xl font-black text-center mb-12 text-white">
                         System Requirements
                     </h2>
-                    <div className="bg-white p-8 rounded-xl border border-slate-200">
+                    <div className="bg-[#111111] p-8 rounded-xl border border-[#aaff00]/10">
                         <ul className="space-y-4">
                             {[
                                 "Microsoft Excel Online (Web) or Excel Desktop 2019+",
@@ -114,7 +114,7 @@ export default function ExcelAuditPage() {
                             ].map((req) => (
                                 <li key={req} className="flex items-center gap-3">
                                     <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                                    <span className="text-slate-700">{req}</span>
+                                    <span className="text-slate-300">{req}</span>
                                 </li>
                             ))}
                         </ul>
@@ -125,7 +125,7 @@ export default function ExcelAuditPage() {
             {/* FAQ */}
             <section className="py-20 px-6">
                 <div className="max-w-4xl mx-auto">
-                    <h2 className="text-3xl font-black text-center mb-12 text-slate-900">
+                    <h2 className="text-3xl font-black text-center mb-12 text-white">
                         Frequently Asked Questions
                     </h2>
                     <div className="space-y-6">
@@ -147,9 +147,9 @@ export default function ExcelAuditPage() {
                                 a: "Yes! Results stay in Excel. Save the file normally. No special export needed.",
                             },
                         ].map((item) => (
-                            <div key={item.q} className="bg-white p-6 rounded-xl border border-slate-200">
-                                <h3 className="font-bold text-slate-900 mb-3">{item.q}</h3>
-                                <p className="text-slate-600">{item.a}</p>
+                            <div key={item.q} className="bg-[#111111] p-6 rounded-xl border border-[#aaff00]/10">
+                                <h3 className="font-bold text-white mb-3">{item.q}</h3>
+                                <p className="text-slate-400">{item.a}</p>
                             </div>
                         ))}
                     </div>
@@ -163,7 +163,7 @@ export default function ExcelAuditPage() {
                     <p className="text-xl text-green-50 mb-8">
                         Free to start. Premium features coming soon.
                     </p>
-                    <button className="bg-white text-green-700 px-10 py-4 rounded-lg font-bold text-lg hover:bg-green-50 inline-block">
+                    <button className="bg-[#111111] text-green-700 px-10 py-4 rounded-lg font-bold text-lg hover:bg-green-50 inline-block">
                         Add to Excel Now
                     </button>
                 </div>

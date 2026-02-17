@@ -15,7 +15,7 @@ export default function AboutPage() {
         <div className="hero-orb hero-orb-1"></div>
         <div className="hero-orb hero-orb-2"></div>
         <div className="relative z-10 max-w-5xl mx-auto text-center">
-          <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-sm font-bold mb-6 border border-white/20">
+          <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111111]/10 backdrop-blur-sm text-white/90 text-sm font-bold mb-6 border border-white/20">
             <Building2 className="w-4 h-4" />
             ABOUT GREENCHAINZ
           </span>
@@ -39,20 +39,20 @@ export default function AboutPage() {
                 <Target className="w-4 h-4" />
                 OUR MISSION
               </span>
-              <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-6">
+              <h2 className="text-3xl md:text-4xl font-black text-white mb-6">
                 Making Sustainability <span className="text-aurora">Non-Negotiable</span>
               </h2>
-              <p className="text-lg text-slate-600 leading-relaxed mb-6">
+              <p className="text-lg text-slate-400 leading-relaxed mb-6">
                 The AEC industry wastes thousands of hours annually digging through archaic paperwork to verify EPDs, certifications, and LEED compliance. Suppliers with legitimate green products can&apos;t compete against greenwashing marketing claims.
               </p>
-              <p className="text-lg text-slate-600 leading-relaxed mb-6">
+              <p className="text-lg text-slate-400 leading-relaxed mb-6">
                 GreenChainz is changing that. We plug AI-powered sustainability verification directly into the tools professionals already use — Excel, Revit, and the browser — so compliance happens automatically, not as an afterthought.
               </p>
-              <p className="text-lg text-slate-700 font-semibold">
+              <p className="text-lg text-slate-300 font-semibold">
                 The current process is the Pony Express. We&apos;re bringing it to the digital age.
               </p>
             </div>
-            <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 shadow-2xl">
+            <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 border border-[#aaff00]/10 shadow-2xl">
               {/* VIDEO PLACEHOLDER - Replace src with actual video URL */}
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-300/50 cursor-pointer hover:scale-110 transition-transform duration-300">
@@ -93,13 +93,13 @@ export default function AboutPage() {
       </section>
 
       {/* What Makes Us Different */}
-      <section className="py-24 px-6 bg-white relative overflow-hidden">
+      <section className="py-24 px-6 bg-[#111111] relative overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-5">
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-5">
               What Makes Us <span className="text-ocean">Different</span>
             </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
               We&apos;re not another green marketing platform. We&apos;re the verification infrastructure.
             </p>
           </div>
@@ -108,8 +108,8 @@ export default function AboutPage() {
               <div className="feature-icon-premium">
                 <Shield className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Data-Verified, Not Self-Reported</h3>
-              <p className="text-slate-600 leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3">Data-Verified, Not Self-Reported</h3>
+              <p className="text-slate-400 leading-relaxed">
                 Every product in our system is backed by verified EPDs, third-party certifications, and real environmental data — not marketing claims.
               </p>
             </div>
@@ -117,8 +117,8 @@ export default function AboutPage() {
               <div className="feature-icon-premium">
                 <Zap className="w-8 h-8 text-cyan-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Zero Workflow Disruption</h3>
-              <p className="text-slate-600 leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3">Zero Workflow Disruption</h3>
+              <p className="text-slate-400 leading-relaxed">
                 Our tools integrate into Excel, Revit, and Chrome. No new software to learn. No process changes. Sustainability data appears where you already work.
               </p>
             </div>
@@ -126,8 +126,8 @@ export default function AboutPage() {
               <div className="feature-icon-premium">
                 <Globe className="w-8 h-8 text-violet-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Built for Compliance</h3>
-              <p className="text-slate-600 leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3">Built for Compliance</h3>
+              <p className="text-slate-400 leading-relaxed">
                 LEED, Buy Clean Act, BREEAM — we track evolving regulations so you stay ahead. Our AI flags compliance gaps before they become costly problems.
               </p>
             </div>
@@ -142,16 +142,16 @@ export default function AboutPage() {
             <Users className="w-4 h-4" />
             LEADERSHIP
           </span>
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-12">
+          <h2 className="text-3xl md:text-4xl font-black text-white mb-12">
             Built by Someone Who&apos;s <span className="text-aurora">Been There</span>
           </h2>
           <div className="card-vibrant p-10 text-left">
-            <h3 className="text-2xl font-black text-slate-900 mb-2">Jerit Norville</h3>
+            <h3 className="text-2xl font-black text-white mb-2">Jerit Norville</h3>
             <p className="text-gc-fern font-bold mb-6">Founder & CEO</p>
-            <p className="text-slate-600 leading-relaxed mb-4">
+            <p className="text-slate-400 leading-relaxed mb-4">
               Military veteran turned construction professional turned tech entrepreneur. Jerit saw firsthand how the AEC industry struggles with sustainability compliance — the manual processes, the paperwork mountains, the greenwashing that goes unchecked.
             </p>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-slate-400 leading-relaxed">
               GreenChainz was born from that frustration. Built on Azure, powered by AI, and backed by partnerships with Autodesk and Microsoft, the platform is designed to make verified sustainable sourcing as easy as ordering from Amazon.
             </p>
           </div>
@@ -159,13 +159,13 @@ export default function AboutPage() {
       </section>
 
       {/* Partners & Technology */}
-      <section className="py-24 px-6 bg-white relative overflow-hidden">
+      <section className="py-24 px-6 bg-[#111111] relative overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-5">
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-5">
               Powered by Industry Leaders
             </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
               We partner with the organizations that set the standards and provide the data.
             </p>
           </div>
@@ -213,10 +213,10 @@ export default function AboutPage() {
         <div className="deco-blob deco-blob-emerald w-[400px] h-[400px] -top-20 -left-20 opacity-20"></div>
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <div className="cta-premium p-10 md:p-14">
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-5">
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-5">
               Ready to Join the <span className="text-aurora">Green Revolution</span>?
             </h2>
-            <p className="text-lg text-slate-600 mb-10 max-w-xl mx-auto">
+            <p className="text-lg text-slate-400 mb-10 max-w-xl mx-auto">
               Whether you&apos;re an architect, contractor, or material supplier — GreenChainz makes sustainability simple.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-5">

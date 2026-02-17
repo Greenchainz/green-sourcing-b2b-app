@@ -13,7 +13,7 @@ export default function RoleSelectionPage() {
           <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-800 to-teal-600 mb-4">
             Join GreenChainz
           </h1>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             Choose your account type to get started with sustainable material sourcing
           </p>
         </div>
@@ -23,22 +23,22 @@ export default function RoleSelectionPage() {
           {/* Buyer Card */}
           <Link
             href="/login?role=buyer"
-            className="group bg-white rounded-2xl shadow-lg border-2 border-slate-200 hover:border-emerald-400 hover:shadow-xl transition-all p-8 cursor-pointer"
+            className="group bg-[#111111] rounded-2xl shadow-lg border-2 border-[#aaff00]/10 hover:border-emerald-400 hover:shadow-xl transition-all p-8 cursor-pointer"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <ShoppingCart className="w-10 h-10 text-emerald-600" />
               </div>
               
-              <h2 className="text-2xl font-bold text-slate-900 mb-3">
+              <h2 className="text-2xl font-bold text-white mb-3">
                 I'm a Buyer
               </h2>
               
-              <p className="text-slate-600 mb-6">
+              <p className="text-slate-400 mb-6">
                 Architects, contractors, and procurement professionals sourcing sustainable materials
               </p>
 
-              <ul className="text-left text-sm text-slate-700 space-y-3 mb-6 w-full">
+              <ul className="text-left text-sm text-slate-300 space-y-3 mb-6 w-full">
                 <li className="flex items-start gap-2">
                   <span className="text-emerald-600 mt-0.5">✓</span>
                   <span>Search verified sustainable materials</span>
@@ -67,22 +67,22 @@ export default function RoleSelectionPage() {
           {/* Supplier Card */}
           <Link
             href="/login?role=supplier"
-            className="group bg-white rounded-2xl shadow-lg border-2 border-slate-200 hover:border-teal-400 hover:shadow-xl transition-all p-8 cursor-pointer"
+            className="group bg-[#111111] rounded-2xl shadow-lg border-2 border-[#aaff00]/10 hover:border-teal-400 hover:shadow-xl transition-all p-8 cursor-pointer"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-100 to-cyan-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Building2 className="w-10 h-10 text-teal-600" />
               </div>
               
-              <h2 className="text-2xl font-bold text-slate-900 mb-3">
+              <h2 className="text-2xl font-bold text-white mb-3">
                 I'm a Supplier
               </h2>
               
-              <p className="text-slate-600 mb-6">
+              <p className="text-slate-400 mb-6">
                 Material suppliers and manufacturers offering sustainable building products
               </p>
 
-              <ul className="text-left text-sm text-slate-700 space-y-3 mb-6 w-full">
+              <ul className="text-left text-sm text-slate-300 space-y-3 mb-6 w-full">
                 <li className="flex items-start gap-2">
                   <span className="text-teal-600 mt-0.5">✓</span>
                   <span>List your sustainable products</span>
@@ -110,7 +110,7 @@ export default function RoleSelectionPage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-sm text-slate-600">
+        <div className="text-center text-sm text-slate-400">
           <p>
             Already have an account?{" "}
             <Link href="/login" className="text-emerald-600 hover:text-emerald-700 font-semibold">

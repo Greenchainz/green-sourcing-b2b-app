@@ -168,7 +168,7 @@ export default function SupplierDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-[#111111] p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
               <FileText className="w-6 h-6" />
@@ -183,7 +183,7 @@ export default function SupplierDashboard() {
           <p className="text-gray-500 text-sm">Active RFQs Nearby</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-[#111111] p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
               <DollarSign className="w-6 h-6" />
@@ -198,7 +198,7 @@ export default function SupplierDashboard() {
           <p className="text-gray-500 text-sm">Quotes Sent This Month</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-[#111111] p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
               <Users className="w-6 h-6" />
@@ -211,7 +211,7 @@ export default function SupplierDashboard() {
           <p className="text-gray-500 text-sm">Profile Views</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-[#111111] p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-green-50 text-green-600 rounded-lg">
               <CheckCircle className="w-6 h-6" />
@@ -231,7 +231,7 @@ export default function SupplierDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* RFQ Feed */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-[#111111] rounded-xl shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-lg font-bold text-gray-900">
                 New Opportunities
@@ -388,7 +388,7 @@ export default function SupplierDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-[#111111] rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-2">
               <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition text-left group">

@@ -3,7 +3,7 @@ import { Chrome, Download } from "lucide-react";
 
 export default function ExtensionPage() {
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-[#0a0a0a]">
             {/* Hero */}
             <section className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-20 px-6">
                 <div className="max-w-4xl mx-auto">
@@ -16,7 +16,7 @@ export default function ExtensionPage() {
                         sustainability data, carbon scores, and green alternatives right on the page.
                     </p>
                     <div className="flex gap-4 flex-wrap">
-                        <a href="https://chrome.google.com/webstore" className="bg-white text-blue-700 px-8 py-4 rounded-lg font-bold hover:bg-blue-50 flex items-center gap-2">
+                        <a href="https://chrome.google.com/webstore" className="bg-[#111111] text-blue-700 px-8 py-4 rounded-lg font-bold hover:bg-blue-50 flex items-center gap-2">
                             <Download className="w-5 h-5" />
                             Install from Chrome Store
                         </a>
@@ -30,7 +30,7 @@ export default function ExtensionPage() {
             {/* Features */}
             <section className="py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-4xl font-black text-center mb-16 text-slate-900">
+                    <h2 className="text-4xl font-black text-center mb-16 text-white">
                         Real-Time Sustainability Data
                     </h2>
                     <div className="grid md:grid-cols-3 gap-8">
@@ -48,9 +48,9 @@ export default function ExtensionPage() {
                                 desc: "Yellow flag for questionable materials. Green checkmark for verified EPD.",
                             },
                         ].map((feature) => (
-                            <div key={feature.title} className="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
-                                <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-                                <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
+                            <div key={feature.title} className="bg-[#111111] p-8 rounded-xl shadow-sm border border-white/5">
+                                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                                <p className="text-slate-400 leading-relaxed">{feature.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -58,16 +58,16 @@ export default function ExtensionPage() {
             </section>
 
             {/* Supported Sites */}
-            <section className="bg-white py-20 px-6">
+            <section className="bg-[#111111] py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-3xl font-black text-center mb-12 text-slate-900">
+                    <h2 className="text-3xl font-black text-center mb-12 text-white">
                         Works Everywhere Your Architects Shop
                     </h2>
                     <div className="grid md:grid-cols-3 gap-6">
                         {["Sweets", "Material Bank", "Specification.com"].map((site) => (
-                            <div key={site} className="bg-slate-50 p-6 rounded-lg text-center border border-slate-200">
-                                <p className="font-bold text-slate-900">{site}</p>
-                                <p className="text-slate-600 text-sm">Full support</p>
+                            <div key={site} className="bg-[#0a0a0a] p-6 rounded-lg text-center border border-[#aaff00]/10">
+                                <p className="font-bold text-white">{site}</p>
+                                <p className="text-slate-400 text-sm">Full support</p>
                             </div>
                         ))}
                     </div>
@@ -77,10 +77,10 @@ export default function ExtensionPage() {
             {/* How It Works */}
             <section id="how-it-works" className="bg-blue-50 py-20 px-6">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-4xl font-black text-center mb-16 text-slate-900">
+                    <h2 className="text-4xl font-black text-center mb-16 text-white">
                         How It Works
                     </h2>
-                    <div className="bg-white p-8 rounded-xl border border-blue-200">
+                    <div className="bg-[#111111] p-8 rounded-xl border border-blue-200">
                         <ol className="space-y-6">
                             {[
                                 {
@@ -105,8 +105,8 @@ export default function ExtensionPage() {
                                         {idx + 1}
                                     </span>
                                     <div>
-                                        <h3 className="font-bold text-slate-900">{item.title}</h3>
-                                        <p className="text-slate-600">{item.desc}</p>
+                                        <h3 className="font-bold text-white">{item.title}</h3>
+                                        <p className="text-slate-400">{item.desc}</p>
                                     </div>
                                 </li>
                             ))}
@@ -118,10 +118,10 @@ export default function ExtensionPage() {
             {/* Privacy */}
             <section className="py-20 px-6">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-3xl font-black mb-8 text-slate-900">
+                    <h2 className="text-3xl font-black mb-8 text-white">
                         Privacy First
                     </h2>
-                    <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">
+                    <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">
                         We don't track which products you view. We don't log your browsing.
                         We just add data to the page you're already on.
                     </p>
@@ -135,7 +135,7 @@ export default function ExtensionPage() {
                     <p className="text-xl text-blue-50 mb-8">
                         Join 10K+ architects already using the Sweets Interceptor.
                     </p>
-                    <a href="https://chrome.google.com/webstore" className="bg-white text-blue-700 px-10 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 inline-block flex items-center gap-2">
+                    <a href="https://chrome.google.com/webstore" className="bg-[#111111] text-blue-700 px-10 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 inline-block flex items-center gap-2">
                         <Download className="w-5 h-5" />
                         Install Extension Free
                     </a>

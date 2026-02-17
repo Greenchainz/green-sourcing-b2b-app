@@ -10,14 +10,14 @@ export default function HelpPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-                <h1 className="text-5xl font-bold text-slate-900 mb-6">Help & Support</h1>
-                <p className="text-xl text-slate-600 mb-12">Find answers to common questions.</p>
+                <h1 className="text-5xl font-bold text-white mb-6">Help & Support</h1>
+                <p className="text-xl text-slate-400 mb-12">Find answers to common questions.</p>
 
                 <div className="space-y-6">
                     {faqs.map((faq, i) => (
-                        <div key={i} className="bg-white rounded-lg shadow-md p-6">
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">{faq.q}</h3>
-                            <p className="text-slate-600">{faq.a}</p>
+                        <div key={i} className="bg-[#111111] rounded-lg shadow-md p-6">
+                            <h3 className="text-lg font-bold text-white mb-2">{faq.q}</h3>
+                            <p className="text-slate-400">{faq.a}</p>
                         </div>
                     ))}
                 </div>

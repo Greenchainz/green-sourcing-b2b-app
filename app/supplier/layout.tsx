@@ -36,13 +36,13 @@ export default function SupplierLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#0a0a0a]">
       {/* Mobile Top Bar */}
-      <div className="lg:hidden flex items-center justify-between bg-white border-b border-slate-200 px-4 py-3">
+      <div className="lg:hidden flex items-center justify-between bg-[#111111] border-b border-[#aaff00]/10 px-4 py-3">
         <span className="text-xl font-bold text-forest-700">GreenChainz</span>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 text-slate-600"
+          className="p-2 text-slate-400"
         >
           {sidebarOpen ? <X /> : <Menu />}
         </button>

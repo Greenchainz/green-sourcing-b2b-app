@@ -189,7 +189,7 @@ export default function MaterialSearch() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-[#111111] rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
         <div className="flex gap-4">
           <div className="flex-1 relative">
             <label htmlFor="material-search" className="sr-only">
@@ -366,7 +366,7 @@ export default function MaterialSearch() {
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
               key={i}
-              className="bg-white rounded-lg border border-gray-200 p-6 animate-pulse"
+              className="bg-[#111111] rounded-lg border border-gray-200 p-6 animate-pulse"
             >
               <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
               <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
@@ -375,7 +375,7 @@ export default function MaterialSearch() {
           ))}
         </div>
       ) : materials.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="text-center py-12 bg-[#111111] rounded-lg border border-gray-200">
           <p className="text-gray-500 mb-4">
             No materials found. Try adjusting your filters.
           </p>
@@ -394,7 +394,7 @@ export default function MaterialSearch() {
             {materials.map((material) => (
               <div
                 key={material.id}
-                className="bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:shadow-lg transition p-6"
+                className="bg-[#111111] rounded-lg border border-gray-200 hover:border-green-500 hover:shadow-lg transition p-6"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">

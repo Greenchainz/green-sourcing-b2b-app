@@ -110,7 +110,7 @@ export default function AdminDashboard() {
       case "pending":
         return "bg-blue-100 text-blue-600";
       default:
-        return "bg-slate-100 text-slate-600";
+        return "bg-[#1a1a1a] text-slate-400";
     }
   };
 
@@ -123,7 +123,7 @@ export default function AdminDashboard() {
       case "low":
         return "bg-blue-100 text-blue-700";
       default:
-        return "bg-slate-100 text-slate-600";
+        return "bg-[#1a1a1a] text-slate-400";
     }
   };
 
@@ -136,7 +136,7 @@ export default function AdminDashboard() {
             <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 mb-2">
               Admin Dashboard
             </h1>
-            <p className="text-slate-600">
+            <p className="text-slate-400">
               Manage the GreenChainz platform, users, and operations.
             </p>
           </div>
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
 
         {/* Platform Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:scale-[1.02] transition-transform">
+          <div className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-5 hover:scale-[1.02] transition-transform">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
                 <Users className="w-5 h-5 text-blue-600" />
@@ -160,13 +160,13 @@ export default function AdminDashboard() {
                 Total Users
               </div>
             </div>
-            <div className="font-bold text-3xl text-slate-800">{stats.totalUsers}</div>
+            <div className="font-bold text-3xl text-slate-100">{stats.totalUsers}</div>
             <div className="text-xs text-slate-500 mt-1">
               {stats.totalBuyers} buyers, {stats.totalSuppliers} suppliers
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:scale-[1.02] transition-transform">
+          <div className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-5 hover:scale-[1.02] transition-transform">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
                 <FileText className="w-5 h-5 text-emerald-600" />
@@ -175,10 +175,10 @@ export default function AdminDashboard() {
                 Active RFQs
               </div>
             </div>
-            <div className="font-bold text-3xl text-slate-800">{stats.activeRfqs}</div>
+            <div className="font-bold text-3xl text-slate-100">{stats.activeRfqs}</div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:scale-[1.02] transition-transform">
+          <div className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-5 hover:scale-[1.02] transition-transform">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
                 <Package className="w-5 h-5 text-purple-600" />
@@ -187,10 +187,10 @@ export default function AdminDashboard() {
                 Total Orders
               </div>
             </div>
-            <div className="font-bold text-3xl text-slate-800">{stats.totalOrders}</div>
+            <div className="font-bold text-3xl text-slate-100">{stats.totalOrders}</div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:scale-[1.02] transition-transform">
+          <div className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-5 hover:scale-[1.02] transition-transform">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-green-600" />
@@ -199,7 +199,7 @@ export default function AdminDashboard() {
                 Platform Revenue
               </div>
             </div>
-            <div className="font-bold text-3xl text-slate-800">
+            <div className="font-bold text-3xl text-slate-100">
               ${(stats.platformRevenue / 1000000).toFixed(1)}M
             </div>
           </div>
@@ -247,9 +247,9 @@ export default function AdminDashboard() {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Pending Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-semibold text-slate-900">Pending Actions</h3>
+          <div className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center">
+              <h3 className="font-semibold text-white">Pending Actions</h3>
               <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">
                 {pendingActions.reduce((sum, action) => sum + action.count, 0)} items
               </span>
@@ -258,11 +258,11 @@ export default function AdminDashboard() {
               {pendingActions.map((action) => (
                 <div
                   key={action.id}
-                  className="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="p-4 hover:bg-[#0a0a0a] transition-colors cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
-                      <h4 className="text-sm font-medium text-slate-900">{action.title}</h4>
+                      <h4 className="text-sm font-medium text-white">{action.title}</h4>
                       <span
                         className={`inline-block mt-2 text-xs font-medium px-2 py-1 rounded-full ${getPriorityColor(
                           action.priority
@@ -271,12 +271,12 @@ export default function AdminDashboard() {
                         {action.priority} priority
                       </span>
                     </div>
-                    <div className="text-2xl font-bold text-slate-700">{action.count}</div>
+                    <div className="text-2xl font-bold text-slate-300">{action.count}</div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-100">
+            <div className="px-6 py-3 bg-[#0a0a0a] border-t border-white/5">
               <Link
                 href="/dashboard/admin/users"
                 className="text-sm font-medium text-blue-600 hover:text-blue-700"
@@ -287,27 +287,27 @@ export default function AdminDashboard() {
           </div>
 
           {/* Recent Activity */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-900">Recent Activity</h3>
+          <div className="lg:col-span-2 bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/5">
+              <h3 className="font-semibold text-white">Recent Activity</h3>
             </div>
             <div className="divide-y divide-slate-100">
               {activity.map((item) => (
                 <div
                   key={item.id}
-                  className="p-4 hover:bg-slate-50 transition-colors flex items-start gap-4"
+                  className="p-4 hover:bg-[#0a0a0a] transition-colors flex items-start gap-4"
                 >
                   <div className={`mt-1 p-2 rounded-full ${getActivityColor(item.status)}`}>
                     {getActivityIcon(item.type)}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-slate-900">{item.msg}</p>
+                    <p className="text-sm text-white">{item.msg}</p>
                     <p className="text-xs text-slate-500 mt-1">{item.time}</p>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-100">
+            <div className="px-6 py-3 bg-[#0a0a0a] border-t border-white/5">
               <Link
                 href="/dashboard/admin/analytics"
                 className="text-sm font-medium text-blue-600 hover:text-blue-700"
@@ -322,37 +322,37 @@ export default function AdminDashboard() {
         <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link
             href="/dashboard/admin/users"
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:border-blue-300 hover:shadow-md transition-all group"
+            className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-5 hover:border-blue-300 hover:shadow-md transition-all group"
           >
             <Users className="w-8 h-8 text-blue-600 mb-3 group-hover:scale-110 transition-transform" />
-            <h4 className="font-semibold text-slate-900">Manage Users</h4>
+            <h4 className="font-semibold text-white">Manage Users</h4>
             <p className="text-xs text-slate-500 mt-1">View and manage all platform users</p>
           </Link>
 
           <Link
             href="/dashboard/admin/analytics"
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:border-emerald-300 hover:shadow-md transition-all group"
+            className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-5 hover:border-emerald-300 hover:shadow-md transition-all group"
           >
             <BarChart3 className="w-8 h-8 text-emerald-600 mb-3 group-hover:scale-110 transition-transform" />
-            <h4 className="font-semibold text-slate-900">Analytics</h4>
+            <h4 className="font-semibold text-white">Analytics</h4>
             <p className="text-xs text-slate-500 mt-1">View platform metrics and insights</p>
           </Link>
 
           <Link
             href="/dashboard/admin/settings"
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:border-purple-300 hover:shadow-md transition-all group"
+            className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-5 hover:border-purple-300 hover:shadow-md transition-all group"
           >
             <Settings className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-            <h4 className="font-semibold text-slate-900">Settings</h4>
+            <h4 className="font-semibold text-white">Settings</h4>
             <p className="text-xs text-slate-500 mt-1">Configure platform settings</p>
           </Link>
 
           <Link
             href="/dashboard/admin/users?filter=pending"
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:border-amber-300 hover:shadow-md transition-all group"
+            className="bg-[#111111] rounded-xl shadow-sm border border-[#aaff00]/10 p-5 hover:border-amber-300 hover:shadow-md transition-all group"
           >
             <Shield className="w-8 h-8 text-amber-600 mb-3 group-hover:scale-110 transition-transform" />
-            <h4 className="font-semibold text-slate-900">Verifications</h4>
+            <h4 className="font-semibold text-white">Verifications</h4>
             <p className="text-xs text-slate-500 mt-1">Review pending verifications</p>
           </Link>
         </div>

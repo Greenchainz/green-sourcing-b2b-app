@@ -33,7 +33,7 @@ const STATUS_STYLES: Record<string, string> = {
   pending: "bg-blue-100 text-blue-700 border-blue-200",
   quoted: "bg-amber-100 text-amber-700 border-amber-200",
   accepted: "bg-green-100 text-green-700 border-green-200",
-  declined: "bg-slate-100 text-slate-700 border-slate-200",
+  declined: "bg-[#1a1a1a] text-slate-300 border-[#aaff00]/10",
   expired: "bg-red-100 text-red-700 border-red-200",
 };
 
@@ -129,56 +129,56 @@ export default function SupplierRFQsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">RFQ Responses</h1>
-        <p className="text-slate-600">
+        <h1 className="text-2xl font-bold text-white">RFQ Responses</h1>
+        <p className="text-slate-400">
           Manage incoming requests and send quotes to potential buyers.
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-50 rounded-lg">
               <MessageSquare className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{pendingCount}</p>
+              <p className="text-2xl font-bold text-white">{pendingCount}</p>
               <p className="text-sm text-slate-500">Pending</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-amber-50 rounded-lg">
               <DollarSign className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{quotedCount}</p>
+              <p className="text-2xl font-bold text-white">{quotedCount}</p>
               <p className="text-sm text-slate-500">Quoted</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-50 rounded-lg">
               <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">
+              <p className="text-2xl font-bold text-white">
                 {rfqs.filter((r) => r.status === "accepted").length}
               </p>
               <p className="text-sm text-slate-500">Won</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-50 rounded-lg">
-              <Clock className="h-5 w-5 text-slate-600" />
+            <div className="p-2 bg-[#0a0a0a] rounded-lg">
+              <Clock className="h-5 w-5 text-slate-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{rfqs.length}</p>
+              <p className="text-2xl font-bold text-white">{rfqs.length}</p>
               <p className="text-sm text-slate-500">Total</p>
             </div>
           </div>
@@ -194,11 +194,11 @@ export default function SupplierRFQsPage() {
             placeholder="Search by project, buyer, or material..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
+            className="w-full pl-10 pr-4 py-2.5 border border-[#aaff00]/10 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-forest-500 outline-none"
           />
         </div>
         <div className="flex gap-2">
-          <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1">
+          <div className="flex items-center bg-[#111111] border border-[#aaff00]/10 rounded-lg p-1">
             {["all", "pending", "quoted", "accepted"].map((status) => (
               <button
                 key={status}
@@ -206,14 +206,14 @@ export default function SupplierRFQsPage() {
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   filter === status
                     ? "bg-slate-900 text-white"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+          <button className="flex items-center gap-2 px-4 py-2 border border-[#aaff00]/10 rounded-lg text-slate-400 hover:bg-[#0a0a0a]">
             <Filter className="h-4 w-4" />
             <span className="hidden sm:inline">Filter</span>
           </button>
@@ -224,9 +224,9 @@ export default function SupplierRFQsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           {filteredRfqs.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+            <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-12 text-center">
               <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">
+              <h3 className="text-lg font-medium text-white mb-2">
                 No RFQs found
               </h3>
               <p className="text-slate-500">
@@ -240,16 +240,16 @@ export default function SupplierRFQsPage() {
               <div
                 key={rfq.id}
                 onClick={() => setSelectedRfq(rfq)}
-                className={`bg-white rounded-xl border shadow-sm p-6 cursor-pointer transition-all ${
+                className={`bg-[#111111] rounded-xl border shadow-sm p-6 cursor-pointer transition-all ${
                   selectedRfq?.id === rfq.id
                     ? "border-forest-500 ring-2 ring-forest-100"
-                    : "border-slate-200 hover:border-slate-300"
+                    : "border-[#aaff00]/10 hover:border-[#aaff00]/15"
                 }`}
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-semibold text-lg text-slate-900">
+                      <h3 className="font-semibold text-lg text-white">
                         {rfq.project_name}
                       </h3>
                       <span
@@ -266,19 +266,19 @@ export default function SupplierRFQsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-slate-50 rounded-lg p-3">
+                  <div className="bg-[#0a0a0a] rounded-lg p-3">
                     <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">
                       Material
                     </p>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-white">
                       {rfq.material_name || rfq.product_name || "N/A"}
                     </p>
                   </div>
-                  <div className="bg-slate-50 rounded-lg p-3">
+                  <div className="bg-[#0a0a0a] rounded-lg p-3">
                     <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">
                       Quantity
                     </p>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-white">
                       {rfq.quantity} {rfq.unit}
                     </p>
                   </div>
@@ -311,7 +311,7 @@ export default function SupplierRFQsPage() {
         {/* Detail Panel */}
         <div className="lg:col-span-1">
           {selectedRfq ? (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sticky top-6">
+            <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6 sticky top-6">
               <div className="mb-6">
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
@@ -320,7 +320,7 @@ export default function SupplierRFQsPage() {
                 >
                   {selectedRfq.status.toUpperCase()}
                 </span>
-                <h2 className="text-xl font-bold text-slate-900 mt-3">
+                <h2 className="text-xl font-bold text-white mt-3">
                   {selectedRfq.project_name}
                 </h2>
                 <p className="text-slate-500">{selectedRfq.buyer_name}</p>
@@ -331,7 +331,7 @@ export default function SupplierRFQsPage() {
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">
                     Material Requested
                   </p>
-                  <p className="text-slate-900 font-medium">
+                  <p className="text-white font-medium">
                     {selectedRfq.material_name || selectedRfq.product_name}
                   </p>
                 </div>
@@ -339,7 +339,7 @@ export default function SupplierRFQsPage() {
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">
                     Quantity
                   </p>
-                  <p className="text-slate-900 font-medium">
+                  <p className="text-white font-medium">
                     {selectedRfq.quantity} {selectedRfq.unit}
                   </p>
                 </div>
@@ -348,7 +348,7 @@ export default function SupplierRFQsPage() {
                     <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">
                       Location
                     </p>
-                    <p className="text-slate-900 font-medium flex items-center gap-1">
+                    <p className="text-white font-medium flex items-center gap-1">
                       <MapPin className="h-4 w-4 text-slate-400" />
                       {selectedRfq.location}
                     </p>
@@ -370,7 +370,7 @@ export default function SupplierRFQsPage() {
                     <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">
                       Message
                     </p>
-                    <p className="text-slate-600 text-sm bg-slate-50 rounded-lg p-3">
+                    <p className="text-slate-400 text-sm bg-[#0a0a0a] rounded-lg p-3">
                       {selectedRfq.message}
                     </p>
                   </div>
@@ -378,7 +378,7 @@ export default function SupplierRFQsPage() {
               </div>
 
               <div className="flex gap-3">
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors">
+                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-[#aaff00]/10 rounded-lg text-slate-300 font-medium hover:bg-[#0a0a0a] transition-colors">
                   <MessageSquare className="h-4 w-4" />
                   Message
                 </button>
@@ -389,7 +389,7 @@ export default function SupplierRFQsPage() {
               </div>
             </div>
           ) : (
-            <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 text-center">
+            <div className="bg-[#0a0a0a] rounded-xl border border-dashed border-[#aaff00]/15 p-8 text-center">
               <MessageSquare className="h-10 w-10 text-slate-300 mx-auto mb-3" />
               <p className="text-slate-500 text-sm">
                 Select an RFQ to view details

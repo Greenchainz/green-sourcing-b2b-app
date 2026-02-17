@@ -81,17 +81,17 @@ export default function SupplierDashboardHome() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-2xl font-bold text-white">
           Dashboard Overview
         </h1>
-        <p className="text-slate-600">
+        <p className="text-slate-400">
           Welcome back! Here is what's happening with your products.
         </p>
       </div>
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-[#111111] p-6 rounded-xl border border-[#aaff00]/10 shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-blue-50 rounded-lg">
               <MessageSquare className="h-6 w-6 text-blue-600" />
@@ -102,13 +102,13 @@ export default function SupplierDashboardHome() {
               </span>
             )}
           </div>
-          <h3 className="text-3xl font-bold text-slate-900">
+          <h3 className="text-3xl font-bold text-white">
             {metrics.active_rfqs}
           </h3>
           <p className="text-slate-500 text-sm mt-1">Active RFQs</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-[#111111] p-6 rounded-xl border border-[#aaff00]/10 shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-purple-50 rounded-lg">
               <Eye className="h-6 w-6 text-purple-600" />
@@ -117,31 +117,31 @@ export default function SupplierDashboardHome() {
               <TrendingUp className="h-3 w-3 mr-1" /> +12%
             </span>
           </div>
-          <h3 className="text-3xl font-bold text-slate-900">
+          <h3 className="text-3xl font-bold text-white">
             {metrics.profile_views}
           </h3>
           <p className="text-slate-500 text-sm mt-1">Profile Views (30d)</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-[#111111] p-6 rounded-xl border border-[#aaff00]/10 shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-amber-50 rounded-lg">
               <AlertCircle className="h-6 w-6 text-amber-600" />
             </div>
           </div>
-          <h3 className="text-3xl font-bold text-slate-900">
+          <h3 className="text-3xl font-bold text-white">
             {metrics.completion_score}%
           </h3>
           <p className="text-slate-500 text-sm mt-1">Profile Completion</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-[#111111] p-6 rounded-xl border border-[#aaff00]/10 shadow-sm">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-forest-50 rounded-lg">
               <Clock className="h-6 w-6 text-forest-600" />
             </div>
           </div>
-          <h3 className="text-3xl font-bold text-slate-900">
+          <h3 className="text-3xl font-bold text-white">
             {metrics.response_time_hours}h
           </h3>
           <p className="text-slate-500 text-sm mt-1">Avg. Response Time</p>
@@ -150,9 +150,9 @@ export default function SupplierDashboardHome() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent RFQs */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-            <h2 className="font-semibold text-slate-900">
+        <div className="lg:col-span-2 bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center">
+            <h2 className="font-semibold text-white">
               Recent Opportunities
             </h2>
             <Link
@@ -171,16 +171,16 @@ export default function SupplierDashboardHome() {
               recent_rfqs.map((rfq) => (
                 <div
                   key={rfq.rfq_id}
-                  className="p-6 hover:bg-slate-50 transition-colors"
+                  className="p-6 hover:bg-[#0a0a0a] transition-colors"
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium text-slate-900">
+                      <h3 className="font-medium text-white">
                         {rfq.project_name || "Untitled Project"}
                       </h3>
                       <p className="text-sm text-slate-500 mt-1">
                         Looking for:{" "}
-                        <span className="text-slate-800">
+                        <span className="text-slate-100">
                           {rfq.material_name}
                         </span>
                       </p>
@@ -197,7 +197,7 @@ export default function SupplierDashboardHome() {
                     </div>
                     <Link
                       href={`/supplier/rfqs/${rfq.rfq_id}`}
-                      className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                      className="px-4 py-2 bg-[#111111] border border-[#aaff00]/15 rounded-lg text-sm font-medium text-slate-300 hover:bg-[#0a0a0a] hover:text-white"
                     >
                       Review
                     </Link>
@@ -210,18 +210,18 @@ export default function SupplierDashboardHome() {
 
         {/* Quick Actions / Tips - Unchanged */}
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h2 className="font-semibold text-slate-900 mb-4">Quick Actions</h2>
+          <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm p-6">
+            <h2 className="font-semibold text-white mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <button className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors">
+              <button className="w-full flex items-center justify-between p-3 bg-[#0a0a0a] hover:bg-[#1a1a1a] rounded-lg text-sm font-medium text-slate-300 transition-colors">
                 Upload New EPD
                 <ArrowUpRight className="h-4 w-4 text-slate-400" />
               </button>
-              <button className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors">
+              <button className="w-full flex items-center justify-between p-3 bg-[#0a0a0a] hover:bg-[#1a1a1a] rounded-lg text-sm font-medium text-slate-300 transition-colors">
                 Update Product Catalog
                 <ArrowUpRight className="h-4 w-4 text-slate-400" />
               </button>
-              <button className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors">
+              <button className="w-full flex items-center justify-between p-3 bg-[#0a0a0a] hover:bg-[#1a1a1a] rounded-lg text-sm font-medium text-slate-300 transition-colors">
                 Add Team Member
                 <ArrowUpRight className="h-4 w-4 text-slate-400" />
               </button>
@@ -233,7 +233,7 @@ export default function SupplierDashboardHome() {
             <p className="text-forest-100 text-sm mb-4">
               Suppliers with verified EPDs get 3x more views from architects.
             </p>
-            <button className="px-4 py-2 bg-white text-forest-700 rounded-lg text-sm font-bold hover:bg-forest-50 transition-colors">
+            <button className="px-4 py-2 bg-[#111111] text-forest-700 rounded-lg text-sm font-bold hover:bg-forest-50 transition-colors">
               Verify Now
             </button>
           </div>

@@ -86,13 +86,13 @@ export default function SwapValidationDashboard() {
       <div className="gc-page min-h-screen p-6 md:p-10">
         <div className="gc-container">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-slate-200 rounded w-1/3"></div>
+            <div className="h-8 bg-[#1a1a1a] rounded w-1/3"></div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-24 bg-slate-200 rounded-lg"></div>
+                <div key={i} className="h-24 bg-[#1a1a1a] rounded-lg"></div>
               ))}
             </div>
-            <div className="h-64 bg-slate-200 rounded-lg"></div>
+            <div className="h-64 bg-[#1a1a1a] rounded-lg"></div>
           </div>
         </div>
       </div>
@@ -105,7 +105,7 @@ export default function SwapValidationDashboard() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-3xl font-bold text-white">
               Swap Validation Dashboard
             </h1>
             <p className="text-slate-500 mt-1">
@@ -131,9 +131,9 @@ export default function SwapValidationDashboard() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+            <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 p-5 shadow-sm">
               <p className="text-sm text-slate-500 uppercase tracking-wide">Total Validations</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">{stats.total}</p>
+              <p className="text-3xl font-bold text-white mt-1">{stats.total}</p>
             </div>
             <div className="bg-green-50 rounded-xl border border-green-200 p-5 shadow-sm">
               <p className="text-sm text-green-600 uppercase tracking-wide">Approved</p>
@@ -166,7 +166,7 @@ export default function SwapValidationDashboard() {
               className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                 statusFilter === status
                   ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                  : "bg-[#111111] text-slate-400 border-[#aaff00]/15 hover:bg-[#0a0a0a]"
               }`}
             >
               {status || "All"}
@@ -174,17 +174,17 @@ export default function SwapValidationDashboard() {
           ))}
           <button
             onClick={fetchData}
-            className="ml-auto px-3 py-1.5 rounded-lg text-sm bg-slate-100 hover:bg-slate-200 transition-colors"
+            className="ml-auto px-3 py-1.5 rounded-lg text-sm bg-[#1a1a1a] hover:bg-[#1a1a1a] transition-colors"
           >
             ↻ Refresh
           </button>
         </div>
 
         {/* Validations Table */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-[#111111] rounded-xl border border-[#aaff00]/10 shadow-sm overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#0a0a0a] border-b border-[#aaff00]/10">
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">ID</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Incumbent</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Sustainable</th>
@@ -204,24 +204,24 @@ export default function SwapValidationDashboard() {
                 </tr>
               ) : (
                 validations.map((v) => (
-                  <tr key={v.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-600">#{v.id}</td>
+                  <tr key={v.id} className="border-b border-white/5 hover:bg-[#0a0a0a] transition-colors">
+                    <td className="px-4 py-3 text-sm font-mono text-slate-400">#{v.id}</td>
                     <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-slate-900">{v.incumbent_name || `Material #${v.incumbent_material_id}`}</div>
+                      <div className="text-sm font-medium text-white">{v.incumbent_name || `Material #${v.incumbent_material_id}`}</div>
                       <div className="text-xs text-slate-400">{v.incumbent_category}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-slate-900">{v.sustainable_name || `Material #${v.sustainable_material_id}`}</div>
+                      <div className="text-sm font-medium text-white">{v.sustainable_name || `Material #${v.sustainable_material_id}`}</div>
                       <div className="text-xs text-slate-400">{v.sustainable_category}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${statusColors[v.validation_status] || "bg-slate-100"}`}>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${statusColors[v.validation_status] || "bg-[#1a1a1a]"}`}>
                         {statusIcons[v.validation_status]} {v.validation_status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="w-16 h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
                               v.overall_score >= 80 ? "bg-green-500" :
@@ -230,10 +230,10 @@ export default function SwapValidationDashboard() {
                             style={{ width: `${v.overall_score}%` }}
                           />
                         </div>
-                        <span className="text-sm font-medium text-slate-700">{Number(v.overall_score).toFixed(1)}%</span>
+                        <span className="text-sm font-medium text-slate-300">{Number(v.overall_score).toFixed(1)}%</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
+                    <td className="px-4 py-3 text-sm text-slate-400">
                       <span className="text-green-600">{v.passed_checks}P</span>
                       {" / "}
                       <span className="text-red-600">{v.failed_checks}F</span>
@@ -241,7 +241,7 @@ export default function SwapValidationDashboard() {
                         <span className="text-slate-400"> / {v.skipped_checks}S</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
+                    <td className="px-4 py-3 text-sm text-slate-400">
                       {v.project_city && v.project_state
                         ? `${v.project_city}, ${v.project_state}`
                         : v.project_state || "—"}
@@ -257,8 +257,8 @@ export default function SwapValidationDashboard() {
         </div>
 
         {/* Showstopper Checks Legend */}
-        <div className="mt-8 bg-slate-50 rounded-xl border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">12 Showstopper Checks</h3>
+        <div className="mt-8 bg-[#0a0a0a] rounded-xl border border-[#aaff00]/10 p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">12 Showstopper Checks</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { name: "ASTM Match", desc: "Code compatibility" },
@@ -274,8 +274,8 @@ export default function SwapValidationDashboard() {
               { name: "Warranty", desc: "Equal or better" },
               { name: "Install Method", desc: "Compatible methods" },
             ].map((check) => (
-              <div key={check.name} className="bg-white rounded-lg border border-slate-200 p-3">
-                <p className="text-sm font-medium text-slate-700">{check.name}</p>
+              <div key={check.name} className="bg-[#111111] rounded-lg border border-[#aaff00]/10 p-3">
+                <p className="text-sm font-medium text-slate-300">{check.name}</p>
                 <p className="text-xs text-slate-400">{check.desc}</p>
               </div>
             ))}
