@@ -1453,3 +1453,19 @@
 - [ ] Test PDF generation with REJECTED validation (post-deployment)
 - [x] Create CSI_FORM_GENERATOR.md documentation
 - [ ] Add sample PDF to documentation (post-deployment)
+
+
+## Microsoft AppSource Certification Blockers (URGENT)
+
+- [ ] Create Privacy Policy page (/privacy) - REQUIRED by Microsoft
+- [ ] Create Terms of Service page (/terms) - REQUIRED for SaaS
+- [ ] Create How It Works page (/how-it-works) - Currently shows placeholder
+
+
+## Microsoft AppSource Certification Readiness (COMPLETED)
+
+- [x] Create Privacy Policy page content (embedded in Privacy.tsx)
+- [x] Create Terms of Service page content (embedded in Terms.tsx)
+- [x] Create How It Works demo page (HowItWorks.tsx with 5-step workflow)
+- [x] Add routes for /privacy, /terms, /how-it-works to App.tsx
+- [x] Fix placeholder page loading issues (embedded content directly)
