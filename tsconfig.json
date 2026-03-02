@@ -29,6 +29,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@shared/*": [
+        "./shared/*"
       ]
     }
   },
@@ -41,6 +44,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "server/**/*",
+    "drizzle/**/*",
+    "client/**/*"
   ]
 }
