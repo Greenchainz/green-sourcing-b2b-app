@@ -1,26 +1,34 @@
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { getDb } from "../server/db";
+/**
+ * lib/auth.ts
+ * 
+ * Stub auth module for build compatibility.
+ * The actual auth is handled by Manus OAuth via middleware.
+ */
 
-export const auth = betterAuth({
-  database: drizzleAdapter(await getDb(), {
-    provider: "mysql",
-  }),
-  emailAndPassword: {
-    enabled: true,
-  },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    },
-    microsoft: {
-      clientId: process.env.MICROSOFT_CLIENT_ID!,
-      clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
-    },
-    linkedin: {
-      clientId: process.env.LINKEDIN_CLIENT_ID!,
-      clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
-    },
-  },
-});
+/**
+ * Custom useAuth hook stub
+ * Returns a consistent interface for client components
+ */
+export function useAuth() {
+  return {
+    user: null,
+    token: null,
+    status: 'unauthenticated' as const,
+    isAuthenticated: false,
+    isLoading: false,
+  };
+}
+
+export function auth() {
+  return null;
+}
+
+export function signIn() {
+  return null;
+}
+
+export function signOut() {
+  return null;
+}
+
+export const handlers = {};

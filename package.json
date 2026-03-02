@@ -61,7 +61,9 @@
     "resend": "^6.4.2",
     "uuid": "^13.0.0",
     "zod": "^4.3.4",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.9",
+    "pdfkit": "^0.15.0",
+    "next-auth": "^5.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
