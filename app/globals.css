@@ -3915,7 +3915,7 @@ textarea {
 /* ---------- Premium Animated Background ---------- */
 .premium-bg-animated {
   position: relative;
-  background: linear-gradient(135deg, #f5faf0 0%, #f0fdfa 25%, #f8fafc 50%, #f5faf0 75%, #f0fdfa 100%);
+  background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 25%, #0a0f0a 50%, #0d1a0d 75%, #0a0f0a 100%);
   overflow: hidden;
 }
 
