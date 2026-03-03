@@ -30,10 +30,10 @@ body {
 /* ---------- CSS Custom Properties (Brand Tokens) ---------- */
 :root {
   /* Core palette */
-  --background: 255 255 255;
-  --foreground: 15 23 42;
-  --muted-foreground: 71 85 105;
-  --border: 226 232 240;
+  --background: 10 15 10;
+  --foreground: 232 244 221;
+  --muted-foreground: 148 163 184;
+  --border: 30 41 30;
   --primary: 113 179 64;  /* Bright Fern */
 
   /* ========================================
@@ -95,10 +95,10 @@ body {
   --gc-emerald-900: #11270b;  /* Maps to Evergreen */
 
   /* Neutral slate colors */
-  --gc-slate-50: #f8fafc;
-  --gc-slate-100: #f1f5f9;
-  --gc-slate-200: #e2e8f0;
-  --gc-slate-300: #cbd5e1;
+  --gc-slate-50: #0d1117;
+  --gc-slate-100: #161b22;
+  --gc-slate-200: #21262d;
+  --gc-slate-300: #30363d;
   --gc-slate-400: #94a3b8;
   --gc-slate-500: #64748b;
   --gc-slate-600: #475569;
@@ -107,7 +107,7 @@ body {
   --gc-slate-900: #0f172a;
 
   /* Glass effects - using new brand colors */
-  --gc-glass: rgba(255, 255, 255, 0.85);
+  --gc-glass: rgba(13, 26, 13, 0.85);
   --gc-glass-border: rgba(113, 179, 64, 0.25);
   --gc-glass-shadow: 0 18px 55px rgba(17, 39, 11, 0.15);
 
@@ -162,7 +162,7 @@ body {
   );
 
   /* Glass Effects */
-  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg: rgba(13, 26, 13, 0.85);
   --glass-border: rgba(113, 179, 64, 0.2);
   --glass-shadow: 0 8px 32px rgba(17, 39, 11, 0.12);
 
