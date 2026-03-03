@@ -1347,3 +1347,125 @@
 - [x] Document showstopper thresholds and classification logic
 - [x] Add API usage examples for all tRPC procedures
 - [x] Document edge cases and error handling
+
+## Azure Migration: Consolidate Manus → Next.js
+
+### Sprint 1: Backend Migration
+- [x] Convert Drizzle schema to Prisma schema (material_technical_specs, pricing_data, swap_validations, material_assembly_specs, assembly_spec_components)
+- [x] Generate Prisma migrations for PostgreSQL
+- [x] Port swapValidationService.ts to Next.js compatible module
+- [ ] Port pricingDataService.ts to Next.js compatible module
+- [ ] Port txdotScraper.ts to Next.js compatible module
+- [x] Convert swapValidation tRPC router to Next.js API route (/api/swap-validation, /api/swap-validation/[id])
+- [x] Convert pricing data queries to Next.js API routes (/api/pricing-data, /api/pricing-data/regional-average)
+- [ ] Convert txdotScraper tRPC router to Next.js API route
+- [ ] Test all backend services with Prisma + PostgreSQL
+- [ ] Update environment variables for Azure PostgreSQL connection
+- [ ] Deploy backend to Azure staging environment
+
+### Sprint 2: Database Migration
+- [ ] Export data from TiDB (material_technical_specs, pricing_data, swap_validations)
+- [ ] Import data to Azure PostgreSQL (greenchainz-db-prod)
+- [ ] Verify data integrity and relationships
+- [ ] Update connection strings in Azure App Configuration
+
+### Sprint 3: Frontend Integration
+- [ ] Port swap validation UI components to Next.js app directory
+- [ ] Integrate TXDOT scraper admin UI into Next.js dashboard
+- [ ] Update authentication to use Azure Entra ID
+- [ ] Test end-to-end flows in staging
+
+### Sprint 4: Production Deployment
+- [ ] Run final tests on staging environment
+- [ ] Deploy to production via Azure pipeline
+- [ ] Verify greenchainz.com shows updated features
+- [ ] Monitor logs and performance
+
+
+## Swap Validation UI Dashboard
+
+### Phase 1: Admin Dashboard Page Layout
+- [x] Create `/app/admin/swap-validation/page.tsx` with admin layout
+- [ ] Add navigation link to swap validation dashboard in admin menu (post-deployment)
+- [ ] Set up page authentication (admin-only access) (post-deployment)
+- [x] Create responsive grid layout for search + results
+
+### Phase 2: Material Search Interface
+- [x] Build material search autocomplete component
+- [x] Add incumbent material selector with category filters
+- [x] Add sustainable material selector with EPD data display
+- [x] Show selected materials side-by-side comparison preview
+
+### Phase 3: Validation Trigger Form
+- [x] Create validation form with project context inputs (location, climate zone, application)
+- [x] Add "Run Validation" button that calls `/api/swap-validation`
+- [x] Implement loading state with progress indicator
+- [x] Display validation results in expandable card
+
+### Phase 4: Validation Results Table
+- [x] Build results table with columns: Date, Incumbent, Sustainable, Status, Score, Actions
+- [x] Add status badges (APPROVED=green, EXPERIMENTAL=yellow, REJECTED=red)
+- [x] Create expandable row details showing all 12 showstopper checks
+- [x] Add export to CSV button for validation history
+- [x] Implement pagination and filtering (by status, date range, material category)
+
+### Phase 5: Testing & Polish
+- [x] Create SWAP_DASHBOARD_DEPLOYMENT.md with deployment instructions
+- [ ] Test validation workflow end-to-end with real materials (post-deployment)
+- [ ] Add empty states for no results (post-deployment)
+- [ ] Add error handling for API failures
+- [ ] Create checkpoint with working dashboard
+
+
+## CSI Form 13.1A PDF Generator
+
+### Phase 1: Research & Design
+- [x] Research CSI Form 13.1A format and AIA G716 requirements
+- [x] Document required sections (project info, materials comparison, justification, cost analysis)
+- [x] Design PDF layout with GreenChainz branding
+
+### Phase 2: PDF Generation Service
+- [x] Install PDF generation library (pdfkit)
+- [x] Create CSI form template with header/footer
+- [x] Implement section 1: Project Information
+- [x] Implement section 2: Materials Comparison Table (incumbent vs sustainable)
+- [x] Implement section 3: Technical Specifications Comparison (showstopper checks)
+- [x] Implement section 4: Cost Analysis (material cost, labor cost, total cost delta)
+- [x] Implement section 5: Environmental Impact (GWP reduction, carbon savings)
+- [x] Implement section 6: Justification Statement
+- [x] Add signature blocks and approval workflow placeholders
+
+### Phase 3: API Integration
+- [x] Create `/api/swap-validation/[id]/export-csi-form` endpoint
+- [x] Fetch validation data from database
+- [x] Generate PDF with validation results
+- [x] Return PDF as downloadable file
+
+### Phase 4: Dashboard Integration
+- [x] Add "Export CSI Form" button to validation results table
+- [ ] Add "Generate CSI Form" button to validation detail view (optional enhancement)
+- [x] Implement PDF download with proper filename (project-material-date.pdf)
+- [ ] Add loading state during PDF generation (optional enhancement)
+
+### Phase 5: Testing & Documentation
+- [ ] Test PDF generation with APPROVED validation (post-deployment)
+- [ ] Test PDF generation with EXPERIMENTAL validation (post-deployment)
+- [ ] Test PDF generation with REJECTED validation (post-deployment)
+- [x] Create CSI_FORM_GENERATOR.md documentation
+- [ ] Add sample PDF to documentation (post-deployment)
+
+
+## Microsoft AppSource Certification Blockers (URGENT)
+
+- [ ] Create Privacy Policy page (/privacy) - REQUIRED by Microsoft
+- [ ] Create Terms of Service page (/terms) - REQUIRED for SaaS
+- [ ] Create How It Works page (/how-it-works) - Currently shows placeholder
+
+
+## Microsoft AppSource Certification Readiness (COMPLETED)
+
+- [x] Create Privacy Policy page content (embedded in Privacy.tsx)
+- [x] Create Terms of Service page content (embedded in Terms.tsx)
+- [x] Create How It Works demo page (HowItWorks.tsx with 5-step workflow)
+- [x] Add routes for /privacy, /terms, /how-it-works to App.tsx
+- [x] Fix placeholder page loading issues (embedded content directly)

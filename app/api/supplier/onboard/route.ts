@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+<<<<<<< HEAD
 import { sendNotification } from "@/lib/greenchainz";
+=======
+import { sendInAppNotification } from "@/lib/greenchainz";
+>>>>>>> 79f868e62b01b72fb871ca1275511fad37676d81
 
 const pool = getPool();
 
@@ -177,7 +181,11 @@ export async function POST(request: NextRequest) {
       await client.query("COMMIT");
 
       // Send welcome notification
+<<<<<<< HEAD
       await sendNotification({
+=======
+      await sendInAppNotification({
+>>>>>>> 79f868e62b01b72fb871ca1275511fad37676d81
         userId: supplier_id,
         type: "onboarding_complete",
         title: "Welcome to GreenChainz!",

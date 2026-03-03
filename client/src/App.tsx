@@ -9,6 +9,7 @@ import { ChatWidgetProvider } from "./contexts/ChatWidgetContext";
 import Home from "./pages/Home";
 import ApiTest from "./pages/ApiTest";
 import ExcelAudit from "./pages/ExcelAudit";
+import ExcelAuditWorkingTool from "./pages/ExcelAuditWorkingTool";
 import About from "./pages/About";
 import BrowserExtension from "./pages/BrowserExtension";
 import RevitPlugin from "./pages/RevitPlugin";
@@ -37,8 +38,13 @@ import { AdminSupplierDashboard } from "./pages/AdminSupplierDashboard";
 import SupplierSpecSubmission from "./pages/SupplierSpecSubmission";
 import MaterialSwap from "./pages/MaterialSwap";
 import SupplierAgentConfig from "./pages/SupplierAgentConfig";
+import SupplierMaterials from "./pages/SupplierMaterials";
+import SupplierBulkUpload from "./pages/SupplierBulkUpload";
+import SupplierAnalytics from "./pages/SupplierAnalytics";
 import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
+import { HowItWorks } from "./pages/HowItWorks";
+import Support from "./pages/Support";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
@@ -63,19 +69,23 @@ function Router() {
       <Route path="/supplier/rfqs" component={SupplierRfqDashboard} />
       <Route path="/supplier/submit-spec" component={SupplierSpecSubmission} />
       <Route path="/supplier/agent-config" component={SupplierAgentConfig} />
+      <Route path="/supplier/materials" component={SupplierMaterials} />
+      <Route path="/supplier/upload" component={SupplierBulkUpload} />
+      <Route path="/supplier/analytics" component={SupplierAnalytics} />
       <Route path="/material-swap" component={MaterialSwap} />
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/admin/verification" component={AdminVerificationQueue} />
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
-      <Route path={"/api-test"} component={ApiTest} />
-      <Route path={"/tools/excel"} component={ExcelAudit} />
-      <Route path={"/about"} component={About} />
+      <Route path={"/api-test"} component={ApiTest} />          <Route path="/excel-audit" component={ExcelAudit} />
+          <Route path="/excel-audit-tool" component={ExcelAuditWorkingTool} />      <Route path={"/about"} component={About} />
       <Route path={"/tools/extension"} component={BrowserExtension} />
       <Route path={"/tools/revit"} component={RevitPlugin} />
       <Route path={"/tools/submittal"} component={SubmittalGenerator} />
        <Route path={"/terms"} component={Terms} />
       <Route path={"/privacy"} component={Privacy} />
+      <Route path={"/support"} component={Support} />
+      <Route path={"/how-it-works"} component={HowItWorks} />
       <Route path={"404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
