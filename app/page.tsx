@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+export const revalidate = 0; // Disable static caching - always render fresh
 import Image from "next/image";
 import { ArrowRight, FileSpreadsheet, Chrome, Box, FileText, DollarSign, Leaf, Zap, Shield, TrendingDown, CheckCircle2, Sparkles, Star, Globe, Award } from "lucide-react";
 import SiteHeader from "./components/SiteHeader";
