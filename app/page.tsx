@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 
 export const revalidate = 0; // Disable static caching - always render fresh
+export const dynamic = "force-dynamic"; // Force dynamic rendering
 import Image from "next/image";
 import { ArrowRight, FileSpreadsheet, Chrome, Box, FileText, DollarSign, Leaf, Zap, Shield, TrendingDown, CheckCircle2, Sparkles, Star, Globe, Award } from "lucide-react";
 import SiteHeader from "./components/SiteHeader";
 import Footer from "./components/Footer";
 
 export default function Home() {
+  noStore(); // Prevent Next.js full-route cache
   return (
     <div className="min-h-screen premium-bg-animated">
       {/* LocalBusiness Schema for SEO */}
