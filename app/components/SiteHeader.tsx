@@ -4,7 +4,7 @@ import { ArrowRight, Sparkles } from 'lucide-react'
 
 export default function SiteHeader() {
   return (
-    <header className="gc-header sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gc-fern/10">
+    <header className="gc-header sticky top-0 z-50 bg-[#0a0f0a]/90 backdrop-blur-xl border-b border-gc-fern/20">
       <div className="gc-container">
         <div className="gc-header-inner py-4">
           {/* Logo */}
