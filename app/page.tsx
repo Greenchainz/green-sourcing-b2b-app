@@ -1,10 +1,15 @@
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
+
+export const revalidate = 0; // Disable static caching - always render fresh
+export const dynamic = "force-dynamic"; // Force dynamic rendering
 import Image from "next/image";
 import { ArrowRight, FileSpreadsheet, Chrome, Box, FileText, DollarSign, Leaf, Zap, Shield, TrendingDown, CheckCircle2, Sparkles, Star, Globe, Award } from "lucide-react";
 import SiteHeader from "./components/SiteHeader";
 import Footer from "./components/Footer";
 
 export default function Home() {
+  noStore(); // Prevent Next.js full-route cache
   return (
     <div className="min-h-screen premium-bg-animated">
       {/* LocalBusiness Schema for SEO */}
@@ -149,10 +154,10 @@ export default function Home() {
               <DollarSign className="w-4 h-4" />
               DOLLARS & SENSE
             </span>
-            <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-5">
+            <h2 className="text-4xl md:text-5xl font-black text-slate-100 mb-5">
               Green Makes <span className="text-aurora">Cents</span>
             </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
               Sustainability isn&apos;t a luxury—it&apos;s a competitive advantage. We make it affordable, accessible, and automatic.
             </p>
           </div>
@@ -163,8 +168,8 @@ export default function Home() {
               <div className="feature-icon-premium">
                 <TrendingDown className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Cut Compliance Costs</h3>
-              <p className="text-slate-600 leading-relaxed">
+              <h3 className="text-xl font-bold text-slate-100 mb-3">Cut Compliance Costs</h3>
+              <p className="text-slate-400 leading-relaxed">
                 No more expensive consultants. No manual data entry. Our AI does the heavy lifting—so your budget stays green too.
               </p>
             </div>
@@ -174,8 +179,8 @@ export default function Home() {
               <div className="feature-icon-premium">
                 <Zap className="w-8 h-8 text-cyan-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Save Hours Every Week</h3>
-              <p className="text-slate-600 leading-relaxed">
+              <h3 className="text-xl font-bold text-slate-100 mb-3">Save Hours Every Week</h3>
+              <p className="text-slate-400 leading-relaxed">
                 What used to take days now takes minutes. Instant EPD lookups, automated audits, and one-click submittals.
               </p>
             </div>
@@ -185,8 +190,8 @@ export default function Home() {
               <div className="feature-icon-premium">
                 <Shield className="w-8 h-8 text-violet-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Stay Ahead of Regulations</h3>
-              <p className="text-slate-600 leading-relaxed">
+              <h3 className="text-xl font-bold text-slate-100 mb-3">Stay Ahead of Regulations</h3>
+              <p className="text-slate-400 leading-relaxed">
                 LEED, Buy Clean, and beyond—we track the rules so you don&apos;t have to. Future-proof your projects today.
               </p>
             </div>
@@ -246,10 +251,10 @@ export default function Home() {
               <Leaf className="w-4 h-4 text-emerald-500" />
               YOUR GREEN TOOLKIT
             </span>
-            <h2 className="text-4xl md:text-5xl font-black mb-5 text-slate-900">
+            <h2 className="text-4xl md:text-5xl font-black mb-5 text-slate-100">
               Pick Your Tool. <span className="text-ocean">Keep Your Workflow.</span>
             </h2>
-            <p className="text-slate-600 text-lg max-w-2xl mx-auto">
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
               No new software to learn. We integrate directly into the tools you already use—Excel, Revit, Chrome.
             </p>
           </div>
@@ -261,11 +266,11 @@ export default function Home() {
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-emerald-200/50">
                 <FileSpreadsheet className="w-8 h-8 text-emerald-700" />
               </div>
-              <h3 className="text-2xl font-black mb-3 text-slate-900 group-hover:text-emerald-700 transition-colors">Excel Audit</h3>
-              <p className="text-slate-600 mb-6 text-base leading-relaxed">
+              <h3 className="text-2xl font-black mb-3 text-slate-100 group-hover:text-emerald-700 transition-colors">Excel Audit</h3>
+              <p className="text-slate-400 mb-6 text-base leading-relaxed">
                 Upload your BOM. Get instant carbon scores, health grades, and greener alternatives—all without leaving Excel.
               </p>
-              <div className="space-y-2 mb-6 text-sm text-slate-700">
+              <div className="space-y-2 mb-6 text-sm text-slate-300">
                 <p className="flex items-center gap-2"><span className="text-emerald-500 font-bold">✓</span> Embodied carbon (kgCO2e)</p>
                 <p className="flex items-center gap-2"><span className="text-emerald-500 font-bold">✓</span> Health hazard detection</p>
                 <p className="flex items-center gap-2"><span className="text-emerald-500 font-bold">✓</span> One-click alternatives</p>
@@ -280,11 +285,11 @@ export default function Home() {
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-100 to-sky-50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-sky-200/50">
                 <Chrome className="w-8 h-8 text-sky-700" />
               </div>
-              <h3 className="text-2xl font-black mb-3 text-slate-900 group-hover:text-sky-700 transition-colors">Browser Extension</h3>
-              <p className="text-slate-600 mb-6 text-base leading-relaxed">
+              <h3 className="text-2xl font-black mb-3 text-slate-100 group-hover:text-sky-700 transition-colors">Browser Extension</h3>
+              <p className="text-slate-400 mb-6 text-base leading-relaxed">
                 Shopping for materials online? We overlay sustainability data on any supplier site—instantly.
               </p>
-              <div className="space-y-2 mb-6 text-sm text-slate-700">
+              <div className="space-y-2 mb-6 text-sm text-slate-300">
                 <p className="flex items-center gap-2"><span className="text-sky-500 font-bold">✓</span> Real-time EPD lookups</p>
                 <p className="flex items-center gap-2"><span className="text-sky-500 font-bold">✓</span> Price + carbon comparison</p>
                 <p className="flex items-center gap-2"><span className="text-sky-500 font-bold">✓</span> Works on any website</p>
@@ -299,11 +304,11 @@ export default function Home() {
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-violet-50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-violet-200/50">
                 <Box className="w-8 h-8 text-violet-700" />
               </div>
-              <h3 className="text-2xl font-black mb-3 text-slate-900 group-hover:text-violet-700 transition-colors">Revit Plugin</h3>
-              <p className="text-slate-600 mb-6 text-base leading-relaxed">
+              <h3 className="text-2xl font-black mb-3 text-slate-100 group-hover:text-violet-700 transition-colors">Revit Plugin</h3>
+              <p className="text-slate-400 mb-6 text-base leading-relaxed">
                 The &quot;spellchecker&quot; for LEED. Scan your model in real-time and catch compliance issues before they cost you.
               </p>
-              <div className="space-y-2 mb-6 text-sm text-slate-700">
+              <div className="space-y-2 mb-6 text-sm text-slate-300">
                 <p className="flex items-center gap-2"><span className="text-violet-500 font-bold">✓</span> Live model scanning</p>
                 <p className="flex items-center gap-2"><span className="text-violet-500 font-bold">✓</span> LEED point tracking</p>
                 <p className="flex items-center gap-2"><span className="text-violet-500 font-bold">✓</span> Bulk material swaps</p>
@@ -318,11 +323,11 @@ export default function Home() {
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-amber-200/50">
                 <FileText className="w-8 h-8 text-amber-700" />
               </div>
-              <h3 className="text-2xl font-black mb-3 text-slate-900 group-hover:text-amber-700 transition-colors">Submittal Generator</h3>
-              <p className="text-slate-600 mb-6 text-base leading-relaxed">
+              <h3 className="text-2xl font-black mb-3 text-slate-100 group-hover:text-amber-700 transition-colors">Submittal Generator</h3>
+              <p className="text-slate-400 mb-6 text-base leading-relaxed">
                 Drop in a spec PDF. Get a complete submittal package with EPD-backed products—in minutes, not days.
               </p>
-              <div className="space-y-2 mb-6 text-sm text-slate-700">
+              <div className="space-y-2 mb-6 text-sm text-slate-300">
                 <p className="flex items-center gap-2"><span className="text-amber-500 font-bold">✓</span> AI spec extraction</p>
                 <p className="flex items-center gap-2"><span className="text-amber-500 font-bold">✓</span> Auto product matching</p>
                 <p className="flex items-center gap-2"><span className="text-amber-500 font-bold">✓</span> Ready-to-send PDFs</p>
@@ -339,10 +344,10 @@ export default function Home() {
       <section className="py-24 px-6 bg-mesh-gradient relative overflow-hidden">
         <div className="max-w-5xl mx-auto relative z-10">
           <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-5">
+            <h2 className="text-4xl md:text-5xl font-black text-slate-100 mb-5">
               Easy as <span className="text-cosmic">1-2-3</span>
             </h2>
-            <p className="text-lg text-slate-600">
+            <p className="text-lg text-slate-400">
               No training required. No workflow changes. Just results.
             </p>
           </div>
@@ -379,8 +384,8 @@ export default function Home() {
                   {item.step}
                 </div>
                 <span className="text-5xl mb-5 block group-hover:scale-110 transition-transform duration-300">{item.icon}</span>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{item.title}</h3>
-                <p className="text-slate-600 leading-relaxed">{item.desc}</p>
+                <h3 className="text-xl font-bold text-slate-100 mb-3">{item.title}</h3>
+                <p className="text-slate-400 leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -436,10 +441,10 @@ export default function Home() {
               <Sparkles className="w-4 h-4" />
               START TODAY
             </span>
-            <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-5">
+            <h2 className="text-4xl md:text-5xl font-black text-slate-100 mb-5">
               Ready to Make Green <span className="text-aurora">Easy</span>?
             </h2>
-            <p className="text-lg text-slate-600 mb-10 max-w-xl mx-auto">
+            <p className="text-lg text-slate-400 mb-10 max-w-xl mx-auto">
               Join the teams who&apos;ve stopped wrestling with spreadsheets and started winning green building projects.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-5">

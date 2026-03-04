@@ -17,8 +17,8 @@ body {
   margin: 0;
   font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background: #ffffff;
-  color: #0f172a;
+  background: #0a0f0a;
+  color: #e8f4dd;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -30,10 +30,10 @@ body {
 /* ---------- CSS Custom Properties (Brand Tokens) ---------- */
 :root {
   /* Core palette */
-  --background: 255 255 255;
-  --foreground: 15 23 42;
-  --muted-foreground: 71 85 105;
-  --border: 226 232 240;
+  --background: 10 15 10;
+  --foreground: 232 244 221;
+  --muted-foreground: 148 163 184;
+  --border: 30 41 30;
   --primary: 113 179 64;  /* Bright Fern */
 
   /* ========================================
@@ -95,10 +95,10 @@ body {
   --gc-emerald-900: #11270b;  /* Maps to Evergreen */
 
   /* Neutral slate colors */
-  --gc-slate-50: #f8fafc;
-  --gc-slate-100: #f1f5f9;
-  --gc-slate-200: #e2e8f0;
-  --gc-slate-300: #cbd5e1;
+  --gc-slate-50: #0d1117;
+  --gc-slate-100: #161b22;
+  --gc-slate-200: #21262d;
+  --gc-slate-300: #30363d;
   --gc-slate-400: #94a3b8;
   --gc-slate-500: #64748b;
   --gc-slate-600: #475569;
@@ -107,7 +107,7 @@ body {
   --gc-slate-900: #0f172a;
 
   /* Glass effects - using new brand colors */
-  --gc-glass: rgba(255, 255, 255, 0.85);
+  --gc-glass: rgba(13, 26, 13, 0.85);
   --gc-glass-border: rgba(113, 179, 64, 0.25);
   --gc-glass-shadow: 0 18px 55px rgba(17, 39, 11, 0.15);
 
@@ -162,7 +162,7 @@ body {
   );
 
   /* Glass Effects */
-  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg: rgba(13, 26, 13, 0.85);
   --glass-border: rgba(113, 179, 64, 0.2);
   --glass-shadow: 0 8px 32px rgba(17, 39, 11, 0.12);
 
@@ -3915,7 +3915,7 @@ textarea {
 /* ---------- Premium Animated Background ---------- */
 .premium-bg-animated {
   position: relative;
-  background: linear-gradient(135deg, #f5faf0 0%, #f0fdfa 25%, #f8fafc 50%, #f5faf0 75%, #f0fdfa 100%);
+  background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 25%, #0a0f0a 50%, #0d1a0d 75%, #0a0f0a 100%);
   overflow: hidden;
 }
 
@@ -4775,4 +4775,186 @@ textarea {
   75% { 
     box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
   }
+}
+
+/* ============================================================
+   GreenChainz Dark Theme Override
+   Applied globally — matches the dark lime-green brand identity
+   ============================================================ */
+
+/* --- Core: body & root backgrounds --- */
+body {
+  background: #0a0f0a !important;
+  color: #e8f4dd !important;
+}
+
+:root {
+  --background: 10 15 10;
+  --foreground: 232 244 221;
+  --gc-glass: rgba(20, 30, 20, 0.85);
+  --gc-glass-border: rgba(113, 179, 64, 0.30);
+  --gc-glass-shadow: 0 18px 55px rgba(0, 0, 0, 0.45);
+  --glass-bg: rgba(20, 30, 20, 0.85);
+  --glass-border: rgba(113, 179, 64, 0.25);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+}
+
+/* --- Main page wrapper --- */
+.premium-bg-animated {
+  background: linear-gradient(135deg, #0a0f0a 0%, #0d1a0d 25%, #0a0f0a 50%, #0d1a0d 75%, #0a0f0a 100%) !important;
+}
+.premium-bg-animated::before {
+  background:
+    radial-gradient(circle at 20% 80%, rgba(113, 179, 64, 0.10) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(13, 148, 136, 0.10) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(102, 157, 49, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 60% 60%, rgba(89, 139, 44, 0.06) 0%, transparent 50%) !important;
+}
+
+/* --- Header --- */
+.gc-header {
+  background: rgba(10, 15, 10, 0.85) !important;
+  border-bottom: 1px solid rgba(113, 179, 64, 0.20) !important;
+}
+.gc-header:hover {
+  background: rgba(10, 15, 10, 0.95) !important;
+}
+header.gc-header,
+header[class*="bg-white"] {
+  background: rgba(10, 15, 10, 0.90) !important;
+}
+
+/* --- Cards & glass panels --- */
+.gc-card,
+.gc-trust,
+.gc-trust-signal {
+  background: rgba(15, 25, 15, 0.80) !important;
+  border-color: rgba(113, 179, 64, 0.20) !important;
+}
+
+/* --- Page background radial gradient --- */
+.gc-page {
+  background: radial-gradient(
+    ellipse 900px 500px at 5% 5%,
+    rgba(113, 179, 64, 0.08),
+    transparent 55%
+  ),
+  radial-gradient(
+    ellipse 700px 400px at 95% 10%,
+    rgba(13, 148, 136, 0.06),
+    transparent 55%
+  ),
+  radial-gradient(
+    ellipse 600px 600px at 50% 90%,
+    rgba(102, 157, 49, 0.05),
+    transparent 50%
+  ),
+  linear-gradient(145deg, #0a0f0a 0%, #0d1a0d 35%, #0a0f0a 100%) !important;
+}
+
+/* --- Section gradients --- */
+.section-gradient-1 {
+  background: linear-gradient(180deg, #0a0f0a 0%, #0d1a0d 50%, #0a1a14 100%) !important;
+}
+.section-gradient-2 {
+  background: linear-gradient(180deg, #0a1a14 0%, #0a0f1a 50%, #140a1a 100%) !important;
+}
+.section-gradient-3 {
+  background: linear-gradient(180deg, #140a1a 0%, #1a0a10 50%, #0a0f0a 100%) !important;
+}
+.bg-mesh-gradient {
+  background:
+    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.10) 0%, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.10) 0%, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+    linear-gradient(135deg, #0a0f0a 0%, #0a1a14 50%, #0f0a1f 100%) !important;
+}
+
+/* --- Footer --- */
+.gc-footer {
+  background: #070c07 !important;
+  border-top: 1px solid rgba(113, 179, 64, 0.15) !important;
+}
+.gc-footer-heading {
+  color: #e8f4dd !important;
+}
+.gc-footer-link {
+  color: #94a3b8 !important;
+}
+.gc-footer-link:hover {
+  color: #71b340 !important;
+}
+
+/* --- Inline white backgrounds on sections --- */
+section[class*="bg-white"],
+div[class*="bg-white"],
+.bg-white {
+  background-color: #0d1a0d !important;
+}
+section[class*="bg-slate-50"],
+div[class*="bg-slate-50"],
+.bg-slate-50 {
+  background-color: #0a0f0a !important;
+}
+section[class*="bg-slate-100"],
+div[class*="bg-slate-100"],
+.bg-slate-100 {
+  background-color: #0d1a0d !important;
+}
+
+/* --- Text color overrides for readability on dark --- */
+.gc-footer-heading,
+h1, h2, h3, h4, h5, h6 {
+  color: #e8f4dd;
+}
+p, li, span:not([class*="text-"]) {
+  color: #c4d9b0;
+}
+
+/* --- Forms on dark --- */
+.gc-input,
+.gc-textarea,
+.gc-select {
+  background: rgba(15, 25, 15, 0.80) !important;
+  border-color: rgba(113, 179, 64, 0.25) !important;
+  color: #e8f4dd !important;
+}
+.gc-input:hover,
+.gc-textarea:hover,
+.gc-select:hover {
+  background: rgba(20, 35, 20, 0.90) !important;
+  border-color: rgba(113, 179, 64, 0.40) !important;
+}
+.gc-input:focus,
+.gc-textarea:focus,
+.gc-select:focus {
+  background: rgba(20, 35, 20, 0.95) !important;
+  border-color: #71b340 !important;
+}
+
+/* --- Tailwind white/light utility overrides --- */
+.bg-white { background-color: #0d1a0d !important; }
+.text-gray-900, .text-slate-900 { color: #e8f4dd !important; }
+.text-gray-700, .text-slate-700 { color: #c4d9b0 !important; }
+.text-gray-600, .text-slate-600 { color: #94a3b8 !important; }
+.text-gray-500, .text-slate-500 { color: #6b7280 !important; }
+.border-gray-200, .border-slate-200 { border-color: rgba(113, 179, 64, 0.15) !important; }
+.border-gray-100, .border-slate-100 { border-color: rgba(113, 179, 64, 0.10) !important; }
+
+/* --- Pricing / feature cards with white backgrounds --- */
+.rounded-2xl.bg-white,
+.rounded-xl.bg-white,
+.rounded-lg.bg-white {
+  background: rgba(15, 25, 15, 0.80) !important;
+  border: 1px solid rgba(113, 179, 64, 0.20) !important;
+}
+
+/* --- Inline white backgrounds used in page.tsx sections --- */
+[style*="background: white"],
+[style*="background:#fff"],
+[style*="background: #fff"],
+[style*="background-color: white"],
+[style*="background-color:#fff"] {
+  background: #0d1a0d !important;
 }

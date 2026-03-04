@@ -171,7 +171,7 @@ export default function SettingsPage() {
                     width: 22,
                     height: 22,
                     borderRadius: '50%',
-                    background: 'white',
+                    background: '#0d1a0d',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
                     transform: billingCycle === 'annual' ? 'translateX(22px)' : 'translateX(0)',
                     transition: 'transform var(--gc-duration) var(--gc-ease)',
