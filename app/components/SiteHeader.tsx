@@ -4,7 +4,7 @@ import { ArrowRight, Sparkles } from 'lucide-react'
 
 export default function SiteHeader() {
   return (
-    <header className="gc-header sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gc-fern/10">
+    <header className="gc-header sticky top-0 z-50 bg-[#0a0f0a]/90 backdrop-blur-xl border-b border-gc-fern/20">
       <div className="gc-container">
         <div className="gc-header-inner py-4">
           {/* Logo */}
@@ -38,13 +38,13 @@ export default function SiteHeader() {
           <nav className="gc-nav flex items-center gap-2" aria-label="Primary navigation">
             <Link 
               href="/rfqs/create" 
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-700 hover:text-gc-fern-dark hover:bg-gc-fern/5 rounded-lg transition-all duration-200"
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-200 hover:text-gc-fern hover:bg-gc-fern/10 rounded-lg transition-all duration-200"
             >
               Create RFQ
             </Link>
             <Link 
               href="/login" 
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-700 hover:text-gc-fern-dark hover:bg-gc-fern/5 rounded-lg transition-all duration-200"
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-200 hover:text-gc-fern hover:bg-gc-fern/10 rounded-lg transition-all duration-200"
             >
               Log in
             </Link>

@@ -39,6 +39,9 @@ ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NODE_ENV=production
 
+# Generate Prisma client
+RUN npx prisma generate 2>/dev/null || echo 'Prisma generate skipped'
+
 # Build Next.js app
 RUN pnpm run build
 

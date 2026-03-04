@@ -90,7 +90,7 @@ function CertBadge({ cert }: { cert: MaterialDetail['certificationDetails'][0] }
             fontSize: '0.7rem',
             fontWeight: 600,
             color: 'var(--gc-emerald-700)',
-            background: 'white',
+            background: '#0d1a0d',
             border: '1px solid var(--gc-emerald-300)',
             borderRadius: 'var(--gc-radius-sm)',
             textDecoration: 'none',
