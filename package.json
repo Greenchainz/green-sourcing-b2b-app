@@ -48,14 +48,9 @@
     "@tanstack/react-query": "^5.90.2",
     "@trpc/client": "^11.6.0",
     "@trpc/react-query": "^11.6.0",
-<<<<<<< HEAD
     "@trpc/server": "^11.8.0",
-    "axios": "^1.13.5",
-=======
-    "@trpc/server": "^11.6.0",
     "@types/pdfkit": "^0.17.5",
-    "axios": "^1.12.0",
->>>>>>> 79f868e62b01b72fb871ca1275511fad37676d81
+    "axios": "^1.13.5",
     "better-auth": "^1.4.18",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
