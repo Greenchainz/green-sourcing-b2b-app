@@ -1,22 +1,24 @@
-# Multi-stage build for Next.js on Azure
+# Multi-stage build for GreenChainz B2B app on Azure
 
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
 
+# Enable corepack (built into Node 20) to install pnpm without hitting npm registry
+RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+
 # Copy package files
 COPY package*.json pnpm-lock.yaml* ./
 
-# Install pnpm and dependencies (lockfileVersion 9 requires pnpm v10)
-RUN npm install -g pnpm@10.28.2 && \
-    pnpm install --no-frozen-lockfile
+# Install dependencies
+RUN pnpm install --no-frozen-lockfile
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install pnpm for build commands
-RUN npm install -g pnpm@10.28.2
+# Enable corepack for pnpm
+RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -24,7 +26,7 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy application files
 COPY . .
 
-# Accept build-time environment variables for Next.js
+# Accept build-time environment variables
 ARG NEXT_PUBLIC_AZURE_CLIENT_ID
 ARG NEXT_PUBLIC_AZURE_TENANT_ID
 ARG NEXT_PUBLIC_BACKEND_URL
@@ -42,10 +44,10 @@ ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
 # Generate Prisma client
 RUN npx prisma generate 2>/dev/null || echo 'Prisma generate skipped'
 
-# Build Next.js app
+# Build the app
 RUN pnpm run build
 
-# Stage 3: Runtime (Azure App Service optimized)
+# Stage 3: Runtime
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
@@ -56,8 +58,7 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Copy full Next.js production build (NOT standalone)
-# This works reliably - standalone was causing static file issues
+# Copy full production build
 COPY --from=builder --chown=nextjs:nodejs /app/.next /app/.next
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules /app/node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/public /app/public
@@ -66,19 +67,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/package*.json /app/
 # Switch to non-root user
 USER nextjs
 
-# Set environment variables (PORT will be set by container runtime)
+# Set environment variables
 ENV NODE_ENV=production \
     NODE_PG_FORCE_NATIVE=""
 
-# Health check endpoint (uses PORT env var from runtime)
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+  CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Expose ports (both 3000 and 3001 for flexibility)
 EXPOSE 3000 3001
 
-# Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
-# Start Next.js production server
 CMD ["npx", "next", "start"]
