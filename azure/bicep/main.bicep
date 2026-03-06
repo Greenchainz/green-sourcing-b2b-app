@@ -1,8 +1,8 @@
 targetScope = 'subscription'
 
 // === PARAMETERS ===
-@description('The location for all resources.')
-param location string = deployment().location
+@description('The Azure region to deploy resources into.')
+param location string = 'eastus2'
 
 @description('A short unique suffix (max 8 chars) for globally unique resource names.')
 @maxLength(8)
@@ -11,27 +11,18 @@ param resourceSuffix string = substring(uniqueString(subscription().id), 0, 8)
 // === RESOURCES ===
 
 // --- Resource Group ---
+// All GreenChainz agent team resources live here.
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: 'rg-greenchainz-prod-agents'
   location: location
 }
 
 // NOTE: Azure AI Foundry projects are created manually via the Azure Portal.
-// See README.md for instructions on creating and configuring your Foundry project.
+// NOTE: Cosmos DB is NOT provisioned here — use your existing Cosmos DB account.
+//       Point your agents at your existing endpoint via environment variables.
 
-// --- Agent-Specific Resources ---
-// Cosmos DB for material data, RFQs, etc.
-module cosmos 'modules/cosmos.bicep' = {
-  scope: rg
-  name: 'cosmosDbDeployment'
-  params: {
-    location: location
-    // Cosmos account names: max 44 chars
-    accountName: 'cosmos-gcz-${resourceSuffix}'
-  }
-}
-
-// Azure Blob Storage for RFQ documents and other assets
+// --- Azure Blob Storage for RFQ documents ---
+// Stores generated RFQ PDFs and Excel files produced by the RFQ Forge agent.
 module storage 'modules/storage.bicep' = {
   scope: rg
   name: 'storageAccountDeployment'
@@ -43,5 +34,5 @@ module storage 'modules/storage.bicep' = {
 }
 
 // === OUTPUTS ===
-output cosmosDbEndpoint string = cosmos.outputs.endpoint
+output resourceGroupName string = rg.name
 output storageAccountName string = storage.outputs.storageAccountName
