@@ -4,8 +4,9 @@ targetScope = 'subscription'
 @description('The location for all resources.')
 param location string = deployment().location
 
-@description('A unique suffix for all resources that require a globally unique name.')
-param resourceSuffix string = uniqueString(subscription().id)
+@description('A short unique suffix (max 8 chars) for globally unique resource names.')
+@maxLength(8)
+param resourceSuffix string = substring(uniqueString(subscription().id), 0, 8)
 
 // === RESOURCES ===
 
@@ -15,26 +16,18 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: location
 }
 
-// --- AI Foundry Project ---
-module foundry 'modules/foundry.bicep' = {
-  scope: rg
-  name: 'foundryDeployment'
-  params: {
-    location: location
-    resourceSuffix: resourceSuffix
-  }
-}
+// NOTE: Azure AI Foundry projects are created manually via the Azure Portal.
+// See README.md for instructions on creating and configuring your Foundry project.
 
-// --- Agent-Specific Resources (Databases, Storage, etc.) ---
-// Note: These would be more detailed in a full implementation
-
+// --- Agent-Specific Resources ---
 // Cosmos DB for material data, RFQs, etc.
 module cosmos 'modules/cosmos.bicep' = {
   scope: rg
   name: 'cosmosDbDeployment'
   params: {
     location: location
-    accountName: 'cosmos-greenchainz-${resourceSuffix}'
+    // Cosmos account names: max 44 chars
+    accountName: 'cosmos-gcz-${resourceSuffix}'
   }
 }
 
@@ -44,11 +37,11 @@ module storage 'modules/storage.bicep' = {
   name: 'storageAccountDeployment'
   params: {
     location: location
-    storageAccountName: 'stgreenchainz${resourceSuffix}'
+    // Storage account names: 3-24 chars, lowercase letters and numbers ONLY
+    storageAccountName: 'stgcz${resourceSuffix}'
   }
 }
 
 // === OUTPUTS ===
-output foundryProjectName string = foundry.outputs.projectName
 output cosmosDbEndpoint string = cosmos.outputs.endpoint
 output storageAccountName string = storage.outputs.storageAccountName
