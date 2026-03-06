@@ -2,7 +2,7 @@ targetScope = 'subscription'
 
 // === PARAMETERS ===
 @description('The Azure region to deploy resources into.')
-param location string = 'eastus2'
+param location string = 'eastus'
 
 @description('A short unique suffix (max 8 chars) for globally unique resource names.')
 @maxLength(8)
