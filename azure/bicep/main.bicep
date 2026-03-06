@@ -29,7 +29,8 @@ module storage 'modules/storage.bicep' = {
   params: {
     location: location
     // Storage account names: 3-24 chars, lowercase letters and numbers ONLY
-    storageAccountName: 'stgcz${resourceSuffix}'
+    // 'v2' prefix distinguishes this from the failed eastus deployment
+    storageAccountName: 'stgczv2${resourceSuffix}'
   }
 }
 
