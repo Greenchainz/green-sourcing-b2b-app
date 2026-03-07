@@ -57,9 +57,9 @@ export async function loadSecrets(): Promise<void> {
         "AUTH-SECRET": "AUTH_SECRET",
         "BETTER-AUTH-URL": "BETTER_AUTH_URL",
         // Microsoft Entra ID (user login + Marketplace API)
-        "AZURE-AD-CLIENT-ID": "AZURE_CLIENT_ID",
-        "AZURE-AD-CLIENT-SECRET": "AZURE_CLIENT_SECRET",
-        "AZURE-AD-TENANT-ID": "AZURE_TENANT_ID",
+        "AZURE-AD-CLIENT-ID": "AZURE_AD_CLIENT_ID",
+        "AZURE-AD-CLIENT-SECRET": "AZURE_AD_CLIENT_SECRET",
+        "AZURE-AD-TENANT-ID": "AZURE_AD_TENANT_ID",
         // Google OAuth
         "GOOGLE-CLIENTID": "GOOGLE_CLIENT_ID",
         "GOOGLE-SECRET": "GOOGLE_CLIENT_SECRET",
