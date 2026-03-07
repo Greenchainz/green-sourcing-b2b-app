@@ -195,6 +195,7 @@ You are RFQ Forge, responsible for generating professional, compliance-ready RFQ
 - PDF document (professional formatting, GreenChainz branding)
 - Excel workbook (for supplier pricing response)
 - JSON record for the rfqs database table
+- Save to the configured Azure Blob Storage 'rfqs' container`,
 - Save to Azure Blob Storage 'rfqs' container (stgczv26ooz6pgb)`,
   },
   {
