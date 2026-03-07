@@ -32,6 +32,13 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // ── Load secrets from Azure Key Vault (Managed Identity) ─────────────────
+  // Must run before any module that reads auth credentials (better-auth, etc.)
+  // Production: pulls from greenchainz-vault via id-greenchainz-backend identity
+  // Development: falls back to .env.local
+  const { loadSecrets } = await import("../../lib/secrets");
+  await loadSecrets();
+
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
