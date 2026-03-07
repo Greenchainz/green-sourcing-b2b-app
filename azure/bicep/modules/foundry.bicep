@@ -11,6 +11,8 @@ param deployFoundry bool = false
 // Set deployFoundry=true only after verifying the resource type is available in your
 // subscription and region and all required configuration is in place.
 resource foundryProject 'Microsoft.AI/foundryProjects@2023-10-31-preview' = if (deployFoundry) {
+// AI Foundry Project
+resource foundryProject 'Microsoft.AI/foundryProjects@2023-10-31-preview' = {
   name: 'greenchainz-agent-foundry-${resourceSuffix}'
   location: location
   properties: {
@@ -20,3 +22,7 @@ resource foundryProject 'Microsoft.AI/foundryProjects@2023-10-31-preview' = if (
 }
 
 output projectName string = deployFoundry ? foundryProject.name : ''
+// This is a simplified representation. A real implementation would involve
+// defining agent profiles, tool connections, and other configurations here.
+
+output projectName string = foundryProject.name
