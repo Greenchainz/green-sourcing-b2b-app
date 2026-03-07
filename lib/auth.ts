@@ -51,9 +51,9 @@ export const { handlers, auth, signIn, signOut } = betterAuth({
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
     },
     microsoft: {
-      clientId: process.env.AZURE_CLIENT_ID!,
-      clientSecret: process.env.AZURE_CLIENT_SECRET!,
-      tenantId: process.env.AZURE_TENANT_ID!,
+      clientId: process.env.AZURE_CLIENT_ID_APP!,
+      clientSecret: process.env.AZURE_CLIENT_SECRET_APP!,
+      tenantId: process.env.AZURE_TENANT_ID_APP!,
     },
   },
 
