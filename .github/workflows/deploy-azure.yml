@@ -36,6 +36,9 @@ jobs:
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_SITE_URL=https://greenchainz.com \
+            --build-arg NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }} \
+            --build-arg NEXT_PUBLIC_AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }} \
+            --build-arg NEXT_PUBLIC_BACKEND_URL=${{ secrets.NEXT_PUBLIC_BACKEND_URL }} \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest \
             -f ./Dockerfile .
