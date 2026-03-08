@@ -45,6 +45,7 @@ import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
 import { HowItWorks } from "./pages/HowItWorks";
 import Support from "./pages/Support";
+import Login from "./pages/Login";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
@@ -86,6 +87,7 @@ function Router() {
       <Route path={"/privacy"} component={Privacy} />
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
+      <Route path="/login" component={Login} />
       <Route path={"404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

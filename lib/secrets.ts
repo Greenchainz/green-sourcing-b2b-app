@@ -53,6 +53,8 @@ export async function loadSecrets(): Promise<void> {
       // Key Vault names use hyphens (Azure naming convention).
       // Env var names use underscores (Node.js convention).
       const secretMappings: Record<string, string> = {
+        // JWT session signing
+        "jwt-secret": "JWT_SECRET",
         // better-auth
         "AUTH-SECRET": "AUTH_SECRET",
         "BETTER-AUTH-URL": "BETTER_AUTH_URL",
@@ -60,6 +62,8 @@ export async function loadSecrets(): Promise<void> {
         "AZURE-AD-CLIENT-ID": "AZURE_AD_CLIENT_ID",
         "AZURE-AD-CLIENT-SECRET": "AZURE_AD_CLIENT_SECRET",
         "AZURE-AD-TENANT-ID": "AZURE_AD_TENANT_ID",
+        // microsoft-client-secret is the real Azure AD client secret
+        "microsoft-client-secret": "AZURE_AD_CLIENT_SECRET",
         // Google OAuth
         "GOOGLE-CLIENTID": "GOOGLE_CLIENT_ID",
         "GOOGLE-SECRET": "GOOGLE_CLIENT_SECRET",

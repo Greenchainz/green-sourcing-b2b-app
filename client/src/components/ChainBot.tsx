@@ -236,7 +236,7 @@ export function ChainBot() {
       {isOpen && (
         <div
           className={cn(
-            "fixed bottom-20 left-4 z-50 flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300",
+            "fixed bottom-24 right-6 z-50 flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300",
             isMinimized ? "w-80 h-14" : "w-[420px] h-[600px] max-h-[80vh]"
           )}
         >
@@ -421,7 +421,7 @@ export function ChainBot() {
       <button
         onClick={toggleOpen}
         className={cn(
-          "fixed bottom-4 left-4 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110",
+          "fixed bottom-24 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110",
           isOpen
             ? "bg-gray-700 hover:bg-gray-800 shadow-lg"
             : "bg-[#9FE870] hover:bg-[#8DD85F] shadow-[0_0_20px_rgba(159,232,112,0.6)] hover:shadow-[0_0_30px_rgba(159,232,112,0.8)] animate-pulse"
