@@ -24,10 +24,10 @@ function getEnv(key: string): string {
   return process.env[key] ?? "";
 }
 
-function buildRedirectUri(req: Request, provider: string): string {
-  const proto = req.headers["x-forwarded-proto"] ?? req.protocol ?? "https";
-  const host = req.headers["x-forwarded-host"] ?? req.headers.host ?? "greenchainz.com";
-  return `${proto}://${host}/api/auth/callback/${provider}`;
+function buildRedirectUri(_req: Request, provider: string): string {
+  // Always use the canonical production domain to avoid Container Apps internal domain mismatch
+  const baseUrl = process.env.APP_BASE_URL || "https://greenchainz.com";
+  return `${baseUrl}/api/auth/callback/${provider}`;
 }
 
 // In-memory state store (good enough for stateless container; use Redis for multi-replica)
