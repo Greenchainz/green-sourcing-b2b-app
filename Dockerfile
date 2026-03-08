@@ -49,12 +49,14 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S appuser -u 1001
 # Copy the production build output
-# dist/index.js  = Express server bundle (esbuild output)
+# dist/index.js  = Express server bundle (esbuild --packages=external output)
 # dist/public/   = Vite client build (static assets served by Express)
 COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+# node_modules REQUIRED: esbuild uses --packages=external so deps are NOT bundled
+COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
 # Copy public folder (icons, manifests, email templates, etc.)
 COPY --from=builder --chown=appuser:nodejs /app/public ./public
-# Copy package.json for metadata only
+# Copy package.json for module resolution
 COPY --from=builder --chown=appuser:nodejs /app/package.json ./package.json
 # Switch to non-root user
 USER appuser
