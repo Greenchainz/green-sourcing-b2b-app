@@ -72,9 +72,10 @@ export async function loadSecrets(): Promise<void> {
         "LINKEDIN-SECRET": "LINKEDIN_CLIENT_SECRET",
         // Database
         "DATABASE-URL": "DATABASE_URL",
-        // Email (Zoho SMTP)
-        "ZOHO-EMAIL-USER": "ZOHO_EMAIL_USER",
-        "ZOHO-EMAIL-PASSWORD": "ZOHO_EMAIL_PASSWORD",
+        // Email (Zeptomail SMTP — transactional, dedicated IPs)
+        // Username is always the literal "emailapikey" but stored in KV for consistency
+        "ZEPTOMAIL-SMTP-USER": "ZEPTOMAIL_SMTP_USER",
+        "ZEPTOMAIL-SMTP-PASSWORD": "ZEPTOMAIL_SMTP_PASSWORD",
         // App URLs
         "FRONTEND-URL": "FRONTEND_URL",
         // Azure Web PubSub (real-time messaging)
