@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 
 // SVG icons for providers
@@ -28,12 +27,11 @@ const LinkedInIcon = () => (
 );
 
 export default function Login() {
-  const [location] = useLocation();
   const { user, isLoading } = useAuth();
 
   // Parse returnPath and role from query string
   const params = new URLSearchParams(window.location.search);
-  const returnPath = params.get("returnPath") || "/";
+  const returnPath = params.get("returnPath") || "/dashboard";
   const role = params.get("role") || "";
   const error = params.get("error");
 
@@ -44,11 +42,10 @@ export default function Login() {
     }
   }, [user, isLoading, returnPath]);
 
-  const buildProviderUrl = (provider: string) => {
-    const url = new URL(`/api/auth/${provider}`, window.location.origin);
-    url.searchParams.set("returnPath", returnPath);
-    if (role) url.searchParams.set("role", role);
-    return url.toString();
+  // Easy Auth endpoints — these are handled by the Azure Container Apps sidecar,
+  // NOT by our Express server. Must use <a> tags (not client-side routing).
+  const buildEasyAuthUrl = (provider: "aad" | "google" | "linkedin") => {
+    return `/.auth/login/${provider}?post_login_redirect_uri=${encodeURIComponent(returnPath)}`;
   };
 
   const errorMessages: Record<string, string> = {
@@ -89,10 +86,11 @@ export default function Login() {
             </div>
           )}
 
-          {/* Provider buttons */}
+          {/* Provider buttons — using <a> tags so the browser navigates to the
+              Easy Auth sidecar endpoints, bypassing client-side routing */}
           <div className="flex flex-col gap-3">
             <a
-              href={buildProviderUrl("microsoft")}
+              href={buildEasyAuthUrl("aad")}
               className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white hover:bg-gray-100 text-gray-900 font-medium rounded-xl transition-colors duration-200 border border-gray-200"
             >
               <MicrosoftIcon />
@@ -100,7 +98,7 @@ export default function Login() {
             </a>
 
             <a
-              href={buildProviderUrl("google")}
+              href={buildEasyAuthUrl("google")}
               className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white hover:bg-gray-100 text-gray-900 font-medium rounded-xl transition-colors duration-200 border border-gray-200"
             >
               <GoogleIcon />
@@ -108,7 +106,7 @@ export default function Login() {
             </a>
 
             <a
-              href={buildProviderUrl("linkedin")}
+              href={buildEasyAuthUrl("linkedin")}
               className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-[#0A66C2] hover:bg-[#0958a8] text-white font-medium rounded-xl transition-colors duration-200"
             >
               <LinkedInIcon />

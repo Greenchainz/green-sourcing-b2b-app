@@ -115,15 +115,10 @@ export function getSecret(key: string): string | undefined {
  * Call after loadSecrets() to confirm the app is properly configured.
  */
 export function validateSecrets(): boolean {
+  // With Easy Auth enabled, OAuth client secrets are managed by the Azure
+  // Container Apps sidecar — we no longer need them in our process.env.
+  // Only DATABASE_URL and JWT_SECRET (for legacy session compat) are required.
   const requiredSecrets = [
-    "AUTH_SECRET",
-    "AZURE_CLIENT_ID",
-    "AZURE_CLIENT_SECRET",
-    "AZURE_TENANT_ID",
-    "GOOGLE_CLIENT_ID",
-    "GOOGLE_CLIENT_SECRET",
-    "LINKEDIN_CLIENT_ID",
-    "LINKEDIN_CLIENT_SECRET",
     "DATABASE_URL",
   ];
 

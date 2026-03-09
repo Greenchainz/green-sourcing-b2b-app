@@ -118,28 +118,56 @@ export async function checkHealth() {
 }
 
 /**
- * Get current user
+ * Get current user — reads from our backend /api/auth/me which
+ * internally parses the Easy Auth X-MS-CLIENT-PRINCIPAL header.
+ * Falls back to the Easy Auth /.auth/me endpoint if the backend
+ * route is unavailable.
  */
 export async function getCurrentUser() {
-  const response = await get<{
-    user: {
-      id: string;
-      email: string;
-      name: string;
-      roles: string[];
-      isAdmin: boolean;
-      isSupplier: boolean;
+  try {
+    // Primary: our backend normalises the Easy Auth principal into
+    // a consistent shape that includes the app-level role.
+    const response = await get<{
+      user: {
+        id: string;
+        email: string;
+        name: string;
+        roles: string[];
+        isAdmin: boolean;
+        isSupplier: boolean;
+      };
+    }>('/api/auth/me');
+
+    const { user } = response;
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'buyer') as 'buyer' | 'supplier' | 'admin',
     };
-  }>('/api/auth/me');
-  
-  // Transform backend response to frontend format
-  const { user } = response;
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'buyer') as 'buyer' | 'supplier' | 'admin'
-  };
+  } catch {
+    // Fallback: call Easy Auth directly (useful during initial setup
+    // before the backend /api/auth/me route is wired up).
+    const res = await fetch('/.auth/me', { credentials: 'include' });
+    if (!res.ok) throw new Error('Not authenticated');
+
+    const data = await res.json();
+    // Easy Auth returns an array; first element is the logged-in principal
+    const principal = Array.isArray(data) ? data[0] : data?.clientPrincipal;
+    if (!principal) throw new Error('Not authenticated');
+
+    const claims: Record<string, string> = {};
+    for (const c of principal.claims ?? []) {
+      claims[c.typ] = c.val;
+    }
+
+    return {
+      id: principal.userId ?? claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? '',
+      email: claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ?? claims.email ?? '',
+      name: claims['name'] ?? claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ?? '',
+      role: 'buyer' as 'buyer' | 'supplier' | 'admin',
+    };
+  }
 }
 
 /**
