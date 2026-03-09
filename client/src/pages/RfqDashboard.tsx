@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, DollarSign, TrendingDown, MessageSquare, CheckCircle2, XCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { Clock, DollarSign, TrendingDown, MessageSquare, CheckCircle2, XCircle, AlertCircle, ArrowRight, FileDown } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
@@ -124,6 +124,26 @@ export default function RfqDashboard() {
                 <div className="lg:col-span-2">
                   {selectedRfqId && selectedRfqDetails ? (
                     <div className="space-y-4">
+                      {/* PDF Download Buttons */}
+                      <div className="flex gap-2 justify-end">
+                        <a
+                          href={`/api/rfq/${selectedRfqId}/pdf/summary`}
+                          download
+                          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
+                        >
+                          <FileDown className="w-3.5 h-3.5" /> RFQ Summary PDF
+                        </a>
+                        {selectedRfqDetails.bids && selectedRfqDetails.bids.length > 0 && (
+                          <a
+                            href={`/api/rfq/${selectedRfqId}/pdf/bids`}
+                            download
+                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
+                          >
+                            <FileDown className="w-3.5 h-3.5" /> Bid Comparison PDF
+                          </a>
+                        )}
+                      </div>
+
                       {/* RFQ Header */}
                       <Card>
                         <CardHeader>
