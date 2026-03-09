@@ -72,6 +72,15 @@ export async function loadSecrets(): Promise<void> {
         "LINKEDIN-SECRET": "LINKEDIN_CLIENT_SECRET",
         // Database
         "DATABASE-URL": "DATABASE_URL",
+        // Email (Zoho SMTP)
+        "ZOHO-EMAIL-USER": "ZOHO_EMAIL_USER",
+        "ZOHO-EMAIL-PASSWORD": "ZOHO_EMAIL_PASSWORD",
+        // App URLs
+        "FRONTEND-URL": "FRONTEND_URL",
+        // Azure Web PubSub (real-time messaging)
+        "WEBPUBSUB-CONNECTION-STRING": "AZURE_WEBPUBSUB_CONNECTION_STRING",
+        // Azure Maps (geocoding for supplier matching)
+        "AZURE-MAPS-KEY": "AZURE_MAPS_KEY",
       };
 
       for (const [vaultKey, envKey] of Object.entries(secretMappings)) {

@@ -23,6 +23,21 @@ const STATUS_CONFIG = {
 export default function RfqDashboard() {
   const { user } = useAuth();
   const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const acceptBidMutation = trpc.rfqMarketplace.acceptBid.useMutation();
+  const utils = trpc.useUtils();
+
+  const handleAcceptBid = async (rfqId: number, bidId: number) => {
+    setActionError(null);
+    try {
+      await acceptBidMutation.mutateAsync({ rfqId, bidId });
+      utils.rfqMarketplace.getUserRfqs.invalidate();
+      utils.rfqMarketplace.getRfqDetails.invalidate({ rfqId });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to accept bid");
+    }
+  };
 
   const { data: rfqs, isLoading: rfqsLoading } = trpc.rfqMarketplace.getUserRfqs.useQuery(
     { userId: (typeof user?.id === 'string' ? parseInt(user.id) : user?.id) || 0 },
@@ -247,20 +262,11 @@ export default function RfqDashboard() {
                                       <Button
                                         size="sm"
                                         variant="default"
-                                        onClick={() => {
-                                          // TODO: Implement accept bid
-                                        }}
+                                        className="bg-green-600 hover:bg-green-700"
+                                        disabled={acceptBidMutation.isPending}
+                                        onClick={() => selectedRfqId && handleAcceptBid(selectedRfqId, bid.id)}
                                       >
-                                        Accept
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          // TODO: Implement reject bid
-                                        }}
-                                      >
-                                        Reject
+                                        {acceptBidMutation.isPending ? "Accepting..." : "Accept"}
                                       </Button>
                                     </>
                                   )}

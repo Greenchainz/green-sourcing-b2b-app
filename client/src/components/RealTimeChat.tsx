@@ -23,8 +23,9 @@ interface RealTimeChatProps {
 }
 
 export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatProps) {
-  const auth = useAuth({});
-  const user = auth.user;
+  const { user } = useAuth();
+  const userId = typeof user?.id === "string" ? parseInt(user.id) : (user?.id ?? 0);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -37,8 +38,27 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
 
   const getAccessTokenMutation = trpc.rfqMarketplace.getWebSocketToken.useMutation();
   const sendMessageMutation = trpc.rfqMarketplace.sendMessage.useMutation();
-  const getMessagesMutation = trpc.rfqMarketplace.getThreadMessages.useQuery({ threadId, limit: 50, offset: 0 });
+  const { data: messagesData } = trpc.rfqMarketplace.getThreadMessages.useQuery(
+    { threadId, limit: 50, offset: 0 },
+    { enabled: !!threadId }
+  );
   const markReadMutation = trpc.rfqMarketplace.markMessageAsRead.useMutation();
+
+  // Load message history when data arrives
+  useEffect(() => {
+    if (messagesData && messagesData.length > 0) {
+      setMessages(
+        messagesData.map((m: any) => ({
+          id: m.id,
+          senderId: m.senderId,
+          senderType: m.senderType,
+          content: m.content,
+          createdAt: new Date(m.createdAt),
+          isRead: m.isRead,
+        }))
+      );
+    }
+  }, [messagesData]);
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -47,119 +67,91 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
         if (!user) return;
 
         // Get access token
-        const token = await getAccessTokenMutation.mutateAsync({
-          threadId,
-        });
+        const token = await getAccessTokenMutation.mutateAsync({ threadId });
 
         // Connect to Web PubSub
+        const hubName = (window as any).__WEBPUBSUB_HUB__ || "greenchainz";
         const ws = new WebSocket(
-          `${token.url}/client/hubs/${process.env.NEXT_PUBLIC_WEBPUBSUB_HUB}?access_token=${token.token}`
+          `${token.url}/client/hubs/${hubName}?access_token=${token.token}`
         );
 
         ws.onopen = () => {
-          console.log("WebSocket connected");
           setIsConnected(true);
         };
 
         ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
+          try {
+            const data = JSON.parse(event.data);
 
-          switch (data.type) {
-            case "message":
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: data.messageId || Date.now(),
-                  senderId: data.senderId,
-                  senderType: data.senderType,
-                  content: data.content,
-                  createdAt: new Date(data.timestamp),
-                  isRead: 0,
-                },
-              ]);
-              // Mark as read
-              if (data.messageId) {
-                markReadMutation.mutate({ messageId: data.messageId });
-              }
-              break;
+            switch (data.type) {
+              case "message":
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: data.messageId || Date.now(),
+                    senderId: data.senderId,
+                    senderType: data.senderType,
+                    content: data.content,
+                    createdAt: new Date(data.timestamp),
+                    isRead: 0,
+                  },
+                ]);
+                if (data.messageId) {
+                  markReadMutation.mutate({ messageId: data.messageId });
+                }
+                break;
 
-            case "typing":
-              setRecipientIsTyping(true);
-              setTimeout(() => setRecipientIsTyping(false), 3000);
-              break;
+              case "typing":
+                setRecipientIsTyping(true);
+                setTimeout(() => setRecipientIsTyping(false), 3000);
+                break;
 
-            case "thread_closed":
-              console.log("Thread closed:", data.reason);
-              break;
+              case "thread_closed":
+                setIsConnected(false);
+                break;
 
-            default:
-              console.log("Unknown message type:", data.type);
+              default:
+                break;
+            }
+          } catch {
+            // ignore malformed messages
           }
         };
 
-        ws.onerror = (error) => {
-          console.error("WebSocket error:", error);
-          setIsConnected(false);
-        };
-
-        ws.onclose = () => {
-          console.log("WebSocket disconnected");
-          setIsConnected(false);
-        };
+        ws.onerror = () => setIsConnected(false);
+        ws.onclose = () => setIsConnected(false);
 
         wsRef.current = ws;
-
-        // Load message history
-        if (getMessagesMutation.data) {
-          setMessages(getMessagesMutation.data);
-        }
       } catch (error) {
-        console.error("Failed to initialize connection:", error);
+        console.error("Failed to initialize WebSocket connection:", error);
       }
     };
 
     initializeConnection();
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      wsRef.current?.close();
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
-  }, [threadId, user]);
+  }, [threadId, user?.id]);
 
   // Auto-scroll to bottom
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleTyping = () => {
     if (!isTyping && wsRef.current && isConnected) {
       setIsTyping(true);
-      wsRef.current.send(
-        JSON.stringify({
-          type: "typing",
-          threadId,
-        })
-      );
+      wsRef.current.send(JSON.stringify({ type: "typing", threadId }));
 
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
-      typingTimeoutRef.current = setTimeout(() => {
-        setIsTyping(false);
-      }, 3000);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
     }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!input.trim() || !user || isSending) return;
 
     setIsSending(true);
@@ -167,15 +159,15 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
       await sendMessageMutation.mutateAsync({
         threadId,
         message: input,
-        isBuyer,
+        senderId: userId,
+        senderType: isBuyer ? "buyer" : "supplier",
       });
 
-      // Add message to local state optimistically
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now(),
-          senderId: user!.id,
+          senderId: userId,
           senderType: isBuyer ? "buyer" : "supplier",
           content: input,
           createdAt: new Date(),
@@ -210,11 +202,11 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex ${msg.senderId === user?.id ? "justify-end" : "justify-start"}`}
+              className={`flex ${msg.senderId === userId ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`max-w-xs px-4 py-2 rounded-lg ${
-                  msg.senderId === user?.id
+                  msg.senderId === userId
                     ? "bg-green-500 text-white rounded-br-none"
                     : "bg-gray-200 text-gray-900 rounded-bl-none"
                 }`}
@@ -232,9 +224,9 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
             <div className="flex justify-start">
               <div className="bg-gray-200 text-gray-900 px-4 py-2 rounded-lg rounded-bl-none">
                 <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100"></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200"></div>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100" />
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200" />
                 </div>
               </div>
             </div>
@@ -253,7 +245,7 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
               setInput(e.target.value);
               handleTyping();
             }}
-            placeholder="Keep it brief... (max 1000 chars)"
+            placeholder="Type a message..."
             maxLength={1000}
             disabled={!isConnected || isSending}
             className="flex-1"
@@ -271,9 +263,7 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
             )}
           </Button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          {input.length}/1000 characters
-        </p>
+        <p className="text-xs text-gray-500 mt-2">{input.length}/1000 characters</p>
       </form>
     </Card>
   );
