@@ -13,6 +13,7 @@ import { handleLandingPage } from "../marketplace-landing";
 import { handleWebhook } from "../marketplace-webhook";
 import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 import { uploadRouter } from "../upload-route";
+import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -66,6 +67,22 @@ async function startServer() {
   
   // File upload route
   app.use("/api", uploadRouter);
+
+  // Zeptomail email event webhooks (bounce, open, click, unsubscribe, spam)
+  app.use(zeptomailWebhookRouter);
+
+  // Admin: manually trigger the scraper outreach pipeline
+  // Protected by Easy Auth — only authenticated users can call this
+  app.post("/api/admin/trigger-outreach", async (_req, res) => {
+    try {
+      const { runScraperOutreachPipeline } = await import("../scraper-outreach-pipeline");
+      const result = await runScraperOutreachPipeline();
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error("[admin] Outreach pipeline error:", err);
+      res.status(500).json({ error: "Pipeline failed" });
+    }
+  });
 
   // ── RFQ PDF Download Endpoints ─────────────────────────────────────────────
   // REST (not tRPC) because they stream binary PDF data.
