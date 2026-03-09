@@ -66,6 +66,83 @@ async function startServer() {
   
   // File upload route
   app.use("/api", uploadRouter);
+
+  // ── RFQ PDF Download Endpoints ─────────────────────────────────────────────
+  // REST (not tRPC) because they stream binary PDF data.
+  app.get("/api/rfq/:rfqId/pdf/summary", async (req, res) => {
+    try {
+      const { generateRfqSummaryPdf } = await import("../rfq-pdf-service");
+      const { getRfqWithBids } = await import("../rfq-service");
+      const rfqId = parseInt(req.params.rfqId);
+      if (isNaN(rfqId)) return res.status(400).json({ error: "Invalid RFQ ID" });
+      const rfq = await getRfqWithBids(rfqId);
+      if (!rfq) return res.status(404).json({ error: "RFQ not found" });
+      const pdfBuffer = await generateRfqSummaryPdf({
+        rfqId,
+        projectName: rfq.projectName,
+        projectLocation: rfq.projectLocation,
+        projectType: rfq.projectType ?? undefined,
+        buyerName: rfq.buyerName || "GreenChainz Buyer",
+        buyerEmail: rfq.buyerEmail || "",
+        dueDate: rfq.dueDate ?? undefined,
+        notes: rfq.notes ?? undefined,
+        items: (rfq.items || []).map((item: any) => ({
+          materialName: item.materialName || item.name || "Material",
+          quantity: Number(item.quantity),
+          quantityUnit: item.quantityUnit || "units",
+          notes: item.notes ?? undefined,
+        })),
+        createdAt: rfq.createdAt,
+      });
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="rfq-${rfqId}-summary.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      res.status(500).json({ error: "Failed to generate PDF" });
+    }
+  });
+
+  app.get("/api/rfq/:rfqId/pdf/bids", async (req, res) => {
+    try {
+      const { generateBidComparisonPdf } = await import("../rfq-pdf-service");
+      const { getRfqWithBids } = await import("../rfq-service");
+      const rfqId = parseInt(req.params.rfqId);
+      if (isNaN(rfqId)) return res.status(400).json({ error: "Invalid RFQ ID" });
+      const rfq = await getRfqWithBids(rfqId);
+      if (!rfq) return res.status(404).json({ error: "RFQ not found" });
+      const pdfBuffer = await generateBidComparisonPdf({
+        rfqId,
+        projectName: rfq.projectName,
+        projectLocation: rfq.projectLocation,
+        projectType: rfq.projectType ?? undefined,
+        buyerName: rfq.buyerName || "GreenChainz Buyer",
+        buyerEmail: rfq.buyerEmail || "",
+        dueDate: rfq.dueDate ?? undefined,
+        notes: rfq.notes ?? undefined,
+        items: (rfq.items || []).map((item: any) => ({
+          materialName: item.materialName || item.name || "Material",
+          quantity: Number(item.quantity),
+          quantityUnit: item.quantityUnit || "units",
+        })),
+        createdAt: rfq.createdAt,
+        bids: (rfq.bids || []).map((bid: any) => ({
+          supplierName: bid.supplierName || bid.companyName || "Supplier",
+          bidPrice: String(bid.bidPrice || 0),
+          leadDays: Number(bid.leadDays),
+          notes: bid.notes ?? undefined,
+          submittedAt: bid.createdAt,
+        })),
+      });
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="rfq-${rfqId}-bids.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      res.status(500).json({ error: "Failed to generate PDF" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",
