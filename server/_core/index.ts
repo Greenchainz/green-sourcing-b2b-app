@@ -5,6 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
+import { registerEasyAuthRoutes } from "./easy-auth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -45,9 +46,15 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  // Legacy Manus OAuth callback
+  // ── Authentication ─────────────────────────────────────────────────────────
+  // Easy Auth: reads X-MS-CLIENT-PRINCIPAL headers injected by the Azure
+  // Container Apps sidecar. This MUST be registered first so the middleware
+  // runs before any other route handler.
+  registerEasyAuthRoutes(app);
+
+  // Legacy custom OAuth routes (kept temporarily for backward compat;
+  // will be removed once Easy Auth is fully validated in production).
   registerOAuthRoutes(app);
-  // Microsoft / Google / LinkedIn OAuth
   registerOAuthProviderRoutes(app);
   
   // Microsoft Marketplace endpoints

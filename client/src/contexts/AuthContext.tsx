@@ -13,6 +13,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,13 +29,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null);
       const userData = await api.getCurrentUser();
       setUser(userData);
-    } catch (err) {
-      // User not authenticated - this is expected for public pages
+    } catch {
+      // User not authenticated — expected for public pages
       setUser(null);
-      setError(null); // Don't treat this as an error
+      setError(null);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * Logout via Azure Container Apps Easy Auth.
+   * The /.auth/logout endpoint clears the auth session cookie and
+   * redirects the user back to the home page.
+   */
+  const logout = () => {
+    window.location.href = '/.auth/logout?post_logout_redirect_uri=/';
   };
 
   useEffect(() => {
@@ -42,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, refetch: fetchUser }}>
+    <AuthContext.Provider value={{ user, isLoading, error, refetch: fetchUser, logout }}>
       {children}
     </AuthContext.Provider>
   );
