@@ -81,7 +81,11 @@ export async function loadSecrets(): Promise<void> {
         // Azure Web PubSub (real-time messaging)
         "WEBPUBSUB-CONNECTION-STRING": "AZURE_WEBPUBSUB_CONNECTION_STRING",
         // Azure Maps (geocoding for supplier matching)
-        "AZURE-MAPS-KEY": "AZURE_MAPS_KEY",
+        // NOTE: azure-maps.ts reads AZURE_MAPS_SUBSCRIPTION_KEY — must match exactly
+        "AZURE-MAPS-KEY": "AZURE_MAPS_SUBSCRIPTION_KEY",
+        // Azure Redis Cache (caching + rate limiting)
+        "REDIS-HOST": "REDIS_HOST",
+        "REDIS-PORT": "REDIS_PORT",
       };
 
       for (const [vaultKey, envKey] of Object.entries(secretMappings)) {
