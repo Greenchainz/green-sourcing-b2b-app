@@ -908,12 +908,12 @@ export const locationPricingAdjustments = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
-    stateIdx: index("idx_pricing_state").on(table.state),
-    materialIdx: index("idx_pricing_material").on(table.materialType),
+    stateIdx: index("idx_loc_pricing_state").on(table.state),
+    materialIdx: index("idx_loc_pricing_material").on(table.materialType),
   })
 );
 
-export type LocationPricingAdjustments = typeof locationPricingAdjustments.$inferSelect;
+export type LocationPricingAdjustmentss = typeof locationPricingAdjustments.$inferSelect;
 export type InsertLocationPricingAdjustments = typeof locationPricingAdjustments.$inferInsert;
 
 // ─── Swap Engine: Functional Equivalence Validation ────────────────────────
