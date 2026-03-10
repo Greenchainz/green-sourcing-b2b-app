@@ -13,10 +13,11 @@ export type TrpcContext = {
  *
  * Auth strategy: Azure Easy Auth (sidecar).
  * The easyAuthMiddleware (registered in index.ts before tRPC) parses the
- * X-MS-CLIENT-PRINCIPAL header and attaches it to req.easyAuthPrincipal.
- * We read that here to resolve the database user for the request.
+ * individual X-MS-CLIENT-PRINCIPAL-ID/IDP/NAME headers and attaches them
+ * to req.easyAuthPrincipal. We read that here to resolve the database user.
  *
- * No JWT cookie / OAUTH_SERVER_URL required.
+ * The base64 X-MS-CLIENT-PRINCIPAL header uses "auth_typ" (not
+ * "identityProvider"), so the individual headers are the authoritative source.
  */
 export async function createContext(
   opts: CreateExpressContextOptions
@@ -25,7 +26,12 @@ export async function createContext(
 
   try {
     const principal = (opts.req as any).easyAuthPrincipal;
-    if (principal?.userId && principal?.identityProvider) {
+
+    // easyAuthMiddleware guarantees userId and identityProvider are set
+    // from the individual X-MS-CLIENT-PRINCIPAL-ID/IDP headers when present.
+    if (principal?.userId && principal?.identityProvider &&
+        principal.userId !== "undefined" && principal.identityProvider !== "undefined") {
+
       const providerMap: Record<string, string> = {
         aad: "microsoft",
         google: "google",
