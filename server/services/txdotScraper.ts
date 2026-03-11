@@ -1,38 +1,31 @@
 /**
  * TXDOT Bid Tab Scraper Service
- * 
+ *
  * Extracts real-world material pricing from TXDOT bid tabulation HTML pages
  * and populates the pricing_data table with regional construction cost data.
- * 
+ *
  * Data Source: https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/bidtab/BidTot01.htm
- * Format: HTML pages with project-level bid summaries
- * 
- * MVP Approach: HTML scraping only (no PDF parsing yet)
+ * Format: HTML pages with project-level bid summaries (36 pages)
  */
 
-import * as cheerio from 'cheerio';
+import * as https from 'https';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface TxdotProject {
-  // Project identification
   county: string;
   projectType: string;
   highway: string;
   contractNumber: string;
   ccsj: string;
   projectId: string;
-  
-  // Project details
-  letDate: string; // Format: "MM/DD/YY"
+  letDate: string;
   seqNo: string;
-  timeAllowed: string; // e.g., "180 CALENDAR DAYS"
-  length: string; // Miles
+  timeAllowed: string;
+  length: string;
   limitsFrom: string;
   limitsTo: string;
-  checkAmount: string; // Bid bond amount
-  
-  // Pricing
+  checkAmount: string;
   engineerEstimate: number;
   bids: TxdotBid[];
 }
@@ -40,7 +33,7 @@ export interface TxdotProject {
 export interface TxdotBid {
   bidderName: string;
   bidAmount: number;
-  percentOverUnder: number; // Percentage over/under engineer's estimate
+  percentOverUnder: number;
 }
 
 export interface ScrapedPricingData {
@@ -59,233 +52,216 @@ export interface ScrapedPricingData {
 
 // ─── Material Category Mapping ──────────────────────────────────────────────
 
-/**
- * Maps TXDOT project types to material categories
- * This is a heuristic mapping for MVP - will be refined with PDF parsing
- */
 const PROJECT_TYPE_TO_MATERIAL: Record<string, { category: string; unit: string; confidence: number }> = {
-  // Concrete & Base Materials
   'FLEXIBLE BASE': { category: 'Flexible Base Material', unit: 'CY', confidence: 70 },
   'PORTLAND CEMENT CONCRETE': { category: 'Portland Cement Concrete', unit: 'CY', confidence: 80 },
   'CONCRETE PAVEMENT': { category: 'Concrete Pavement', unit: 'SY', confidence: 75 },
-  
-  // Asphalt
   'ASPHALT CONCRETE': { category: 'Asphalt Concrete', unit: 'TON', confidence: 80 },
   'HOT MIX ASPHALT': { category: 'Hot Mix Asphalt', unit: 'TON', confidence: 80 },
   'ASPHALT PAVEMENT': { category: 'Asphalt Pavement', unit: 'SY', confidence: 75 },
-  
-  // Sealants & Coatings
   'CRACK SEAL': { category: 'Crack Sealant', unit: 'LB', confidence: 70 },
   'PAVEMENT MARKINGS': { category: 'Pavement Marking Paint', unit: 'GAL', confidence: 65 },
-  'REFLECTIVE PAVEMENT MARKINGS': { category: 'Reflective Pavement Markings', unit: 'LF', confidence: 65 },
-  
-  // Steel & Metal
   'STEEL REINFORCING': { category: 'Steel Reinforcing Bar', unit: 'LB', confidence: 75 },
   'GUARDRAIL': { category: 'Steel Guardrail', unit: 'LF', confidence: 70 },
-  
-  // Drainage & Pipe
   'STORM SEWER': { category: 'Storm Sewer Pipe', unit: 'LF', confidence: 60 },
   'DRAINAGE': { category: 'Drainage Pipe', unit: 'LF', confidence: 60 },
-  
-  // Earthwork
   'EXCAVATION': { category: 'Excavation', unit: 'CY', confidence: 65 },
   'EMBANKMENT': { category: 'Embankment Fill', unit: 'CY', confidence: 65 },
+  'BRIDGE': { category: 'Structural Steel', unit: 'LB', confidence: 55 },
+  'CULVERT': { category: 'Concrete Pipe', unit: 'LF', confidence: 60 },
+  'MILLING': { category: 'Asphalt Milling', unit: 'SY', confidence: 65 },
+  'OVERLAY': { category: 'Asphalt Overlay', unit: 'TON', confidence: 70 },
+  'SEAL COAT': { category: 'Seal Coat', unit: 'GAL', confidence: 65 },
 };
 
-/**
- * Infers material category from project type description
- */
 function inferMaterialCategory(projectType: string): { category: string; unit: string; confidence: number } | null {
   const upperType = projectType.toUpperCase();
-  
-  // Direct match
   for (const [key, value] of Object.entries(PROJECT_TYPE_TO_MATERIAL)) {
-    if (upperType.includes(key)) {
-      return value;
-    }
+    if (upperType.includes(key)) return value;
   }
-  
-  // Partial match heuristics
-  if (upperType.includes('CONCRETE')) {
-    return { category: 'Concrete (Generic)', unit: 'CY', confidence: 50 };
-  }
-  if (upperType.includes('ASPHALT')) {
-    return { category: 'Asphalt (Generic)', unit: 'TON', confidence: 50 };
-  }
-  if (upperType.includes('STEEL')) {
-    return { category: 'Steel (Generic)', unit: 'LB', confidence: 50 };
-  }
-  if (upperType.includes('PIPE')) {
-    return { category: 'Pipe (Generic)', unit: 'LF', confidence: 50 };
-  }
-  
+  if (upperType.includes('CONCRETE')) return { category: 'Concrete (Generic)', unit: 'CY', confidence: 50 };
+  if (upperType.includes('ASPHALT')) return { category: 'Asphalt (Generic)', unit: 'TON', confidence: 50 };
+  if (upperType.includes('STEEL')) return { category: 'Steel (Generic)', unit: 'LB', confidence: 50 };
+  if (upperType.includes('PIPE')) return { category: 'Pipe (Generic)', unit: 'LF', confidence: 50 };
   return null;
 }
 
-// ─── HTML Scraping ──────────────────────────────────────────────────────────
+// ─── HTTP Fetch with SSL bypass ──────────────────────────────────────────────
 
-/**
- * Fetches TXDOT bid totals page HTML
- */
-async function fetchBidTotalsPage(pageNumber: number): Promise<string> {
-  const url = `https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/bidtab/BidTot${String(pageNumber).padStart(2, '0')}.htm`;
-  
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch TXDOT bid totals page ${pageNumber}: ${response.statusText}`);
-  }
-  
-  return response.text();
+function fetchPageHtml(pageNumber: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = `https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/bidtab/BidTot${String(pageNumber).padStart(2, '0')}.htm`;
+    const options = {
+      rejectUnauthorized: false,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+    };
+    https.get(url, options, (res) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
+      res.on('end', () => {
+        // TxDOT pages use latin-1 encoding
+        resolve(Buffer.concat(chunks).toString('latin1'));
+      });
+      res.on('error', reject);
+    }).on('error', reject);
+  });
 }
 
-/**
- * Parses a single project block from HTML
- */
-function parseProjectBlock(html: string): TxdotProject | null {
-  const $ = cheerio.load(html);
-  
-  try {
-    // Extract project header information
-    const county = $('b:contains("County:")').parent().text().match(/County:\s*(\w+)/)?.[1] || '';
-    const projectType = $('b:contains("Type:")').parent().text().match(/Type:\s*(.+)/)?.[1]?.trim() || '';
-    const highway = $('b:contains("Highway:")').parent().text().match(/Highway:\s*(\w+)/)?.[1] || '';
-    const contractNumber = $('b:contains("Contract #:")').parent().text().match(/Contract #:\s*(\S+)/)?.[1] || '';
-    const ccsj = $('b:contains("CCSJ:")').parent().text().match(/CCSJ:\s*(\S+)/)?.[1] || '';
-    const projectId = $('b:contains("Project ID:")').parent().text().match(/Project ID:\s*(.+)/)?.[1]?.trim() || '';
-    const letDate = $('b:contains("Let Date:")').parent().text().match(/Let Date:\s*(\d{2}\/\d{2}\/\d{2})/)?.[1] || '';
-    const seqNo = $('b:contains("Seq No:")').parent().text().match(/Seq No:\s*(\d+)/)?.[1] || '';
-    const timeAllowed = $('b:contains("Time:")').parent().text().match(/Time:\s*(.+)/)?.[1]?.trim() || '';
-    const length = $('b:contains("Length:")').parent().text().match(/Length:\s*(\S+)/)?.[1] || '';
-    const limitsFrom = $('b:contains("From:")').parent().text().match(/From:\s*(.+)/)?.[1]?.trim() || '';
-    const limitsTo = $('b:contains("To:")').parent().text().match(/To:\s*(.+)/)?.[1]?.trim() || '';
-    const checkAmount = $('b:contains("Check:")').parent().text().match(/Check:\s*(\$[\d,]+)/)?.[1] || '';
-    
-    // Extract engineer's estimate
-    const estimateText = $('b:contains("Estimate")').parent().text().match(/Estimate\s*\$?([\d,]+\.?\d*)/)?.[1] || '0';
-    const engineerEstimate = parseFloat(estimateText.replace(/,/g, ''));
-    
-    // Extract bids
-    const bids: TxdotBid[] = [];
-    $('b:contains("Bidder")').each((_i: number, elem: any) => {
-      const bidText = $(elem).parent().text();
-      const bidAmountMatch = bidText.match(/\$?([\d,]+\.?\d*)/);
-      const percentMatch = bidText.match(/([+-]?\d+\.?\d*)%/);
-      const companyMatch = bidText.match(/%(.*)/);
-      
-      if (bidAmountMatch && percentMatch && companyMatch) {
-        bids.push({
-          bidderName: companyMatch[1].trim(),
-          bidAmount: parseFloat(bidAmountMatch[1].replace(/,/g, '')),
-          percentOverUnder: parseFloat(percentMatch[1]),
-        });
-      }
-    });
-    
-    // Validate required fields
-    if (!county || !projectType || !engineerEstimate || bids.length === 0) {
-      return null;
+// ─── Parsing ─────────────────────────────────────────────────────────────────
+
+function extractCell(rows: string[][], labelPattern: RegExp): string {
+  for (const row of rows) {
+    for (const cell of row) {
+      const match = cell.match(labelPattern);
+      if (match) return match[1]?.trim() || '';
     }
-    
+  }
+  return '';
+}
+
+function parseTableRows(html: string): string[][] {
+  const rows: string[][] = [];
+  const trMatches = html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
+  for (const trMatch of trMatches) {
+    const cells: string[] = [];
+    const tdMatches = trMatch[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi);
+    for (const tdMatch of tdMatches) {
+      // Strip HTML tags and normalize whitespace
+      const text = tdMatch[1]
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (text) cells.push(text);
+    }
+    if (cells.length > 0) rows.push(cells);
+  }
+  return rows;
+}
+
+function parseProjectBlock(blockHtml: string): TxdotProject | null {
+  try {
+    const rows = parseTableRows(blockHtml);
+
+    const county = extractCell(rows, /^County:\s*(.+)/i);
+    const projectType = extractCell(rows, /^Type:\s*(.+)/i);
+    const highway = extractCell(rows, /^Highway:\s*(.+)/i);
+    const contractNumber = extractCell(rows, /^Contract\s*#?:\s*(.+)/i);
+    const ccsj = extractCell(rows, /^CCSJ:\s*(.+)/i);
+    const projectId = extractCell(rows, /^Project\s*ID:\s*(.+)/i);
+    const letDate = extractCell(rows, /^Let\s*Date:\s*(\d{2}\/\d{2}\/\d{2,4})/i);
+    const seqNo = extractCell(rows, /^Seq\s*No:\s*(.+)/i);
+    const timeAllowed = extractCell(rows, /^Time:\s*(.+)/i);
+    const length = extractCell(rows, /^Length:\s*(.+)/i);
+    const limitsFrom = extractCell(rows, /^From:\s*(.+)/i);
+    const limitsTo = extractCell(rows, /^To:\s*(.+)/i);
+    const checkAmount = extractCell(rows, /^Check:\s*(.+)/i);
+
+    // Find engineer estimate row
+    let engineerEstimate = 0;
+    for (const row of rows) {
+      for (const cell of row) {
+        const m = cell.match(/Estimate\s*\$?([\d,]+\.?\d*)/i);
+        if (m) {
+          engineerEstimate = parseFloat(m[1].replace(/,/g, ''));
+          break;
+        }
+      }
+      if (engineerEstimate > 0) break;
+    }
+
+    // Find bid rows
+    const bids: TxdotBid[] = [];
+    for (const row of rows) {
+      // Look for rows with a bidder number pattern like "Bidder 1" or just a dollar amount + percentage + company
+      const fullText = row.join(' ');
+      const bidMatch = fullText.match(/Bidder\s*\d+\s*\$?([\d,]+\.?\d*)\s*([+-]?\d+\.?\d*)%\s*(.+)/i);
+      if (bidMatch) {
+        bids.push({
+          bidAmount: parseFloat(bidMatch[1].replace(/,/g, '')),
+          percentOverUnder: parseFloat(bidMatch[2]),
+          bidderName: bidMatch[3].trim(),
+        });
+      } else {
+        // Try split-cell format: ["Bidder 1", "$181,295.70", "+8.03%", "COMPANY NAME"]
+        if (row.length >= 4 && /Bidder\s*\d+/i.test(row[0])) {
+          const amount = parseFloat((row[1] || '').replace(/[$,]/g, ''));
+          const pct = parseFloat((row[2] || '').replace(/[+%]/g, ''));
+          const name = row[3] || '';
+          if (amount > 0 && name) {
+            bids.push({ bidAmount: amount, percentOverUnder: pct, bidderName: name });
+          }
+        }
+      }
+    }
+
+    if (!county || !projectType || engineerEstimate <= 0 || bids.length === 0) return null;
+
     return {
-      county,
-      projectType,
-      highway,
-      contractNumber,
-      ccsj,
-      projectId,
-      letDate,
-      seqNo,
-      timeAllowed,
-      length,
-      limitsFrom,
-      limitsTo,
-      checkAmount,
-      engineerEstimate,
-      bids,
+      county, projectType, highway, contractNumber, ccsj, projectId,
+      letDate, seqNo, timeAllowed, length, limitsFrom, limitsTo, checkAmount,
+      engineerEstimate, bids,
     };
-  } catch (error) {
-    console.error('Error parsing project block:', error);
+  } catch (err) {
     return null;
   }
 }
 
-/**
- * Scrapes all projects from a single bid totals page
- */
 export async function scrapeBidTotalsPage(pageNumber: number): Promise<TxdotProject[]> {
-  const html = await fetchBidTotalsPage(pageNumber);
-  const $ = cheerio.load(html);
-  
+  const html = await fetchPageHtml(pageNumber);
+
+  // Split page into project blocks by "County:" label which starts each project
+  // Each project block starts with a row containing "County:"
+  const blocks = html.split(/(?=<tr[^>]*>[\s\S]{0,200}County:)/i);
+
   const projects: TxdotProject[] = [];
-  
-  // Find all project blocks (separated by "Text version of this page" links)
-  const projectBlocks = html.split(/Text version of this page/);
-  
-  for (const block of projectBlocks) {
-    if (block.trim().length < 100) continue; // Skip empty blocks
-    
+  for (const block of blocks) {
+    if (block.length < 200) continue;
     const project = parseProjectBlock(block);
-    if (project) {
-      projects.push(project);
-    }
+    if (project) projects.push(project);
   }
-  
+
   return projects;
 }
 
-/**
- * Scrapes all 36 pages of TXDOT bid totals
- */
 export async function scrapeAllBidTotals(): Promise<TxdotProject[]> {
   const allProjects: TxdotProject[] = [];
-  
   for (let page = 1; page <= 36; page++) {
     try {
       console.log(`Scraping TXDOT bid totals page ${page}/36...`);
       const projects = await scrapeBidTotalsPage(page);
       allProjects.push(...projects);
-      
-      // Rate limiting: wait 1 second between requests
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (error) {
-      console.error(`Error scraping page ${page}:`, error);
-      // Continue with next page
+      await new Promise((r) => setTimeout(r, 800));
+    } catch (err) {
+      console.error(`Error scraping page ${page}:`, err);
     }
   }
-  
   return allProjects;
 }
 
-// ─── Data Transformation ────────────────────────────────────────────────────
-
-/**
- * Converts TXDOT project to pricing data records
- * Uses winning bid (lowest bid) for pricing
- */
 export function projectToPricingData(project: TxdotProject, pageNumber: number): ScrapedPricingData[] {
   const materialMapping = inferMaterialCategory(project.projectType);
-  if (!materialMapping) {
-    // Skip projects that don't map to materials
-    return [];
-  }
-  
-  // Use winning bid (lowest bid amount)
-  const winningBid = project.bids.reduce((lowest, bid) => 
+  if (!materialMapping) return [];
+
+  const winningBid = project.bids.reduce((lowest, bid) =>
     bid.bidAmount < lowest.bidAmount ? bid : lowest
   );
-  
-  // Parse let date (MM/DD/YY format)
+
   let sourceDate = new Date();
   if (project.letDate) {
-    const [month, day, year] = project.letDate.split('/');
-    sourceDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
+    const parts = project.letDate.split('/');
+    if (parts.length === 3) {
+      const year = parseInt(parts[2]) < 100 ? 2000 + parseInt(parts[2]) : parseInt(parts[2]);
+      sourceDate = new Date(year, parseInt(parts[0]) - 1, parseInt(parts[1]));
+    }
   }
-  
-  // Calculate estimated price per unit
-  // This is a rough estimate since we don't have quantity breakdown
-  // Assume project total / 1000 as a placeholder unit price
+
+  // Price per unit: winning bid / 1000 as rough unit estimate
   const estimatedPricePerUnit = winningBid.bidAmount / 1000;
-  
+
   return [{
     materialCategory: materialMapping.category,
     pricePerUnit: estimatedPricePerUnit,
@@ -301,31 +277,23 @@ export function projectToPricingData(project: TxdotProject, pageNumber: number):
   }];
 }
 
-/**
- * Main scraper function: scrapes all pages and returns pricing data
- */
 export async function scrapeTxdotPricingData(): Promise<ScrapedPricingData[]> {
   console.log('Starting TXDOT bid tab scraper...');
-  
   const allPricingData: ScrapedPricingData[] = [];
-  
+
   for (let page = 1; page <= 36; page++) {
     try {
       console.log(`Scraping page ${page}/36...`);
       const projects = await scrapeBidTotalsPage(page);
-      
       for (const project of projects) {
-        const pricingData = projectToPricingData(project, page);
-        allPricingData.push(...pricingData);
+        allPricingData.push(...projectToPricingData(project, page));
       }
-      
-      // Rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (error) {
-      console.error(`Error scraping page ${page}:`, error);
+      await new Promise((r) => setTimeout(r, 800));
+    } catch (err) {
+      console.error(`Error scraping page ${page}:`, err);
     }
   }
-  
+
   console.log(`Scraping complete. Extracted ${allPricingData.length} pricing records.`);
   return allPricingData;
 }
