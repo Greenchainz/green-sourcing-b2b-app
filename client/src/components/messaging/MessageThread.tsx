@@ -48,7 +48,7 @@ export function MessageThread({ conversationId }: MessageThreadProps) {
   return (
     <div className="flex flex-col h-full overflow-y-auto p-4 space-y-4">
       {messages.map((message: any) => {
-        const isOwnMessage = message.senderId === user?.id;
+        const isOwnMessage = message.senderId === parseInt(user?.id ?? "", 10);
         
         return (
           <div
