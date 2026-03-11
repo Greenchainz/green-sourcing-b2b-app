@@ -333,6 +333,10 @@ export function registerOAuthProviderRoutes(app: Express) {
         assignedRole = "buyer";
       }
 
+      // Check if this is a new user before upserting
+      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      const isNewUser = !existingUser;
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name,
@@ -341,6 +345,17 @@ export function registerOAuthProviderRoutes(app: Express) {
         lastSignedIn: new Date(),
         role: assignedRole,
       });
+
+      // Send welcome email to new users (non-blocking)
+      if (isNewUser && userInfo.email) {
+        import("../notification-service").then(({ sendWelcomeEmail }) => {
+          sendWelcomeEmail({
+            name: userInfo.name ?? "there",
+            email: userInfo.email!,
+            role: assignedRole,
+          }).catch((err: unknown) => console.warn("[Auth] Welcome email failed (non-critical):", err));
+        }).catch(() => {});
+      }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name ?? "",
