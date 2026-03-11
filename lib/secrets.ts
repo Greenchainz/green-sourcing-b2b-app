@@ -10,7 +10,7 @@
  */
 
 import { SecretClient } from "@azure/keyvault-secrets";
-import { DefaultAzureCredential } from "@azure/identity";
+import { ManagedIdentityCredential } from "@azure/identity";
 
 // Cache for secrets to avoid repeated Key Vault calls
 const secretsCache: Record<string, string> = {};
@@ -42,8 +42,8 @@ export async function loadSecrets(): Promise<void> {
   if (isProduction) {
     try {
       // Uses User-Assigned Managed Identity: id-greenchainz-backend
-      // AZURE_CLIENT_ID must be set to: ec248abf-f6ce-4d7c-8888-740317709f1b
-      const credential = new DefaultAzureCredential();
+      // clientId = ec248abf-f6ce-4d7c-8888-740317709f1b
+      const credential = new ManagedIdentityCredential("ec248abf-f6ce-4d7c-8888-740317709f1b");
       const vaultUrl = `https://${keyVaultName}.vault.azure.net`;
       const client = new SecretClient(vaultUrl, credential);
 
