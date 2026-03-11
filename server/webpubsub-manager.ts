@@ -3,7 +3,7 @@ import { getDb } from "./db";
 import { rfqMessages, rfqThreads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-const hubName = process.env.WEBPUBSUB_HUB || "greenchainz-hub";
+const hubName = process.env.WEBPUBSUB_HUB || "greenchainzhub";
 
 // Lazy-initialize so the module doesn't throw at startup before secrets are loaded
 let _client: WebPubSubServiceClient | null = null;
