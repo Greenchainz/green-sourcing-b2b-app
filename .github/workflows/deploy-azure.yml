@@ -39,6 +39,10 @@ jobs:
             --build-arg NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }} \
             --build-arg NEXT_PUBLIC_AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }} \
             --build-arg NEXT_PUBLIC_BACKEND_URL=${{ secrets.NEXT_PUBLIC_BACKEND_URL }} \
+            --build-arg VITE_BACKEND_URL=${{ secrets.NEXT_PUBLIC_BACKEND_URL }} \
+            --build-arg VITE_AZURE_MAPS_KEY=${{ secrets.AZURE_MAPS_KEY }} \
+            --build-arg VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com \
+            --build-arg VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest \
             -f ./Dockerfile .
