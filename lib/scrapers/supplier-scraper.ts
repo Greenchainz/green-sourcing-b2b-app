@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { db } from '../../server/db';
+import { getDb } from '../../server/db';
 import { scrapedSuppliers } from '../../drizzle/schema';
 
 export interface ScrapedSupplier {
@@ -105,7 +105,8 @@ export async function saveSuppliers(
   let duplicates = 0;
   for (const supplier of suppliers) {
     try {
-      const result = await db
+      const drizzle = await getDb();
+      const result = await drizzle
         .insert(scrapedSuppliers)
         .values({
           companyName: supplier.companyName,
