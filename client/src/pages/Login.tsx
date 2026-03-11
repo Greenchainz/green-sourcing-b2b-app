@@ -42,11 +42,15 @@ export default function Login() {
     }
   }, [user, isLoading, returnPath]);
 
-  // Easy Auth endpoints — these are handled by the Azure Container Apps sidecar,
-  // NOT by our Express server. Must use <a> tags (not client-side routing).
-  const buildEasyAuthUrl = (provider: "aad" | "google" | "linkedin") => {
+  // Easy Auth endpoints — handled by the Azure Container Apps sidecar.
+  // Must use <a> tags (not client-side routing).
+  const buildEasyAuthUrl = (provider: "aad" | "google") => {
     return `/.auth/login/${provider}?post_login_redirect_uri=${encodeURIComponent(returnPath)}`;
   };
+
+  // LinkedIn uses our server-side OAuth handler — bypasses Easy Auth which
+  // fails on LinkedIn's non-standard OIDC token endpoint.
+  const linkedInUrl = `/api/auth/linkedin?returnPath=${encodeURIComponent(returnPath)}${role ? `&role=${encodeURIComponent(role)}` : ""}`;
 
   const errorMessages: Record<string, string> = {
     callback_failed: "Sign-in failed. Please try again.",
@@ -106,7 +110,7 @@ export default function Login() {
             </a>
 
             <a
-              href={buildEasyAuthUrl("linkedin")}
+              href={linkedInUrl}
               className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-[#0A66C2] hover:bg-[#0958a8] text-white font-medium rounded-xl transition-colors duration-200"
             >
               <LinkedInIcon />
