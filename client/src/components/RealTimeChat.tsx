@@ -70,7 +70,7 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
         const token = await getAccessTokenMutation.mutateAsync({ threadId });
 
         // Connect to Web PubSub
-        const hubName = (window as any).__WEBPUBSUB_HUB__ || "greenchainz";
+        const hubName = (window as any).__WEBPUBSUB_HUB__ || "greenchainzhub";
         const ws = new WebSocket(
           `${token.url}/client/hubs/${hubName}?access_token=${token.token}`
         );
