@@ -86,6 +86,15 @@ export async function loadSecrets(): Promise<void> {
         // Azure Redis Cache (caching + rate limiting)
         "REDIS-HOST": "REDIS_HOST",
         "REDIS-PORT": "REDIS_PORT",
+        // EC3 / Building Transparency (EPD data pipeline)
+        "EC3-API-KEY": "EC3_API_KEY",
+        "EC3-CLIENT-ID": "EC3_CLIENT_ID",
+        "EC3-CLIENT-SECRET": "EC3_CLIENT_SECRET",
+        "EC3-USERNAME": "EC3_USERNAME",
+        "EC3-PASSWORD": "EC3_PASSWORD",
+        // Autodesk SDA (Sustainable Design API)
+        "AUTODESK-CLIENT-ID": "AUTODESK_CLIENT_ID",
+        "AUTODESK-CLIENT-SECRET": "AUTODESK_CLIENT_SECRET",
       };
 
       for (const [vaultKey, envKey] of Object.entries(secretMappings)) {

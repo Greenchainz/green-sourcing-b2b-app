@@ -84,6 +84,23 @@ async function startServer() {
     }
   });
 
+  // Admin: seed materials catalog from EC3 (Building Transparency)
+  // POST /api/admin/seed-materials?categories=Concrete,Steel&limit=50
+  app.post("/api/admin/seed-materials", async (req, res) => {
+    try {
+      const { seedMaterialsFromEC3 } = await import("../seed-materials");
+      const categories = req.query.categories
+        ? String(req.query.categories).split(",").map((c) => c.trim())
+        : undefined;
+      const limit = req.query.limit ? parseInt(String(req.query.limit)) : undefined;
+      const result = await seedMaterialsFromEC3(categories, limit);
+      res.json(result);
+    } catch (err) {
+      console.error("[admin] Seed materials error:", err);
+      res.status(500).json({ error: "Seed failed", detail: String(err) });
+    }
+  });
+
   // ── RFQ PDF Download Endpoints ─────────────────────────────────────────────
   // REST (not tRPC) because they stream binary PDF data.
   app.get("/api/rfq/:rfqId/pdf/summary", async (req, res) => {
