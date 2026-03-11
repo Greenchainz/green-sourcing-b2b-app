@@ -76,7 +76,7 @@ export async function runScraperOutreachPipeline(): Promise<{
     LIMIT ${OUTREACH_RATE_LIMIT * 2}
   `);
 
-  const scraped: ScrapedSupplierRow[] = suppliersResult.rows as ScrapedSupplierRow[];
+  const scraped: ScrapedSupplierRow[] = suppliersResult.rows as unknown as ScrapedSupplierRow[];
   console.log(`[outreach] Found ${scraped.length} candidate suppliers`);
 
   // 2. Get all open RFQs (status = 'open' or 'active', not expired)
@@ -96,7 +96,7 @@ export async function runScraperOutreachPipeline(): Promise<{
     LIMIT 10
   `);
 
-  const openRfqs: OpenRfq[] = rfqResult.rows as OpenRfq[];
+  const openRfqs: OpenRfq[] = rfqResult.rows as unknown as OpenRfq[];
   console.log(`[outreach] Found ${openRfqs.length} open RFQs`);
 
   if (openRfqs.length === 0) {
