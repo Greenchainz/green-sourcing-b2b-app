@@ -107,7 +107,8 @@ export async function loadSecrets(): Promise<void> {
           }
         } catch (error) {
           // Non-fatal: log and continue — app may still work if env var is set
-          console.warn(`[Secrets] ⚠️  Could not load ${vaultKey} from Key Vault`);
+          const errMsg = error instanceof Error ? error.message : String(error);
+          console.warn(`[Secrets] ⚠️  Could not load ${vaultKey}: ${errMsg}`);
         }
       }
 
