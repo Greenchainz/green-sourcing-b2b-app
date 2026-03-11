@@ -47,7 +47,6 @@ import { HowItWorks } from "./pages/HowItWorks";
 import Support from "./pages/Support";
 import Login from "./pages/Login";
 import { Redirect } from "wouter";
-import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 
@@ -124,7 +123,6 @@ function AppInner() {
         <UnifiedChatWidget />
         <ChainBot />
         <IncomingCallNotification onAccept={handleAcceptCall} />
-        <CookieConsentBanner />
         {activeCall && (
           <WebRTCVideoCall
             conversationId={activeCall.conversationId}
