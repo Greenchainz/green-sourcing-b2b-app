@@ -114,9 +114,18 @@ function fetchPageHtml(pageNumber: number): Promise<string> {
 
 function extractCell(rows: string[][], labelPattern: RegExp): string {
   for (const row of rows) {
-    for (const cell of row) {
-      const match = cell.match(labelPattern);
-      if (match) return match[1]?.trim() || '';
+    for (let i = 0; i < row.length; i++) {
+      const cell = row[i];
+      // Case 1: label + value in same cell (e.g. "County: STERLING")
+      const matchInline = cell.match(labelPattern);
+      if (matchInline && matchInline[1]?.trim()) return matchInline[1].trim();
+      // Case 2: label in this cell (e.g. "County:"), value in next cell
+      // Build a label-only pattern by stripping the capture group from the end
+      const labelOnlySource = labelPattern.source.replace(/\s*\([^)]+\)\s*$/, '').replace(/\s*\$\s*$/, '');
+      const labelOnlyPattern = new RegExp(labelOnlySource, labelPattern.flags);
+      if (labelOnlyPattern.test(cell) && i + 1 < row.length) {
+        return row[i + 1].trim();
+      }
     }
   }
   return '';
@@ -163,11 +172,21 @@ function parseProjectBlock(blockHtml: string): TxdotProject | null {
     // Find engineer estimate row
     let engineerEstimate = 0;
     for (const row of rows) {
-      for (const cell of row) {
+      for (let i = 0; i < row.length; i++) {
+        const cell = row[i];
+        // Case 1: estimate value in same cell (e.g. "Estimate $167,825.70")
         const m = cell.match(/Estimate\s*\$?([\d,]+\.?\d*)/i);
-        if (m) {
+        if (m && m[1]) {
           engineerEstimate = parseFloat(m[1].replace(/,/g, ''));
           break;
+        }
+        // Case 2: "Estimate" standalone, value in next cell (e.g. ["Estimate", "$167,825.70"])
+        if (/^Estimate$/i.test(cell.trim()) && i + 1 < row.length) {
+          const val = parseFloat(row[i + 1].replace(/[$,]/g, ''));
+          if (!isNaN(val) && val > 0) {
+            engineerEstimate = val;
+            break;
+          }
         }
       }
       if (engineerEstimate > 0) break;
