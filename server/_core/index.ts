@@ -101,6 +101,33 @@ async function startServer() {
     }
   });
 
+  // Admin: run supplier scraper (Azure Maps + EPD International → scraped_suppliers)
+  app.post("/api/admin/run-supplier-scraper", async (_req, res) => {
+    try {
+      const { runSupplierScraper } = await import("../../lib/scrapers/supplier-scraper");
+      const result = await runSupplierScraper();
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error("[admin] Supplier scraper error:", err);
+      res.status(500).json({ error: "Scraper failed", detail: String(err) });
+    }
+  });
+
+  // Admin: run TxDOT pricing scraper (TX bid tabulations → pricing_data)
+  app.post("/api/admin/run-txdot-scraper", async (_req, res) => {
+    try {
+      const { scrapeTxdotPricingData } = await import("../services/txdotScraper");
+      const { storePricingData, updateAllMaterialAveragePricing } = await import("../services/pricingDataService");
+      const scrapedData = await scrapeTxdotPricingData();
+      const storeResult = await storePricingData(scrapedData);
+      await updateAllMaterialAveragePricing();
+      res.json({ success: true, recordsScraped: scrapedData.length, ...storeResult });
+    } catch (err) {
+      console.error("[admin] TxDOT scraper error:", err);
+      res.status(500).json({ error: "TxDOT scraper failed", detail: String(err) });
+    }
+  });
+
   // ── RFQ PDF Download Endpoints ─────────────────────────────────────────────
   // REST (not tRPC) because they stream binary PDF data.
   app.get("/api/rfq/:rfqId/pdf/summary", async (req, res) => {

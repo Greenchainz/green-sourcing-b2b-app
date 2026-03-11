@@ -2,7 +2,69 @@ import { eq, and, gte } from "drizzle-orm";
 import { getDb } from "./db";
 import { buyerSubscriptions, supplierSubscriptions, users, suppliers } from "../drizzle/schema";
 
+// ─── Microsoft Marketplace Pricing ───────────────────────────────────────────────────────
+// Professional: $99/user/mo | $79/user/mo billed annually (save 20%)
+// Business:     $199/user/mo | $159/user/mo billed annually (save 20%)
+// Both plans include a 30-day free trial.
+export const MARKETPLACE_PRICING = {
+  professional: {
+    planId: "professional",
+    displayName: "Professional",
+    monthlyPerUser: 99,
+    annualPerUser: 79,
+    annualTotal: 948,   // 79 * 12
+    annualSavingsPct: 20,
+    maxSeats: 5,
+    trialDays: 30,
+  },
+  business: {
+    planId: "business",
+    displayName: "Business",
+    monthlyPerUser: 199,
+    annualPerUser: 159,
+    annualTotal: 1908,  // 159 * 12
+    annualSavingsPct: 20,
+    maxSeats: 25,
+    trialDays: 30,
+  },
+} as const;
+
+// ─── Metered Billing Dimensions (Marketplace Metering Service) ───────────────────────
+export const METERED_DIMENSIONS = {
+  aiAuditRun: {
+    id: "ai_audit_run",
+    displayName: "AI Audit Agent Run",
+    unitOfMeasure: "Per Audit",
+    includedInProfessional: 0,   // metered only
+    includedInBusiness: 10,      // 10 free per month, then metered
+  },
+  premiumApiCall: {
+    id: "premium_api_call",
+    displayName: "Premium Data API Call",
+    unitOfMeasure: "Per 1000 Calls",
+    includedInProfessional: 0,
+    includedInBusiness: 5,       // 5k calls free per month
+  },
+  projectCertification: {
+    id: "project_certification",
+    displayName: "Project Certification",
+    unitOfMeasure: "Per Certification",
+    includedInProfessional: 0,
+    includedInBusiness: 0,
+  },
+  advancedReport: {
+    id: "advanced_report",
+    displayName: "Advanced Report",
+    unitOfMeasure: "Per Report",
+    includedInProfessional: 5,
+    includedInBusiness: -1,      // unlimited
+  },
+} as const;
+
 // ─── Tier Limits ────────────────────────────────────────────────────────────
+// free     = no subscription (read-only catalog access)
+// standard = Professional plan ($99/user/mo | $79 annual)
+// premium  = Business plan ($199/user/mo | $159 annual)
 
 export const TIER_LIMITS = {
   buyer: {
@@ -34,7 +96,7 @@ export const TIER_LIMITS = {
       swapAnalysesPerMonth: 20,
       ccpsExportsPerMonth: 10,
       materialComparisonsPerMonth: 50,
-      maxSeats: 3,
+      maxSeats: 5, // Professional plan
       features: {
         materialCatalog: true,
         ccpsScoring: true,
@@ -56,7 +118,7 @@ export const TIER_LIMITS = {
       swapAnalysesPerMonth: -1, // Unlimited
       ccpsExportsPerMonth: -1, // Unlimited
       materialComparisonsPerMonth: -1, // Unlimited
-      maxSeats: 10,
+      maxSeats: 25, // Business plan
       features: {
         materialCatalog: true,
         ccpsScoring: true,
@@ -145,7 +207,7 @@ export async function createBuyerSubscription(
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
-  const maxSeats = tier === "premium" ? 10 : tier === "standard" ? 3 : 1;
+  const maxSeats = tier === "premium" ? 25 : tier === "standard" ? 5 : 1;
 
   const [result] = await db.insert(buyerSubscriptions).values({
     userId,
@@ -193,7 +255,7 @@ export async function upgradeBuyerSubscription(
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
-  const maxSeats = newTier === "premium" ? 10 : 3;
+  const maxSeats = newTier === "premium" ? 25 : 5;
 
   await db
     .update(buyerSubscriptions)
