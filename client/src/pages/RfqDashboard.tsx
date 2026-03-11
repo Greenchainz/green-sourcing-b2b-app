@@ -21,7 +21,7 @@ const STATUS_CONFIG = {
 };
 
 export default function RfqDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -48,6 +48,18 @@ export default function RfqDashboard() {
     { rfqId: selectedRfqId || 0 },
     { enabled: !!selectedRfqId }
   );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <div className="container py-16 text-center flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
