@@ -15,7 +15,7 @@
     "@azure/keyvault-secrets": "^4.9.0",
     "pg": "^8.13.1",
     "axios": "^1.7.9",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^7.0.11"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
