@@ -84,7 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * redirects the user back to the home page.
    */
   const logout = () => {
+    // Clear all local auth state before redirecting
     setCachedUser(null);
+    try {
+      sessionStorage.clear();
+      localStorage.removeItem('gc_cookie_consent');
+      localStorage.removeItem('manus-runtime-user-info');
+    } catch {
+      // storage may be unavailable — fail silently
+    }
+    // Hit Easy Auth logout endpoint which clears the Azure session cookie
+    // and redirects to the home page. The broken front-channel logout URL
+    // has been removed from the Entra app registration so this now works cleanly.
     window.location.href = '/.auth/logout?post_logout_redirect_uri=/';
   };
 
