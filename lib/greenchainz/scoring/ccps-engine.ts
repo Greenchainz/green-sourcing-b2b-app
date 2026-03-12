@@ -319,6 +319,7 @@ export function calcCarbonDelta(
 export type AssemblyImpactInput = {
   assemblyId: string;
   description?: string;
+  manufacturer?: string;
   epdNumber: string;
   gwpPerFunctionalUnit: number;
   msfFactor: number;
@@ -327,6 +328,8 @@ export type AssemblyImpactInput = {
 
 export type AssemblyImpactResult = {
   assemblyId: string;
+  description?: string;
+  manufacturer?: string;
   epdNumber: string;
   totalKgCO2ePer1000SF: number;
   gwpPerFunctionalUnit: number;
@@ -340,6 +343,8 @@ export function calculateAssemblyLevelImpact(
 
   return {
     assemblyId: input.assemblyId,
+    description: input.description,
+    manufacturer: input.manufacturer,
     epdNumber: input.epdNumber,
     totalKgCO2ePer1000SF: Number(total.toFixed(0)),
     gwpPerFunctionalUnit: input.gwpPerFunctionalUnit,
