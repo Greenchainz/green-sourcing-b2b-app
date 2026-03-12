@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { suppliers, users, materials, materialCertifications } from "../drizzle/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { suppliers, users, materials, materialCertifications, buyerSubscriptions } from "../drizzle/schema";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateComplianceReport } from "./compliance-service";
@@ -251,6 +251,92 @@ export const adminRouter = router({
 
     return stats;
   }),
+
+  // ─── User Management ────────────────────────────────────────────────────────
+
+  /**
+   * List all users with their subscription tiers
+   */
+  getAllUsers: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    const allUsers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        createdAt: users.createdAt,
+        lastSignedIn: users.lastSignedIn,
+      })
+      .from(users)
+      .orderBy(desc(users.createdAt));
+
+    const subs = await db.select().from(buyerSubscriptions);
+    const subMap = new Map(subs.map(s => [s.userId, s]));
+
+    return allUsers.map(u => ({
+      ...u,
+      tier: subMap.get(u.id)?.tier ?? "free",
+      subscriptionStatus: subMap.get(u.id)?.status ?? "none",
+    }));
+  }),
+
+  /**
+   * Set a user's subscription tier (admin override — bypasses Microsoft Marketplace)
+   */
+  setUserTier: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      tier: z.enum(["free", "standard", "premium"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const existing = await db
+        .select({ id: buyerSubscriptions.id })
+        .from(buyerSubscriptions)
+        .where(eq(buyerSubscriptions.userId, input.userId));
+
+      if (existing.length > 0) {
+        await db
+          .update(buyerSubscriptions)
+          .set({ tier: input.tier, status: "active", updatedAt: new Date() })
+          .where(eq(buyerSubscriptions.userId, input.userId));
+      } else {
+        await db.insert(buyerSubscriptions).values({
+          userId: input.userId,
+          tier: input.tier,
+          msSubscriptionId: `admin-override-${input.userId}`,
+          msPlanId: `greenchainz-${input.tier}`,
+          status: "active",
+          isBeta: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      return { success: true, userId: input.userId, tier: input.tier };
+    }),
+
+  /**
+   * Change a user's role
+   */
+  setUserRole: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      role: z.enum(["user", "admin", "buyer", "supplier"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await db
+        .update(users)
+        .set({ role: input.role, updatedAt: new Date() })
+        .where(eq(users.id, input.userId));
+      return { success: true };
+    }),
 
   /**
    * Get compliance report for a supplier
