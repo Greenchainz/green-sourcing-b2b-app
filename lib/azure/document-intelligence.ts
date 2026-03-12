@@ -1,20 +1,31 @@
-import { DocumentAnalysisClient } from '@azure/ai-form-recognizer';
+import { DocumentAnalysisClient, AzureKeyCredential } from '@azure/ai-form-recognizer';
 import { getAzureCredential } from './credentials';
 
-const ENDPOINT = process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
-const credential = getAzureCredential();
+// Accept either the new AZURE_-prefixed name or the legacy name for backward compatibility
+const ENDPOINT =
+  process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT ??
+  process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
+
+const API_KEY = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
 
 if (!ENDPOINT) {
   console.warn(
-    '[Document Intelligence] DOCUMENT_INTELLIGENCE_ENDPOINT environment variable not set. ' +
-    'Document extraction features will be unavailable. ' +
-    'Uses DefaultAzureCredential (managed identity) - no API key needed.'
+    '[Document Intelligence] Neither AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT nor ' +
+    'DOCUMENT_INTELLIGENCE_ENDPOINT is set. ' +
+    'Document extraction features will be unavailable.'
   );
 }
 
-let client: DocumentAnalysisClient | null = ENDPOINT
-  ? new DocumentAnalysisClient(ENDPOINT, credential)
-  : null;
+function buildClient(): DocumentAnalysisClient | null {
+  if (!ENDPOINT) return null;
+  // Prefer API key auth when a key is provided; otherwise use DefaultAzureCredential
+  if (API_KEY) {
+    return new DocumentAnalysisClient(ENDPOINT, new AzureKeyCredential(API_KEY));
+  }
+  return new DocumentAnalysisClient(ENDPOINT, getAzureCredential());
+}
+
+let client: DocumentAnalysisClient | null = buildClient();
 
 export interface ExtractedEPDData {
   gwp?: number;
@@ -92,7 +103,7 @@ export function getDocumentClient(): DocumentAnalysisClient | null {
  * Reset client (exported for testing)
  */
 export function resetDocumentClient(): void {
-  client = ENDPOINT ? new DocumentAnalysisClient(ENDPOINT, credential) : null;
+  client = buildClient();
 }
 
 /**
