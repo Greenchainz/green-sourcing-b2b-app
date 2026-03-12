@@ -481,3 +481,84 @@ export async function extractDecisionLogic(documentContent: string): Promise<Dec
     decisionTree
   };
 }
+
+// ─── EWS Assembly Table Extraction ───────────────────────────────────────────
+
+export type ExtractedAssemblyRow = {
+  assemblyId: string;
+  description?: string;
+  epdNumber: string;
+  gwpPerFunctionalUnit: number;
+  msfFactor: number;
+  functionalUnitLabel?: string;
+};
+
+function parseNumber(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[, ]/g, '');
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : null;
+}
+
+/**
+ * Convert a normalized Azure Document Intelligence table into assembly rows.
+ * Rows that are missing a required EPD number, GWP value, or MSF factor are
+ * silently skipped; only complete, parseable rows are returned.
+ */
+export function mapDocumentIntelligenceTableToAssemblies(
+  table: {
+    rows: { cells: { header: string; text: string }[] }[];
+  }
+): ExtractedAssemblyRow[] {
+  const rows: ExtractedAssemblyRow[] = [];
+
+  for (const row of table.rows) {
+    const byHeader = new Map<string, string>();
+    for (const cell of row.cells) {
+      byHeader.set(cell.header.toLowerCase().trim(), cell.text.trim());
+    }
+
+    const epd =
+      byHeader.get('epd #') ??
+      byHeader.get('epd no') ??
+      byHeader.get('epd') ??
+      '';
+
+    const gwp =
+      byHeader.get('gwp') ??
+      byHeader.get('gwp reported in epd') ??
+      byHeader.get('gwp reported');
+
+    const factor =
+      byHeader.get('msf factor') ??
+      byHeader.get('factor (1000 sf)') ??
+      byHeader.get('factor');
+
+    const assemblyId =
+      byHeader.get('assembly') ??
+      byHeader.get('ews') ??
+      byHeader.get('wall id') ??
+      'UNKNOWN';
+
+    const desc =
+      byHeader.get('description') ??
+      byHeader.get('assembly description') ??
+      byHeader.get('notes');
+
+    const gwpNum = parseNumber(gwp);
+    const factorNum = parseNumber(factor);
+
+    if (!epd || gwpNum == null || factorNum == null) continue;
+
+    rows.push({
+      assemblyId,
+      description: desc,
+      epdNumber: epd,
+      gwpPerFunctionalUnit: gwpNum,
+      msfFactor: factorNum,
+      functionalUnitLabel: byHeader.get('gwp unit') ?? undefined,
+    });
+  }
+
+  return rows;
+}

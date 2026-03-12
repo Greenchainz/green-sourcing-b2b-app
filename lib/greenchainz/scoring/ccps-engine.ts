@@ -313,3 +313,36 @@ export function calcCarbonDelta(
   const deltaPct = originalEc1000 > 0 ? (delta / originalEc1000) * 100 : 0;
   return { delta: Math.round(delta), deltaPct: Math.round(deltaPct * 10) / 10 };
 }
+
+// ─── Assembly-Level Carbon Impact ────────────────────────────────────────────
+
+export type AssemblyImpactInput = {
+  assemblyId: string;
+  description?: string;
+  epdNumber: string;
+  gwpPerFunctionalUnit: number;
+  msfFactor: number;
+  functionalUnitLabel?: string;
+};
+
+export type AssemblyImpactResult = {
+  assemblyId: string;
+  epdNumber: string;
+  totalKgCO2ePer1000SF: number;
+  gwpPerFunctionalUnit: number;
+  msfFactor: number;
+};
+
+export function calculateAssemblyLevelImpact(
+  input: AssemblyImpactInput
+): AssemblyImpactResult {
+  const total = input.gwpPerFunctionalUnit * input.msfFactor;
+
+  return {
+    assemblyId: input.assemblyId,
+    epdNumber: input.epdNumber,
+    totalKgCO2ePer1000SF: Number(total.toFixed(0)),
+    gwpPerFunctionalUnit: input.gwpPerFunctionalUnit,
+    msfFactor: input.msfFactor,
+  };
+}
