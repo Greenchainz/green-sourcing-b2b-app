@@ -1,8 +1,9 @@
 "use client";
-import { useState, useCallback } from "react";
-import { Upload, CheckCircle, AlertCircle, Loader2, FileText } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import { Upload, CheckCircle, AlertCircle, Loader2, FileText, Download } from "lucide-react";
 import { calculateAssemblyLevelImpact } from "@/lib/greenchainz/scoring/ccps-engine";
 import type { ExtractedAssemblyRow } from "@/lib/agents/decision-logic-extractor";
+import type { AssemblyReportPayload } from "@/app/api/submittals/assemblies/report/route";
 
 type AssemblyImpactView = ReturnType<typeof calculateAssemblyLevelImpact>;
 
@@ -35,6 +36,29 @@ export default function SubmittalGeneratorPage() {
     const [ewsUploading, setEwsUploading] = useState(false);
     const [ewsError, setEwsError] = useState<string | null>(null);
     const [assemblies, setAssemblies] = useState<AssemblyImpactView[]>([]);
+
+    // Defensibility report metadata
+    const [projectName, setProjectName] = useState("");
+    const [facadeScope, setFacadeScope] = useState("");
+    const [architectName, setArchitectName] = useState("");
+    const [architectFirm, setArchitectFirm] = useState("");
+    const [reportDownloading, setReportDownloading] = useState(false);
+    const [reportError, setReportError] = useState<string | null>(null);
+
+    const reportReady = assemblies.length > 0 && projectName.trim() !== "" && facadeScope.trim() !== "";
+
+    const grandTotal = useMemo(
+        () => assemblies.reduce((sum, a) => sum + a.totalKgCO2ePer1000SF, 0),
+        [assemblies]
+    );
+
+    const hotspots = useMemo(
+        () =>
+            [...assemblies]
+                .sort((a, b) => b.totalKgCO2ePer1000SF - a.totalKgCO2ePer1000SF)
+                .slice(0, 3),
+        [assemblies]
+    );
 
     const handleFiles = useCallback(async (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -105,6 +129,7 @@ export default function SubmittalGeneratorPage() {
                 calculateAssemblyLevelImpact({
                     assemblyId: row.assemblyId,
                     description: row.description,
+                    manufacturer: row.manufacturer,
                     epdNumber: row.epdNumber,
                     gwpPerFunctionalUnit: row.gwpPerFunctionalUnit,
                     msfFactor: row.msfFactor,
@@ -117,6 +142,53 @@ export default function SubmittalGeneratorPage() {
             setEwsError(e instanceof Error ? e.message : "Unknown error");
         } finally {
             setEwsUploading(false);
+        }
+    };
+
+    const handleDownloadReport = async () => {
+        if (!reportReady) return;
+        setReportDownloading(true);
+        setReportError(null);
+
+        try {
+            const payload: AssemblyReportPayload = {
+                projectName: projectName.trim(),
+                facadeScope: facadeScope.trim(),
+                architectName: architectName.trim() || undefined,
+                architectFirm: architectFirm.trim() || undefined,
+                assemblies: assemblies.map((a) => ({
+                    assemblyId: a.assemblyId,
+                    description: a.description,
+                    manufacturer: a.manufacturer,
+                    epdNumber: a.epdNumber,
+                    gwpPerFunctionalUnit: a.gwpPerFunctionalUnit,
+                    msfFactor: a.msfFactor,
+                    totalKgCO2ePer1000SF: a.totalKgCO2ePer1000SF,
+                })),
+            };
+
+            const res = await fetch("/api/submittals/assemblies/report", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const body = await res.text();
+                throw new Error(body || `Report generation failed with status ${res.status}`);
+            }
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `greenchainz-defensibility-report-${projectName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e: unknown) {
+            setReportError(e instanceof Error ? e.message : "Failed to generate report");
+        } finally {
+            setReportDownloading(false);
         }
     };
 
@@ -369,30 +441,143 @@ export default function SubmittalGeneratorPage() {
                     )}
 
                     {assemblies.length > 0 && (
-                        <div className="mt-8 overflow-x-auto rounded-lg border border-slate-200">
-                            <table className="min-w-full text-sm bg-white">
-                                <thead className="bg-slate-50 border-b border-slate-200">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Assembly</th>
-                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">EPD #</th>
-                                        <th className="text-right px-4 py-3 font-semibold text-slate-700">GWP / unit</th>
-                                        <th className="text-right px-4 py-3 font-semibold text-slate-700">Factor (1000 SF)</th>
-                                        <th className="text-right px-4 py-3 font-semibold text-slate-700">Total kgCO2e / 1000 SF</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {assemblies.map((a) => (
-                                        <tr key={`${a.assemblyId}-${a.epdNumber}`} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="px-4 py-2 text-slate-900">{a.assemblyId}</td>
-                                            <td className="px-4 py-2 text-slate-600 font-mono text-xs">{a.epdNumber}</td>
-                                            <td className="px-4 py-2 text-right text-slate-700">{a.gwpPerFunctionalUnit.toFixed(1)}</td>
-                                            <td className="px-4 py-2 text-right text-slate-700">{a.msfFactor.toFixed(3)}</td>
-                                            <td className="px-4 py-2 text-right font-bold text-green-700">{a.totalKgCO2ePer1000SF.toLocaleString()}</td>
+                        <>
+                            {/* Summary bar */}
+                            <div className="mt-6 flex flex-wrap gap-4">
+                                <div className="flex-1 min-w-[180px] bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                                    <p className="text-xs text-green-700 font-semibold uppercase tracking-wide">Grand Total</p>
+                                    <p className="text-2xl font-black text-green-800">{grandTotal.toLocaleString()}</p>
+                                    <p className="text-xs text-green-600">kgCO₂e / 1,000 SF</p>
+                                </div>
+                                {hotspots.length > 0 && (
+                                    <div className="flex-1 min-w-[220px] bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                                        <p className="text-xs text-amber-700 font-semibold uppercase tracking-wide mb-1">Top Hotspots</p>
+                                        {hotspots.map((h, i) => (
+                                            <p key={h.assemblyId} className="text-xs text-amber-800">
+                                                {i + 1}. {h.assemblyId} — {h.totalKgCO2ePer1000SF.toLocaleString()} kgCO₂e
+                                            </p>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Assembly table */}
+                            <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200">
+                                <table className="min-w-full text-sm bg-white">
+                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th className="text-left px-4 py-3 font-semibold text-slate-700">Assembly</th>
+                                            <th className="text-left px-4 py-3 font-semibold text-slate-700">EPD #</th>
+                                            <th className="text-right px-4 py-3 font-semibold text-slate-700">GWP / unit</th>
+                                            <th className="text-right px-4 py-3 font-semibold text-slate-700">Factor (1000 SF)</th>
+                                            <th className="text-right px-4 py-3 font-semibold text-slate-700">Total kgCO2e / 1000 SF</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {assemblies.map((a) => (
+                                            <tr key={`${a.assemblyId}-${a.epdNumber}`} className="border-b border-slate-100 hover:bg-slate-50">
+                                                <td className="px-4 py-2 text-slate-900">{a.assemblyId}</td>
+                                                <td className="px-4 py-2 text-slate-600 font-mono text-xs">{a.epdNumber}</td>
+                                                <td className="px-4 py-2 text-right text-slate-700">{a.gwpPerFunctionalUnit.toFixed(1)}</td>
+                                                <td className="px-4 py-2 text-right text-slate-700">{a.msfFactor.toFixed(3)}</td>
+                                                <td className="px-4 py-2 text-right font-bold text-green-700">{a.totalKgCO2ePer1000SF.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Defensibility Report form */}
+                            <div className="mt-8 bg-slate-50 border border-slate-200 rounded-xl p-6">
+                                <h3 className="text-lg font-bold text-slate-900 mb-1">Download Defensibility Report</h3>
+                                <p className="text-slate-500 text-sm mb-5">
+                                    Generate a branded PDF with assembly carbon data, hotspots, methodology, and a signature block.
+                                </p>
+
+                                <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Project Name <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={projectName}
+                                            onChange={(e) => setProjectName(e.target.value)}
+                                            placeholder="e.g. 123 Main Street Mixed-Use"
+                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Facade / Scope <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={facadeScope}
+                                            onChange={(e) => setFacadeScope(e.target.value)}
+                                            placeholder="e.g. Exterior Facade Package — Level 3-12"
+                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Architect Name <span className="text-slate-400 font-normal">(optional)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={architectName}
+                                            onChange={(e) => setArchitectName(e.target.value)}
+                                            placeholder="e.g. Jane Smith, AIA"
+                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Architect Firm <span className="text-slate-400 font-normal">(optional)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={architectFirm}
+                                            onChange={(e) => setArchitectFirm(e.target.value)}
+                                            placeholder="e.g. Smith & Partners Architecture"
+                                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                {!reportReady && assemblies.length > 0 && (
+                                    <p className="text-xs text-amber-700 mb-3 flex items-center gap-1">
+                                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                        Project name and facade scope are required to generate the report.
+                                    </p>
+                                )}
+
+                                {reportError && (
+                                    <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2">
+                                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                                        <p className="text-red-700 text-sm">{reportError}</p>
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={handleDownloadReport}
+                                    disabled={!reportReady || reportDownloading}
+                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition shadow-sm"
+                                >
+                                    {reportDownloading ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Generating PDF…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="w-4 h-4" />
+                                            Download Defensibility Report
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </>
                     )}
                 </div>
             </section>

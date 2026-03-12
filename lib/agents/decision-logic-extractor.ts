@@ -487,6 +487,7 @@ export async function extractDecisionLogic(documentContent: string): Promise<Dec
 export type ExtractedAssemblyRow = {
   assemblyId: string;
   description?: string;
+  manufacturer?: string;
   epdNumber: string;
   gwpPerFunctionalUnit: number;
   msfFactor: number;
@@ -545,6 +546,11 @@ export function mapDocumentIntelligenceTableToAssemblies(
       byHeader.get('assembly description') ??
       byHeader.get('notes');
 
+    const mfr =
+      byHeader.get('manufacturer') ??
+      byHeader.get('mfr') ??
+      byHeader.get('brand');
+
     const gwpNum = parseNumber(gwp);
     const factorNum = parseNumber(factor);
 
@@ -553,6 +559,7 @@ export function mapDocumentIntelligenceTableToAssemblies(
     rows.push({
       assemblyId,
       description: desc,
+      manufacturer: mfr,
       epdNumber: epd,
       gwpPerFunctionalUnit: gwpNum,
       msfFactor: factorNum,
