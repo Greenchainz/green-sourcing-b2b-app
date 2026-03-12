@@ -2,10 +2,16 @@
 import { useState, useCallback, useMemo } from "react";
 import { Upload, CheckCircle, AlertCircle, Loader2, FileText, Download } from "lucide-react";
 import { calculateAssemblyLevelImpact } from "@/lib/greenchainz/scoring/ccps-engine";
-import type { ExtractedAssemblyRow } from "@/lib/agents/decision-logic-extractor";
+import type { AssemblyRowWithEc3 } from "@/app/api/submittals/assemblies/ingest/route";
 import type { AssemblyReportPayload } from "@/app/api/submittals/assemblies/report/route";
 
-type AssemblyImpactView = ReturnType<typeof calculateAssemblyLevelImpact>;
+type BaseImpactView = ReturnType<typeof calculateAssemblyLevelImpact>;
+
+type AssemblyImpactView = BaseImpactView & {
+    gwpSource: "EC3" | "Schedule";
+    gwpDiffPercent?: number;
+    ec3ValidUntil?: string;
+};
 
 interface ExtractionResult {
     requirements: {
@@ -123,19 +129,30 @@ export default function SubmittalGeneratorPage() {
                 throw new Error(body || `Upload failed with ${res.status}`);
             }
 
-            const data = (await res.json()) as { rows: ExtractedAssemblyRow[] };
+            const data = (await res.json()) as { rows: AssemblyRowWithEc3[] };
 
-            const impacts = data.rows.map((row) =>
-                calculateAssemblyLevelImpact({
+            const impacts: AssemblyImpactView[] = data.rows.map((row) => {
+                const useEc3 = row.ec3 !== undefined;
+                const gwpToUse = row.ec3?.gwpPerUnit ?? row.gwpPerFunctionalUnit;
+                const unitLabel = row.ec3?.unit ?? row.functionalUnitLabel;
+
+                const base = calculateAssemblyLevelImpact({
                     assemblyId: row.assemblyId,
                     description: row.description,
                     manufacturer: row.manufacturer,
                     epdNumber: row.epdNumber,
-                    gwpPerFunctionalUnit: row.gwpPerFunctionalUnit,
+                    gwpPerFunctionalUnit: gwpToUse,
                     msfFactor: row.msfFactor,
-                    functionalUnitLabel: row.functionalUnitLabel,
-                })
-            );
+                    functionalUnitLabel: unitLabel,
+                });
+
+                return {
+                    ...base,
+                    gwpSource: useEc3 ? "EC3" : "Schedule",
+                    ...(row.ec3?.gwpDiffPercent !== undefined ? { gwpDiffPercent: row.ec3.gwpDiffPercent } : {}),
+                    ...(row.ec3?.validUntil ? { ec3ValidUntil: row.ec3.validUntil } : {}),
+                };
+            });
 
             setAssemblies(impacts);
         } catch (e: unknown) {
@@ -164,6 +181,9 @@ export default function SubmittalGeneratorPage() {
                     gwpPerFunctionalUnit: a.gwpPerFunctionalUnit,
                     msfFactor: a.msfFactor,
                     totalKgCO2ePer1000SF: a.totalKgCO2ePer1000SF,
+                    gwpSource: a.gwpSource,
+                    ...(a.gwpDiffPercent !== undefined ? { gwpDiffPercent: a.gwpDiffPercent } : {}),
+                    ...(a.ec3ValidUntil ? { ec3ValidUntil: a.ec3ValidUntil } : {}),
                 })),
             };
 
@@ -471,18 +491,34 @@ export default function SubmittalGeneratorPage() {
                                             <th className="text-right px-4 py-3 font-semibold text-slate-700">GWP / unit</th>
                                             <th className="text-right px-4 py-3 font-semibold text-slate-700">Factor (1000 SF)</th>
                                             <th className="text-right px-4 py-3 font-semibold text-slate-700">Total kgCO2e / 1000 SF</th>
+                                            <th className="text-left px-4 py-3 font-semibold text-slate-700">Source</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {assemblies.map((a) => (
-                                            <tr key={`${a.assemblyId}-${a.epdNumber}`} className="border-b border-slate-100 hover:bg-slate-50">
-                                                <td className="px-4 py-2 text-slate-900">{a.assemblyId}</td>
-                                                <td className="px-4 py-2 text-slate-600 font-mono text-xs">{a.epdNumber}</td>
-                                                <td className="px-4 py-2 text-right text-slate-700">{a.gwpPerFunctionalUnit.toFixed(1)}</td>
-                                                <td className="px-4 py-2 text-right text-slate-700">{a.msfFactor.toFixed(3)}</td>
-                                                <td className="px-4 py-2 text-right font-bold text-green-700">{a.totalKgCO2ePer1000SF.toLocaleString()}</td>
-                                            </tr>
-                                        ))}
+                                        {assemblies.map((a) => {
+                                            const hasBigDiff = a.gwpDiffPercent !== undefined && Math.abs(a.gwpDiffPercent) > 10;
+                                            return (
+                                                <tr key={`${a.assemblyId}-${a.epdNumber}`} className="border-b border-slate-100 hover:bg-slate-50">
+                                                    <td className="px-4 py-2 text-slate-900">{a.assemblyId}</td>
+                                                    <td className="px-4 py-2 text-slate-600 font-mono text-xs">{a.epdNumber}</td>
+                                                    <td className="px-4 py-2 text-right text-slate-700">{a.gwpPerFunctionalUnit.toFixed(1)}</td>
+                                                    <td className="px-4 py-2 text-right text-slate-700">{a.msfFactor.toFixed(3)}</td>
+                                                    <td className="px-4 py-2 text-right font-bold text-green-700">{a.totalKgCO2ePer1000SF.toLocaleString()}</td>
+                                                    <td className="px-4 py-2 text-left">
+                                                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                                                            a.gwpSource === "EC3"
+                                                                ? "bg-green-100 text-green-800"
+                                                                : "bg-slate-100 text-slate-600"
+                                                        }`}>
+                                                            {a.gwpSource === "EC3" ? "EC3" : "Schedule"}
+                                                            {hasBigDiff && (
+                                                                <span title={`GWP differs from schedule by ${a.gwpDiffPercent}%`} className="text-amber-600">⚠</span>
+                                                            )}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

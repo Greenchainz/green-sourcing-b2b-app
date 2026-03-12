@@ -13,6 +13,9 @@ export type AssemblyReportRow = {
   gwpPerFunctionalUnit: number;
   msfFactor: number;
   totalKgCO2ePer1000SF: number;
+  gwpSource?: 'EC3' | 'Schedule';
+  gwpDiffPercent?: number;
+  ec3ValidUntil?: string;
 };
 
 export type AssemblyReportPayload = {
@@ -231,12 +234,13 @@ async function buildPdf(
 
     // Column layout (points from left margin)
     const cols = {
-      id:     { x: M,       w: 70  },
-      desc:   { x: M + 75,  w: 110 },
-      epd:    { x: M + 190, w: 85  },
-      gwp:    { x: M + 280, w: 55  },
-      factor: { x: M + 340, w: 45  },
-      total:  { x: M + 390, w: 72  },
+      id:     { x: M,       w: 60  },
+      desc:   { x: M + 65,  w: 100 },
+      epd:    { x: M + 170, w: 80  },
+      gwp:    { x: M + 255, w: 50  },
+      factor: { x: M + 310, w: 40  },
+      total:  { x: M + 355, w: 62  },
+      source: { x: M + 422, w: 90  },
     };
 
     // Table header row
@@ -249,6 +253,7 @@ async function buildPdf(
       doc.text('GWP / unit',   cols.gwp.x,        tableY + 4, { lineBreak: false, width: cols.gwp.w, align: 'right' });
       doc.text('Factor',       cols.factor.x,     tableY + 4, { lineBreak: false, width: cols.factor.w, align: 'right' });
       doc.text('kgCO₂e/1kSF', cols.total.x,      tableY + 4, { lineBreak: false, width: cols.total.w, align: 'right' });
+      doc.text('Source',       cols.source.x + 2, tableY + 4, { lineBreak: false, width: cols.source.w });
       return tableY + 16;
     };
 
@@ -300,6 +305,21 @@ async function buildPdf(
       doc.font('Helvetica-Bold').fillColor('#166534')
         .text(fmtInt(a.totalKgCO2ePer1000SF), cols.total.x, cy, { lineBreak: false, width: cols.total.w, align: 'right' });
 
+      // Source cell
+      const isEc3 = a.gwpSource === 'EC3';
+      const validUntilDisplay = a.ec3ValidUntil
+        ? (a.ec3ValidUntil.length >= 10 ? a.ec3ValidUntil.slice(0, 10) : a.ec3ValidUntil)
+        : null;
+      const sourceLabel = isEc3
+        ? (validUntilDisplay ? `EC3 (valid to ${validUntilDisplay})` : 'EC3')
+        : 'Architect schedule';
+      const sourceDiff =
+        isEc3 && a.gwpDiffPercent !== undefined && Math.abs(a.gwpDiffPercent) > 10
+          ? ` ⚠ ${a.gwpDiffPercent > 0 ? '+' : ''}${a.gwpDiffPercent}%`
+          : '';
+      doc.font('Helvetica').fillColor(isEc3 ? '#166534' : '#475569').fontSize(7)
+        .text(`${sourceLabel}${sourceDiff}`, cols.source.x + 2, cy, { lineBreak: false, width: cols.source.w - 4 });
+
       y += rowHeight;
     });
 
@@ -322,6 +342,9 @@ async function buildPdf(
     const methodologyText = [
       '• Assembly-level embodied carbon is calculated as: GWP (kg CO₂e per functional unit, from EPD) × ' +
         'project-specific MSF (thousand-square-foot) factor from the architect-provided schedule.',
+      '• Where available, GWP values have been verified against Building Transparency\'s EC3 database; ' +
+        'EC3 values are used in calculations when they differ from the project schedule. ' +
+        'The "Source" column indicates whether each GWP value originates from EC3 or the architect schedule.',
       '• Values are intended for comparative embodied carbon assessment of assemblies at a 1,000 SF scale ' +
         'and are not a substitute for a full life-cycle assessment (LCA).',
       '• Data source: EWS_Combined_All_Assemblies_WITH_Manufacturers.pdf and associated Environmental ' +

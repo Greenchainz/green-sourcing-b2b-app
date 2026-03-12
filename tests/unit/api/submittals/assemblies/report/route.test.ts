@@ -119,4 +119,70 @@ describe('POST /api/submittals/assemblies/report', () => {
     const buf = await res.arrayBuffer();
     expect(buf.byteLength).toBeGreaterThan(1000);
   });
+
+  it('accepts EC3 source metadata fields and returns a valid PDF', async () => {
+    const ec3Assemblies: AssemblyReportPayload['assemblies'] = [
+      {
+        assemblyId: 'EWS-01',
+        description: 'Unitized glazing',
+        manufacturer: 'Kawneer',
+        epdNumber: '4789733794.109.1',
+        gwpPerFunctionalUnit: 160.8,
+        msfFactor: 92.903,
+        totalKgCO2ePer1000SF: 14939,
+        gwpSource: 'EC3',
+        gwpDiffPercent: -3.2,
+        ec3ValidUntil: '2030-12-31',
+      },
+      {
+        assemblyId: 'EWS-2A',
+        description: 'Aluminum framing',
+        epdNumber: 'EPD-99999',
+        gwpPerFunctionalUnit: 8.0,
+        msfFactor: 0.85,
+        totalKgCO2ePer1000SF: 6800,
+        gwpSource: 'Schedule',
+      },
+    ];
+
+    const payload: AssemblyReportPayload = {
+      projectName: 'EC3 Test Project',
+      facadeScope: 'Exterior Curtain Wall',
+      assemblies: ec3Assemblies,
+    };
+
+    const res = await POST(makeRequest(payload));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('application/pdf');
+
+    const buf = await res.arrayBuffer();
+    expect(buf.byteLength).toBeGreaterThan(1000);
+    const header = Buffer.from(buf).toString('utf8', 0, 4);
+    expect(header).toBe('%PDF');
+  });
+
+  it('renders EC3 source with large diff warning without throwing', async () => {
+    const payload: AssemblyReportPayload = {
+      projectName: 'Warning Test',
+      facadeScope: 'Facade',
+      assemblies: [
+        {
+          assemblyId: 'EWS-X',
+          epdNumber: 'EPD-WARN',
+          gwpPerFunctionalUnit: 200,
+          msfFactor: 1.0,
+          totalKgCO2ePer1000SF: 200000,
+          gwpSource: 'EC3',
+          gwpDiffPercent: 25.5,
+          ec3ValidUntil: '2028-06-30',
+        },
+      ],
+    };
+
+    const res = await POST(makeRequest(payload));
+    expect(res.status).toBe(200);
+    const header = Buffer.from(await res.arrayBuffer()).toString('utf8', 0, 4);
+    expect(header).toBe('%PDF');
+  });
 });
+
