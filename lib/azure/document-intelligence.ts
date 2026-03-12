@@ -33,6 +33,54 @@ export interface ExtractedCertData {
   confidence_scores: Record<string, number>;
 }
 
+export type NormalizedTable = {
+  rows: { cells: { header: string; text: string }[] }[];
+};
+
+/**
+ * Extract and normalize tables from a PDF buffer using the prebuilt-layout model.
+ * Returns an empty array when the client is not configured or no tables are found.
+ */
+export async function getDocumentTablesFromAzure(
+  fileBuffer: Buffer
+): Promise<NormalizedTable[]> {
+  if (!client) {
+    throw new Error(
+      'Document Intelligence client not initialized. ' +
+      'Ensure DOCUMENT_INTELLIGENCE_ENDPOINT is set.'
+    );
+  }
+
+  const poller = await client.beginAnalyzeDocument('prebuilt-layout', fileBuffer);
+  const result = await poller.pollUntilDone();
+
+  if (!result.tables || result.tables.length === 0) return [];
+
+  return result.tables.map((t) => {
+    const headerByColumn = new Map<number, string>();
+    for (const cell of t.cells) {
+      if (cell.rowIndex === 0) {
+        headerByColumn.set(cell.columnIndex, cell.content ?? '');
+      }
+    }
+
+    const rowsByIndex = new Map<number, { header: string; text: string }[]>();
+    for (const cell of t.cells) {
+      if (cell.rowIndex === 0) continue;
+      const header = headerByColumn.get(cell.columnIndex) ?? `col_${cell.columnIndex}`;
+      const arr = rowsByIndex.get(cell.rowIndex) ?? [];
+      arr.push({ header, text: cell.content ?? '' });
+      rowsByIndex.set(cell.rowIndex, arr);
+    }
+
+    const rows: { cells: { header: string; text: string }[] }[] = [];
+    for (const cells of rowsByIndex.values()) {
+      rows.push({ cells });
+    }
+    return { rows };
+  });
+}
+
 /**
  * Get Document Intelligence client (exported for testing)
  */

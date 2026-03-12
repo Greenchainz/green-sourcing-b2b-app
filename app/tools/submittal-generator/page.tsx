@@ -1,6 +1,10 @@
 "use client";
 import { useState, useCallback } from "react";
 import { Upload, CheckCircle, AlertCircle, Loader2, FileText } from "lucide-react";
+import { calculateAssemblyLevelImpact } from "@/lib/greenchainz/scoring/ccps-engine";
+import type { ExtractedAssemblyRow } from "@/lib/agents/decision-logic-extractor";
+
+type AssemblyImpactView = ReturnType<typeof calculateAssemblyLevelImpact>;
 
 interface ExtractionResult {
     requirements: {
@@ -26,6 +30,11 @@ export default function SubmittalGeneratorPage() {
     const [_extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
     const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
     const [stage, setStage] = useState<"upload" | "processing" | "results" | "complete">("upload");
+
+    // EWS assembly ingestion state
+    const [ewsUploading, setEwsUploading] = useState(false);
+    const [ewsError, setEwsError] = useState<string | null>(null);
+    const [assemblies, setAssemblies] = useState<AssemblyImpactView[]>([]);
 
     const handleFiles = useCallback(async (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -71,6 +80,45 @@ export default function SubmittalGeneratorPage() {
             setUploading(false);
         }
     }, []);
+
+    const handleEwsUpload = async (file: File) => {
+        setEwsUploading(true);
+        setEwsError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/submittals/assemblies/ingest", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const body = await res.text();
+                throw new Error(body || `Upload failed with ${res.status}`);
+            }
+
+            const data = (await res.json()) as { rows: ExtractedAssemblyRow[] };
+
+            const impacts = data.rows.map((row) =>
+                calculateAssemblyLevelImpact({
+                    assemblyId: row.assemblyId,
+                    description: row.description,
+                    epdNumber: row.epdNumber,
+                    gwpPerFunctionalUnit: row.gwpPerFunctionalUnit,
+                    msfFactor: row.msfFactor,
+                    functionalUnitLabel: row.functionalUnitLabel,
+                })
+            );
+
+            setAssemblies(impacts);
+        } catch (e: unknown) {
+            setEwsError(e instanceof Error ? e.message : "Unknown error");
+        } finally {
+            setEwsUploading(false);
+        }
+    };
 
     const resetForm = () => {
         setError(null);
@@ -260,6 +308,92 @@ export default function SubmittalGeneratorPage() {
                             </p>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            {/* EWS Assembly Carbon Section */}
+            <section className="py-12 px-6 bg-white border-t border-slate-200">
+                <div className="max-w-4xl mx-auto">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-1">
+                        Assembly Carbon Table (EWS PDF)
+                    </h2>
+                    <p className="text-slate-600 text-sm mb-6">
+                        Drop the architect&apos;s EWS combined assemblies PDF to calculate total kgCO2e per 1,000 SF for each assembly row.
+                    </p>
+
+                    <div
+                        className="border-2 border-dashed border-slate-300 rounded-2xl p-10 bg-slate-50 text-center hover:border-green-500 transition-all hover:shadow-lg"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) handleEwsUpload(file);
+                        }}
+                    >
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center">
+                                <FileText className="w-7 h-7 text-green-600" />
+                            </div>
+                            {ewsUploading ? (
+                                <div className="flex items-center gap-2 text-slate-600">
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <span>Processing table and calculating impacts…</span>
+                                </div>
+                            ) : (
+                                <label
+                                    htmlFor="ews-upload-input"
+                                    className="inline-block bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg cursor-pointer font-semibold transition"
+                                >
+                                    Choose EWS PDF
+                                    <input
+                                        type="file"
+                                        id="ews-upload-input"
+                                        accept="application/pdf"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleEwsUpload(file);
+                                        }}
+                                    />
+                                </label>
+                            )}
+                            <p className="text-slate-500 text-sm">or drag &amp; drop EWS_Combined PDF here</p>
+                        </div>
+                    </div>
+
+                    {ewsError && (
+                        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-red-700 text-sm">{ewsError}</p>
+                        </div>
+                    )}
+
+                    {assemblies.length > 0 && (
+                        <div className="mt-8 overflow-x-auto rounded-lg border border-slate-200">
+                            <table className="min-w-full text-sm bg-white">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">Assembly</th>
+                                        <th className="text-left px-4 py-3 font-semibold text-slate-700">EPD #</th>
+                                        <th className="text-right px-4 py-3 font-semibold text-slate-700">GWP / unit</th>
+                                        <th className="text-right px-4 py-3 font-semibold text-slate-700">Factor (1000 SF)</th>
+                                        <th className="text-right px-4 py-3 font-semibold text-slate-700">Total kgCO2e / 1000 SF</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {assemblies.map((a) => (
+                                        <tr key={`${a.assemblyId}-${a.epdNumber}`} className="border-b border-slate-100 hover:bg-slate-50">
+                                            <td className="px-4 py-2 text-slate-900">{a.assemblyId}</td>
+                                            <td className="px-4 py-2 text-slate-600 font-mono text-xs">{a.epdNumber}</td>
+                                            <td className="px-4 py-2 text-right text-slate-700">{a.gwpPerFunctionalUnit.toFixed(1)}</td>
+                                            <td className="px-4 py-2 text-right text-slate-700">{a.msfFactor.toFixed(3)}</td>
+                                            <td className="px-4 py-2 text-right font-bold text-green-700">{a.totalKgCO2ePer1000SF.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </section>
         </div>
