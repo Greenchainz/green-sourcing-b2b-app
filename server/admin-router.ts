@@ -1,4 +1,5 @@
 import { protectedProcedure, router } from "./_core/trpc";
+import { runManufacturerPdfIngestion, MANUFACTURER_SPEC_SHEETS } from "./services/manufacturerPdfIngestion";
 import { getDb } from "./db";
 import { suppliers, users, materials, materialCertifications, buyerSubscriptions } from "../drizzle/schema";
 import { eq, and, inArray, desc } from "drizzle-orm";
@@ -379,4 +380,74 @@ export const adminRouter = router({
 
       return report;
     }),
+
+  // ─── PDF Ingestion Pipeline ─────────────────────────────────────────────────
+
+  /**
+   * Trigger the manufacturer PDF ingestion pipeline.
+   * Fetches spec sheets, extracts specs via Azure Document Intelligence,
+   * and populates material_technical_specs.
+   */
+  triggerPdfIngestion: adminProcedure
+    .input(
+      z.object({
+        manufacturers: z.array(z.string()).optional(),
+        dryRun: z.boolean().default(false),
+        useFallback: z.boolean().default(false),
+      })
+    )
+    .mutation(async ({ input }) => {
+      console.log("[Admin] PDF ingestion triggered", input);
+      const results = await runManufacturerPdfIngestion({
+        manufacturers: input.manufacturers,
+        dryRun: input.dryRun,
+        useFallback: input.useFallback,
+      });
+      const successCount = results.filter(r => r.status === "success").length;
+      const totalUpdated = results.reduce((sum, r) => sum + r.materialsUpdated, 0);
+      return {
+        summary: {
+          sheetsProcessed: results.length,
+          sheetsSucceeded: successCount,
+          materialsUpdated: totalUpdated,
+        },
+        results,
+      };
+    }),
+
+  /**
+   * List all manufacturer spec sheets in the catalog.
+   */
+  listSpecSheets: adminProcedure.query(() => {
+    return MANUFACTURER_SPEC_SHEETS.map(s => ({
+      manufacturer: s.manufacturer,
+      productName: s.productName,
+      category: s.category,
+      pdfUrl: s.pdfUrl,
+    }));
+  }),
+
+  /**
+   * Get material_technical_specs coverage stats.
+   */
+  getTechSpecsCoverage: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const { materialTechnicalSpecs } = await import("../drizzle/schema");
+    const { count, isNotNull } = await import("drizzle-orm");
+    const [totalMaterials] = await db.select({ count: count() }).from(materials);
+    const [specsCount] = await db.select({ count: count() }).from(materialTechnicalSpecs);
+    const [withFireRating] = await db
+      .select({ count: count() })
+      .from(materialTechnicalSpecs)
+      .where(isNotNull(materialTechnicalSpecs.fireRating));
+    return {
+      totalMaterials: Number(totalMaterials.count),
+      materialsWithSpecs: Number(specsCount.count),
+      materialsWithFireRating: Number(withFireRating.count),
+      coveragePercent: Number(totalMaterials.count) > 0
+        ? Math.round((Number(specsCount.count) / Number(totalMaterials.count)) * 100)
+        : 0,
+    };
+  }),
 });
