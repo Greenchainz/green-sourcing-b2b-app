@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { sendInAppNotification } from "@/lib/greenchainz";
 import { getEasyAuthUser } from "@/lib/auth/easy-auth";
+import { auth } from "@/auth";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const pool = getPool();
 
@@ -76,6 +80,14 @@ export async function POST(request: NextRequest) {
     }
 
     const user_id = user.id;
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    const user_id = session.user.id;
 
     const client = await pool.connect();
     try {
@@ -232,6 +244,14 @@ export async function GET(request: NextRequest) {
     }
 
     const user_id = user.id;
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    const user_id = session.user.id;
 
     const result = await pool.query(
       `SELECT 
