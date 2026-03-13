@@ -3,6 +3,9 @@ import { getPool } from "@/lib/db";
 import { sendInAppNotification } from "@/lib/greenchainz";
 import { auth } from "@/auth";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 const pool = getPool();
 
 /**
