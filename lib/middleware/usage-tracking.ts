@@ -82,6 +82,8 @@ export function withUsageTracking(
     
     const user = getEasyAuthUser(request.headers);
     const userId = user?.id || "anonymous";
+    // If we have a user from Easy Auth, use their ID, otherwise fallback to "anonymous" or "default"
+    const userId = user?.id || "anonymous-user";
     
     const endpoint = request.nextUrl.pathname;
     const method = request.method;
