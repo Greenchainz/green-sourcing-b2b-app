@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -20,8 +21,12 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    // Get user from Easy Auth session
+    const user = getEasyAuthUser(request.headers);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const user_id = user.id;
 
     let query = `
       SELECT 
@@ -92,8 +97,12 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { notification_ids, mark_all_read } = body;
 
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    // Get user from Easy Auth session
+    const user = getEasyAuthUser(request.headers);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const user_id = user.id;
 
     if (mark_all_read) {
       await pool.query(
