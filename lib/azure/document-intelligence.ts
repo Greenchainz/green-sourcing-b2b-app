@@ -1,20 +1,31 @@
-import { DocumentAnalysisClient } from '@azure/ai-form-recognizer';
+import { DocumentAnalysisClient, AzureKeyCredential } from '@azure/ai-form-recognizer';
 import { getAzureCredential } from './credentials';
 
-const ENDPOINT = process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
-const credential = getAzureCredential();
+// Accept either the new AZURE_-prefixed name or the legacy name for backward compatibility
+const ENDPOINT =
+  process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT ??
+  process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
+
+const API_KEY = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
 
 if (!ENDPOINT) {
   console.warn(
-    '[Document Intelligence] DOCUMENT_INTELLIGENCE_ENDPOINT environment variable not set. ' +
-    'Document extraction features will be unavailable. ' +
-    'Uses DefaultAzureCredential (managed identity) - no API key needed.'
+    '[Document Intelligence] Neither AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT nor ' +
+    'DOCUMENT_INTELLIGENCE_ENDPOINT is set. ' +
+    'Document extraction features will be unavailable.'
   );
 }
 
-let client: DocumentAnalysisClient | null = ENDPOINT
-  ? new DocumentAnalysisClient(ENDPOINT, credential)
-  : null;
+function buildClient(): DocumentAnalysisClient | null {
+  if (!ENDPOINT) return null;
+  // Prefer API key auth when a key is provided; otherwise use DefaultAzureCredential
+  if (API_KEY) {
+    return new DocumentAnalysisClient(ENDPOINT, new AzureKeyCredential(API_KEY));
+  }
+  return new DocumentAnalysisClient(ENDPOINT, getAzureCredential());
+}
+
+let client: DocumentAnalysisClient | null = buildClient();
 
 export interface ExtractedEPDData {
   gwp?: number;
@@ -33,6 +44,54 @@ export interface ExtractedCertData {
   confidence_scores: Record<string, number>;
 }
 
+export type NormalizedTable = {
+  rows: { cells: { header: string; text: string }[] }[];
+};
+
+/**
+ * Extract and normalize tables from a PDF buffer using the prebuilt-layout model.
+ * Returns an empty array when the client is not configured or no tables are found.
+ */
+export async function getDocumentTablesFromAzure(
+  fileBuffer: Buffer
+): Promise<NormalizedTable[]> {
+  if (!client) {
+    throw new Error(
+      'Document Intelligence client not initialized. ' +
+      'Ensure DOCUMENT_INTELLIGENCE_ENDPOINT is set.'
+    );
+  }
+
+  const poller = await client.beginAnalyzeDocument('prebuilt-layout', fileBuffer);
+  const result = await poller.pollUntilDone();
+
+  if (!result.tables || result.tables.length === 0) return [];
+
+  return result.tables.map((t) => {
+    const headerByColumn = new Map<number, string>();
+    for (const cell of t.cells) {
+      if (cell.rowIndex === 0) {
+        headerByColumn.set(cell.columnIndex, cell.content ?? '');
+      }
+    }
+
+    const rowsByIndex = new Map<number, { header: string; text: string }[]>();
+    for (const cell of t.cells) {
+      if (cell.rowIndex === 0) continue;
+      const header = headerByColumn.get(cell.columnIndex) ?? `col_${cell.columnIndex}`;
+      const arr = rowsByIndex.get(cell.rowIndex) ?? [];
+      arr.push({ header, text: cell.content ?? '' });
+      rowsByIndex.set(cell.rowIndex, arr);
+    }
+
+    const rows: { cells: { header: string; text: string }[] }[] = [];
+    for (const cells of rowsByIndex.values()) {
+      rows.push({ cells });
+    }
+    return { rows };
+  });
+}
+
 /**
  * Get Document Intelligence client (exported for testing)
  */
@@ -44,7 +103,7 @@ export function getDocumentClient(): DocumentAnalysisClient | null {
  * Reset client (exported for testing)
  */
 export function resetDocumentClient(): void {
-  client = ENDPOINT ? new DocumentAnalysisClient(ENDPOINT, credential) : null;
+  client = buildClient();
 }
 
 /**
