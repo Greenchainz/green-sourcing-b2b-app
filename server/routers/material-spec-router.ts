@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { materialSpecs, materials, suppliers } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -249,7 +249,7 @@ export const materialSpecRouter = router({
   /**
    * Admin: Approve or reject a spec
    */
-  review: protectedProcedure
+  review: adminProcedure
     .input(z.object({
       specId: z.number().int().positive(),
       status: z.enum(["approved", "rejected"]),
@@ -258,10 +258,6 @@ export const materialSpecRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      
-      if (ctx.user.role !== "admin") {
-        throw new Error("Only admins can review specifications");
-      }
       
       await db
         .update(materialSpecs)
@@ -282,14 +278,10 @@ export const materialSpecRouter = router({
   /**
    * Get pending specs for admin review
    */
-  getPending: protectedProcedure
-    .query(async ({ ctx }) => {
+  getPending: adminProcedure
+    .query(async () => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      
-      if (ctx.user.role !== "admin") {
-        throw new Error("Only admins can view pending specifications");
-      }
       
       const specs = await db
         .select()

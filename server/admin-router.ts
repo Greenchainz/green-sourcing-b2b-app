@@ -1,4 +1,4 @@
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { runManufacturerPdfIngestion, MANUFACTURER_SPEC_SHEETS } from "./services/manufacturerPdfIngestion";
 import { getDb } from "./db";
 import { suppliers, users, materials, materialCertifications, buyerSubscriptions } from "../drizzle/schema";
@@ -10,14 +10,6 @@ import { generateComplianceReport } from "./compliance-service";
 /**
  * Admin Router — Admin-only operations
  */
-
-// Admin-only procedure (checks if user is admin)
-const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-  }
-  return next({ ctx });
-});
 
 export const adminRouter = router({
   /**
