@@ -218,7 +218,6 @@ export async function getSavedSwaps(materialId: number): Promise<SwapCandidate[]
       embodiedCarbonPer1000sf: materials.embodiedCarbonPer1000sf,
       pricePerUnit: materials.pricePerUnit,
       leadTimeDays: materials.leadTimeDays,
-      usageCount: materialSwaps.usageCount,
       createdBy: materialSwaps.createdBy,
     })
     .from(materialSwaps)
