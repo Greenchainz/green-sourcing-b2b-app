@@ -3,6 +3,13 @@ const { performance } = require('perf_hooks');
 
 // Simple benchmark to measure N+1 vs UNNEST
 async function run() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.error('Error: DATABASE_URL environment variable is required.');
+    process.exit(1);
+  }
+
+  const client = new Client({ connectionString });
   const client = new Client({
     connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:5432/postgres'
   });
@@ -61,6 +68,8 @@ async function run() {
         `INSERT INTO rfq_items_bench (
           rfq_id, material_id, quantity, unit, created_at
         )
+        SELECT $1, t.material_id, t.quantity, t.unit, NOW()
+        FROM unnest($2::text[], $3::numeric[], $4::text[]) AS t(material_id, quantity, unit)`,
         SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::text[]), NOW()`,
         [rfq_id, materialIds, quantities, units]
       );
@@ -69,6 +78,12 @@ async function run() {
     const optimizedTime = end - start;
     console.log(`Optimized (UNNEST) time for ${materials.length} inserts: ${optimizedTime.toFixed(2)} ms`);
 
+    if (optimizedTime > 0) {
+      const speedup = baselineTime / optimizedTime;
+      console.log(`Speedup: ${speedup.toFixed(2)}x faster`);
+    } else {
+      console.log('Speedup: N/A (optimized time too small to measure)');
+    }
     const speedup = baselineTime / optimizedTime;
     console.log(`Speedup: ${speedup.toFixed(2)}x faster`);
 

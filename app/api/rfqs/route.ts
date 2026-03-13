@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
-import { rfqSupplierMatch, sendNotification } from "@/lib/greenchainz";
+import { findMatchingSuppliers, sendInAppNotification } from "@/lib/greenchainz";
 import { getEasyAuthUser } from "@/lib/auth/easy-auth";
+
+interface MaterialInput {
+  material_id: string;
+  quantity: number;
+  unit: string;
+}
 
 const pool = getPool();
 
@@ -101,6 +107,13 @@ export async function POST(request: NextRequest) {
             unit,
             created_at
           )
+          SELECT $1, t.material_id, t.quantity, t.unit, NOW()
+          FROM unnest($2::text[], $3::numeric[], $4::text[]) AS t(material_id, quantity, unit)`,
+          [
+            rfq_id,
+            materials.map((m: MaterialInput) => m.material_id),
+            materials.map((m: MaterialInput) => m.quantity),
+            materials.map((m: MaterialInput) => m.unit),
           SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::text[]), NOW()`,
           [
             rfq_id,
@@ -112,13 +125,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Run supplier matching
-      const matchedSuppliers = await rfqSupplierMatch({
-        rfqId: rfq_id,
-        materials: materials.map((m) => m.material_id),
-        deliveryLocation: delivery_location,
-        requiredCertifications: required_certifications,
-        budgetRange: budget_range,
-      });
+      const matchedSuppliers = await findMatchingSuppliers(Number(rfq_id), delivery_location.address);
 
       // Insert matched suppliers into rfq_suppliers junction table in bulk
       if (matchedSuppliers.length > 0) {
@@ -130,6 +137,15 @@ export async function POST(request: NextRequest) {
             distance_km,
             created_at
           )
+          SELECT $1, t.supplier_id, t.match_score, t.distance_km, NOW()
+          FROM unnest($2::int[], $3::numeric[], $4::numeric[]) AS t(supplier_id, match_score, distance_km)`,
+          [
+            rfq_id,
+            matchedSuppliers.map((m) => m.supplierId),
+            matchedSuppliers.map((m) => m.matchScore),
+            matchedSuppliers.map((m) =>
+              m.distanceMiles != null ? m.distanceMiles * 1.60934 : null
+            ),
           SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::numeric[]), NOW()`,
           [
             rfq_id,
@@ -141,6 +157,12 @@ export async function POST(request: NextRequest) {
 
         // Send notifications to suppliers
         for (const match of matchedSuppliers) {
+          await sendInAppNotification({
+            userId: match.supplierId,
+            type: "rfq_match",
+            title: "New RFQ Match",
+            content: `You've been matched to RFQ: ${project_name}`,
+            relatedId: Number(rfq_id),
           await sendNotification({
             userId: match.supplierId,
             type: "rfq_match",
@@ -169,8 +191,8 @@ export async function POST(request: NextRequest) {
           matched_suppliers: matchedSuppliers.length,
           top_matches: matchedSuppliers.slice(0, 5).map((m) => ({
             supplier_id: m.supplierId,
-            score: m.score,
-            distance_km: m.distance,
+            score: m.matchScore,
+            distance_km: m.distanceMiles != null ? m.distanceMiles * 1.60934 : null,
           })),
         },
       });
