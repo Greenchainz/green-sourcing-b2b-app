@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, DollarSign, TrendingDown, MessageSquare, CheckCircle2, XCircle, AlertCircle, ArrowRight, FileDown } from "lucide-react";
+import { Clock, DollarSign, TrendingDown, MessageSquare, CheckCircle2, XCircle, AlertCircle, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,23 +21,8 @@ const STATUS_CONFIG = {
 };
 
 export default function RfqDashboard() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  const acceptBidMutation = trpc.rfqMarketplace.acceptBid.useMutation();
-  const utils = trpc.useUtils();
-
-  const handleAcceptBid = async (rfqId: number, bidId: number) => {
-    setActionError(null);
-    try {
-      await acceptBidMutation.mutateAsync({ rfqId, bidId });
-      utils.rfqMarketplace.getUserRfqs.invalidate();
-      utils.rfqMarketplace.getRfqDetails.invalidate({ rfqId });
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to accept bid");
-    }
-  };
 
   const { data: rfqs, isLoading: rfqsLoading } = trpc.rfqMarketplace.getUserRfqs.useQuery(
     { userId: (typeof user?.id === 'string' ? parseInt(user.id) : user?.id) || 0 },
@@ -48,18 +33,6 @@ export default function RfqDashboard() {
     { rfqId: selectedRfqId || 0 },
     { enabled: !!selectedRfqId }
   );
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <Header />
-        <div className="container py-16 text-center flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
 
   if (!user) {
     return (
@@ -136,26 +109,6 @@ export default function RfqDashboard() {
                 <div className="lg:col-span-2">
                   {selectedRfqId && selectedRfqDetails ? (
                     <div className="space-y-4">
-                      {/* PDF Download Buttons */}
-                      <div className="flex gap-2 justify-end">
-                        <a
-                          href={`/api/rfq/${selectedRfqId}/pdf/summary`}
-                          download
-                          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
-                        >
-                          <FileDown className="w-3.5 h-3.5" /> RFQ Summary PDF
-                        </a>
-                        {selectedRfqDetails.bids && selectedRfqDetails.bids.length > 0 && (
-                          <a
-                            href={`/api/rfq/${selectedRfqId}/pdf/bids`}
-                            download
-                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
-                          >
-                            <FileDown className="w-3.5 h-3.5" /> Bid Comparison PDF
-                          </a>
-                        )}
-                      </div>
-
                       {/* RFQ Header */}
                       <Card>
                         <CardHeader>
@@ -294,11 +247,20 @@ export default function RfqDashboard() {
                                       <Button
                                         size="sm"
                                         variant="default"
-                                        className="bg-green-600 hover:bg-green-700"
-                                        disabled={acceptBidMutation.isPending}
-                                        onClick={() => selectedRfqId && handleAcceptBid(selectedRfqId, bid.id)}
+                                        onClick={() => {
+                                          // TODO: Implement accept bid
+                                        }}
                                       >
-                                        {acceptBidMutation.isPending ? "Accepting..." : "Accept"}
+                                        Accept
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          // TODO: Implement reject bid
+                                        }}
+                                      >
+                                        Reject
                                       </Button>
                                     </>
                                   )}
