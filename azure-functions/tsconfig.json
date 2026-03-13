@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2020",
+    "outDir": "dist",
+    "rootDir": "..",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {}
+  },
+  "files": [
+    "scraper-timer/index.ts",
+    "../scripts/scraper-scheduler.ts",
+    "../server/scraper-outreach-pipeline.ts",
+    "../server/email-service.ts",
+    "../server/zeptomail-webhook.ts",
+    "../lib/queue-service.ts",
+    "../lib/azure/credentials.ts",
+    "../lib/db.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

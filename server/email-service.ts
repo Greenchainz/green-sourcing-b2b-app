@@ -1,10 +1,18 @@
 import nodemailer from "nodemailer";
 
 /**
- * Email Service — Handles sending transactional emails
+ * Email Service — Handles sending transactional emails via Zeptomail SMTP
  *
- * Uses nodemailer with SMTP configuration from environment variables.
- * For production, configure Azure Communication Services or SendGrid.
+ * Provider: Zeptomail (by Zoho) — transactional email with dedicated IPs
+ * SMTP host:  smtp.zeptomail.com
+ * Port:       587 (TLS)
+ * User:       emailapikey  (literal string, not a variable)
+ * Password:   ZEPTOMAIL_SMTP_PASSWORD (from Key Vault → env var)
+ * From:       noreply@greenchainz.com
+ *
+ * Key Vault secret names:
+ *   ZEPTOMAIL-SMTP-USER     → process.env.ZEPTOMAIL_SMTP_USER
+ *   ZEPTOMAIL-SMTP-PASSWORD → process.env.ZEPTOMAIL_SMTP_PASSWORD
  */
 
 interface EmailOptions {
@@ -19,30 +27,34 @@ interface EmailOptions {
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    // Zoho SMTP transporter
+    // Zeptomail SMTP transporter
+    // Username is always the literal string "emailapikey" — not a variable.
+    // Password is the Zeptomail API key stored in Key Vault as ZEPTOMAIL-SMTP-PASSWORD.
     const transporter = nodemailer.createTransport({
-      host: 'smtp.zoho.com',
-      port: 465,
-      secure: true,
+      host: "smtp.zeptomail.com",
+      port: 587,
+      secure: false, // TLS via STARTTLS on port 587
       auth: {
-        user: process.env.ZOHO_EMAIL_USER,
-        pass: process.env.ZOHO_EMAIL_PASSWORD,
+        user: process.env.ZEPTOMAIL_SMTP_USER || "emailapikey",
+        pass: process.env.ZEPTOMAIL_SMTP_PASSWORD,
+      },
+      tls: {
+        minVersion: "TLSv1.2", // Zeptomail requires TLS 1.2+
       },
     });
 
-    // Send email
     await transporter.sendMail({
-      from: `"GreenChainz" <${process.env.ZOHO_EMAIL_USER}>`,
+      from: '"GreenChainz" <noreply@greenchainz.com>',
       to: options.to,
       subject: options.subject,
       text: options.text,
       html: options.html,
     });
 
-    console.log(`Email sent successfully to ${options.to}`);
+    console.log(`[email] Sent to ${options.to}: ${options.subject}`);
     return true;
   } catch (error) {
-    console.error("Failed to send email:", error);
+    console.error("[email] Failed to send:", error);
     return false;
   }
 }
