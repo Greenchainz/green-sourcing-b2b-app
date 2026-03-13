@@ -41,19 +41,28 @@ export async function GET(
       WHERE m.conversation_id = $1
     `;
 
-    const params: any[] = [conversationId];
+    const queryParams: any[] = [conversationId];
     let paramCount = 2;
 
     if (before) {
       query += ` AND m.id < $${paramCount}`;
-      params.push(before);
+      queryParams.push(before);
       paramCount++;
     }
 
     query += ` ORDER BY m.created_at DESC LIMIT $${paramCount}`;
-    params.push(limit);
+    queryParams.push(limit);
 
-    const result = await pool.query(query, params);
+    const result = await pool.query(query, queryParams);
+
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
 
     const user = getEasyAuthUser(request);
     if (!user) {
@@ -64,8 +73,13 @@ export async function GET(
     }
 
     // Mark messages as read for the current user
+    const user = getEasyAuthUser(request.headers);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const user_id = user.id;
 
+    // Mark messages as read for the current user
     await pool.query(
       `UPDATE messages 
        SET read = true, read_at = NOW() 
@@ -114,10 +128,18 @@ export async function POST(
     if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
         { status: 401 }
       );
     }
 
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const sender_id = user.id;
 
     // Insert message

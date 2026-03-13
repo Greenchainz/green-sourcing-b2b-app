@@ -73,6 +73,18 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const user_id = user.id;
 
     const client = await pool.connect();
@@ -226,6 +238,18 @@ export async function GET(request: NextRequest) {
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const user_id = user.id;
 
