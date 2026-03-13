@@ -55,6 +55,15 @@ export async function GET(
 
     const result = await pool.query(query, queryParams);
 
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
     // Mark messages as read for the current user
     const user = getEasyAuthUser(request.headers);
     if (!user) {
@@ -62,6 +71,7 @@ export async function GET(
     }
     const user_id = user.id;
 
+    // Mark messages as read for the current user
     await pool.query(
       `UPDATE messages 
        SET read = true, read_at = NOW() 
@@ -107,6 +117,14 @@ export async function POST(
     }
 
     const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
