@@ -11,7 +11,7 @@ import { fetchEC3EPDs, searchEC3EPDs } from "../ec3";
 import { transformEC3ToMaterial, transformEC3Batch } from "../ec3-transform";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
-import { eq, and, gte, lte, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, isNull, inArray } from "drizzle-orm";
 
 export const ec3Router = router({
   /**
@@ -38,21 +38,27 @@ export const ec3Router = router({
       }
 
       // Transform EPDs to materials
-      const transformedMaterials = transformEC3Batch(epds);
+      const allTransformedMaterials = transformEC3Batch(epds);
+
+      // Deduplicate by ec3Id to prevent unique constraint violations
+      const seenEc3Ids = new Set<string>();
+      const transformedMaterials = allTransformedMaterials.filter(m => {
+        if (!m.ec3Id || seenEc3Ids.has(m.ec3Id)) return false;
+        seenEc3Ids.add(m.ec3Id);
+        return true;
+      });
 
       // Check which materials already exist (by EC3 ID)
       const ec3Ids = epds.map(epd => epd.id);
       const db = await getDb();
       if (!db) throw new Error("Database connection failed");
       
-      const existingMaterials = await db
-        .select()
-        .from(materials)
-        .where(
-          and(
-            ...ec3Ids.map(id => eq(materials.ec3Id, id))
-          )
-        );
+      const existingMaterials = ec3Ids.length > 0
+        ? await db
+          .select()
+          .from(materials)
+          .where(inArray(materials.ec3Id, ec3Ids))
+        : [];
 
       const existingEc3Ids = new Set(existingMaterials.map((m: any) => m.ec3Id));
 
@@ -116,20 +122,32 @@ export const ec3Router = router({
         const db = await getDb();
         if (!db) throw new Error("Database connection failed");
         
-        const transformedMaterials = transformEC3Batch(epds);
-        
-        for (const material of transformedMaterials) {
-          // Check if exists
-          const existing = await db
-            .select()
-            .from(materials)
-            .where(eq(materials.ec3Id, material.ec3Id!))
-            .limit(1);
+        const allTransformedMaterials = transformEC3Batch(epds);
 
-          if (existing.length === 0) {
-            await db.insert(materials).values(material as any);
-            synced++;
-          }
+        // Deduplicate by ec3Id
+        const seenEc3IdsInBatch = new Set<string>();
+        const transformedMaterials = allTransformedMaterials.filter(m => {
+          if (!m.ec3Id || seenEc3IdsInBatch.has(m.ec3Id)) return false;
+          seenEc3IdsInBatch.add(m.ec3Id);
+          return true;
+        });
+
+        const ec3Ids = transformedMaterials.map(m => m.ec3Id!).filter(Boolean);
+        
+        // Check which materials already exist
+        const existingMaterials = ec3Ids.length > 0
+          ? await db
+            .select({ ec3Id: materials.ec3Id })
+            .from(materials)
+            .where(inArray(materials.ec3Id, ec3Ids))
+          : [];
+
+        const existingEc3Ids = new Set(existingMaterials.map(m => m.ec3Id));
+        const toCreate = transformedMaterials.filter(m => !existingEc3Ids.has(m.ec3Id!));
+
+        if (toCreate.length > 0) {
+          await db.insert(materials).values(toCreate as any);
+          synced = toCreate.length;
         }
       }
 
