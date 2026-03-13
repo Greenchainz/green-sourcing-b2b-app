@@ -160,6 +160,9 @@ export async function findSwapCandidates(
         embodiedCarbonPer1000sf: candidate.embodiedCarbonPer1000sf ? parseFloat(candidate.embodiedCarbonPer1000sf) : null,
         pricePerUnit: candidate.pricePerUnit ? parseFloat(candidate.pricePerUnit) : null,
         leadTimeDays: candidate.leadTimeDays,
+        embodiedCarbonPer1000sf: candidate.embodiedCarbonPer1000sf != null ? parseFloat(candidate.embodiedCarbonPer1000sf) : null,
+        pricePerUnit: candidate.pricePerUnit != null ? parseFloat(candidate.pricePerUnit) : null,
+        leadTimeDays: candidate.leadTimeDays != null ? parseInt(candidate.leadTimeDays, 10) : null,
       });
     }
   }

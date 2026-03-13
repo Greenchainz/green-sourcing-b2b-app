@@ -121,6 +121,9 @@ export default function MaterialDetail() {
                               embodiedCarbon: swap.embodiedCarbonPer1000sf ? `${Number(swap.embodiedCarbonPer1000sf).toFixed(2)} kgCO₂e/1000SF` : "—",
                               price: swap.pricePerUnit ? `$${Number(swap.pricePerUnit).toFixed(2)}` : "—",
                               leadTime: swap.leadTimeDays ? `${swap.leadTimeDays} days` : "—",
+                              embodiedCarbon: swap.embodiedCarbonPer1000sf != null ? `${Number(swap.embodiedCarbonPer1000sf).toFixed(2)} kgCO₂e/1000SF` : "—",
+                              price: swap.pricePerUnit != null ? `$${Number(swap.pricePerUnit).toFixed(2)}` : "—",
+                              leadTime: swap.leadTimeDays != null ? `${swap.leadTimeDays} days` : "—",
                               source: "saved",
                             }}
                             originalCarbon={Number(m?.embodiedCarbonPer1000sf) || 0}
