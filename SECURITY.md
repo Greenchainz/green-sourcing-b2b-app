@@ -23,7 +23,7 @@ Please report security issues **privately**. Do not open a public GitHub issue o
 
 Use one of the following:
 
-- Email: `security@greenchainz.com`  
+- Email: `security@greenchainz.com`
 - GitHub: Use the **“Report a vulnerability”** feature under the repository **Security** tab when available.[web:44]
 
 When you contact us, include (as applicable):

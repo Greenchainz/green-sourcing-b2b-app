@@ -72,7 +72,7 @@ export async function validateMarketplaceToken(token: string): Promise<boolean> 
     // TODO: Verify JWT signature with Azure AD public keys
     // This requires fetching JWKS from https://login.microsoftonline.com/common/discovery/keys
     // and verifying the signature using the public key matching the 'kid' in the JWT header
-    // 
+    //
     // For production, use a library like 'jsonwebtoken' or 'jose' to handle signature verification
     // Example: https://github.com/auth0/node-jsonwebtoken
 

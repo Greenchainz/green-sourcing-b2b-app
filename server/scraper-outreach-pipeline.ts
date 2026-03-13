@@ -81,7 +81,7 @@ export async function runScraperOutreachPipeline(): Promise<{
 
   // 2. Get all open RFQs (status = 'open' or 'active', not expired)
   const rfqResult = await db.execute(sql`
-    SELECT 
+    SELECT
       r.id,
       r.project_name,
       r.project_location,

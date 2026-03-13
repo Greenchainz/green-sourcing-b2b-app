@@ -185,7 +185,7 @@ These are the non-negotiables for GreenChainz as a trust layer:
 Category baselines (the reference GWP and price values used for normalization) are stored in the `ccps_baselines` table. To update a baseline:
 
 ```sql
-UPDATE ccps_baselines 
+UPDATE ccps_baselines
 SET baseline_gwp_per_unit = 45.2, baseline_price_per_unit = 12.50
 WHERE category = 'Concrete' AND region = 'US';
 ```
@@ -214,8 +214,8 @@ Persona weights are defined in `server/ccps-engine.ts` under `PERSONA_WEIGHTS`. 
 Run this monthly to check if the score distribution looks healthy (should be roughly bell-shaped, centered around 50–65):
 
 ```sql
-SELECT 
-  CASE 
+SELECT
+  CASE
     WHEN ccps_total < 20 THEN '0-19'
     WHEN ccps_total < 40 THEN '20-39'
     WHEN ccps_total < 60 THEN '40-59'

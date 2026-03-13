@@ -185,4 +185,3 @@ describe('POST /api/submittals/assemblies/report', () => {
     expect(header).toBe('%PDF');
   });
 });
-

@@ -114,6 +114,12 @@ export async function POST(request: NextRequest) {
             materials.map((m: MaterialInput) => m.material_id),
             materials.map((m: MaterialInput) => m.quantity),
             materials.map((m: MaterialInput) => m.unit),
+          SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::text[]), NOW()`,
+          [
+            rfq_id,
+            materials.map((m: any) => m.material_id),
+            materials.map((m: any) => m.quantity),
+            materials.map((m: any) => m.unit)
           ]
         );
       }
@@ -140,6 +146,12 @@ export async function POST(request: NextRequest) {
             matchedSuppliers.map((m) =>
               m.distanceMiles != null ? m.distanceMiles * 1.60934 : null
             ),
+          SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::numeric[]), NOW()`,
+          [
+            rfq_id,
+            matchedSuppliers.map((m: any) => m.supplierId),
+            matchedSuppliers.map((m: any) => m.score),
+            matchedSuppliers.map((m: any) => m.distance)
           ]
         );
 
@@ -151,6 +163,15 @@ export async function POST(request: NextRequest) {
             title: "New RFQ Match",
             content: `You've been matched to RFQ: ${project_name}`,
             relatedId: Number(rfq_id),
+          await sendNotification({
+            userId: match.supplierId,
+            type: "rfq_match",
+            title: "New RFQ Match",
+            message: `You've been matched to RFQ: ${project_name}`,
+            metadata: {
+              rfq_id,
+              match_score: match.score,
+            },
           });
         }
       }

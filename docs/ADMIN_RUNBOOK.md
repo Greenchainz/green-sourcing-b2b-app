@@ -122,16 +122,16 @@ SELECT COUNT(*) FROM materials WHERE category IS NULL OR category = '';
 SELECT COUNT(*) FROM material_swaps WHERE confidence::numeric < 0.3;
 
 -- RFQs stuck in 'submitted' > 7 days (no supplier response)
-SELECT id, title, created_at FROM rfqs 
-WHERE status = 'submitted' 
+SELECT id, title, created_at FROM rfqs
+WHERE status = 'submitted'
 AND created_at < NOW() - INTERVAL '7 days';
 
 -- Users with no role assigned (broken onboarding)
 SELECT COUNT(*) FROM users WHERE role IS NULL;
 
 -- Swap validations expiring in next 30 days
-SELECT COUNT(*) FROM swap_validations 
-WHERE expires_at < NOW() + INTERVAL '30 days' 
+SELECT COUNT(*) FROM swap_validations
+WHERE expires_at < NOW() + INTERVAL '30 days'
 AND validation_status = 'APPROVED';
 ```
 
@@ -140,15 +140,15 @@ AND validation_status = 'APPROVED';
 ```bash
 # Check slow queries (requires pg_stat_statements extension)
 # Run in Azure Data Studio or psql:
-SELECT query, mean_exec_time, calls 
-FROM pg_stat_statements 
-ORDER BY mean_exec_time DESC 
+SELECT query, mean_exec_time, calls
+FROM pg_stat_statements
+ORDER BY mean_exec_time DESC
 LIMIT 10;
 
 # Check index usage
-SELECT schemaname, tablename, indexname, idx_scan 
-FROM pg_stat_user_indexes 
-ORDER BY idx_scan ASC 
+SELECT schemaname, tablename, indexname, idx_scan
+FROM pg_stat_user_indexes
+ORDER BY idx_scan ASC
 LIMIT 10;
 ```
 
@@ -399,7 +399,7 @@ Track progress via:
 
 ```sql
 -- Supplier registration funnel
-SELECT 
+SELECT
   verification_status,
   COUNT(*) as count,
   MIN(created_at) as first,
