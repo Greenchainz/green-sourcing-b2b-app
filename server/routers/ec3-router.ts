@@ -11,7 +11,7 @@ import { fetchEC3EPDs, searchEC3EPDs } from "../ec3";
 import { transformEC3ToMaterial, transformEC3Batch } from "../ec3-transform";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
-import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, isNull } from "drizzle-orm";
 
 export const ec3Router = router({
   /**
@@ -117,20 +117,18 @@ export const ec3Router = router({
         if (!db) throw new Error("Database connection failed");
         
         const transformedMaterials = transformEC3Batch(epds);
-        const ec3Ids = transformedMaterials.map(m => m.ec3Id!).filter(Boolean);
         
-        if (ec3Ids.length > 0) {
+        for (const material of transformedMaterials) {
+          // Check if exists
           const existing = await db
-            .select({ ec3Id: materials.ec3Id })
+            .select()
             .from(materials)
-            .where(inArray(materials.ec3Id, ec3Ids));
+            .where(eq(materials.ec3Id, material.ec3Id!))
+            .limit(1);
 
-          const existingEc3Ids = new Set(existing.map(m => m.ec3Id));
-          const toCreate = transformedMaterials.filter(m => !existingEc3Ids.has(m.ec3Id!));
-
-          if (toCreate.length > 0) {
-            await db.insert(materials).values(toCreate as any);
-            synced = toCreate.length;
+          if (existing.length === 0) {
+            await db.insert(materials).values(material as any);
+            synced++;
           }
         }
       }

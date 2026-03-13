@@ -16,6 +16,13 @@
     "@auth/drizzle-adapter": "^1.11.1",
     "@aws-sdk/client-s3": "^3.693.0",
     "@aws-sdk/s3-request-presigner": "^3.693.0",
+    "@azure/ai-form-recognizer": "^5.1.0",
+    "@azure/app-configuration": "^1.11.0",
+    "@azure/identity": "^4.13.0",
+    "@azure/keyvault-secrets": "^4.10.0",
+    "@azure/search-documents": "^12.2.0",
+    "@azure/storage-blob": "^12.31.0",
+    "@azure/storage-queue": "^12.29.0",
     "@azure/web-pubsub": "^1.2.0",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "5",
@@ -67,11 +74,11 @@
     "input-otp": "^1.4.2",
     "jose": "6.1.0",
     "lucide-react": "^0.453.0",
-    "multer": "^2.0.2",
+    "multer": "^2.1.1",
     "mysql2": "^3.15.0",
     "nanoid": "^5.1.5",
     "next-themes": "^0.4.6",
-    "nodemailer": "^8.0.1",
+    "nodemailer": "^8.0.2",
     "pdfkit": "^0.17.2",
     "pg": "^8.18.0",
     "react": "^19.2.1",
@@ -107,7 +114,7 @@
     "add": "^2.0.6",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.4",
-    "esbuild": "^0.25.11",
+    "esbuild": "^0.25.12",
     "pnpm": "^10.28.2",
     "postcss": "^8.4.47",
     "prettier": "^3.6.2",
@@ -124,7 +131,14 @@
   "pnpm": {
     "patchedDependencies": {},
     "overrides": {
-      "tailwindcss>nanoid": "3.3.7"
+      "tailwindcss>nanoid": "3.3.7",
+      "fast-xml-parser": ">=5.3.8",
+      "tar": ">=7.5.10",
+      "rollup": ">=4.59.0",
+      "esbuild": ">=0.25.0",
+      "lodash-es": ">=4.17.23",
+      "qs": ">=6.14.2",
+      "dompurify": ">=3.3.2"
     }
   }
 }

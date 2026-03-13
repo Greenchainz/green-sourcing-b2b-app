@@ -331,3 +331,35 @@ export async function executeTransaction(
     return results;
   });
 }
+
+// ============================================================================
+// DRIZZLE ORM INSTANCE
+// ============================================================================
+/**
+ * Lazily-initialised Drizzle ORM instance backed by the singleton pg Pool above.
+ * Exported as `getDb()` so server files (zeptomail-webhook, scraper-outreach-pipeline)
+ * can import it from "../lib/db" and use Drizzle's `sql` tagged template queries.
+ *
+ * Returns null if DATABASE_URL is not set (e.g. during local tooling runs).
+ */
+import { drizzle as drizzleNodePg } from 'drizzle-orm/node-postgres';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+
+let _drizzleDb: NodePgDatabase | null = null;
+
+export async function getDb(): Promise<NodePgDatabase | null> {
+  if (!_drizzleDb) {
+    const connStr = buildConnectionString();
+    if (!connStr) {
+      console.warn('[lib/db] DATABASE_URL not set — getDb() returning null');
+      return null;
+    }
+    try {
+      _drizzleDb = drizzleNodePg(pool);
+    } catch (err) {
+      console.warn('[lib/db] Failed to create Drizzle instance:', err);
+      return null;
+    }
+  }
+  return _drizzleDb;
+}

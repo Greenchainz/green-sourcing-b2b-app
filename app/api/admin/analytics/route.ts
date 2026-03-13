@@ -14,6 +14,7 @@ const pool = getPool();
  */
 export async function GET(request: NextRequest) {
   try {
+    // Verify admin role from auth session
     const user = getEasyAuthUser(request.headers);
 
     if (!user) {
@@ -23,7 +24,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify admin role from auth session
     if (!hasRole(user, "admin")) {
       console.warn(`[Admin Analytics] Unauthorized access attempt by user: ${user.email} (${user.id})`);
       return NextResponse.json(

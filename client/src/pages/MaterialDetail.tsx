@@ -120,7 +120,7 @@ export default function MaterialDetail() {
                               reason: swap.swapReason,
                               embodiedCarbon: swap.embodiedCarbonPer1000sf ? `${Number(swap.embodiedCarbonPer1000sf).toFixed(2)} kgCO₂e/1000SF` : "—",
                               price: swap.pricePerUnit ? `$${Number(swap.pricePerUnit).toFixed(2)}` : "—",
-                              leadTime: swap.leadTimeDays ? `${swap.leadTimeDays} days` : "—",
+                              leadTime: "—", // TODO: Add leadTime to swap query
                               source: "saved",
                             }}
                             originalCarbon={Number(m?.embodiedCarbonPer1000sf) || 0}

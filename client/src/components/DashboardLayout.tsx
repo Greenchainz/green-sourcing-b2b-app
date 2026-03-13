@@ -1,4 +1,5 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+// Easy Auth: use the context-based useAuth which provides an Easy Auth logout
+import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -70,7 +71,7 @@ export default function DashboardLayout({
           </div>
           <Button
             onClick={() => {
-              window.location.href = getLoginUrl();
+              window.location.href = '/login';
             }}
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"

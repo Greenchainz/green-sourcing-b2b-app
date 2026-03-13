@@ -51,7 +51,7 @@ export default function ApiTest() {
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
           <p className="text-blue-800 font-semibold">Backend URL:</p>
           <p className="text-blue-600 text-sm mt-1">
-            https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
+            {window.location.origin} (same-origin)
           </p>
         </div>
       </Card>
