@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { getEasyAuthUser, hasRole } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -13,7 +14,26 @@ const pool = getPool();
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Verify admin role from auth session
+    // Verify admin role from auth session
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    if (!hasRole(user, "admin")) {
+      console.warn(`[Admin Analytics] Unauthorized access attempt by user: ${user.email} (${user.id})`);
+      return NextResponse.json(
+        { error: "Forbidden: Admin access required" },
+        { status: 403 }
+      );
+    }
+
+    console.log(`[Admin Analytics] Fetching analytics for admin: ${user.email} (${user.id})`);
+
     const searchParams = request.nextUrl.searchParams;
     const period = searchParams.get("period") || "month";
 
