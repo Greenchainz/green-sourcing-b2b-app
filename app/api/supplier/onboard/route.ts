@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const user_id = user.id;
 
     const client = await pool.connect();
@@ -231,6 +234,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const user_id = user.id;
 
     const result = await pool.query(

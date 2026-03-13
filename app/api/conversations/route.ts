@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const user_id = user.id;
 
     const result = await pool.query(
@@ -112,6 +115,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const buyer_id = user.id;
 
     // Check if conversation already exists
