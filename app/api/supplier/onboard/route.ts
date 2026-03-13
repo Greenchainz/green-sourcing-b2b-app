@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { sendInAppNotification } from "@/lib/greenchainz";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 import { auth } from "@/auth";
 
 export const runtime = "nodejs";
@@ -69,6 +70,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    const user_id = user.id;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -223,6 +234,16 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    const user_id = user.id;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
