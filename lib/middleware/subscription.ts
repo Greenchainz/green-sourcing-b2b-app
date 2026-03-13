@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { getUserTier, canAccessFeature } from "@/lib/greenchainz";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -19,8 +20,14 @@ export async function requireSubscription(
   feature?: string
 ): Promise<{ authorized: boolean; context?: SubscriptionContext; error?: string }> {
   try {
-    // TODO: Get user_id from auth session
-    const userId = "default-user-id";
+    const user = getEasyAuthUser(request.headers);
+    if (!user) {
+      return {
+        authorized: false,
+        error: "Unauthorized",
+      };
+    }
+    const userId = user.id;
 
     // Get user's subscription tier
     const tier = await getUserTier(userId);
