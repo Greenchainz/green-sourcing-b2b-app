@@ -166,6 +166,7 @@ export async function findSwapCandidates(
         pricePerUnit: candidate.price_per_unit
           ? parseFloat(candidate.price_per_unit)
           : null,
+        leadTimeDays: candidate.lead_time_days !== null ? parseInt(candidate.lead_time_days, 10) : null,
       });
     }
   }
