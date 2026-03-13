@@ -124,6 +124,7 @@ export async function POST(
       );
     }
 
+    const user = getEasyAuthUser(request.headers);
     const user = getEasyAuthUser(request);
     if (!user) {
       return NextResponse.json(
