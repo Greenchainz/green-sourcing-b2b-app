@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       const supplier_id = supplierResult.rows[0].id;
 
       // Insert materials offered in bulk to avoid N+1 queries
-      if (materials_offered.length > 0) {
+      if (materials_offered && materials_offered.length > 0) {
         await client.query(
           `INSERT INTO supplier_materials (supplier_id, material_id, created_at)
            SELECT $1, unnest($2::text[]), NOW()

@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
 
       const rfq_id = rfqResult.rows[0].id;
 
-      // Insert RFQ items
-      for (const material of materials) {
+      // Insert RFQ items in bulk to avoid N+1 queries
+      if (materials.length > 0) {
         await client.query(
           `INSERT INTO rfq_items (
             rfq_id,
@@ -100,8 +100,14 @@ export async function POST(request: NextRequest) {
             quantity,
             unit,
             created_at
-          ) VALUES ($1, $2, $3, $4, NOW())`,
-          [rfq_id, material.material_id, material.quantity, material.unit]
+          )
+          SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::text[]), NOW()`,
+          [
+            rfq_id,
+            materials.map((m: any) => m.material_id),
+            materials.map((m: any) => m.quantity),
+            materials.map((m: any) => m.unit)
+          ]
         );
       }
 
@@ -114,8 +120,8 @@ export async function POST(request: NextRequest) {
         budgetRange: budget_range,
       });
 
-      // Insert matched suppliers into rfq_suppliers junction table
-      for (const match of matchedSuppliers) {
+      // Insert matched suppliers into rfq_suppliers junction table in bulk
+      if (matchedSuppliers.length > 0) {
         await client.query(
           `INSERT INTO rfq_suppliers (
             rfq_id,
@@ -123,21 +129,29 @@ export async function POST(request: NextRequest) {
             match_score,
             distance_km,
             created_at
-          ) VALUES ($1, $2, $3, $4, NOW())`,
-          [rfq_id, match.supplierId, match.score, match.distance]
+          )
+          SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::numeric[]), NOW()`,
+          [
+            rfq_id,
+            matchedSuppliers.map((m: any) => m.supplierId),
+            matchedSuppliers.map((m: any) => m.score),
+            matchedSuppliers.map((m: any) => m.distance)
+          ]
         );
 
-        // Send notification to supplier
-        await sendNotification({
-          userId: match.supplierId,
-          type: "rfq_match",
-          title: "New RFQ Match",
-          message: `You've been matched to RFQ: ${project_name}`,
-          metadata: {
-            rfq_id,
-            match_score: match.score,
-          },
-        });
+        // Send notifications to suppliers
+        for (const match of matchedSuppliers) {
+          await sendNotification({
+            userId: match.supplierId,
+            type: "rfq_match",
+            title: "New RFQ Match",
+            message: `You've been matched to RFQ: ${project_name}`,
+            metadata: {
+              rfq_id,
+              match_score: match.score,
+            },
+          });
+        }
       }
 
       // Update RFQ status to "open"
