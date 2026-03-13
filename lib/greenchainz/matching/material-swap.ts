@@ -21,6 +21,7 @@ export interface SwapCandidate {
   confidence: number;
   embodiedCarbonPer1000sf: number | null;
   pricePerUnit: number | null;
+  leadTimeDays: number | null;
 }
 
 export interface SwapScoreResult {
@@ -204,7 +205,7 @@ export async function getSavedSwaps(materialId: number): Promise<SwapCandidate[]
             m.name as material_name, m.manufacturer_id,
             ms.swap_score, ms.swap_tier, ms.swap_reason, ms.confidence,
             m.embodied_carbon_per_1000sf, m.price_per_unit,
-            ms.usage_count, ms.created_by
+            m.lead_time_days, ms.usage_count, ms.created_by
      FROM material_swaps ms
      LEFT JOIN materials m ON ms.swap_material_id = m.id
      WHERE ms.material_id = $1
@@ -224,6 +225,7 @@ export async function getSavedSwaps(materialId: number): Promise<SwapCandidate[]
       ? parseFloat(s.embodied_carbon_per_1000sf)
       : null,
     pricePerUnit: s.price_per_unit ? parseFloat(s.price_per_unit) : null,
+    leadTimeDays: s.lead_time_days !== null ? parseInt(s.lead_time_days, 10) : null,
   }));
 }
 
