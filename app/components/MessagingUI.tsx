@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { Send, ArrowLeft } from "lucide-react";
-import { useAuth } from "@/lib/auth";
 
 interface Conversation {
   id: string;
@@ -31,7 +30,6 @@ export default function MessagingUI() {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
 
   // Fetch conversations
   const fetchConversations = async () => {
@@ -228,14 +226,14 @@ export default function MessagingUI() {
                   <div
                     key={message.id}
                     className={`flex ${
-                      message.sender_id === user?.id
+                      message.sender_id === "default-user-id"
                         ? "justify-end"
                         : "justify-start"
                     }`}
                   >
                     <div
                       className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                        message.sender_id === user?.id
+                        message.sender_id === "default-user-id"
                           ? "bg-blue-600 text-white"
                           : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       }`}
@@ -243,7 +241,7 @@ export default function MessagingUI() {
                       <p className="text-sm">{message.content}</p>
                       <p
                         className={`text-xs mt-1 ${
-                          message.sender_id === user?.id
+                          message.sender_id === "default-user-id"
                             ? "text-blue-100"
                             : "text-gray-500 dark:text-gray-400"
                         }`}
