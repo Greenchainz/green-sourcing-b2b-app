@@ -19,6 +19,7 @@ interface SwapCandidate {
   confidence: number;
   embodiedCarbonPer1000sf: number | null;
   pricePerUnit: number | null;
+  leadTimeDays: number | null;
 }
 
 /**
@@ -156,8 +157,9 @@ export async function findSwapCandidates(
         swapTier: score >= 80 ? "best" : score >= 60 ? "better" : "good",
         swapReason: reason,
         confidence,
-        embodiedCarbonPer1000sf: candidate.embodiedCarbonPer1000sf ? parseFloat(candidate.embodiedCarbonPer1000sf) : null,
-        pricePerUnit: candidate.pricePerUnit ? parseFloat(candidate.pricePerUnit) : null,
+        embodiedCarbonPer1000sf: candidate.embodiedCarbonPer1000sf != null ? parseFloat(candidate.embodiedCarbonPer1000sf) : null,
+        pricePerUnit: candidate.pricePerUnit != null ? parseFloat(candidate.pricePerUnit) : null,
+        leadTimeDays: candidate.leadTimeDays != null ? parseInt(candidate.leadTimeDays, 10) : null,
       });
     }
   }
@@ -215,6 +217,7 @@ export async function getSavedSwaps(materialId: number): Promise<SwapCandidate[]
       confidence: materialSwaps.confidence,
       embodiedCarbonPer1000sf: materials.embodiedCarbonPer1000sf,
       pricePerUnit: materials.pricePerUnit,
+      leadTimeDays: materials.leadTimeDays,
       usageCount: materialSwaps.usageCount,
       createdBy: materialSwaps.createdBy,
     })
@@ -234,6 +237,7 @@ export async function getSavedSwaps(materialId: number): Promise<SwapCandidate[]
     confidence: parseFloat(s.confidence || "0"),
     embodiedCarbonPer1000sf: s.embodiedCarbonPer1000sf,
     pricePerUnit: s.pricePerUnit,
+    leadTimeDays: s.leadTimeDays,
     createdBy: s.createdBy,
   }));
 }
