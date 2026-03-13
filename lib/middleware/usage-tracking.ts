@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getPool } from "@/lib/db";
 import { trackUsage } from "@/lib/greenchainz";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -79,8 +80,10 @@ export function withUsageTracking(
   return async (request: NextRequest, context?: any): Promise<Response> => {
     const startTime = Date.now();
     
-    // TODO: Get user_id from auth session
-    const userId = "default-user-id";
+    const user = getEasyAuthUser(request.headers);
+    const userId = user?.id || "anonymous";
+    // If we have a user from Easy Auth, use their ID, otherwise fallback to "anonymous" or "default"
+    const userId = user?.id || "anonymous-user";
     
     const endpoint = request.nextUrl.pathname;
     const method = request.method;
