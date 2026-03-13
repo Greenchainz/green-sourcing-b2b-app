@@ -1,11 +1,11 @@
 import { videoCalls } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { MySql2Database } from 'drizzle-orm/mysql2';
 
-let db: NodePgDatabase<Record<string, unknown>> | null = null;
+let db: MySql2Database<Record<string, unknown>> | null = null;
 
 // Initialize db connection
-export function setDb(database: NodePgDatabase<Record<string, unknown>>) {
+export function setDb(database: MySql2Database<Record<string, unknown>>) {
   db = database;
 }
 

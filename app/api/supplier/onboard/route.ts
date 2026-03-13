@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { sendNotification } from "@/lib/greenchainz";
 import { sendInAppNotification } from "@/lib/greenchainz";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
+import { auth } from "@/auth";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+main
 
 const pool = getPool();
 
@@ -65,8 +72,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    const user_id = user.id;
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    const user_id = session.user.id;
 
     const client = await pool.connect();
     try {
@@ -114,11 +137,13 @@ export async function POST(request: NextRequest) {
 
       // Insert materials offered in bulk to avoid N+1 queries
       if (materials_offered && materials_offered.length > 0) {
+      // Insert materials offered
+      for (const material_id of materials_offered) {
         await client.query(
           `INSERT INTO supplier_materials (supplier_id, material_id, created_at)
-           SELECT $1, unnest($2::text[]), NOW()
+           VALUES ($1, $2, NOW())
            ON CONFLICT (supplier_id, material_id) DO NOTHING`,
-          [supplier_id, materials_offered]
+          [supplier_id, material_id]
         );
       }
 
@@ -177,10 +202,12 @@ export async function POST(request: NextRequest) {
       await client.query("COMMIT");
 
       // Send welcome notification
+      await sendNotification({
       await sendInAppNotification({
         userId: supplier_id,
+        type: "onboarding_complete",
         title: "Welcome to GreenChainz!",
-        body: `Your supplier profile for ${company_name} has been created. You'll start receiving RFQ matches based on your preferences.`,
+        message: `Your supplier profile for ${company_name} has been created. You'll start receiving RFQ matches based on your preferences.`,
       });
 
       return NextResponse.json({
@@ -213,8 +240,24 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    const user_id = user.id;
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    const user_id = session.user.id;
 
     const result = await pool.query(
       `SELECT 
