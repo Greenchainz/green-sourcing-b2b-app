@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { WebPubSubServiceClient } from "@azure/web-pubsub";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -40,24 +41,37 @@ export async function GET(
       WHERE m.conversation_id = $1
     `;
 
-    const params: any[] = [conversationId];
+    const queryParams: any[] = [conversationId];
     let paramCount = 2;
 
     if (before) {
       query += ` AND m.id < $${paramCount}`;
-      params.push(before);
+      queryParams.push(before);
       paramCount++;
     }
 
     query += ` ORDER BY m.created_at DESC LIMIT $${paramCount}`;
-    params.push(limit);
+    queryParams.push(limit);
 
-    const result = await pool.query(query, params);
+    const result = await pool.query(query, queryParams);
+
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
 
     // Mark messages as read for the current user
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    const user = getEasyAuthUser(request.headers);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const user_id = user.id;
 
+    // Mark messages as read for the current user
     await pool.query(
       `UPDATE messages 
        SET read = true, read_at = NOW() 
@@ -102,8 +116,19 @@ export async function POST(
       );
     }
 
-    // TODO: Get sender_id from auth session
-    const sender_id = "default-user-id";
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const sender_id = user.id;
 
     // Insert message
     const result = await pool.query(
