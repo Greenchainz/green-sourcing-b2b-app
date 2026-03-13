@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+<<<<<<< HEAD
+import { sendNotification } from "@/lib/greenchainz";
+=======
 import { sendInAppNotification } from "@/lib/greenchainz";
+>>>>>>> 79f868e62b01b72fb871ca1275511fad37676d81
 
 const pool = getPool();
 
@@ -112,13 +116,13 @@ export async function POST(request: NextRequest) {
 
       const supplier_id = supplierResult.rows[0].id;
 
-      // Insert materials offered in bulk to avoid N+1 queries
-      if (materials_offered.length > 0) {
+      // Insert materials offered
+      for (const material_id of materials_offered) {
         await client.query(
           `INSERT INTO supplier_materials (supplier_id, material_id, created_at)
-           SELECT $1, unnest($2::text[]), NOW()
+           VALUES ($1, $2, NOW())
            ON CONFLICT (supplier_id, material_id) DO NOTHING`,
-          [supplier_id, materials_offered]
+          [supplier_id, material_id]
         );
       }
 
@@ -177,10 +181,15 @@ export async function POST(request: NextRequest) {
       await client.query("COMMIT");
 
       // Send welcome notification
+<<<<<<< HEAD
+      await sendNotification({
+=======
       await sendInAppNotification({
+>>>>>>> 79f868e62b01b72fb871ca1275511fad37676d81
         userId: supplier_id,
+        type: "onboarding_complete",
         title: "Welcome to GreenChainz!",
-        body: `Your supplier profile for ${company_name} has been created. You'll start receiving RFQ matches based on your preferences.`,
+        message: `Your supplier profile for ${company_name} has been created. You'll start receiving RFQ matches based on your preferences.`,
       });
 
       return NextResponse.json({

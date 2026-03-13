@@ -7,5 +7,5 @@
       "schedule": "0 0 2 * * *"
     }
   ],
-  "scriptFile": "../dist/azure-functions/scraper-timer/index.js"
+  "scriptFile": "../dist/scraper-timer/index.js"
 }
