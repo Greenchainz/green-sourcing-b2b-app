@@ -1,24 +1,19 @@
 import { AzureFunction, Context } from "@azure/functions";
 import { scrapeMaterials, syncEPDDatabases, runDataJanitor } from '../../scripts/scraper-scheduler';
-import { runScraperOutreachPipeline } from '../../server/scraper-outreach-pipeline';
 
 /**
  * Azure Function Timer Trigger
  *
- * Runs daily at 2:00 AM UTC. Pipeline order:
- *   1. Scrape materials from EPD databases and Azure Maps
- *   2. Sync EPD databases (Building Transparency, EPD International)
- *   3. Run data janitor (dedup, clean stale records)
- *   4. Run outreach pipeline → email newly scraped suppliers about open RFQs
+ * Runs daily at 2:00 AM UTC to scrape materials and sync EPD databases
+ * Schedule: "0 0 2 * * *" (cron format: second minute hour day month dayOfWeek)
  *
- * Schedule: "0 0 2 * * *" (cron: second minute hour day month dayOfWeek)
  * To change schedule, edit function.json
  */
 const timerTrigger: AzureFunction = async function (context: Context, myTimer: any): Promise<void> {
     const timestamp = new Date().toISOString();
 
     context.log('═══════════════════════════════════════════════════════════');
-    context.log('  GreenChainz Automated Scraper + Outreach Pipeline');
+    context.log('  GreenChainz Automated Scraper - Timer Trigger');
     context.log('  Execution time:', timestamp);
     context.log('═══════════════════════════════════════════════════════════');
 
@@ -37,23 +32,17 @@ const timerTrigger: AzureFunction = async function (context: Context, myTimer: a
         const syncResults = await syncEPDDatabases();
         context.log(`✅ EPD syncs queued: ${syncResults.queued}`);
 
-        // Step 3: Data janitor
+        // Step 3: Schedule data janitor (runs after scraping completes)
         context.log('\n🧹 Scheduling data janitor...');
         const janitorResult = await runDataJanitor();
         context.log(`✅ Data janitor queued: ${janitorResult.success}`);
 
-        // Step 4: Outreach pipeline — email newly scraped suppliers about open RFQs
-        // Runs after scraping so new suppliers are in the DB before matching
-        context.log('\n📧 Starting supplier outreach pipeline...');
-        const outreachResult = await runScraperOutreachPipeline();
-        context.log(`✅ Outreach: sent=${outreachResult.sent} skipped=${outreachResult.skipped} errors=${outreachResult.errors}`);
-
+        // Summary
         const totalQueued = materialResults.queued + syncResults.queued + (janitorResult.success ? 1 : 0);
-        const totalFailed = materialResults.failed + syncResults.failed + (janitorResult.success ? 0 : 1) + outreachResult.errors;
+        const totalFailed = materialResults.failed + syncResults.failed + (janitorResult.success ? 0 : 1);
 
         context.log('\n═══════════════════════════════════════════════════════════');
         context.log(`📈 Total jobs queued: ${totalQueued}`);
-        context.log(`📧 Outreach emails sent: ${outreachResult.sent}`);
         context.log(`❌ Total failures: ${totalFailed}`);
         context.log('═══════════════════════════════════════════════════════════');
 
@@ -65,8 +54,7 @@ const timerTrigger: AzureFunction = async function (context: Context, myTimer: a
                 results: {
                     materials: materialResults,
                     epd_sync: syncResults,
-                    data_janitor: janitorResult,
-                    outreach: outreachResult,
+                    data_janitor: janitorResult
                 }
             }
         };

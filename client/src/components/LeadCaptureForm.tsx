@@ -25,7 +25,7 @@ export default function LeadCaptureForm({ toolName, onSuccess }: LeadCaptureForm
 
     try {
       // POST to Azure backend
-      const response = await fetch('/api/leads', {
+      const response = await fetch('https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io/api/leads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
