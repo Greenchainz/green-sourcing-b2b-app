@@ -14,10 +14,11 @@ const pool = getPool();
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin role from auth session
+    // Verify admin role from auth session using Azure Easy Auth
     const user = getEasyAuthUser(request.headers);
 
-    if (!user) {
+    if (!user || !user.id) {
+      console.warn("[Admin Analytics] Authentication required or missing user identifier.");
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!hasRole(user, "admin")) {
-      console.warn(`[Admin Analytics] Unauthorized access attempt by user: ${user.email} (${user.id})`);
+      console.warn(`[Admin Analytics] Forbidden: Unauthorized access attempt by user ${user.email} (${user.id}). Admin role required.`);
       return NextResponse.json(
         { error: "Forbidden: Admin access required" },
         { status: 403 }

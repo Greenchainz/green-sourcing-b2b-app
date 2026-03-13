@@ -81,10 +81,16 @@ export default function Header() {
                     My Bids
                   </Button>
                 </Link>
-              ) : (
-                <Link href="/dashboard">
+              ) : user.role === 'admin' ? (
+                <Link href="/admin/verification">
                   <Button variant="ghost" size="sm">
-                    Dashboard
+                    Admin Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/materials">
+                  <Button variant="ghost" size="sm">
+                    Catalog
                   </Button>
                 </Link>
               )}

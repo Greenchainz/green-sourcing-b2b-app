@@ -47,10 +47,32 @@ import { HowItWorks } from "./pages/HowItWorks";
 import Support from "./pages/Support";
 import Login from "./pages/Login";
 import { Redirect } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 
+
+function DashboardRedirect() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (user.role === "supplier") {
+    return <Redirect to="/supplier/dashboard" />;
+  } else if (user.role === "admin") {
+    return <Redirect to="/admin/verification" />;
+  }
+
+  // Default for buyers
+  return <Redirect to="/materials" />;
+}
+
 function Router() {
+
   return (
     <Switch>
       <Route path={"/"} component={Home} />
@@ -88,7 +110,7 @@ function Router() {
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
       <Route path="/login" component={Login} />
-      <Route path="/dashboard"><Redirect to="/rfq-dashboard" /></Route>
+      <Route path="/dashboard"><DashboardRedirect /></Route>
       <Route path={"404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
