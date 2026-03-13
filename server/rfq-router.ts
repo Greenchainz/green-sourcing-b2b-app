@@ -80,41 +80,11 @@ export const rfqMarketplaceRouter = router({
       return sendMessage(input.threadId, input.senderId, input.senderType, input.message);
     }),
 
-  // Get messages from thread (legacy — use getThreadMessages for paginated access)
+  // Get messages from thread
   getMessages: protectedProcedure
     .input(z.object({ threadId: z.number(), limit: z.number().optional() }))
     .query(async ({ input }) => {
       return getThreadMessages(input.threadId, input.limit);
-    }),
-
-  // Get paginated thread messages (used by RealTimeChat)
-  getThreadMessages: protectedProcedure
-    .input(
-      z.object({
-        threadId: z.number(),
-        limit: z.number().default(50),
-        offset: z.number().default(0),
-      })
-    )
-    .query(async ({ input }) => {
-      const { getThreadMessages: getMessages } = await import("./webpubsub-manager");
-      return getMessages(input.threadId, input.limit, input.offset);
-    }),
-
-  // Mark a message as read
-  markMessageAsRead: protectedProcedure
-    .input(z.object({ messageId: z.number() }))
-    .mutation(async ({ input }) => {
-      const { markMessageAsRead } = await import("./webpubsub-manager");
-      return markMessageAsRead(input.messageId);
-    }),
-
-  // Get WebSocket access token for real-time chat (Azure Web PubSub)
-  getWebSocketToken: protectedProcedure
-    .input(z.object({ threadId: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const { getWebSocketAccessToken } = await import("./webpubsub-manager");
-      return getWebSocketAccessToken(ctx.user.id, input.threadId);
     }),
 
   // Accept a bid and create order
@@ -124,51 +94,17 @@ export const rfqMarketplaceRouter = router({
       return acceptBid(input.rfqId, input.bidId);
     }),
 
-  // Get RFQs for the authenticated user (alias for getBuyerRfqs — used by RfqDashboard)
-  getUserRfqs: protectedProcedure
-    .input(z.object({ userId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return [];
-
-      // Security: always use authenticated user's ID, ignore input.userId
-      const userId = ctx.user.id;
-
-      const userRfqs = await db
-        .select()
-        .from(rfqs)
-        .where(eq(rfqs.userId, userId))
-        .orderBy(desc(rfqs.createdAt));
-
-      const enriched = await Promise.all(
-        userRfqs.map(async (rfq) => {
-          const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, rfq.id));
-          const bids = await db.select().from(rfqBids).where(eq(rfqBids.rfqId, rfq.id));
-          return {
-            ...rfq,
-            itemCount: items.length,
-            bidCount: bids.length,
-          };
-        })
-      );
-
-      return enriched;
-    }),
-
   // Get RFQs for buyer with CCPS enrichment
   getBuyerRfqs: protectedProcedure
     .input(z.object({ buyerId: z.number() }))
-    .query(async ({ ctx, input }) => {
+    .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-
-      // Security: always use authenticated user's ID
-      const userId = ctx.user.id;
 
       const userRfqs = await db
         .select()
         .from(rfqs)
-        .where(eq(rfqs.userId, userId))
+        .where(eq(rfqs.userId, input.buyerId))
         .orderBy(desc(rfqs.createdAt));
 
       const enriched = await Promise.all(
@@ -190,11 +126,11 @@ export const rfqMarketplaceRouter = router({
   // Get detailed RFQ with items, bids, and analytics
   getRfqDetails: protectedProcedure
     .input(z.object({ rfqId: z.number() }))
-    .query(async ({ ctx, input }) => {
+    .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return null;
 
-      // Get RFQ — verify ownership (buyers see their own; suppliers see matched RFQs)
+      // Get RFQ
       const rfq = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
       if (!rfq.length) return null;
 

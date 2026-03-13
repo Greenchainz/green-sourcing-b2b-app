@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-
+import { getLoginUrl } from '../const';
 
 export default function GetStarted() {
   const [, setLocation] = useLocation();
@@ -19,10 +19,7 @@ export default function GetStarted() {
 
     // Redirect to login with role and returnPath
     const returnPath = selectedRole === 'buyer' ? '/materials' : '/supplier/register';
-    const loginUrl = new URL('/login', window.location.origin);
-    loginUrl.searchParams.set('returnPath', returnPath);
-    loginUrl.searchParams.set('role', selectedRole);
-    window.location.href = loginUrl.toString();
+    window.location.href = getLoginUrl(returnPath, selectedRole);
   };
 
   return (

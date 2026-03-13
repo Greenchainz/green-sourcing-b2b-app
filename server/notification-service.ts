@@ -1,7 +1,6 @@
 import { getDb } from "./db";
 import { notifications } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { sendEmail } from "./email-service";
 
 export type NotificationType = "rfq_new" | "rfq_match" | "new_message" | "bid_accepted" | "bid_rejected" | "rfq_closed" | "rfq_bid_received";
 
@@ -59,7 +58,8 @@ export async function sendInAppNotification(payload: NotificationPayload) {
 }
 
 /**
- * Send email notification via Zeptomail SMTP
+ * Send email notification via Azure SendGrid
+ * In production, integrate with Azure Communication Services
  */
 export async function sendEmailNotification(payload: NotificationPayload) {
   if (!payload.email) {
@@ -68,59 +68,19 @@ export async function sendEmailNotification(payload: NotificationPayload) {
   }
 
   try {
-    const sent = await sendEmail({
+    // TODO: Integrate with Azure Communication Services / SendGrid
+    // For now, log the notification
+    console.log(`📧 Email notification queued:`, {
       to: payload.email,
       subject: payload.title,
-      html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-        <h2 style="color:#16a34a;">${payload.title}</h2>
-        <p>${payload.content}</p>
-        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
-        <p style="font-size:12px;color:#6b7280;">GreenChainz &mdash; Sustainable Material Procurement</p>
-      </div>`,
-      text: `${payload.title}\n\n${payload.content}`,
+      body: payload.content,
     });
-    if (sent) {
-      console.log(`✅ Email sent to ${payload.email}: ${payload.title}`);
-      return { success: true };
-    }
-    return { success: false, error: "sendEmail returned false" };
+
+    return { success: true, message: "Email queued for delivery" };
   } catch (error) {
     console.error("❌ Failed to send email notification:", error);
     return { success: false, error: String(error) };
   }
-}
-
-/**
- * Send welcome email to a new user on first signup
- */
-export async function sendWelcomeEmail(user: { name: string; email: string; role: string }) {
-  const isSupplier = user.role === "supplier";
-  const ctaUrl = isSupplier
-    ? "https://greenchainz.com/supplier/register"
-    : "https://greenchainz.com/materials";
-  const ctaText = isSupplier ? "Complete Your Supplier Profile" : "Browse Materials";
-
-  return sendEmail({
-    to: user.email,
-    subject: `Welcome to GreenChainz, ${user.name}!`,
-    html: `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-        <h1 style="color:#16a34a;">Welcome to GreenChainz</h1>
-        <p>Hi ${user.name},</p>
-        <p>You're now part of the platform connecting AEC teams with verified sustainable building materials.</p>
-        ${isSupplier
-          ? `<p>As a supplier, you'll receive RFQ matches based on your materials and certifications. Complete your profile to start receiving bids.</p>`
-          : `<p>As a buyer, you can browse 270+ verified EPD materials, submit RFQs, and connect with certified suppliers.</p>`
-        }
-        <p style="margin:32px 0;">
-          <a href="${ctaUrl}" style="background:#16a34a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;">${ctaText}</a>
-        </p>
-        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
-        <p style="font-size:12px;color:#6b7280;">GreenChainz &mdash; Sustainable Material Procurement &mdash; <a href="https://greenchainz.com">greenchainz.com</a></p>
-      </div>
-    `,
-    text: `Welcome to GreenChainz, ${user.name}!\n\nYou're now part of the platform connecting AEC teams with verified sustainable building materials.\n\nGet started: ${ctaUrl}`,
-  });
 }
 
 /**

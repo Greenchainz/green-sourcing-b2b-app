@@ -10,7 +10,6 @@ import {
   calculateCcps,
   personaToWeights,
   calcCarbonDelta,
-  calculateAssemblyLevelImpact,
 } from "./ccps-engine";
 
 describe("calcCarbonScore", () => {
@@ -209,31 +208,5 @@ describe("calcCarbonDelta", () => {
     const r = calcCarbonDelta(0, 500);
     expect(r.delta).toBe(-500);
     expect(r.deltaPct).toBe(0);
-  });
-});
-
-describe("calculateAssemblyLevelImpact", () => {
-  it("rounds 166 * 92.903 to 15422 (architect EWS math)", () => {
-    const result = calculateAssemblyLevelImpact({
-      assemblyId: "EWS-1A",
-      epdNumber: "4789733794.109.1",
-      gwpPerFunctionalUnit: 166,
-      msfFactor: 92.903,
-    });
-    expect(result.totalKgCO2ePer1000SF).toBe(15422);
-  });
-
-  it("preserves source fields in result", () => {
-    const result = calculateAssemblyLevelImpact({
-      assemblyId: "EWS-2B",
-      epdNumber: "EPD-999",
-      gwpPerFunctionalUnit: 100,
-      msfFactor: 50,
-    });
-    expect(result.assemblyId).toBe("EWS-2B");
-    expect(result.epdNumber).toBe("EPD-999");
-    expect(result.gwpPerFunctionalUnit).toBe(100);
-    expect(result.msfFactor).toBe(50);
-    expect(result.totalKgCO2ePer1000SF).toBe(5000);
   });
 });

@@ -12,7 +12,7 @@ import { WebPubSubServiceClient } from '@azure/web-pubsub';
 // ============================================================================
 
 const WEB_PUBSUB_ENDPOINT = process.env.AZURE_WEBPUBSUB_ENDPOINT || 'https://GreenChainz.webpubsub.azure.com';
-const WEB_PUBSUB_HUB = process.env.AZURE_WEBPUBSUB_HUB || 'greenchainzhub';
+const WEB_PUBSUB_HUB = process.env.AZURE_WEBPUBSUB_HUB || 'greenchainz-chat';
 
 // ============================================================================
 // MANAGED IDENTITY CLIENT

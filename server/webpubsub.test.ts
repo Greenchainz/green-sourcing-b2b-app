@@ -43,7 +43,7 @@ describe("Azure Web PubSub Integration", () => {
 
   it("should have valid hub name", () => {
     const hubName = process.env.WEBPUBSUB_HUB;
-    expect(hubName).toBe("greenchainzhub");
+    expect(hubName).toBe("greenchainz-hub");
   });
 
   it("should have public endpoint configured", () => {

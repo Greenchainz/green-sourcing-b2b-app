@@ -98,12 +98,12 @@ export default function Header() {
             </>
           ) : (
             <>
-              <a href="/login">
+              <a href={getLoginUrl()}>
                 <Button variant="ghost" size="sm">
                   Sign In
                 </Button>
               </a>
-              <a href="/login">
+              <a href={getLoginUrl()}>
                 <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_15px_rgba(159,232,112,0.6)] transition-all duration-300">
                   Get Started
                 </Button>
@@ -155,12 +155,12 @@ export default function Header() {
             </Link>
             {!user && (
               <div className="flex flex-col space-y-2 pt-2">
-                <a href="/login">
+                <a href={getLoginUrl()}>
                   <Button variant="ghost" size="sm" className="w-full">
                     Sign In
                   </Button>
                 </a>
-                <a href="/login">
+                <a href={getLoginUrl()}>
                   <Button size="sm" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                     Get Started
                   </Button>
