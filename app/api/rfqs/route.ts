@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { rfqSupplierMatch, sendNotification } from "@/lib/greenchainz";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -39,9 +40,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from session (placeholder - replace with actual auth)
-    // For now, we'll use a default buyer_id
-    const buyer_id = "default-buyer-id"; // TODO: Get from auth session
+    // Get user from Azure Easy Auth session
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    const buyer_id = user.id;
 
     // Start transaction
     const client = await pool.connect();
@@ -183,8 +192,17 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Get user from session (placeholder)
-    const buyer_id = "default-buyer-id"; // TODO: Get from auth session
+    // Get user from Azure Easy Auth session
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    const buyer_id = user.id;
 
     let query = `
       SELECT 
