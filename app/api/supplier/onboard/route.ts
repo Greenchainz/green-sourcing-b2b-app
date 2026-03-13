@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const user = getEasyAuthUser(request.headers);
     const user = getEasyAuthUser(request);
     if (!user) {
       return NextResponse.json(
@@ -232,6 +233,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const user = getEasyAuthUser(request.headers);
     const user = getEasyAuthUser(request);
     if (!user) {
       return NextResponse.json(
