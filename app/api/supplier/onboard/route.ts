@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
-<<<<<<< HEAD
-import { sendNotification } from "@/lib/greenchainz";
-=======
 import { sendInAppNotification } from "@/lib/greenchainz";
->>>>>>> 79f868e62b01b72fb871ca1275511fad37676d81
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -69,8 +66,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    // Get user_id from auth session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    const user_id = authUser.id;
 
     const client = await pool.connect();
     try {
@@ -116,13 +117,13 @@ export async function POST(request: NextRequest) {
 
       const supplier_id = supplierResult.rows[0].id;
 
-      // Insert materials offered
-      for (const material_id of materials_offered) {
+      // Bulk insert materials offered (single round-trip, avoids N+1)
+      if (materials_offered.length > 0) {
         await client.query(
           `INSERT INTO supplier_materials (supplier_id, material_id, created_at)
-           VALUES ($1, $2, NOW())
+           SELECT $1, unnest($2::text[]), NOW()
            ON CONFLICT (supplier_id, material_id) DO NOTHING`,
-          [supplier_id, material_id]
+          [supplier_id, materials_offered]
         );
       }
 
@@ -181,15 +182,10 @@ export async function POST(request: NextRequest) {
       await client.query("COMMIT");
 
       // Send welcome notification
-<<<<<<< HEAD
-      await sendNotification({
-=======
       await sendInAppNotification({
->>>>>>> 79f868e62b01b72fb871ca1275511fad37676d81
         userId: supplier_id,
-        type: "onboarding_complete",
         title: "Welcome to GreenChainz!",
-        message: `Your supplier profile for ${company_name} has been created. You'll start receiving RFQ matches based on your preferences.`,
+        body: `Your supplier profile for ${company_name} has been created. You'll start receiving RFQ matches based on your preferences.`,
       });
 
       return NextResponse.json({
@@ -222,8 +218,12 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    // Get user_id from auth session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    const user_id = authUser.id;
 
     const result = await pool.query(
       `SELECT 

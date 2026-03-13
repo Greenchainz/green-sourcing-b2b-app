@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { trpc } from "@/lib/trpc";
@@ -9,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 
 const rfqFormSchema = z.object({
@@ -38,8 +36,6 @@ interface RfqCreationFormProps {
 }
 
 export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
   const { data: materials } = trpc.materials.list.useQuery({ search: "", category: "" });
   const submitRfq = trpc.rfqMarketplace.submit.useMutation();
 
@@ -76,7 +72,6 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
       alert(`RFQ #${result.rfqId} has been created and suppliers have been matched.`);
 
       reset();
-      setIsOpen(false);
       onSuccess?.();
     } catch (error) {
       alert(`Error: ${error instanceof Error ? error.message : "Failed to create RFQ"}`);
@@ -84,18 +79,7 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <Button onClick={() => setIsOpen(true)} className="w-full">
-        Create New RFQ
-      </Button>
-
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Request for Quotation</DialogTitle>
-          <DialogDescription>Add project details and materials to get supplier quotes</DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Project Details</CardTitle>
@@ -150,18 +134,27 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
                 <div key={field.id} className="flex gap-3 items-end pb-3 border-b last:border-b-0">
                   <div className="flex-1">
                     <Label>Material</Label>
-                    <Select defaultValue={String(field.materialId)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select material" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materials?.items?.map((mat: any) => (
-                          <SelectItem key={mat.id} value={String(mat.id)}>
-                            {mat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Controller
+                      control={control}
+                      name={`materials.${index}.materialId`}
+                      render={({ field }) => (
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(val) => field.onChange(parseInt(val, 10))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select material" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {materials?.items?.map((mat: any) => (
+                              <SelectItem key={mat.id} value={String(mat.id)}>
+                                {mat.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                   </div>
 
                   <div className="w-24">
@@ -175,18 +168,24 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
 
                   <div className="w-28">
                     <Label>Unit</Label>
-                    <Select defaultValue="units">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="units">Units</SelectItem>
-                        <SelectItem value="tons">Tons</SelectItem>
-                        <SelectItem value="m2">m²</SelectItem>
-                        <SelectItem value="m3">m³</SelectItem>
-                        <SelectItem value="lf">LF</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Controller
+                      control={control}
+                      name={`materials.${index}.quantityUnit`}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="units">Units</SelectItem>
+                            <SelectItem value="tons">Tons</SelectItem>
+                            <SelectItem value="m2">m²</SelectItem>
+                            <SelectItem value="m3">m³</SelectItem>
+                            <SelectItem value="lf">LF</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                   </div>
 
                   <Button
@@ -217,10 +216,7 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                setIsOpen(false);
-                onCancel?.();
-              }}
+              onClick={() => onCancel?.()}
             >
               Cancel
             </Button>
@@ -235,7 +231,5 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
   );
 }

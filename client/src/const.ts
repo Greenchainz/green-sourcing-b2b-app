@@ -4,6 +4,15 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 export const getLoginUrl = (returnPath?: string, role?: 'buyer' | 'supplier') => {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
+
+  if (!oauthPortalUrl) {
+    // Fall back to a local login page when the OAuth portal URL is not configured
+    const params = new URLSearchParams();
+    if (returnPath) params.set("returnPath", returnPath);
+    if (role) params.set("role", role);
+    return `/login${params.size > 0 ? `?${params}` : ""}`;
+  }
+
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
   
   // Encode returnPath and role in state

@@ -52,8 +52,9 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
         });
 
         // Connect to Web PubSub
+        const hubName = import.meta.env.VITE_WEBPUBSUB_HUB || "chat";
         const ws = new WebSocket(
-          `${token.url}/client/hubs/${process.env.NEXT_PUBLIC_WEBPUBSUB_HUB}?access_token=${token.token}`
+          `${token.url}/client/hubs/${hubName}?access_token=${token.token}`
         );
 
         ws.onopen = () => {

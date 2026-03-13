@@ -35,8 +35,11 @@ export default function BuyerRfqDashboard() {
     buyerId: typeof user?.id === 'string' ? parseInt(user.id) : (user?.id || 0)
   });
 
-  // Fetch bids for selected RFQ
-  const { data: rfqDetails } = selectedRfqId ? trpc.rfqMarketplace.getRfqDetails.useQuery({ rfqId: selectedRfqId }) : { data: undefined };
+  // Fetch bids for selected RFQ - call unconditionally; enabled only when an RFQ is selected
+  const { data: rfqDetails } = trpc.rfqMarketplace.getRfqDetails.useQuery(
+    { rfqId: selectedRfqId ?? 0 },
+    { enabled: selectedRfqId !== null }
+  );
   const rfqBids = rfqDetails?.bids || [];
 
   // Mock data for demonstration
@@ -111,13 +114,16 @@ export default function BuyerRfqDashboard() {
     },
   ];
 
-  const displayRfqs = buyerRfqs || mockRfqs;
+  // Only fall back to mock data in development to avoid masking API/auth failures in production
+  const displayRfqs = buyerRfqs ?? (import.meta.env.DEV ? mockRfqs : []);
   const selectedRfq = displayRfqs.find((r: any) => r.id === selectedRfqId);
   const displayBids = rfqBids || (selectedRfqId === 1 ? mockBids : []);
 
-  // Filter RFQs by status
-  const activeRfqs = displayRfqs?.filter((r: any) => r.status === "active") || [];
-  const closedRfqs = displayRfqs?.filter((r: any) => r.status === "closed") || [];
+  // Filter RFQs by status - align with backend statuses (draft/open/submitted/responded → active; closed/awarded → closed)
+  const ACTIVE_STATUSES = ['active', 'draft', 'open', 'submitted', 'responded'];
+  const CLOSED_STATUSES = ['closed', 'awarded'];
+  const activeRfqs = displayRfqs?.filter((r: any) => ACTIVE_STATUSES.includes(r.status)) || [];
+  const closedRfqs = displayRfqs?.filter((r: any) => CLOSED_STATUSES.includes(r.status)) || [];
 
   const handleCreateRfq = async () => {
     setShowCreateRfq(false);

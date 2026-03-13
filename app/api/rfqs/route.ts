@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 import { rfqSupplierMatch, sendNotification } from "@/lib/greenchainz";
 
 const pool = getPool();
@@ -39,9 +40,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from session (placeholder - replace with actual auth)
-    // For now, we'll use a default buyer_id
-    const buyer_id = "default-buyer-id"; // TODO: Get from auth session
+    // Derive buyer_id from the authenticated session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    const buyer_id = authUser.id;
 
     // Start transaction
     const client = await pool.connect();
@@ -183,8 +187,12 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Get user from session (placeholder)
-    const buyer_id = "default-buyer-id"; // TODO: Get from auth session
+    // Derive buyer_id from the authenticated session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    const buyer_id = authUser.id;
 
     let query = `
       SELECT 
