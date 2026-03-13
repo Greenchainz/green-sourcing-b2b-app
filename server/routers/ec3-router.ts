@@ -11,7 +11,7 @@ import { fetchEC3EPDs, searchEC3EPDs } from "../ec3";
 import { transformEC3ToMaterial, transformEC3Batch } from "../ec3-transform";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
-import { eq, and, gte, lte, isNull, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, inArray } from "drizzle-orm";
 
 export const ec3Router = router({
   /**
