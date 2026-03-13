@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import {
@@ -1287,28 +1287,20 @@ export const appRouter = router({
       }),
 
     // Admin: Get all subscriptions
-    getAllSubscriptions: protectedProcedure.query(async ({ ctx }) => {
-      // TODO: Add admin role check
-      if (ctx.user.role !== 'admin') {
-        throw new Error('Unauthorized: Admin access required');
-      }
+    getAllSubscriptions: adminProcedure.query(async () => {
       const { getAllSubscriptions } = await import('./microsoft-subscription-service');
       return await getAllSubscriptions();
     }),
 
     // Admin: Manually update user tier
-    updateUserTier: protectedProcedure
+    updateUserTier: adminProcedure
       .input(
         z.object({
           userId: z.number(),
           tier: z.enum(['free', 'standard', 'premium']),
         })
       )
-      .mutation(async ({ input, ctx }) => {
-        // TODO: Add admin role check
-        if (ctx.user.role !== 'admin') {
-          throw new Error('Unauthorized: Admin access required');
-        }
+      .mutation(async ({ input }) => {
         const { updateUserTier } = await import('./microsoft-subscription-service');
         return await updateUserTier(input.userId, input.tier);
       }),
