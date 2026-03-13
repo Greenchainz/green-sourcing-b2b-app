@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { sendInAppNotification } from "@/lib/greenchainz";
 import { auth } from "@/auth";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -68,12 +69,28 @@ export async function POST(request: NextRequest) {
 
     const session = await auth();
     if (!session?.user?.id) {
+    const user = getEasyAuthUser(request.headers);
+    const user = getEasyAuthUser(request);
+    if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
     const user_id = session.user.id;
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const user_id = user.id;
 
     const client = await pool.connect();
     try {
@@ -222,12 +239,28 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
+    const user = getEasyAuthUser(request.headers);
+    const user = getEasyAuthUser(request);
+    if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
     const user_id = session.user.id;
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const user_id = user.id;
 
     const result = await pool.query(
       `SELECT 
