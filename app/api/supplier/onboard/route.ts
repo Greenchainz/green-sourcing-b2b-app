@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { sendInAppNotification } from "@/lib/greenchainz";
+import { auth } from "@/auth";
 
 const pool = getPool();
 
@@ -65,8 +66,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    const user_id = session.user.id;
 
     const client = await pool.connect();
     try {
@@ -213,8 +220,14 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    const user_id = session.user.id;
 
     const result = await pool.query(
       `SELECT 
