@@ -64,6 +64,14 @@ export async function GET(
       );
     }
 
+    const user = getEasyAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Mark messages as read for the current user
     const user = getEasyAuthUser(request.headers);
     if (!user) {
@@ -116,6 +124,10 @@ export async function POST(
       );
     }
 
+    const user = getEasyAuthUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
     const user = getEasyAuthUser(request.headers);
 
     if (!user) {
