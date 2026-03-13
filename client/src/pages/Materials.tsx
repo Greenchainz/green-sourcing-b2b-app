@@ -65,7 +65,7 @@ export default function Materials() {
         if (maxGWP) params.append('maxGWP', maxGWP);
 
         const response = await fetch(
-          `https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io/api/materials?${params}`,
+          `/api/materials?${params}`,
           {
             headers: {
               'Content-Type': 'application/json',

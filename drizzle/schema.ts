@@ -1,32 +1,70 @@
 import {
-  int,
-  mysqlEnum,
-  mysqlTable,
+  pgTable,
+  pgEnum,
+  serial,
   text,
   timestamp,
   varchar,
   decimal,
   boolean,
-  tinyint,
+  integer,
   json,
   index,
-} from "drizzle-orm/mysql-core";
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+export const userRoleEnum = pgEnum("user_role", ["user", "admin", "buyer", "supplier"]);
+export const userPersonaEnum = pgEnum("user_persona", [
+  "architect", "leed_ap", "gc_pm", "spec_writer", "owner", "facility_manager", "default",
+]);
+export const materialSpecStatusEnum = pgEnum("material_spec_status", ["pending", "approved", "rejected"]);
+export const complianceGradeEnum = pgEnum("compliance_grade", ["A", "B", "C", "D", "F"]);
+export const sustainabilityTierEnum = pgEnum("sustainability_tier", ["good", "better", "best"]);
+export const rfqStatusEnum = pgEnum("rfq_status", ["draft", "submitted", "responded", "awarded", "closed"]);
+export const rfqBidStatusEnum = pgEnum("rfq_bid_status", ["submitted", "accepted", "rejected", "expired"]);
+export const rfqThreadStatusEnum = pgEnum("rfq_thread_status", ["active", "closed", "archived"]);
+export const senderTypeEnum = pgEnum("sender_type", ["buyer", "supplier"]);
+export const messageSenderTypeEnum = pgEnum("message_sender_type", ["user", "agent", "support"]);
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "rfq_new", "rfq_match", "new_message", "bid_accepted", "bid_rejected", "rfq_closed", "rfq_bid_received",
+]);
+export const agentRoleEnum = pgEnum("agent_role", ["user", "assistant", "system"]);
+export const swapTierEnum = pgEnum("swap_tier", ["good", "better", "best"]);
+export const createdByEnum = pgEnum("created_by", ["algorithm", "agent", "admin"]);
+export const agentModeEnum = pgEnum("agent_mode", ["agent_first", "human_only", "hybrid"]);
+export const handoffStatusEnum = pgEnum("handoff_status", ["agent", "pending_handoff", "human"]);
+export const handoffModeEnum = pgEnum("handoff_mode", ["always_agent", "hybrid", "immediate_human"]);
+export const callTypeEnum = pgEnum("call_type", ["voice", "video"]);
+export const callStatusEnum = pgEnum("call_status", ["completed", "missed", "rejected", "failed"]);
+export const videoCallStatusEnum = pgEnum("video_call_status", ["initiated", "ringing", "connected", "ended", "failed"]);
+export const subscriptionTierEnum = pgEnum("subscription_tier", ["free", "standard", "premium"]);
+export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "suspended", "cancelled", "expired"]);
+export const supplierTierEnum = pgEnum("supplier_tier", ["free", "premium"]);
+export const supplierStatusEnum = pgEnum("supplier_status", ["active", "canceled", "past_due", "suspended", "pending"]);
+export const buyerStatusEnum = pgEnum("buyer_status", ["active", "canceled", "past_due", "suspended", "pending", "trial"]);
+export const verificationStatusEnum = pgEnum("verification_status", ["pending", "approved", "rejected"]);
+export const usageDimensionEnum = pgEnum("usage_dimension", [
+  "rfq_submission", "ai_query", "swap_analysis", "ccps_export",
+  "material_comparison", "supplier_match", "message_thread",
+  "bid_submission", "video_call", "message_sent",
+]);
+export const swapValidationStatusEnum = pgEnum("swap_validation_status", ["APPROVED", "EXPERIMENTAL", "REJECTED"]);
 
 // ─── Users ──────────────────────────────────────────────────────────────────
 
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin", "buyer", "supplier"]).default("user").notNull(),
+  role: userRoleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-  persona: mysqlEnum("persona", [
-    "architect", "leed_ap", "gc_pm", "spec_writer", "owner", "facility_manager", "default",
-  ]).default("default"),
+  persona: userPersonaEnum("persona").default("default"),
   companyName: varchar("companyName", { length: 255 }),
   jobTitle: varchar("jobTitle", { length: 255 }),
 });
@@ -36,8 +74,8 @@ export type InsertUser = typeof users.$inferInsert;
 
 // ─── Manufacturers ──────────────────────────────────────────────────────────
 
-export const manufacturers = mysqlTable("manufacturers", {
-  id: int("id").autoincrement().primaryKey(),
+export const manufacturers = pgTable("manufacturers", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   website: text("website"),
   logoUrl: text("logoUrl"),
@@ -45,7 +83,7 @@ export const manufacturers = mysqlTable("manufacturers", {
   email: varchar("email", { length: 320 }),
   headquarters: varchar("headquarters", { length: 255 }),
   sustainabilityPageUrl: text("sustainabilityPageUrl"),
-  verified: tinyint("verified").default(0),
+  verified: boolean("verified").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -53,11 +91,11 @@ export type Manufacturer = typeof manufacturers.$inferSelect;
 
 // ─── Materials ──────────────────────────────────────────────────────────────
 
-export const materials = mysqlTable("materials", {
-  id: int("id").autoincrement().primaryKey(),
+export const materials = pgTable("materials", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   productName: varchar("productName", { length: 255 }),
-  manufacturerId: int("manufacturerId"),
+  manufacturerId: integer("manufacturerId"),
   category: varchar("category", { length: 100 }).notNull(),
   subcategory: varchar("subcategory", { length: 100 }),
   description: text("description"),
@@ -76,53 +114,52 @@ export const materials = mysqlTable("materials", {
   thermalUValue: decimal("thermalUValue", { precision: 8, scale: 4 }),
   vocLevel: varchar("vocLevel", { length: 50 }),
   vocCertification: varchar("vocCertification", { length: 100 }),
-  onRedList: tinyint("onRedList").default(0),
-  hasEpd: tinyint("hasEpd").default(0),
-  hasHpd: tinyint("hasHpd").default(0),
-  hasFsc: tinyint("hasFsc").default(0),
-  hasC2c: tinyint("hasC2c").default(0),
-  hasGreenguard: tinyint("hasGreenguard").default(0),
-  hasDeclare: tinyint("hasDeclare").default(0),
+  onRedList: boolean("onRedList").default(false),
+  hasEpd: boolean("hasEpd").default(false),
+  hasHpd: boolean("hasHpd").default(false),
+  hasFsc: boolean("hasFsc").default(false),
+  hasC2c: boolean("hasC2c").default(false),
+  hasGreenguard: boolean("hasGreenguard").default(false),
+  hasDeclare: boolean("hasDeclare").default(false),
   recycledContentPct: decimal("recycledContentPct", { precision: 5, scale: 2 }),
-  leadTimeDays: int("leadTimeDays"),
-  usManufactured: tinyint("usManufactured").default(0),
-  regionalAvailabilityMiles: int("regionalAvailabilityMiles"),
-  hasTakeBackProgram: tinyint("hasTakeBackProgram").default(0),
+  leadTimeDays: integer("leadTimeDays"),
+  usManufactured: boolean("usManufactured").default(false),
+  regionalAvailabilityMiles: integer("regionalAvailabilityMiles"),
+  hasTakeBackProgram: boolean("hasTakeBackProgram").default(false),
   pricePerUnit: decimal("pricePerUnit", { precision: 10, scale: 2 }),
   priceUnit: varchar("priceUnit", { length: 50 }),
   astmStandards: text("astmStandards"),
-  meetsTitle24: tinyint("meetsTitle24").default(0),
-  meetsIecc: tinyint("meetsIecc").default(0),
+  meetsTitle24: boolean("meetsTitle24").default(false),
+  meetsIecc: boolean("meetsIecc").default(false),
   leedCredits: text("leedCredits"),
-  expectedLifecycleYears: int("expectedLifecycleYears"),
-  warrantyYears: int("warrantyYears"),
+  expectedLifecycleYears: integer("expectedLifecycleYears"),
+  warrantyYears: integer("warrantyYears"),
   dataSource: varchar("dataSource", { length: 100 }),
-  verified: tinyint("verified").default(0),
+  verified: boolean("verified").default(false),
   imageUrl: text("imageUrl"),
   specSheetUrl: text("specSheetUrl"),
-  // EC3 (Building Transparency) tracking fields
-  ec3Id: varchar("ec3Id", { length: 100 }), // EC3 EPD ID or open_xpd_uuid
-  ec3SyncedAt: timestamp("ec3SyncedAt"), // Last sync timestamp from EC3 API
-  ec3Category: varchar("ec3Category", { length: 100 }), // EC3 category name
-  ec3ConservativeEstimate: varchar("ec3ConservativeEstimate", { length: 50 }), // Conservative GWP estimate
-  ec3BestPractice: varchar("ec3BestPractice", { length: 50 }), // Best practice GWP
-  ec3IndustryMedian: varchar("ec3IndustryMedian", { length: 50 }), // Industry median (pct50_gwp)
-  complianceGrade: mysqlEnum("complianceGrade", ["A", "B", "C", "D", "F"]).default("C"), // Compliance grade (A=best, F=worst)
+  ec3Id: varchar("ec3Id", { length: 100 }),
+  ec3SyncedAt: timestamp("ec3SyncedAt"),
+  ec3Category: varchar("ec3Category", { length: 100 }),
+  ec3ConservativeEstimate: varchar("ec3ConservativeEstimate", { length: 50 }),
+  ec3BestPractice: varchar("ec3BestPractice", { length: 50 }),
+  ec3IndustryMedian: varchar("ec3IndustryMedian", { length: 50 }),
+  complianceGrade: complianceGradeEnum("complianceGrade").default("C"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Material = typeof materials.$inferSelect;
 
 // ─── Assemblies ─────────────────────────────────────────────────────────────
 
-export const assemblies = mysqlTable("assemblies", {
-  id: int("id").autoincrement().primaryKey(),
+export const assemblies = pgTable("assemblies", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 50 }),
   assemblyType: varchar("assemblyType", { length: 100 }).notNull(),
   description: text("description"),
-  sustainabilityTier: mysqlEnum("sustainabilityTier", ["good", "better", "best"]).default("good"),
+  sustainabilityTier: sustainabilityTierEnum("sustainabilityTier").default("good"),
   totalGwpPer1000Sqft: decimal("totalGwpPer1000Sqft", { precision: 12, scale: 2 }),
   totalRValue: decimal("totalRValue", { precision: 8, scale: 2 }),
   estimatedCostPer1000Sqft: decimal("estimatedCostPer1000Sqft", { precision: 10, scale: 2 }),
@@ -134,11 +171,11 @@ export type Assembly = typeof assemblies.$inferSelect;
 
 // ─── Assembly Components ────────────────────────────────────────────────────
 
-export const assemblyComponents = mysqlTable("assembly_components", {
-  id: int("id").autoincrement().primaryKey(),
-  assemblyId: int("assemblyId").notNull(),
-  materialId: int("materialId"),
-  layerOrder: int("layerOrder").notNull(),
+export const assemblyComponents = pgTable("assembly_components", {
+  id: serial("id").primaryKey(),
+  assemblyId: integer("assemblyId").notNull(),
+  materialId: integer("materialId"),
+  layerOrder: integer("layerOrder").notNull(),
   layerName: varchar("layerName", { length: 255 }).notNull(),
   thickness: varchar("thickness", { length: 50 }),
   gwpContribution: decimal("gwpContribution", { precision: 12, scale: 4 }),
@@ -149,9 +186,9 @@ export type AssemblyComponent = typeof assemblyComponents.$inferSelect;
 
 // ─── Material Certifications ────────────────────────────────────────────────
 
-export const materialCertifications = mysqlTable("material_certifications", {
-  id: int("id").autoincrement().primaryKey(),
-  materialId: int("materialId").notNull(),
+export const materialCertifications = pgTable("material_certifications", {
+  id: serial("id").primaryKey(),
+  materialId: integer("materialId").notNull(),
   certificationType: varchar("certificationType", { length: 100 }).notNull(),
   certificationName: varchar("certificationName", { length: 255 }),
   certificationNumber: varchar("certificationNumber", { length: 100 }),
@@ -161,7 +198,7 @@ export const materialCertifications = mysqlTable("material_certifications", {
   certificationUrl: text("certificationUrl"),
   leedCreditCategory: varchar("leedCreditCategory", { length: 100 }),
   leedCreditNumber: varchar("leedCreditNumber", { length: 50 }),
-  leedPointsValue: int("leedPointsValue"),
+  leedPointsValue: integer("leedPointsValue"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -169,75 +206,58 @@ export type MaterialCertification = typeof materialCertifications.$inferSelect;
 
 // ─── Material Specifications (Supplier-Submitted) ───────────────────────────
 
-export const materialSpecs = mysqlTable("material_specs", {
-  id: int("id").autoincrement().primaryKey(),
-  materialId: int("materialId").notNull(), // Link to materials table
-  supplierId: int("supplierId").notNull(), // Link to suppliers table
-  submittedBy: int("submittedBy").notNull(), // User ID who submitted
-  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
-
-  // Compliance metrics
+export const materialSpecs = pgTable("material_specs", {
+  id: serial("id").primaryKey(),
+  materialId: integer("materialId").notNull(),
+  supplierId: integer("supplierId").notNull(),
+  submittedBy: integer("submittedBy").notNull(),
+  status: materialSpecStatusEnum("status").default("pending").notNull(),
   fireRating: varchar("fireRating", { length: 50 }),
   fireRatingStandard: varchar("fireRatingStandard", { length: 100 }),
   rValue: decimal("rValue", { precision: 8, scale: 2 }),
   thermalUValue: decimal("thermalUValue", { precision: 8, scale: 4 }),
-  compressiveStrength: varchar("compressiveStrength", { length: 100 }), // e.g., "3000 psi"
+  compressiveStrength: varchar("compressiveStrength", { length: 100 }),
   tensileStrength: varchar("tensileStrength", { length: 100 }),
-  astmStandards: text("astmStandards"), // JSON array of ASTM standards
-  meetsTitle24: tinyint("meetsTitle24").default(0),
-  meetsIecc: tinyint("meetsIecc").default(0),
-  buildingCodes: text("buildingCodes"), // JSON array of applicable codes
-
-  // Cost metrics
+  astmStandards: text("astmStandards"),
+  meetsTitle24: boolean("meetsTitle24").default(false),
+  meetsIecc: boolean("meetsIecc").default(false),
+  buildingCodes: text("buildingCodes"),
   pricePerUnit: decimal("pricePerUnit", { precision: 10, scale: 2 }),
-  priceUnit: varchar("priceUnit", { length: 50 }), // e.g., "per SF", "per unit"
-  minimumOrderQuantity: int("minimumOrderQuantity"),
+  priceUnit: varchar("priceUnit", { length: 50 }),
+  minimumOrderQuantity: integer("minimumOrderQuantity"),
   moqUnit: varchar("moqUnit", { length: 50 }),
-  bulkDiscountAvailable: tinyint("bulkDiscountAvailable").default(0),
-
-  // Supply chain metrics
-  leadTimeDays: int("leadTimeDays"),
+  bulkDiscountAvailable: boolean("bulkDiscountAvailable").default(false),
+  leadTimeDays: integer("leadTimeDays"),
   manufacturingLocation: varchar("manufacturingLocation", { length: 255 }),
-  usManufactured: tinyint("usManufactured").default(0),
-  regionalAvailabilityMiles: int("regionalAvailabilityMiles"),
-  shippingRegions: text("shippingRegions"), // JSON array of regions
-  inStock: tinyint("inStock").default(1),
-  stockQuantity: int("stockQuantity"),
-
-  // Health metrics
-  vocLevel: varchar("vocLevel", { length: 50 }), // e.g., "< 50 g/L"
+  usManufactured: boolean("usManufactured").default(false),
+  regionalAvailabilityMiles: integer("regionalAvailabilityMiles"),
+  shippingRegions: text("shippingRegions"),
+  inStock: boolean("inStock").default(true),
+  stockQuantity: integer("stockQuantity"),
+  vocLevel: varchar("vocLevel", { length: 50 }),
   vocCertification: varchar("vocCertification", { length: 100 }),
-  onRedList: tinyint("onRedList").default(0),
+  onRedList: boolean("onRedList").default(false),
   toxicityRating: varchar("toxicityRating", { length: 50 }),
   indoorAirQualityRating: varchar("indoorAirQualityRating", { length: 50 }),
-
-  // Certifications
-  hasEpd: tinyint("hasEpd").default(0),
-  hasHpd: tinyint("hasHpd").default(0),
-  hasFsc: tinyint("hasFsc").default(0),
-  hasC2c: tinyint("hasC2c").default(0),
-  hasGreenguard: tinyint("hasGreenguard").default(0),
-  hasDeclare: tinyint("hasDeclare").default(0),
-  certificationUrls: text("certificationUrls"), // JSON object {"EPD": "url", "HPD": "url"}
-
-  // Supporting documents
-  datasheetUrl: text("datasheetUrl"), // Uploaded PDF/doc
+  hasEpd: boolean("hasEpd").default(false),
+  hasHpd: boolean("hasHpd").default(false),
+  hasFsc: boolean("hasFsc").default(false),
+  hasC2c: boolean("hasC2c").default(false),
+  hasGreenguard: boolean("hasGreenguard").default(false),
+  hasDeclare: boolean("hasDeclare").default(false),
+  certificationUrls: text("certificationUrls"),
+  datasheetUrl: text("datasheetUrl"),
   specSheetUrl: text("specSheetUrl"),
-  testReportUrls: text("testReportUrls"), // JSON array of URLs
-
-  // Additional info
+  testReportUrls: text("testReportUrls"),
   notes: text("notes"),
   recycledContentPct: decimal("recycledContentPct", { precision: 5, scale: 2 }),
-  warrantyYears: int("warrantyYears"),
-  expectedLifecycleYears: int("expectedLifecycleYears"),
-
-  // Admin review
-  reviewedBy: int("reviewedBy"), // Admin user ID
+  warrantyYears: integer("warrantyYears"),
+  expectedLifecycleYears: integer("expectedLifecycleYears"),
+  reviewedBy: integer("reviewedBy"),
   reviewedAt: timestamp("reviewedAt"),
   rejectionReason: text("rejectionReason"),
-
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type MaterialSpec = typeof materialSpecs.$inferSelect;
@@ -245,33 +265,33 @@ export type InsertMaterialSpec = typeof materialSpecs.$inferInsert;
 
 // ─── CCPS Baselines ─────────────────────────────────────────────────────────
 
-export const ccpsBaselines = mysqlTable("ccps_baselines", {
-  id: int("id").autoincrement().primaryKey(),
+export const ccpsBaselines = pgTable("ccps_baselines", {
+  id: serial("id").primaryKey(),
   category: varchar("category", { length: 100 }).notNull(),
   baselineGwpPerUnit: decimal("baselineGwpPerUnit", { precision: 12, scale: 4 }),
   baselinePricePerUnit: decimal("baselinePricePerUnit", { precision: 10, scale: 2 }),
-  baselineLeadTimeDays: int("baselineLeadTimeDays"),
+  baselineLeadTimeDays: integer("baselineLeadTimeDays"),
   baselineRecycledPct: decimal("baselineRecycledPct", { precision: 5, scale: 2 }),
-  sampleSize: int("sampleSize"),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  sampleSize: integer("sampleSize"),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type CcpsBaseline = typeof ccpsBaselines.$inferSelect;
 
 // ─── CCPS Scores (cached) ───────────────────────────────────────────────────
 
-export const ccpsScores = mysqlTable("ccps_scores", {
-  id: int("id").autoincrement().primaryKey(),
-  materialId: int("materialId").notNull(),
+export const ccpsScores = pgTable("ccps_scores", {
+  id: serial("id").primaryKey(),
+  materialId: integer("materialId").notNull(),
   personaKey: varchar("personaKey", { length: 50 }).notNull(),
-  carbonScore: int("carbonScore"),
-  complianceScore: int("complianceScore"),
-  certificationScore: int("certificationScore"),
-  costScore: int("costScore"),
-  supplyChainScore: int("supplyChainScore"),
-  healthScore: int("healthScore"),
-  ccpsTotal: int("ccpsTotal"),
-  sourcingDifficulty: int("sourcingDifficulty"),
+  carbonScore: integer("carbonScore"),
+  complianceScore: integer("complianceScore"),
+  certificationScore: integer("certificationScore"),
+  costScore: integer("costScore"),
+  supplyChainScore: integer("supplyChainScore"),
+  healthScore: integer("healthScore"),
+  ccpsTotal: integer("ccpsTotal"),
+  sourcingDifficulty: integer("sourcingDifficulty"),
   calculatedAt: timestamp("calculatedAt").defaultNow().notNull(),
 });
 
@@ -279,8 +299,8 @@ export type CcpsScore = typeof ccpsScores.$inferSelect;
 
 // ─── Decision Maker Personas ────────────────────────────────────────────────
 
-export const decisionMakerPersonas = mysqlTable("decision_maker_personas", {
-  id: int("id").autoincrement().primaryKey(),
+export const decisionMakerPersonas = pgTable("decision_maker_personas", {
+  id: serial("id").primaryKey(),
   personaKey: varchar("personaKey", { length: 50 }).notNull(),
   title: varchar("title", { length: 100 }).notNull(),
   description: text("description"),
@@ -296,31 +316,31 @@ export type DecisionMakerPersona = typeof decisionMakerPersonas.$inferSelect;
 
 // ─── RFQs ───────────────────────────────────────────────────────────────────
 
-export const rfqs = mysqlTable("rfqs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId"),
+export const rfqs = pgTable("rfqs", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId"),
   projectName: varchar("projectName", { length: 255 }).notNull(),
   projectLocation: varchar("projectLocation", { length: 255 }),
   projectType: varchar("projectType", { length: 100 }),
-  status: mysqlEnum("status", ["draft", "submitted", "responded", "awarded", "closed"]).default("draft"),
+  status: rfqStatusEnum("status").default("draft"),
   notes: text("notes"),
-  requiredCertifications: json("requiredCertifications").$type<string[]>(), // ["ISO 9001", "LEED", etc.]
-  latitude: decimal("latitude", { precision: 10, scale: 7 }), // Geocoded latitude for distance calculation
-  longitude: decimal("longitude", { precision: 10, scale: 7 }), // Geocoded longitude for distance calculation
+  requiredCertifications: json("requiredCertifications").$type<string[]>(),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
   dueDate: timestamp("dueDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Rfq = typeof rfqs.$inferSelect;
 
 // ─── RFQ Items ──────────────────────────────────────────────────────────────
 
-export const rfqItems = mysqlTable("rfq_items", {
-  id: int("id").autoincrement().primaryKey(),
-  rfqId: int("rfqId").notNull(),
-  materialId: int("materialId"),
-  assemblyId: int("assemblyId"),
+export const rfqItems = pgTable("rfq_items", {
+  id: serial("id").primaryKey(),
+  rfqId: integer("rfqId").notNull(),
+  materialId: integer("materialId"),
+  assemblyId: integer("assemblyId"),
   quantity: decimal("quantity", { precision: 12, scale: 2 }),
   quantityUnit: varchar("quantityUnit", { length: 50 }),
   notes: text("notes"),
@@ -331,8 +351,8 @@ export type RfqItem = typeof rfqItems.$inferSelect;
 
 // ─── Leads ──────────────────────────────────────────────────────────────────
 
-export const leads = mysqlTable("leads", {
-  id: int("id").autoincrement().primaryKey(),
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
   email: varchar("email", { length: 320 }).notNull(),
   name: varchar("name", { length: 255 }),
   company: varchar("company", { length: 255 }),
@@ -344,14 +364,14 @@ export type Lead = typeof leads.$inferSelect;
 
 // ─── Agent Conversations ───────────────────────────────────────────────────
 
-export const agentConversations = mysqlTable("agent_conversations", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId"),
+export const agentConversations = pgTable("agent_conversations", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId"),
   sessionId: varchar("sessionId", { length: 255 }).notNull(),
   agent: varchar("agent", { length: 50 }).notNull(),
-  role: mysqlEnum("role", ["user", "assistant", "system"]).notNull(),
+  role: agentRoleEnum("role").notNull(),
   content: text("content").notNull(),
-  metadata: text("metadata"), // JSON string: context, tool calls, etc.
+  metadata: text("metadata"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -359,16 +379,16 @@ export type AgentConversation = typeof agentConversations.$inferSelect;
 
 // ─── Agent Analytics ───────────────────────────────────────────────────────
 
-export const agentAnalytics = mysqlTable("agent_analytics", {
-  id: int("id").autoincrement().primaryKey(),
+export const agentAnalytics = pgTable("agent_analytics", {
+  id: serial("id").primaryKey(),
   sessionId: varchar("sessionId", { length: 255 }).notNull(),
   agent: varchar("agent", { length: 50 }).notNull(),
   intentClassified: varchar("intentClassified", { length: 100 }),
   confidence: decimal("confidence", { precision: 3, scale: 2 }),
-  toolsUsed: text("toolsUsed"), // JSON array of tool names
-  responseTimeMs: int("responseTimeMs"),
-  escalated: tinyint("escalated").default(0),
-  handedOffToHuman: tinyint("handedOffToHuman").default(0),
+  toolsUsed: text("toolsUsed"),
+  responseTimeMs: integer("responseTimeMs"),
+  escalated: boolean("escalated").default(false),
+  handedOffToHuman: boolean("handedOffToHuman").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -376,9 +396,9 @@ export type AgentAnalytic = typeof agentAnalytics.$inferSelect;
 
 // ─── Suppliers ──────────────────────────────────────────────────────────────
 
-export const suppliers = mysqlTable("suppliers", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(), // Link to users table (supplier account)
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
   companyName: varchar("companyName", { length: 255 }).notNull(),
   website: text("website"),
   logoUrl: text("logoUrl"),
@@ -389,21 +409,21 @@ export const suppliers = mysqlTable("suppliers", {
   state: varchar("state", { length: 50 }),
   zipCode: varchar("zipCode", { length: 20 }),
   country: varchar("country", { length: 100 }),
-  isPremium: tinyint("isPremium").default(0),
+  isPremium: boolean("isPremium").default(false),
   premiumExpiresAt: timestamp("premiumExpiresAt"),
-  sustainabilityScore: decimal("sustainabilityScore", { precision: 3, scale: 2 }), // 0-100, from D&B
-  verified: tinyint("verified").default(0),
-  verificationStatus: mysqlEnum("verificationStatus", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  sustainabilityScore: decimal("sustainabilityScore", { precision: 3, scale: 2 }),
+  verified: boolean("verified").default(false),
+  verificationStatus: verificationStatusEnum("verificationStatus").default("pending").notNull(),
   verifiedAt: timestamp("verifiedAt"),
-  description: text("description"), // Company description for admin review
-  location: varchar("location", { length: 255 }), // Human-readable location (City, State)
-  certifications: json("certifications").$type<string[]>(), // ["ISO 9001", "LEED", "FSC", etc.]
-  maxOrderValue: decimal("maxOrderValue", { precision: 12, scale: 2 }), // Maximum order value supplier can handle
-  currentCapacity: int("currentCapacity").default(100), // Current capacity percentage (0-100)
-  latitude: decimal("latitude", { precision: 10, scale: 7 }), // Geocoded latitude for distance calculation
-  longitude: decimal("longitude", { precision: 10, scale: 7 }), // Geocoded longitude for distance calculation
+  description: text("description"),
+  location: varchar("location", { length: 255 }),
+  certifications: json("certifications").$type<string[]>(),
+  maxOrderValue: decimal("maxOrderValue", { precision: 12, scale: 2 }),
+  currentCapacity: integer("currentCapacity").default(100),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Supplier = typeof suppliers.$inferSelect;
@@ -411,131 +431,120 @@ export type InsertSupplier = typeof suppliers.$inferInsert;
 
 // ─── Supplier Subscriptions ─────────────────────────────────────────────────
 
-export const supplierSubscriptions = mysqlTable("supplier_subscriptions", {
-  id: int("id").autoincrement().primaryKey(),
-  supplierId: int("supplierId").notNull(),
-  tier: mysqlEnum("tier", ["free", "premium"]).default("free"),
-  msSubscriptionId: varchar("msSubscriptionId", { length: 255 }), // Microsoft Marketplace subscription ID
-  msPlanId: varchar("msPlanId", { length: 255 }), // Microsoft Marketplace plan ID
-  status: mysqlEnum("status", ["active", "canceled", "past_due", "suspended", "pending"]).default("active"),
+export const supplierSubscriptions = pgTable("supplier_subscriptions", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplierId").notNull(),
+  tier: supplierTierEnum("tier").default("free"),
+  msSubscriptionId: varchar("msSubscriptionId", { length: 255 }),
+  msPlanId: varchar("msPlanId", { length: 255 }),
+  status: supplierStatusEnum("status").default("active"),
   renewalDate: timestamp("renewalDate"),
-  isBeta: tinyint("isBeta").default(0), // Founding member beta flag
+  isBeta: boolean("isBeta").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type SupplierSubscription = typeof supplierSubscriptions.$inferSelect;
 
 // ─── Buyer Subscriptions ───────────────────────────────────────────────────
 
-export const buyerSubscriptions = mysqlTable("buyer_subscriptions", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  tier: mysqlEnum("tier", ["free", "standard", "premium"]).default("free"),
-  msSubscriptionId: varchar("msSubscriptionId", { length: 255 }), // Microsoft Marketplace subscription ID
-  msPlanId: varchar("msPlanId", { length: 255 }), // Microsoft Marketplace plan ID
-  status: mysqlEnum("status", ["active", "canceled", "past_due", "suspended", "pending", "trial"]).default("active"),
+export const buyerSubscriptions = pgTable("buyer_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  tier: subscriptionTierEnum("tier").default("free"),
+  msSubscriptionId: varchar("msSubscriptionId", { length: 255 }),
+  msPlanId: varchar("msPlanId", { length: 255 }),
+  status: buyerStatusEnum("status").default("active"),
   trialEndsAt: timestamp("trialEndsAt"),
   renewalDate: timestamp("renewalDate"),
-  isBeta: tinyint("isBeta").default(0), // Founding member beta flag
-  maxSeats: int("maxSeats").default(1), // Standard=3, Premium=10
+  isBeta: boolean("isBeta").default(false),
+  maxSeats: integer("maxSeats").default(1),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type BuyerSubscription = typeof buyerSubscriptions.$inferSelect;
 
 // ─── Usage Tracking (Metered Billing) ──────────────────────────────────────
 
-export const usageTracking = mysqlTable("usage_tracking", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId"),
-  supplierId: int("supplierId"),
-  dimension: mysqlEnum("dimension", [
-    "rfq_submission",
-    "ai_query",
-    "swap_analysis",
-    "ccps_export",
-    "material_comparison",
-    "supplier_match",
-    "message_thread",
-    "bid_submission",
-    "video_call", // Video calling usage
-    "message_sent", // Message sending usage
-  ]),
-  quantity: int("quantity").default(0).notNull(),
-  videoMinutesUsed: int("videoMinutesUsed").default(0), // Track video call duration
-  messagesCount: int("messagesCount").default(0), // Track message count
-  periodStart: timestamp("periodStart"), // Start of billing period
-  periodEnd: timestamp("periodEnd"), // End of billing period
-  reportedToMs: tinyint("reportedToMs").default(0), // Whether overage was reported to Microsoft metering API
+export const usageTracking = pgTable("usage_tracking", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId"),
+  supplierId: integer("supplierId"),
+  dimension: usageDimensionEnum("dimension"),
+  quantity: integer("quantity").default(0).notNull(),
+  videoMinutesUsed: integer("videoMinutesUsed").default(0),
+  messagesCount: integer("messagesCount").default(0),
+  periodStart: timestamp("periodStart"),
+  periodEnd: timestamp("periodEnd"),
+  reportedToMs: boolean("reportedToMs").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type UsageTracking = typeof usageTracking.$inferSelect;
 
 // ─── Supplier Filters ───────────────────────────────────────────────────────
 
-export const supplierFilters = mysqlTable("supplier_filters", {
-  id: int("id").autoincrement().primaryKey(),
-  supplierId: int("supplierId").notNull(),
-  materialTypeId: int("materialTypeId"), // e.g., "insulation", "flooring"
+export const supplierFilters = pgTable("supplier_filters", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplierId").notNull(),
+  materialTypeId: integer("materialTypeId"),
   minPrice: decimal("minPrice", { precision: 10, scale: 2 }),
   maxPrice: decimal("maxPrice", { precision: 10, scale: 2 }),
-  minLeadDays: int("minLeadDays"),
-  maxLeadDays: int("maxLeadDays"),
-  serviceRadius: int("serviceRadius"), // miles from supplier location
-  acceptedLocations: text("acceptedLocations"), // JSON array of states/regions
-  materialTypePreferences: json("materialTypePreferences").$type<string[]>(), // ["concrete", "steel", "insulation", etc.]
+  minLeadDays: integer("minLeadDays"),
+  maxLeadDays: integer("maxLeadDays"),
+  serviceRadius: integer("serviceRadius"),
+  acceptedLocations: text("acceptedLocations"),
+  materialTypePreferences: json("materialTypePreferences").$type<string[]>(),
   minOrderQuantity: decimal("minOrderQuantity", { precision: 12, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type SupplierFilter = typeof supplierFilters.$inferSelect;
 
 // ─── RFQ Bids ───────────────────────────────────────────────────────────────
 
-export const rfqBids = mysqlTable("rfq_bids", {
-  id: int("id").autoincrement().primaryKey(),
-  rfqId: int("rfqId").notNull(),
-  supplierId: int("supplierId").notNull(),
-  status: mysqlEnum("status", ["submitted", "accepted", "rejected", "expired"]).default("submitted"),
+export const rfqBids = pgTable("rfq_bids", {
+  id: serial("id").primaryKey(),
+  rfqId: integer("rfqId").notNull(),
+  supplierId: integer("supplierId").notNull(),
+  status: rfqBidStatusEnum("status").default("submitted"),
   bidPrice: decimal("bidPrice", { precision: 12, scale: 2 }),
-  leadDays: int("leadDays"),
+  leadDays: integer("leadDays"),
   notes: text("notes"),
   expiresAt: timestamp("expiresAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type RfqBid = typeof rfqBids.$inferSelect;
 
 // ─── RFQ Message Threads ────────────────────────────────────────────────────
 
-export const rfqThreads = mysqlTable("rfq_threads", {
-  id: int("id").autoincrement().primaryKey(),
-  rfqId: int("rfqId").notNull(),
-  supplierId: int("supplierId").notNull(),
-  buyerId: int("buyerId").notNull(), // Link to users table
-  status: mysqlEnum("status", ["active", "closed", "archived"]).default("active"),
+export const rfqThreads = pgTable("rfq_threads", {
+  id: serial("id").primaryKey(),
+  rfqId: integer("rfqId").notNull(),
+  supplierId: integer("supplierId").notNull(),
+  buyerId: integer("buyerId").notNull(),
+  status: rfqThreadStatusEnum("status").default("active"),
   lastMessageAt: timestamp("lastMessageAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type RfqThread = typeof rfqThreads.$inferSelect;
 
 // ─── RFQ Messages ───────────────────────────────────────────────────────────
 
-export const rfqMessages = mysqlTable("rfq_messages", {
-  id: int("id").autoincrement().primaryKey(),
-  threadId: int("threadId").notNull(),
-  senderId: int("senderId").notNull(), // Link to users table (buyer or supplier)
-  senderType: mysqlEnum("senderType", ["buyer", "supplier"]).notNull(),
+export const rfqMessages = pgTable("rfq_messages", {
+  id: serial("id").primaryKey(),
+  threadId: integer("threadId").notNull(),
+  senderId: integer("senderId").notNull(),
+  senderType: senderTypeEnum("senderType").notNull(),
   content: text("content").notNull(),
-  isRead: tinyint("isRead").default(0),
+  isRead: boolean("isRead").default(false),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -544,15 +553,15 @@ export type RfqMessage = typeof rfqMessages.$inferSelect;
 
 // ─── Notifications ──────────────────────────────────────────────────────────
 
-export const notifications = mysqlTable("notifications", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["rfq_new", "rfq_match", "new_message", "bid_accepted", "bid_rejected", "rfq_closed", "rfq_bid_received"]).notNull(),
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  type: notificationTypeEnum("type").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content"),
-  relatedRfqId: int("relatedRfqId"),
-  relatedThreadId: int("relatedThreadId"),
-  isRead: tinyint("isRead").default(0),
+  relatedRfqId: integer("relatedRfqId"),
+  relatedThreadId: integer("relatedThreadId"),
+  isRead: boolean("isRead").default(false),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -561,63 +570,60 @@ export type Notification = typeof notifications.$inferSelect;
 
 // ─── RFQ Analytics ──────────────────────────────────────────────────────────
 
-export const rfqAnalytics = mysqlTable("rfq_analytics", {
-  id: int("id").autoincrement().primaryKey(),
-  rfqId: int("rfqId").notNull(),
-  totalBidsReceived: int("totalBidsReceived").default(0),
+export const rfqAnalytics = pgTable("rfq_analytics", {
+  id: serial("id").primaryKey(),
+  rfqId: integer("rfqId").notNull(),
+  totalBidsReceived: integer("totalBidsReceived").default(0),
   avgBidPrice: decimal("avgBidPrice", { precision: 12, scale: 2 }),
   lowestBidPrice: decimal("lowestBidPrice", { precision: 12, scale: 2 }),
   highestBidPrice: decimal("highestBidPrice", { precision: 12, scale: 2 }),
   avgResponseTimeHours: decimal("avgResponseTimeHours", { precision: 5, scale: 2 }),
-  winningBidId: int("winningBidId"),
+  winningBidId: integer("winningBidId"),
   purchasedAt: timestamp("purchasedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type RfqAnalytic = typeof rfqAnalytics.$inferSelect;
 
 // ─── Material Swaps ─────────────────────────────────────────────────────────
 
-export const materialSwaps = mysqlTable("material_swaps", {
-  id: int("id").autoincrement().primaryKey(),
-  materialId: int("materialId").notNull(), // Original material
-  swapMaterialId: int("swapMaterialId").notNull(), // Recommended swap
-  swapReason: text("swapReason"), // Why this is a good swap
-  swapScore: int("swapScore").notNull(), // 0-100, how good the swap is
-  swapTier: mysqlEnum("swapTier", ["good", "better", "best"]).notNull(), // Good/Better/Best ranking
-  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(), // 0.00-1.00, algorithm confidence
-  createdBy: mysqlEnum("createdBy", ["algorithm", "agent", "admin"]).notNull(),
-  usageCount: int("usageCount").default(0), // How many times this swap was used in RFQs
+export const materialSwaps = pgTable("material_swaps", {
+  id: serial("id").primaryKey(),
+  materialId: integer("materialId").notNull(),
+  swapMaterialId: integer("swapMaterialId").notNull(),
+  swapReason: text("swapReason"),
+  swapScore: integer("swapScore").notNull(),
+  swapTier: swapTierEnum("swapTier").notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(),
+  createdBy: createdByEnum("createdBy").notNull(),
+  usageCount: integer("usageCount").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type MaterialSwap = typeof materialSwaps.$inferSelect;
 
-
 // ─── Conversations ──────────────────────────────────────────────────────────
 
-export const conversations = mysqlTable("conversations", {
-  id: int("id").autoincrement().primaryKey(),
-  rfqId: int("rfqId"), // Optional - null for direct company messaging
-  buyerId: int("buyerId").notNull(),
-  supplierId: int("supplierId").notNull(),
-  // Agent handoff fields
-  agentMode: mysqlEnum("agentMode", ["agent_first", "human_only", "hybrid"]).default("agent_first").notNull(),
-  handoffStatus: mysqlEnum("handoffStatus", ["agent", "pending_handoff", "human"]).default("agent").notNull(),
-  agentMessageCount: int("agentMessageCount").default(0).notNull(),
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  rfqId: integer("rfqId"),
+  buyerId: integer("buyerId").notNull(),
+  supplierId: integer("supplierId").notNull(),
+  agentMode: agentModeEnum("agentMode").default("agent_first").notNull(),
+  handoffStatus: handoffStatusEnum("handoffStatus").default("agent").notNull(),
+  agentMessageCount: integer("agentMessageCount").default(0).notNull(),
   handoffRequestedAt: timestamp("handoffRequestedAt"),
   handoffReason: text("handoffReason"),
-  // eBay-style features
   lastMessage: text("lastMessage"),
   lastMessageAt: timestamp("lastMessageAt").defaultNow().notNull(),
-  isPinned: tinyint("isPinned").default(0).notNull(),
-  isArchived: tinyint("isArchived").default(0).notNull(),
-  label: varchar("label", { length: 50 }), // "urgent", "follow_up", "negotiating", "closed"
-  labelColor: varchar("labelColor", { length: 20 }), // hex color for label
+  isPinned: boolean("isPinned").default(false).notNull(),
+  isArchived: boolean("isArchived").default(false).notNull(),
+  label: varchar("label", { length: 50 }),
+  labelColor: varchar("labelColor", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Conversation = typeof conversations.$inferSelect;
@@ -625,18 +631,17 @@ export type InsertConversation = typeof conversations.$inferInsert;
 
 // ─── Messages ───────────────────────────────────────────────────────────────
 
-export const messages = mysqlTable("messages", {
-  id: int("id").autoincrement().primaryKey(),
-  conversationId: int("conversationId").notNull(),
-  senderId: int("senderId").notNull(),
-  senderType: mysqlEnum("senderType", ["user", "agent", "support"]).default("user").notNull(),
-  agentType: varchar("agentType", { length: 100 }), // "material", "rfq", "supplier", "triage"
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversationId").notNull(),
+  senderId: integer("senderId").notNull(),
+  senderType: messageSenderTypeEnum("senderType").default("user").notNull(),
+  agentType: varchar("agentType", { length: 100 }),
   content: text("content").notNull(),
-  // eBay-style features
-  isRead: tinyint("isRead").default(0).notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
   readAt: timestamp("readAt"),
   attachmentUrl: text("attachmentUrl"),
-  attachmentType: varchar("attachmentType", { length: 50 }), // "image", "pdf", "document"
+  attachmentType: varchar("attachmentType", { length: 50 }),
   attachmentName: varchar("attachmentName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -646,17 +651,17 @@ export type InsertMessage = typeof messages.$inferInsert;
 
 // ─── Subscriptions (Microsoft AppSource) ────────────────────────────────────
 
-export const subscriptions = mysqlTable("subscriptions", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
   microsoftSubscriptionId: varchar("microsoftSubscriptionId", { length: 255 }).notNull().unique(),
-  tier: mysqlEnum("tier", ["free", "standard", "premium"]).default("free").notNull(),
-  status: mysqlEnum("status", ["active", "suspended", "cancelled", "expired"]).default("active").notNull(),
+  tier: subscriptionTierEnum("tier").default("free").notNull(),
+  status: subscriptionStatusEnum("status").default("active").notNull(),
   startDate: timestamp("startDate").notNull(),
   endDate: timestamp("endDate"),
   lastRenewalDate: timestamp("lastRenewalDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Subscription = typeof subscriptions.$inferSelect;
@@ -664,54 +669,40 @@ export type InsertSubscription = typeof subscriptions.$inferInsert;
 
 // ─── Video Calls ────────────────────────────────────────────────────────────
 
-export const videoCalls = mysqlTable("video_calls", {
-  id: int("id").autoincrement().primaryKey(),
+export const videoCalls = pgTable("video_calls", {
+  id: serial("id").primaryKey(),
   callId: varchar("callId", { length: 255 }).notNull().unique(),
-  callerId: int("callerId").notNull(),
-  calleeId: int("calleeId").notNull(),
-  conversationId: int("conversationId").notNull(),
-  status: mysqlEnum("status", ["initiated", "ringing", "connected", "ended", "failed"]).default("initiated").notNull(),
+  callerId: integer("callerId").notNull(),
+  calleeId: integer("calleeId").notNull(),
+  conversationId: integer("conversationId").notNull(),
+  status: videoCallStatusEnum("status").default("initiated").notNull(),
   startedAt: timestamp("startedAt").defaultNow().notNull(),
   endedAt: timestamp("endedAt"),
-  durationSeconds: int("durationSeconds"),
+  durationSeconds: integer("durationSeconds"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type VideoCall = typeof videoCalls.$inferSelect;
 export type InsertVideoCall = typeof videoCalls.$inferInsert;
 
-// ─── Agent Handoff Rules (Premium Supplier Feature) ────────────────────────
+// ─── Agent Handoff Rules ────────────────────────────────────────────────────
 
-export const agentHandoffRules = mysqlTable("agent_handoff_rules", {
-  id: int("id").autoincrement().primaryKey(),
-  supplierId: int("supplierId").notNull().unique(), // One rule set per supplier
-
-  // Handoff mode configuration
-  handoffMode: mysqlEnum("handoffMode", ["always_agent", "hybrid", "immediate_human"])
-    .default("hybrid")
-    .notNull(),
-
-  // Agent message threshold (for hybrid mode)
-  maxAgentMessages: int("maxAgentMessages").default(5).notNull(), // Agent handles up to N messages before offering human
-
-  // Business hours for human availability
-  businessHoursEnabled: tinyint("businessHoursEnabled").default(0).notNull(),
-  businessHoursStart: varchar("businessHoursStart", { length: 5 }), // "09:00"
-  businessHoursEnd: varchar("businessHoursEnd", { length: 5 }), // "17:00"
-  businessDays: varchar("businessDays", { length: 50 }).default("Mon,Tue,Wed,Thu,Fri"), // Comma-separated
+export const agentHandoffRules = pgTable("agent_handoff_rules", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplierId").notNull().unique(),
+  handoffMode: handoffModeEnum("handoffMode").default("hybrid").notNull(),
+  maxAgentMessages: integer("maxAgentMessages").default(5).notNull(),
+  businessHoursStart: varchar("businessHoursStart", { length: 5 }),
+  businessHoursEnd: varchar("businessHoursEnd", { length: 5 }),
+  businessDays: varchar("businessDays", { length: 50 }).default("Mon,Tue,Wed,Thu,Fri"),
   timezone: varchar("timezone", { length: 50 }).default("America/New_York"),
-
-  // Custom agent configuration
-  customAgentPrompt: text("customAgentPrompt"), // Supplier-specific agent personality/instructions
-  autoDeflectEnabled: tinyint("autoDeflectEnabled").default(1).notNull(), // Try to deflect human requests
-
-  // Analytics
-  totalConversations: int("totalConversations").default(0).notNull(),
-  agentResolutionRate: int("agentResolutionRate").default(0).notNull(), // Percentage (0-100)
-  avgMessagesBeforeHandoff: int("avgMessagesBeforeHandoff").default(0).notNull(),
-
+  customAgentPrompt: text("customAgentPrompt"),
+  autoDeflectEnabled: boolean("autoDeflectEnabled").default(true).notNull(),
+  totalConversations: integer("totalConversations").default(0).notNull(),
+  agentResolutionRate: integer("agentResolutionRate").default(0).notNull(),
+  avgMessagesBeforeHandoff: integer("avgMessagesBeforeHandoff").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type AgentHandoffRule = typeof agentHandoffRules.$inferSelect;
@@ -719,30 +710,29 @@ export type InsertAgentHandoffRule = typeof agentHandoffRules.$inferInsert;
 
 // ─── Message Reactions ──────────────────────────────────────────────────────
 
-export const messageReactions = mysqlTable("message_reactions", {
-  id: int("id").autoincrement().primaryKey(),
-  messageId: int("messageId").notNull(),
-  userId: int("userId").notNull(),
-  reactionType: varchar("reactionType", { length: 20 }).notNull(), // "thumbs_up", "thumbs_down", "heart", "party", "check"
+export const messageReactions = pgTable("message_reactions", {
+  id: serial("id").primaryKey(),
+  messageId: integer("messageId").notNull(),
+  userId: integer("userId").notNull(),
+  reactionType: varchar("reactionType", { length: 20 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type MessageReaction = typeof messageReactions.$inferSelect;
 export type InsertMessageReaction = typeof messageReactions.$inferInsert;
 
-
 // ─── Call History ───────────────────────────────────────────────────────────
 
-export const callHistory = mysqlTable("call_history", {
-  id: int("id").autoincrement().primaryKey(),
-  conversationId: int("conversationId").notNull(),
-  callerId: int("callerId").notNull(),
-  receiverId: int("receiverId").notNull(),
-  callType: mysqlEnum("callType", ["voice", "video"]).notNull(),
-  status: mysqlEnum("status", ["completed", "missed", "rejected", "failed"]).notNull(),
+export const callHistory = pgTable("call_history", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversationId").notNull(),
+  callerId: integer("callerId").notNull(),
+  receiverId: integer("receiverId").notNull(),
+  callType: callTypeEnum("callType").notNull(),
+  status: callStatusEnum("status").notNull(),
   startTime: timestamp("startTime").notNull(),
   endTime: timestamp("endTime"),
-  durationSeconds: int("durationSeconds").default(0),
+  durationSeconds: integer("durationSeconds").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -751,53 +741,47 @@ export type InsertCallHistory = typeof callHistory.$inferInsert;
 
 // ─── Monthly Call Usage ─────────────────────────────────────────────────────
 
-export const monthlyCallUsage = mysqlTable("monthly_call_usage", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  month: varchar("month", { length: 7 }).notNull(), // Format: "2026-02"
-  totalMinutes: int("totalMinutes").default(0).notNull(),
+export const monthlyCallUsage = pgTable("monthly_call_usage", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  totalMinutes: integer("totalMinutes").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type MonthlyCallUsage = typeof monthlyCallUsage.$inferSelect;
 export type InsertMonthlyCallUsage = typeof monthlyCallUsage.$inferInsert;
 
-
 // ─── Legal Acceptances ──────────────────────────────────────────────────────
 
-export const legalAcceptances = mysqlTable("legal_acceptances", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  termsAccepted: tinyint("termsAccepted").default(0).notNull(),
+export const legalAcceptances = pgTable("legal_acceptances", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  termsAccepted: boolean("termsAccepted").default(false).notNull(),
   termsAcceptedAt: timestamp("termsAcceptedAt"),
   termsVersion: varchar("termsVersion", { length: 50 }).default("1.0"),
-  privacyAccepted: tinyint("privacyAccepted").default(0).notNull(),
+  privacyAccepted: boolean("privacyAccepted").default(false).notNull(),
   privacyAcceptedAt: timestamp("privacyAcceptedAt"),
   privacyVersion: varchar("privacyVersion", { length: 50 }).default("1.0"),
-  cookieConsentGiven: tinyint("cookieConsentGiven").default(0).notNull(),
+  cookieConsentGiven: boolean("cookieConsentGiven").default(false).notNull(),
   cookieConsentAt: timestamp("cookieConsentAt"),
   ipAddress: varchar("ipAddress", { length: 45 }),
   userAgent: text("userAgent"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type LegalAcceptance = typeof legalAcceptances.$inferSelect;
 export type InsertLegalAcceptance = typeof legalAcceptances.$inferInsert;
 
-
 // ─── Location-Based Tables ──────────────────────────────────────────────────
 
-/**
- * Suppliers with geolocation support
- * Stores supplier information with coordinates for distance-based queries
- */
-export const suppliersLocation = mysqlTable(
+export const suppliersLocation = pgTable(
   "suppliers_location",
   {
-    id: int("id").autoincrement().primaryKey(),
-    supplierId: int("supplier_id").notNull(),
+    id: serial("id").primaryKey(),
+    supplierId: integer("supplier_id").notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     state: varchar("state", { length: 2 }).notNull(),
     city: varchar("city", { length: 100 }).notNull(),
@@ -807,11 +791,11 @@ export const suppliersLocation = mysqlTable(
     materialsAvailable: json("materials_available").$type<string[]>().default([]),
     carbonScore: decimal("carbon_score", { precision: 5, scale: 2 }).default("0"),
     pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }),
-    leadTimeDays: int("lead_time_days").default(7),
+    leadTimeDays: integer("lead_time_days").default(7),
     contactEmail: varchar("contact_email", { length: 255 }),
     contactPhone: varchar("contact_phone", { length: 20 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
     stateIdx: index("idx_suppliers_location_state").on(table.state),
@@ -823,14 +807,10 @@ export const suppliersLocation = mysqlTable(
 export type SuppliersLocation = typeof suppliersLocation.$inferSelect;
 export type InsertSuppliersLocation = typeof suppliersLocation.$inferInsert;
 
-/**
- * Compliance rules table
- * Stores state-specific building codes and compliance requirements
- */
-export const complianceRules = mysqlTable(
+export const complianceRules = pgTable(
   "compliance_rules",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     state: varchar("state", { length: 2 }).notNull(),
     buildingCode: varchar("building_code", { length: 100 }).notNull(),
     ruleName: varchar("rule_name", { length: 255 }).notNull(),
@@ -839,7 +819,7 @@ export const complianceRules = mysqlTable(
     complianceType: varchar("compliance_type", { length: 50 }),
     complianceValue: varchar("compliance_value", { length: 100 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
     stateIdx: index("idx_compliance_rules_state").on(table.state),
@@ -850,24 +830,20 @@ export const complianceRules = mysqlTable(
 export type ComplianceRules = typeof complianceRules.$inferSelect;
 export type InsertComplianceRules = typeof complianceRules.$inferInsert;
 
-/**
- * Regional swap patterns table
- * Tracks which material swaps are approved/used in each region
- */
-export const regionalSwapPatterns = mysqlTable(
+export const regionalSwapPatterns = pgTable(
   "regional_swap_patterns",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     state: varchar("state", { length: 2 }).notNull(),
     originalMaterial: varchar("original_material", { length: 255 }).notNull(),
     alternativeMaterial: varchar("alternative_material", { length: 255 }).notNull(),
     approvalRate: decimal("approval_rate", { precision: 5, scale: 2 }).default("0"),
-    usageCount: int("usage_count").default(0),
+    usageCount: integer("usage_count").default(0),
     avgCarbonReduction: decimal("avg_carbon_reduction", { precision: 5, scale: 2 }).default("0"),
     avgCostDelta: decimal("avg_cost_delta", { precision: 10, scale: 2 }).default("0"),
     avgPaybackYears: decimal("avg_payback_years", { precision: 5, scale: 2 }).default("0"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
     stateIdx: index("idx_swap_patterns_state").on(table.state),
@@ -878,21 +854,17 @@ export const regionalSwapPatterns = mysqlTable(
 export type RegionalSwapPatterns = typeof regionalSwapPatterns.$inferSelect;
 export type InsertRegionalSwapPatterns = typeof regionalSwapPatterns.$inferInsert;
 
-/**
- * Shipping cost matrix table
- * Stores shipping costs between regions for different material types
- */
-export const shippingCosts = mysqlTable(
+export const shippingCosts = pgTable(
   "shipping_costs",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     originState: varchar("origin_state", { length: 2 }).notNull(),
     destinationState: varchar("destination_state", { length: 2 }).notNull(),
     materialType: varchar("material_type", { length: 100 }).notNull(),
     costPerUnit: decimal("cost_per_unit", { precision: 10, scale: 2 }).notNull(),
-    daysToDelivery: int("days_to_delivery").notNull(),
+    daysToDelivery: integer("days_to_delivery").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
     routeIdx: index("idx_shipping_route").on(table.originState, table.destinationState),
@@ -903,14 +875,10 @@ export const shippingCosts = mysqlTable(
 export type ShippingCosts = typeof shippingCosts.$inferSelect;
 export type InsertShippingCosts = typeof shippingCosts.$inferInsert;
 
-/**
- * Climate zone adjustments table
- * Stores material performance adjustments based on climate zone
- */
-export const climateZoneAdjustments = mysqlTable(
+export const climateZoneAdjustments = pgTable(
   "climate_zone_adjustments",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     climateZone: varchar("climate_zone", { length: 10 }).notNull(),
     materialType: varchar("material_type", { length: 100 }).notNull(),
     durabilityMultiplier: decimal("durability_multiplier", { precision: 3, scale: 2 }).default("1.0"),
@@ -918,7 +886,7 @@ export const climateZoneAdjustments = mysqlTable(
     carbonImpactMultiplier: decimal("carbon_impact_multiplier", { precision: 3, scale: 2 }).default("1.0"),
     notes: text("notes"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
     zoneIdx: index("idx_climate_zone").on(table.climateZone),
@@ -929,96 +897,68 @@ export const climateZoneAdjustments = mysqlTable(
 export type ClimateZoneAdjustments = typeof climateZoneAdjustments.$inferSelect;
 export type InsertClimateZoneAdjustments = typeof climateZoneAdjustments.$inferInsert;
 
-/**
- * Location-based pricing adjustments table
- * Stores regional pricing variations for materials
- */
-export const locationPricingAdjustments = mysqlTable(
+export const locationPricingAdjustments = pgTable(
   "location_pricing_adjustments",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     state: varchar("state", { length: 2 }).notNull(),
     materialType: varchar("material_type", { length: 100 }).notNull(),
     priceMultiplier: decimal("price_multiplier", { precision: 3, scale: 2 }).default("1.0"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
-    stateIdx: index("idx_pricing_state").on(table.state),
-    materialIdx: index("idx_pricing_material").on(table.materialType),
+    stateIdx: index("idx_loc_pricing_state").on(table.state),
+    materialIdx: index("idx_loc_pricing_material").on(table.materialType),
   })
 );
 
-export type LocationPricingAdjustments = typeof locationPricingAdjustments.$inferSelect;
+export type LocationPricingAdjustmentss = typeof locationPricingAdjustments.$inferSelect;
 export type InsertLocationPricingAdjustments = typeof locationPricingAdjustments.$inferInsert;
-
 
 // ─── Swap Engine: Functional Equivalence Validation ────────────────────────
 
-/**
- * Material Technical Specifications
- * Stores detailed showstopper metrics for functional equivalence validation
- */
-export const materialTechnicalSpecs = mysqlTable(
+export const materialTechnicalSpecs = pgTable(
   "material_technical_specs",
   {
-    id: int("id").autoincrement().primaryKey(),
-    materialId: int("material_id").notNull(),
-
-    // ASTM Standards (JSON array)
+    id: serial("id").primaryKey(),
+    materialId: integer("material_id").notNull(),
     astmCodes: json("astm_codes").$type<string[]>().default([]),
-
-    // Fire & Safety Certifications
     ulListing: varchar("ul_listing", { length: 255 }),
     ulDesignNumber: varchar("ul_design_number", { length: 50 }),
     iccEsReport: varchar("icc_es_report", { length: 50 }),
     fireRating: varchar("fire_rating", { length: 50 }),
     fireRatingStandard: varchar("fire_rating_standard", { length: 100 }),
     charRate: varchar("char_rate", { length: 50 }),
-
-    // Structural Performance
-    compressiveStrengthPsi: int("compressive_strength_psi"),
-    modulusOfElasticityKsi: int("modulus_of_elasticity_ksi"),
-    flexuralStrengthPsi: int("flexural_strength_psi"),
-    tensileStrengthPsi: int("tensile_strength_psi"),
-    stiffnessKsi: int("stiffness_ksi"),
-
-    // Thermal Performance
+    compressiveStrengthPsi: integer("compressive_strength_psi"),
+    modulusOfElasticityKsi: integer("modulus_of_elasticity_ksi"),
+    flexuralStrengthPsi: integer("flexural_strength_psi"),
+    tensileStrengthPsi: integer("tensile_strength_psi"),
+    stiffnessKsi: integer("stiffness_ksi"),
     rValuePerInch: decimal("r_value_per_inch", { precision: 5, scale: 2 }),
     lttr15Year: decimal("lttr_15_year", { precision: 5, scale: 2 }),
     permRating: decimal("perm_rating", { precision: 5, scale: 2 }),
     thermalUValue: decimal("thermal_u_value", { precision: 8, scale: 4 }),
-
-    // Acoustic Performance
-    stcRating: int("stc_rating"),
-    iicRating: int("iic_rating"),
+    stcRating: integer("stc_rating"),
+    iicRating: integer("iic_rating"),
     nrcRating: decimal("nrc_rating", { precision: 3, scale: 2 }),
-
-    // Installability & Labor
     laborUnits: decimal("labor_units", { precision: 5, scale: 2 }),
-    cureTimeHours: int("cure_time_hours"),
+    cureTimeHours: integer("cure_time_hours"),
     weightPerUnit: decimal("weight_per_unit", { precision: 8, scale: 2 }),
     slumpWorkability: varchar("slump_workability", { length: 50 }),
-    installationDifficulty: int("installation_difficulty"),
-
-    // Reliability & Supply Chain
-    leadTimeDays: int("lead_time_days"),
+    installationDifficulty: integer("installation_difficulty"),
+    leadTimeDays: integer("lead_time_days"),
     otifPercentage: decimal("otif_percentage", { precision: 5, scale: 2 }),
     supplierZScore: decimal("supplier_z_score", { precision: 5, scale: 2 }),
-
-    // Lifecycle & Maintenance
-    warrantyYears: int("warranty_years"),
-    maintenanceCycleYears: int("maintenance_cycle_years"),
-    expectedLifespanYears: int("expected_lifespan_years"),
-
-    // Metadata
+    warrantyYears: integer("warranty_years"),
+    maintenanceCycleYears: integer("maintenance_cycle_years"),
+    expectedLifespanYears: integer("expected_lifespan_years"),
     dataSource: varchar("data_source", { length: 100 }),
-    dataConfidence: int("data_confidence").default(50),
+    dataConfidence: integer("data_confidence").default(50),
     lastVerifiedAt: timestamp("last_verified_at"),
-    verifiedBy: int("verified_by"),
-
+    verifiedBy: integer("verified_by"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     materialIdx: index("idx_tech_specs_material").on(table.materialId),
@@ -1030,49 +970,34 @@ export const materialTechnicalSpecs = mysqlTable(
 export type MaterialTechnicalSpec = typeof materialTechnicalSpecs.$inferSelect;
 export type InsertMaterialTechnicalSpec = typeof materialTechnicalSpecs.$inferInsert;
 
-/**
- * Regional Pricing Data
- * Stores pricing from DOT bid tabs, Craftsman, RSMeans, Home Depot
- */
-export const pricingData = mysqlTable(
+export const pricingData = pgTable(
   "pricing_data",
   {
-    id: int("id").autoincrement().primaryKey(),
-    materialId: int("material_id").notNull(),
-
-    // Pricing
+    id: serial("id").primaryKey(),
+    materialId: integer("material_id").notNull(),
     pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }).notNull(),
     unit: varchar("unit", { length: 50 }).notNull(),
     currency: varchar("currency", { length: 3 }).default("USD"),
-
-    // Regional Context
     state: varchar("state", { length: 2 }),
     city: varchar("city", { length: 100 }),
     zipCode: varchar("zip_code", { length: 10 }),
     county: varchar("county", { length: 100 }),
-
-    // Data Source
     source: varchar("source", { length: 50 }).notNull(),
     sourceDate: timestamp("source_date"),
     sourceUrl: text("source_url"),
     projectName: varchar("project_name", { length: 255 }),
     contractNumber: varchar("contract_number", { length: 100 }),
-
-    // Labor Pricing
     laborRatePerHour: decimal("labor_rate_per_hour", { precision: 8, scale: 2 }),
     totalLaborCost: decimal("total_labor_cost", { precision: 10, scale: 2 }),
-
-    // Metadata
-    dataConfidence: int("data_confidence").default(50),
+    dataConfidence: integer("data_confidence").default(50),
     isActive: boolean("is_active").default(true),
     expiresAt: timestamp("expires_at"),
-
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     materialIdx: index("idx_pricing_material").on(table.materialId),
-    stateIdx: index("idx_pricing_state").on(table.state),
+    stateIdx: index("idx_pricing_state_data").on(table.state),
     sourceIdx: index("idx_pricing_source").on(table.source),
     activeIdx: index("idx_pricing_active").on(table.isActive),
   })
@@ -1081,59 +1006,34 @@ export const pricingData = mysqlTable(
 export type PricingData = typeof pricingData.$inferSelect;
 export type InsertPricingData = typeof pricingData.$inferInsert;
 
-/**
- * Swap Validations
- * Tracks validation results with showstopper checks and CSI form URLs
- */
-export const swapValidations = mysqlTable(
+export const swapValidations = pgTable(
   "swap_validations",
   {
-    id: int("id").autoincrement().primaryKey(),
-
-    // Materials
-    incumbentMaterialId: int("incumbent_material_id").notNull(),
-    sustainableMaterialId: int("sustainable_material_id").notNull(),
-    projectId: int("project_id"),
-
-    // Validation Results
-    validationStatus: mysqlEnum("validation_status", ["APPROVED", "EXPERIMENTAL", "REJECTED"]).notNull(),
+    id: serial("id").primaryKey(),
+    incumbentMaterialId: integer("incumbent_material_id").notNull(),
+    sustainableMaterialId: integer("sustainable_material_id").notNull(),
+    projectId: integer("project_id"),
+    validationStatus: swapValidationStatusEnum("validation_status").notNull(),
     overallScore: decimal("overall_score", { precision: 5, scale: 2 }).notNull(),
-
-    // Showstopper Results (JSON object with all check details)
     showstopperResults: json("showstopper_results").notNull(),
-
-    // Check Counts
-    passedChecks: int("passed_checks").notNull(),
-    failedChecks: int("failed_checks").notNull(),
-    skippedChecks: int("skipped_checks").notNull(),
-
-    // Recommendation
+    passedChecks: integer("passed_checks").notNull(),
+    failedChecks: integer("failed_checks").notNull(),
+    skippedChecks: integer("skipped_checks").notNull(),
     recommendation: text("recommendation").notNull(),
-
-    // Cost Comparison
     incumbentTotalCost: decimal("incumbent_total_cost", { precision: 10, scale: 2 }),
     sustainableTotalCost: decimal("sustainable_total_cost", { precision: 10, scale: 2 }),
     costDeltaPercentage: decimal("cost_delta_percentage", { precision: 5, scale: 2 }),
-
-    // Carbon Comparison
     incumbentGwp: decimal("incumbent_gwp", { precision: 10, scale: 2 }),
     sustainableGwp: decimal("sustainable_gwp", { precision: 10, scale: 2 }),
     carbonReductionPercentage: decimal("carbon_reduction_percentage", { precision: 5, scale: 2 }),
-
-    // Generated Documentation
     csiFormUrl: text("csi_form_url"),
     csiFormGeneratedAt: timestamp("csi_form_generated_at"),
-
-    // Validation Metadata
     validatedAt: timestamp("validated_at").defaultNow().notNull(),
     expiresAt: timestamp("expires_at"),
-
-    // User Tracking
-    requestedBy: int("requested_by"),
-    rfqId: int("rfq_id"),
-
+    requestedBy: integer("requested_by"),
+    rfqId: integer("rfq_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     incumbentIdx: index("idx_swap_incumbent").on(table.incumbentMaterialId),
@@ -1146,34 +1046,23 @@ export const swapValidations = mysqlTable(
 export type SwapValidation = typeof swapValidations.$inferSelect;
 export type InsertSwapValidation = typeof swapValidations.$inferInsert;
 
-/**
- * Material Assembly Specifications
- * Assembly-level specs with UL design numbers
- */
-export const materialAssemblySpecs = mysqlTable(
+export const materialAssemblySpecs = pgTable(
   "material_assembly_specs",
   {
-    id: int("id").autoincrement().primaryKey(),
-
-    // Assembly Identity
+    id: serial("id").primaryKey(),
     name: varchar("name", { length: 255 }).notNull(),
     category: varchar("category", { length: 100 }).notNull(),
     description: text("description"),
-
-    // Assembly-Level Specs
     totalThicknessInches: decimal("total_thickness_inches", { precision: 5, scale: 2 }),
     totalRValue: decimal("total_r_value", { precision: 5, scale: 2 }),
     fireRating: varchar("fire_rating", { length: 50 }),
     ulDesignNumber: varchar("ul_design_number", { length: 50 }),
-    stcRating: int("stc_rating"),
-    iicRating: int("iic_rating"),
-
-    // Cost & Carbon
+    stcRating: integer("stc_rating"),
+    iicRating: integer("iic_rating"),
     totalCostPerSf: decimal("total_cost_per_sf", { precision: 10, scale: 2 }),
     totalGwpPerSf: decimal("total_gwp_per_sf", { precision: 10, scale: 2 }),
-
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     categoryIdx: index("idx_assembly_specs_category").on(table.category),
@@ -1184,22 +1073,17 @@ export const materialAssemblySpecs = mysqlTable(
 export type MaterialAssemblySpec = typeof materialAssemblySpecs.$inferSelect;
 export type InsertMaterialAssemblySpec = typeof materialAssemblySpecs.$inferInsert;
 
-/**
- * Assembly Spec Components
- * Links materials to assembly specs with layer order
- */
-export const assemblySpecComponents = mysqlTable(
+export const assemblySpecComponents = pgTable(
   "assembly_spec_components",
   {
-    id: int("id").autoincrement().primaryKey(),
-    assemblySpecId: int("assembly_spec_id").notNull(),
-    materialId: int("material_id").notNull(),
-    layerOrder: int("layer_order").notNull(),
+    id: serial("id").primaryKey(),
+    assemblySpecId: integer("assembly_spec_id").notNull(),
+    materialId: integer("material_id").notNull(),
+    layerOrder: integer("layer_order").notNull(),
     layerName: varchar("layer_name", { length: 255 }).notNull(),
     quantity: decimal("quantity", { precision: 8, scale: 2 }).notNull(),
     unit: varchar("unit", { length: 50 }).notNull(),
     thicknessInches: decimal("thickness_inches", { precision: 5, scale: 2 }),
-
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
@@ -1210,3 +1094,43 @@ export const assemblySpecComponents = mysqlTable(
 
 export type AssemblySpecComponent = typeof assemblySpecComponents.$inferSelect;
 export type InsertAssemblySpecComponent = typeof assemblySpecComponents.$inferInsert;
+
+// ─── Scraped Suppliers ──────────────────────────────────────────────────────
+
+export const scrapedSuppliers = pgTable("scraped_suppliers", {
+  id: serial("id").primaryKey(),
+  companyName: varchar("company_name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 50 }),
+  website: text("website"),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 2 }),
+  zipCode: varchar("zip_code", { length: 10 }),
+  materialTypes: json("material_types").$type<string[]>().default([]),
+  source: varchar("source", { length: 100 }),
+  outreachSentAt: timestamp("outreach_sent_at"),
+  outreachRfqId: integer("outreach_rfq_id"),
+  emailStatus: varchar("email_status", { length: 50 }),
+  emailOpens: integer("email_opens").default(0),
+  emailClicks: integer("email_clicks").default(0),
+  emailBouncedAt: timestamp("email_bounced_at"),
+  lastEngagedAt: timestamp("last_engaged_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type ScrapedSupplier = typeof scrapedSuppliers.$inferSelect;
+export type InsertScrapedSupplier = typeof scrapedSuppliers.$inferInsert;
+
+// ─── Email Suppression List ─────────────────────────────────────────────────
+
+export const emailSuppressionList = pgTable("email_suppression_list", {
+  email: varchar("email", { length: 255 }).primaryKey(),
+  reason: varchar("reason", { length: 100 }),
+  suppressedAt: timestamp("suppressed_at").defaultNow().notNull(),
+  permanent: boolean("permanent").default(false).notNull(),
+});
+
+export type EmailSuppression = typeof emailSuppressionList.$inferSelect;
+export type InsertEmailSuppression = typeof emailSuppressionList.$inferInsert;

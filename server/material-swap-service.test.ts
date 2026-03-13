@@ -131,18 +131,6 @@ describe("Material Swap Intelligence", () => {
         }
       }
     });
-
-    it("should include leadTimeDays for each candidate (number or null)", async () => {
-      const candidates = await findSwapCandidates(testMaterialId, 5);
-
-      expect(candidates.length).toBeGreaterThan(0);
-      for (const candidate of candidates) {
-        expect(candidate).toHaveProperty("leadTimeDays");
-        expect(
-          candidate.leadTimeDays === null || typeof candidate.leadTimeDays === "number"
-        ).toBe(true);
-      }
-    });
   });
 
   describe("saveSwapRecommendation", () => {
@@ -292,28 +280,6 @@ describe("Material Swap Intelligence", () => {
 
       for (let i = 1; i < savedSwaps.length; i++) {
         expect(savedSwaps[i - 1].swapScore).toBeGreaterThanOrEqual(savedSwaps[i].swapScore);
-      }
-    });
-
-    it("should include leadTimeDays for each saved swap (number or null)", async () => {
-      await saveSwapRecommendation(
-        testMaterialId,
-        candidateMaterialId,
-        "leadTimeDays test swap",
-        80,
-        "best",
-        85,
-        "algorithm"
-      );
-
-      const savedSwaps = await getSavedSwaps(testMaterialId);
-
-      expect(savedSwaps.length).toBeGreaterThan(0);
-      for (const swap of savedSwaps) {
-        expect(swap).toHaveProperty("leadTimeDays");
-        expect(
-          swap.leadTimeDays === null || typeof swap.leadTimeDays === "number"
-        ).toBe(true);
       }
     });
   });

@@ -4,6 +4,7 @@ import { eq, and, or, gte, lte, desc, sql } from "drizzle-orm";
 import { calculateCcps, personaToWeights } from "./ccps-engine";
 import type { PersonaWeights } from "./ccps-engine";
 import { geocodeAddress, calculateDistance, getDistanceScore, type Coordinates } from "./azure-maps-service";
+import { findMatchingSuppliers } from "../lib/greenchainz/matching/rfq-supplier-match";
 
 /**
  * RFQ Service — Handles RFQ lifecycle, supplier matching, bidding, and messaging
@@ -153,65 +154,19 @@ async function matchSuppliersToRfq(
   projectLocation: string,
   materials: Array<{ materialId: number; quantity: number; quantityUnit: string }>
 ): Promise<SupplierMatch[]> {
-  const db = await getDb();
-  if (!db) return [];
-
-  // Get all active suppliers
-  const allSuppliers = await db.select().from(suppliers).where(eq(suppliers.verified, 1)).execute();
-
-  const matches: SupplierMatch[] = [];
-
-  for (const supplier of allSuppliers) {
-    // Get supplier filters
-    const filters = await db
-      .select()
-      .from(supplierFilters)
-      .where(eq(supplierFilters.supplierId, supplier.id))
-      .execute();
-
-    // Check if supplier accepts this location
-    const acceptsLocation = filters.some((f) => {
-      if (!f.acceptedLocations) return true; // No location filter = accepts all
-      const locations = JSON.parse(f.acceptedLocations || "[]");
-      return locations.includes(projectLocation) || locations.length === 0;
-    });
-
-    if (!acceptsLocation) continue;
-
-    // Calculate match score (0-100)
-    let matchScore = 50; // Base score
-
-    // Premium bonus
-    if (supplier.isPremium) matchScore += 20;
-
-    // Sustainability score bonus
-    if (supplier.sustainabilityScore) {
-      const scoreNum = typeof supplier.sustainabilityScore === 'string' ? parseFloat(supplier.sustainabilityScore) : supplier.sustainabilityScore;
-      matchScore += Math.min(scoreNum / 100, 1) * 20;
-    }
-
-    // Location proximity bonus (simplified)
-    if (supplier.state === projectLocation) matchScore += 10;
-
-    matches.push({
-      supplierId: supplier.id,
-      companyName: supplier.companyName,
-      email: supplier.email,
-      phone: supplier.phone || undefined,
-      isPremium: supplier.isPremium === 1,
-      sustainabilityScore: supplier.sustainabilityScore ? parseFloat(supplier.sustainabilityScore.toString()) : undefined,
-      matchScore: Math.min(matchScore, 100),
-      exclusiveWindowExpiresAt: supplier.isPremium ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined,
-    });
-  }
-
-  // Sort by match score (premium first, then by score)
-  return matches.sort((a, b) => {
-    if (a.isPremium && !b.isPremium) return -1;
-    if (!a.isPremium && b.isPremium) return 1;
-    return b.matchScore - a.matchScore;
-  });
+  // Use the full geo-distance + certification + material preference matching engine
+  const results = await findMatchingSuppliers(rfqId, projectLocation, 20);
+  return results.map((r) => ({
+    supplierId: r.supplierId,
+    companyName: r.supplierName,
+    email: "",
+    isPremium: r.isPremium,
+    sustainabilityScore: undefined,
+    matchScore: r.matchScore,
+    exclusiveWindowExpiresAt: r.isPremium ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined,
+  }));
 }
+
 
 /**
  * Get RFQ details with bids and analytics

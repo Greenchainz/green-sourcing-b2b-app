@@ -36,6 +36,13 @@ jobs:
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_SITE_URL=https://greenchainz.com \
+            --build-arg NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }} \
+            --build-arg NEXT_PUBLIC_AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }} \
+            --build-arg NEXT_PUBLIC_BACKEND_URL=${{ secrets.NEXT_PUBLIC_BACKEND_URL }} \
+            --build-arg VITE_BACKEND_URL=${{ secrets.NEXT_PUBLIC_BACKEND_URL }} \
+            --build-arg VITE_AZURE_MAPS_KEY=${{ secrets.AZURE_MAPS_KEY }} \
+            --build-arg VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com \
+            --build-arg VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest \
             -f ./Dockerfile .
@@ -43,11 +50,12 @@ jobs:
           docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
 
       - name: Deploy to Azure Container Apps
-        uses: azure/container-apps-deploy-action@v1
-        with:
-          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
-          containerAppName: ${{ env.AZURE_CONTAINER_APP_NAME }}
-          imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        run: |
+          az containerapp update \
+            --name ${{ env.AZURE_CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}"
 
       - name: Logout from Azure
         run: az logout
