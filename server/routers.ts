@@ -1287,7 +1287,7 @@ export const appRouter = router({
       }),
 
     // Admin: Get all subscriptions
-    getAllSubscriptions: adminProcedure.query(async ({ ctx }) => {
+    getAllSubscriptions: adminProcedure.query(async () => {
       const { getAllSubscriptions } = await import('./microsoft-subscription-service');
       return await getAllSubscriptions();
     }),
@@ -1300,7 +1300,7 @@ export const appRouter = router({
           tier: z.enum(['free', 'standard', 'premium']),
         })
       )
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
         const { updateUserTier } = await import('./microsoft-subscription-service');
         return await updateUserTier(input.userId, input.tier);
       }),
