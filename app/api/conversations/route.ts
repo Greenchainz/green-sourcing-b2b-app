@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { auth } from "@/auth";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -18,6 +19,19 @@ export async function GET(request: NextRequest) {
     }
 
     const user_id = session.user.id;
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const user_id = user.id;
 
     const result = await pool.query(
       `SELECT 
@@ -107,6 +121,19 @@ export async function POST(request: NextRequest) {
     }
 
     const buyer_id = session.user.id;
+    const user = getEasyAuthUser(request.headers);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized: User information not available" },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const buyer_id = user.id;
 
     // Check if conversation already exists
     const existingResult = await pool.query(
