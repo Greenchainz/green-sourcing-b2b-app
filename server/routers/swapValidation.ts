@@ -133,7 +133,6 @@ function buildCsiMarkdown(params: {
 export const swapValidationRouter = router({
   /**
    * Validate a material swap
-   * Compares incumbent and sustainable materials across all showstopper checks
    */
   validateMaterialSwap: publicProcedure
     .input(z.object({
@@ -179,9 +178,10 @@ export const swapValidationRouter = router({
           expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
         };
 
+        // .returning() is the correct API for drizzle-orm with PostgreSQL
         const [savedValidation] = await db.insert(swapValidations)
           .values(insertData)
-          .$returningId();
+          .returning({ id: swapValidations.id });
 
         return { ...validationResult, validationId: savedValidation.id };
       }
@@ -316,27 +316,24 @@ export const swapValidationRouter = router({
     }),
 
   /**
-   * Generate CSI substitution form
-   * Returns Markdown text and updates csiFormUrl + csiFormGeneratedAt on the record.
-   * The caller (frontend) is responsible for rendering/downloading the Markdown.
+   * Generate CSI substitution form (Markdown)
+   * Stamps csiFormUrl + csiFormGeneratedAt on the DB record.
    */
   generateCsiForm: publicProcedure
     .input(z.object({
       validationId: z.number(),
       projectName: z.string().optional(),
-      specSection: z.string().optional(), // e.g. "01 81 13" — defaults to that if omitted
+      specSection: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
 
-      // Load validation record
       const [validation] = await db.select().from(swapValidations)
         .where(eq(swapValidations.id, input.validationId))
         .limit(1);
 
       if (!validation) throw new Error(`Validation ID ${input.validationId} not found`);
 
-      // Load both materials
       const [incumbentRows, sustainableRows] = await Promise.all([
         db.select().from(materials).where(eq(materials.id, validation.incumbentMaterialId)).limit(1),
         db.select().from(materials).where(eq(materials.id, validation.sustainableMaterialId)).limit(1),
@@ -353,16 +350,11 @@ export const swapValidationRouter = router({
         specSection: input.specSection,
       });
 
-      // Stamp the record so we know a CSI form was generated
       const generatedAt = new Date();
       const csiRef = `GCZ-${validation.id}-CSI`;
 
       await db.update(swapValidations)
-        .set({
-          csiFormUrl: csiRef,
-          csiFormGeneratedAt: generatedAt,
-          updatedAt: generatedAt,
-        })
+        .set({ csiFormUrl: csiRef, csiFormGeneratedAt: generatedAt, updatedAt: generatedAt })
         .where(eq(swapValidations.id, input.validationId));
 
       return {
