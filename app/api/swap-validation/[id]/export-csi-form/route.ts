@@ -16,7 +16,6 @@ export async function GET(
 
     const db = await getDb();
 
-    // Fetch validation row
     const [validation] = await db
       .select()
       .from(swapValidations)
@@ -27,38 +26,47 @@ export async function GET(
       return NextResponse.json({ error: 'Validation not found' }, { status: 404 });
     }
 
-    // Fetch both materials
     const [incumbentMaterial, sustainableMaterial] = await Promise.all([
       db.select().from(materials).where(eq(materials.id, validation.incumbentMaterialId)).limit(1).then(r => r[0]),
       db.select().from(materials).where(eq(materials.id, validation.sustainableMaterialId)).limit(1).then(r => r[0]),
     ]);
 
-    // Fetch technical specs for both materials
     const [incumbentSpecs, sustainableSpecs] = await Promise.all([
       db.select().from(materialTechnicalSpecs).where(eq(materialTechnicalSpecs.materialId, validation.incumbentMaterialId)).limit(1).then(r => r[0]),
       db.select().from(materialTechnicalSpecs).where(eq(materialTechnicalSpecs.materialId, validation.sustainableMaterialId)).limit(1).then(r => r[0]),
     ]);
 
-    const showstopperChecks = validation.showstopperResults as any;
+    const showstopperChecks = validation.showstopperResults as Record<string, { pass: boolean; specified?: unknown; proposed?: unknown }>;
+
+    // Cost delta: sustainableTotalCost - incumbentTotalCost
+    const incumbentCost = Number(validation.incumbentTotalCost) || 0;
+    const sustainableCost = Number(validation.sustainableTotalCost) || 0;
+    const netChange = sustainableCost - incumbentCost;
+
+    // GWP fields: incumbentGwp / sustainableGwp (schema uses camelCase)
+    const incumbentGwp = Number(validation.incumbentGwp) || 0;
+    const sustainableGwp = Number(validation.sustainableGwp) || 0;
+    const gwpReduction = incumbentGwp - sustainableGwp;
+    const gwpReductionPct = Number(validation.carbonReductionPercentage) || 0;
 
     const formData: CSIFormData = {
-      projectName: (validation as any).projectName || 'Unnamed Project',
-      architectName: (validation as any).architectName || 'To Be Determined',
-      contractorName: (validation as any).contractorName || 'To Be Determined',
-      requestNumber: `GC-${String(validation.id).padStart(8, '0').toUpperCase()}`,
-      specificationSection: (validation as any).specificationSection || '03 30 00 - Cast-in-Place Concrete',
+      projectName: 'GreenChainz Project',
+      architectName: 'To Be Determined',
+      contractorName: 'To Be Determined',
+      requestNumber: `GC-${String(validation.id).padStart(8, '0')}`,
+      specificationSection: '03 30 00 - Cast-in-Place Concrete',
       date: validation.validatedAt ?? new Date(),
 
       specifiedProduct: {
-        manufacturer: (incumbentMaterial as any)?.supplierName || 'Unknown',
-        tradeName: incumbentMaterial?.name || 'Unknown',
-        modelNumber: (incumbentMaterial as any)?.sku || undefined,
+        manufacturer: (incumbentMaterial as any)?.manufacturerId ? `Manufacturer #${incumbentMaterial?.manufacturerId}` : 'Unknown',
+        tradeName: incumbentMaterial?.name ?? 'Unknown',
+        modelNumber: undefined,
       },
 
       proposedSubstitution: {
-        manufacturer: (sustainableMaterial as any)?.supplierName || 'Unknown',
-        tradeName: sustainableMaterial?.name || 'Unknown',
-        modelNumber: (sustainableMaterial as any)?.sku || undefined,
+        manufacturer: (sustainableMaterial as any)?.manufacturerId ? `Manufacturer #${sustainableMaterial?.manufacturerId}` : 'Unknown',
+        tradeName: sustainableMaterial?.name ?? 'Unknown',
+        modelNumber: undefined,
       },
 
       validationStatus: validation.validationStatus as 'APPROVED' | 'EXPERIMENTAL' | 'REJECTED',
@@ -80,53 +88,51 @@ export async function GET(
       },
 
       costComparison: {
-        specifiedCost: Number((validation as any).incumbentTotalCost) || 0,
-        proposedCost: Number((validation as any).sustainableTotalCost) || 0,
-        netChange: (Number((validation as any).sustainableTotalCost) || 0) - (Number((validation as any).incumbentTotalCost) || 0),
+        specifiedCost: incumbentCost,
+        proposedCost: sustainableCost,
+        netChange,
       },
 
       environmentalImpact: {
-        specifiedGWP: Number((validation as any).incumbentGWP) || 0,
-        proposedGWP: Number((validation as any).sustainableGWP) || 0,
-        gwpReduction: (Number((validation as any).incumbentGWP) || 0) - (Number((validation as any).sustainableGWP) || 0),
-        gwpReductionPercent: Number((validation as any).gwpReductionPercent) || 0,
-        specifiedEPD: (incumbentMaterial as any)?.epdUrl || undefined,
-        proposedEPD: (sustainableMaterial as any)?.epdUrl || undefined,
+        specifiedGWP: incumbentGwp,
+        proposedGWP: sustainableGwp,
+        gwpReduction,
+        gwpReductionPercent: gwpReductionPct,
+        specifiedEPD: incumbentMaterial?.epdUrl ?? undefined,
+        proposedEPD: sustainableMaterial?.epdUrl ?? undefined,
       },
 
       technicalSpecs: {
         specified: {
           astmCodes: incumbentSpecs?.astmCodes as string[] | undefined,
-          fireRating: incumbentSpecs?.fireRating ? String(incumbentSpecs.fireRating) : undefined,
-          compressiveStrength: incumbentSpecs?.compressiveStrength ? Number(incumbentSpecs.compressiveStrength) : undefined,
-          tensileStrength: incumbentSpecs?.tensileStrength ? Number(incumbentSpecs.tensileStrength) : undefined,
+          fireRating: incumbentSpecs?.fireRating ?? undefined,
+          compressiveStrength: incumbentSpecs?.compressiveStrengthPsi ?? undefined,
+          tensileStrength: incumbentSpecs?.tensileStrengthPsi ?? undefined,
           rValue: incumbentSpecs?.rValuePerInch ? Number(incumbentSpecs.rValuePerInch) : undefined,
-          stcRating: incumbentSpecs?.stcRating ? Number(incumbentSpecs.stcRating) : undefined,
-          warranty: incumbentSpecs?.warrantyYears ? Number(incumbentSpecs.warrantyYears) : undefined,
+          stcRating: incumbentSpecs?.stcRating ?? undefined,
+          warranty: incumbentSpecs?.warrantyYears ?? undefined,
         },
         proposed: {
           astmCodes: sustainableSpecs?.astmCodes as string[] | undefined,
-          fireRating: sustainableSpecs?.fireRating ? String(sustainableSpecs.fireRating) : undefined,
-          compressiveStrength: sustainableSpecs?.compressiveStrength ? Number(sustainableSpecs.compressiveStrength) : undefined,
-          tensileStrength: sustainableSpecs?.tensileStrength ? Number(sustainableSpecs.tensileStrength) : undefined,
+          fireRating: sustainableSpecs?.fireRating ?? undefined,
+          compressiveStrength: sustainableSpecs?.compressiveStrengthPsi ?? undefined,
+          tensileStrength: sustainableSpecs?.tensileStrengthPsi ?? undefined,
           rValue: sustainableSpecs?.rValuePerInch ? Number(sustainableSpecs.rValuePerInch) : undefined,
-          stcRating: sustainableSpecs?.stcRating ? Number(sustainableSpecs.stcRating) : undefined,
-          warranty: sustainableSpecs?.warrantyYears ? Number(sustainableSpecs.warrantyYears) : undefined,
+          stcRating: sustainableSpecs?.stcRating ?? undefined,
+          warranty: sustainableSpecs?.warrantyYears ?? undefined,
         },
       },
 
-      reasonForSubstitution: generateJustification(validation, showstopperChecks),
-      additionalNotes: (validation as any).notes || undefined,
+      reasonForSubstitution: buildJustification(validation, gwpReductionPct, netChange),
+      additionalNotes: validation.recommendation ?? undefined,
     };
 
     const generator = new CSIFormGenerator();
     const pdfBuffer = await generator.generate(formData);
 
-    const filename = `CSI-13.1A_${
-      (formData.projectName || 'Project').replace(/\s+/g, '-')
-    }_${
-      (incumbentMaterial?.name || 'Material').replace(/\s+/g, '-')
-    }_${new Date().toISOString().split('T')[0]}.pdf`;
+    const safeName = (incumbentMaterial?.name ?? 'Material').replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `CSI-13.1A_GC-${String(validation.id).padStart(8, '0')}_${safeName}_${dateStr}.pdf`;
 
     return new NextResponse(pdfBuffer, {
       headers: {
@@ -136,7 +142,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error generating CSI form:', error);
+    console.error('[CSI Export] Error:', error);
     return NextResponse.json(
       { error: 'Failed to generate CSI form', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -144,29 +150,25 @@ export async function GET(
   }
 }
 
-function generateJustification(validation: any, showstopperChecks: any): string {
+function buildJustification(
+  validation: { validationStatus: string },
+  gwpReductionPct: number,
+  netChange: number
+): string {
   const status = validation.validationStatus;
-  const gwpReduction = Number(validation.gwpReductionPercent) || 0;
-  const costDelta = (Number(validation.sustainableTotalCost) || 0) - (Number(validation.incumbentTotalCost) || 0);
 
   if (status === 'APPROVED') {
-    let j = `The proposed substitution has been validated by GreenChainz and determined to be functionally equivalent to the specified product. All critical performance metrics (ASTM codes, fire rating, structural properties, thermal performance, and acoustic performance) meet or exceed the specified requirements. `;
-    if (gwpReduction > 0) j += `This substitution provides a ${gwpReduction.toFixed(1)}% reduction in Global Warming Potential (GWP), supporting project sustainability goals. `;
-    if (costDelta < 0) j += `It also offers cost savings of $${Math.abs(costDelta).toLocaleString()}, delivering both environmental and economic value.`;
-    else if (costDelta === 0) j += `The proposed substitution is cost-neutral while delivering superior environmental performance.`;
-    else j += `While the substitution carries a cost premium of $${costDelta.toLocaleString()}, this is offset by significant carbon savings and long-term sustainability benefits.`;
+    let j = 'The proposed substitution has been validated by GreenChainz and determined to be functionally equivalent to the specified product. All critical performance metrics meet or exceed specified requirements.';
+    if (gwpReductionPct > 0) j += ` This substitution provides a ${gwpReductionPct.toFixed(1)}% reduction in Global Warming Potential (GWP).`;
+    if (netChange < 0) j += ` It also delivers cost savings of $${Math.abs(netChange).toLocaleString()}.`;
+    else if (netChange === 0) j += ' The substitution is cost-neutral while delivering superior environmental performance.';
+    else j += ` A cost premium of $${netChange.toLocaleString()} is offset by significant carbon savings.`;
     return j;
   }
 
   if (status === 'EXPERIMENTAL') {
-    const failed = Object.entries(showstopperChecks || {})
-      .filter(([, v]: any) => v?.pass === false)
-      .map(([k]) => k.replace(/([A-Z])/g, ' $1').trim());
-    let j = `The proposed substitution has been evaluated by GreenChainz and determined to be substantially equivalent to the specified product, with minor differences in: ${failed.join(', ') || 'select metrics'}. These differences are not expected to materially affect performance or suitability. `;
-    if (gwpReduction > 0) j += `Environmental benefits are significant: ${gwpReduction.toFixed(1)}% GWP reduction. `;
-    j += `We recommend acceptance based on overall functional equivalence and sustainability advantages, with design team review of noted differences.`;
-    return j;
+    return `The proposed substitution has been evaluated by GreenChainz and determined to be substantially equivalent, with minor differences in select performance metrics. These differences are not expected to materially affect suitability. Environmental benefits include a ${gwpReductionPct.toFixed(1)}% GWP reduction. Acceptance is recommended with design team review of noted differences.`;
   }
 
-  return `The proposed substitution has been evaluated by GreenChainz and determined to have significant differences from the specified product that may affect project performance. Further investigation and design team review are required before this substitution can be recommended.`;
+  return 'The proposed substitution has been evaluated and determined to have significant differences from the specified product. Further investigation and design team review are required before this substitution can be recommended.';
 }
