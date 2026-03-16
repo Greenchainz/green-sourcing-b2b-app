@@ -1,11 +1,21 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { submitRfq, getRfqWithBids, submitBid, getOrCreateThread, sendMessage, getThreadMessages, acceptBid, enrichRfqWithCcps } from "./rfq-service";
 import type { RfqSubmissionInput } from "./rfq-service";
 import { getDb } from "./db";
-import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers } from "../drizzle/schema";
+import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers, users } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { enrichRfqWithAiAnalysis } from "./ai-agent-service";
+
+/** Lazily initialise Stripe — only when STRIPE_SECRET_KEY is present */
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Stripe = require("stripe");
+  return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
+}
 
 /**
  * RFQ Marketplace Router
@@ -30,10 +40,84 @@ export const rfqMarketplaceRouter = router({
         notes: z.string().optional(),
         dueDate: z.date().optional(),
         buyerPersona: z.string().optional(),
+        depositPaymentIntentId: z.string().min(1, "Deposit payment intent ID is required"),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return submitRfq(ctx.user.id, input as RfqSubmissionInput);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // ── 1. LinkedIn verification check ─────────────────────────────────────
+      const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      if (!user?.linkedinVerified) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "LinkedIn verification required to create RFQs",
+          cause: { errorCode: "LINKEDIN_VERIFICATION_REQUIRED", action: "/settings/verification" },
+        });
+      }
+
+      // ── 2. Stripe deposit verification (dev-mode bypass when key absent) ───
+      const stripe = getStripe();
+      let depositVerified = false;
+      let depositAmount: number | undefined;
+
+      if (stripe) {
+        const paymentIntent = await stripe.paymentIntents.retrieve(input.depositPaymentIntentId);
+        if (paymentIntent.status !== "succeeded") {
+          throw new TRPCError({
+            code: "PAYMENT_REQUIRED",
+            message: "Deposit payment could not be verified",
+            cause: { errorCode: "PAYMENT_NOT_VERIFIED" },
+          });
+        }
+        depositVerified = true;
+        depositAmount = paymentIntent.amount / 100; // convert cents → dollars
+      } else {
+        // Dev-mode bypass: no Stripe key configured
+        depositVerified = true;
+        depositAmount = 25;
+      }
+
+      return submitRfq(ctx.user.id, {
+        ...(input as RfqSubmissionInput),
+        depositPaymentIntentId: input.depositPaymentIntentId,
+        depositVerified,
+        depositAmount,
+      });
+    }),
+
+  // Create a Stripe payment intent for the RFQ deposit ($25)
+  createDepositIntent: protectedProcedure
+    .input(z.object({ rfqMaterialCount: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const stripe = getStripe();
+
+      if (!stripe) {
+        // Dev-mode: return a placeholder intent so the UI can proceed
+        return {
+          clientSecret: "dev_mode_no_stripe_key",
+          intentId: "dev_intent_" + Date.now(),
+          devMode: true,
+        };
+      }
+
+      const depositAmount = 2500; // $25.00 in cents
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: depositAmount,
+        currency: "usd",
+        metadata: {
+          userId: ctx.user.id.toString(),
+          type: "rfq_deposit",
+          materialCount: input.rfqMaterialCount.toString(),
+        },
+      });
+
+      return {
+        clientSecret: paymentIntent.client_secret,
+        intentId: paymentIntent.id,
+        devMode: false,
+      };
     }),
 
   // Get RFQ with all bids and analytics
