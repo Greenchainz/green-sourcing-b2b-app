@@ -18,6 +18,9 @@ export interface RfqSubmissionInput {
   notes?: string;
   dueDate?: Date;
   buyerPersona?: string;
+  depositPaymentIntentId?: string;
+  depositVerified?: boolean;
+  depositAmount?: number;
 }
 
 export interface SupplierMatch {
@@ -56,6 +59,9 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
       status: "submitted",
       notes: input.notes,
       dueDate: input.dueDate,
+      depositVerified: input.depositVerified ?? false,
+      depositPaymentIntentId: input.depositPaymentIntentId ?? null,
+      depositAmount: input.depositAmount != null ? input.depositAmount.toString() : null,
     })
     .execute();
 

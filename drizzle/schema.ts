@@ -67,6 +67,9 @@ export const users = pgTable("users", {
   persona: userPersonaEnum("persona").default("default"),
   companyName: varchar("companyName", { length: 255 }),
   jobTitle: varchar("jobTitle", { length: 255 }),
+  linkedinVerified: boolean("linkedin_verified").default(false),
+  linkedinProfileUrl: varchar("linkedin_profile_url", { length: 500 }),
+  linkedinVerifiedAt: timestamp("linkedin_verified_at"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -328,6 +331,9 @@ export const rfqs = pgTable("rfqs", {
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
   dueDate: timestamp("dueDate"),
+  depositVerified: boolean("deposit_verified").default(false),
+  depositPaymentIntentId: varchar("deposit_payment_intent_id", { length: 255 }),
+  depositAmount: decimal("deposit_amount"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
