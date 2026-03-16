@@ -21,12 +21,12 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Get user from Easy Auth session
-    const user = getEasyAuthUser(request.headers);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Derive user_id from the authenticated session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    const user_id = user.id;
+    const user_id = authUser.id;
 
     let query = `
       SELECT 
@@ -97,12 +97,12 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { notification_ids, mark_all_read } = body;
 
-    // Get user from Easy Auth session
-    const user = getEasyAuthUser(request.headers);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Derive user_id from the authenticated session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    const user_id = user.id;
+    const user_id = authUser.id;
 
     if (mark_all_read) {
       await pool.query(
