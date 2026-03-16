@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import { AlertCircle, CheckCircle, Plus } from "lucide-react";
-import { RealTimeMessageThread } from "@/components/RealTimeMessageThread";
 import { RfqCreationForm } from "@/components/RfqCreationForm";
 import { BidComparison } from "@/components/BidComparison";
 import { AiRecommendations } from "@/components/AiRecommendations";
