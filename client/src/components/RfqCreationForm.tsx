@@ -209,6 +209,8 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
                             <SelectItem value="m2">m²</SelectItem>
                             <SelectItem value="m3">m³</SelectItem>
                             <SelectItem value="lf">LF</SelectItem>
+                            <SelectItem value="sf">SF</SelectItem>
+                            <SelectItem value="cy">CY</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
