@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Loader2, CheckCircle, AlertCircle, CreditCard } from "lucide-react";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, CheckCircle, CreditCard } from "lucide-react";
 
 const rfqFormSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
@@ -42,12 +42,10 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
     message: string;
   } | null>(null);
 
-  // Payment state
   const [depositIntentId, setDepositIntentId] = useState<string | null>(null);
   const [depositPaid, setDepositPaid] = useState(false);
   const [depositDevMode, setDepositDevMode] = useState(false);
 
-  // Fetch materials list — returns { items: [], total: number }
   const { data: materialsData } = trpc.materials.list.useQuery({
     search: "",
     category: "",
@@ -55,7 +53,6 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
   });
   const materialsList = materialsData?.items ?? [];
 
-  const { data: materials } = trpc.materials.list.useQuery({ search: "", category: "" });
   const submitRfq = trpc.rfqMarketplace.submit.useMutation();
   const createDepositIntent = trpc.rfqMarketplace.createDepositIntent.useMutation();
 
@@ -78,16 +75,15 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
     name: "materials",
   });
 
-  const materials = watch("materials");
+  const watchedMaterials = watch("materials");
 
   const handleCreateDeposit = async () => {
     try {
       const result = await createDepositIntent.mutateAsync({
-        rfqMaterialCount: materials.length,
+        rfqMaterialCount: watchedMaterials.length,
       });
       setDepositIntentId(result.intentId);
       setDepositDevMode(result.devMode ?? false);
-      // In dev mode (no Stripe key) or after confirming payment, mark as paid
       setDepositPaid(true);
     } catch (error) {
       setSubmitStatus({
@@ -117,7 +113,6 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
       });
 
       alert(`RFQ #${result.rfqId} has been created and suppliers have been matched.`);
-
       reset();
       setDepositIntentId(null);
       setDepositPaid(false);
@@ -133,166 +128,149 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Project Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="projectName">Project Name *</Label>
-                <Input
-                  id="projectName"
-                  placeholder="e.g., Downtown Office Building"
-                  {...register("projectName")}
-                  className={errors.projectName ? "border-red-500" : ""}
-                />
-                {errors.projectName && <p className="text-sm text-red-500 mt-1">{errors.projectName.message}</p>}
-              </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Project Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="projectName">Project Name *</Label>
+            <Input
+              id="projectName"
+              placeholder="e.g., Downtown Office Building"
+              {...register("projectName")}
+              className={errors.projectName ? "border-red-500" : ""}
+            />
+            {errors.projectName && <p className="text-sm text-red-500 mt-1">{errors.projectName.message}</p>}
+          </div>
 
-              <div>
-                <Label htmlFor="projectLocation">Project Location *</Label>
-                <Input
-                  id="projectLocation"
-                  placeholder="e.g., San Francisco, CA"
-                  {...register("projectLocation")}
-                  className={errors.projectLocation ? "border-red-500" : ""}
-                />
-                {errors.projectLocation && <p className="text-sm text-red-500 mt-1">{errors.projectLocation.message}</p>}
-              </div>
+          <div>
+            <Label htmlFor="projectLocation">Project Location *</Label>
+            <Input
+              id="projectLocation"
+              placeholder="e.g., San Francisco, CA"
+              {...register("projectLocation")}
+              className={errors.projectLocation ? "border-red-500" : ""}
+            />
+            {errors.projectLocation && <p className="text-sm text-red-500 mt-1">{errors.projectLocation.message}</p>}
+          </div>
 
-              <div>
-                <Label htmlFor="projectType">Project Type *</Label>
+          <div>
+            <Label htmlFor="projectType">Project Type</Label>
+            <Controller
+              control={control}
+              name="projectType"
+              render={({ field }) => (
+                <Select value={field.value ?? ""} onValueChange={(val) => field.onChange(val)}>
+                  <SelectTrigger className={errors.projectType ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select project type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Commercial">Commercial</SelectItem>
+                    <SelectItem value="Residential">Residential</SelectItem>
+                    <SelectItem value="Industrial">Industrial</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.projectType && <p className="text-sm text-red-500 mt-1">{errors.projectType.message}</p>}
+          </div>
+
+          <div>
+            <Label htmlFor="dueDate">Due Date</Label>
+            <Input id="dueDate" type="date" {...register("dueDate", { valueAsDate: true })} />
+          </div>
+
+          <div>
+            <Label htmlFor="notes">Additional Notes</Label>
+            <Textarea
+              id="notes"
+              placeholder="Any special requirements or notes for suppliers..."
+              {...register("notes")}
+              rows={3}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Materials *</CardTitle>
+          <CardDescription>Add materials you need quotes for</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {fields.map((field, index) => (
+            <div key={field.id} className="flex gap-3 items-end pb-3 border-b last:border-b-0">
+              <div className="flex-1">
+                <Label>Material</Label>
                 <Controller
                   control={control}
-                  name="projectType"
+                  name={`materials.${index}.materialId`}
                   render={({ field }) => (
                     <Select
-                      value={field.value ?? ""}
-                      onValueChange={(val) => field.onChange(val)}
+                      value={String(field.value)}
+                      onValueChange={(val) => field.onChange(parseInt(val, 10))}
                     >
-                      <SelectTrigger className={errors.projectType ? "border-red-500" : ""}>
-                        <SelectValue placeholder="Select project type" />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select material" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Commercial">Commercial</SelectItem>
-                        <SelectItem value="Residential">Residential</SelectItem>
-                        <SelectItem value="Industrial">Industrial</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        {materialsList.map((mat: any) => (
+                          <SelectItem key={mat.id} value={String(mat.id)}>
+                            {mat.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
                 />
-                {errors.projectType && (
-                  <p className="text-sm text-red-500 mt-1">{errors.projectType.message}</p>
-                )}
               </div>
 
-              <div>
-                <Label htmlFor="dueDate">Due Date</Label>
-                <Input id="dueDate" type="date" {...register("dueDate", { valueAsDate: true })} />
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Additional Notes</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Any special requirements or notes for suppliers..."
-                  {...register("notes")}
-                  rows={3}
+              <div className="w-24">
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  placeholder="1"
+                  {...register(`materials.${index}.quantity`, { valueAsNumber: true })}
                 />
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Materials *</CardTitle>
-              <CardDescription>Add materials you need quotes for</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-3 items-end pb-3 border-b last:border-b-0">
-                  <div className="flex-1">
-                    <Label>Material</Label>
-                    <Controller
-                      control={control}
-                      name={`materials.${index}.materialId`}
-                      render={({ field }) => (
-                        <Select
-                          value={String(field.value)}
-                          onValueChange={(val) => field.onChange(parseInt(val, 10))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select material" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {materials?.items?.map((mat: any) => (
-                              <SelectItem key={mat.id} value={String(mat.id)}>
-                                {mat.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  <div className="w-24">
-                    <Label>Quantity</Label>
-                    <Input
-                      type="number"
-                      placeholder="1"
-                      {...register(`materials.${index}.quantity`, { valueAsNumber: true })}
-                    />
-                  </div>
-
-                  <div className="w-28">
-                    <Label>Unit</Label>
-                    <Controller
-                      control={control}
-                      name={`materials.${index}.quantityUnit`}
-                      render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="units">Units</SelectItem>
-                            <SelectItem value="tons">Tons</SelectItem>
-                            <SelectItem value="m2">m²</SelectItem>
-                            <SelectItem value="m3">m³</SelectItem>
-                            <SelectItem value="lf">LF</SelectItem>
-                            <SelectItem value="sf">SF</SelectItem>
-                            <SelectItem value="cy">CY</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remove(index)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
+              <div className="w-28">
+                <Label>Unit</Label>
+                <Controller
+                  control={control}
+                  name={`materials.${index}.quantityUnit`}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="units">Units</SelectItem>
+                        <SelectItem value="tons">Tons</SelectItem>
+                        <SelectItem value="m2">m²</SelectItem>
+                        <SelectItem value="m3">m³</SelectItem>
+                        <SelectItem value="lf">LF</SelectItem>
+                        <SelectItem value="sf">SF</SelectItem>
+                        <SelectItem value="cy">CY</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
 
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ materialId: 0, quantity: 1, quantityUnit: "units" })}
-                className="w-full"
+                variant="ghost"
+                size="icon"
+                onClick={() => remove(index)}
+                className="text-red-500 hover:text-red-700"
               >
-                <Plus className="w-4 h-4 mr-2" /> Add Material
+                <Trash2 className="w-4 h-4" />
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          ))}
 
           <Button
             type="button"
@@ -306,7 +284,6 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
         </CardContent>
       </Card>
 
-      {/* Deposit Payment Step */}
       <Card className={depositPaid ? "border-green-400" : ""}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -348,14 +325,14 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
         </CardContent>
       </Card>
 
+      {submitStatus && (
+        <p className={`text-sm ${submitStatus.type === "error" ? "text-red-500" : "text-green-600"}`}>
+          {submitStatus.message}
+        </p>
+      )}
+
       <div className="flex gap-3 justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            onCancel?.();
-          }}
-        >
+        <Button type="button" variant="outline" onClick={() => onCancel?.()}>
           Cancel
         </Button>
         <Button
@@ -373,24 +350,5 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
         </Button>
       </div>
     </form>
-          <div className="flex gap-3 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onCancel?.()}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...
-                </>
-              ) : (
-                "Create RFQ"
-              )}
-            </Button>
-          </div>
-        </form>
   );
 }
