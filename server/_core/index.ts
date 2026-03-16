@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { config } from "dotenv";
+import { existsSync } from "fs";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
@@ -14,6 +16,14 @@ import { handleWebhook } from "../marketplace-webhook";
 import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 import { uploadRouter } from "../upload-route";
 import { zeptomailWebhookRouter } from "../zeptomail-webhook";
+
+// Load .env.local in development (overrides .env values)
+if (process.env.NODE_ENV !== "production") {
+  if (existsSync(".env.local")) {
+    config({ path: ".env.local", override: true });
+    console.log("[Env] Loaded .env.local");
+  }
+}
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
