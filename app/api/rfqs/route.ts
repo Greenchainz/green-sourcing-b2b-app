@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { getEasyAuthUser } from "@/lib/auth/easy-auth";
-import { rfqSupplierMatch, sendNotification } from "@/lib/greenchainz";
+import { findMatchingSuppliers as rfqSupplierMatch, sendInAppNotification as sendNotification } from "@/lib/greenchainz";
 
 const pool = getPool();
 
