@@ -97,17 +97,6 @@ export default function SupplierDashboard() {
     setSelectedRfq(null);
   };
 
-  const handleSendMessage = (threadId: number) => {
-    if (!messageContent.trim()) return;
-    if (!user) {
-      alert("Please sign in to send a message");
-      return;
-    }
-    // TODO: Call tRPC mutation to send message
-    console.log("Sending message:", { threadId, content: messageContent });
-    setMessageContent("");
-  };
-
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
