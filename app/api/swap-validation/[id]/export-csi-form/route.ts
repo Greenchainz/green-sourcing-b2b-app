@@ -36,7 +36,20 @@ export async function GET(
       db.select().from(materialTechnicalSpecs).where(eq(materialTechnicalSpecs.materialId, validation.sustainableMaterialId)).limit(1).then(r => r[0]),
     ]);
 
-    const showstopperChecks = validation.showstopperResults as Record<string, { pass: boolean; specified?: unknown; proposed?: unknown }>;
+    let showstopperChecks: Record<string, { pass: boolean; specified?: unknown; proposed?: unknown }> = {};
+    const rawShowstopperResults = validation.showstopperResults;
+    if (typeof rawShowstopperResults === 'string') {
+      try {
+        const parsed = JSON.parse(rawShowstopperResults);
+        if (parsed && typeof parsed === 'object') {
+          showstopperChecks = parsed as Record<string, { pass: boolean; specified?: unknown; proposed?: unknown }>;
+        }
+      } catch {
+        // If parsing fails, leave showstopperChecks as empty object
+      }
+    } else if (rawShowstopperResults && typeof rawShowstopperResults === 'object') {
+      showstopperChecks = rawShowstopperResults as Record<string, { pass: boolean; specified?: unknown; proposed?: unknown }>;
+    }
 
     // Cost delta: sustainableTotalCost - incumbentTotalCost
     const incumbentCost = Number(validation.incumbentTotalCost) || 0;
