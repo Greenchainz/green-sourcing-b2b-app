@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, DollarSign, TrendingDown, MessageSquare, CheckCircle2, XCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { Clock, DollarSign, MessageSquare, CheckCircle2, XCircle, AlertCircle, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
