@@ -178,13 +178,29 @@ async function seedEwsAssemblies(): Promise<void> {
         framingTypeTags: assembly.framingTypeTags,
         exteriorFinishTags: assembly.exteriorFinishTags,
         certificationTags: assembly.certificationTags,
-      };
+      }
+        await prisma.materialAssemblySpec.createMany({
+  data: assemblies.map((assembly) => {
+    const gwpPer1000sf = calculateGwpPer1000sf(assembly.gwpA1A3, assembly.gwpMsfFactor);
+    const carbonTier = calculateCarbonTier(gwpPer1000sf);
+    return {
+      name: assembly.name,
+      category: "Exterior Wall System",
+      epdNumber: assembly.epdNumber,
+      gwpA1A3: assembly.gwpA1A3,
+      gwpDeclaredUnit: assembly.gwpDeclaredUnit,
+      gwpMsfFactor: assembly.gwpMsfFactor,
+      gwpPer1000sf,
+      carbonTier,
+      assemblyTypeTags: assembly.assemblyTypeTags,
+      framingTypeTags: assembly.framingTypeTags,
+      exteriorFinishTags: assembly.exteriorFinishTags,
+      certificationTags: assembly.certificationTags,
+    };
+  }),
+  skipDuplicates: true,
+});
 
-      await prisma.materialAssemblySpec.upsert({
-        where: { name: assembly.name },
-        update: data,
-        create: { name: assembly.name, ...data },
-      });
 
       console.log(
         `[Seed] ✅ ${assembly.name} | gwpPer1000sf=${gwpPer1000sf} | tier=${carbonTier}`
