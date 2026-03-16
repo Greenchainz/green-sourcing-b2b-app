@@ -1,12 +1,11 @@
 /**
  * GreenChainz Backend API Client
  *
- * Communicates with the Azure Container Apps backend
- * Base URL: https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
+ * Communicates with the Azure Container Apps backend.
+ * Base URL is configured via VITE_BACKEND_URL; defaults to same-origin when unset.
  */
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ||
-  'https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io';
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL ?? '').trim();
 
 /**
  * Base fetch wrapper with error handling and auth
