@@ -71,13 +71,13 @@ export async function GET(
       date: validation.validatedAt ?? new Date(),
 
       specifiedProduct: {
-        manufacturer: (incumbentMaterial as any)?.manufacturerId ? `Manufacturer #${incumbentMaterial?.manufacturerId}` : 'Unknown',
+        manufacturer: incumbentMaterial?.manufacturerId ? `Manufacturer #${incumbentMaterial.manufacturerId}` : 'Unknown',
         tradeName: incumbentMaterial?.name ?? 'Unknown',
         modelNumber: undefined,
       },
 
       proposedSubstitution: {
-        manufacturer: (sustainableMaterial as any)?.manufacturerId ? `Manufacturer #${sustainableMaterial?.manufacturerId}` : 'Unknown',
+        manufacturer: sustainableMaterial?.manufacturerId ? `Manufacturer #${sustainableMaterial.manufacturerId}` : 'Unknown',
         tradeName: sustainableMaterial?.name ?? 'Unknown',
         modelNumber: undefined,
       },
