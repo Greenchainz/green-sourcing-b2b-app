@@ -20,7 +20,6 @@ export default function BuyerRfqDashboard() {
   const [activeTab, setActiveTab] = useState("active");
   const [showCreateRfq, setShowCreateRfq] = useState(false);
   const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
-  const [selectedBids, setSelectedBids] = useState<Set<number>>(new Set());
   const [messageContent, setMessageContent] = useState("");
   const [selectedThread, setSelectedThread] = useState<number | null>(null);
   const [showAiAnalysis, setShowAiAnalysis] = useState(false);
