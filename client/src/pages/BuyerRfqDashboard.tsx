@@ -26,7 +26,6 @@ export default function BuyerRfqDashboard() {
 
   // tRPC queries and mutations
   const acceptBidMutation = trpc.rfqMarketplace.acceptBid.useMutation();
-  const utils = trpc.useUtils();
 
   // Fetch buyer's RFQs
   const { data: buyerRfqs, isLoading: rfqsLoading, refetch: refetchRfqs } = trpc.rfqMarketplace.getBuyerRfqs.useQuery({
