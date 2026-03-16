@@ -58,6 +58,15 @@ app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), requi
 }
 ```
 
+**Request 2: SEED-EWS-ASSEMBLIES**
+```json
+{
+  "scripts": {
+    "seed:ews": "tsx scripts/seed-ews-assemblies.ts"
+  }
+}
+```
+
 ---
 
 ### app/globals.css
