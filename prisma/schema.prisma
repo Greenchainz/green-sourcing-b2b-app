@@ -171,7 +171,7 @@ model MaterialAssemblySpec {
   id                   Int      @id @default(autoincrement())
   
   // Assembly Identity
-  name                 String   @db.VarChar(255)
+  name                 String   @unique @db.VarChar(255)
   category             String   @db.VarChar(100)
   description          String?  @db.Text
   
