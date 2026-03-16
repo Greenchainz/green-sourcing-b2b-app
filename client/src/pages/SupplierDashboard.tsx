@@ -327,7 +327,7 @@ export default function SupplierDashboard() {
 
               {/* Chat Area */}
               <div className="lg:col-span-2">
-                {selectedThread && user ? (
+                {selectedThread ? (
                   <RealTimeMessageThread
                     threadId={selectedThread}
                     isBuyer={false}
@@ -336,7 +336,7 @@ export default function SupplierDashboard() {
                 ) : (
                   <Card className="p-6 h-full flex items-center justify-center">
                     <p className="text-muted-foreground">
-                      {!user ? "Please sign in to view messages" : "Select a conversation to view messages"}
+                      Select a conversation to view messages
                     </p>
                   </Card>
                 )}
