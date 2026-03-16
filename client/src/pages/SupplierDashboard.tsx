@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertCircle, MessageSquare, TrendingUp, DollarSign, Clock, CheckCircle } from "lucide-react";
+import { AlertCircle, MessageSquare, TrendingUp, DollarSign, Clock } from "lucide-react";
 import { RealTimeMessageThread } from "@/components/RealTimeMessageThread";
 
 export default function SupplierDashboard() {
