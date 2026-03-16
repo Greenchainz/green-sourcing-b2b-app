@@ -186,7 +186,21 @@ model MaterialAssemblySpec {
   // Cost & Carbon
   totalCostPerSf       Decimal? @map("total_cost_per_sf") @db.Decimal(10, 2)
   totalGwpPerSf        Decimal? @map("total_gwp_per_sf") @db.Decimal(10, 2)
-  
+
+  // EPD Carbon Fields
+  epdNumber            String?  @map("epd_number") @db.VarChar(100)
+  gwpA1A3              Decimal? @map("gwp_a1_a3") @db.Decimal(10, 4)       // kgCO2e per declared unit
+  gwpDeclaredUnit      String?  @map("gwp_declared_unit") @db.VarChar(50)  // "m2" | "metric_ton" | "1000sqft"
+  gwpMsfFactor         Decimal? @map("gwp_msf_factor") @db.Decimal(10, 4)  // conversion to per-1000SF
+  gwpPer1000sf         Decimal? @map("gwp_per_1000sf") @db.Decimal(10, 2)  // computed: gwpA1A3 * gwpMsfFactor
+  carbonTier           String?  @map("carbon_tier") @db.VarChar(20)        // "low-carbon" | "mid-carbon" | "high-carbon"
+
+  // Assembly Type Tags (controlled vocabulary)
+  assemblyTypeTags     String[] @default([]) @map("assembly_type_tags")
+  framingTypeTags      String[] @default([]) @map("framing_type_tags")
+  exteriorFinishTags   String[] @default([]) @map("exterior_finish_tags")
+  certificationTags    String[] @default([]) @map("certification_tags")
+
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
   
@@ -195,6 +209,9 @@ model MaterialAssemblySpec {
   @@map("material_assembly_specs")
   @@index([category], name: "idx_assembly_specs_category")
   @@index([ulDesignNumber], name: "idx_assembly_specs_ul")
+  @@index([epdNumber], name: "idx_assembly_epd_number")
+  @@index([carbonTier], name: "idx_assembly_carbon_tier")
+  @@index([assemblyTypeTags], name: "idx_assembly_type_tags")
 }
 
 model AssemblySpecComponent {
