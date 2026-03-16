@@ -108,6 +108,33 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
               </div>
 
               <div>
+                <Label htmlFor="projectType">Project Type *</Label>
+                <Controller
+                  control={control}
+                  name="projectType"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={(val) => field.onChange(val)}
+                    >
+                      <SelectTrigger className={errors.projectType ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select project type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Commercial">Commercial</SelectItem>
+                        <SelectItem value="Residential">Residential</SelectItem>
+                        <SelectItem value="Industrial">Industrial</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.projectType && (
+                  <p className="text-sm text-red-500 mt-1">{errors.projectType.message}</p>
+                )}
+              </div>
+
+              <div>
                 <Label htmlFor="dueDate">Due Date</Label>
                 <Input id="dueDate" type="date" {...register("dueDate", { valueAsDate: true })} />
               </div>
