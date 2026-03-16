@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { sendInAppNotification } from "@/lib/greenchainz";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -65,8 +66,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    // Get user_id from auth session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    const user_id = authUser.id;
 
     const client = await pool.connect();
     try {
@@ -112,8 +117,8 @@ export async function POST(request: NextRequest) {
 
       const supplier_id = supplierResult.rows[0].id;
 
-      // Insert materials offered in bulk to avoid N+1 queries
-      if (materials_offered && materials_offered.length > 0) {
+      // Bulk insert materials offered (single round-trip, avoids N+1)
+      if (materials_offered.length > 0) {
         await client.query(
           `INSERT INTO supplier_materials (supplier_id, material_id, created_at)
            SELECT $1, unnest($2::text[]), NOW()
@@ -213,8 +218,12 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    // Get user_id from auth session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    const user_id = authUser.id;
 
     const result = await pool.query(
       `SELECT 
