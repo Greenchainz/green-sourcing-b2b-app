@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Loader2, CheckCircle, AlertCircle, CreditCard } from "lucide-react";
 
 const rfqFormSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
@@ -42,6 +42,11 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
     message: string;
   } | null>(null);
 
+  // Payment state
+  const [depositIntentId, setDepositIntentId] = useState<string | null>(null);
+  const [depositPaid, setDepositPaid] = useState(false);
+  const [depositDevMode, setDepositDevMode] = useState(false);
+
   // Fetch materials list — returns { items: [], total: number }
   const { data: materialsData } = trpc.materials.list.useQuery({
     search: "",
@@ -51,11 +56,13 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
   const materialsList = materialsData?.items ?? [];
 
   const submitRfq = trpc.rfqMarketplace.submit.useMutation();
+  const createDepositIntent = trpc.rfqMarketplace.createDepositIntent.useMutation();
 
   const {
     register,
     control,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<RfqFormData>({
@@ -70,7 +77,31 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
     name: "materials",
   });
 
+  const materials = watch("materials");
+
+  const handleCreateDeposit = async () => {
+    try {
+      const result = await createDepositIntent.mutateAsync({
+        rfqMaterialCount: materials.length,
+      });
+      setDepositIntentId(result.intentId);
+      setDepositDevMode(result.devMode ?? false);
+      // In dev mode (no Stripe key) or after confirming payment, mark as paid
+      setDepositPaid(true);
+    } catch (error) {
+      setSubmitStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "Failed to create deposit payment",
+      });
+    }
+  };
+
   const onSubmit = async (data: RfqFormData) => {
+    if (!depositIntentId || !depositPaid) {
+      setSubmitStatus({ type: "error", message: "Please complete the $25 deposit payment before submitting" });
+      return;
+    }
+
     setSubmitStatus(null);
     try {
       const result = await submitRfq.mutateAsync({
@@ -81,6 +112,7 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
         dueDate: data.dueDate,
         notes: data.notes,
         buyerPersona: data.buyerPersona,
+        depositPaymentIntentId: depositIntentId,
       });
 
       setSubmitStatus({
@@ -89,6 +121,8 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
       });
 
       reset();
+      setDepositIntentId(null);
+      setDepositPaid(false);
       setTimeout(() => {
         setSubmitStatus(null);
         onSuccess?.();
@@ -299,6 +333,48 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
         </CardContent>
       </Card>
 
+      {/* Deposit Payment Step */}
+      <Card className={depositPaid ? "border-green-400" : ""}>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <CreditCard className="w-5 h-5" />
+            Refundable Deposit
+            {depositPaid && <CheckCircle className="w-5 h-5 text-green-600 ml-auto" />}
+          </CardTitle>
+          <CardDescription>
+            A $25.00 refundable deposit is required to submit an RFQ. This confirms your intent
+            and unlocks verified supplier responses.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {depositPaid ? (
+            <div className="flex items-center gap-2 text-green-700 text-sm">
+              <CheckCircle className="w-4 h-4" />
+              {depositDevMode
+                ? "Deposit confirmed (dev mode — no Stripe key configured)"
+                : `Deposit confirmed — Intent ID: ${depositIntentId}`}
+            </div>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleCreateDeposit}
+              disabled={createDepositIntent.isPending}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {createDepositIntent.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing…
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-4 h-4 mr-2" /> Pay $25.00 Deposit
+                </>
+              )}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="flex gap-3 justify-end">
         <Button
           type="button"
@@ -311,12 +387,12 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
         </Button>
         <Button
           type="submit"
-          disabled={isSubmitting}
-          className="bg-green-600 hover:bg-green-700"
+          disabled={isSubmitting || !depositPaid}
+          className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating RFQ...
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating RFQ…
             </>
           ) : (
             "Create RFQ"
