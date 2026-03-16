@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
-import { findMatchingSuppliers, sendInAppNotification } from "@/lib/greenchainz";
 import { getEasyAuthUser } from "@/lib/auth/easy-auth";
-
-interface MaterialInput {
-  material_id: string;
-  quantity: number;
-  unit: string;
-}
+import { rfqSupplierMatch, sendNotification } from "@/lib/greenchainz";
 
 const pool = getPool();
 
@@ -46,17 +40,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from Azure Easy Auth session
-    const user = getEasyAuthUser(request.headers);
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized: User information not available" },
-        { status: 401 }
-      );
+    // Derive buyer_id from the authenticated session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-
-    const buyer_id = user.id;
+    const buyer_id = authUser.id;
 
     // Start transaction
     const client = await pool.connect();
@@ -97,8 +86,8 @@ export async function POST(request: NextRequest) {
 
       const rfq_id = rfqResult.rows[0].id;
 
-      // Insert RFQ items in bulk to avoid N+1 queries
-      if (materials.length > 0) {
+      // Insert RFQ items
+      for (const material of materials) {
         await client.query(
           `INSERT INTO rfq_items (
             rfq_id,
@@ -106,29 +95,22 @@ export async function POST(request: NextRequest) {
             quantity,
             unit,
             created_at
-          )
-          SELECT $1, t.material_id, t.quantity, t.unit, NOW()
-          FROM unnest($2::text[], $3::numeric[], $4::text[]) AS t(material_id, quantity, unit)`,
-          [
-            rfq_id,
-            materials.map((m: MaterialInput) => m.material_id),
-            materials.map((m: MaterialInput) => m.quantity),
-            materials.map((m: MaterialInput) => m.unit),
-          SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::text[]), NOW()`,
-          [
-            rfq_id,
-            materials.map((m: any) => m.material_id),
-            materials.map((m: any) => m.quantity),
-            materials.map((m: any) => m.unit)
-          ]
+          ) VALUES ($1, $2, $3, $4, NOW())`,
+          [rfq_id, material.material_id, material.quantity, material.unit]
         );
       }
 
       // Run supplier matching
-      const matchedSuppliers = await findMatchingSuppliers(Number(rfq_id), delivery_location.address);
+      const matchedSuppliers = await rfqSupplierMatch({
+        rfqId: rfq_id,
+        materials: materials.map((m) => m.material_id),
+        deliveryLocation: delivery_location,
+        requiredCertifications: required_certifications,
+        budgetRange: budget_range,
+      });
 
-      // Insert matched suppliers into rfq_suppliers junction table in bulk
-      if (matchedSuppliers.length > 0) {
+      // Insert matched suppliers into rfq_suppliers junction table
+      for (const match of matchedSuppliers) {
         await client.query(
           `INSERT INTO rfq_suppliers (
             rfq_id,
@@ -136,44 +118,21 @@ export async function POST(request: NextRequest) {
             match_score,
             distance_km,
             created_at
-          )
-          SELECT $1, t.supplier_id, t.match_score, t.distance_km, NOW()
-          FROM unnest($2::int[], $3::numeric[], $4::numeric[]) AS t(supplier_id, match_score, distance_km)`,
-          [
-            rfq_id,
-            matchedSuppliers.map((m) => m.supplierId),
-            matchedSuppliers.map((m) => m.matchScore),
-            matchedSuppliers.map((m) =>
-              m.distanceMiles != null ? m.distanceMiles * 1.60934 : null
-            ),
-          SELECT $1, unnest($2::text[]), unnest($3::numeric[]), unnest($4::numeric[]), NOW()`,
-          [
-            rfq_id,
-            matchedSuppliers.map((m: any) => m.supplierId),
-            matchedSuppliers.map((m: any) => m.score),
-            matchedSuppliers.map((m: any) => m.distance)
-          ]
+          ) VALUES ($1, $2, $3, $4, NOW())`,
+          [rfq_id, match.supplierId, match.score, match.distance]
         );
 
-        // Send notifications to suppliers
-        for (const match of matchedSuppliers) {
-          await sendInAppNotification({
-            userId: match.supplierId,
-            type: "rfq_match",
-            title: "New RFQ Match",
-            content: `You've been matched to RFQ: ${project_name}`,
-            relatedId: Number(rfq_id),
-          await sendNotification({
-            userId: match.supplierId,
-            type: "rfq_match",
-            title: "New RFQ Match",
-            message: `You've been matched to RFQ: ${project_name}`,
-            metadata: {
-              rfq_id,
-              match_score: match.score,
-            },
-          });
-        }
+        // Send notification to supplier
+        await sendNotification({
+          userId: match.supplierId,
+          type: "rfq_match",
+          title: "New RFQ Match",
+          message: `You've been matched to RFQ: ${project_name}`,
+          metadata: {
+            rfq_id,
+            match_score: match.score,
+          },
+        });
       }
 
       // Update RFQ status to "open"
@@ -191,8 +150,8 @@ export async function POST(request: NextRequest) {
           matched_suppliers: matchedSuppliers.length,
           top_matches: matchedSuppliers.slice(0, 5).map((m) => ({
             supplier_id: m.supplierId,
-            score: m.matchScore,
-            distance_km: m.distanceMiles != null ? m.distanceMiles * 1.60934 : null,
+            score: m.score,
+            distance_km: m.distance,
           })),
         },
       });
@@ -228,17 +187,12 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Get user from Azure Easy Auth session
-    const user = getEasyAuthUser(request.headers);
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized: User information not available" },
-        { status: 401 }
-      );
+    // Derive buyer_id from the authenticated session
+    const authUser = getEasyAuthUser(request.headers);
+    if (!authUser || !authUser.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-
-    const buyer_id = user.id;
+    const buyer_id = authUser.id;
 
     let query = `
       SELECT 
