@@ -247,8 +247,18 @@ export default function RfqDashboard() {
                                       <Button
                                         size="sm"
                                         variant="default"
-                                        onClick={() => {
-                                          // TODO: Implement accept bid
+                                        onClick={async () => {
+                                          try {
+                                            await fetch(`/api/bids/${bid.id}/accept`, {
+                                              method: "POST",
+                                              headers: {
+                                                "Content-Type": "application/json",
+                                              },
+                                            });
+                                            // Optionally: trigger a refresh of RFQ details here if needed
+                                          } catch (error) {
+                                            console.error("Failed to accept bid", error);
+                                          }
                                         }}
                                       >
                                         Accept
@@ -256,8 +266,18 @@ export default function RfqDashboard() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => {
-                                          // TODO: Implement reject bid
+                                        onClick={async () => {
+                                          try {
+                                            await fetch(`/api/bids/${bid.id}/reject`, {
+                                              method: "POST",
+                                              headers: {
+                                                "Content-Type": "application/json",
+                                              },
+                                            });
+                                            // Optionally: trigger a refresh of RFQ details here if needed
+                                          } catch (error) {
+                                            console.error("Failed to reject bid", error);
+                                          }
                                         }}
                                       >
                                         Reject
