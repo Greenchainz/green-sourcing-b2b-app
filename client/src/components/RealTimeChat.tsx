@@ -40,6 +40,24 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
   const getMessagesMutation = trpc.rfqMarketplace.getThreadMessages.useQuery({ threadId, limit: 50, offset: 0 });
   const markReadMutation = trpc.rfqMarketplace.markMessageAsRead.useMutation();
 
+  // Sync initial and updated message history from query into local state
+  useEffect(() => {
+    if (!getMessagesMutation.data) {
+      return;
+    }
+
+    const mappedMessages: Message[] = getMessagesMutation.data.map((m: any) => ({
+      id: m.id,
+      senderId: m.senderId,
+      senderType: m.senderType,
+      content: m.content,
+      createdAt: new Date(m.createdAt),
+      isRead: m.isRead ?? null,
+    }));
+
+    setMessages(mappedMessages);
+  }, [getMessagesMutation.data]);
+
   // Initialize WebSocket connection
   useEffect(() => {
     const initializeConnection = async () => {
@@ -110,10 +128,6 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
 
         wsRef.current = ws;
 
-        // Load message history
-        if (getMessagesMutation.data) {
-          setMessages(getMessagesMutation.data);
-        }
       } catch (error) {
         console.error("Failed to initialize connection:", error);
       }
