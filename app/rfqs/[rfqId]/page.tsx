@@ -18,6 +18,13 @@ interface MatchedSupplier {
   company_name?: string;
 }
 
+
+interface MatchedSupplier {
+  supplier_id: string;
+  match_score: number;
+  company_name?: string;
+}
+
 interface RFQData {
   id: string;
   project_name: string;
@@ -85,6 +92,15 @@ export default function RFQDetailPage() {
 
     fetchRFQ();
   }, [rfqId, user, authLoading]);
+      }
+    };
+
+    (async () => {
+      setLoading(true);
+      await fetchRFQ();
+      setLoading(false);
+    })();
+  }, [rfqId, user]);
 
   if (loading) {
     return (
