@@ -18,6 +18,13 @@ interface MatchedSupplier {
   company_name?: string;
 }
 
+
+interface MatchedSupplier {
+  supplier_id: string;
+  match_score: number;
+  company_name?: string;
+}
+
 interface RFQData {
   id: string;
   project_name: string;
@@ -47,14 +54,22 @@ export default function RFQDetailPage() {
   const params = useParams();
   const router = useRouter();
   const rfqId = params.rfqId as string;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [rfq, setRfq] = useState<RFQData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Wait for the auth state to resolve before deciding whether the user
+    // is authenticated. Without this guard the effect runs while user is
+    // still null, incorrectly producing an "Not authenticated" error for
+    // users who are actually logged in.
+    if (authLoading) return;
+
     const fetchRFQ = async () => {
+      setLoading(true);
+      setError(""); // Clear any previous error before each attempt
       try {
         if (!user) throw new Error("Not authenticated. Please log in first.");
         const response = await fetch(`/api/rfqs/${rfqId}`, {
@@ -70,6 +85,13 @@ export default function RFQDetailPage() {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRFQ();
+  }, [rfqId, user, authLoading]);
       }
     };
 
