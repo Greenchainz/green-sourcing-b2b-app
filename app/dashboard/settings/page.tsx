@@ -73,8 +73,8 @@ export default function SettingsPage() {
   }
 
   const handleManageBilling = () => {
-    // In production, this would redirect to Stripe billing portal
-    window.open('https://billing.stripe.com/p/login/demo', '_blank')
+    // In production, this would redirect to billing management
+    alert('Billing management coming soon')
   }
 
   return (
@@ -171,7 +171,7 @@ export default function SettingsPage() {
                     width: 22,
                     height: 22,
                     borderRadius: '50%',
-                    background: 'white',
+                    background: '#0d1a0d',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
                     transform: billingCycle === 'annual' ? 'translateX(22px)' : 'translateX(0)',
                     transition: 'transform var(--gc-duration) var(--gc-ease)',
@@ -578,7 +578,7 @@ export default function SettingsPage() {
                         color: 'var(--gc-slate-900)',
                       }}
                     >
-                      Stripe Billing Portal
+                      Billing Portal
                     </h3>
                     <p
                       style={{
@@ -694,7 +694,7 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={() => {
-                  // In production, redirect to Stripe checkout
+                  // In production, redirect to checkout
                   window.location.href = `/api/checkout?tier=${selectedUpgradeTier}&cycle=${billingCycle}`
                 }}
                 className="gc-btn gc-btn-primary"

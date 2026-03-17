@@ -1,0 +1,13 @@
+<h1>Azure AD for customers</h1>
+<h3>ID Token</h3>
+<table>
+  <tbody>
+    {{#each idTokenClaims}}
+    <tr>
+      <td>{{@key}}</td>
+      <td>{{this}}</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+<a href="/">Go back</a>

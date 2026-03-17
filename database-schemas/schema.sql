@@ -268,8 +268,8 @@ CREATE TABLE IF NOT EXISTS User_Subscriptions (
   SubscriptionID BIGSERIAL PRIMARY KEY,
   UserID BIGINT REFERENCES Users(UserID) ON DELETE CASCADE,
   PlanID BIGINT REFERENCES Subscription_Plans(PlanID),
-  StripeCustomerID VARCHAR(255),
-  StripeSubscriptionID VARCHAR(255),
+  PaymentProcessorCustomerID VARCHAR(255),
+  PaymentProcessorSubscriptionID VARCHAR(255),
   Status VARCHAR(50) NOT NULL CHECK (Status IN ('active', 'trialing', 'past_due', 'canceled', 'unpaid')),
   CurrentPeriodStart TIMESTAMP,
   CurrentPeriodEnd TIMESTAMP,
@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS User_Subscriptions (
 CREATE TABLE IF NOT EXISTS Payment_Transactions (
   TransactionID BIGSERIAL PRIMARY KEY,
   UserID BIGINT REFERENCES Users(UserID) ON DELETE SET NULL,
-  StripePaymentIntentID VARCHAR(255),
+  PaymentIntentID VARCHAR(255),
   Amount DECIMAL(10, 2) NOT NULL,
   Currency VARCHAR(10) DEFAULT 'USD',
   Status VARCHAR(50) NOT NULL CHECK (Status IN ('succeeded', 'pending', 'failed', 'refunded')),
@@ -517,7 +517,7 @@ CREATE INDEX IF NOT EXISTS idx_materials_manufacturer ON Materials(Manufacturer)
 CREATE INDEX IF NOT EXISTS idx_materials_epd ON Materials(EPDNumber);
 CREATE INDEX IF NOT EXISTS idx_materials_gwp ON Materials(GWP);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON User_Subscriptions(UserID);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON User_Subscriptions(StripeSubscriptionID);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_payment_processor ON User_Subscriptions(PaymentProcessorSubscriptionID);
 CREATE INDEX IF NOT EXISTS idx_transactions_user ON Payment_Transactions(UserID);
 CREATE INDEX IF NOT EXISTS idx_agreement_acceptances_user ON User_Agreement_Acceptances(UserID);
 CREATE INDEX IF NOT EXISTS idx_outreach_status ON Supplier_Outreach(Status);
@@ -562,17 +562,17 @@ CREATE TABLE IF NOT EXISTS Buyers (
   UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- RFQ Deposits (Stripe)
+-- RFQ Deposits
 CREATE TABLE IF NOT EXISTS RFQ_Deposits (
   DepositID BIGSERIAL PRIMARY KEY,
   RFQID BIGINT, -- Can be null initially if deposit is for future RFQs
   UserID BIGINT NOT NULL REFERENCES Users(UserID) ON DELETE CASCADE,
-  StripePaymentIntentID VARCHAR(255) UNIQUE NOT NULL,
+  PaymentIntentID VARCHAR(255) UNIQUE NOT NULL,
   AmountCents INTEGER NOT NULL DEFAULT 500 CHECK (AmountCents > 0),
   Currency VARCHAR(10) NOT NULL DEFAULT 'usd',
   Status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (Status IN ('pending', 'processing', 'succeeded', 'failed', 'canceled', 'refunded', 'partially_refunded')),
   RefundReason TEXT,
-  StripeRefundID VARCHAR(255),
+  RefundID VARCHAR(255),
   Metadata JSONB DEFAULT '{}'::jsonb,
   IPAddress VARCHAR(45),
   UserAgent TEXT,
@@ -669,7 +669,7 @@ CREATE INDEX IF NOT EXISTS idx_rfq_responses_rfq ON RFQ_Responses(RFQID);
 CREATE INDEX IF NOT EXISTS idx_rfq_responses_supplier ON RFQ_Responses(SupplierID, CreatedAt DESC);
 
 -- RFQ Deposit Indexes
-CREATE INDEX IF NOT EXISTS idx_rfq_deposits_stripe_pi ON RFQ_Deposits(StripePaymentIntentID);
+CREATE INDEX IF NOT EXISTS idx_rfq_deposits_payment_intent ON RFQ_Deposits(PaymentIntentID);
 CREATE INDEX IF NOT EXISTS idx_rfq_deposits_user ON RFQ_Deposits(UserID, CreatedAt DESC);
 CREATE INDEX IF NOT EXISTS idx_rfq_deposits_status ON RFQ_Deposits(Status);
 CREATE INDEX IF NOT EXISTS idx_rfq_deposits_rfq ON RFQ_Deposits(RFQID) WHERE RFQID IS NOT NULL;
@@ -764,8 +764,8 @@ CREATE TABLE IF NOT EXISTS Supplier_Subscriptions (
     TierID INTEGER NOT NULL REFERENCES Supplier_Tiers(TierID),
     Status VARCHAR(50) NOT NULL DEFAULT 'active' CHECK (Status IN ('active', 'trialing', 'past_due', 'canceled', 'expired', 'pending')),
     BillingCycle VARCHAR(20) DEFAULT 'monthly' CHECK (BillingCycle IN ('monthly', 'annual', 'lifetime')),
-    StripeCustomerID VARCHAR(255),
-    StripeSubscriptionID VARCHAR(255),
+    PaymentProcessorCustomerID VARCHAR(255),
+    PaymentProcessorSubscriptionID VARCHAR(255),
     CurrentPeriodStart TIMESTAMP,
     CurrentPeriodEnd TIMESTAMP,
     TrialEndsAt TIMESTAMP,

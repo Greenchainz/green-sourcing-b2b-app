@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `rfqs` ADD `requiredCertifications` json;\nALTER TABLE `supplier_filters` ADD `materialTypePreferences` json;\nALTER TABLE `suppliers` ADD `certifications` json;\nALTER TABLE `suppliers` ADD `maxOrderValue` decimal(12,2);\nALTER TABLE `suppliers` ADD `currentCapacity` int DEFAULT 100;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute ALTER TABLE `rfqs` ADD `requiredCertifications` json;\nALTER TABLE `supplier_filters` ADD `materialTypePreferences` json;\nALTER TABLE `suppliers` ADD `certifications` json;\nALTER TABLE `suppliers` ADD `maxOrderValue` decimal(12,2);\nALTER TABLE `suppliers` ADD `currentCapacity` int DEFAULT 100;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4079
+}

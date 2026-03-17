@@ -1,314 +1,239 @@
-'use client'
-import Link from 'next/link'
-import Image from 'next/image'
-import TrustBadges from '../components/TrustBadges'
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Sparkles, Shield, Globe, Zap, Target, Users, Building2 } from "lucide-react";
+import SiteHeader from "../components/SiteHeader";
+import Footer from "../components/Footer";
 
 export default function AboutPage() {
-    return (
-        <div className="gc-page">
-            <div className="gc-container py-20">
-                {/* Hero Section */}
-                <div className="max-w-4xl mx-auto text-center mb-16">
-                    <h1 className="gc-hero-title mb-6">About GreenChainz</h1>
-                    <p className="gc-hero-subtitle">Green because it makes business sense. Sustainability compliance that boosts your bottom line.</p>
-                </div>
+  return (
+    <div className="min-h-screen premium-bg-animated">
+      <SiteHeader />
 
-                {/* Founder Story Section */}
-                <section className="max-w-5xl mx-auto mb-20">
-                    <div className="gc-card p-8 md:p-12 bg-gradient-to-br from-slate-50 to-emerald-50/30">
-                        <div className="flex flex-col lg:flex-row gap-8 items-start">
-                            {/* Founder Image Placeholder */}
-                            <div className="w-full lg:w-1/3 flex-shrink-0">
-                                <div className="aspect-square rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center overflow-hidden shadow-lg">
-                                    <div className="text-center p-6">
-                                        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-emerald-200 flex items-center justify-center">
-                                            <svg className="w-12 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        </div>
-                                        <p className="text-sm text-emerald-700 font-medium">Jerit Norville</p>
-                                        <p className="text-xs text-emerald-600">Founder & CEO</p>
-                                    </div>
-                                </div>
-                                {/* Video Placeholder */}
-                                <div className="mt-4 aspect-video rounded-xl bg-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-300 transition-colors group">
-                                    <div className="text-center">
-                                        <div className="w-16 h-16 mx-auto mb-2 rounded-full bg-emerald-500 flex items-center justify-center group-hover:bg-emerald-600 transition-colors shadow-lg">
-                                            <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M8 5v14l11-7z" />
-                                            </svg>
-                                        </div>
-                                        <p className="text-sm text-slate-600 font-medium">Watch Our Story</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Story Content */}
-                            <div className="flex-1">
-                                <h2 className="text-3xl font-bold text-slate-900 mb-6">From Military Logistics to Supply Chain Revolution</h2>
-
-                                <div className="prose prose-slate max-w-none">
-                                    <p className="text-lg text-slate-700 leading-relaxed mb-4">
-                                        My journey started in the military, where I handled communications, supply, and logistics. That experience taught me one thing: <strong>efficiency saves lives and money</strong>. Every wasted resource, every delayed shipment—it all adds up.
-                                    </p>
-
-                                    <p className="text-slate-600 leading-relaxed mb-4">
-                                        After leaving the service, I wandered a bit before settling into construction. Ten years of building taught me a lot about putting things together—and about the frustration that comes with it. The inefficiency of supply chains, the paperwork nightmares, the constant struggle to verify that materials actually met spec. It was chaos hiding behind spreadsheets.
-                                    </p>
-
-                                    <p className="text-slate-600 leading-relaxed mb-4">
-                                        But after a decade, I needed a new challenge. Something that would push me. I'd always tinkered with computers as an amateur, so I took a deep dive into tech. While going through school, I started thinking about my legacy—how I could make a real difference.
-                                    </p>
-
-                                    <p className="text-slate-600 leading-relaxed mb-4">
-                                        I wanted work that was challenging and let me sleep well at night. That's when it clicked: I'd seen the supply chain problems firsthand in construction. The waste. The inefficiency. The frustration. With what I was learning about AI, I knew I could do better.
-                                    </p>
-
-                                    <p className="text-lg text-slate-700 leading-relaxed font-medium">
-                                        <strong>GreenChainz</strong> isn't about saving the world—it's about saving you money while doing the right thing. We're green because it makes business sense. Period.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Video Section Placeholder */}
-                <section className="max-w-4xl mx-auto mb-20">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">See GreenChainz in Action</h2>
-                    <div className="grid md:grid-cols-2 gap-6">
-                        {/* Demo Video Placeholder */}
-                        <div className="aspect-video rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center cursor-pointer hover:from-slate-200 hover:to-slate-300 transition-all group shadow-md">
-                            <div className="text-center">
-                                <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-emerald-500 flex items-center justify-center group-hover:bg-emerald-600 transition-colors shadow-lg">
-                                    <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                </div>
-                                <p className="text-slate-700 font-semibold">Product Demo</p>
-                                <p className="text-sm text-slate-500">2 min overview</p>
-                            </div>
-                        </div>
-                        {/* Testimonial Video Placeholder */}
-                        <div className="aspect-video rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center cursor-pointer hover:from-slate-200 hover:to-slate-300 transition-all group shadow-md">
-                            <div className="text-center">
-                                <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-emerald-500 flex items-center justify-center group-hover:bg-emerald-600 transition-colors shadow-lg">
-                                    <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                </div>
-                                <p className="text-slate-700 font-semibold">Customer Stories</p>
-                                <p className="text-sm text-slate-500">Real results</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Mission & Vision Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto mb-16">
-                    <div className="gc-card p-8">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-4">Our Mission</h2>
-                        <p className="text-slate-600 leading-relaxed">Cut compliance costs, not corners. We automate sustainability auditing so you can meet regulations without breaking the bank—or your workflow.</p>
-                    </div>
-
-                    <div className="gc-card p-8">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-4">Our Vision</h2>
-                        <p className="text-slate-600 leading-relaxed">A construction industry where sustainability compliance is automatic, affordable, and profitable. Green shouldn't be a premium—it should be the standard.</p>
-                    </div>
-                </div>
-
-                {/* Data Partners Section */}
-                <section className="max-w-6xl mx-auto mb-16">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">Powered By Industry Leaders</h2>
-                    <p className="text-slate-600 text-center mb-8 max-w-2xl mx-auto">We integrate with the platforms and data sources that matter most for sustainability compliance.</p>
-
-                    {/* Partner Logos Row */}
-                    <div className="flex flex-wrap justify-center items-center gap-8 mb-12 p-6 bg-slate-50 rounded-2xl">
-                        <a href="https://www.usgbc.org/leed" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/trust/leed.png" alt="LEED Green Building Certification logo" width={120} height={48} className="h-12 w-auto" />
-                        </a>
-                        <a href="https://buildingtransparency.org" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/trust/building-transparency.svg" alt="Building Transparency organization logo" width={150} height={40} unoptimized className="h-10 w-auto" />
-                        </a>
-                        <a href="https://www.environdec.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/trust/epd.png" alt="Environmental Product Declaration (EPD) logo" width={100} height={48} className="h-12 w-auto" />
-                        </a>
-                        <a href="https://www.autodesk.com/sustainability" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/brand/autodesk-logo-white.png" alt="Autodesk company logo" width={120} height={32} className="h-8 w-auto invert" />
-                        </a>
-                        <a href="https://www.usgbc.org" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                            <Image src="/trust/usgbc.png" alt="U.S. Green Building Council (USGBC) logo" width={120} height={48} className="h-12 w-auto" />
-                        </a>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* LEED */}
-                        <a
-                            href="https://www.usgbc.org/leed"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="gc-card p-6 hover:shadow-lg transition-shadow group"
-                        >
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center overflow-hidden p-2">
-                                    <Image
-                                        src="/trust/leed.png"
-                                        alt="LEED"
-                                        width={40}
-                                        height={40}
-                                        className="object-contain"
-                                    />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">LEED Certification</h3>
-                            </div>
-                            <p className="text-slate-600 text-sm leading-relaxed">Automatic LEED credit tracking and compliance verification. Know your project's certification status in real-time.</p>
-                            <span className="inline-flex items-center text-emerald-600 text-sm font-medium mt-3 group-hover:translate-x-1 transition-transform">
-                                Learn about LEED →
-                            </span>
-                        </a>
-
-                        {/* Building Transparency / EC3 */}
-                        <a
-                            href="https://buildingtransparency.org/ec3"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="gc-card p-6 hover:shadow-lg transition-shadow group"
-                        >
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-lg bg-teal-100 flex items-center justify-center overflow-hidden p-1">
-                                    <Image
-                                        src="/trust/building-transparency.svg"
-                                        alt="Building Transparency"
-                                        width={40}
-                                        height={40}
-                                        unoptimized
-                                    />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">EC3 & Building Transparency</h3>
-                            </div>
-                            <p className="text-slate-600 text-sm leading-relaxed">Access 100,000+ EPDs through the Embodied Carbon in Construction Calculator for accurate carbon scoring.</p>
-                            <span className="inline-flex items-center text-emerald-600 text-sm font-medium mt-3 group-hover:translate-x-1 transition-transform">
-                                Explore EC3 →
-                            </span>
-                        </a>
-
-                        {/* EPD */}
-                        <a
-                            href="https://www.environdec.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="gc-card p-6 hover:shadow-lg transition-shadow group"
-                        >
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center overflow-hidden p-2">
-                                    <Image
-                                        src="/trust/epd.png"
-                                        alt="EPD"
-                                        width={40}
-                                        height={40}
-                                        className="object-contain"
-                                    />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">Environmental Product Declarations</h3>
-                            </div>
-                            <p className="text-slate-600 text-sm leading-relaxed">Verified environmental impact data for building materials. Third-party certified lifecycle assessments you can trust.</p>
-                            <span className="inline-flex items-center text-emerald-600 text-sm font-medium mt-3 group-hover:translate-x-1 transition-transform">
-                                About EPDs →
-                            </span>
-                        </a>
-
-                        {/* Autodesk */}
-                        <a
-                            href="https://www.autodesk.com/sustainability"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="gc-card p-6 hover:shadow-lg transition-shadow group"
-                        >
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center">
-                                    <Image
-                                        src="/brand/autodesk-logo-white.png"
-                                        alt="Autodesk"
-                                        width={32}
-                                        height={32}
-                                        className="invert opacity-70"
-                                    />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">Autodesk Revit</h3>
-                            </div>
-                            <p className="text-slate-600 text-sm leading-relaxed">Revit plugin integration for real-time LEED compliance checking directly in your BIM workflow.</p>
-                            <span className="inline-flex items-center text-emerald-600 text-sm font-medium mt-3 group-hover:translate-x-1 transition-transform">
-                                Learn more →
-                            </span>
-                        </a>
-
-                        {/* USGBC */}
-                        <a
-                            href="https://www.usgbc.org"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="gc-card p-6 hover:shadow-lg transition-shadow group"
-                        >
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center overflow-hidden p-2">
-                                    <Image
-                                        src="/trust/usgbc.png"
-                                        alt="USGBC"
-                                        width={40}
-                                        height={40}
-                                        className="object-contain"
-                                    />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">U.S. Green Building Council</h3>
-                            </div>
-                            <p className="text-slate-600 text-sm leading-relaxed">The organization behind LEED, driving the green building movement and sustainable construction standards.</p>
-                            <span className="inline-flex items-center text-emerald-600 text-sm font-medium mt-3 group-hover:translate-x-1 transition-transform">
-                                Visit USGBC →
-                            </span>
-                        </a>
-
-                        {/* FSC */}
-                        <a
-                            href="https://fsc.org/en"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="gc-card p-6 hover:shadow-lg transition-shadow group"
-                        >
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center overflow-hidden p-2">
-                                    <Image
-                                        src="/trust/fsc.png"
-                                        alt="FSC"
-                                        width={40}
-                                        height={40}
-                                        className="object-contain"
-                                    />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">Forest Stewardship Council</h3>
-                            </div>
-                            <p className="text-slate-600 text-sm leading-relaxed">Certified responsibly sourced wood and paper products. Chain of custody verification for sustainable forestry.</p>
-                            <span className="inline-flex items-center text-emerald-600 text-sm font-medium mt-3 group-hover:translate-x-1 transition-transform">
-                                FSC Certification →
-                            </span>
-                        </a>
-                    </div>
-                </section>
-
-                {/* Trust Badges */}
-                <div className="max-w-4xl mx-auto mb-12">
-                    <TrustBadges variant="full" size="md" />
-                </div>
-
-                {/* CTA Section */}
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-4">Ready to Cut Compliance Costs?</h2>
-                    <p className="text-slate-600 mb-6 max-w-2xl mx-auto">Join teams saving 85% on sustainability compliance. Free to start, no credit card required.</p>
-                    <div className="flex justify-center gap-4 flex-wrap">
-                        <Link href="/login" className="gc-btn gc-btn-primary">Get Started Free</Link>
-                        <Link href="/contact" className="gc-btn gc-btn-secondary">Talk to Sales</Link>
-                    </div>
-                </div>
-            </div>
+      {/* Hero */}
+      <section className="hero-premium relative overflow-hidden text-white py-24 md:py-32 px-6">
+        <div className="absolute inset-0 hero-premium-gradient"></div>
+        <div className="hero-orb hero-orb-1"></div>
+        <div className="hero-orb hero-orb-2"></div>
+        <div className="relative z-10 max-w-5xl mx-auto text-center">
+          <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-sm font-bold mb-6 border border-white/20">
+            <Building2 className="w-4 h-4" />
+            ABOUT GREENCHAINZ
+          </span>
+          <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
+            The Global Trust Layer for<br />
+            <span className="hero-title-glow">Sustainable Commerce</span>
+          </h1>
+          <p className="text-xl md:text-2xl max-w-3xl mx-auto text-white/90 leading-relaxed">
+            We don&apos;t just help you go green — we enforce the mandates, verify the data, and make compliance automatic.
+          </p>
         </div>
-    )
+      </section>
+
+      {/* Mission Section */}
+      <section className="py-20 px-6 section-gradient-1 relative overflow-hidden">
+        <div className="deco-blob deco-blob-fern w-[500px] h-[500px] -top-40 -left-40 opacity-30"></div>
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div>
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-gc-fern-50 to-gc-teal-50 text-gc-fern-dark text-sm font-bold mb-5 border border-gc-fern-200">
+                <Target className="w-4 h-4" />
+                OUR MISSION
+              </span>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-6">
+                Making Sustainability <span className="text-aurora">Non-Negotiable</span>
+              </h2>
+              <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                The AEC industry wastes thousands of hours annually digging through archaic paperwork to verify EPDs, certifications, and LEED compliance. Suppliers with legitimate green products can&apos;t compete against greenwashing marketing claims.
+              </p>
+              <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                GreenChainz is changing that. We plug AI-powered sustainability verification directly into the tools professionals already use — Excel, Revit, and the browser — so compliance happens automatically, not as an afterthought.
+              </p>
+              <p className="text-lg text-slate-700 font-semibold">
+                The current process is the Pony Express. We&apos;re bringing it to the digital age.
+              </p>
+            </div>
+            <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 shadow-2xl">
+              {/* VIDEO PLACEHOLDER - Replace src with actual video URL */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-300/50 cursor-pointer hover:scale-110 transition-transform duration-300">
+                  <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+                <p className="text-slate-500 text-sm font-medium">Our Story Coming Soon</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* By the Numbers */}
+      <section className="py-16 px-6 stats-bar-premium text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 text-center">
+            <div>
+              <p className="text-4xl md:text-5xl font-black text-white mb-1">$471B</p>
+              <p className="text-white/80 text-sm font-medium">Green Construction Market</p>
+            </div>
+            <div>
+              <p className="text-4xl md:text-5xl font-black text-white mb-1">$1T</p>
+              <p className="text-white/80 text-sm font-medium">Projected by 2037</p>
+            </div>
+            <div>
+              <p className="text-4xl md:text-5xl font-black text-white mb-1">50K+</p>
+              <p className="text-white/80 text-sm font-medium">EPD Products Indexed</p>
+            </div>
+            <div>
+              <p className="text-4xl md:text-5xl font-black text-white mb-1">85%</p>
+              <p className="text-white/80 text-sm font-medium">Time Saved on Compliance</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* What Makes Us Different */}
+      <section className="py-24 px-6 bg-white relative overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-5">
+              What Makes Us <span className="text-ocean">Different</span>
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              We&apos;re not another green marketing platform. We&apos;re the verification infrastructure.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="feature-card-premium group">
+              <div className="feature-icon-premium">
+                <Shield className="w-8 h-8 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Data-Verified, Not Self-Reported</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Every product in our system is backed by verified EPDs, third-party certifications, and real environmental data — not marketing claims.
+              </p>
+            </div>
+            <div className="feature-card-premium group">
+              <div className="feature-icon-premium">
+                <Zap className="w-8 h-8 text-cyan-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Zero Workflow Disruption</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Our tools integrate into Excel, Revit, and Chrome. No new software to learn. No process changes. Sustainability data appears where you already work.
+              </p>
+            </div>
+            <div className="feature-card-premium group">
+              <div className="feature-icon-premium">
+                <Globe className="w-8 h-8 text-violet-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Built for Compliance</h3>
+              <p className="text-slate-600 leading-relaxed">
+                LEED, Buy Clean Act, BREEAM — we track evolving regulations so you stay ahead. Our AI flags compliance gaps before they become costly problems.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Founder Section */}
+      <section className="py-24 px-6 section-gradient-2 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto text-center">
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-100 to-cyan-100 text-emerald-700 text-sm font-bold mb-6 border border-emerald-200">
+            <Users className="w-4 h-4" />
+            LEADERSHIP
+          </span>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-12">
+            Built by Someone Who&apos;s <span className="text-aurora">Been There</span>
+          </h2>
+          <div className="card-vibrant p-10 text-left">
+            <h3 className="text-2xl font-black text-slate-900 mb-2">Jerit Norville</h3>
+            <p className="text-gc-fern font-bold mb-6">Founder & CEO</p>
+            <p className="text-slate-600 leading-relaxed mb-4">
+              Military veteran turned construction professional turned tech entrepreneur. Jerit saw firsthand how the AEC industry struggles with sustainability compliance — the manual processes, the paperwork mountains, the greenwashing that goes unchecked.
+            </p>
+            <p className="text-slate-600 leading-relaxed">
+              GreenChainz was born from that frustration. Built on Azure, powered by AI, and backed by partnerships with Autodesk and Microsoft, the platform is designed to make verified sustainable sourcing as easy as ordering from Amazon.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Partners & Technology */}
+      <section className="py-24 px-6 bg-white relative overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-5">
+              Powered by Industry Leaders
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              We partner with the organizations that set the standards and provide the data.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
+            <div className="flex flex-col items-center gap-3 p-6">
+              <Image src="/brand/autodesk-sustainability-partner.png" alt="Autodesk Sustainability Tech Partner" width={180} height={60} className="h-12 w-auto object-contain" />
+              <span className="text-xs text-slate-500 font-medium">Sustainability Tech Partner</span>
+            </div>
+            <div className="flex flex-col items-center gap-3 p-6">
+              <Image src="/trust/microsoft-partner.png" alt="Microsoft Partner" width={170} height={44} className="h-10 w-auto object-contain" />
+              <span className="text-xs text-slate-500 font-medium">ISV Partner</span>
+            </div>
+            <div className="flex flex-col items-center gap-3 p-6">
+              <Image src="/trust/building-transparency.svg" alt="Building Transparency" width={170} height={36} className="h-8 w-auto object-contain" unoptimized />
+              <span className="text-xs text-slate-500 font-medium">Data Provider</span>
+            </div>
+            <div className="flex flex-col items-center gap-3 p-6">
+              <Image src="/trust/epd.png" alt="EPD International" width={120} height={48} className="h-10 w-auto object-contain" />
+              <span className="text-xs text-slate-500 font-medium">EPD Certification</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center mt-4">
+            <div className="flex flex-col items-center gap-3 p-6">
+              <Image src="/trust/leed.png" alt="LEED" width={132} height={48} className="h-10 w-auto object-contain" />
+              <span className="text-xs text-slate-500 font-medium">LEED Compliance</span>
+            </div>
+            <div className="flex flex-col items-center gap-3 p-6">
+              <Image src="/trust/breeam.svg" alt="BREEAM" width={140} height={36} className="h-8 w-auto object-contain" unoptimized />
+              <span className="text-xs text-slate-500 font-medium">BREEAM Standards</span>
+            </div>
+            <div className="flex flex-col items-center gap-3 p-6">
+              <Image src="/trust/fsc.png" alt="FSC" width={120} height={48} className="h-10 w-auto object-contain" />
+              <span className="text-xs text-slate-500 font-medium">Forest Stewardship</span>
+            </div>
+            <div className="flex flex-col items-center gap-3 p-6">
+              <Image src="/trust/usgbc.png" alt="USGBC" width={132} height={48} className="h-10 w-auto object-contain" />
+              <span className="text-xs text-slate-500 font-medium">Green Building Council</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 px-6 section-gradient-3 relative overflow-hidden">
+        <div className="deco-blob deco-blob-emerald w-[400px] h-[400px] -top-20 -left-20 opacity-20"></div>
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <div className="cta-premium p-10 md:p-14">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-5">
+              Ready to Join the <span className="text-aurora">Green Revolution</span>?
+            </h2>
+            <p className="text-lg text-slate-600 mb-10 max-w-xl mx-auto">
+              Whether you&apos;re an architect, contractor, or material supplier — GreenChainz makes sustainability simple.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-5">
+              <Link href="/login" className="btn-aurora group shimmer">
+                <Sparkles className="w-5 h-5" />
+                <span>Get Started Free</span>
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+              <Link href="/contact" className="btn-cosmic">
+                Contact Us
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
 }

@@ -7,7 +7,7 @@ const BLOCKED_HOSTS = [
   'localhost',
   '127.0.0.1',
   '0.0.0.0',
-  '169.254.169.254', // AWS metadata service
+  '169.254.169.254', // Cloud metadata service
   '::1', // IPv6 localhost
 ];
 

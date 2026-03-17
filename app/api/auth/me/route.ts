@@ -1,51 +1,55 @@
-import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth/jwt';
-import { query } from '@/lib/db';
-import { generateTraceId, logAuthEvent } from '@/lib/auth/diagnostics';
+/**
+ * Example API Route demonstrating Azure Easy Auth usage
+ * 
+ * This route shows how to access user information from Easy Auth headers
+ * in a Next.js API route. The middleware automatically protects this route
+ * and makes user information available in the request headers.
+ */
 
-export async function GET(request: Request) {
-  const traceId = generateTraceId();
-  // Check both cookie names
-  const token = request.headers.get('cookie')?.match(/greenchainz-auth-token=([^;]+)/)?.[1] ||
-                request.headers.get('cookie')?.match(/token=([^;]+)/)?.[1];
+import { NextRequest, NextResponse } from 'next/server';
+import { getEasyAuthUser, hasRole } from '@/lib/auth/easy-auth';
 
-  if (!token) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
+export const dynamic = 'force-dynamic'; // Disable caching
 
-  const decoded = verifyToken(token);
-
-  if (!decoded) {
-    logAuthEvent('warn', 'Invalid token provided to /me', { traceId });
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  }
-
+/**
+ * GET /api/auth/me
+ * 
+ * Returns the current authenticated user's information from Easy Auth.
+ * This endpoint is automatically protected by the middleware.
+ */
+export async function GET(request: NextRequest) {
   try {
-    const res = await query(
-      'SELECT id, email, first_name, last_name, role, oauth_provider, created_at FROM Users WHERE id = $1',
-      [decoded.userId]
-    );
+    // Get user information from Easy Auth headers
+    const user = getEasyAuthUser(request.headers);
 
-    if (res.rows.length === 0) {
-      logAuthEvent('warn', 'User not found for token', { traceId, metadata: { userId: decoded.userId } });
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User information not available' },
+        { status: 401 }
+      );
     }
 
-    const user = res.rows[0];
-
+    // Return user information
     return NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        fullName: [user.first_name, user.last_name].filter(Boolean).join(' '),
-        role: user.role,
-        provider: user.oauth_provider
-      }
+        name: user.name,
+        roles: user.roles,
+        // Don't expose all claims to the client for security
+        isAdmin: hasRole(user, 'admin'),
+        isSupplier: hasRole(user, 'supplier'),
+      },
+      authentication: {
+        provider: 'Azure AD',
+        method: 'Easy Auth',
+      },
     });
   } catch (error) {
-    logAuthEvent('error', 'Database error in /me', { traceId, error });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[API] Error in /api/auth/me:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

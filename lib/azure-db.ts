@@ -16,6 +16,11 @@
  */
 
 import { Pool, PoolClient, QueryResult } from 'pg';
+
+// Force pg to use pure JavaScript implementation (no native bindings)
+// This prevents "Module not found: Can't resolve 'pg-native'" errors
+// in Node.js Alpine containers and Next.js Edge Runtime
+delete process.env.NODE_PG_FORCE_NATIVE;
 import {
   ASTMStandard,
   LaborUnits,

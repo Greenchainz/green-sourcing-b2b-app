@@ -2,7 +2,7 @@
  * Azure SDK Integrations for GreenChainz B2B Platform
  * 
  * This module re-exports all Azure service clients for convenient importing.
- * GreenChainz is 100% Azure-native (no Vercel, no Supabase, no AWS).
+ * GreenChainz is 100% Azure-native.
  * 
  * Usage:
  * ```typescript
