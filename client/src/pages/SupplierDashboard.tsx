@@ -17,7 +17,6 @@ export default function SupplierDashboard() {
   const [bidPrice, setBidPrice] = useState("");
   const [leadDays, setLeadDays] = useState("");
   const [bidNotes, setBidNotes] = useState("");
-  const [messageContent, setMessageContent] = useState("");
   const [selectedThread, setSelectedThread] = useState<number | null>(null);
 
   // Mock data - will be replaced with actual tRPC queries
