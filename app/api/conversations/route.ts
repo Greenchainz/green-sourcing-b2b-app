@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = getEasyAuthUser(request.headers);
     if (!user || !user.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const user_id = user.id;
@@ -114,6 +115,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const user = getEasyAuthUser(request.headers);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const buyer_id = user.id;
 
     // Check if conversation already exists
     const existingParams: (string | null)[] = [buyer_id, supplier_id_resolved];

@@ -42,6 +42,7 @@ export function ChatWidget() {
 
   useEffect(() => {
     if (selectedConversationId !== null) {
+    if (selectedConversationId) {
       scrollToBottom();
     }
   }, [messages, selectedConversationId]);
@@ -82,6 +83,27 @@ export function ChatWidget() {
         }
       } catch (error) {
         console.error("Failed to handle pending conversation:", error);
+      if (isOpen && pendingConversation?.rfqId && pendingConversation?.supplierId) {
+        try {
+          const res = await fetch("/api/conversations", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              rfq_id: pendingConversation.rfqId,
+              supplier_id: pendingConversation.supplierId,
+            }),
+            credentials: "include",
+          });
+          const data = await res.json();
+          if (data.success && data.data) {
+            selectConversation(data.data.id);
+            clearPendingConversation();
+          }
+        } catch (error) {
+          console.error("Failed to handle pending conversation:", error);
+        }
       }
     }
     handlePending();
@@ -145,6 +167,7 @@ export function ChatWidget() {
 
   const sendMessage = async () => {
     if (!inputContent.trim() || selectedConversationId === null) return;
+    if (!inputContent.trim() || !selectedConversationId) return;
 
     const content = inputContent;
     setInputContent("");
@@ -184,6 +207,7 @@ export function ChatWidget() {
       <div className="flex items-center justify-between px-4 py-3 bg-green-600 text-white">
         <div className="flex items-center gap-2">
           {selectedConversationId !== null && (
+          {selectedConversationId && (
             <button
               onClick={() => selectConversation(null)}
               className="p-1 hover:bg-green-700 rounded-full transition-colors"
