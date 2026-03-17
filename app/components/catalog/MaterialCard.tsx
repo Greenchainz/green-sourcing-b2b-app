@@ -7,7 +7,7 @@ import {
   CertificationBadgeGroup,
   type CertificationType,
 } from "./CertificationBadge";
-import { ScoreBar } from "./SustainabilityScore";
+import { calculateGCS } from "../../lib/scoring";
 
 export interface Material {
   id: string;
@@ -25,6 +25,19 @@ export interface Material {
   shadowSuppliers?: number;
   priceRange?: string;
   featured?: boolean;
+  // GreenChainz Score fields
+  epd_number?: string;
+  epd_expiry?: string;
+  epd_program_operator?: string;
+  hpd_available?: boolean;
+  astm_standards?: string[];
+  lead_time_days?: number;
+  regional_availability?: string[];
+  gwp_per_1000sf?: number;
+  category_baseline_gwp?: number;
+  voc_compliant?: boolean;
+  not_on_red_list?: boolean;
+  regional_within_500mi?: boolean;
 }
 
 export interface MaterialCardProps {
@@ -41,6 +54,20 @@ export interface MaterialCardProps {
   className?: string;
 }
 
+function getGCSColor(gcs: number): string {
+  if (gcs >= 80) return "var(--gc-emerald-600, #059669)";
+  if (gcs >= 60) return "#22c55e";
+  if (gcs >= 40) return "#eab308";
+  return "#ef4444";
+}
+
+function getGCSLabel(gcs: number): string {
+  if (gcs >= 80) return "Excellent";
+  if (gcs >= 60) return "Good";
+  if (gcs >= 40) return "Fair";
+  return "Poor";
+}
+
 export default function MaterialCard({
   material,
   isSelected = false,
@@ -51,6 +78,28 @@ export default function MaterialCard({
 }: MaterialCardProps) {
   const [isFocused, setIsFocused] = useState(false);
   const staggerClass = `gc-stagger-${Math.min((animationIndex % 5) + 1, 5)}`;
+
+  // Compute GCS if the material has the required new fields; fall back gracefully
+  const hasGCSData =
+    material.gwp_per_1000sf !== undefined &&
+    material.category_baseline_gwp !== undefined;
+
+  const gcsResult = hasGCSData
+    ? calculateGCS(material as Parameters<typeof calculateGCS>[0])
+    : null;
+
+  const gcs = gcsResult?.gcs ?? material.sustainabilityScore;
+  const gcsColor = getGCSColor(gcs);
+  const gcsLabel = getGCSLabel(gcs);
+  const carbonSavingsPct = gcsResult?.carbonSavingsPct ?? null;
+  const complianceStatus = gcsResult?.complianceStatus ?? false;
+  const leadTimeDays = material.lead_time_days;
+  const leadTimeWks =
+    leadTimeDays !== undefined
+      ? leadTimeDays >= 7
+        ? `${Math.round(leadTimeDays / 7)} wks`
+        : `${leadTimeDays}d`
+      : null;
 
   return (
     <article
@@ -156,8 +205,127 @@ export default function MaterialCard({
           by {material.manufacturer}
         </div>
 
-        {/* Sustainability Score Bar */}
-        <ScoreBar score={material.sustainabilityScore} className="" />
+        {/* ── GCS Hero + Metrics Strip ── */}
+        <div style={{ margin: "0.75rem 0 0.5rem" }}>
+          {/* ROW 1: Hero GCS */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.6rem",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "2rem",
+                fontWeight: 900,
+                lineHeight: 1,
+                color: gcsColor,
+              }}
+            >
+              {gcs}
+            </span>
+            <div>
+              <div
+                style={{
+                  fontSize: "0.6rem",
+                  fontWeight: 700,
+                  color: "var(--gc-slate-500)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                GreenChainz Score
+              </div>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  color: gcsColor,
+                }}
+              >
+                {gcsLabel}
+              </div>
+            </div>
+          </div>
+
+          {/* ROW 2: 4-column metrics strip */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "0.25rem",
+              background: "var(--gc-slate-50)",
+              borderRadius: "var(--gc-radius)",
+              padding: "0.4rem 0.25rem",
+              fontSize: "0.6rem",
+            }}
+          >
+            {/* Carbon Savings */}
+            <div
+              style={{ textAlign: "center", padding: "0.15rem 0" }}
+            >
+              <div style={{ fontSize: "0.75rem" }}>🌿</div>
+              <div
+                style={{
+                  fontWeight: 800,
+                  color:
+                    carbonSavingsPct !== null && carbonSavingsPct > 0
+                      ? "var(--gc-emerald-600, #059669)"
+                      : "var(--gc-slate-700)",
+                }}
+              >
+                {carbonSavingsPct !== null
+                  ? `${carbonSavingsPct > 0 ? "-" : "+"}${Math.abs(carbonSavingsPct)}%`
+                  : "—"}
+              </div>
+              <div style={{ color: "var(--gc-slate-500)" }}>Carbon</div>
+            </div>
+
+            {/* Cost Delta */}
+            <div style={{ textAlign: "center", padding: "0.15rem 0" }}>
+              <div style={{ fontSize: "0.75rem" }}>💰</div>
+              <div style={{ fontWeight: 800, color: "var(--gc-slate-700)" }}>
+                {gcsResult
+                  ? gcsResult.costDeltaPct === 0
+                    ? "Market"
+                    : `${gcsResult.costDeltaPct > 0 ? "+" : ""}${gcsResult.costDeltaPct}%`
+                  : "—"}
+              </div>
+              <div style={{ color: "var(--gc-slate-500)" }}>Cost</div>
+            </div>
+
+            {/* Lead Time */}
+            <div style={{ textAlign: "center", padding: "0.15rem 0" }}>
+              <div style={{ fontSize: "0.75rem" }}>⏱</div>
+              <div style={{ fontWeight: 800, color: "var(--gc-slate-700)" }}>
+                {leadTimeWks ?? "—"}
+              </div>
+              <div style={{ color: "var(--gc-slate-500)" }}>Lead</div>
+            </div>
+
+            {/* Compliance */}
+            <div style={{ textAlign: "center", padding: "0.15rem 0" }}>
+              <div style={{ fontSize: "0.75rem" }}>
+                {complianceStatus ? "✅" : "❌"}
+              </div>
+              <div
+                style={{
+                  fontWeight: 800,
+                  color: complianceStatus
+                    ? "var(--gc-emerald-600, #059669)"
+                    : "#ef4444",
+                }}
+              >
+                {complianceStatus ? "✓" : "✗"}
+              </div>
+              <div style={{ color: "var(--gc-slate-500)" }}>
+                {complianceStatus ? "EPD+ASTM" : "Pending"}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Certifications */}
         <div className="gc-material-certifications">
