@@ -121,7 +121,6 @@ function AppInner() {
       <TooltipProvider>
         <Toaster />
         <Router />
-        <UnifiedChatWidget />
         <ChainBot />
         <IncomingCallNotification onAccept={handleAcceptCall} />
         {activeCall && (

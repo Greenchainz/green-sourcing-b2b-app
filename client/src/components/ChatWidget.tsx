@@ -41,6 +41,7 @@ export function ChatWidget() {
   };
 
   useEffect(() => {
+    if (selectedConversationId !== null) {
     if (selectedConversationId) {
       scrollToBottom();
     }
@@ -49,6 +50,39 @@ export function ChatWidget() {
   // Handle pending conversation mapping
   useEffect(() => {
     async function handlePending() {
+      if (!isOpen || !pendingConversation) return;
+
+      let body: Record<string, unknown> | null = null;
+
+      if (pendingConversation.rfqId && pendingConversation.supplierId) {
+        // Buyer-initiated: RFQ + supplier
+        body = { rfq_id: pendingConversation.rfqId, supplier_id: pendingConversation.supplierId };
+      } else if (pendingConversation.supplierId) {
+        // Buyer-initiated: direct conversation with supplier (no RFQ)
+        body = { supplier_id: pendingConversation.supplierId };
+      } else if (pendingConversation.rfqId && pendingConversation.buyerId) {
+        // Supplier-initiated: contact a buyer about an RFQ
+        body = { rfq_id: pendingConversation.rfqId, buyer_id: pendingConversation.buyerId };
+      }
+
+      if (!body) return;
+
+      try {
+        const res = await fetch("/api/conversations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+          selectConversation(data.data.id);
+          clearPendingConversation();
+        }
+      } catch (error) {
+        console.error("Failed to handle pending conversation:", error);
       if (isOpen && pendingConversation?.rfqId && pendingConversation?.supplierId) {
         try {
           const res = await fetch("/api/conversations", {
@@ -132,6 +166,7 @@ export function ChatWidget() {
   }, [isOpen, selectedConversationId]);
 
   const sendMessage = async () => {
+    if (!inputContent.trim() || selectedConversationId === null) return;
     if (!inputContent.trim() || !selectedConversationId) return;
 
     const content = inputContent;
@@ -171,6 +206,7 @@ export function ChatWidget() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-green-600 text-white">
         <div className="flex items-center gap-2">
+          {selectedConversationId !== null && (
           {selectedConversationId && (
             <button
               onClick={() => selectConversation(null)}
