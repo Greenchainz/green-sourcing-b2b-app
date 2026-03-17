@@ -362,12 +362,11 @@ app/
 ├── page.tsx                    # / (homepage)
 ├── suppliers/
 │   ├── page.tsx                # /suppliers (list)
-│   └── [id]/
-│       └── page.tsx            # /suppliers/:id (details)
+│   └── [id]/                   # /suppliers/:id (details)
 └── api/
     └── suppliers/
-        └── [id]/
-            └── route.ts        # API endpoint
+        └── [id]/               # API endpoint
+            └── route.ts
 ```
 
 **State Management**:
@@ -792,7 +791,7 @@ As the platform evolves, update this file when you:
 
 ---
 
-**Last Updated**: 2026-01-04
+**Last Updated**: 2026-01-04  
 **Repository**: [jnorvi5/green-sourcing-b2b-app](https://github.com/jnorvi5/green-sourcing-b2b-app)  
 **Platform**: GreenChainz - Global Trust Layer for Sustainable Commerce
 
@@ -806,3 +805,8 @@ As the platform evolves, update this file when you:
 - **Database**: localhost:5432 (user/password/greenchainz_dev)
 - **OpenAPI Spec**: `backend/openapi.yaml`
 - **Environment Template**: `.env.example`
+
+## Authentication Migration
+
+- Migrate to Better Auth while preserving existing role logic (supplier/architect).
+- Explicitly forbid changes to `data.ts`, `scoring.ts`, and catalog files.
