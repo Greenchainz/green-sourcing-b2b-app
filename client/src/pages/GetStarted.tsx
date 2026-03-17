@@ -17,12 +17,8 @@ export default function GetStarted() {
   const handleContinue = () => {
     if (!selectedRole) return;
 
-    // Redirect to login with role and returnPath
-    const returnPath = selectedRole === 'buyer' ? '/materials' : '/supplier/register';
-    const loginUrl = new URL('/login', window.location.origin);
-    loginUrl.searchParams.set('returnPath', returnPath);
-    loginUrl.searchParams.set('role', selectedRole);
-    window.location.href = loginUrl.toString();
+    // Redirect to login with role
+    setLocation(`/login?role=${selectedRole}`);
   };
 
   return (
