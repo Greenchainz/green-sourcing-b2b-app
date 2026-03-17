@@ -190,7 +190,7 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
         ...prev,
         {
           id: Date.now(),
-          senderId: user!.id,
+          senderId: Number(user!.id),
           senderType: isBuyer ? "buyer" : "supplier",
           content: input,
           createdAt: new Date(),
@@ -225,11 +225,11 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex ${msg.senderId === user?.id ? "justify-end" : "justify-start"}`}
+              className={`flex ${Number(msg.senderId) === Number(user?.id) ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`max-w-xs px-4 py-2 rounded-lg ${
-                  msg.senderId === user?.id
+                  Number(msg.senderId) === Number(user?.id)
                     ? "bg-green-500 text-white rounded-br-none"
                     : "bg-gray-200 text-gray-900 rounded-bl-none"
                 }`}
