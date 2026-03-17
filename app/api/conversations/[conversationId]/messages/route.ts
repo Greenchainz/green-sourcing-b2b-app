@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { WebPubSubServiceClient } from "@azure/web-pubsub";
+import { getEasyAuthUser } from "@/lib/auth/easy-auth";
 
 const pool = getPool();
 
@@ -23,6 +24,21 @@ export async function GET(
 ) {
   try {
     const { conversationId } = params;
+    const user = getEasyAuthUser(request.headers);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify user is a participant in this conversation
+    const convoResult = await pool.query(
+      `SELECT id FROM conversations WHERE id = $1 AND (buyer_id = $2 OR supplier_id = $2)`,
+      [conversationId, user.id]
+    );
+
+    if (convoResult.rows.length === 0) {
+      return NextResponse.json({ error: "Not Found" }, { status: 403 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
     const before = searchParams.get("before"); // Message ID for pagination
@@ -55,8 +71,7 @@ export async function GET(
     const result = await pool.query(query, params);
 
     // Mark messages as read for the current user
-    // TODO: Get user_id from auth session
-    const user_id = "default-user-id";
+    const user_id = user.id;
 
     await pool.query(
       `UPDATE messages 
@@ -102,8 +117,22 @@ export async function POST(
       );
     }
 
-    // TODO: Get sender_id from auth session
-    const sender_id = "default-user-id";
+    const user = getEasyAuthUser(request.headers);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify user is a participant in this conversation
+    const convoResult = await pool.query(
+      `SELECT id FROM conversations WHERE id = $1 AND (buyer_id = $2 OR supplier_id = $2)`,
+      [conversationId, user.id]
+    );
+
+    if (convoResult.rows.length === 0) {
+      return NextResponse.json({ error: "Not Found" }, { status: 403 });
+    }
+
+    const sender_id = user.id;
 
     // Insert message
     const result = await pool.query(
