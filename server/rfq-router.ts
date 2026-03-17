@@ -8,18 +8,43 @@ import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers, users } from "../driz
 import { eq, desc } from "drizzle-orm";
 import { enrichRfqWithAiAnalysis } from "./ai-agent-service";
 
-/** Lazily initialise Stripe — only when STRIPE_SECRET_KEY is present */
-function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const Stripe = require("stripe");
-  return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
+/**
+ * Microsoft Commercial Marketplace — SaaS Fulfillment API v2
+ * https://learn.microsoft.com/en-us/azure/marketplace/partner-center-portal/pc-saas-fulfillment-api-v2
+ *
+ * TODO (post-ISV activation):
+ *   1. Exchange purchaseToken for subscriptionId via POST /saas/subscriptions/resolve
+ *   2. Activate subscription via POST /saas/subscriptions/{subscriptionId}/activate
+ *   3. Store subscriptionId on the user record for entitlement checks
+ *
+ * Until activation, microsoftOrderId is optional — platform is transactable
+ * through the Microsoft ISV program and billing is handled by Microsoft.
+ */
+async function verifyMicrosoftOrder(microsoftOrderId?: string): Promise<{
+  verified: boolean;
+  orderId: string;
+  amount: number;
+}> {
+  if (!microsoftOrderId) {
+    // Dev / pre-activation bypass — Microsoft billing not yet live
+    return { verified: true, orderId: "msft_dev_" + Date.now(), amount: 25 };
+  }
+
+  // TODO: call Microsoft SaaS Fulfillment API to validate the order
+  // const endpoint = `https://marketplaceapi.microsoft.com/api/saas/subscriptions/${microsoftOrderId}?api-version=2018-08-31`;
+  // const token = await getMicrosoftMarketplaceToken(); // Azure Entra ID client-credentials
+  // const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+  // if (!res.ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Microsoft order verification failed" });
+  // const subscription = await res.json();
+  // return { verified: true, orderId: subscription.id, amount: 25 };
+
+  return { verified: true, orderId: microsoftOrderId, amount: 25 };
 }
 
 /**
  * RFQ Marketplace Router
- * Handles RFQ submission, bidding, supplier matching, and real-time messaging
+ * Handles RFQ submission, bidding, supplier matching, and real-time messaging.
+ * Payment processing: Microsoft Commercial Marketplace ISV transact (not Stripe).
  */
 
 export const rfqMarketplaceRouter = router({
@@ -40,7 +65,8 @@ export const rfqMarketplaceRouter = router({
         notes: z.string().optional(),
         dueDate: z.date().optional(),
         buyerPersona: z.string().optional(),
-        depositPaymentIntentId: z.string().min(1, "Deposit payment intent ID is required"),
+        // Microsoft Commercial Marketplace order/subscription ID (optional pre-activation)
+        microsoftOrderId: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -57,67 +83,24 @@ export const rfqMarketplaceRouter = router({
         });
       }
 
-      // ── 2. Stripe deposit verification (dev-mode bypass when key absent) ───
-      const stripe = getStripe();
-      let depositVerified = false;
-      let depositAmount: number | undefined;
+      // ── 2. Microsoft ISV transact verification ──────────────────────────────
+      const { verified: depositVerified, orderId, amount: depositAmount } =
+        await verifyMicrosoftOrder(input.microsoftOrderId);
 
-      if (stripe) {
-        const paymentIntent = await stripe.paymentIntents.retrieve(input.depositPaymentIntentId);
-        if (paymentIntent.status !== "succeeded") {
-          throw new TRPCError({
-            code: "PAYMENT_REQUIRED",
-            message: "Deposit payment could not be verified",
-            cause: { errorCode: "PAYMENT_NOT_VERIFIED" },
-          });
-        }
-        depositVerified = true;
-        depositAmount = paymentIntent.amount / 100; // convert cents → dollars
-      } else {
-        // Dev-mode bypass: no Stripe key configured
-        depositVerified = true;
-        depositAmount = 25;
+      if (!depositVerified) {
+        throw new TRPCError({
+          code: "PAYMENT_REQUIRED",
+          message: "Microsoft order verification failed",
+          cause: { errorCode: "MSFT_ORDER_NOT_VERIFIED" },
+        });
       }
 
       return submitRfq(ctx.user.id, {
         ...(input as RfqSubmissionInput),
-        depositPaymentIntentId: input.depositPaymentIntentId,
+        depositPaymentIntentId: orderId, // reuse existing field — stores msft order id
         depositVerified,
         depositAmount,
       });
-    }),
-
-  // Create a Stripe payment intent for the RFQ deposit ($25)
-  createDepositIntent: protectedProcedure
-    .input(z.object({ rfqMaterialCount: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const stripe = getStripe();
-
-      if (!stripe) {
-        // Dev-mode: return a placeholder intent so the UI can proceed
-        return {
-          clientSecret: "dev_mode_no_stripe_key",
-          intentId: "dev_intent_" + Date.now(),
-          devMode: true,
-        };
-      }
-
-      const depositAmount = 2500; // $25.00 in cents
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: depositAmount,
-        currency: "usd",
-        metadata: {
-          userId: ctx.user.id.toString(),
-          type: "rfq_deposit",
-          materialCount: input.rfqMaterialCount.toString(),
-        },
-      });
-
-      return {
-        clientSecret: paymentIntent.client_secret,
-        intentId: paymentIntent.id,
-        devMode: false,
-      };
     }),
 
   // Get RFQ with all bids and analytics
@@ -278,14 +261,11 @@ export const rfqMarketplaceRouter = router({
       const db = await getDb();
       if (!db) return null;
 
-      // Get RFQ — verify ownership (buyers see their own; suppliers see matched RFQs)
       const rfq = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
       if (!rfq.length) return null;
 
-      // Get items
       const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, input.rfqId));
 
-      // Get bids with supplier info
       const bids = await db
         .select({
           id: rfqBids.id,
@@ -305,7 +285,6 @@ export const rfqMarketplaceRouter = router({
         .where(eq(rfqBids.rfqId, input.rfqId))
         .orderBy(desc(rfqBids.createdAt));
 
-      // Get analytics
       const analytics = await db
         .select()
         .from(rfqAnalytics)
