@@ -2,7 +2,7 @@
  * Azure Native Configuration
  * 
  * Centralized Azure service clients and database connections
- * GreenChainz is 100% Azure-only (no Vercel, no Supabase, no AWS)
+ * GreenChainz is 100% Azure-only
  * 
  * This module provides:
  * - Azure SQL Database connection pooling with retries
@@ -17,6 +17,7 @@
  */
 
 import { BlobServiceClient } from "@azure/storage-blob";
+import { getAzureCredential } from "./credentials";
 let sql: any;
 
 function getMssqlUnavailableError(): Error {
@@ -147,13 +148,30 @@ let blobService: BlobServiceClient | null = null;
  */
 export function getBlobServiceClient(): BlobServiceClient {
     if (!blobService) {
+        const storageAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
         const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-        if (!connectionString) {
-            throw new Error("Missing AZURE_STORAGE_CONNECTION_STRING environment variable");
+
+        if (!storageAccountName && !connectionString) {
+            throw new Error(
+                "Missing AZURE_STORAGE_ACCOUNT_NAME or AZURE_STORAGE_CONNECTION_STRING environment variable. " +
+                "For managed identity (production), set AZURE_STORAGE_ACCOUNT_NAME. " +
+                "For connection string (local dev), set AZURE_STORAGE_CONNECTION_STRING."
+            );
         }
-        blobService = BlobServiceClient.fromConnectionString(connectionString);
+
+        // Use managed identity if account name is provided (production)
+        if (storageAccountName) {
+            const accountUrl = `https://${storageAccountName}.blob.core.windows.net`;
+            const credential = getAzureCredential();
+            blobService = new BlobServiceClient(accountUrl, credential);
+            console.log("✅ Legacy blob service client initialized with Managed Identity");
+        } else if (connectionString) {
+            // Fallback to connection string (local development)
+            blobService = BlobServiceClient.fromConnectionString(connectionString);
+            console.log("✅ Legacy blob service client initialized with connection string (local dev)");
+        }
     }
-    return blobService;
+    return blobService as BlobServiceClient;
 }
 
 /**

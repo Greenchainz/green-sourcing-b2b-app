@@ -1,0 +1,31 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM materials; SELECT id, name, category FROM materials LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute SELECT COUNT(*) as cnt FROM materials; SELECT id, name, category FROM materials LIMIT 5;",
+  "rows": [
+    {
+      "cnt": "22"
+    },
+    {
+      "cnt": "id\tname\tcategory"
+    },
+    {
+      "cnt": "1\tUnitized Curtain Wall System\tGlazing"
+    },
+    {
+      "cnt": "2\tAluminum Framed Storefront\tGlazing"
+    },
+    {
+      "cnt": "3\tTriple-Glazed IGU\tGlazing"
+    },
+    {
+      "cnt": "4\tMineral Wool Board\tInsulation"
+    },
+    {
+      "cnt": "5\tPolyiso Rigid Insulation\tInsulation"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n22\nid\tname\tcategory\n1\tUnitized Curtain Wall System\tGlazing\n2\tAluminum Framed Storefront\tGlazing\n3\tTriple-Glazed IGU\tGlazing\n4\tMineral Wool Board\tInsulation\n5\tPolyiso Rigid Insulation\tInsulation\n",
+  "stderr": "",
+  "execution_time_ms": 519
+}

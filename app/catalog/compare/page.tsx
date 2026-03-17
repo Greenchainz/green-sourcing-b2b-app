@@ -95,7 +95,7 @@ function CompareContent() {
                       padding: "1rem",
                       textAlign: "center",
                       minWidth: "200px",
-                      background: "white",
+                      background: "#0d1a0d",
                       borderBottom: "1px solid var(--gc-slate-200)",
                       borderLeft: "1px solid var(--gc-slate-100)",
                     }}
@@ -228,7 +228,7 @@ function CompareContent() {
                         textAlign: "center",
                         borderBottom: "1px solid var(--gc-slate-100)",
                         borderLeft: "1px solid var(--gc-slate-100)",
-                        background: isBest ? "var(--gc-fern-50)" : "white",
+                        background: isBest ? "rgba(113, 179, 64, 0.15)" : "#0d1a0d",
                       }}
                     >
                       <div

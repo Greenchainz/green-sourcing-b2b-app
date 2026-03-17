@@ -5,20 +5,18 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-
 export default function CreateRFQPage() {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
-    projectName: "",
+    project_name: "",
     description: "",
-    deadline: "",
-    materials: [{ name: "", quantity: "", unit: "pcs" }],
+    delivery_date: "",
+    delivery_address: "",
+    materials: [{ material_name: "", quantity: "", unit: "sf" }],
   });
 
   const handleMaterialChange = (index: number, field: string, value: string) => {
@@ -30,7 +28,7 @@ export default function CreateRFQPage() {
   const addMaterial = () => {
     setFormData({
       ...formData,
-      materials: [...formData.materials, { name: "", quantity: "", unit: "pcs" }],
+      materials: [...formData.materials, { material_name: "", quantity: "", unit: "sf" }],
     });
   };
 
@@ -46,19 +44,26 @@ export default function CreateRFQPage() {
     setError("");
 
     try {
-      if (!token) throw new Error("Not authenticated");
+      if (!user) throw new Error("Not authenticated");
 
-      const response = await fetch(`${BACKEND_URL}/api/v2/rfqs`, {
+      const response = await fetch("/api/rfqs", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
-          project_name: formData.projectName,
-          message: formData.description,
-          deadline: formData.deadline,
-          items: formData.materials,
+          project_name: formData.project_name,
+          delivery_date: formData.delivery_date,
+          delivery_location: {
+            lat: 0,
+            lng: 0,
+            address: formData.delivery_address,
+          },
+          notes: formData.description,
+          materials: formData.materials.map((m) => ({
+            material_id: m.material_name, // API accepts name string for matching
+            quantity: parseFloat(m.quantity) || 1,
+            unit: m.unit,
+          })),
         }),
       });
 
@@ -67,7 +72,7 @@ export default function CreateRFQPage() {
         throw new Error(data.error || "Failed to create RFQ");
       }
 
-      router.push("/rfqs");
+      router.push("/rfq-dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -106,9 +111,9 @@ export default function CreateRFQPage() {
                 type="text"
                 required
                 className="gc-input"
-                value={formData.projectName}
+                value={formData.project_name}
                 onChange={(e) =>
-                  setFormData({ ...formData, projectName: e.target.value })
+                  setFormData({ ...formData, project_name: e.target.value })
                 }
                 placeholder="e.g. Downtown Office Renovation"
               />
@@ -129,15 +134,28 @@ export default function CreateRFQPage() {
             </div>
 
             <div className="gc-form-group">
+              <label htmlFor="deliveryAddress" className="gc-label gc-label-required">Delivery Address</label>
+              <input
+                id="deliveryAddress"
+                type="text"
+                required
+                className="gc-input"
+                value={formData.delivery_address}
+                onChange={(e) => setFormData({ ...formData, delivery_address: e.target.value })}
+                placeholder="e.g. 123 Main St, Newark, NJ 07102"
+              />
+            </div>
+
+            <div className="gc-form-group">
               <label htmlFor="deadline" className="gc-label gc-label-required">Deadline</label>
               <input
                 id="deadline"
                 type="date"
                 required
                 className="gc-input"
-                value={formData.deadline}
+                value={formData.delivery_date}
                 onChange={(e) =>
-                  setFormData({ ...formData, deadline: e.target.value })
+                  setFormData({ ...formData, delivery_date: e.target.value })
                 }
               />
             </div>
@@ -148,15 +166,15 @@ export default function CreateRFQPage() {
               {formData.materials.map((material, index) => (
                 <div key={index} className="flex gap-4 mb-4 items-end bg-gray-50 p-4 rounded-lg">
                   <div className="flex-grow">
-                    <label htmlFor={`material-name-${index}`} className="gc-label text-sm mb-1">Material Name</label>
+                    <label htmlFor={`material-name-${index}`} className="gc-label text-sm mb-1">Material</label>
                     <input
                       id={`material-name-${index}`}
                       type="text"
                       required
                       className="gc-input"
-                      value={material.name}
+                      value={material.material_name}
                       onChange={(e) =>
-                        handleMaterialChange(index, "name", e.target.value)
+                        handleMaterialChange(index, "material_name", e.target.value)
                       }
                       placeholder="e.g. Steel Beams"
                     />
@@ -176,15 +194,22 @@ export default function CreateRFQPage() {
                   </div>
                   <div className="w-24">
                     <label htmlFor={`material-unit-${index}`} className="gc-label text-sm mb-1">Unit</label>
-                    <input
+                    <select
                       id={`material-unit-${index}`}
-                      type="text"
                       className="gc-input"
                       value={material.unit}
                       onChange={(e) =>
                         handleMaterialChange(index, "unit", e.target.value)
                       }
-                    />
+                    >
+                      <option value="sf">sf</option>
+                      <option value="lf">lf</option>
+                      <option value="cy">cy</option>
+                      <option value="ton">ton</option>
+                      <option value="m2">m2</option>
+                      <option value="m3">m3</option>
+                      <option value="units">units</option>
+                    </select>
                   </div>
                   {formData.materials.length > 1 && (
                     <button

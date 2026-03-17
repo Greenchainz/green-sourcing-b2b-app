@@ -7,7 +7,7 @@
 
 'use client'
 
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '@/lib/auth'
 import AskSupplierButton from '../components/AskSupplierButton'
 
 export default function ExampleProductPage() {

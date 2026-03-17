@@ -1,0 +1,21 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS material_technical_specs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  material_id INT NOT NULL,\n  astm_codes JSON DEFAULT ('[]'),\n  ul_listing VARCHAR(255),\n  ul_design_number VARCHAR(50),\n  icc_es_report VARCHAR(50),\n  fire_rating VARCHAR(50),\n  fire_rating_standard VARCHAR(100),\n  char_rate VARCHAR(50),\n  compressive_strength_psi INT,\n  modulus_of_elasticity_ksi INT,\n  flexural_strength_psi INT,\n  tensile_strength_psi INT,\n  stiffness_ksi INT,\n  r_value_per_inch DECIMAL(5,2),\n  lttr_15_year DECIMAL(5,2),\n  perm_rating DECIMAL(5,2),\n  thermal_u_value DECIMAL(8,4),\n  stc_rating INT,\n  iic_rating INT,\n  nrc_rating DECIMAL(3,2),\n  labor_units DECIMAL(5,2),\n  cure_time_hours INT,\n  weight_per_unit DECIMAL(8,2),\n  slump_workability VARCHAR(50),\n  installation_difficulty INT,\n  lead_time_days INT,\n  otif_percentage DECIMAL(5,2),\n  supplier_z_score DECIMAL(5,2),\n  warranty_years INT,\n  maintenance_cycle_years INT,\n  expected_lifespan_years INT,\n  data_source VARCHAR(100),\n  data_confidence INT DEFAULT 50,\n  last_verified_at TIMESTAMP NULL,\n  verified_by INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_tech_specs_material (material_id),\n  INDEX idx_tech_specs_ul (ul_listing),\n  INDEX idx_tech_specs_icc_es (icc_es_report)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute CREATE TABLE IF NOT EXISTS material_technical_specs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  material_id INT NOT NULL,\n  astm_codes JSON DEFAULT ('[]'),\n  ul_listing VARCHAR(255),\n  ul_design_number VARCHAR(50),\n  icc_es_report VARCHAR(50),\n  fire_rating VARCHAR(50),\n  fire_rating_standard VARCHAR(100),\n  char_rate VARCHAR(50),\n  compressive_strength_psi INT,\n  modulus_of_elasticity_ksi INT,\n  flexural_strength_psi INT,\n  tensile_strength_psi INT,\n  stiffness_ksi INT,\n  r_value_per_inch DECIMAL(5,2),\n  lttr_15_year DECIMAL(5,2),\n  perm_rating DECIMAL(5,2),\n  thermal_u_value DECIMAL(8,4),\n  stc_rating INT,\n  iic_rating INT,\n  nrc_rating DECIMAL(3,2),\n  labor_units DECIMAL(5,2),\n  cure_time_hours INT,\n  weight_per_unit DECIMAL(8,2),\n  slump_workability VARCHAR(50),\n  installation_difficulty INT,\n  lead_time_days INT,\n  otif_percentage DECIMAL(5,2),\n  supplier_z_score DECIMAL(5,2),\n  warranty_years INT,\n  maintenance_cycle_years INT,\n  expected_lifespan_years INT,\n  data_source VARCHAR(100),\n  data_confidence INT DEFAULT 50,\n  last_verified_at TIMESTAMP NULL,\n  verified_by INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_tech_specs_material (material_id),\n  INDEX idx_tech_specs_ul (ul_listing),\n  INDEX idx_tech_specs_icc_es (icc_es_report)\n);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 4 column 32 near \"'[]'),",
+    "  ul_listing VARCHAR(255),",
+    "  ul_design_number VARCHAR(50),",
+    "  icc_es_report VARCHAR(50),",
+    "  fire_rating VARCHAR(50),",
+    "  fire_rating_standard VARCHAR(100),",
+    "  char_rate VARCHAR(50),",
+    "  compressive_strength_psi INT,",
+    "  modulus_of_elasticity_ksi INT,",
+    "  flexural_strength_psi INT,",
+    "  tensile_strength_psi INT,",
+    "  stiffness_ksi INT,",
+    "  r_value_per_inch DECIMAL(5,2),",
+    "  lttr_"
+  ]
+}

@@ -25,14 +25,6 @@ Write-Host "Creating session-secret..."
 az keyvault secret set --vault-name $vaultName --name session-secret --value $sessionSecret | Out-Null
 Write-Host "✓ session-secret created" -ForegroundColor Green
 
-Write-Host "Creating stripe-secret-key (placeholder)..."
-az keyvault secret set --vault-name $vaultName --name stripe-secret-key --value "sk_test_placeholder_replace_with_real_key" | Out-Null
-Write-Host "✓ stripe-secret-key created" -ForegroundColor Green
-
-Write-Host "Creating stripe-webhook-secret (placeholder)..."
-az keyvault secret set --vault-name $vaultName --name stripe-webhook-secret --value "whsec_placeholder_replace_with_real_secret" | Out-Null
-Write-Host "✓ stripe-webhook-secret created" -ForegroundColor Green
-
 # Database credentials from Database-URL
 Write-Host ""
 Write-Host "⚠️  IMPORTANT: Database credentials" -ForegroundColor Yellow

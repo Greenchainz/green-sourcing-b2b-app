@@ -86,8 +86,8 @@ CREATE TABLE IF NOT EXISTS Supplier_Subscriptions (
     
     -- Billing info
     BillingCycle VARCHAR(20) DEFAULT 'monthly' CHECK (BillingCycle IN ('monthly', 'annual', 'lifetime')),
-    StripeCustomerID VARCHAR(255),
-    StripeSubscriptionID VARCHAR(255),
+    PaymentProcessorCustomerID VARCHAR(255),
+    PaymentProcessorSubscriptionID VARCHAR(255),
     
     -- Period tracking
     CurrentPeriodStart TIMESTAMP,

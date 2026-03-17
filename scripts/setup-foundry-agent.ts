@@ -1,5 +1,5 @@
 import { AIProjectClient } from '@azure/ai-projects';
-import { DefaultAzureCredential } from '@azure/identity';
+import { getAzureCredential } from '../lib/azure/credentials';
 
 async function setupSubmittalAgent() {
   const endpoint = process.env.AZURE_AI_FOUNDRY_ENDPOINT;
@@ -9,7 +9,7 @@ async function setupSubmittalAgent() {
   }
 
   console.log("Connecting to Foundry project...");
-  const credential = new DefaultAzureCredential();
+  const credential = getAzureCredential();
   const client = AIProjectClient.fromEndpoint(endpoint, credential);
 
   // Create agent (ONE TIME ONLY)

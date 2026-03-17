@@ -283,7 +283,7 @@ function CompareItem({
       style={{
         minWidth: 140,
         width: 140,
-        background: 'white',
+        background: '#0d1a0d',
         borderRadius: 'var(--gc-radius)',
         border: '1px solid var(--gc-slate-200)',
         overflow: 'hidden',

@@ -68,7 +68,7 @@ export default function TermsPage() {
                             
                             <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">3.1 RFQ Deposit Requirement</h3>
                             <p className="mb-3">
-                                To create a Request for Quote (RFQ), architects must pay a <strong>$50 refundable deposit</strong> per RFQ, processed securely via Stripe.
+                                To create a Request for Quote (RFQ), architects must pay a <strong>$50 refundable deposit</strong> per RFQ.
                             </p>
                             <p className="mb-3">
                                 <strong>Purpose:</strong> The deposit ensures serious intent and reduces spam, protecting suppliers from fraudulent requests.
@@ -94,15 +94,12 @@ export default function TermsPage() {
                                 </div>
                             </div>
                             <p className="text-sm text-slate-600">
-                                Refunds are processed within 5-10 business days to the original payment method via Stripe.
+                                Refunds are processed within 5-10 business days to the original payment method.
                             </p>
 
                             <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">3.3 Payment Processing</h3>
                             <p>
-                                All payments are processed by <strong>Stripe</strong>, our third-party payment processor. By making a payment, you agree to Stripe's{' '}
-                                <a href="https://stripe.com/legal" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 underline">
-                                    Terms of Service
-                                </a>. We do not store credit card information on our servers.
+                                All payments are processed securely. We do not store credit card information on our servers.
                             </p>
                         </section>
 

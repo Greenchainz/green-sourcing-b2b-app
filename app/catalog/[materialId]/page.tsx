@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { getMaterial, type MaterialDetail } from '../data'
+import { calculateGCS } from '../../lib/scoring'
 
 // Score badge component
 function ScoreBadge({ score }: { score: number }) {
@@ -90,7 +91,7 @@ function CertBadge({ cert }: { cert: MaterialDetail['certificationDetails'][0] }
             fontSize: '0.7rem',
             fontWeight: 600,
             color: 'var(--gc-emerald-700)',
-            background: 'white',
+            background: '#0d1a0d',
             border: '1px solid var(--gc-emerald-300)',
             borderRadius: 'var(--gc-radius-sm)',
             textDecoration: 'none',
@@ -390,39 +391,44 @@ export default function MaterialDetailPage() {
       {/* Tab Content */}
       <div className="gc-container" style={{ padding: '2rem 1rem 4rem' }}>
         {activeTab === 'overview' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-            {/* Certifications */}
-            <section>
-              <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem', fontWeight: 800, color: 'var(--gc-slate-900)' }}>
-                Certifications
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {material.certificationDetails.map((cert, i) => (
-                  <CertBadge key={i} cert={cert} />
-                ))}
-              </div>
-            </section>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+              {/* Certifications */}
+              <section>
+                <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem', fontWeight: 800, color: 'var(--gc-slate-900)' }}>
+                  Certifications
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {material.certificationDetails.map((cert, i) => (
+                    <CertBadge key={i} cert={cert} />
+                  ))}
+                </div>
+              </section>
 
-            {/* Environmental Data */}
-            <section>
-              <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem', fontWeight: 800, color: 'var(--gc-slate-900)' }}>
-                Environmental Data
-              </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                {material.environmentalData.gwp !== undefined && (
-                  <MetricCard label="GWP" value={material.environmentalData.gwp} unit="kg CO2e" />
-                )}
-                {material.environmentalData.recycledContent !== undefined && (
-                  <MetricCard label="Recycled Content" value={material.environmentalData.recycledContent} unit="%" />
-                )}
-                {material.environmentalData.recyclableContent !== undefined && (
-                  <MetricCard label="Recyclable" value={material.environmentalData.recyclableContent} unit="%" />
-                )}
-                {material.environmentalData.voc !== undefined && (
-                  <MetricCard label="VOC" value={material.environmentalData.voc} unit="g/L" />
-                )}
-              </div>
-            </section>
+              {/* Environmental Data */}
+              <section>
+                <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem', fontWeight: 800, color: 'var(--gc-slate-900)' }}>
+                  Environmental Data
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                  {material.environmentalData.gwp !== undefined && (
+                    <MetricCard label="GWP" value={material.environmentalData.gwp} unit="kg CO2e" />
+                  )}
+                  {material.environmentalData.recycledContent !== undefined && (
+                    <MetricCard label="Recycled Content" value={material.environmentalData.recycledContent} unit="%" />
+                  )}
+                  {material.environmentalData.recyclableContent !== undefined && (
+                    <MetricCard label="Recyclable" value={material.environmentalData.recyclableContent} unit="%" />
+                  )}
+                  {material.environmentalData.voc !== undefined && (
+                    <MetricCard label="VOC" value={material.environmentalData.voc} unit="g/L" />
+                  )}
+                </div>
+              </section>
+            </div>
+
+            {/* Sustainability Profile */}
+            <SustainabilityProfile material={material} />
           </div>
         )}
 
@@ -516,5 +522,183 @@ function MetricCard({ label, value, unit }: { label: string; value: number; unit
         <span style={{ fontSize: '0.8125rem', color: 'var(--gc-slate-500)' }}>{unit}</span>
       </div>
     </div>
+  )
+}
+
+// Sustainability Profile section
+function SustainabilityProfile({ material }: { material: MaterialDetail }) {
+  const gcsResult = calculateGCS(material)
+  const { gcs, sustainabilityScore, performanceScore, carbonSavingsPct, complianceStatus } = gcsResult
+
+  const gcsColor =
+    gcs >= 80 ? 'var(--gc-emerald-600, #059669)' :
+    gcs >= 60 ? '#22c55e' :
+    gcs >= 40 ? '#eab308' :
+    '#ef4444'
+
+  const gcsLabel =
+    gcs >= 80 ? 'Top 15%' :
+    gcs >= 60 ? 'Top 35%' :
+    gcs >= 40 ? 'Average' :
+    'Below Avg'
+
+  const carbonNegative = material.gwp_per_1000sf < 0
+  const carbonDelta = material.category_baseline_gwp > 0
+    ? Math.round((1 - material.gwp_per_1000sf / material.category_baseline_gwp) * 100)
+    : 0
+
+  const fireRating = material.specifications['Fire Rating'] ?? '—'
+  const astmDisplay = material.astm_standards.length > 0
+    ? material.astm_standards.map(s => s.startsWith('ASTM ') ? s.slice(5) : s).join(', ')
+    : '—'
+
+  const cellStyle: React.CSSProperties = {
+    padding: '0.75rem 1rem',
+    fontSize: '0.875rem',
+    borderBottom: '1px solid var(--gc-slate-100)',
+    verticalAlign: 'middle',
+  }
+
+  const rows: Array<{ label: string; value: React.ReactNode; comparison: React.ReactNode }> = [
+    {
+      label: 'GreenChainz Score',
+      value: (
+        <span style={{ fontWeight: 800, color: gcsColor }}>
+          {gcs} / 100
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gc-slate-500)', marginLeft: '0.5rem' }}>
+            (S: {sustainabilityScore} · P: {performanceScore})
+          </span>
+        </span>
+      ),
+      comparison: <span style={{ color: gcsColor, fontWeight: 700 }}>↑ {gcsLabel}</span>,
+    },
+    {
+      label: 'Carbon (kgCO2e/1000SF)',
+      value: (
+        <span style={{ fontWeight: 700, color: carbonNegative ? 'var(--gc-emerald-600, #059669)' : 'var(--gc-slate-900)' }}>
+          {carbonNegative && '🌿 '}
+          {material.gwp_per_1000sf.toLocaleString()}
+        </span>
+      ),
+      comparison: (
+        <span style={{ fontWeight: 700, color: carbonDelta > 0 ? 'var(--gc-emerald-600, #059669)' : '#ef4444' }}>
+          {carbonDelta > 0 ? `−${carbonDelta}%` : `+${Math.abs(carbonDelta)}%`} vs {material.category_baseline_gwp.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      label: 'EPD Status',
+      value: material.epd_number
+        ? <span style={{ color: 'var(--gc-emerald-600, #059669)', fontWeight: 700 }}>✓ Valid to {new Date(material.epd_expiry).getFullYear()} ({material.epd_program_operator})</span>
+        : <span style={{ color: 'var(--gc-slate-400)' }}>—</span>,
+      comparison: '—',
+    },
+    {
+      label: 'HPD Available',
+      value: material.hpd_available
+        ? <span style={{ color: 'var(--gc-emerald-600, #059669)', fontWeight: 700 }}>✓ Yes</span>
+        : <span style={{ color: 'var(--gc-slate-400)' }}>—</span>,
+      comparison: '—',
+    },
+    {
+      label: 'Fire Rating',
+      value: fireRating !== '—'
+        ? <span style={{ fontWeight: 700, color: 'var(--gc-slate-900)' }}>{fireRating}</span>
+        : <span style={{ color: 'var(--gc-slate-400)' }}>—</span>,
+      comparison: '—',
+    },
+    {
+      label: 'ASTM Standards',
+      value: astmDisplay !== '—'
+        ? <span style={{ fontWeight: 700, color: 'var(--gc-slate-900)' }}>{astmDisplay}</span>
+        : <span style={{ color: 'var(--gc-slate-400)' }}>—</span>,
+      comparison: complianceStatus
+        ? <span style={{ color: 'var(--gc-emerald-600, #059669)', fontWeight: 700 }}>✓ Compliant</span>
+        : '—',
+    },
+    {
+      label: 'VOC Compliant',
+      value: material.voc_compliant
+        ? <span style={{ color: 'var(--gc-emerald-600, #059669)', fontWeight: 700 }}>✓ Yes</span>
+        : <span style={{ color: '#ef4444', fontWeight: 700 }}>✗ No</span>,
+      comparison: '—',
+    },
+    {
+      label: 'Recycled Content',
+      value: (material.recycledContent ?? 0) > 0
+        ? <span style={{ fontWeight: 700, color: 'var(--gc-slate-900)' }}>{material.recycledContent}%</span>
+        : <span style={{ color: 'var(--gc-slate-400)' }}>—</span>,
+      comparison: (material.recycledContent ?? 0) >= 50
+        ? <span style={{ color: 'var(--gc-emerald-600, #059669)', fontWeight: 700 }}>↑ 90th percentile</span>
+        : (material.recycledContent ?? 0) > 0
+          ? <span style={{ color: '#22c55e', fontWeight: 700 }}>↑ Above avg</span>
+          : '—',
+    },
+    {
+      label: 'Lead Time',
+      value: <span style={{ fontWeight: 700, color: 'var(--gc-slate-900)' }}>{material.lead_time_days} days</span>,
+      comparison: material.lead_time_days <= 21
+        ? <span style={{ color: 'var(--gc-emerald-600, #059669)', fontWeight: 700 }}>↑ Faster than avg</span>
+        : material.lead_time_days <= 42
+          ? <span style={{ color: 'var(--gc-slate-500)' }}>≈ Average</span>
+          : <span style={{ color: '#ef4444', fontWeight: 700 }}>↓ Slower than avg</span>,
+    },
+    {
+      label: 'Regional Availability',
+      value: material.regional_availability.length > 0
+        ? <span style={{ fontWeight: 700, color: 'var(--gc-slate-900)' }}>{material.regional_availability.join(', ')}</span>
+        : <span style={{ color: 'var(--gc-slate-400)' }}>—</span>,
+      comparison: '—',
+    },
+    {
+      label: 'LEED Points',
+      value: material.leedPoints
+        ? <span style={{ fontWeight: 700, color: 'var(--gc-slate-900)' }}>{material.leedPoints}</span>
+        : <span style={{ color: 'var(--gc-slate-400)' }}>—</span>,
+      comparison: '—',
+    },
+  ]
+
+  return (
+    <section>
+      <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem', fontWeight: 800, color: 'var(--gc-slate-900)' }}>
+        Sustainability Profile
+      </h2>
+      <div className="gc-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: 'var(--gc-slate-50)', borderBottom: '1px solid var(--gc-slate-200)' }}>
+              <th style={{ ...cellStyle, fontWeight: 700, color: 'var(--gc-slate-600)', width: '35%', borderBottom: '1px solid var(--gc-slate-200)' }}>
+                Metric
+              </th>
+              <th style={{ ...cellStyle, fontWeight: 700, color: 'var(--gc-slate-600)', width: '35%', borderBottom: '1px solid var(--gc-slate-200)' }}>
+                Value
+              </th>
+              <th style={{ ...cellStyle, fontWeight: 700, color: 'var(--gc-slate-600)', width: '30%', borderBottom: '1px solid var(--gc-slate-200)' }}>
+                vs. Category Avg
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr
+                key={i}
+                style={{ background: i % 2 === 0 ? 'white' : 'rgba(248, 250, 252, 0.5)' }}
+              >
+                <td style={{ ...cellStyle, fontWeight: 600, color: 'var(--gc-slate-600)', background: 'var(--gc-slate-50)' }}>
+                  {row.label}
+                </td>
+                <td style={{ ...cellStyle, color: 'var(--gc-slate-900)' }}>
+                  {row.value}
+                </td>
+                <td style={{ ...cellStyle, color: 'var(--gc-slate-500)' }}>
+                  {row.comparison}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }

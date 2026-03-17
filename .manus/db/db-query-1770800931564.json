@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM materials",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Dbw4CNsZcxdMWq.root --database GQLTfpKngn8q3XehyUkpVP --execute SELECT COUNT(*) as cnt FROM materials",
+  "rows": [
+    {
+      "cnt": "22"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n22\n",
+  "stderr": "",
+  "execution_time_ms": 348
+}
