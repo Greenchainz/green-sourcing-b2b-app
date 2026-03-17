@@ -12,7 +12,7 @@ const pool = getPool();
 export async function GET(request: NextRequest) {
   try {
     const user = getEasyAuthUser(request.headers);
-    if (!user) {
+    if (!user || !user.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const user_id = user.id;
@@ -89,27 +89,43 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { rfq_id, supplier_id } = body;
+    const { rfq_id, supplier_id, buyer_id: body_buyer_id } = body;
 
-    if (!rfq_id || !supplier_id) {
+    const user = getEasyAuthUser(request.headers);
+    if (!user || !user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let buyer_id: string;
+    let supplier_id_resolved: string;
+    let rfq_id_resolved: string | null = rfq_id || null;
+
+    if (supplier_id) {
+      // Buyer-initiated: current user is the buyer, supplier_id provided in body
+      buyer_id = user.id;
+      supplier_id_resolved = supplier_id;
+    } else if (body_buyer_id) {
+      // Supplier-initiated: current user is the supplier, buyer_id provided in body
+      supplier_id_resolved = user.id;
+      buyer_id = body_buyer_id;
+    } else {
       return NextResponse.json(
-        { error: "rfq_id and supplier_id required" },
+        { error: "supplier_id or buyer_id required" },
         { status: 400 }
       );
     }
 
-    const user = getEasyAuthUser(request.headers);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const buyer_id = user.id;
-
     // Check if conversation already exists
-    const existingResult = await pool.query(
-      `SELECT id FROM conversations 
-       WHERE rfq_id = $1 AND buyer_id = $2 AND supplier_id = $3`,
-      [rfq_id, buyer_id, supplier_id]
-    );
+    const existingParams: (string | null)[] = [buyer_id, supplier_id_resolved];
+    let existingQuery = `SELECT id FROM conversations WHERE buyer_id = $1 AND supplier_id = $2`;
+    if (rfq_id_resolved) {
+      existingQuery += ` AND rfq_id = $3`;
+      existingParams.push(rfq_id_resolved);
+    } else {
+      existingQuery += ` AND rfq_id IS NULL`;
+    }
+
+    const existingResult = await pool.query(existingQuery, existingParams);
 
     if (existingResult.rows.length > 0) {
       return NextResponse.json({
@@ -124,7 +140,7 @@ export async function POST(request: NextRequest) {
       `INSERT INTO conversations (rfq_id, buyer_id, supplier_id, created_at, updated_at)
        VALUES ($1, $2, $3, NOW(), NOW())
        RETURNING id, rfq_id, buyer_id, supplier_id, created_at`,
-      [rfq_id, buyer_id, supplier_id]
+      [rfq_id_resolved, buyer_id, supplier_id_resolved]
     );
 
     return NextResponse.json({

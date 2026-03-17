@@ -25,7 +25,7 @@ export async function GET(
   try {
     const { conversationId } = params;
     const user = getEasyAuthUser(request.headers);
-    if (!user) {
+    if (!user || !user.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -36,7 +36,7 @@ export async function GET(
     );
 
     if (convoResult.rows.length === 0) {
-      return NextResponse.json({ error: "Not Found" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -118,7 +118,7 @@ export async function POST(
     }
 
     const user = getEasyAuthUser(request.headers);
-    if (!user) {
+    if (!user || !user.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -129,7 +129,7 @@ export async function POST(
     );
 
     if (convoResult.rows.length === 0) {
-      return NextResponse.json({ error: "Not Found" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const sender_id = user.id;

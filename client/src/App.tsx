@@ -32,7 +32,6 @@ import Subscription from "./pages/Subscription";
 import { ChainBot } from "./components/ChainBot";
 import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
-import { UnifiedChatWidget } from "./components/UnifiedChatWidget";
 import { ChatWidget } from "./components/ChatWidget";
 import AdminVerificationQueue from "./pages/AdminVerificationQueue";
 import { AdminSupplierDashboard } from "./pages/AdminSupplierDashboard";
@@ -121,7 +120,6 @@ function AppInner() {
       <TooltipProvider>
         <Toaster />
         <Router />
-        <UnifiedChatWidget />
         <ChainBot />
         <IncomingCallNotification onAccept={handleAcceptCall} />
         {activeCall && (
