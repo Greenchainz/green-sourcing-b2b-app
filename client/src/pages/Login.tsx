@@ -128,12 +128,19 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-center text-gray-500 text-sm mt-6">
-          Don't have an account?{" "}
-          <a href="/get-started" className="text-emerald-400 hover:underline">
-            Get started free
+        {/* Sign up CTA — prominent, not buried */}
+        <div className="mt-6 text-center">
+          <p className="text-gray-400 text-sm mb-3">New to GreenChainz?</p>
+          <a
+            href="/get-started"
+            className="inline-flex items-center justify-center gap-2 w-full max-w-sm px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-colors duration-200 shadow-lg hover:shadow-emerald-500/25"
+          >
+            Create a free account →
           </a>
-        </p>
+          <p className="text-xs text-gray-600 mt-3">
+            Free to start · No credit card required
+          </p>
+        </div>
       </div>
     </div>
   );
