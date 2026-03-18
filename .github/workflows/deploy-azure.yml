@@ -35,6 +35,7 @@ jobs:
       - name: Build and push Docker image
         run: |
           docker build \
+            --no-cache \
             --build-arg NEXT_PUBLIC_SITE_URL=https://greenchainz.com \
             --build-arg NEXT_PUBLIC_AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }} \
             --build-arg NEXT_PUBLIC_AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }} \
