@@ -29,7 +29,8 @@ ARG NEXT_PUBLIC_SITE_URL
 # WebPubSub — public endpoint, safe to hardcode as defaults
 ARG VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
 ARG VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
-# Azure Maps key and backend URL for Vite client
+# Azure Maps key — ARG only (not ENV) so the value is never written to a persistent layer.
+# Vite reads it during the build step below via the inline env var.
 ARG VITE_AZURE_MAPS_KEY
 ARG VITE_BACKEND_URL
 # Make them available during build
@@ -40,15 +41,14 @@ ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
     VITE_FRONTEND_WEBPUBSUB_HUB=$VITE_FRONTEND_WEBPUBSUB_HUB \
-    VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY \
     VITE_BACKEND_URL=$VITE_BACKEND_URL \
     NODE_ENV=production
 # Generate Prisma client
 RUN npx prisma generate 2>/dev/null || echo 'Prisma generate skipped'
 # Build the app:
-#   - vite build  → dist/public/ (client static assets)
+#   - vite build  → dist/public/ (client static assets, VITE_AZURE_MAPS_KEY baked in here)
 #   - esbuild     → dist/index.js (server bundle)
-RUN pnpm run build
+RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY pnpm run build
 
 # Stage 3: Runtime
 FROM node:20-alpine AS runtime
