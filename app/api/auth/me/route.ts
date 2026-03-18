@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEasyAuthUser, hasRole } from '@/lib/auth/easy-auth';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Disable caching
 
 /**
