@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "~/lib/auth";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { auth } from "@/app/lib/auth";
+// DO NOT import auth or anything that imports lib/secrets.ts here
+// Edge runtime cannot use @azure/identity
 
-export async function middleware(request: NextRequest) {
-  const session = await auth();
 function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(new URL("/login", request.url));
 }
@@ -14,35 +10,28 @@ function redirectToLogin(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Public routes that don't require authentication
   const publicRoutes = [
-    "/",
-    "/login",
-    "/signup",
-    "/about",
-    "/blog",
-    "/careers",
-    "/contact",
-    "/how-it-works",
-    "/pricing",
-    "/help-center",
-    "/api-docs",
-    "/partner-program",
-    "/privacy",
-    "/terms",
-    "/supplier-agreement",
+    "/", "/login", "/signup", "/about", "/blog", "/careers",
+    "/contact", "/how-it-works", "/pricing", "/help-center",
+    "/api-docs", "/partner-program", "/privacy", "/terms", "/supplier-agreement",
   ];
 
-  const session = await (auth as any).api.getSession({
-    headers: request.headers,
-  });
+  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"));
 
-  // Check if the current path is public
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  // Lightweight cookie check — no Azure SDK, no Key Vault
+  const sessionToken =
+    request.cookies.get("better-auth.session_token")?.value ||
+    request.cookies.get("__Secure-better-auth.session_token")?.value ||
+    request.cookies.get("next-auth.session-token")?.value ||
+    request.cookies.get("__Secure-next-auth.session-token")?.value;
 
-  // Handle CORS for API routes
+  const hasSession = !!sessionToken;
+
+  if (pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.startsWith("/.auth")) {
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/api")) {
-    // Handle preflight requests
     if (request.method === "OPTIONS") {
       return new NextResponse(null, {
         status: 200,
@@ -55,11 +44,6 @@ export async function middleware(request: NextRequest) {
         },
       });
     }
-  if (!session?.user) {
-    return redirectToLogin(request);
-  }
-
-    // Add CORS headers to API responses
     const response = NextResponse.next();
     response.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
     response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
@@ -68,86 +52,19 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Allow static files
-  if (pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.startsWith("/.auth")) {
-    return NextResponse.next();
-  }
-
-  // If user is not authenticated and trying to access protected route
-  if (!session?.user && !isPublicRoute) {
+  if (!hasSession && !isPublicRoute) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // If user is authenticated
-  if (session?.user) {
-    const user = session.user as any;
-    const userRole = user.role || "buyer"; // Default to buyer if no role
-
-    // Redirect from root dashboard to role-specific dashboard
-    if (pathname === "/dashboard") {
-      if (userRole === "admin") {
-        return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-      } else if (userRole === "supplier") {
-        return NextResponse.redirect(new URL("/dashboard/supplier", request.url));
-      } else {
-        return NextResponse.redirect(new URL("/dashboard/buyer", request.url));
-      }
-    }
-
-    // Prevent buyers from accessing supplier dashboard
-    if (pathname.startsWith("/dashboard/supplier") && userRole !== "supplier" && userRole !== "admin") {
-      return NextResponse.redirect(new URL("/dashboard/buyer", request.url));
-    }
-
-    // Prevent suppliers from accessing buyer dashboard
-    if (pathname.startsWith("/dashboard/buyer") && userRole !== "buyer" && userRole !== "admin") {
-      return NextResponse.redirect(new URL("/dashboard/supplier", request.url));
-    }
-
-    // Prevent non-admins from accessing admin dashboard
-    if (pathname.startsWith("/dashboard/admin") && userRole !== "admin") {
-      if (userRole === "supplier") {
-        return NextResponse.redirect(new URL("/dashboard/supplier", request.url));
-      } else {
-        return NextResponse.redirect(new URL("/dashboard/buyer", request.url));
-      }
-    }
-  const role = String(session.user.role || "").toLowerCase();
-
-  if (pathname.startsWith("/supplier") && role !== "supplier") {
-    return redirectToLogin(request);
-  }
-
-    // Redirect authenticated users away from login/signup pages
-    if (pathname === "/login" || pathname === "/signup") {
-      if (userRole === "admin") {
-        return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-      } else if (userRole === "supplier") {
-        return NextResponse.redirect(new URL("/dashboard/supplier", request.url));
-      } else {
-        return NextResponse.redirect(new URL("/dashboard/buyer", request.url));
-      }
-    }
-  if (pathname.startsWith("/admin") && role !== "admin") {
-    return redirectToLogin(request);
+  if (hasSession && (pathname === "/login" || pathname === "/signup")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc.)
-     * - .auth (Azure Easy Auth paths)
-     */
-    "/((?!_next/static|_next/image|favicon.ico|\\.auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-  matcher: ["/dashboard/:path*", "/supplier/:path*", "/rfq/:path*", "/admin/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|\\.auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
