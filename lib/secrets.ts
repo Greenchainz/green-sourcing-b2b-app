@@ -11,6 +11,26 @@
 
 import { SecretClient } from "@azure/keyvault-secrets";
 import { ManagedIdentityCredential } from "@azure/identity";
+import 'server-only';**Root cause found and confirmed. Here's the exact fix.**
+
+## The Problem — Clear as Day
+
+`lib/secrets.ts` uses `@azure/keyvault-secrets` and `@azure/identity` (ManagedIdentityCredential). It's being imported somewhere that Next.js is **tree-shaking into the Edge bundle** — likely `lib/auth.ts` or through the `middleware.ts` import chain. Edge runtime = no Node.js APIs = crash.
+
+The code itself is **correct for Node runtime**. It just needs to be blocked from the Edge build.
+
+---
+
+## Fix — Two-File Code Change
+
+### Fix 1: `lib/secrets.ts` — Add Node runtime guard at top
+
+```typescript
+// ADD THIS AS THE VERY FIRST LINE — before all imports
+if (typeof EdgeRuntime !== 'undefined') {
+  throw new Error('[secrets.ts] This module cannot run in Edge runtime. Move caller to Node runtime.');
+}
+
 
 // Cache for secrets to avoid repeated Key Vault calls
 const secretsCache: Record<string, string> = {};
