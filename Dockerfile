@@ -1,7 +1,9 @@
 # Multi-stage build for GreenChainz B2B app on Azure
 # Stack: Vite (client) + Express (server) — output goes to dist/
+# Base image: mcr.microsoft.com/mirror/docker/library/node:20-alpine
+# Using MCR mirror instead of Docker Hub to avoid unauthenticated pull rate limits (429).
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM mcr.microsoft.com/mirror/docker/library/node:20-alpine AS deps
 WORKDIR /app
 # Enable corepack (built into Node 20) to install pnpm without hitting npm registry
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
@@ -12,7 +14,7 @@ COPY patches/ ./patches/
 RUN pnpm install --no-frozen-lockfile
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM mcr.microsoft.com/mirror/docker/library/node:20-alpine AS builder
 WORKDIR /app
 # Enable corepack for pnpm
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
@@ -51,7 +53,7 @@ RUN npx prisma generate 2>/dev/null || echo 'Prisma generate skipped'
 RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY pnpm run build
 
 # Stage 3: Runtime
-FROM node:20-alpine AS runtime
+FROM mcr.microsoft.com/mirror/docker/library/node:20-alpine AS runtime
 WORKDIR /app
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
