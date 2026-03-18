@@ -66,6 +66,7 @@
     "cross-env": "^7.0.3",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.2",
+    "drizzle-orm": "^0.45.1",
     "embla-carousel-react": "^8.6.0",
     "express": "^4.21.2",
     "framer-motion": "^12.23.22",
@@ -95,7 +96,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@builder.io/vite-plugin-jsx-loc": "^0.1.1",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",
