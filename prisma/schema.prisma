@@ -231,4 +231,93 @@ model AssemblySpecComponent {
   @@map("assembly_spec_components")
   @@index([assemblySpecId], name: "idx_assembly_comp_assembly")
   @@index([materialId], name: "idx_assembly_comp_material")
+}enum RfqStatus {
+  OPEN
+  BIDDING
+  AWARDED
+  CLOSED
+  CANCELLED
 }
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Supplier {
+  id              String   @id @default(cuid())
+  companyName     String
+  email           String   @unique
+  status          String   @default("PENDING")
+  certifications  String[] @default([])
+  materialTypes   String[] @default([])
+  maxOrderValue   Decimal? @db.Decimal(12, 2)
+  latitude        Decimal? @db.Decimal(9, 6)
+  longitude       Decimal? @db.Decimal(9, 6)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bids RfqBid[]
+
+  @@index([status])
+  @@map("suppliers")
+}
+
+model Rfq {
+  id                     String    @id @default(cuid())
+  buyerId                String
+  projectName            String
+  projectLocation        String
+  projectType            String
+  notes                  String?
+  requiredCertifications String[]  @default([])
+  status                 RfqStatus @default(OPEN)
+  expiresAt              DateTime
+  awardedSupplierId      String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  items RfqItem[]
+  bids  RfqBid[]
+
+  @@index([buyerId])
+  @@index([status])
+  @@map("rfqs")
+}
+
+model RfqItem {
+  id         String  @id @default(cuid())
+  rfqId      String
+  materialId String
+  quantity   Float
+  unit       String
+  notes      String?
+
+  rfq Rfq @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  @@index([rfqId])
+  @@map("rfq_items")
+}
+
+model RfqBid {
+  id          String    @id @default(cuid())
+  rfqId       String
+  supplierId  String
+  totalPrice  Decimal   @db.Decimal(12, 2)
+  leadDays    Int
+  notes       String?
+  status      BidStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  rfq      Rfq      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([rfqId])
+  @@index([supplierId])
+  @@map("rfq_bids")
+}
+
