@@ -1,6 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
+import { sdk } from "./sdk";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -32,6 +33,7 @@ export async function createContext(
     if (principal?.userId && principal?.identityProvider &&
         principal.userId !== "undefined" && principal.identityProvider !== "undefined") {
 
+      // Production path: Azure Easy Auth sidecar injects X-MS-CLIENT-PRINCIPAL-* headers
       const providerMap: Record<string, string> = {
         aad: "microsoft",
         google: "google",
@@ -52,6 +54,9 @@ export async function createContext(
       });
 
       user = await db.getUserByOpenId(openId);
+    } else {
+      // Fallback: JWT session cookie set by /api/auth/callback/:provider or dev shim
+      user = await sdk.authenticateRequest(opts.req).catch(() => null);
     }
   } catch (error) {
     // Authentication is optional for public procedures.

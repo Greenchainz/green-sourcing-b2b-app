@@ -5,9 +5,12 @@ export const getLoginUrl = (returnPath?: string, role?: 'buyer' | 'supplier') =>
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
 
-  // Fallback to /login if OAuth portal URL is not configured
+  // Fallback to Easy Auth login when OAuth portal URL is not configured.
+  // In dev the registerDevAuthShim handles /.auth/login/aad.
+  // In production Azure Container Apps Easy Auth handles it natively.
   if (!oauthPortalUrl) {
-    return '/login';
+    const redirectParam = returnPath ? `?post_login_redirect_uri=${encodeURIComponent(returnPath)}` : '';
+    return `/.auth/login/aad${redirectParam}`;
   }
 
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
