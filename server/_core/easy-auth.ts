@@ -212,4 +212,40 @@ export function registerEasyAuthRoutes(app: Express) {
   app.get("/api/auth/logout", (_req: Request, res: Response) => {
     res.redirect(302, "/.auth/logout?post_logout_redirect_uri=/");
   });
+
+  // ── LOCAL DEV: Simulate Easy Auth login routes ────────────────────────────
+  // In production, Azure Container Apps sidecar handles /.auth/* automatically.
+  // Locally we proxy the login redirect manually.
+  if (process.env.NODE_ENV !== "production") {
+    const DEFAULT_POST_LOGIN_REDIRECT = "/dashboard";
+
+    app.get("/.auth/login/aad", (req: Request, res: Response) => {
+      const tenantUrl = process.env.OAUTH_SERVER_URL;
+      const clientId = process.env.CLIENT_ID || process.env.MICROSOFT_CLIENT_ID;
+
+      if (!tenantUrl || !clientId) {
+        console.error("[EasyAuth/dev] OAUTH_SERVER_URL and CLIENT_ID (or MICROSOFT_CLIENT_ID) must be set for local login simulation");
+        res.status(500).send("OAuth configuration missing. Set OAUTH_SERVER_URL and CLIENT_ID (or MICROSOFT_CLIENT_ID) in .env.local");
+        return;
+      }
+
+      // Restrict post_login_redirect_uri to relative paths to prevent open redirects
+      const rawRedirect = String(req.query.post_login_redirect_uri || DEFAULT_POST_LOGIN_REDIRECT);
+      const postLoginRedirect = rawRedirect.startsWith("/") ? rawRedirect : DEFAULT_POST_LOGIN_REDIRECT;
+
+      const redirectUri = `${process.env.NEXTAUTH_URL || "http://localhost:3001"}/api/auth/callback`;
+      const params = new URLSearchParams({
+        client_id: clientId,
+        response_type: "code",
+        redirect_uri: redirectUri,
+        scope: "openid profile email",
+        state: postLoginRedirect,
+      });
+      res.redirect(302, `${tenantUrl}/oauth2/v2.0/authorize?${params.toString()}`);
+    });
+
+    app.get("/.auth/login/google", (_req: Request, res: Response) => {
+      res.redirect(302, "/.auth/login/aad"); // fallback to Microsoft for now
+    });
+  }
 }
