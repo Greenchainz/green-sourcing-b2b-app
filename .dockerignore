@@ -31,3 +31,10 @@ Thumbs.db
 playwright-report
 
 docs
+
+# Large data / backup files
+*.zip
+*.json.bak
+materials_all.json
+materials_check.json
+greenchainz-dev.zip
