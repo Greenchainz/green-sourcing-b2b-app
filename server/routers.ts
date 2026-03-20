@@ -35,6 +35,7 @@ import { legalRouter } from "./legal-router";
 import { autodesksDARouter } from "./autodesk-sda-router";
 import { txdotScraperRouter } from "./routers/txdotScraper";
 import { swapValidationRouter } from "./routers/swapValidation";
+import { rfqRouter } from "./routers/rfq";
 
 export const appRouter = router({
   system: systemRouter,
@@ -51,6 +52,7 @@ export const appRouter = router({
   autodesk: autodesksDARouter,
   txdotScraper: txdotScraperRouter,
   swapValidation: swapValidationRouter,
+  rfqRequests: rfqRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -350,7 +352,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        const result = await db.insert(rfqs).values({
+        const [rfqResult] = await db.insert(rfqs).values({
           userId: ctx.user.id,
           projectName: input.projectName,
           projectLocation: input.projectLocation || null,
@@ -358,9 +360,9 @@ export const appRouter = router({
           notes: input.notes || null,
           dueDate: input.dueDate || null,
           status: "draft",
-        });
+        }).returning({ id: rfqs.id });
 
-        const rfqId = Number(result[0].insertId);
+        const rfqId = rfqResult.id;
 
         if (input.items.length > 0) {
           await db.insert(rfqItems).values(

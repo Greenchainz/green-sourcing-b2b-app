@@ -1129,6 +1129,31 @@ export const scrapedSuppliers = pgTable("scraped_suppliers", {
 export type ScrapedSupplier = typeof scrapedSuppliers.$inferSelect;
 export type InsertScrapedSupplier = typeof scrapedSuppliers.$inferInsert;
 
+// ─── RFQ Requests ────────────────────────────────────────────────────────────
+// Simpler direct-assignment model: one architect → one supplier per request.
+// Complements the existing rfqs/rfq_bids wave-matching tables.
+
+export const rfqRequestStatusEnum = pgEnum("rfq_request_status", [
+  "pending",
+  "accepted",
+  "declined",
+  "fulfilled",
+]);
+
+export const rfqRequests = pgTable("rfq_requests", {
+  id: serial("id").primaryKey(),
+  architectId: integer("architect_id").notNull(),
+  supplierId: integer("supplier_id").notNull(),
+  materialType: varchar("material_type", { length: 255 }).notNull(),
+  quantity: decimal("quantity", { precision: 12, scale: 2 }).notNull(),
+  specs: text("specs"),
+  status: rfqRequestStatusEnum("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type RfqRequest = typeof rfqRequests.$inferSelect;
+export type InsertRfqRequest = typeof rfqRequests.$inferInsert;
+
 // ─── Email Suppression List ─────────────────────────────────────────────────
 
 export const emailSuppressionList = pgTable("email_suppression_list", {

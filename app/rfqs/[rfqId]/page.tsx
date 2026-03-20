@@ -92,15 +92,6 @@ export default function RFQDetailPage() {
 
     fetchRFQ();
   }, [rfqId, user, authLoading]);
-      }
-    };
-
-    (async () => {
-      setLoading(true);
-      await fetchRFQ();
-      setLoading(false);
-    })();
-  }, [rfqId, user]);
 
   if (loading) {
     return (

@@ -75,7 +75,7 @@ export const rfqMarketplaceRouter = router({
 
       // ── 1. LinkedIn verification check ─────────────────────────────────────
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
-      if (!user?.linkedinVerified) {
+      if (process.env.NODE_ENV === "production" && !user?.linkedinVerified) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "LinkedIn verification required to create RFQs",

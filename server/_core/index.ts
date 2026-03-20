@@ -7,7 +7,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
-import { registerEasyAuthRoutes } from "./easy-auth";
+import { registerEasyAuthRoutes, registerDevAuthShim, registerDevCallbackHandler } from "./easy-auth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -62,7 +62,10 @@ async function startServer() {
   // Container Apps sidecar. This MUST be registered first so the middleware
   // runs before any other route handler.
   registerEasyAuthRoutes(app);
+
+  // Dev-only: simulate /.auth/login/aad and /.auth/callback locally
   registerDevAuthShim(app);
+  registerDevCallbackHandler(app);
 
   // Legacy custom OAuth routes (kept temporarily for backward compat;
   // will be removed once Easy Auth is fully validated in production).

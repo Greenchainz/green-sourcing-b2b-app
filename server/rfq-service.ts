@@ -63,9 +63,9 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
       depositPaymentIntentId: input.depositPaymentIntentId ?? null,
       depositAmount: input.depositAmount != null ? input.depositAmount.toString() : null,
     })
-    .execute();
+    .returning({ id: rfqs.id });
 
-  const rfqId = (rfqResult as any).insertId;
+  const rfqId = rfqResult.id;
 
   // Add RFQ items
   for (const item of input.materials) {

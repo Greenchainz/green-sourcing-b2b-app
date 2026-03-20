@@ -22,6 +22,9 @@
 
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "../db";
+import { sdk } from "./sdk";
+import { getSessionCookieOptions } from "./cookies";
+import { ONE_YEAR_MS } from "@shared/const";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -154,12 +157,13 @@ export function registerEasyAuthRoutes(app: Express) {
   app.use(easyAuthMiddleware);
 
   // ── GET /api/auth/me ──────────────────────────────────────────────────────
-  app.get("/api/auth/me", async (req: Request, res: Response) => {
+  // When Easy Auth headers are present (production sidecar or dev shim request),
+  // handle here. Otherwise call next() so the oauth-providers JWT handler runs.
+  app.get("/api/auth/me", async (req: Request, res: Response, next: NextFunction) => {
     const principal = req.easyAuthPrincipal;
 
     if (!principal) {
-      res.status(401).json({ error: "Not authenticated" });
-      return;
+      return next(); // fall through to oauth-providers /api/auth/me
     }
 
     const provider = mapProvider(principal.identityProvider);
@@ -193,8 +197,7 @@ export function registerEasyAuthRoutes(app: Express) {
 
     res.json({
       user: {
-        id: openId,
-        dbId: dbUser?.id ?? null,   // numeric DB id for tRPC procedures that need it
+        id: String(dbUser?.id ?? openId),  // numeric DB id as string (consistent with oauth-providers)
         email,
         name,
         roles: [role],
@@ -239,6 +242,16 @@ export function registerDevCallbackHandler(app: Express) {
     const code = req.query.code as string;
     if (!code) return res.status(400).json({ error: "No code" });
 
+    // Parse returnPath from state
+    let returnPath = "/dashboard";
+    const stateStr = req.query.state as string;
+    if (stateStr) {
+      try {
+        const decoded = JSON.parse(Buffer.from(stateStr, "base64").toString());
+        returnPath = decoded.returnPath || "/dashboard";
+      } catch { /* ignore */ }
+    }
+
     const params = new URLSearchParams({
       client_id: "479e2a01-70ab-4df9-baa4-560d317c3423",
       client_secret: process.env.MICROSOFT_CLIENT_SECRET || process.env.CLIENT_SECRET || "",
@@ -256,18 +269,27 @@ export function registerDevCallbackHandler(app: Express) {
       const tokens = await tokenRes.json() as any;
       if (tokens.error) return res.status(401).json(tokens);
 
-      // Decode id_token to get user info (no Graph call needed)
+      // Decode id_token to get user info
       const idToken = tokens.id_token;
       const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString());
 
-      // Set Easy Auth-style headers so easyAuthMiddleware picks them up
-      req.headers["x-ms-client-principal-id"] = payload.oid || payload.sub;
-      req.headers["x-ms-client-principal-idp"] = "aad";
-      req.headers["x-ms-client-principal-name"] = payload.preferred_username || payload.email;
+      const openId = `microsoft:${payload.oid || payload.sub}`;
+      const email  = payload.email || payload.preferred_username || "";
+      const name   = payload.name || email;
 
-      // Store session cookie with the access token
-      res.cookie("dev-auth-token", tokens.access_token, { httpOnly: true, maxAge: 3600000 });
-      res.redirect(302, "/dashboard");
+      // Upsert user into DB
+      await db.upsertUser({
+        openId,
+        email,
+        name,
+        loginMethod: "microsoft",
+        lastSignedIn: new Date(),
+      }).catch((err: unknown) => console.warn("[DevAuth] upsertUser failed:", err));
+
+      // Create proper app_session_id JWT cookie (same as oauth-providers flow)
+      const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
+      res.cookie("app_session_id", sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+      res.redirect(302, returnPath);
     } catch (err) {
       console.error("[DevAuth] Token exchange failed", err);
       res.status(500).json({ error: "Token exchange failed" });

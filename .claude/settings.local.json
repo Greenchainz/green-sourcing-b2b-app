@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|ERROR\\\\|ISSUE\" /d/perplexitydownloads/green-sourcing-b2b-app/server/rfq*.ts)",
+      "Bash(grep -r \"rfqMarketplaceRouter\\\\|supplierRfqRouter\" /d/perplexitydownloads/green-sourcing-b2b-app/server --include=*.ts)",
+      "Bash(npx tsc:*)",
+      "Bash(npx drizzle-kit:*)"
+    ]
+  }
+}
