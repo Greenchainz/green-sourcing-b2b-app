@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -28,6 +28,7 @@ import { SupplierRegistration } from "./pages/SupplierRegistration";
 import { SupplierProfileDashboard } from "./pages/SupplierProfileDashboard";
 import SupplierRfqDashboard from "./pages/SupplierRfqDashboard";
 import GetStarted from "./pages/GetStarted";
+import SupplierOnboarding from "./pages/SupplierOnboarding";
 import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
 import { ChainBot } from "./components/ChainBot";
@@ -49,8 +50,10 @@ import { HowItWorks } from "./pages/HowItWorks";
 import Support from "./pages/Support";
 import Login from "./pages/Login";
 import { Redirect } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
+import { useAuth } from "./contexts/AuthContext";
+import { trpc } from "./lib/trpc";
 
 function Router() {
   return (
@@ -68,6 +71,7 @@ function Router() {
       <Route path="/supplier-dashboard" component={SupplierDashboard} />
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
+      <Route path="/supplier/onboarding" component={SupplierOnboarding} />
       <Route path="/supplier/register" component={SupplierRegistration} />
       <Route path="/supplier/dashboard" component={SupplierProfileDashboard} />
       <Route path="/supplier/rfqs" component={SupplierRfqDashboard} />
@@ -98,6 +102,30 @@ function Router() {
   );
 }
 
+// Redirect supplier users who haven't completed onboarding
+function SupplierOnboardingGuard() {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const isSupplierUser = user?.roles?.includes("supplier") || user?.isSupplier;
+
+  const { data: profile, isLoading } = trpc.supplierOnboarding.getMyProfile.useQuery(undefined, {
+    enabled: !!isSupplierUser,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (!isSupplierUser || isLoading) return;
+    if (profile === null) {
+      const path = window.location.pathname;
+      if (!path.startsWith("/supplier/onboarding")) {
+        navigate("/supplier/onboarding");
+      }
+    }
+  }, [isSupplierUser, isLoading, profile, navigate]);
+
+  return null;
+}
+
 // Inner component that uses hooks requiring AuthProvider context
 function AppInner() {
   // Initialize WebPubSub connection for real-time notifications
@@ -122,6 +150,7 @@ function AppInner() {
     <ChatWidgetProvider>
       <TooltipProvider>
         <Toaster />
+        <SupplierOnboardingGuard />
         <Router />
         <ChainBot />
         <IncomingCallNotification onAccept={handleAcceptCall} />
