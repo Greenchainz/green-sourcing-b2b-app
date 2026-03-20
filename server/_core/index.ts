@@ -62,6 +62,7 @@ async function startServer() {
   // Container Apps sidecar. This MUST be registered first so the middleware
   // runs before any other route handler.
   registerEasyAuthRoutes(app);
+  registerDevAuthShim(app);
 
   // Legacy custom OAuth routes (kept temporarily for backward compat;
   // will be removed once Easy Auth is fully validated in production).
