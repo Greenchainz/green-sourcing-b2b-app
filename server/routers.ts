@@ -36,6 +36,8 @@ import { autodesksDARouter } from "./autodesk-sda-router";
 import { txdotScraperRouter } from "./routers/txdotScraper";
 import { swapValidationRouter } from "./routers/swapValidation";
 import { rfqRouter } from "./routers/rfq";
+import { supplierOnboardingRouter } from "./routers/supplier";
+import { epdRouter } from "./routers/epd";
 
 export const appRouter = router({
   system: systemRouter,
@@ -53,6 +55,8 @@ export const appRouter = router({
   txdotScraper: txdotScraperRouter,
   swapValidation: swapValidationRouter,
   rfqRequests: rfqRouter,
+  supplierOnboarding: supplierOnboardingRouter,
+  epd: epdRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

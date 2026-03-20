@@ -1,0 +1,137 @@
+import { router, protectedProcedure } from "../_core/trpc";
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { getDb } from "../db";
+import { suppliers } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
+
+/**
+ * Supplier Onboarding Router
+ *
+ * Routes:
+ *   supplierOnboarding.submitOnboarding — create or update supplier profile
+ *   supplierOnboarding.getMyProfile     — get the current user's supplier profile
+ *   supplierOnboarding.updateProfile    — update an existing supplier profile
+ */
+
+const onboardingInput = z.object({
+  companyName: z.string().min(1, "Company name is required"),
+  contactName: z.string().min(1, "Contact name is required"),
+  email: z.string().email("Valid email required"),
+  phone: z.string().optional(),
+  website: z.string().url("Valid URL required").optional().or(z.literal("")),
+  description: z.string().optional(),
+  materialCategories: z.array(z.string()).min(1, "Select at least one material category"),
+  certifications: z.array(z.string()).optional(),
+});
+
+export const supplierOnboardingRouter = router({
+  // ── Create or upsert supplier profile ────────────────────────────────────
+  submitOnboarding: protectedProcedure
+    .input(onboardingInput)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Check if a profile already exists for this user
+      const [existing] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(eq(suppliers.userId, ctx.user.id))
+        .limit(1);
+
+      if (existing) {
+        // Update existing profile
+        await db
+          .update(suppliers)
+          .set({
+            companyName: input.companyName,
+            contactName: input.contactName,
+            email: input.email,
+            phone: input.phone ?? null,
+            website: input.website || null,
+            description: input.description ?? null,
+            materialCategories: input.materialCategories,
+            certifications: input.certifications ?? [],
+            updatedAt: new Date(),
+          })
+          .where(eq(suppliers.id, existing.id));
+
+        return { id: existing.id, created: false };
+      }
+
+      // Insert new profile
+      const [row] = await db
+        .insert(suppliers)
+        .values({
+          userId: ctx.user.id,
+          companyName: input.companyName,
+          contactName: input.contactName,
+          email: input.email,
+          phone: input.phone ?? null,
+          website: input.website || null,
+          description: input.description ?? null,
+          materialCategories: input.materialCategories,
+          certifications: input.certifications ?? [],
+          verificationStatus: "pending",
+        })
+        .returning({ id: suppliers.id });
+
+      return { id: row.id, created: true };
+    }),
+
+  // ── Get current user's supplier profile ──────────────────────────────────
+  getMyProfile: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return null;
+
+    const [profile] = await db
+      .select({
+        id: suppliers.id,
+        companyName: suppliers.companyName,
+        contactName: suppliers.contactName,
+        email: suppliers.email,
+        phone: suppliers.phone,
+        website: suppliers.website,
+        description: suppliers.description,
+        materialCategories: suppliers.materialCategories,
+        certifications: suppliers.certifications,
+        verificationStatus: suppliers.verificationStatus,
+        verified: suppliers.verified,
+        createdAt: suppliers.createdAt,
+        updatedAt: suppliers.updatedAt,
+      })
+      .from(suppliers)
+      .where(eq(suppliers.userId, ctx.user.id))
+      .limit(1);
+
+    return profile ?? null;
+  }),
+
+  // ── Update an existing supplier profile ──────────────────────────────────
+  updateProfile: protectedProcedure
+    .input(onboardingInput.partial())
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const [existing] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(eq(suppliers.userId, ctx.user.id))
+        .limit(1);
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "No supplier profile found" });
+
+      await db
+        .update(suppliers)
+        .set({
+          ...input,
+          website: input.website || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(suppliers.id, existing.id));
+
+      return { success: true };
+    }),
+});

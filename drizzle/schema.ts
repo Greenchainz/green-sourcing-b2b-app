@@ -423,6 +423,8 @@ export const suppliers = pgTable("suppliers", {
   verifiedAt: timestamp("verifiedAt"),
   description: text("description"),
   location: varchar("location", { length: 255 }),
+  contactName: varchar("contactName", { length: 255 }),
+  materialCategories: json("materialCategories").$type<string[]>(),
   certifications: json("certifications").$type<string[]>(),
   maxOrderValue: decimal("maxOrderValue", { precision: 12, scale: 2 }),
   currentCapacity: integer("currentCapacity").default(100),
@@ -434,6 +436,30 @@ export const suppliers = pgTable("suppliers", {
 
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = typeof suppliers.$inferInsert;
+
+// ─── Supplier Material EPDs ──────────────────────────────────────────────────
+// Supplier-owned EPD records. May optionally link to a materials catalog row.
+
+export const supplierMaterialEpds = pgTable("supplier_material_epds", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplierId").notNull(),
+  materialId: integer("materialId"),                              // null = not yet in catalog
+  productName: varchar("productName", { length: 255 }).notNull(),
+  epdNumber: varchar("epdNumber", { length: 100 }),
+  epdUrl: text("epdUrl"),
+  epdProgramOperator: varchar("epdProgramOperator", { length: 150 }),
+  gwpValue: decimal("gwpValue", { precision: 12, scale: 4 }),
+  gwpUnit: varchar("gwpUnit", { length: 50 }).default("kgCO2e"),
+  declaredUnit: varchar("declaredUnit", { length: 100 }),
+  externallyVerified: boolean("externallyVerified").default(false),
+  expiresAt: timestamp("expiresAt"),
+  status: verificationStatusEnum("status").default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type SupplierMaterialEpd = typeof supplierMaterialEpds.$inferSelect;
+export type InsertSupplierMaterialEpd = typeof supplierMaterialEpds.$inferInsert;
 
 // ─── Supplier Subscriptions ─────────────────────────────────────────────────
 

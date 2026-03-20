@@ -5,23 +5,16 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Leaf, Shield, Award, DollarSign, Truck, Heart, ArrowLeft, ShoppingCart, Scale, ExternalLink, CheckCircle2, XCircle, ArrowDownRight, ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Scale, ExternalLink, CheckCircle2, XCircle, ArrowDownRight, ArrowUpRight, Sparkles } from "lucide-react";
 import MaterialSwapCard from "@/components/MaterialSwapCard";
+import { EpdPanel } from "@/components/EpdPanel";
+import { CcpsScoreCard } from "@/components/CcpsScoreCard";
 import { Link, useParams } from "wouter";
 import { toast } from "sonner";
 import { PaywallGate } from "@/components/paywall/PaywallGate";
 
-const SCORE_ROWS = [
-  { key: "carbonScore" as const, icon: Leaf, color: "text-green-600", label: "Carbon" },
-  { key: "complianceScore" as const, icon: Shield, color: "text-blue-600", label: "Compliance" },
-  { key: "certificationScore" as const, icon: Award, color: "text-purple-600", label: "Certification" },
-  { key: "costScore" as const, icon: DollarSign, color: "text-yellow-600", label: "Cost" },
-  { key: "supplyChainScore" as const, icon: Truck, color: "text-orange-600", label: "Supply Chain" },
-  { key: "healthScore" as const, icon: Heart, color: "text-red-600", label: "Health" },
-];
 
 export default function MaterialDetail() {
   const params = useParams<{ id: string }>();
@@ -86,7 +79,7 @@ export default function MaterialDetail() {
             </Card>
 
             <Tabs defaultValue="scores">
-              <TabsList><TabsTrigger value="scores">CCPS Breakdown</TabsTrigger><TabsTrigger value="swaps"><Sparkles className="w-3.5 h-3.5 mr-1.5 inline" />Sustainable Swaps</TabsTrigger><TabsTrigger value="specs">Specifications</TabsTrigger><TabsTrigger value="certs">Certifications</TabsTrigger><TabsTrigger value="alternatives">Alternatives</TabsTrigger></TabsList>
+              <TabsList><TabsTrigger value="scores">Credit Score</TabsTrigger><TabsTrigger value="swaps"><Sparkles className="w-3.5 h-3.5 mr-1.5 inline" />Sustainable Swaps</TabsTrigger><TabsTrigger value="epd">EPD / Carbon</TabsTrigger><TabsTrigger value="specs">Specifications</TabsTrigger><TabsTrigger value="certs">Certifications</TabsTrigger><TabsTrigger value="alternatives">Alternatives</TabsTrigger></TabsList>
               <TabsContent value="swaps">
                 <PaywallGate dimension="swap_analyses" mode="soft">
                   <Card>
@@ -160,24 +153,24 @@ export default function MaterialDetail() {
                 </Card>
                 </PaywallGate>
               </TabsContent>
+              <TabsContent value="epd">
+                <EpdPanel
+                  materialId={id}
+                  gwpValue={m.gwpValue}
+                  gwpUnit={m.gwpUnit}
+                  declaredUnit={m.declaredUnit}
+                  epdNumber={m.epdNumber}
+                  epdUrl={m.epdUrl}
+                  epdExpiry={m.epdExpiry ? String(m.epdExpiry) : null}
+                  epdProgramOperator={m.epdProgramOperator}
+                  ec3IndustryMedian={m.ec3IndustryMedian}
+                  ec3BestPractice={m.ec3BestPractice}
+                  ec3ConservativeEstimate={m.ec3ConservativeEstimate}
+                  hasEpd={m.hasEpd}
+                />
+              </TabsContent>
               <TabsContent value="scores">
-                <Card><CardHeader><CardTitle className="text-base">CCPS Score Breakdown</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
-                    {SCORE_ROWS.map((row) => (<div key={row.key} className="flex items-center gap-3"><row.icon className={`w-4 h-4 ${row.color} shrink-0`} /><span className="text-sm font-medium w-28">{row.label}</span><Progress value={defaultCcps[row.key] || 0} className="flex-1 h-2.5" /><span className="text-sm font-bold w-8 text-right">{defaultCcps[row.key] || 0}</span></div>))}
-                  </CardContent>
-                </Card>
-                {m.ccpsByPersona && Object.keys(m.ccpsByPersona).length > 1 && (
-                  <Card className="mt-4"><CardHeader><CardTitle className="text-base">Score by Decision-Maker Persona</CardTitle></CardHeader>
-                    <CardContent><div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {Object.entries(m.ccpsByPersona).map(([key, ccps]: [string, any]) => (
-                        <div key={key} className="p-3 bg-muted/30 rounded-lg text-center">
-                          <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
-                          <p className={`text-2xl font-bold ${ccps.ccpsTotal >= 75 ? "text-green-600" : ccps.ccpsTotal >= 50 ? "text-yellow-600" : "text-red-600"}`}>{ccps.ccpsTotal}</p>
-                        </div>
-                      ))}
-                    </div></CardContent>
-                  </Card>
-                )}
+                <CcpsScoreCard ccpsByPersona={m.ccpsByPersona} />
               </TabsContent>
               <TabsContent value="specs">
                 <Card><CardContent className="p-6"><div className="grid grid-cols-2 gap-4">
@@ -231,7 +224,15 @@ export default function MaterialDetail() {
           <div className="space-y-4">
             <Card><CardHeader><CardTitle className="text-sm">Manufacturer</CardTitle></CardHeader><CardContent><p className="text-base font-semibold">{m.manufacturerName}</p>{m.manufacturerWebsite && <a href={m.manufacturerWebsite} target="_blank" rel="noopener" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"><ExternalLink className="w-3 h-3" />Website</a>}{m.manufacturerPhone && <p className="text-xs text-muted-foreground mt-1">{m.manufacturerPhone}</p>}{m.manufacturerEmail && <p className="text-xs text-muted-foreground">{m.manufacturerEmail}</p>}</CardContent></Card>
             <Card><CardHeader><CardTitle className="text-sm">Quick Actions</CardTitle></CardHeader><CardContent className="space-y-2"><Button className="w-full" onClick={addToRfq}><ShoppingCart className="w-4 h-4 mr-2" />Request Quote (RFQ)</Button><Link href="/compare"><Button variant="outline" className="w-full"><Scale className="w-4 h-4 mr-2" />Compare Materials</Button></Link></CardContent></Card>
-            <Card><CardHeader><CardTitle className="text-sm">EPD Information</CardTitle></CardHeader><CardContent className="text-xs space-y-1"><p><span className="text-muted-foreground">EPD Number:</span> {m.epdNumber || "—"}</p><p><span className="text-muted-foreground">Program Operator:</span> {m.epdProgramOperator || "—"}</p><p><span className="text-muted-foreground">Declared Unit:</span> {m.declaredUnit || "—"}</p></CardContent></Card>
+            {m.gwpValue && (
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">GWP</p>
+                  <p className="text-2xl font-bold text-green-600 mt-0.5">{Number(m.gwpValue).toFixed(2)}</p>
+                  <p className="text-[10px] text-muted-foreground">{m.gwpUnit || "kgCO₂e"} / {m.declaredUnit || "unit"}</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
