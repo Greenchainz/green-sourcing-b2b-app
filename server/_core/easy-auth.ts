@@ -49,11 +49,17 @@ declare global {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Parse the X-MS-CLIENT-PRINCIPAL header (Base64-encoded JSON) for claims only.
+ * The JSON uses "auth_typ" not "identityProvider", so we only use it for claims.
+ */
 function parseClaimsHeader(headerValue: string | undefined): EasyAuthClaim[] {
   if (!headerValue) return [];
   try {
     const json = Buffer.from(headerValue, "base64").toString("utf-8");
     const parsed = JSON.parse(json);
+    // Azure Container Apps format: { auth_typ, claims: [{typ, val}], name_typ, role_typ }
+    // App Service format: { identityProvider, userId, userDetails, userRoles, claims: [{typ, val}] }
     return Array.isArray(parsed.claims) ? parsed.claims : [];
   } catch {
     console.warn("[EasyAuth] Failed to parse X-MS-CLIENT-PRINCIPAL claims header");
@@ -61,10 +67,16 @@ function parseClaimsHeader(headerValue: string | undefined): EasyAuthClaim[] {
   }
 }
 
+/**
+ * Extract a specific claim value by its type URI.
+ */
 function getClaim(claims: EasyAuthClaim[], claimType: string): string | undefined {
   return claims.find((c) => c.typ === claimType)?.val;
 }
 
+/**
+ * Extract the email from claims (different providers use different claim types).
+ */
 function extractEmailFromClaims(claims: EasyAuthClaim[], fallback: string): string {
   return (
     getClaim(claims, "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress") ??
@@ -74,6 +86,9 @@ function extractEmailFromClaims(claims: EasyAuthClaim[], fallback: string): stri
   );
 }
 
+/**
+ * Extract the display name from claims.
+ */
 function extractNameFromClaims(claims: EasyAuthClaim[], fallback: string): string {
   return (
     getClaim(claims, "name") ??
@@ -83,6 +98,9 @@ function extractNameFromClaims(claims: EasyAuthClaim[], fallback: string): strin
   );
 }
 
+/**
+ * Map the Azure IDP identifier to a stable provider prefix.
+ */
 function mapProvider(idp: string): string {
   const providerMap: Record<string, string> = {
     aad: "microsoft",
@@ -94,6 +112,16 @@ function mapProvider(idp: string): string {
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
+/**
+ * Express middleware: parse Easy Auth headers and attach to req.
+ *
+ * Uses the individual X-MS-CLIENT-PRINCIPAL-ID/IDP/NAME headers as the
+ * authoritative source (always set by Azure Container Apps Easy Auth when
+ * a user is authenticated). The base64 X-MS-CLIENT-PRINCIPAL header is
+ * parsed only for its claims array.
+ *
+ * Does NOT reject unauthenticated requests — that's left to individual routes.
+ */
 export function easyAuthMiddleware(req: Request, _res: Response, next: NextFunction) {
   const userId   = req.headers["x-ms-client-principal-id"]   as string | undefined;
   const idp      = req.headers["x-ms-client-principal-idp"]  as string | undefined;
@@ -114,11 +142,18 @@ export function easyAuthMiddleware(req: Request, _res: Response, next: NextFunct
   next();
 }
 
-// ── Route registration ────────────────────────────────────────────────────────
+// ── Route registration ───────────────────────────────────────────────────────
 
+/**
+ * Register Easy Auth routes on the Express app:
+ *   GET /api/auth/me  — returns the current user (from Easy Auth headers)
+ *   POST /api/auth/logout — redirects to Easy Auth logout (kept for API compatibility)
+ */
 export function registerEasyAuthRoutes(app: Express) {
+  // Apply the middleware globally so every route can access easyAuthPrincipal
   app.use(easyAuthMiddleware);
 
+  // ── GET /api/auth/me ──────────────────────────────────────────────────────
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     const principal = req.easyAuthPrincipal;
 
@@ -132,11 +167,13 @@ export function registerEasyAuthRoutes(app: Express) {
     const email    = extractEmailFromClaims(principal.claims, principal.userDetails);
     const name     = extractNameFromClaims(principal.claims, principal.userDetails);
 
+    // Determine role — greenchainz.com addresses get admin
     let assignedRole: "buyer" | "supplier" | "admin" | "user" = "buyer";
     if (email.endsWith("@greenchainz.com")) {
       assignedRole = "admin";
     }
 
+    // Upsert user into database
     try {
       await db.upsertUser({
         openId,
@@ -150,13 +187,14 @@ export function registerEasyAuthRoutes(app: Express) {
       console.warn("[EasyAuth] DB upsert failed:", err);
     }
 
+    // Look up user to get the authoritative role and numeric DB id
     const dbUser = await db.getUserByOpenId(openId);
     const role   = dbUser?.role ?? assignedRole;
 
     res.json({
       user: {
         id: openId,
-        dbId: dbUser?.id ?? null,
+        dbId: dbUser?.id ?? null,   // numeric DB id for tRPC procedures that need it
         email,
         name,
         roles: [role],
@@ -166,6 +204,7 @@ export function registerEasyAuthRoutes(app: Express) {
     });
   });
 
+  // ── POST /api/auth/logout (API compat — frontend uses /.auth/logout) ──────
   app.post("/api/auth/logout", (_req: Request, res: Response) => {
     res.json({ success: true, redirectTo: "/.auth/logout?post_logout_redirect_uri=/" });
   });
@@ -175,139 +214,63 @@ export function registerEasyAuthRoutes(app: Express) {
   });
 }
 
-// ── LOCAL DEV ONLY: Simulate Easy Auth /.auth/* routes ───────────────────────
-// In production, Azure Container Apps sidecar handles these automatically.
-// Locally we replicate login + token exchange directly against Microsoft.
-
-const DEV_TENANT_ID  = "ca4f78d4-c753-4893-9cd8-1b309922b4dc";
-const DEV_CLIENT_ID  = "479e2a01-70ab-4df9-baa4-560d317c3423";
-const DEV_CALLBACK   = "http://localhost:3001/.auth/callback";
-
+// ── LOCAL DEV: Simulate Easy Auth /.auth/login/aad ───────────────────────────
+// In production, Azure Container Apps sidecar handles this automatically.
+// This dev shim redirects to real Microsoft login so OAuth works locally.
 export function registerDevAuthShim(app: Express) {
   if (process.env.NODE_ENV === "production") return;
 
-  // Step 1: Redirect to Microsoft login
   app.get("/.auth/login/aad", (req: Request, res: Response) => {
-    const postLoginRedirect = String(req.query.post_login_redirect_uri || "/dashboard");
-    // state = base64(redirectPath) so we can recover it after callback
-    const state = Buffer.from(postLoginRedirect).toString("base64");
-    const params = new URLSearchParams({
-      client_id: DEV_CLIENT_ID,
-      response_type: "code",
-      redirect_uri: DEV_CALLBACK,
-      scope: "openid profile email",
-      state,
-    });
-    res.redirect(302, `https://login.microsoftonline.com/${DEV_TENANT_ID}/oauth2/v2.0/authorize?${params}`);
+    const base = process.env.OAUTH_SERVER_URL;
+    const clientId = "479e2a01-70ab-4df9-baa4-560d317c3423";
+    const redirectUri = encodeURIComponent("http://localhost:3001/.auth/callback");
+    const stateObj = { role: "buyer", returnPath: String(req.query.post_login_redirect_uri || "/dashboard") };
+    const state = Buffer.from(JSON.stringify(stateObj)).toString("base64");
+    const url = `${base}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=openid+profile+email&state=${state}`;
+    res.redirect(302, url);
   });
+}
 
-  app.get("/.auth/login/google", (_req: Request, res: Response) => {
-    res.redirect(302, "/.auth/login/aad");
-  });
+// ── LOCAL DEV: Direct Microsoft token exchange (bypasses Replit SDK) ─────────
+export function registerDevCallbackHandler(app: Express) {
+  if (process.env.NODE_ENV === "production") return;
 
-  // Step 2: Exchange code for tokens directly with Microsoft (bypasses Replit SDK)
   app.get("/.auth/callback", async (req: Request, res: Response) => {
-    const code  = req.query.code  as string | undefined;
-    const state = req.query.state as string | undefined;
-
-    if (!code) {
-      res.status(400).json({ error: "Missing code from Microsoft" });
-      return;
-    }
-
-    const clientSecret =
-      process.env.MICROSOFT_CLIENT_SECRET ||
-      process.env.CLIENT_SECRET ||
-      "";
-
-    if (!clientSecret) {
-      console.error("[DevAuth] MICROSOFT_CLIENT_SECRET not set in .env.local");
-      res.status(500).json({ error: "MICROSOFT_CLIENT_SECRET not configured" });
-      return;
-    }
+    const code = req.query.code as string;
+    if (!code) return res.status(400).json({ error: "No code" });
 
     const params = new URLSearchParams({
-      client_id:     DEV_CLIENT_ID,
-      client_secret: clientSecret,
+      client_id: "479e2a01-70ab-4df9-baa4-560d317c3423",
+      client_secret: process.env.MICROSOFT_CLIENT_SECRET || process.env.CLIENT_SECRET || "",
       code,
-      redirect_uri:  DEV_CALLBACK,
-      grant_type:    "authorization_code",
-      scope:         "openid profile email",
+      redirect_uri: "http://localhost:3001/.auth/callback",
+      grant_type: "authorization_code",
+      scope: "openid profile email",
     });
 
     try {
       const tokenRes = await fetch(
-        `https://login.microsoftonline.com/${DEV_TENANT_ID}/oauth2/v2.0/token`,
-        {
-          method:  "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body:    params.toString(),
-        }
+        `https://login.microsoftonline.com/ca4f78d4-c753-4893-9cd8-1b309922b4dc/oauth2/v2.0/token`,
+        { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params }
       );
-
       const tokens = await tokenRes.json() as any;
+      if (tokens.error) return res.status(401).json(tokens);
 
-      if (tokens.error) {
-        console.error("[DevAuth] Token exchange error:", tokens);
-        res.status(401).json({ error: tokens.error_description || tokens.error });
-        return;
-      }
+      // Decode id_token to get user info (no Graph call needed)
+      const idToken = tokens.id_token;
+      const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString());
 
-      // Decode id_token JWT (no signature verification needed locally)
-      const idPayload = JSON.parse(
-        Buffer.from(tokens.id_token.split(".")[1], "base64url").toString("utf-8")
-      );
+      // Set Easy Auth-style headers so easyAuthMiddleware picks them up
+      req.headers["x-ms-client-principal-id"] = payload.oid || payload.sub;
+      req.headers["x-ms-client-principal-idp"] = "aad";
+      req.headers["x-ms-client-principal-name"] = payload.preferred_username || payload.email;
 
-      const userId   = idPayload.oid || idPayload.sub;
-      const email    = idPayload.preferred_username || idPayload.email || "";
-      const name     = idPayload.name || email;
-
-      // Upsert user into DB
-      try {
-        await db.upsertUser({
-          openId:      `microsoft:${userId}`,
-          email,
-          name,
-          loginMethod: "microsoft",
-          lastSignedIn: new Date(),
-          role:        email.endsWith("@greenchainz.com") ? "admin" : "buyer",
-        });
-      } catch (err) {
-        console.warn("[DevAuth] DB upsert failed:", err);
-      }
-
-      // Inject Easy Auth headers so /api/auth/me works immediately after redirect
-      // (these only persist for this request; subsequent requests use the cookie below)
-      res.setHeader("x-ms-client-principal-id",   userId);
-      res.setHeader("x-ms-client-principal-idp",  "aad");
-      res.setHeader("x-ms-client-principal-name", email);
-
-      // Store a lightweight session cookie (access token) for subsequent requests
-      res.cookie("dev-ms-token", tokens.access_token, {
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge:   tokens.expires_in * 1000,
-      });
-
-      // Recover post-login redirect from state
-      let returnPath = "/dashboard";
-      if (state) {
-        try { returnPath = Buffer.from(state, "base64").toString("utf-8"); } catch {}
-      }
-
-      console.log(`[DevAuth] ✅ Login success: ${email} → ${returnPath}`);
-      res.redirect(302, returnPath);
-
+      // Store session cookie with the access token
+      res.cookie("dev-auth-token", tokens.access_token, { httpOnly: true, maxAge: 3600000 });
+      res.redirect(302, "/dashboard");
     } catch (err) {
-      console.error("[DevAuth] Token exchange failed:", err);
+      console.error("[DevAuth] Token exchange failed", err);
       res.status(500).json({ error: "Token exchange failed" });
     }
-  });
-
-  // Step 3: Dev logout — clear cookie and redirect home
-  app.get("/.auth/logout", (req: Request, res: Response) => {
-    res.clearCookie("dev-ms-token");
-    const postLogout = String(req.query.post_logout_redirect_uri || "/");
-    res.redirect(302, postLogout);
   });
 }

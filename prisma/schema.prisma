@@ -15,12 +15,12 @@ generator client {
 // ============================================================================
 
 model MaterialTechnicalSpec {
-  id        Int      @id @default(autoincrement())
-  materialId Int     @map("material_id")
-  
+  id         Int @id @default(autoincrement())
+  materialId Int @map("material_id")
+
   // ASTM Standards (JSON array)
   astmCodes String[] @default([]) @map("astm_codes")
-  
+
   // Fire & Safety Certifications
   ulListing          String? @map("ul_listing") @db.VarChar(255)
   ulDesignNumber     String? @map("ul_design_number") @db.VarChar(50)
@@ -28,153 +28,153 @@ model MaterialTechnicalSpec {
   fireRating         String? @map("fire_rating") @db.VarChar(50)
   fireRatingStandard String? @map("fire_rating_standard") @db.VarChar(100)
   charRate           String? @map("char_rate") @db.VarChar(50)
-  
+
   // Structural Performance
   compressiveStrengthPsi Int? @map("compressive_strength_psi")
   modulusOfElasticityKsi Int? @map("modulus_of_elasticity_ksi")
   flexuralStrengthPsi    Int? @map("flexural_strength_psi")
   tensileStrengthPsi     Int? @map("tensile_strength_psi")
   stiffnessKsi           Int? @map("stiffness_ksi")
-  
+
   // Thermal Performance
   rValuePerInch Decimal? @map("r_value_per_inch") @db.Decimal(5, 2)
   lttr15Year    Decimal? @map("lttr_15_year") @db.Decimal(5, 2)
   permRating    Decimal? @map("perm_rating") @db.Decimal(5, 2)
   thermalUValue Decimal? @map("thermal_u_value") @db.Decimal(8, 4)
-  
+
   // Acoustic Performance
   stcRating Int?     @map("stc_rating")
   iicRating Int?     @map("iic_rating")
   nrcRating Decimal? @map("nrc_rating") @db.Decimal(3, 2)
-  
+
   // Installability & Labor
   laborUnits             Decimal? @map("labor_units") @db.Decimal(5, 2)
   cureTimeHours          Int?     @map("cure_time_hours")
   weightPerUnit          Decimal? @map("weight_per_unit") @db.Decimal(8, 2)
   slumpWorkability       String?  @map("slump_workability") @db.VarChar(50)
   installationDifficulty Int?     @map("installation_difficulty")
-  
+
   // Reliability & Supply Chain
-  leadTimeDays      Int?     @map("lead_time_days")
-  otifPercentage    Decimal? @map("otif_percentage") @db.Decimal(5, 2)
-  supplierZScore    Decimal? @map("supplier_z_score") @db.Decimal(5, 2)
-  
+  leadTimeDays   Int?     @map("lead_time_days")
+  otifPercentage Decimal? @map("otif_percentage") @db.Decimal(5, 2)
+  supplierZScore Decimal? @map("supplier_z_score") @db.Decimal(5, 2)
+
   // Lifecycle & Maintenance
-  warrantyYears          Int? @map("warranty_years")
-  maintenanceCycleYears  Int? @map("maintenance_cycle_years")
-  expectedLifespanYears  Int? @map("expected_lifespan_years")
-  
+  warrantyYears         Int? @map("warranty_years")
+  maintenanceCycleYears Int? @map("maintenance_cycle_years")
+  expectedLifespanYears Int? @map("expected_lifespan_years")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("material_technical_specs")
   @@index([materialId], name: "idx_tech_specs_material")
+  @@map("material_technical_specs")
 }
 
 model PricingData {
-  id         Int      @id @default(autoincrement())
-  materialId Int      @map("material_id")
-  
+  id         Int @id @default(autoincrement())
+  materialId Int @map("material_id")
+
   // Pricing
   pricePerUnit Decimal @map("price_per_unit") @db.Decimal(10, 2)
   unit         String  @db.VarChar(50)
   currency     String  @default("USD") @db.VarChar(3)
-  
+
   // Regional Context
   state   String? @db.VarChar(2)
   city    String? @db.VarChar(100)
   zipCode String? @map("zip_code") @db.VarChar(10)
   county  String? @db.VarChar(100)
-  
+
   // Data Source
   source         String    @db.VarChar(50)
   sourceDate     DateTime? @map("source_date")
   sourceUrl      String?   @map("source_url") @db.Text
   projectName    String?   @map("project_name") @db.VarChar(255)
   contractNumber String?   @map("contract_number") @db.VarChar(100)
-  
+
   // Labor Pricing
   laborRatePerHour Decimal? @map("labor_rate_per_hour") @db.Decimal(8, 2)
   totalLaborCost   Decimal? @map("total_labor_cost") @db.Decimal(10, 2)
-  
+
   // Metadata
   dataConfidence Int       @default(50) @map("data_confidence")
   isActive       Boolean   @default(true) @map("is_active")
   expiresAt      DateTime? @map("expires_at")
-  
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("pricing_data")
   @@index([materialId], name: "idx_pricing_material")
   @@index([state], name: "idx_pricing_state")
   @@index([source], name: "idx_pricing_source")
   @@index([isActive], name: "idx_pricing_active")
+  @@map("pricing_data")
 }
 
 model SwapValidation {
-  id                     Int      @id @default(autoincrement())
-  
-  // Materials
-  incumbentMaterialId    Int      @map("incumbent_material_id")
-  sustainableMaterialId  Int      @map("sustainable_material_id")
-  projectId              Int?     @map("project_id")
-  
-  // Validation Results
-  validationStatus       String   @map("validation_status") @db.VarChar(20)
-  overallScore           Decimal  @map("overall_score") @db.Decimal(5, 2)
-  
-  // Showstopper Results (JSON object)
-  showstopperResults     Json     @map("showstopper_results")
-  
-  // Check Counts
-  passedChecks           Int      @map("passed_checks")
-  failedChecks           Int      @map("failed_checks")
-  skippedChecks          Int      @map("skipped_checks")
-  
-  // Recommendation
-  recommendation         String   @db.Text
-  
-  // Cost Comparison
-  incumbentTotalCost     Decimal? @map("incumbent_total_cost") @db.Decimal(10, 2)
-  sustainableTotalCost   Decimal? @map("sustainable_total_cost") @db.Decimal(10, 2)
-  costDeltaPercentage    Decimal? @map("cost_delta_percentage") @db.Decimal(5, 2)
-  
-  // Carbon Comparison
-  incumbentGwp           Decimal? @map("incumbent_gwp") @db.Decimal(10, 2)
-  sustainableGwp         Decimal? @map("sustainable_gwp") @db.Decimal(10, 2)
-  carbonReductionPercentage Decimal? @map("carbon_reduction_percentage") @db.Decimal(5, 2)
-  
-  // Generated Documentation
-  csiFormUrl             String?   @map("csi_form_url") @db.Text
-  csiFormGeneratedAt     DateTime? @map("csi_form_generated_at")
-  
-  // Validation Metadata
-  validatedAt            DateTime  @default(now()) @map("validated_at")
-  expiresAt              DateTime? @map("expires_at")
-  
-  // User Tracking
-  requestedBy            Int?      @map("requested_by")
-  rfqId                  Int?      @map("rfq_id")
-  
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
+  id Int @id @default(autoincrement())
 
-  @@map("swap_validations")
+  // Materials
+  incumbentMaterialId   Int  @map("incumbent_material_id")
+  sustainableMaterialId Int  @map("sustainable_material_id")
+  projectId             Int? @map("project_id")
+
+  // Validation Results
+  validationStatus String  @map("validation_status") @db.VarChar(20)
+  overallScore     Decimal @map("overall_score") @db.Decimal(5, 2)
+
+  // Showstopper Results (JSON object)
+  showstopperResults Json @map("showstopper_results")
+
+  // Check Counts
+  passedChecks  Int @map("passed_checks")
+  failedChecks  Int @map("failed_checks")
+  skippedChecks Int @map("skipped_checks")
+
+  // Recommendation
+  recommendation String @db.Text
+
+  // Cost Comparison
+  incumbentTotalCost   Decimal? @map("incumbent_total_cost") @db.Decimal(10, 2)
+  sustainableTotalCost Decimal? @map("sustainable_total_cost") @db.Decimal(10, 2)
+  costDeltaPercentage  Decimal? @map("cost_delta_percentage") @db.Decimal(5, 2)
+
+  // Carbon Comparison
+  incumbentGwp              Decimal? @map("incumbent_gwp") @db.Decimal(10, 2)
+  sustainableGwp            Decimal? @map("sustainable_gwp") @db.Decimal(10, 2)
+  carbonReductionPercentage Decimal? @map("carbon_reduction_percentage") @db.Decimal(5, 2)
+
+  // Generated Documentation
+  csiFormUrl         String?   @map("csi_form_url") @db.Text
+  csiFormGeneratedAt DateTime? @map("csi_form_generated_at")
+
+  // Validation Metadata
+  validatedAt DateTime  @default(now()) @map("validated_at")
+  expiresAt   DateTime? @map("expires_at")
+
+  // User Tracking
+  requestedBy Int? @map("requested_by")
+  rfqId       Int? @map("rfq_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@index([incumbentMaterialId], name: "idx_swap_incumbent")
   @@index([sustainableMaterialId], name: "idx_swap_sustainable")
   @@index([validationStatus], name: "idx_swap_status")
   @@index([projectId], name: "idx_swap_project")
+  @@map("swap_validations")
 }
 
 model MaterialAssemblySpec {
-  id                   Int      @id @default(autoincrement())
-  
+  id Int @id @default(autoincrement())
+
   // Assembly Identity
-  name                 String   @unique @db.VarChar(255)
-  category             String   @db.VarChar(100)
-  description          String?  @db.Text
-  
+  name        String  @unique @db.VarChar(255)
+  category    String  @db.VarChar(100)
+  description String? @db.Text
+
   // Assembly-Level Specs
   totalThicknessInches Decimal? @map("total_thickness_inches") @db.Decimal(5, 2)
   totalRValue          Decimal? @map("total_r_value") @db.Decimal(5, 2)
@@ -182,56 +182,57 @@ model MaterialAssemblySpec {
   ulDesignNumber       String?  @map("ul_design_number") @db.VarChar(50)
   stcRating            Int?     @map("stc_rating")
   iicRating            Int?     @map("iic_rating")
-  
+
   // Cost & Carbon
-  totalCostPerSf       Decimal? @map("total_cost_per_sf") @db.Decimal(10, 2)
-  totalGwpPerSf        Decimal? @map("total_gwp_per_sf") @db.Decimal(10, 2)
+  totalCostPerSf Decimal? @map("total_cost_per_sf") @db.Decimal(10, 2)
+  totalGwpPerSf  Decimal? @map("total_gwp_per_sf") @db.Decimal(10, 2)
 
   // EPD Carbon Fields
-  epdNumber            String?  @map("epd_number") @db.VarChar(100)
-  gwpA1A3              Decimal? @map("gwp_a1_a3") @db.Decimal(10, 4)       // kgCO2e per declared unit
-  gwpDeclaredUnit      String?  @map("gwp_declared_unit") @db.VarChar(50)  // "m2" | "metric_ton" | "1000sqft"
-  gwpMsfFactor         Decimal? @map("gwp_msf_factor") @db.Decimal(10, 4)  // conversion to per-1000SF
-  gwpPer1000sf         Decimal? @map("gwp_per_1000sf") @db.Decimal(10, 2)  // computed: gwpA1A3 * gwpMsfFactor
-  carbonTier           String?  @map("carbon_tier") @db.VarChar(20)        // "low-carbon" | "mid-carbon" | "high-carbon"
+  epdNumber       String?  @map("epd_number") @db.VarChar(100)
+  gwpA1A3         Decimal? @map("gwp_a1_a3") @db.Decimal(10, 4) // kgCO2e per declared unit
+  gwpDeclaredUnit String?  @map("gwp_declared_unit") @db.VarChar(50) // "m2" | "metric_ton" | "1000sqft"
+  gwpMsfFactor    Decimal? @map("gwp_msf_factor") @db.Decimal(10, 4) // conversion to per-1000SF
+  gwpPer1000sf    Decimal? @map("gwp_per_1000sf") @db.Decimal(10, 2) // computed: gwpA1A3 * gwpMsfFactor
+  carbonTier      String?  @map("carbon_tier") @db.VarChar(20) // "low-carbon" | "mid-carbon" | "high-carbon"
 
   // Assembly Type Tags (controlled vocabulary)
-  assemblyTypeTags     String[] @default([]) @map("assembly_type_tags")
-  framingTypeTags      String[] @default([]) @map("framing_type_tags")
-  exteriorFinishTags   String[] @default([]) @map("exterior_finish_tags")
-  certificationTags    String[] @default([]) @map("certification_tags")
+  assemblyTypeTags   String[] @default([]) @map("assembly_type_tags")
+  framingTypeTags    String[] @default([]) @map("framing_type_tags")
+  exteriorFinishTags String[] @default([]) @map("exterior_finish_tags")
+  certificationTags  String[] @default([]) @map("certification_tags")
 
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
-  
-  components           AssemblySpecComponent[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("material_assembly_specs")
+  components AssemblySpecComponent[]
+
   @@index([category], name: "idx_assembly_specs_category")
   @@index([ulDesignNumber], name: "idx_assembly_specs_ul")
   @@index([epdNumber], name: "idx_assembly_epd_number")
   @@index([carbonTier], name: "idx_assembly_carbon_tier")
   @@index([assemblyTypeTags], name: "idx_assembly_type_tags")
+  @@map("material_assembly_specs")
 }
 
 model AssemblySpecComponent {
-  id               Int      @id @default(autoincrement())
-  assemblySpecId   Int      @map("assembly_spec_id")
-  materialId       Int      @map("material_id")
-  layerOrder       Int      @map("layer_order")
-  layerName        String   @db.VarChar(255)
-  quantity         Decimal  @db.Decimal(8, 2)
-  unit             String   @db.VarChar(50)
-  thicknessInches  Decimal? @map("thickness_inches") @db.Decimal(5, 2)
-  
-  createdAt        DateTime @default(now()) @map("created_at")
-  
-  assembly         MaterialAssemblySpec @relation(fields: [assemblySpecId], references: [id])
+  id              Int      @id @default(autoincrement())
+  assemblySpecId  Int      @map("assembly_spec_id")
+  materialId      Int      @map("material_id")
+  layerOrder      Int      @map("layer_order")
+  layerName       String   @db.VarChar(255)
+  quantity        Decimal  @db.Decimal(8, 2)
+  unit            String   @db.VarChar(50)
+  thicknessInches Decimal? @map("thickness_inches") @db.Decimal(5, 2)
 
-  @@map("assembly_spec_components")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  assembly MaterialAssemblySpec @relation(fields: [assemblySpecId], references: [id])
+
   @@index([assemblySpecId], name: "idx_assembly_comp_assembly")
   @@index([materialId], name: "idx_assembly_comp_material")
-}enum RfqStatus {
+  @@map("assembly_spec_components")
+}
+enum RfqStatus {
   OPEN
   BIDDING
   AWARDED
@@ -258,9 +259,7 @@ model Supplier {
   longitude       Decimal? @db.Decimal(9, 6)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  bids RfqBid[]
-
+  bids            RfqBid[]
   @@index([status])
   @@map("suppliers")
 }
@@ -278,10 +277,8 @@ model Rfq {
   awardedSupplierId      String?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
-
-  items RfqItem[]
-  bids  RfqBid[]
-
+  items                  RfqItem[]
+  bids                   RfqBid[]
   @@index([buyerId])
   @@index([status])
   @@map("rfqs")
@@ -294,9 +291,7 @@ model RfqItem {
   quantity   Float
   unit       String
   notes      String?
-
-  rfq Rfq @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-
+  rfq        Rfq     @relation(fields: [rfqId], references: [id], onDelete: Cascade)
   @@index([rfqId])
   @@map("rfq_items")
 }
@@ -312,12 +307,9 @@ model RfqBid {
   expiresAt   DateTime
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-
-  rfq      Rfq      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  supplier Supplier @relation(fields: [supplierId], references: [id])
-
+  rfq         Rfq       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplier    Supplier  @relation(fields: [supplierId], references: [id])
   @@index([rfqId])
   @@index([supplierId])
   @@map("rfq_bids")
 }
-
