@@ -29,6 +29,7 @@ import { SupplierProfileDashboard } from "./pages/SupplierProfileDashboard";
 import SupplierRfqDashboard from "./pages/SupplierRfqDashboard";
 import GetStarted from "./pages/GetStarted";
 import SupplierOnboarding from "./pages/SupplierOnboarding";
+import MaterialCreditScorePage from "./pages/MaterialCreditScorePage";
 import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
 import { ChainBot } from "./components/ChainBot";
@@ -61,6 +62,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/get-started"} component={GetStarted} />
       <Route path={"/materials"} component={MaterialsCatalog} />
+      <Route path={"/materials/:materialId/score"} component={MaterialCreditScorePage} />
       <Route path={"/materials/:id"} component={MaterialDetail} />
       <Route path={"/assemblies"} component={Assemblies} />
       <Route path={"/assemblies/:id"} component={Assemblies} />
