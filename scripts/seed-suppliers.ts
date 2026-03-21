@@ -1,8 +1,9 @@
 /**
- * Seed script: upserts 120 US sustainable building material suppliers.
+ * Seed script: inserts 60 US sustainable building material suppliers.
  * Run with: tsx scripts/seed-suppliers.ts
  *
- * Safe to re-run (upsert keyed on email).
+ * Safe to re-run — skips if seed rows (userId=0) already exist.
+ * Pass --force to wipe and re-seed: tsx scripts/seed-suppliers.ts --force
  * userId = 0 (system/seed row — no real user account).
  */
 
@@ -17,7 +18,7 @@ if (existsSync(".env.local")) {
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { suppliers } from "../drizzle/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -820,48 +821,66 @@ const SUPPLIERS: SeedSupplier[] = [
 // ─── Seed Function ────────────────────────────────────────────────────────────
 
 async function main() {
+  const force = process.argv.includes("--force");
+
+  // Check for existing seed rows
+  const existing = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(suppliers)
+    .where(eq(suppliers.userId, 0));
+  const existingCount = existing[0]?.count ?? 0;
+
+  if (existingCount > 0 && !force) {
+    console.log(`Skipping — ${existingCount} seed rows already exist. Run with --force to wipe and re-seed.`);
+    await pool.end();
+    return;
+  }
+
+  if (force && existingCount > 0) {
+    console.log(`--force: deleting ${existingCount} existing seed rows...`);
+    await db.delete(suppliers).where(eq(suppliers.userId, 0));
+  }
+
   console.log(`Seeding ${SUPPLIERS.length} suppliers...`);
 
   let inserted = 0;
-  let skipped = 0;
+  let errors = 0;
 
   for (const s of SUPPLIERS) {
     try {
-      await db
-        .insert(suppliers)
-        .values({
-          userId: s.userId,
-          companyName: s.companyName,
-          email: s.email,
-          phone: s.phone,
-          website: s.website,
-          address: s.address,
-          city: s.city,
-          state: s.state,
-          zipCode: s.zipCode,
-          country: s.country,
-          latitude: s.latitude,
-          longitude: s.longitude,
-          description: s.description,
-          contactName: s.contactName,
-          materialCategories: s.materialCategories,
-          certifications: s.certifications,
-          sustainabilityScore: s.sustainabilityScore,
-          maxOrderValue: s.maxOrderValue,
-          currentCapacity: s.currentCapacity,
-          isPremium: s.isPremium,
-          verified: s.verified,
-          verificationStatus: s.verificationStatus,
-        })
-        .onConflictDoNothing({ target: suppliers.email });
+      await db.insert(suppliers).values({
+        userId: s.userId,
+        companyName: s.companyName,
+        email: s.email,
+        phone: s.phone,
+        website: s.website,
+        address: s.address,
+        city: s.city,
+        state: s.state,
+        zipCode: s.zipCode,
+        country: s.country,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        description: s.description,
+        contactName: s.contactName,
+        materialCategories: s.materialCategories,
+        certifications: s.certifications,
+        sustainabilityScore: s.sustainabilityScore,
+        maxOrderValue: s.maxOrderValue,
+        currentCapacity: s.currentCapacity,
+        isPremium: s.isPremium,
+        verified: s.verified,
+        verificationStatus: s.verificationStatus,
+      });
+      process.stdout.write(".");
       inserted++;
     } catch (err) {
-      console.error(`  ✗ ${s.companyName}: ${err}`);
-      skipped++;
+      console.error(`\n  ✗ ${s.companyName}: ${err}`);
+      errors++;
     }
   }
 
-  console.log(`Done. ${inserted} inserted, ${skipped} errors.`);
+  console.log(`\nDone. ${inserted} inserted, ${errors} errors.`);
   await pool.end();
 }
 
