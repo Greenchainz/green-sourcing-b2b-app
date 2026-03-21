@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "prisma db push",
-    "seed:ews": "tsx scripts/seed-ews-assemblies.ts"
+    "seed:ews": "tsx scripts/seed-ews-assemblies.ts",
+    "seed:suppliers": "tsx scripts/seed-suppliers.ts"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.1.0",
