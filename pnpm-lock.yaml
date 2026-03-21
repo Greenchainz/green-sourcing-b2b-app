@@ -6,13 +6,16 @@ settings:
 
 overrides:
   tailwindcss>nanoid: 3.3.7
-  fast-xml-parser: '>=5.3.8'
-  tar: '>=7.5.10'
+  fast-xml-parser: '>=5.5.7'
+  tar: '>=7.5.11'
   rollup: '>=4.59.0'
   esbuild: '>=0.25.0'
   lodash-es: '>=4.17.23'
   qs: '>=6.14.2'
   dompurify: '>=3.3.2'
+  undici: '>=7.24.0'
+  kysely: '>=0.28.14'
+  nodemailer: '>=7.0.11'
 
 importers:
 
@@ -149,7 +152,7 @@ importers:
         version: 1.13.5
       better-auth:
         specifier: ^1.4.18
-        version: 1.4.18(@prisma/client@5.22.0(prisma@5.22.0))(drizzle-kit@0.31.5)(drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.13)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0))(mysql2@3.15.1)(pg@8.18.0)(prisma@5.22.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@2.1.9(@types/node@24.7.0)(lightningcss@1.30.2))
+        version: 1.4.18(@prisma/client@5.22.0(prisma@5.22.0))(drizzle-kit@0.31.5)(drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.14)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0))(mysql2@3.15.1)(pg@8.18.0)(prisma@5.22.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@2.1.9(@types/node@24.7.0)(lightningcss@1.30.2))
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
@@ -176,7 +179,7 @@ importers:
         version: 17.2.3
       drizzle-orm:
         specifier: ^0.45.1
-        version: 0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.13)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0)
+        version: 0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.14)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0)
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.1)
@@ -205,7 +208,7 @@ importers:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       nodemailer:
-        specifier: ^8.0.2
+        specifier: '>=7.0.11'
         version: 8.0.2
       pdfkit:
         specifier: ^0.17.2
@@ -544,7 +547,7 @@ packages:
       '@better-fetch/fetch': 1.1.21
       better-call: 1.1.8
       jose: ^6.1.0
-      kysely: ^0.28.5
+      kysely: '>=0.28.14'
       nanostores: ^1.0.1
 
   '@better-auth/telemetry@1.4.18':
@@ -2685,7 +2688,7 @@ packages:
       expo-sqlite: '>=14.0.0'
       gel: '>=2'
       knex: '*'
-      kysely: '*'
+      kysely: '>=0.28.14'
       mysql2: '>=2'
       pg: '>=8'
       postgres: '>=3'
@@ -3179,8 +3182,8 @@ packages:
   kolorist@1.8.0:
     resolution: {integrity: sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ==}
 
-  kysely@0.28.13:
-    resolution: {integrity: sha512-jCkYDvlfzOyHaVsrvR4vnNZxG30oNv2jbbFBjTQAUG8n0h07HW0sZJHk4KAQIRyu9ay+Rg+L8qGa3lwt8Gve9w==}
+  kysely@0.28.14:
+    resolution: {integrity: sha512-SU3lgh0rPvq7upc6vvdVrCsSMUG1h3ChvHVOY7wJ2fw4C9QEB7X3d5eyYEyULUX7UQtxZJtZXGuT6U2US72UYA==}
     engines: {node: '>=20.0.0'}
 
   langium@3.3.1:
@@ -4899,20 +4902,20 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
 
-  '@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.13)(nanostores@1.1.0)':
+  '@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.14)(nanostores@1.1.0)':
     dependencies:
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.21
       '@standard-schema/spec': 1.1.0
       better-call: 1.1.8(zod@4.3.6)
       jose: 6.1.0
-      kysely: 0.28.13
+      kysely: 0.28.14
       nanostores: 1.1.0
       zod: 4.3.6
 
-  '@better-auth/telemetry@1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.13)(nanostores@1.1.0))':
+  '@better-auth/telemetry@1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.14)(nanostores@1.1.0))':
     dependencies:
-      '@better-auth/core': 1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.13)(nanostores@1.1.0)
+      '@better-auth/core': 1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.14)(nanostores@1.1.0)
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.21
 
@@ -6450,10 +6453,10 @@ snapshots:
 
   baseline-browser-mapping@2.8.12: {}
 
-  better-auth@1.4.18(@prisma/client@5.22.0(prisma@5.22.0))(drizzle-kit@0.31.5)(drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.13)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0))(mysql2@3.15.1)(pg@8.18.0)(prisma@5.22.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@2.1.9(@types/node@24.7.0)(lightningcss@1.30.2)):
+  better-auth@1.4.18(@prisma/client@5.22.0(prisma@5.22.0))(drizzle-kit@0.31.5)(drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.14)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0))(mysql2@3.15.1)(pg@8.18.0)(prisma@5.22.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@2.1.9(@types/node@24.7.0)(lightningcss@1.30.2)):
     dependencies:
-      '@better-auth/core': 1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.13)(nanostores@1.1.0)
-      '@better-auth/telemetry': 1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.13)(nanostores@1.1.0))
+      '@better-auth/core': 1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.14)(nanostores@1.1.0)
+      '@better-auth/telemetry': 1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.0)(kysely@0.28.14)(nanostores@1.1.0))
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.21
       '@noble/ciphers': 2.1.1
@@ -6461,13 +6464,13 @@ snapshots:
       better-call: 1.1.8(zod@4.3.6)
       defu: 6.1.4
       jose: 6.1.0
-      kysely: 0.28.13
+      kysely: 0.28.14
       nanostores: 1.1.0
       zod: 4.3.6
     optionalDependencies:
       '@prisma/client': 5.22.0(prisma@5.22.0)
       drizzle-kit: 0.31.5
-      drizzle-orm: 0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.13)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0)
+      drizzle-orm: 0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.14)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0)
       mysql2: 3.15.1
       pg: 8.18.0
       prisma: 5.22.0
@@ -6978,12 +6981,12 @@ snapshots:
       - supports-color
     optional: true
 
-  drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.13)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0):
+  drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.16.0)(kysely@0.28.14)(mysql2@3.15.1)(pg@8.18.0)(postgres@3.4.7)(prisma@5.22.0):
     optionalDependencies:
       '@electric-sql/pglite': 0.3.15
       '@prisma/client': 5.22.0(prisma@5.22.0)
       '@types/pg': 8.16.0
-      kysely: 0.28.13
+      kysely: 0.28.14
       mysql2: 3.15.1
       pg: 8.18.0
       postgres: 3.4.7
@@ -7525,7 +7528,7 @@ snapshots:
 
   kolorist@1.8.0: {}
 
-  kysely@0.28.13: {}
+  kysely@0.28.14: {}
 
   langium@3.3.1:
     dependencies:
