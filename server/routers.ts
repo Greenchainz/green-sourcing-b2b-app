@@ -38,6 +38,7 @@ import { swapValidationRouter } from "./routers/swapValidation";
 import { rfqRouter } from "./routers/rfq";
 import { supplierOnboardingRouter } from "./routers/supplier";
 import { epdRouter } from "./routers/epd";
+import { locationRouter } from "./routers/location";
 
 export const appRouter = router({
   system: systemRouter,
@@ -57,6 +58,7 @@ export const appRouter = router({
   rfqRequests: rfqRouter,
   supplierOnboarding: supplierOnboardingRouter,
   epd: epdRouter,
+  location: locationRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
