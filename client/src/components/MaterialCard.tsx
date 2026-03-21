@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { ScoreBadge } from "@/components/MaterialCreditScore/ScoreBadge";
 
 interface CcpsBreakdown {
   carbonScore: number;
@@ -39,6 +40,16 @@ interface MaterialCardProps {
   usManufactured?: number | null;
   recycledContentPct?: string | null;
   ccps: CcpsBreakdown;
+}
+
+/** Compute a lightweight MCS from data available in the card props. */
+function computeCardMcs(props: MaterialCardProps): number {
+  const epdScore = props.hasEpd ? 30 : 0;
+  const certs = [props.hasEpd, props.hasHpd, props.hasFsc, props.hasC2c, props.hasGreenguard, props.hasDeclare].filter(Boolean).length;
+  const certScore = Math.min(20, certs * 4);
+  const filledFields = [props.gwpValue, props.pricePerUnit, props.leadTimeDays, props.manufacturerName, props.recycledContentPct].filter((f) => f !== null && f !== undefined).length;
+  const transparencyScore = Math.round((filledFields / 5) * 10);
+  return Math.min(100, epdScore + certScore + 7 + transparencyScore); // 7 = half-credit local sourcing
 }
 
 function CcpsGauge({ score }: { score: number }) {
@@ -79,6 +90,7 @@ const METRICS = [
 
 export default function MaterialCard(props: MaterialCardProps) {
   const { id, name, productName, category, manufacturerName, gwpValue, pricePerUnit, priceUnit, leadTimeDays, hasEpd, hasHpd, hasFsc, hasC2c, hasGreenguard, hasDeclare, usManufactured, recycledContentPct, ccps } = props;
+  const mcsScore = computeCardMcs(props);
 
   const addToRfq = () => {
     try {
@@ -116,9 +128,10 @@ export default function MaterialCard(props: MaterialCardProps) {
             {productName && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{productName}</p>}
             {manufacturerName && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{manufacturerName}</p>}
           </div>
-          <div className="flex flex-col items-center ml-3">
+          <div className="flex flex-col items-center gap-1 ml-3">
             <CcpsGauge score={ccps.ccpsTotal} />
-            <span className="text-[9px] text-muted-foreground mt-1">CCPS</span>
+            <span className="text-[9px] text-muted-foreground">CCPS</span>
+            <ScoreBadge score={mcsScore} materialId={id} />
           </div>
         </div>
 
