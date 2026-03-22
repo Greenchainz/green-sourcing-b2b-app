@@ -102,7 +102,7 @@ export default function Login() {
     if (emailMode === "signup") {
       body.name = nameVal;
       // Prefer the explicit role picker selection; fall back to URL param or default buyer
-      body.role = pendingRole ?? role || "buyer";
+      body.role = pendingRole ?? (role || "buyer");
     }
 
     try {
