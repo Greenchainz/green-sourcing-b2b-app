@@ -1,4 +1,4 @@
-import { eq, and, desc, or, isNull, ne } from "drizzle-orm";
+import { eq, and, desc, or, isNull, ne, inArray, count } from "drizzle-orm";
 import { getDb } from "./db";
 import { conversations, messages, users, rfqs } from "../drizzle/schema";
 import { broadcastNotification } from "./webpubsub-manager";
@@ -41,19 +41,12 @@ export async function getOrCreateConversation(params: {
   }
 
   // Create new conversation
-  const result = await db.insert(conversations).values({
-    rfqId,
-    buyerId,
-    supplierId,
-  });
+  const [newConversation] = await db
+    .insert(conversations)
+    .values({ rfqId, buyerId, supplierId })
+    .returning();
 
-  const newConversation = await db
-    .select()
-    .from(conversations)
-    .where(eq(conversations.id, Number(result[0].insertId)))
-    .limit(1);
-
-  return newConversation[0];
+  return newConversation;
 }
 
 /**
@@ -152,24 +145,23 @@ export async function sendMessage(params: {
 
   const { conversationId, senderId, content } = params;
 
-  // Insert message
-  const result = await db.insert(messages).values({
-    conversationId,
-    senderId,
-    content,
-  });
+  // Insert message (use .returning() for PostgreSQL — insertId is MySQL-only)
+  const [inserted] = await db
+    .insert(messages)
+    .values({ conversationId, senderId, content })
+    .returning({ id: messages.id });
 
   // Update conversation lastMessageAt and lastMessage preview
   const messagePreview = content.length > 50 ? content.substring(0, 50) + "..." : content;
   await db
     .update(conversations)
-    .set({ 
+    .set({
       lastMessageAt: new Date(),
       lastMessage: messagePreview,
     })
     .where(eq(conversations.id, conversationId));
 
-  // Get the new message with sender details
+  // Fetch the new message with sender details
   const newMessage = await db
     .select({
       id: messages.id,
@@ -183,7 +175,7 @@ export async function sendMessage(params: {
     })
     .from(messages)
     .leftJoin(users, eq(messages.senderId, users.id))
-    .where(eq(messages.id, Number(result[0].insertId)))
+    .where(eq(messages.id, inserted.id))
     .limit(1);
 
   // Get conversation details to find recipient
@@ -242,19 +234,77 @@ export async function markMessagesAsRead(params: {
 
   await db
     .update(messages)
-    .set({ 
-      isRead: 1,
+    .set({
+      isRead: true,
       readAt: new Date(),
     })
     .where(
       and(
         eq(messages.conversationId, conversationId),
         ne(messages.senderId, userId), // Mark messages NOT sent by current user
-        eq(messages.isRead, 0), // Only mark unread messages
+        eq(messages.isRead, false),    // Only mark unread messages
       )
     );
 
   return true;
+}
+
+/**
+ * Get conversations shaped for the mobile MobileChat component.
+ *
+ * Differences from getUserConversations():
+ * - IDs are strings (mobile JS comparison-safe)
+ * - Field names match the Thread interface in MobileChat.tsx
+ * - Includes per-thread unreadCount (messages from counterpart that are unread)
+ * - Timestamps are ISO strings
+ */
+export async function getThreadsForMobile(userId: number): Promise<{
+  id: string;
+  rfqTitle: string;
+  counterpartName: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
+}[]> {
+  const raw = await getUserConversations(userId);
+  if (raw.length === 0) return [];
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Batch-fetch unread counts for all conversations in one query
+  const convIds = raw.map((c: any) => c.id as number);
+  const unreadRows = await db
+    .select({
+      conversationId: messages.conversationId,
+      total: count(),
+    })
+    .from(messages)
+    .where(
+      and(
+        inArray(messages.conversationId, convIds),
+        ne(messages.senderId, userId),
+        eq(messages.isRead, false)
+      )
+    )
+    .groupBy(messages.conversationId);
+
+  const unreadMap = new Map<number, number>();
+  for (const row of unreadRows) {
+    unreadMap.set(row.conversationId, row.total);
+  }
+
+  return raw.map((conv: any) => ({
+    id: String(conv.id),
+    rfqTitle: conv.rfqTitle ?? "",
+    counterpartName: conv.otherPartyName ?? conv.otherPartyEmail ?? "Unknown",
+    lastMessage: conv.lastMessage ?? "",
+    lastMessageAt:
+      conv.lastMessageAt instanceof Date
+        ? conv.lastMessageAt.toISOString()
+        : String(conv.lastMessageAt),
+    unreadCount: unreadMap.get(conv.id as number) ?? 0,
+  }));
 }
 
 /**
@@ -287,8 +337,7 @@ export async function getUnreadMessageCount(userId: number) {
     .from(messages)
     .where(
       and(
-        eq(messages.isRead, 0),
-        // Message is in one of the user's conversations
+        eq(messages.isRead, false),
         or(...conversationIds.map((id: number) => eq(messages.conversationId, id)))
       )
     );

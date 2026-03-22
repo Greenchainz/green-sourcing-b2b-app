@@ -5,7 +5,9 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'buyer' | 'supplier' | 'admin';
+  // 'architect' is the client-side name for what the DB stores as 'buyer'.
+  // All non-supplier, non-admin users default to architect.
+  role: 'architect' | 'supplier' | 'admin';
 }
 
 interface AuthContextType {
@@ -117,4 +119,14 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+export function useIsArchitect(): boolean {
+  const { user } = useAuth();
+  return user?.role === 'architect';
+}
+
+export function useIsSupplier(): boolean {
+  const { user } = useAuth();
+  return user?.role === 'supplier';
 }

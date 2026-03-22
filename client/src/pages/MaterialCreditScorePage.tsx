@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/contexts/AuthContext";
 import { ScoreRing } from "@/components/MaterialCreditScore/ScoreRing";
 import { ScoreBreakdown } from "@/components/MaterialCreditScore/ScoreBreakdown";
 import { ScoreTrend } from "@/components/MaterialCreditScore/ScoreTrend";
+import { PdfDownloadGateModal } from "@/components/PdfDownloadGateModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +17,7 @@ import {
   CheckCircle2,
   Circle,
   Building2,
+  Download,
 } from "lucide-react";
 
 // ── Improvement checklist ─────────────────────────────────────────────────────
@@ -83,6 +87,28 @@ function ScoreSkeleton() {
 export default function MaterialCreditScorePage() {
   const { materialId } = useParams<{ materialId: string }>();
   const id = Number(materialId);
+  const { isArchitect } = useAuth();
+
+  const [gateOpen, setGateOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const consumeCredit = trpc.architect.consumeDownloadCredit.useMutation({
+    onSuccess: () => {
+      window.open(`/api/pdf/material-score/${id}`, "_blank");
+      setIsDownloading(false);
+    },
+    onError: (err) => {
+      if (err.data?.code === "FORBIDDEN") {
+        setGateOpen(true);
+      }
+      setIsDownloading(false);
+    },
+  });
+
+  const handleDownload = () => {
+    setIsDownloading(true);
+    consumeCredit.mutate({ materialId: id });
+  };
 
   const { data, isLoading, error } = trpc.materials.getScore.useQuery(
     { materialId: id },
@@ -204,6 +230,22 @@ export default function MaterialCreditScorePage() {
                     </a>
                   </div>
                 )}
+
+                {/* PDF download — architects only */}
+                {isArchitect() && (
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 w-full sm:w-auto border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                    >
+                      <Download className="w-4 h-4" />
+                      {isDownloading ? "Preparing…" : "Download PDF Report"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -236,6 +278,14 @@ export default function MaterialCreditScorePage() {
         {/* Improvement checklist */}
         <ImprovementChecklist items={improvementItems} />
       </div>
+
+      {/* PDF download gate modal */}
+      <PdfDownloadGateModal
+        open={gateOpen}
+        onOpenChange={setGateOpen}
+        materialId={id}
+        onCreditGranted={handleDownload}
+      />
     </div>
   );
 }

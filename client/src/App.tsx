@@ -29,6 +29,12 @@ import { SupplierProfileDashboard } from "./pages/SupplierProfileDashboard";
 import SupplierRfqDashboard from "./pages/SupplierRfqDashboard";
 import GetStarted from "./pages/GetStarted";
 import SupplierOnboarding from "./pages/SupplierOnboarding";
+import ArchitectOnboarding from "./pages/ArchitectOnboarding";
+import ArchitectDashboard from "./pages/ArchitectDashboard";
+import MaterialSearchPage from "./pages/MaterialSearchPage";
+import RFQNewPage from "./pages/RFQNewPage";
+import RFQDetailPage from "./pages/rfq/RFQDetailPage";
+import RFQListPage from "./pages/rfq/RFQListPage";
 import MaterialCreditScorePage from "./pages/MaterialCreditScorePage";
 import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
@@ -68,12 +74,17 @@ function Router() {
       <Route path={"/assemblies/:id"} component={Assemblies} />
       <Route path={"/rfq"} component={RfqCart} />
       <Route path={"/rfq-form"} component={RFQForm} />
+      <Route path="/rfq/new" component={RFQNewPage} />
       <Route path="/rfq/:id" component={RfqDetail} />
+      <Route path="/rfqs" component={RFQListPage} />
+      <Route path="/rfqs/:rfqId" component={RFQDetailPage} />
       <Route path="/compare" component={Compare} />
       <Route path="/supplier-dashboard" component={SupplierDashboard} />
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
       <Route path="/supplier/onboarding" component={SupplierOnboarding} />
+      <Route path="/architect/onboarding" component={ArchitectOnboarding} />
+      <Route path="/search" component={MaterialSearchPage} />
       <Route path="/supplier/register" component={SupplierRegistration} />
       <Route path="/supplier/dashboard" component={SupplierProfileDashboard} />
       <Route path="/supplier/rfqs" component={SupplierRfqDashboard} />
@@ -97,18 +108,50 @@ function Router() {
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
       <Route path="/login" component={Login} />
-      <Route path="/dashboard"><Redirect to="/rfq-dashboard" /></Route>
+      <Route path="/dashboard" component={ArchitectDashboard} />
       <Route path={"404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+// Redirect unauthenticated users away from protected routes
+const PROTECTED_PREFIXES = [
+  "/supplier/",
+  "/rfq-dashboard",
+  "/rfq-status",
+  "/rfq-form",
+  "/rfq/",
+  "/messages",
+  "/subscription",
+  "/admin/",
+  "/dashboard",
+  "/search",
+  "/rfqs",
+];
+
+function AuthGuard() {
+  const { user, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (user) return;
+    const path = window.location.pathname;
+    const isProtected = PROTECTED_PREFIXES.some((p) => path === p.replace(/\/$/, "") || path.startsWith(p));
+    if (isProtected) {
+      navigate(`/login?returnPath=${encodeURIComponent(path)}`);
+    }
+  }, [user, isLoading, navigate]);
+
+  return null;
+}
+
 // Redirect supplier users who haven't completed onboarding
 function SupplierOnboardingGuard() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const isSupplierUser = user?.roles?.includes("supplier") || user?.isSupplier;
+  const isSupplierUser = user?.role === "supplier";
 
   const { data: profile, isLoading } = trpc.supplierOnboarding.getMyProfile.useQuery(undefined, {
     enabled: !!isSupplierUser,
@@ -124,6 +167,41 @@ function SupplierOnboardingGuard() {
       }
     }
   }, [isSupplierUser, isLoading, profile, navigate]);
+
+  return null;
+}
+
+// Redirect architect users who haven't completed onboarding.
+// Architects are the default role — virtually all new SSO users land here.
+// Skips the check if the user selected "supplier" as their pending role (sessionStorage),
+// since they'll be handled by SupplierOnboardingGuard instead.
+function ArchitectOnboardingGuard() {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const isArchitectUser = user?.role === "architect";
+
+  const { data: profile, isLoading } = trpc.architect.getMyProfile.useQuery(undefined, {
+    enabled: !!isArchitectUser,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (!isArchitectUser || isLoading) return;
+    if (profile === null) {
+      const path = window.location.pathname;
+      // Don't redirect if already on an onboarding page or login/public pages
+      if (
+        path.startsWith("/architect/onboarding") ||
+        path.startsWith("/supplier/") ||
+        path === "/login" ||
+        path === "/" ||
+        path === "/get-started"
+      ) {
+        return;
+      }
+      navigate("/architect/onboarding");
+    }
+  }, [isArchitectUser, isLoading, profile, navigate]);
 
   return null;
 }
@@ -152,7 +230,9 @@ function AppInner() {
     <ChatWidgetProvider>
       <TooltipProvider>
         <Toaster />
+        <AuthGuard />
         <SupplierOnboardingGuard />
+        <ArchitectOnboardingGuard />
         <Router />
         <ChainBot />
         <IncomingCallNotification onAccept={handleAcceptCall} />

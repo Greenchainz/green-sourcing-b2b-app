@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getLoginUrl } from '../const';
 import { NotificationCenter } from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
+import { trpc } from '../lib/trpc';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -11,6 +12,13 @@ export default function Header() {
   const { user, isLoading } = useAuth();
   useNotifications(); // Initialize real-time notifications
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Unread message count for the Messages nav badge (only when logged in)
+  const { data: unreadData } = trpc.messaging.getUnreadCount.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 30_000, // poll every 30s as a lightweight fallback
+  });
+  const unreadCount = unreadData?.count ?? 0;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -57,8 +65,13 @@ export default function Header() {
           <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Compare
           </Link>
-          <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+          <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors relative inline-flex items-center gap-1.5">
             Messages
+            {unreadCount > 0 && (
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-600 text-[9px] font-bold text-white leading-none">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </Link>
           <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Subscription
@@ -141,9 +154,14 @@ export default function Header() {
                onClick={() => setMobileMenuOpen(false)}>
               Compare
             </Link>
-            <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+            <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md flex items-center justify-between"
                onClick={() => setMobileMenuOpen(false)}>
               Messages
+              {unreadCount > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </Link>
             <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>

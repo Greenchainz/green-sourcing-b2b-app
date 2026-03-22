@@ -50,10 +50,20 @@ jobs:
           docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Run Prisma migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "⚠️  DATABASE_URL secret not set — skipping Prisma migrations"
+            echo "   Add DATABASE_URL to GitHub repo secrets to enable automatic migrations."
+            exit 0
+          fi
           npm install -g pnpm
           pnpm install --frozen-lockfile
           npx prisma migrate deploy

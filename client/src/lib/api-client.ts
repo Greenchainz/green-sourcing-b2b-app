@@ -147,7 +147,9 @@ export async function getCurrentUser() {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'buyer') as 'buyer' | 'supplier' | 'admin',
+      // DB stores 'buyer'; we expose it as 'architect' — the canonical term for
+      // non-supplier users. 'buyer' is kept as a fallback for stale cached values.
+      role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'architect') as 'architect' | 'supplier' | 'admin',
     };
   } catch {
     // Fallback: call Easy Auth directly (useful during initial setup
@@ -169,7 +171,7 @@ export async function getCurrentUser() {
       id: principal.userId ?? claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? '',
       email: claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ?? claims.email ?? '',
       name: claims['name'] ?? claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ?? '',
-      role: 'buyer' as 'buyer' | 'supplier' | 'admin',
+      role: 'architect' as 'architect' | 'supplier' | 'admin',
     };
   }
 }
@@ -177,8 +179,10 @@ export async function getCurrentUser() {
 /**
  * Set user role
  */
-export async function setUserRole(role: 'buyer' | 'supplier' | 'admin') {
-  return post<{ success: boolean }>('/api/user/set-role', { role });
+export async function setUserRole(role: 'architect' | 'supplier' | 'admin') {
+  // Translate 'architect' back to 'buyer' for the server, which uses the DB enum value.
+  const serverRole = role === 'architect' ? 'buyer' : role;
+  return post<{ success: boolean }>('/api/user/set-role', { role: serverRole });
 }
 
 /**

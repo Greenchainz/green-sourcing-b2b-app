@@ -39,6 +39,7 @@ import { rfqRouter } from "./routers/rfq";
 import { supplierOnboardingRouter } from "./routers/supplier";
 import { epdRouter } from "./routers/epd";
 import { locationRouter } from "./routers/location";
+import { architectRouter } from "./routers/architect";
 
 export const appRouter = router({
   system: systemRouter,
@@ -57,6 +58,7 @@ export const appRouter = router({
   swapValidation: swapValidationRouter,
   rfqRequests: rfqRouter,
   supplierOnboarding: supplierOnboardingRouter,
+  architect: architectRouter,
   epd: epdRouter,
   location: locationRouter,
   auth: router({
@@ -83,6 +85,12 @@ export const appRouter = router({
           hasEpd: z.boolean().optional(),
           usManufactured: z.boolean().optional(),
           maxGwp: z.number().optional(),
+          // Cert multi-filter: each adds an AND condition
+          certifications: z.array(z.enum(["EPD", "HPD", "FSC", "C2C", "GREENGUARD", "Declare"])).optional(),
+          // Post-filter by computed CCPS score (proxy for MCS in catalog)
+          minScore: z.number().min(0).max(100).optional(),
+          // ILIKE match on category — used by CSI-division quick filters
+          categorySearch: z.string().optional(),
         })
       )
       .query(async ({ input }) => {
@@ -100,9 +108,17 @@ export const appRouter = router({
           );
         }
         if (input.category) conditions.push(eq(materials.category, input.category));
-        if (input.hasEpd !== undefined) conditions.push(eq(materials.hasEpd, input.hasEpd ? 1 : 0));
-        if (input.usManufactured !== undefined) conditions.push(eq(materials.usManufactured, input.usManufactured ? 1 : 0));
+        if (input.hasEpd !== undefined) conditions.push(eq(materials.hasEpd, input.hasEpd));
+        if (input.usManufactured !== undefined) conditions.push(eq(materials.usManufactured, input.usManufactured));
         if (input.maxGwp !== undefined) conditions.push(lte(materials.gwpValue, String(input.maxGwp)));
+        if (input.categorySearch) conditions.push(like(materials.category, `%${input.categorySearch}%`));
+        // Cert filters — each is an AND requirement
+        if (input.certifications?.includes("EPD")) conditions.push(eq(materials.hasEpd, true));
+        if (input.certifications?.includes("HPD")) conditions.push(eq(materials.hasHpd, true));
+        if (input.certifications?.includes("FSC")) conditions.push(eq(materials.hasFsc, true));
+        if (input.certifications?.includes("C2C")) conditions.push(eq(materials.hasC2c, true));
+        if (input.certifications?.includes("GREENGUARD")) conditions.push(eq(materials.hasGreenguard, true));
+        if (input.certifications?.includes("Declare")) conditions.push(eq(materials.hasDeclare, true));
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -151,39 +167,44 @@ export const appRouter = router({
           };
         });
 
+        // Post-filter by minimum CCPS score (computed, can't be done in SQL)
+        const scoredItems = input.minScore !== undefined
+          ? items.filter((item) => item.ccps.ccpsTotal >= (input.minScore ?? 0))
+          : items;
+
         if (input.sortBy === "ccps") {
-          items.sort((a, b) =>
+          scoredItems.sort((a, b) =>
             input.sortOrder === "desc"
               ? b.ccps.ccpsTotal - a.ccps.ccpsTotal
               : a.ccps.ccpsTotal - b.ccps.ccpsTotal
           );
         } else if (input.sortBy === "carbon") {
-          items.sort((a, b) => {
+          scoredItems.sort((a, b) => {
             const aVal = Number(a.gwpValue) || 0;
             const bVal = Number(b.gwpValue) || 0;
             return input.sortOrder === "asc" ? aVal - bVal : bVal - aVal;
           });
         } else if (input.sortBy === "price") {
-          items.sort((a, b) => {
+          scoredItems.sort((a, b) => {
             const aVal = Number(a.pricePerUnit) || 0;
             const bVal = Number(b.pricePerUnit) || 0;
             return input.sortOrder === "asc" ? aVal - bVal : bVal - aVal;
           });
         } else if (input.sortBy === "name") {
-          items.sort((a, b) =>
+          scoredItems.sort((a, b) =>
             input.sortOrder === "asc"
               ? a.name.localeCompare(b.name)
               : b.name.localeCompare(a.name)
           );
         } else if (input.sortBy === "leadTime") {
-          items.sort((a, b) => {
+          scoredItems.sort((a, b) => {
             const aVal = a.leadTimeDays || 0;
             const bVal = b.leadTimeDays || 0;
             return input.sortOrder === "asc" ? aVal - bVal : bVal - aVal;
           });
         }
 
-        return { items, total };
+        return { items: scoredItems, total: scoredItems.length };
       }),
 
     getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
@@ -785,6 +806,22 @@ export const appRouter = router({
           content: input.content,
         });
       }),
+
+    // Mark all messages in a conversation as read for the current user
+    markAsRead: protectedProcedure
+      .input(z.object({ conversationId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const { markMessagesAsRead } = await import('./messaging-service');
+        await markMessagesAsRead({ conversationId: input.conversationId, userId: ctx.user.id });
+        return { ok: true as const };
+      }),
+
+    // Total unread message count (used for nav badge)
+    getUnreadCount: protectedProcedure.query(async ({ ctx }) => {
+      const { getUnreadMessageCount } = await import('./messaging-service');
+      const count = await getUnreadMessageCount(ctx.user.id);
+      return { count };
+    }),
 
     // Send message with agent response
     sendWithAgent: protectedProcedure

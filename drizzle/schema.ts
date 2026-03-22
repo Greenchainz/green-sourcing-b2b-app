@@ -11,7 +11,15 @@ import {
   json,
   index,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/pg-core";
+
+// bytea custom type — used by email_credentials (managed via raw SQL in email-auth.ts)
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
@@ -51,6 +59,13 @@ export const usageDimensionEnum = pgEnum("usage_dimension", [
   "bid_submission", "video_call", "message_sent",
 ]);
 export const swapValidationStatusEnum = pgEnum("swap_validation_status", ["APPROVED", "EXPERIMENTAL", "REJECTED"]);
+export const firmTypeEnum = pgEnum("firm_type", [
+  "architecture_firm", "engineering_firm", "owner_developer", "contractor", "consultant",
+]);
+export const annualProjectVolumeEnum = pgEnum("annual_project_volume", [
+  "under_1m", "1m_10m", "10m_50m", "over_50m",
+]);
+export const architectStatusEnum = pgEnum("architect_status", ["pending", "active"]);
 
 // ─── Users ──────────────────────────────────────────────────────────────────
 
@@ -437,6 +452,67 @@ export const suppliers = pgTable("suppliers", {
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = typeof suppliers.$inferInsert;
 
+// ─── Architects ──────────────────────────────────────────────────────────────
+
+export const architects = pgTable("architects", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().unique(), // one profile per user
+  firstName: varchar("firstName", { length: 100 }).notNull(),
+  lastName: varchar("lastName", { length: 100 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  firmName: varchar("firmName", { length: 255 }).notNull(),
+  firmType: firmTypeEnum("firmType").notNull(),
+  licenseNumber: varchar("licenseNumber", { length: 100 }),
+  licenseState: varchar("licenseState", { length: 2 }),
+  annualProjectVolume: annualProjectVolumeEnum("annualProjectVolume"),
+  projectTypes: json("projectTypes").$type<string[]>().default([]),
+  sustainabilityGoals: json("sustainabilityGoals").$type<string[]>().default([]),
+  preferredCertifications: json("preferredCertifications").$type<string[]>().default([]),
+  location: varchar("location", { length: 100 }),   // city
+  state: varchar("state", { length: 50 }),
+  zipCode: varchar("zipCode", { length: 20 }),
+  primaryProjectRegion: varchar("primaryProjectRegion", { length: 50 }),
+  leedAccredited: boolean("leedAccredited").default(false),
+  status: architectStatusEnum("status").default("pending").notNull(),
+  // ── PDF download gate ─────────────────────────────────────────────────────
+  downloadCredits: integer("download_credits").default(2).notNull(),
+  referralCode: varchar("referral_code", { length: 20 }).unique(),
+  profileCreditsGranted: json("profile_credits_granted").$type<string[]>().default([]),
+  autodeskConnected: boolean("autodesk_connected").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type Architect = typeof architects.$inferSelect;
+export type InsertArchitect = typeof architects.$inferInsert;
+
+// ─── Architect Referrals ──────────────────────────────────────────────────────
+
+export const architectReferrals = pgTable("architect_referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: integer("referrer_id").notNull(),     // architects.id of the inviter
+  refereeEmail: varchar("referee_email", { length: 320 }).notNull(),
+  refereeId: integer("referee_id"),                 // architects.id — set when they sign up
+  creditedAt: timestamp("credited_at"),             // null until +3 credits granted to referrer
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ArchitectReferral = typeof architectReferrals.$inferSelect;
+
+// ─── Architect Download Events ────────────────────────────────────────────────
+
+export const architectDownloadEvents = pgTable("architect_download_events", {
+  id: serial("id").primaryKey(),
+  architectId: integer("architect_id").notNull(),   // architects.id
+  materialId: integer("material_id").notNull(),
+  // bypass method: null=standard credit, 'linkedin'=LinkedIn share, 'referral'=referral credit
+  bypassMethod: varchar("bypass_method", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ArchitectDownloadEvent = typeof architectDownloadEvents.$inferSelect;
+
 // ─── Supplier Material EPDs ──────────────────────────────────────────────────
 // Supplier-owned EPD records. May optionally link to a materials catalog row.
 
@@ -444,9 +520,17 @@ export const supplierMaterialEpds = pgTable("supplier_material_epds", {
   id: serial("id").primaryKey(),
   supplierId: integer("supplierId").notNull(),
   materialId: integer("materialId"),                              // null = not yet in catalog
-  productName: varchar("productName", { length: 255 }).notNull(),
+  // Legacy column — kept for DB compatibility (prefer productName for new code)
+  materialName: varchar("materialName", { length: 255 }),
+  productName: varchar("productName", { length: 255 }),
   epdNumber: varchar("epdNumber", { length: 100 }),
   epdUrl: text("epdUrl"),
+  // Legacy EPD columns — kept for DB compatibility
+  gwpA1A3: decimal("gwpA1A3", { precision: 10, scale: 4 }),
+  gwpDeclaredUnit: varchar("gwpDeclaredUnit", { length: 50 }),
+  verifiedAt: timestamp("verifiedAt"),
+  source: varchar("source", { length: 100 }),
+  // New structured columns
   epdProgramOperator: varchar("epdProgramOperator", { length: 150 }),
   gwpValue: decimal("gwpValue", { precision: 12, scale: 4 }),
   gwpUnit: varchar("gwpUnit", { length: 50 }).default("kgCO2e"),
@@ -1095,10 +1179,24 @@ export const materialAssemblySpecs = pgTable(
     totalGwpPerSf: decimal("total_gwp_per_sf", { precision: 10, scale: 2 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    epdNumber: varchar("epd_number", { length: 100 }),
+    gwpA1A3: decimal("gwp_a1_a3", { precision: 10, scale: 4 }),
+    gwpDeclaredUnit: varchar("gwp_declared_unit", { length: 50 }),
+    gwpPer1000sf: decimal("gwp_per_1000sf", { precision: 10, scale: 2 }),
+    gwpMsfFactor: decimal("gwp_msf_factor", { precision: 10, scale: 4 }),
+    carbonTier: varchar("carbon_tier", { length: 20 }),
+    assemblyTypeTags: text("assembly_type_tags").array(),
+    framingTypeTags: text("framing_type_tags").array(),
+    exteriorFinishTags: text("exterior_finish_tags").array(),
+    certificationTags: text("certification_tags").array(),
   },
   (table) => ({
     categoryIdx: index("idx_assembly_specs_category").on(table.category),
     ulDesignIdx: index("idx_assembly_specs_ul").on(table.ulDesignNumber),
+    // Restored: indexes dropped in prior push
+    epdNumberIdx: index("idx_assembly_epd_number").on(table.epdNumber),
+    carbonTierIdx: index("idx_assembly_carbon_tier").on(table.carbonTier),
+    assemblyTypeTagsIdx: index("idx_assembly_type_tags").on(table.assemblyTypeTags),
   })
 );
 
@@ -1170,15 +1268,31 @@ export const rfqRequests = pgTable("rfq_requests", {
   id: serial("id").primaryKey(),
   architectId: integer("architect_id").notNull(),
   supplierId: integer("supplier_id").notNull(),
+  materialId: integer("material_id"),
   materialType: varchar("material_type", { length: 255 }).notNull(),
   quantity: decimal("quantity", { precision: 12, scale: 2 }).notNull(),
   specs: text("specs"),
+  message: text("message"),
   status: rfqRequestStatusEnum("status").default("pending").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export type RfqRequest = typeof rfqRequests.$inferSelect;
 export type InsertRfqRequest = typeof rfqRequests.$inferInsert;
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+// General-purpose referral tracking (simpler than architect_referrals).
+
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: integer("referrer_id").notNull(),
+  referredEmail: varchar("referred_email", { length: 320 }).notNull(),
+  status: varchar("status", { length: 50 }).default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
 
 // ─── Email Suppression List ─────────────────────────────────────────────────
 
@@ -1191,3 +1305,15 @@ export const emailSuppressionList = pgTable("email_suppression_list", {
 
 export type EmailSuppression = typeof emailSuppressionList.$inferSelect;
 export type InsertEmailSuppression = typeof emailSuppressionList.$inferInsert;
+
+// ─── Email Credentials (managed by email-auth.ts, schema kept here for drizzle-kit sync) ──
+export const emailCredentials = pgTable("email_credentials", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  salt: bytea("salt").notNull(),
+  hash: bytea("hash").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmailCredential = typeof emailCredentials.$inferSelect;

@@ -389,6 +389,149 @@ export async function sendBidAcceptedEmail(data: {
 }
 
 /**
+ * Send welcome email to a newly onboarded supplier
+ */
+export async function sendSupplierWelcomeEmail(data: {
+  supplierEmail: string;
+  contactName: string;
+  companyName: string;
+  supplierId: number;
+}): Promise<boolean> {
+  const profileUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/supplier/dashboard`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 32px 30px; border-radius: 8px 8px 0 0; text-align: center; }
+    .content { background: #f9fafb; padding: 32px 30px; border-radius: 0 0 8px 8px; }
+    .card { background: white; padding: 20px 24px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #10b981; }
+    .step { display: flex; align-items: flex-start; margin: 12px 0; }
+    .step-num { background: #10b981; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; margin-right: 12px; margin-top: 2px; }
+    .button { display: inline-block; background: #10b981; color: white; padding: 13px 32px; text-decoration: none; border-radius: 6px; margin: 24px 0; font-weight: 600; font-size: 15px; }
+    .footer { text-align: center; color: #6b7280; font-size: 13px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 style="margin:0;font-size:26px;">🌱 Welcome to GreenChainz</h1>
+    <p style="margin:10px 0 0;opacity:.9;">Your supplier profile is under review</p>
+  </div>
+  <div class="content">
+    <p>Hi ${data.contactName},</p>
+    <p>Thanks for submitting <strong>${data.companyName}</strong> to GreenChainz! We've received your profile and our team will review it within <strong>48 hours</strong>.</p>
+
+    <div class="card">
+      <p style="margin:0 0 12px;font-weight:600;color:#059669;">What happens next</p>
+      <div class="step"><span class="step-num">1</span><span>Our team reviews your submission for completeness and sustainability credentials.</span></div>
+      <div class="step"><span class="step-num">2</span><span>You'll receive a confirmation email once your profile is approved and live in the catalog.</span></div>
+      <div class="step"><span class="step-num">3</span><span>Architects and project managers can discover your materials and send you RFQs directly.</span></div>
+    </div>
+
+    <p>In the meantime, you can log in to view your profile status and add more details about your products.</p>
+
+    <center><a href="${profileUrl}" class="button">View Your Profile</a></center>
+
+    <p style="font-size:14px;color:#6b7280;">Questions? Reply to this email or reach us at <a href="mailto:founder@greenchainz.com" style="color:#10b981;">founder@greenchainz.com</a></p>
+  </div>
+  <div class="footer">
+    <p>© ${new Date().getFullYear()} GreenChainz · <a href="https://greenchainz.com" style="color:#6b7280;">greenchainz.com</a></p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = `Hi ${data.contactName},
+
+Thanks for submitting ${data.companyName} to GreenChainz!
+
+We've received your profile and will review it within 48 hours.
+
+What happens next:
+1. Our team reviews your submission for completeness and sustainability credentials.
+2. You'll get a confirmation email once your profile is live.
+3. Architects can discover your materials and send you RFQs directly.
+
+View your profile: ${profileUrl}
+
+Questions? Email founder@greenchainz.com
+
+© ${new Date().getFullYear()} GreenChainz`;
+
+  return sendEmail({
+    to: data.supplierEmail,
+    subject: "Welcome to GreenChainz — your profile is under review",
+    html,
+    text,
+  });
+}
+
+/**
+ * Send new-supplier alert to the founder (replaces admin dashboard notifications)
+ */
+export async function sendFounderNewSupplierAlert(data: {
+  companyName: string;
+  contactName: string;
+  supplierEmail: string;
+  materialCategories: string[];
+  supplierId: number;
+}): Promise<boolean> {
+  const adminUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/admin/suppliers`;
+  const categories = data.materialCategories.join(", ") || "—";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height:1.6; color:#333; max-width:540px; margin:0 auto; padding:20px; }
+    .header { background:#1e293b; color:white; padding:20px 24px; border-radius:8px 8px 0 0; }
+    .content { background:#f8fafc; padding:24px; border-radius:0 0 8px 8px; }
+    .field { margin:8px 0; }
+    .label { font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; }
+    .value { font-weight:600; color:#0f172a; }
+    .button { display:inline-block; background:#10b981; color:white; padding:11px 28px; text-decoration:none; border-radius:6px; margin-top:20px; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <p style="margin:0;font-size:12px;opacity:.6;text-transform:uppercase;letter-spacing:.08em;">GreenChainz · New Supplier</p>
+    <h2 style="margin:4px 0 0;font-size:22px;">${data.companyName}</h2>
+  </div>
+  <div class="content">
+    <div class="field"><div class="label">Contact</div><div class="value">${data.contactName}</div></div>
+    <div class="field"><div class="label">Email</div><div class="value"><a href="mailto:${data.supplierEmail}" style="color:#10b981;">${data.supplierEmail}</a></div></div>
+    <div class="field"><div class="label">Material Categories</div><div class="value">${categories}</div></div>
+    <div class="field"><div class="label">Supplier ID</div><div class="value">#${data.supplierId}</div></div>
+    <a href="${adminUrl}" class="button">Review in Admin Dashboard</a>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = `New supplier submitted: ${data.companyName}
+
+Contact: ${data.contactName}
+Email: ${data.supplierEmail}
+Material Categories: ${categories}
+Supplier ID: #${data.supplierId}
+
+Review: ${adminUrl}`;
+
+  return sendEmail({
+    to: "founder@greenchainz.com",
+    subject: `New supplier submitted: ${data.companyName}`,
+    html,
+    text,
+  });
+}
+
+/**
  * Send bid rejected notification to supplier
  */
 export async function sendBidRejectedEmail(data: {
@@ -437,5 +580,223 @@ export async function sendBidRejectedEmail(data: {
     subject: `Bid Update: ${data.projectName}`,
     html,
     text: `Hi ${data.supplierName}, Thank you for your bid on ${data.projectName}. ${data.buyerName} has decided to move forward with another supplier. View new RFQs: ${dashboardUrl}`,
+  });
+}
+
+/**
+ * Send welcome email to a newly onboarded architect
+ */
+export async function sendArchitectWelcomeEmail(data: {
+  architectEmail: string;
+  firstName: string;
+  firmName: string;
+  architectId: number;
+}): Promise<boolean> {
+  const catalogUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/materials`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 32px 30px; border-radius: 8px 8px 0 0; text-align: center; }
+    .content { background: #f9fafb; padding: 32px 30px; border-radius: 0 0 8px 8px; }
+    .card { background: white; padding: 20px 24px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #10b981; }
+    .feature { display: flex; align-items: flex-start; margin: 12px 0; }
+    .icon { font-size: 20px; margin-right: 12px; flex-shrink: 0; margin-top: 2px; }
+    .button { display: inline-block; background: #10b981; color: white; padding: 13px 32px; text-decoration: none; border-radius: 6px; margin: 24px 0; font-weight: 600; font-size: 15px; }
+    .footer { text-align: center; color: #6b7280; font-size: 13px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 style="margin:0;font-size:26px;">🌱 You're in, ${data.firstName}!</h1>
+    <p style="margin:10px 0 0;opacity:.9;">Start sourcing verified sustainable materials</p>
+  </div>
+  <div class="content">
+    <p>Hi ${data.firstName},</p>
+    <p>Welcome to GreenChainz — your profile for <strong>${data.firmName}</strong> is live. You now have access to the full materials catalog, EPD data, and LEED/BREEAM compliance tools.</p>
+
+    <div class="card">
+      <p style="margin:0 0 14px;font-weight:600;color:#059669;">What you can do right now</p>
+      <div class="feature"><span class="icon">🔍</span><span><strong>Browse the catalog</strong> — filter by carbon footprint, certifications, lead time, and project type</span></div>
+      <div class="feature"><span class="icon">📊</span><span><strong>Compare materials</strong> — side-by-side GWP, cost, and compliance scores</span></div>
+      <div class="feature"><span class="icon">📋</span><span><strong>Send an RFQ</strong> — request quotes from verified suppliers directly through the platform</span></div>
+      <div class="feature"><span class="icon">🏅</span><span><strong>Track LEED credits</strong> — see which materials contribute to your certification goals</span></div>
+    </div>
+
+    <center><a href="${catalogUrl}" class="button">Start Finding Materials →</a></center>
+
+    <p style="font-size:14px;color:#6b7280;">Questions? Reply to this email or reach us at <a href="mailto:founder@greenchainz.com" style="color:#10b981;">founder@greenchainz.com</a> — we respond same day.</p>
+  </div>
+  <div class="footer">
+    <p>© ${new Date().getFullYear()} GreenChainz · <a href="https://greenchainz.com" style="color:#6b7280;">greenchainz.com</a></p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = `Hi ${data.firstName},
+
+Welcome to GreenChainz! Your profile for ${data.firmName} is live.
+
+Start sourcing: ${catalogUrl}
+
+What you can do now:
+- Browse EPD-verified materials filtered by carbon, certifications, and lead time
+- Compare materials side-by-side
+- Send RFQs to verified suppliers
+- Track LEED credits
+
+Questions? Email founder@greenchainz.com
+
+© ${new Date().getFullYear()} GreenChainz`;
+
+  return sendEmail({
+    to: data.architectEmail,
+    subject: "Welcome to GreenChainz — start sourcing",
+    html,
+    text,
+  });
+}
+
+/**
+ * Send new-architect alert to the founder
+ */
+export async function sendFounderNewArchitectAlert(data: {
+  firmName: string;
+  firstName: string;
+  lastName: string;
+  architectEmail: string;
+  state: string;
+  projectTypes: string[];
+  architectId: number;
+}): Promise<boolean> {
+  const adminUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/admin/suppliers`;
+  const types = data.projectTypes.join(", ") || "—";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height:1.6; color:#333; max-width:540px; margin:0 auto; padding:20px; }
+    .header { background:#1e293b; color:white; padding:20px 24px; border-radius:8px 8px 0 0; }
+    .content { background:#f8fafc; padding:24px; border-radius:0 0 8px 8px; }
+    .field { margin:8px 0; }
+    .label { font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; }
+    .value { font-weight:600; color:#0f172a; }
+    .button { display:inline-block; background:#10b981; color:white; padding:11px 28px; text-decoration:none; border-radius:6px; margin-top:20px; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <p style="margin:0;font-size:12px;opacity:.6;text-transform:uppercase;letter-spacing:.08em;">GreenChainz · New Architect</p>
+    <h2 style="margin:4px 0 0;font-size:22px;">${data.firmName}</h2>
+  </div>
+  <div class="content">
+    <div class="field"><div class="label">Name</div><div class="value">${data.firstName} ${data.lastName}</div></div>
+    <div class="field"><div class="label">Email</div><div class="value"><a href="mailto:${data.architectEmail}" style="color:#10b981;">${data.architectEmail}</a></div></div>
+    <div class="field"><div class="label">State</div><div class="value">${data.state}</div></div>
+    <div class="field"><div class="label">Project Types</div><div class="value">${types}</div></div>
+    <div class="field"><div class="label">Architect ID</div><div class="value">#${data.architectId}</div></div>
+    <a href="${adminUrl}" class="button">View in Admin Dashboard</a>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = `New architect: ${data.firmName}, ${data.state}
+
+Name: ${data.firstName} ${data.lastName}
+Email: ${data.architectEmail}
+Project Types: ${types}
+Architect ID: #${data.architectId}
+
+Admin: ${adminUrl}`;
+
+  return sendEmail({
+    to: "founder@greenchainz.com",
+    subject: `New architect: ${data.firmName}, ${data.state}`,
+    html,
+    text,
+  });
+}
+
+/**
+ * Notify a supplier of a new direct RFQ from an architect
+ */
+export async function sendDirectRfqAlert(data: {
+  supplierEmail: string;
+  supplierCompanyName: string;
+  architectName: string;
+  projectName: string;
+  materialCategory: string;
+  rfqId: number;
+}): Promise<boolean> {
+  const rfqUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/supplier/rfqs`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f6;padding:32px 0;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;">
+        <tr><td style="background:#16a34a;padding:28px 32px;">
+          <h1 style="margin:0;color:#ffffff;font-size:22px;">New Material Request</h1>
+          <p style="margin:6px 0 0;color:#bbf7d0;font-size:14px;">GreenChainz Direct RFQ</p>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin:0 0 16px;color:#374151;font-size:15px;">
+            Hi <strong>${data.supplierCompanyName}</strong>,
+          </p>
+          <p style="margin:0 0 24px;color:#374151;font-size:15px;">
+            <strong>${data.architectName}</strong> has sent you a direct Request for Quotation on GreenChainz.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:6px;padding:20px;margin-bottom:24px;">
+            <tr><td>
+              <p style="margin:0 0 8px;color:#166534;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Request Details</p>
+              <p style="margin:0 0 6px;color:#374151;font-size:14px;"><strong>Project:</strong> ${data.projectName}</p>
+              <p style="margin:0;color:#374151;font-size:14px;"><strong>Material Category:</strong> ${data.materialCategory}</p>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">
+            Log in to GreenChainz to view the full request details and respond.
+          </p>
+          <a href="${rfqUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:15px;font-weight:600;">
+            View Request →
+          </a>
+        </td></tr>
+        <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+          <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} GreenChainz · Verified Sustainable Building Materials</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  const text = `Hi ${data.supplierCompanyName},
+
+${data.architectName} has sent you a direct RFQ on GreenChainz.
+
+Project: ${data.projectName}
+Material Category: ${data.materialCategory}
+
+View and respond: ${rfqUrl}
+
+© ${new Date().getFullYear()} GreenChainz`;
+
+  return sendEmail({
+    to: data.supplierEmail,
+    subject: `New RFQ from ${data.architectName} — ${data.materialCategory}`,
+    html,
+    text,
   });
 }
