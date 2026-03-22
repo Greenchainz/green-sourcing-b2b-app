@@ -20,7 +20,7 @@
  *   - Upserts the user into our database on every authenticated request
  */
 
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express, Request, Response, NextFunction, RequestHandler } from "express";
 import * as db from "../db";
 import { sdk } from "./sdk";
 import { getSessionCookieOptions } from "./cookies";
@@ -145,6 +145,70 @@ export function easyAuthMiddleware(req: Request, _res: Response, next: NextFunct
   next();
 }
 
+// ── Role helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Derive the app role from an Express request.
+ *
+ * Sources (in priority order):
+ *   1. Azure app-role claim injected by Easy Auth (requires app role assignments in Entra)
+ *   2. DB user role if the context user is available (set on req by easyAuthMiddleware)
+ *
+ * Defaults to 'architect' — never blocks an unknown user.
+ *
+ * Note: 'architect' is what the DB stores as 'buyer'. The mapping lives in the
+ * API client (api-client.ts) for client-facing code.
+ */
+export function getUserRole(req: Request): "architect" | "supplier" | "admin" {
+  const principal = req.easyAuthPrincipal;
+  if (!principal) return "architect";
+
+  // Check Azure app-role claims (requires "App roles" configured in Entra app manifest)
+  const roleClaim =
+    principal.claims.find(
+      (c) =>
+        c.typ === "http://schemas.microsoft.com/ws/2008/06/identity/claims/role" ||
+        c.typ === "roles"
+    )?.val ?? "";
+
+  if (roleClaim === "admin") return "admin";
+  if (roleClaim === "supplier") return "supplier";
+  return "architect";
+}
+
+/**
+ * Express middleware: only allow admin users.
+ */
+export const requireAdmin: RequestHandler = (req, res, next) => {
+  if (getUserRole(req) !== "admin") {
+    return void res.status(403).json({ error: "Admin access required." });
+  }
+  next();
+};
+
+/**
+ * Express middleware: only allow supplier users.
+ */
+export const requireSupplier: RequestHandler = (req, res, next) => {
+  const role = getUserRole(req);
+  if (role !== "supplier" && role !== "admin") {
+    return void res.status(403).json({ error: "Supplier access required." });
+  }
+  next();
+};
+
+/**
+ * Express middleware: only allow architect (or admin) users.
+ * Architects are the default — virtually all new users pass this check.
+ */
+export const requireArchitect: RequestHandler = (req, res, next) => {
+  const role = getUserRole(req);
+  if (role !== "architect" && role !== "admin") {
+    return void res.status(403).json({ error: "Architect access required." });
+  }
+  next();
+};
+
 // ── Route registration ───────────────────────────────────────────────────────
 
 /**
@@ -171,8 +235,8 @@ export function registerEasyAuthRoutes(app: Express) {
     const email    = extractEmailFromClaims(principal.claims, principal.userDetails);
     const name     = extractNameFromClaims(principal.claims, principal.userDetails);
 
-    // Determine role — greenchainz.com addresses get admin
-    let assignedRole: "buyer" | "supplier" | "admin" | "user" = "buyer";
+    // Determine role — greenchainz.com addresses get admin; default is buyer (architect)
+    let assignedRole: "buyer" | "supplier" | "admin" | "user" = "buyer"; // 'buyer' = architect in DB
     if (email.endsWith("@greenchainz.com")) {
       assignedRole = "admin";
     }
@@ -203,6 +267,8 @@ export function registerEasyAuthRoutes(app: Express) {
         roles: [role],
         isAdmin: role === "admin",
         isSupplier: role === "supplier",
+        // isArchitect: true for all non-supplier, non-admin users (DB stores as 'buyer')
+        isArchitect: role !== "admin" && role !== "supplier",
       },
     });
   });
@@ -231,6 +297,13 @@ export function registerDevAuthShim(app: Express) {
     const state = Buffer.from(JSON.stringify(stateObj)).toString("base64");
     const url = `${base}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=openid+profile+email&state=${state}`;
     res.redirect(302, url);
+  });
+
+  // Google login in production is handled by Entra External ID (Easy Auth sidecar).
+  // In local dev, redirect back to /login with a hint to use email/password instead.
+  app.get("/.auth/login/google", (req: Request, res: Response) => {
+    const returnPath = encodeURIComponent(String(req.query.post_login_redirect_uri || "/dashboard"));
+    res.redirect(302, `/login?returnPath=${returnPath}&error=google_dev_unsupported`);
   });
 }
 

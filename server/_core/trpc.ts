@@ -43,3 +43,25 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+// Architects are stored as role='buyer' in the DB.
+// Admins can also access architect procedures.
+export const architectProcedure = t.procedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+
+    if (!ctx.user) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+    }
+    if (ctx.user.role !== 'buyer' && ctx.user.role !== 'admin') {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Architect access required." });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        user: ctx.user,
+      },
+    });
+  }),
+);

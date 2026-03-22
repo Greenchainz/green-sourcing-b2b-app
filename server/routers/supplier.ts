@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { suppliers } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { sendSupplierWelcomeEmail, sendFounderNewSupplierAlert } from "../email-service";
 
 /**
  * Supplier Onboarding Router
@@ -76,6 +77,25 @@ export const supplierOnboardingRouter = router({
           verificationStatus: "pending",
         })
         .returning({ id: suppliers.id });
+
+      // Fire-and-forget: welcome email to supplier + alert to founder
+      void Promise.all([
+        sendSupplierWelcomeEmail({
+          supplierEmail: input.email,
+          contactName: input.contactName,
+          companyName: input.companyName,
+          supplierId: row.id,
+        }),
+        sendFounderNewSupplierAlert({
+          companyName: input.companyName,
+          contactName: input.contactName,
+          supplierEmail: input.email,
+          materialCategories: input.materialCategories,
+          supplierId: row.id,
+        }),
+      ]).catch((err: unknown) =>
+        console.error("[onboarding] Email send failed:", err)
+      );
 
       return { id: row.id, created: true };
     }),

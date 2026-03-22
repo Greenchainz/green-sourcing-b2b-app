@@ -1,180 +1,378 @@
+/**
+ * MaterialCard — architect-first spec snapshot.
+ *
+ * Product direction:
+ *   - Lead with: Name, Manufacturer, Category, Price, Lead Time
+ *   - Sustainability data is a bonus column, not the headline
+ *   - CCPS score shown as "GreenScore" (quality/trust signal, not compliance)
+ *   - GWP shown as "Carbon Score" using plain-language context label
+ *   - EPD backed = "Verified Data" (data quality, not environmental compliance)
+ *   - "Request Quote →" is the primary CTA — full width, always visible
+ *   - Details + Score links are icon-only in the card top-right corner
+ *
+ * Variants:
+ *   "grid" (default) — vertical card
+ *   "list"           — compact horizontal row
+ */
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
-  Leaf, Shield, Award, DollarSign, Truck, Heart,
-  FileText, ShoppingCart, Scale,
+  ShieldCheck,
+  ShieldAlert,
+  ArrowRight,
+  FileText,
+  BarChart3,
+  Leaf,
 } from "lucide-react";
-import { Link } from "wouter";
-import { toast } from "sonner";
+import { Link, useLocation } from "wouter";
 import { ScoreBadge } from "@/components/MaterialCreditScore/ScoreBadge";
 
-interface CcpsBreakdown {
-  carbonScore: number;
-  complianceScore: number;
-  certificationScore: number;
-  costScore: number;
-  supplyChainScore: number;
-  healthScore: number;
-  ccpsTotal: number;
-  sourcingDifficulty: number;
-}
+// ── Types ──────────────────────────────────────────────────────────────────────
 
-interface MaterialCardProps {
+export interface MaterialCardProps {
   id: number;
   name: string;
   productName?: string | null;
   category: string;
+  subcategory?: string | null;
   manufacturerName?: string | null;
   gwpValue?: string | null;
+  gwpUnit?: string | null;
+  declaredUnit?: string | null;
+  ec3IndustryMedian?: string | null;
   pricePerUnit?: string | null;
   priceUnit?: string | null;
   leadTimeDays?: number | null;
-  hasEpd?: number | null;
-  hasHpd?: number | null;
-  hasFsc?: number | null;
-  hasC2c?: number | null;
-  hasGreenguard?: number | null;
-  hasDeclare?: number | null;
-  usManufactured?: number | null;
+  hasEpd?: boolean | null;
+  hasHpd?: boolean | null;
+  hasFsc?: boolean | null;
+  hasC2c?: boolean | null;
+  hasGreenguard?: boolean | null;
+  hasDeclare?: boolean | null;
+  usManufactured?: boolean | null;
   recycledContentPct?: string | null;
-  ccps: CcpsBreakdown;
+  ccps: {
+    ccpsTotal: number;
+    carbonScore: number;
+    certificationScore: number;
+    complianceScore: number;
+    costScore: number;
+    supplyChainScore: number;
+    healthScore: number;
+    sourcingDifficulty: number;
+  };
+  /** "grid" (default) = vertical card; "list" = compact horizontal row */
+  variant?: "grid" | "list";
 }
 
-/** Compute a lightweight MCS from data available in the card props. */
-function computeCardMcs(props: MaterialCardProps): number {
-  const epdScore = props.hasEpd ? 30 : 0;
-  const certs = [props.hasEpd, props.hasHpd, props.hasFsc, props.hasC2c, props.hasGreenguard, props.hasDeclare].filter(Boolean).length;
-  const certScore = Math.min(20, certs * 4);
-  const filledFields = [props.gwpValue, props.pricePerUnit, props.leadTimeDays, props.manufacturerName, props.recycledContentPct].filter((f) => f !== null && f !== undefined).length;
-  const transparencyScore = Math.round((filledFields / 5) * 10);
-  return Math.min(100, epdScore + certScore + 7 + transparencyScore); // 7 = half-credit local sourcing
+// ── Carbon context helper (plain-language GWP summary) ────────────────────────
+
+function carbonContext(
+  gwp: string | null | undefined,
+  median: string | null | undefined
+): { label: string; color: string } | null {
+  const g = parseFloat(gwp ?? "");
+  const m = parseFloat(median ?? "");
+  if (isNaN(g) || isNaN(m) || m === 0) return null;
+  const pct = Math.round(((m - g) / m) * 100); // positive = better than median
+  if (pct >= 40) return { label: "Top 25% in class", color: "text-green-600" };
+  if (pct >= 15) return { label: `${pct}% below avg`,  color: "text-green-600" };
+  if (pct >= -10) return { label: "Near avg",            color: "text-amber-600" };
+  return { label: `${Math.abs(pct)}% above avg`,         color: "text-red-500"   };
 }
 
-function CcpsGauge({ score }: { score: number }) {
-  const color = score >= 75 ? "text-green-600 border-green-500" : score >= 50 ? "text-yellow-600 border-yellow-500" : "text-red-600 border-red-500";
-  const bg = score >= 75 ? "bg-green-50" : score >= 50 ? "bg-yellow-50" : "bg-red-50";
-  return (
-    <div className={`w-14 h-14 rounded-full flex items-center justify-center border-[3px] ${color} ${bg}`}>
-      <span className="text-lg font-bold">{score}</span>
-    </div>
-  );
-}
+// ── Cert definitions ──────────────────────────────────────────────────────────
 
-function SourcingDots({ difficulty }: { difficulty: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i <= difficulty ? "bg-orange-500" : "bg-muted"}`} />
-      ))}
-    </div>
-  );
-}
+const CERT_DEFS = [
+  { key: "hasEpd"        as const, label: "EPD",     cls: "bg-emerald-50 border-emerald-200 text-emerald-700" },
+  { key: "hasFsc"        as const, label: "FSC",     cls: "bg-green-50 border-green-200 text-green-700"       },
+  { key: "hasC2c"        as const, label: "C2C",     cls: "bg-teal-50 border-teal-200 text-teal-700"          },
+  { key: "hasHpd"        as const, label: "HPD",     cls: "bg-sky-50 border-sky-200 text-sky-700"             },
+  { key: "hasGreenguard" as const, label: "GG",      cls: "bg-lime-50 border-lime-200 text-lime-700"          },
+  { key: "hasDeclare"    as const, label: "Declare", cls: "bg-purple-50 border-purple-200 text-purple-700"    },
+] as const;
 
-function CertBadge({ label, active }: { label: string; active: boolean }) {
-  if (!active) return null;
-  return (
-    <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-green-50 border-green-200 text-green-700">{label}</Badge>
-  );
-}
-
-const METRICS = [
-  { key: "carbonScore" as const, icon: Leaf, color: "text-green-600", label: "Carbon" },
-  { key: "complianceScore" as const, icon: Shield, color: "text-blue-600", label: "Compliance" },
-  { key: "certificationScore" as const, icon: Award, color: "text-purple-600", label: "Certs" },
-  { key: "costScore" as const, icon: DollarSign, color: "text-yellow-600", label: "Cost" },
-  { key: "supplyChainScore" as const, icon: Truck, color: "text-orange-600", label: "Supply" },
-  { key: "healthScore" as const, icon: Heart, color: "text-red-600", label: "Health" },
-];
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function MaterialCard(props: MaterialCardProps) {
-  const { id, name, productName, category, manufacturerName, gwpValue, pricePerUnit, priceUnit, leadTimeDays, hasEpd, hasHpd, hasFsc, hasC2c, hasGreenguard, hasDeclare, usManufactured, recycledContentPct, ccps } = props;
-  const mcsScore = computeCardMcs(props);
+  const {
+    id, name, productName, category, subcategory,
+    manufacturerName, gwpValue, gwpUnit, declaredUnit,
+    ec3IndustryMedian, pricePerUnit, priceUnit,
+    leadTimeDays, usManufactured, recycledContentPct,
+    ccps, variant = "grid",
+  } = props;
 
-  const addToRfq = () => {
-    try {
-      const existing = JSON.parse(localStorage.getItem("rfq-items") || "[]");
-      if (existing.some((item: any) => item.materialId === id)) { toast.info("Already in your RFQ cart"); return; }
-      existing.push({ materialId: id, name, manufacturerName, quantity: 1, quantityUnit: priceUnit || "unit" });
-      localStorage.setItem("rfq-items", JSON.stringify(existing));
-      toast.success("Added to RFQ cart");
-    } catch { toast.error("Failed to add to cart"); }
+  const [, navigate] = useLocation();
+  const mcsScore    = ccps.ccpsTotal;
+  const carbCtx     = carbonContext(gwpValue, ec3IndustryMedian);
+  const activeCerts = CERT_DEFS.filter((c) => !!props[c.key]);
+
+  const handleRequestQuote = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate(
+      `/rfq/new?materialId=${id}&category=${encodeURIComponent(category)}&epdRequired=${
+        props.hasEpd ? "true" : "false"
+      }`
+    );
   };
 
-  const addToCompare = () => {
-    try {
-      const existing = JSON.parse(localStorage.getItem("compare-ids") || "[]");
-      if (existing.length >= 4) { toast.error("Max 4 materials for comparison"); return; }
-      if (existing.includes(id)) { toast.info("Already in comparison"); return; }
-      existing.push(id);
-      localStorage.setItem("compare-ids", JSON.stringify(existing));
-      toast.success("Added to comparison");
-    } catch { toast.error("Failed to add"); }
-  };
+  // ── List variant ────────────────────────────────────────────────────────────
+  if (variant === "list") {
+    return (
+      <div className="group flex items-center gap-3 px-4 py-3 bg-card border border-border/60 rounded-lg hover:border-border hover:shadow-sm transition-all duration-150">
 
-  return (
-    <Card className="group hover:shadow-lg transition-all duration-200 border-border/60 overflow-hidden">
-      <CardContent className="p-0">
-        <div className="flex items-start justify-between p-4 pb-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Badge variant="secondary" className="text-[10px] shrink-0">{category}</Badge>
-              {usManufactured ? <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50">🇺🇸 US</Badge> : null}
-            </div>
+        {/* GreenScore badge */}
+        <div className="shrink-0 flex flex-col items-center gap-0.5">
+          <ScoreBadge score={mcsScore} materialId={id} />
+          <span className="text-[8px] text-muted-foreground uppercase tracking-wider">
+            GreenScore
+          </span>
+        </div>
+
+        {/* Name + meta — flex-1 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <Link href={`/materials/${id}`}>
-              <h3 className="text-sm font-semibold text-foreground hover:text-primary cursor-pointer line-clamp-2 leading-tight">{name}</h3>
+              <span className="text-sm font-semibold text-foreground hover:text-primary cursor-pointer line-clamp-1 transition-colors">
+                {name}
+              </span>
             </Link>
-            {productName && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{productName}</p>}
-            {manufacturerName && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{manufacturerName}</p>}
+            {props.hasEpd ? (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-700 shrink-0">
+                <ShieldCheck className="w-3 h-3" />Verified Data
+              </span>
+            ) : null}
           </div>
-          <div className="flex flex-col items-center gap-1 ml-3">
-            <CcpsGauge score={ccps.ccpsTotal} />
-            <span className="text-[9px] text-muted-foreground">CCPS</span>
-            <ScoreBadge score={mcsScore} materialId={id} />
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{category}</Badge>
+            {subcategory && (
+              <span className="text-[10px] text-muted-foreground">{subcategory}</span>
+            )}
+            {manufacturerName && (
+              <span className="text-[10px] text-muted-foreground/70">{manufacturerName}</span>
+            )}
+            {usManufactured && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50 shrink-0">
+                🇺🇸 US Made
+              </Badge>
+            )}
           </div>
         </div>
 
-        <div className="px-4 py-2 space-y-1">
-          {METRICS.map((m) => (
-            <div key={m.key} className="flex items-center gap-1.5">
-              <m.icon className={`w-3 h-3 ${m.color} shrink-0`} />
-              <span className="text-[9px] text-muted-foreground w-12 shrink-0">{m.label}</span>
-              <Progress value={ccps[m.key]} className="flex-1 h-1.5" />
-              <span className="text-[9px] font-medium w-5 text-right">{ccps[m.key]}</span>
-            </div>
-          ))}
+        {/* Cert pills */}
+        {activeCerts.length > 0 && (
+          <div className="hidden sm:flex items-center gap-1 shrink-0">
+            {activeCerts.slice(0, 4).map((c) => (
+              <Badge key={c.key} variant="outline" className={`text-[9px] px-1.5 py-0 h-4 ${c.cls}`}>
+                {c.label}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Price + lead time */}
+        <div className="hidden lg:block text-right w-24 shrink-0">
+          {pricePerUnit ? (
+            <p className="text-xs font-semibold text-foreground tabular-nums">
+              ${Number(pricePerUnit).toFixed(2)}
+              <span className="text-[9px] font-normal text-muted-foreground">/{priceUnit || "unit"}</span>
+            </p>
+          ) : null}
+          {leadTimeDays ? (
+            <p className="text-[10px] text-muted-foreground">{leadTimeDays}d lead</p>
+          ) : null}
         </div>
 
-        <div className="px-4 py-2 grid grid-cols-3 gap-2 border-t border-border/30">
-          <div><p className="text-[9px] text-muted-foreground">GWP</p><p className="text-xs font-semibold">{gwpValue ? Number(gwpValue).toFixed(2) : "—"}</p></div>
-          <div><p className="text-[9px] text-muted-foreground">Price</p><p className="text-xs font-semibold">{pricePerUnit ? `$${Number(pricePerUnit).toFixed(2)}` : "—"}</p></div>
-          <div><p className="text-[9px] text-muted-foreground">Lead</p><p className="text-xs font-semibold">{leadTimeDays ? `${leadTimeDays}d` : "—"}</p></div>
-        </div>
-
-        <div className="px-4 py-1.5 flex flex-wrap gap-1 border-t border-border/30">
-          <CertBadge label="EPD" active={!!hasEpd} />
-          <CertBadge label="HPD" active={!!hasHpd} />
-          <CertBadge label="FSC" active={!!hasFsc} />
-          <CertBadge label="C2C" active={!!hasC2c} />
-          <CertBadge label="GG" active={!!hasGreenguard} />
-          <CertBadge label="Declare" active={!!hasDeclare} />
-          {recycledContentPct && Number(recycledContentPct) > 0 && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-emerald-200 text-emerald-700 bg-emerald-50">{Number(recycledContentPct).toFixed(0)}% Recycled</Badge>
+        {/* Carbon Score */}
+        <div className="hidden md:block text-right w-28 shrink-0">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Carbon Score</p>
+          {carbCtx ? (
+            <p className={`text-[10px] font-semibold ${carbCtx.color}`}>{carbCtx.label}</p>
+          ) : gwpValue ? (
+            <p className="text-xs font-mono tabular-nums text-foreground">
+              {Number(gwpValue).toFixed(2)}
+              <span className="text-[9px] text-muted-foreground ml-0.5">{gwpUnit || "kgCO₂e"}</span>
+            </p>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50 cursor-default"
+              title="No EPD data — carbon figures unavailable for this product"
+            >
+              <Leaf className="w-3 h-3" />No EPD data
+            </span>
           )}
         </div>
 
-        <div className="px-4 py-2 flex items-center justify-between border-t border-border/30 bg-muted/20">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-muted-foreground">Sourcing:</span>
-            <SourcingDots difficulty={ccps.sourcingDifficulty} />
-          </div>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={addToCompare}><Scale className="w-3 h-3 mr-1" />Compare</Button>
-            <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={addToRfq}><ShoppingCart className="w-3 h-3 mr-1" />RFQ</Button>
-            <Link href={`/materials/${id}`}><Button variant="default" size="sm" className="h-6 px-2 text-[10px]"><FileText className="w-3 h-3 mr-1" />Details</Button></Link>
-          </div>
+        {/* Actions */}
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            size="sm"
+            className="h-7 text-[11px] bg-green-700 hover:bg-green-800 text-white gap-1 px-3 font-medium"
+            onClick={handleRequestQuote}
+          >
+            Request Quote <ArrowRight className="w-3 h-3" />
+          </Button>
+          <Link href={`/materials/${id}`}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" title="Details">
+              <FileText className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
         </div>
+      </div>
+    );
+  }
+
+  // ── Grid variant (default) ──────────────────────────────────────────────────
+  return (
+    <Card className="group hover:shadow-md transition-all duration-150 border-border/60 overflow-hidden flex flex-col">
+      <CardContent className="p-0 flex flex-col flex-1">
+
+        {/* ── Zone 1: Header ────────────────────────────────────────────── */}
+        <div className="p-4 pb-3 flex-1 relative">
+
+          {/* Icon actions — top-right corner */}
+          <div className="absolute top-3 right-3 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Link href={`/materials/${id}`}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                title="View details"
+              >
+                <FileText className="w-3.5 h-3.5" />
+              </Button>
+            </Link>
+            <Link href={`/materials/${id}/score`}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                title="GreenScore details"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Category + flags (pad right to not overlap icon buttons) */}
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap pr-14">
+            <Badge variant="secondary" className="text-[10px] font-medium">{category}</Badge>
+            {subcategory && (
+              <span className="text-[10px] text-muted-foreground">{subcategory}</span>
+            )}
+            {usManufactured && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50">
+                🇺🇸 US Made
+              </Badge>
+            )}
+          </div>
+
+          {/* Product name */}
+          <Link href={`/materials/${id}`}>
+            <h3 className="text-sm font-semibold text-foreground hover:text-primary cursor-pointer leading-snug line-clamp-2 mb-0.5 pr-2 transition-colors">
+              {name}
+            </h3>
+          </Link>
+          {productName && productName !== name && (
+            <p className="text-[11px] text-muted-foreground line-clamp-1">{productName}</p>
+          )}
+          {manufacturerName && (
+            <p className="text-[11px] text-muted-foreground/70 mt-0.5">{manufacturerName}</p>
+          )}
+
+          {/* Price + lead time — the primary spec data architects need */}
+          {(pricePerUnit || leadTimeDays) && (
+            <div className="flex items-center gap-3 mt-2.5 text-xs">
+              {pricePerUnit && (
+                <span>
+                  <span className="font-semibold text-foreground">
+                    ${Number(pricePerUnit).toFixed(2)}
+                  </span>
+                  <span className="text-muted-foreground">/{priceUnit || "unit"}</span>
+                </span>
+              )}
+              {leadTimeDays && (
+                <span className="text-muted-foreground">{leadTimeDays}d lead</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Zone 2: ESG snapshot ──────────────────────────────────────── */}
+        <div className="px-4 py-2.5 border-t border-border/30 bg-muted/30 flex items-center justify-between gap-2">
+
+          {/* GreenScore */}
+          <div className="flex flex-col items-center gap-0.5 shrink-0">
+            <ScoreBadge score={mcsScore} materialId={id} />
+            <span className="text-[8px] text-muted-foreground uppercase tracking-wider font-medium">
+              GreenScore
+            </span>
+          </div>
+
+          {/* Verified Data status */}
+          {props.hasEpd ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700">
+              <ShieldCheck className="w-3 h-3" />Verified Data
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+              <ShieldAlert className="w-3 h-3" />No EPD
+            </span>
+          )}
+
+          {/* Carbon Score — only rendered when gwpValue is populated */}
+          {gwpValue && (
+            <div className="text-right">
+              <p className="text-[8px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                Carbon Score
+              </p>
+              {carbCtx ? (
+                <p className={`text-[10px] font-semibold leading-tight ${carbCtx.color}`}>
+                  {carbCtx.label}
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs font-semibold tabular-nums leading-none">
+                    {Number(gwpValue).toFixed(2)}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground">
+                    {gwpUnit || "kgCO₂e"}/{declaredUnit || "unit"}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Zone 3: Cert pills ────────────────────────────────────────── */}
+        {(activeCerts.length > 0 || (recycledContentPct && Number(recycledContentPct) > 0)) && (
+          <div className="px-4 py-1.5 flex flex-wrap gap-1 border-t border-border/30">
+            {activeCerts.slice(0, 4).map((c) => (
+              <Badge key={c.key} variant="outline" className={`text-[9px] px-1.5 py-0 h-4 ${c.cls}`}>
+                {c.label}
+              </Badge>
+            ))}
+            {recycledContentPct && Number(recycledContentPct) > 0 && (
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-emerald-50 border-emerald-200 text-emerald-700">
+                {Number(recycledContentPct).toFixed(0)}% Recycled
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* ── CTA: Request Quote — full width ──────────────────────────── */}
+        <div className="px-3 py-3 border-t border-border/30 mt-auto">
+          <Button
+            className="w-full h-8 text-xs bg-green-700 hover:bg-green-800 text-white gap-1.5 font-medium hover:shadow-[0_0_12px_rgba(22,163,74,0.4)] transition-all"
+            onClick={handleRequestQuote}
+          >
+            Request Quote
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+
       </CardContent>
     </Card>
   );
