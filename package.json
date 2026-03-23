@@ -10,7 +10,9 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "prisma db push",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
     "seed:ews": "tsx scripts/seed-ews-assemblies.ts",
     "seed:suppliers": "tsx scripts/seed-suppliers.ts"
   },
