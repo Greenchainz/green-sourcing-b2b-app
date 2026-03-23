@@ -16,7 +16,7 @@ export default function Footer() {
               <span className="text-lg font-bold text-foreground">GreenChainz</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Verified sustainable sourcing for the built environment.
+              The digital interceptor for the built environment. We don't wait for the legacy players to move.
             </p>
             <div className="flex space-x-4">
               <a
@@ -68,7 +68,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/rfq" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Request Quote (RFQ)
+                  Force a Quote (RFQ)
                 </Link>
               </li>
               <li>

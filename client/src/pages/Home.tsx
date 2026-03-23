@@ -14,24 +14,24 @@ export default function Home() {
         <div className="container">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              Where Being Green{' '}
-              <span className="text-primary">Has Never Been So Easy</span>
+              Stop Waiting Days{' '}
+              <span className="text-primary">for Quotes.</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Save money. Save the planet. Same workflow.
+              Data in. Specs out. Built for street fighters in a market of preppy incumbents.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              We plug AI-powered sustainability tools directly into Excel, Revit, and your browser—so you can stay compliant without changing how you work.
+              We intercept legacy procurement workflows and inject compliance-ready data directly into your model—before the slow suppliers even know a project exists.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link href="/get-started">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300">
-                  Start Saving Today →
+                  Weaponize Your Specs →
                 </Button>
               </Link>
               <Link href="/about">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                  See How It Works
+                  See the Damage
                 </Button>
               </Link>
             </div>
@@ -64,13 +64,13 @@ export default function Home() {
         <div className="container">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
-              DOLLARS & SENSE
+              THE COLD CALCULUS
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Green Makes Cents
+              Liability-Free. Code-Compliant. No Excuses.
             </h2>
             <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-              Sustainability isn't a luxury—it's a competitive advantage. We make it affordable, accessible, and automatic.
+              Architects don't specify sustainable materials to save trees. They do it to avoid toxic tort litigation, failed audits, and stranded assets. We arm them with the data to win both.
             </p>
           </div>
 
@@ -81,9 +81,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Cut Compliance Costs</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Kill the Consultant Bill</h3>
               <p className="text-muted-foreground">
-                No more expensive consultants. No manual data entry. Our AI does the heavy lifting—so your budget stays green too.
+                No more $500/hr consultants hunting EPDs. Our AI does the heavy lifting. Your GC doesn't need to know it used to take three days.
               </p>
             </Card>
 
@@ -93,9 +93,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Save Hours Every Week</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">BIM In. RFQ Out. Done.</h3>
               <p className="text-muted-foreground">
-                What used to take days now takes minutes. Instant EPD lookups, automated audits, and one-click submittals.
+                What used to require a junior PM, two spreadsheets, and a prayer now takes minutes. Instant EPD lookups, automated RFQs, one-click submittals.
               </p>
             </Card>
 
@@ -105,17 +105,18 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Stay Ahead of Regulations</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Compliance Is a Weapon. Wield It.</h3>
               <p className="text-muted-foreground">
-                LEED, Buy Clean, and beyond—we track the rules so you don't have to. Future-proof your projects today.
+                Local Law 97. Title 24. LEED v5. Buy Clean. We track every moving target so you show up to every bid with bulletproof data.
               </p>
             </Card>
           </div>
 
           <div className="mt-12 text-center">
             <blockquote className="text-xl italic text-muted-foreground max-w-3xl mx-auto">
-              "Every dollar saved is a tree planted.<br />
-              Every minute saved is a forest grown."
+              "The architect who specs faster wins the project.<br />
+              The supplier who responds fastest wins the bid.<br />
+              Everyone else goes home."
             </blockquote>
           </div>
         </div>
@@ -126,13 +127,13 @@ export default function Home() {
         <div className="container">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
-              YOUR GREEN TOOLKIT
+              THE ARSENAL
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Pick Your Tool. Keep Your Workflow.
+              Four Ways to Outmaneuver Legacy Procurement.
             </h2>
             <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-              No new software to learn. We integrate directly into the tools you already use—Excel, Revit, Chrome.
+              No bloated ERP. No begging for quotes. Just compliance data injected directly into the tools you already use.
             </p>
           </div>
 
@@ -140,7 +141,7 @@ export default function Home() {
             <Card className="p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-2xl font-semibold text-foreground mb-4">Excel Audit</h3>
               <p className="text-muted-foreground mb-6">
-                Upload your BOM. Get instant carbon scores, health grades, and greener alternatives—all without leaving Excel.
+                Drop your BOM. Get weaponized compliance data—EPD scores, carbon calculations, code-ready alternatives—without leaving Excel.
               </p>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm">
@@ -163,14 +164,14 @@ export default function Home() {
                 </li>
               </ul>
               <Link href="/tools/excel">
-                <Button className="w-full">Launch Audit</Button>
+                <Button className="w-full">Extract Assembly Data</Button>
               </Link>
             </Card>
 
             <Card className="p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-2xl font-semibold text-foreground mb-4">Browser Extension</h3>
               <p className="text-muted-foreground mb-6">
-                Shopping for materials online? We overlay sustainability data on any supplier site—instantly.
+                We overlay hard compliance data directly on supplier sites. Catch greenwashing claims before they become your liability.
               </p>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm">
@@ -193,14 +194,14 @@ export default function Home() {
                 </li>
               </ul>
               <Link href="/tools/extension">
-                <Button className="w-full">Get Extension</Button>
+                <Button className="w-full">Deploy the Extension</Button>
               </Link>
             </Card>
 
             <Card className="p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-2xl font-semibold text-foreground mb-4">Revit Plugin</h3>
               <p className="text-muted-foreground mb-6">
-                The "spellchecker" for LEED. Scan your model in real-time and catch compliance issues before they cost you.
+                Intercept high-carbon specs before they lock in. Live compliance scanning and instant material swaps—inside Revit.
               </p>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm">
@@ -223,14 +224,14 @@ export default function Home() {
                 </li>
               </ul>
               <Link href="/tools/revit">
-                <Button className="w-full">Download Plugin</Button>
+                <Button className="w-full">Intercept Bad Specs</Button>
               </Link>
             </Card>
 
             <Card className="p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-2xl font-semibold text-foreground mb-4">Submittal Generator</h3>
               <p className="text-muted-foreground mb-6">
-                Drop in a spec PDF. Get a complete submittal package with EPD-backed products—in minutes, not days.
+                Feed it a spec. It generates a complete LEED submittal package with EPD-backed products. Reviewers get nothing to reject.
               </p>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm">
@@ -253,7 +254,7 @@ export default function Home() {
                 </li>
               </ul>
               <Link href="/tools/submittal">
-                <Button className="w-full">Try It Now</Button>
+                <Button className="w-full">Force the Submittal</Button>
               </Link>
             </Card>
           </div>
@@ -266,11 +267,11 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-4xl md:text-5xl font-bold text-primary mb-2">50K+</div>
-              <div className="text-sm text-muted-foreground">EPD Products</div>
+              <div className="text-sm text-muted-foreground">Verified EPDs. Zero Greenwash.</div>
             </div>
             <div>
               <div className="text-4xl md:text-5xl font-bold text-primary mb-2">85%</div>
-              <div className="text-sm text-muted-foreground">Time Saved</div>
+              <div className="text-sm text-muted-foreground">Admin Time Eliminated</div>
             </div>
             <div>
               <div className="text-4xl md:text-5xl font-bold text-primary mb-2">$0</div>
@@ -289,23 +290,23 @@ export default function Home() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide">
-              START TODAY
+              THE STREET FIGHT STARTS NOW
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Ready to Make Green Easy?
+              The Legacy System Is Losing. Get on the Right Side.
             </h2>
             <p className="text-lg text-muted-foreground">
-              Join the teams who've stopped wrestling with spreadsheets and started winning green building projects.
+              Procurement teams drowning in manual RFQs and architects waiting days for quotes are bleeding time and projects to competitors who've already switched.
             </p>
             <div className="pt-4">
               <Link href="/get-started">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90">
-                  Get Started Free
+                  Weaponize Your Specs
                 </Button>
               </Link>
             </div>
             <p className="text-sm text-muted-foreground">
-              No credit card required • Setup in 5 minutes • Cancel anytime
+              No credit card required • Live in 5 minutes • Cancel if you somehow get slower
             </p>
           </div>
         </div>
