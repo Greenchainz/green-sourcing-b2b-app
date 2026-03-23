@@ -12,11 +12,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Layers, Leaf, ArrowRight, Building2, ArrowLeft, Plus, Save, Trash2, Calculator, Flame, Package, LogIn, FileSpreadsheet } from "lucide-react";
+import { Layers, Leaf, ArrowRight, Building2, ArrowLeft, Plus, Save, Trash2, Calculator, Flame, Package, LogIn, FileSpreadsheet, Search, SlidersHorizontal, X } from "lucide-react";
 import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getLoginUrl } from "@/const";
+import { Switch } from "@/components/ui/switch";
 import type { AppRouter } from "../../../server/routers";
 
 const TIER_COLORS: Record<string, string> = {
@@ -29,6 +30,42 @@ const TIER_LABELS: Record<string, string> = { good: "Good", better: "Better", be
 type AssemblyTier = "good" | "better" | "best";
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type CatalogMaterial = RouterOutput["materials"]["list"]["items"][number];
+
+type MaterialPickerFilters = {
+  search: string;
+  manufacturer: string;
+  category: string;
+  categorySearch: string;
+  hasEpd: boolean;
+  usManufactured: boolean;
+  fireRatedOnly: boolean;
+  maxPrice: string;
+  maxLeadTime: string;
+};
+
+const CSI_DIVISIONS = [
+  { code: "03", label: "Concrete", keyword: "concrete" },
+  { code: "04", label: "Masonry", keyword: "mason" },
+  { code: "05", label: "Metals", keyword: "steel" },
+  { code: "06", label: "Wood", keyword: "wood" },
+  { code: "07", label: "Insulation", keyword: "insul" },
+  { code: "07", label: "Roofing", keyword: "roofing" },
+  { code: "08", label: "Glazing", keyword: "glaz" },
+  { code: "09", label: "Flooring", keyword: "floor" },
+  { code: "09", label: "Drywall", keyword: "drywall" },
+] as const;
+
+const DEFAULT_MATERIAL_PICKER_FILTERS: MaterialPickerFilters = {
+  search: "",
+  manufacturer: "",
+  category: "",
+  categorySearch: "",
+  hasEpd: false,
+  usManufactured: false,
+  fireRatedOnly: false,
+  maxPrice: "",
+  maxLeadTime: "",
+};
 
 type LayerDraft = {
   layerOrder: number;
@@ -226,11 +263,22 @@ function AssemblyDetailPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
+  const [materialFilters, setMaterialFilters] = useState<MaterialPickerFilters>(DEFAULT_MATERIAL_PICKER_FILTERS);
   const { data: assembly, isLoading } = trpc.assemblies.getById.useQuery({ id }, { enabled: !!id });
-  const { data: materialResults, isLoading: materialsLoading } = trpc.materials.list.useQuery({ limit: 100, sortBy: "name", sortOrder: "asc" });
+  const { data: materialResults, isLoading: materialsLoading } = trpc.materials.list.useQuery({
+    category: materialFilters.category || undefined,
+    categorySearch: materialFilters.categorySearch || undefined,
+    hasEpd: materialFilters.hasEpd || undefined,
+    usManufactured: materialFilters.usManufactured || undefined,
+    limit: 100,
+    sortBy: "name",
+    sortOrder: "asc",
+  });
+  const { data: rawCategories } = trpc.materials.categories.useQuery();
 
   const [name, setName] = useState("");
   const materialOptions = materialResults?.items || [];
+  const categories = rawCategories ?? [];
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [fireRating, setFireRating] = useState("");
@@ -246,6 +294,43 @@ function AssemblyDetailPage() {
     setTier((assembly.sustainabilityTier as AssemblyTier) || "good");
     setLayers((assembly.components || []).map((component: any, index: number) => toLayerDraft(component, index)));
   }, [assembly]);
+
+  const updateMaterialFilters = (patch: Partial<MaterialPickerFilters>) => {
+    setMaterialFilters((current) => ({ ...current, ...patch }));
+  };
+
+  const filteredMaterialOptions = useMemo(() => {
+    const searchNeedle = materialFilters.search.trim().toLowerCase();
+    const manufacturerNeedle = materialFilters.manufacturer.trim().toLowerCase();
+    const maxPrice = materialFilters.maxPrice.trim() ? parseNumber(materialFilters.maxPrice) : null;
+    const maxLeadTime = materialFilters.maxLeadTime.trim() ? parseNumber(materialFilters.maxLeadTime) : null;
+
+    return materialOptions.filter((material) => {
+      const displayName = materialDisplayName(material).toLowerCase();
+      const manufacturerName = String(material.manufacturerName || "").toLowerCase();
+      const categoryName = String(material.category || "").toLowerCase();
+      const hasFireRating = !!String(material.fireRating || "").trim();
+      const materialPrice = parseNumber(material.pricePerUnit);
+      const materialLeadTime = parseNumber(material.leadTimeDays);
+
+      if (searchNeedle && ![displayName, manufacturerName, categoryName].some((value) => value.includes(searchNeedle))) {
+        return false;
+      }
+      if (manufacturerNeedle && !manufacturerName.includes(manufacturerNeedle)) {
+        return false;
+      }
+      if (materialFilters.fireRatedOnly && !hasFireRating) {
+        return false;
+      }
+      if (maxPrice !== null && materialPrice > maxPrice) {
+        return false;
+      }
+      if (maxLeadTime !== null && materialLeadTime > maxLeadTime) {
+        return false;
+      }
+      return true;
+    });
+  }, [materialOptions, materialFilters]);
 
   const totals = useMemo(() => {
     const totalGwpPer1000Sqft = layers.reduce((sum, layer) => sum + parseNumber(layer.gwpContribution || layer.materialEmbodiedCarbonPer1000sf), 0);
@@ -395,7 +480,7 @@ function AssemblyDetailPage() {
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Layers className="w-6 h-6" />Worksheet-style Assembly Editor
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">Edit layers directly on the detail page and watch totals update immediately.</p>
+            <p className="text-sm text-muted-foreground mt-1">Edit layers directly on the detail page, narrow the catalog with architect-first filters, and watch totals update immediately.</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <Link href="/assemblies"><Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" />Back</Button></Link>
@@ -446,6 +531,92 @@ function AssemblyDetailPage() {
             </Card>
 
             <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><SlidersHorizontal className="w-4 h-4" />Layer Material Filters</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs">Search</Label>
+                    <div className="relative mt-1">
+                      <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Input value={materialFilters.search} onChange={(e) => updateMaterialFilters({ search: e.target.value })} placeholder="Name, category, manufacturer" className="pl-9" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Manufacturer</Label>
+                    <Input value={materialFilters.manufacturer} onChange={(e) => updateMaterialFilters({ manufacturer: e.target.value })} placeholder="Filter manufacturer" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Category</Label>
+                    <Select value={materialFilters.category || "all"} onValueChange={(value) => updateMaterialFilters({ category: value === "all" ? "" : value, categorySearch: "" })}>
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="All categories" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All categories</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category.category} value={category.category}>{category.category}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Max price / unit</Label>
+                    <Input type="number" min="0" step="0.01" value={materialFilters.maxPrice} onChange={(e) => updateMaterialFilters({ maxPrice: e.target.value })} placeholder="Any" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Max lead time (days)</Label>
+                    <Input type="number" min="0" step="1" value={materialFilters.maxLeadTime} onChange={(e) => updateMaterialFilters({ maxLeadTime: e.target.value })} placeholder="Any" className="mt-1" />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button variant="outline" className="w-full" onClick={() => setMaterialFilters(DEFAULT_MATERIAL_PICKER_FILTERS)}><X className="w-4 h-4 mr-2" />Reset filters</Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {CSI_DIVISIONS.map((division) => {
+                    const active = materialFilters.categorySearch === division.keyword;
+                    return (
+                      <button
+                        key={division.keyword}
+                        onClick={() => updateMaterialFilters({ categorySearch: active ? "" : division.keyword, category: "" })}
+                        className={`text-[11px] px-2 py-1 rounded border transition-colors ${active ? "border-green-600 bg-green-50 text-green-700 font-medium" : "border-border text-muted-foreground hover:border-green-400 hover:text-foreground"}`}
+                      >
+                        <span className="opacity-50 mr-1">{division.code}</span>
+                        {division.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm font-medium">Verified EPD only</p>
+                      <p className="text-xs text-muted-foreground">Keep documented materials first</p>
+                    </div>
+                    <Switch checked={materialFilters.hasEpd} onCheckedChange={(checked) => updateMaterialFilters({ hasEpd: checked })} />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm font-medium">US manufactured</p>
+                      <p className="text-xs text-muted-foreground">Favor easier sourcing</p>
+                    </div>
+                    <Switch checked={materialFilters.usManufactured} onCheckedChange={(checked) => updateMaterialFilters({ usManufactured: checked })} />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm font-medium">Fire-rated only</p>
+                      <p className="text-xs text-muted-foreground">Show materials with fire data</p>
+                    </div>
+                    <Switch checked={materialFilters.fireRatedOnly} onCheckedChange={(checked) => updateMaterialFilters({ fireRatedOnly: checked })} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{materialsLoading ? "Loading materials..." : `${filteredMaterialOptions.length} matching materials`}</span>
+                  <span>Top 100 catalog results in current filter set</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-base">Editable Layers</CardTitle>
@@ -486,7 +657,10 @@ function AssemblyDetailPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="manual">Manual layer</SelectItem>
-                                {materialOptions.map((material) => (
+                                {(layer.materialId && !filteredMaterialOptions.some((material) => material.id === layer.materialId)
+                                  ? [materialOptions.find((material) => material.id === layer.materialId)].filter(Boolean) as CatalogMaterial[]
+                                  : []
+                                ).concat(filteredMaterialOptions).map((material) => (
                                   <SelectItem key={material.id} value={String(material.id)}>
                                     {materialDisplayName(material)}
                                   </SelectItem>
@@ -560,6 +734,10 @@ function AssemblyDetailPage() {
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-muted-foreground">Linked materials</span>
                   <span className="font-medium text-right">{layers.filter((layer) => !!layer.materialId).length} / {layers.length}</span>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-muted-foreground">Filter match set</span>
+                  <span className="font-medium text-right">{filteredMaterialOptions.length} materials</span>
                 </div>
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-muted-foreground">Fire rating</span>
