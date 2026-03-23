@@ -32,7 +32,7 @@ export default function Header() {
           />
           <div className="flex flex-col">
             <span className="text-lg font-bold text-foreground">GreenChainz</span>
-            <span className="text-xs text-muted-foreground">Verified Sustainable Sourcing</span>
+            <span className="text-xs text-muted-foreground">The Digital Interceptor</span>
           </div>
         </Link>
 
@@ -77,7 +77,7 @@ export default function Header() {
             Subscription
           </Link>
           <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            Become a Supplier
+            Bypass the Gatekeepers
           </Link>
         </nav>
 
@@ -118,7 +118,7 @@ export default function Header() {
               </a>
               <a href="/get-started">
                 <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_15px_rgba(159,232,112,0.6)] transition-all duration-300">
-                  Get Started
+                  Weaponize Your Specs
                 </Button>
               </a>
             </>
@@ -169,7 +169,7 @@ export default function Header() {
             </Link>
             <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
-              Become a Supplier
+              Bypass the Gatekeepers
             </Link>
             {!user && (
               <div className="flex flex-col space-y-2 pt-2">
@@ -180,7 +180,7 @@ export default function Header() {
                 </a>
                 <a href="/get-started">
                   <Button size="sm" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                    Get Started
+                    Weaponize Your Specs
                   </Button>
                 </a>
               </div>

@@ -16,19 +16,19 @@ export default function About() {
         <div className="container relative z-10">
           <div className="max-w-4xl mx-auto text-center space-y-6">
             <div className="inline-block px-4 py-2 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-sm mb-4">
-              <span className="text-sm font-semibold text-primary">About GreenChainz</span>
+              <span className="text-sm font-semibold text-primary">The Origin Story</span>
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              Building a{' '}
+              We Crashed the{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[oklch(0.85_0.15_145)] to-[oklch(0.65_0.14_145)]">
-                Sustainable Future
+                Old Boys' Club.
               </span>
-              {' '}One Material at a Time
+              {' '}Bring Your Data.
             </h1>
-            
+
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              We're on a mission to make sustainable building materials as easy to source as conventional ones—because saving the planet shouldn't require a PhD in environmental science.
+              Legacy monopolies spent a century locking innovative suppliers out of the specification workflow. We built the door kicker. Data in. Disruption out.
             </p>
           </div>
         </div>
@@ -40,10 +40,10 @@ export default function About() {
           <div className="max-w-5xl mx-auto space-y-8">
             <div className="text-center">
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                A Message from Our Founder
+                Straight from the Founder
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Hear the story behind GreenChainz and why we're building the future of sustainable sourcing.
+                No pitch deck. No corporate rehearsal. Hear why this platform exists and who it's coming for.
               </p>
             </div>
             
@@ -68,7 +68,7 @@ export default function About() {
               </div>
               <h3 className="text-2xl font-bold text-foreground mb-4">Our Mission</h3>
               <p className="text-muted-foreground leading-relaxed">
-                To eliminate the friction between sustainability goals and procurement reality. We believe green building shouldn't cost more time, money, or sanity—it should be the default. By plugging AI-powered tools directly into the workflows architects, contractors, and procurement teams already use, we're making compliance automatic and alternatives obvious.
+                To intercept legacy procurement at the exact point of decision and inject superior material data before the incumbents even notice. Green building shouldn't cost more time, money, or sanity—it should be the automatic default, enforced by software, not consultants.
               </p>
             </Card>
 
@@ -78,7 +78,7 @@ export default function About() {
               </div>
               <h3 className="text-2xl font-bold text-foreground mb-4">Our Vision</h3>
               <p className="text-muted-foreground leading-relaxed">
-                A construction industry where every material decision is informed by real environmental data, where greenwashing is impossible, and where sustainable products compete on a level playing field. We envision a world where "Buy Clean" isn't a regulation to fear—it's a competitive advantage to embrace.
+                An industry where carbon is tracked as rigorously as cost, where greenwashing is exposed on contact, and where the fastest, most data-driven suppliers win—not the ones with the biggest lobbying budget. "Buy Clean" stops being a regulation to fear and becomes the easiest path forward.
               </p>
             </Card>
           </div>
@@ -91,10 +91,10 @@ export default function About() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                The Problem We're Solving
+                The Broken System We're Dismantling
               </h2>
               <p className="text-lg text-muted-foreground">
-                The construction industry is stuck in the analog age when it comes to sustainability.
+                While the rest of the world automated, construction procurement stayed manual, opaque, and controlled by incumbents who benefit directly from your confusion.
               </p>
             </div>
 
@@ -179,7 +179,7 @@ export default function About() {
                       So Jerit built GreenChainz: a platform that treats sustainability data like any other spec—searchable, comparable, and built into the tools teams already use.
                     </p>
                     <p className="font-medium text-foreground">
-                      &ldquo;We&rsquo;re not here to guilt-trip anyone into going green. We&rsquo;re here to make it so easy that there&rsquo;s no excuse not to.&rdquo;
+                      &ldquo;The construction industry doesn&rsquo;t have a sustainability problem. It has a data access problem. We&rsquo;re fixing that&mdash;with or without the legacy players&rsquo; permission.&rdquo;
                     </p>
                   </div>
                 </div>
@@ -207,7 +207,7 @@ export default function About() {
                 {
                   icon: '⚡',
                   title: 'Speed Over Perfection',
-                  description: 'Ship fast, iterate faster. The planet does not have time for endless polish.',
+                  description: 'Ship fast, iterate faster. The project timeline has no patience for endless polish.',
                   color: 'from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)]'
                 },
                 {
@@ -264,20 +264,20 @@ export default function About() {
         <div className="container relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Join the Movement
+              Enter the Fight
             </h2>
             <p className="text-lg text-muted-foreground">
-              We are building the future of sustainable construction. Be part of it.
+              The trillion-dollar construction materials market is changing hands. The incumbents are slow. The window is open. Get in.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <a href="/get-started" className="w-full sm:w-auto">
                 <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg bg-gradient-to-r from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] text-white hover:shadow-lg hover:scale-105 transition-all duration-300">
-                  Get Started Free
+                  Weaponize Your Specs
                 </button>
               </a>
               <a href="/contact" className="w-full sm:w-auto">
                 <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg border-2 border-primary/30 bg-background/50 backdrop-blur-sm hover:bg-primary/5 hover:border-primary/50 transition-all duration-300">
-                  Contact Us
+                  Talk Strategy
                 </button>
               </a>
             </div>

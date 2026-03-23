@@ -162,8 +162,8 @@ export function SupplierRegistration() {
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-12 pb-8">
             <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Welcome to GreenChainz!</h2>
-            <p className="text-gray-600 mb-6">Your supplier profile has been created successfully.</p>
+            <h2 className="text-2xl font-bold mb-2">You're In. Now Let's Fight.</h2>
+            <p className="text-gray-600 mb-6">Your profile is live. Architects are searching. One intercepted spec pays for your subscription for a decade.</p>
             <p className="text-sm text-gray-500">Redirecting to your dashboard...</p>
           </CardContent>
         </Card>
@@ -176,8 +176,8 @@ export function SupplierRegistration() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Become a GreenChainz Supplier</h1>
-          <p className="text-lg text-gray-600">Join our network of verified sustainable material suppliers</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Bypass the Gatekeepers</h1>
+          <p className="text-lg text-gray-600">You have the tech. We have the access. Digitize your threat and get in front of the world's top architectural firms.</p>
         </div>
 
         {/* Progress Indicator */}
