@@ -15,7 +15,15 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { PaywallGate } from "@/components/paywall/PaywallGate";
 
-interface RfqItem { materialId: number; name: string; manufacturerName?: string; quantity: number; quantityUnit: string; }
+interface RfqItem {
+  materialId?: number;
+  assemblyId?: number;
+  itemType?: "material" | "assembly";
+  name: string;
+  manufacturerName?: string;
+  quantity: number;
+  quantityUnit: string;
+}
 
 export default function RfqCart() {
   const { user } = useAuth();
@@ -28,8 +36,9 @@ export default function RfqCart() {
   useEffect(() => { try { setItems(JSON.parse(localStorage.getItem("rfq-items") || "[]")); } catch { setItems([]); } }, []);
 
   const updateStorage = (newItems: RfqItem[]) => { setItems(newItems); localStorage.setItem("rfq-items", JSON.stringify(newItems)); };
-  const removeItem = (materialId: number) => { updateStorage(items.filter((i) => i.materialId !== materialId)); toast.success("Removed from RFQ cart"); };
-  const updateQuantity = (materialId: number, quantity: number) => { updateStorage(items.map((i) => i.materialId === materialId ? { ...i, quantity } : i)); };
+  const getItemKey = (item: RfqItem) => `${item.itemType || (item.assemblyId ? "assembly" : "material")}:${item.assemblyId ?? item.materialId ?? item.name}`;
+  const removeItem = (itemKey: string) => { updateStorage(items.filter((item) => getItemKey(item) !== itemKey)); toast.success("Removed from RFQ cart"); };
+  const updateQuantity = (itemKey: string, quantity: number) => { updateStorage(items.map((item) => getItemKey(item) === itemKey ? { ...item, quantity } : item)); };
 
   const createRfq = trpc.rfq.create.useMutation({
     onSuccess: (data) => { toast.success(`RFQ #${data.id} created successfully!`); localStorage.removeItem("rfq-items"); setItems([]); setProjectName(""); setProjectLocation(""); setNotes(""); },
@@ -39,7 +48,7 @@ export default function RfqCart() {
   const handleSubmit = () => {
     if (!projectName.trim()) { toast.error("Project name is required"); return; }
     if (items.length === 0) { toast.error("Add at least one material"); return; }
-    createRfq.mutate({ projectName, projectLocation: projectLocation || undefined, projectType: projectType || undefined, notes: notes || undefined, items: items.map((i) => ({ materialId: i.materialId, quantity: i.quantity, quantityUnit: i.quantityUnit })) });
+    createRfq.mutate({ projectName, projectLocation: projectLocation || undefined, projectType: projectType || undefined, notes: notes || undefined, items: items.map((i) => ({ materialId: i.materialId, assemblyId: i.assemblyId, quantity: i.quantity, quantityUnit: i.quantityUnit })) });
   };
 
   return (
@@ -54,15 +63,25 @@ export default function RfqCart() {
               <Card><CardContent className="py-16 text-center"><ShoppingCart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">Your RFQ cart is empty</h3><p className="text-sm text-muted-foreground mb-4">Browse the materials catalog to add items for your quote request.</p><Link href="/materials"><Button><ArrowLeft className="w-4 h-4 mr-2" />Browse Materials</Button></Link></CardContent></Card>
             ) : (
               <div className="space-y-2">
-                {items.map((item) => (
-                  <Card key={item.materialId}><CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex-1"><Link href={`/materials/${item.materialId}`}><p className="text-sm font-semibold hover:text-primary cursor-pointer">{item.name}</p></Link>{item.manufacturerName && <p className="text-xs text-muted-foreground">{item.manufacturerName}</p>}</div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1"><Input type="number" min={1} value={item.quantity} onChange={(e) => updateQuantity(item.materialId, Number(e.target.value) || 1)} className="w-20 h-8 text-xs" /><span className="text-xs text-muted-foreground">{item.quantityUnit}</span></div>
-                      <Button variant="ghost" size="sm" className="h-8 text-red-500 hover:text-red-700" onClick={() => removeItem(item.materialId)}><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </CardContent></Card>
-                ))}
+                {items.map((item) => {
+                  const itemKey = getItemKey(item);
+                  const href = item.assemblyId ? `/assemblies/${item.assemblyId}` : `/materials/${item.materialId}`;
+                  return (
+                    <Card key={itemKey}><CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-[10px]">{item.assemblyId ? "Assembly" : "Material"}</Badge>
+                        </div>
+                        <Link href={href}><p className="text-sm font-semibold hover:text-primary cursor-pointer">{item.name}</p></Link>
+                        {item.manufacturerName && <p className="text-xs text-muted-foreground">{item.manufacturerName}</p>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1"><Input type="number" min={1} value={item.quantity} onChange={(e) => updateQuantity(itemKey, Number(e.target.value) || 1)} className="w-20 h-8 text-xs" /><span className="text-xs text-muted-foreground">{item.quantityUnit}</span></div>
+                        <Button variant="ghost" size="sm" className="h-8 text-red-500 hover:text-red-700" onClick={() => removeItem(itemKey)}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </CardContent></Card>
+                  );
+                })}
               </div>
             )}
           </div>

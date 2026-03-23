@@ -25,8 +25,7 @@ export async function GET(
   try {
     const { conversationId } = params;
     const user = getEasyAuthUser(request.headers);
-    if (!user || !user.id) {
-    if (!user) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -38,7 +37,6 @@ export async function GET(
 
     if (convoResult.rows.length === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      return NextResponse.json({ error: "Not Found" }, { status: 403 });
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -58,19 +56,19 @@ export async function GET(
       WHERE m.conversation_id = $1
     `;
 
-    const params: any[] = [conversationId];
+    const queryParams: any[] = [conversationId];
     let paramCount = 2;
 
     if (before) {
       query += ` AND m.id < $${paramCount}`;
-      params.push(before);
+      queryParams.push(before);
       paramCount++;
     }
 
     query += ` ORDER BY m.created_at DESC LIMIT $${paramCount}`;
-    params.push(limit);
+    queryParams.push(limit);
 
-    const result = await pool.query(query, params);
+    const result = await pool.query(query, queryParams);
 
     // Mark messages as read for the current user
     const user_id = user.id;
@@ -120,8 +118,7 @@ export async function POST(
     }
 
     const user = getEasyAuthUser(request.headers);
-    if (!user || !user.id) {
-    if (!user) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -133,7 +130,6 @@ export async function POST(
 
     if (convoResult.rows.length === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      return NextResponse.json({ error: "Not Found" }, { status: 403 });
     }
 
     const sender_id = user.id;
