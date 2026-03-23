@@ -12,8 +12,7 @@ const pool = getPool();
 export async function GET(request: NextRequest) {
   try {
     const user = getEasyAuthUser(request.headers);
-    if (!user || !user.id) {
-    if (!user) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const user_id = user.id;
@@ -93,13 +92,13 @@ export async function POST(request: NextRequest) {
     const { rfq_id, supplier_id, buyer_id: body_buyer_id } = body;
 
     const user = getEasyAuthUser(request.headers);
-    if (!user || !user.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     let buyer_id: string;
     let supplier_id_resolved: string;
-    let rfq_id_resolved: string | null = rfq_id || null;
+    const rfq_id_resolved: string | null = rfq_id || null;
 
     if (supplier_id) {
       // Buyer-initiated: current user is the buyer, supplier_id provided in body
@@ -115,12 +114,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const user = getEasyAuthUser(request.headers);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const buyer_id = user.id;
 
     // Check if conversation already exists
     const existingParams: (string | null)[] = [buyer_id, supplier_id_resolved];
