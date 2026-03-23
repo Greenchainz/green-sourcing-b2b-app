@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -16,6 +17,7 @@ import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getLoginUrl } from "@/const";
+import type { AppRouter } from "../../../server/routers";
 
 const TIER_COLORS: Record<string, string> = {
   good: "bg-yellow-100 text-yellow-800 border-yellow-300",
@@ -25,6 +27,8 @@ const TIER_COLORS: Record<string, string> = {
 const TIER_LABELS: Record<string, string> = { good: "Good", better: "Better", best: "Best" };
 
 type AssemblyTier = "good" | "better" | "best";
+type RouterOutput = inferRouterOutputs<AppRouter>;
+type CatalogMaterial = RouterOutput["materials"]["list"]["items"][number];
 
 type LayerDraft = {
   layerOrder: number;
@@ -48,6 +52,43 @@ function parseNumber(value: string | number | null | undefined) {
 
 function formatMetric(value: number, digits = 2) {
   return value.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+}
+
+function materialDisplayName(material: Pick<CatalogMaterial, "productName" | "name">) {
+  return material.productName || material.name || "Unnamed material";
+}
+
+function applyMaterialToLayer(layer: LayerDraft, material: CatalogMaterial | null): LayerDraft {
+  if (!material) {
+    return {
+      ...layer,
+      materialId: null,
+      materialName: "Manual layer",
+      materialRValue: 0,
+      materialEmbodiedCarbonPer1000sf: 0,
+      materialPricePerUnit: 0,
+      materialPriceUnit: "unit",
+      materialFireRating: "",
+      gwpContribution: "",
+    };
+  }
+
+  return {
+    ...layer,
+    materialId: material.id,
+    materialName: materialDisplayName(material),
+    materialRValue: parseNumber(material.rValue),
+    materialEmbodiedCarbonPer1000sf: parseNumber(material.embodiedCarbonPer1000sf),
+    materialPricePerUnit: parseNumber(material.pricePerUnit),
+    materialPriceUnit: material.priceUnit || "unit",
+    materialFireRating: material.fireRating || "",
+    gwpContribution:
+      layer.gwpContribution.trim() && Number(layer.gwpContribution) !== parseNumber(layer.materialEmbodiedCarbonPer1000sf)
+        ? layer.gwpContribution
+        : material.embodiedCarbonPer1000sf !== null && material.embodiedCarbonPer1000sf !== undefined
+          ? String(material.embodiedCarbonPer1000sf)
+          : "",
+  };
 }
 
 function toLayerDraft(component: any, index: number): LayerDraft {
@@ -186,8 +227,10 @@ function AssemblyDetailPage() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: assembly, isLoading } = trpc.assemblies.getById.useQuery({ id }, { enabled: !!id });
+  const { data: materialResults, isLoading: materialsLoading } = trpc.materials.list.useQuery({ limit: 100, sortBy: "name", sortOrder: "asc" });
 
   const [name, setName] = useState("");
+  const materialOptions = materialResults?.items || [];
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [fireRating, setFireRating] = useState("");
@@ -247,6 +290,18 @@ function AssemblyDetailPage() {
 
   const updateLayer = (index: number, patch: Partial<LayerDraft>) => {
     setLayers((current) => current.map((layer, currentIndex) => currentIndex === index ? { ...layer, ...patch } : layer));
+  };
+
+  const selectLayerMaterial = (index: number, value: string) => {
+    setLayers((current) => current.map((layer, currentIndex) => {
+      if (currentIndex !== index) return layer;
+      if (value === "manual") {
+        return applyMaterialToLayer(layer, null);
+      }
+      const materialId = Number(value);
+      const selectedMaterial = materialOptions.find((material) => material.id === materialId) || null;
+      return applyMaterialToLayer(layer, selectedMaterial);
+    }));
   };
 
   const saveAssembly = () => {
@@ -394,7 +449,7 @@ function AssemblyDetailPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-base">Editable Layers</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">Edit the architect worksheet rows in place. Manual carbon overrides are supported per layer.</p>
+                  <p className="text-sm text-muted-foreground mt-1">Edit the architect worksheet rows in place, link each layer to a catalog material, and keep manual carbon overrides when needed.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={addLayer}><Plus className="w-4 h-4 mr-2" />Add Layer</Button>
               </CardHeader>
@@ -424,9 +479,24 @@ function AssemblyDetailPage() {
                           <Input value={layer.thickness} onChange={(e) => updateLayer(index, { thickness: e.target.value })} placeholder='e.g. 3", 6 mil' className="min-w-[100px]" />
                         </TableCell>
                         <TableCell>
-                          <div className="min-w-[180px]">
-                            <p className="text-sm font-medium leading-tight">{layer.materialName || "Manual layer"}</p>
-                            <p className="text-[11px] text-muted-foreground">{layer.materialFireRating ? `Fire: ${layer.materialFireRating}` : "No linked fire data"}</p>
+                          <div className="min-w-[220px] space-y-2">
+                            <Select value={layer.materialId ? String(layer.materialId) : "manual"} onValueChange={(value) => selectLayerMaterial(index, value)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder={materialsLoading ? "Loading materials..." : "Select a material"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="manual">Manual layer</SelectItem>
+                                {materialOptions.map((material) => (
+                                  <SelectItem key={material.id} value={String(material.id)}>
+                                    {materialDisplayName(material)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <div>
+                              <p className="text-sm font-medium leading-tight">{layer.materialName || "Manual layer"}</p>
+                              <p className="text-[11px] text-muted-foreground">{layer.materialFireRating ? `Fire: ${layer.materialFireRating}` : "No linked fire data"}</p>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -486,6 +556,10 @@ function AssemblyDetailPage() {
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-muted-foreground">Installability</span>
                   <span className="font-medium text-right">{layers.length} sequenced layers</span>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-muted-foreground">Linked materials</span>
+                  <span className="font-medium text-right">{layers.filter((layer) => !!layer.materialId).length} / {layers.length}</span>
                 </div>
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-muted-foreground">Fire rating</span>
