@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|ERROR\\\\|ISSUE\" /d/perplexitydownloads/green-sourcing-b2b-app/server/rfq*.ts)",
+      "Bash(grep -r \"rfqMarketplaceRouter\\\\|supplierRfqRouter\" /d/perplexitydownloads/green-sourcing-b2b-app/server --include=*.ts)",
+      "Bash(npx tsc:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh secret:*)",
+      "Bash(gh dependabot:*)",
+      "Bash(gh api:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm why:*)",
+      "Bash(find /d/perplexitydownloads/green-sourcing-b2b-app -type f -name *location* -o -name *geo* -o -name *map*)",
+      "Bash(xargs grep:*)",
+      "Bash(npm run:*)",
+      "Bash(node -e \":*)",
+      "Bash(printf '\\\\n')",
+      "Bash(grep -E '\"\"@tanstack/react-query\"\"' package.json)",
+      "Bash(python3 -c \":*)",
+      "Bash(npm audit:*)",
+      "Bash(npm i:*)",
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(printf \"\\\\n\\\\n\\\\n\\\\n\\\\n\\\\n\\\\n\\\\n\\\\n\\\\n\")",
+      "Bash(DATABASE_URL=\"postgresql://founder:Rebekkah83star@greenchainz-db-prod.postgres.database.azure.com:5432/greenchainz?sslmode=require\" node -e \":*)",
+      "Bash(find /d/perplexitydownloads/green-sourcing-b2b-app -name *runScraperOutreachPipeline* -o -name *trigger-outreach*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsx:*)",
+      "Bash(az keyvault:*)",
+      "Bash(az containerapp:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(curl -s http://localhost:3001/api/auth/me)",
+      "Bash(curl -s http://localhost:3001/api/trpc/materials.list)",
+      "Bash(ls:*)"
+    ]
+  }
+}
