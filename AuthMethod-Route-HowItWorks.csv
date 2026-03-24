@@ -1,0 +1,64 @@
+Route,Method,Auth Level,Auth Mechanism,Who Calls It,Notes
+/api/auth/microsoft,GET,Public,None,Browser (redirect),Initiates Microsoft OAuth2 flow
+/api/auth/google,GET,Public,None,Browser (redirect),Initiates Google OAuth2 flow
+/api/auth/linkedin,GET,Public,None,Browser (redirect),Initiates LinkedIn OAuth2 flow
+/api/auth/callback/:provider,GET,Public,None,OAuth provider,Receives code; exchanges token; sets cookie; redirects
+/api/auth/email/signup,POST,Public,None,Browser (fetch),Creates account and issues session cookie
+/api/auth/email/login,POST,Public,None,Browser (fetch),Validates password and issues session cookie
+/api/auth/me,GET,Authenticated,JWT cookie (app_session_id),Browser (fetch),Returns current user from session
+/api/auth/logout,GET/POST,Authenticated,JWT cookie (app_session_id),Browser,Clears session cookie and redirects to /
+/api/health,GET,Public,None,Azure healthcheck,Container health probe
+/api/marketplace/landing,GET,Public,None,Microsoft Marketplace,Marketplace landing page handler
+/api/marketplace/webhook,POST,Public,None,Microsoft Marketplace,Marketplace subscription webhook (verified by MS signature)
+/api/microsoft/subscription-webhook,POST,Public,None,Microsoft,Subscription lifecycle webhook (verified by MS signature)
+/api/admin/trigger-outreach,POST,Admin,sdk.authenticateRequest + role=admin,Internal,Admin only — triggers scraper outreach pipeline
+/api/admin/seed-materials,POST,Admin,sdk.authenticateRequest + role=admin,Internal,Admin only — seeds materials from EC3
+/api/admin/run-supplier-scraper,POST,Admin,sdk.authenticateRequest + role=admin,Internal,Admin only — runs supplier scraper
+/api/admin/run-txdot-scraper,POST,Admin,sdk.authenticateRequest + role=admin,Internal,Admin only — runs TxDOT pricing scraper
+/api/pdf/material-score/:materialId,GET,Authenticated,sdk.authenticateRequest,Browser,Generates material score PDF; credits consumed via tRPC first
+/api/rfq/:rfqId/pdf/summary,GET,Authenticated,sdk.authenticateRequest + rfq owner or role=admin,Browser,RFQ summary PDF — caller must own the RFQ or be admin
+/api/rfq/:rfqId/pdf/bids,GET,Authenticated,sdk.authenticateRequest + rfq owner or role=admin,Browser,Bid comparison PDF — caller must own the RFQ or be admin
+/api/messages/threads,GET,Authenticated,sdk.authenticateRequest,Browser/Mobile,List user message threads
+/api/messages/unread-count,GET,Authenticated,sdk.authenticateRequest,Browser/Mobile,Unread message count
+/api/messages/threads/:threadId,GET,Authenticated,sdk.authenticateRequest,Browser/Mobile,Get thread messages
+/api/messages/threads,POST,Authenticated,sdk.authenticateRequest,Browser/Mobile,Create or get existing message thread
+/api/messages/threads/:threadId/send,POST,Authenticated,sdk.authenticateRequest,Browser/Mobile,Send message in thread
+/api/messages/threads/:threadId/read,POST,Authenticated,sdk.authenticateRequest,Browser/Mobile,Mark thread as read
+/api/upload/*,POST,Varies,uploadRouter (see upload-route.ts),Browser,File upload
+/api/zeptomail/webhook,POST,Public,None (HMAC verified internally),Zeptomail,Inbound email webhook
+/api/trpc/auth.*,ANY,Public,None,Browser,me + logout procedures
+/api/trpc/materials.*,ANY,Public,None,Browser,Materials catalog (read-only public)
+/api/trpc/assemblies.list,ANY,Public,None,Browser,List/view assemblies (public)
+/api/trpc/assemblies.edit,ANY,Authenticated,protectedProcedure,Browser,Edit assemblies
+/api/trpc/personas.*,ANY,Public,None,Browser,Persona data (public)
+/api/trpc/rfq.*,ANY,Authenticated,protectedProcedure,Browser,Create/list/view RFQs
+/api/trpc/rfqRequests.* (public),ANY,Public,None,Browser,Public RFQ request procedures
+/api/trpc/rfqRequests.* (protected),ANY,Authenticated,protectedProcedure,Browser,Protected RFQ request procedures
+/api/trpc/rfqMarketplace.*,ANY,Authenticated,protectedProcedure,Browser,Full RFQ marketplace
+/api/trpc/supplier.*,ANY,Authenticated,protectedProcedure,Browser,Supplier CRUD
+/api/trpc/supplierOnboarding.*,ANY,Authenticated,protectedProcedure,Browser,Supplier onboarding
+/api/trpc/supplierRfq.*,ANY,Authenticated,protectedProcedure,Browser,Supplier RFQ responses
+/api/trpc/subscription.* (public),ANY,Public,None,Browser,Plans (public)
+/api/trpc/subscription.* (protected),ANY,Authenticated,protectedProcedure,Browser,Manage subscription
+/api/trpc/admin.* (protected),ANY,Authenticated,protectedProcedure,Browser,Admin protected procedures
+/api/trpc/admin.* (admin),ANY,Admin,adminProcedure,Browser,Admin-only operations (14 procedures)
+/api/trpc/ec3.* (public),ANY,Public,None,Browser,EPD data from EC3 (3 public)
+/api/trpc/ec3.* (protected),ANY,Authenticated,protectedProcedure,Browser,EC3 protected procedures
+/api/trpc/epd.* (public),ANY,Public,None,Browser,EPD management public
+/api/trpc/epd.* (protected),ANY,Authenticated,protectedProcedure,Browser,EPD management protected
+/api/trpc/location.* (public),ANY,Public,None,Browser,Location/geo public
+/api/trpc/location.* (protected),ANY,Authenticated,protectedProcedure,Browser,Location/geo protected
+/api/trpc/materialSpec.* (public),ANY,Public,None,Browser,Material specifications public
+/api/trpc/materialSpec.* (protected),ANY,Authenticated,protectedProcedure,Browser,Material specifications protected
+/api/trpc/materialSwap.*,ANY,Public,None,Browser,Swap candidates (public)
+/api/trpc/materialSwaps.* (public),ANY,Public,None,Browser,Save/get swaps public
+/api/trpc/materialSwaps.* (protected),ANY,Authenticated,protectedProcedure,Browser,Save/get swaps protected
+/api/trpc/swapValidation.*,ANY,Public,None,Browser,CSI validation (public)
+/api/trpc/agentConfig.* (public),ANY,Public,None,Browser,AI agent config public
+/api/trpc/agentConfig.* (protected),ANY,Authenticated,protectedProcedure,Browser,AI agent config protected
+/api/trpc/autodesk.*,ANY,Public,None,Browser,Autodesk SDA integration (public)
+/api/trpc/txdotScraper.* (public),ANY,Public,None,Browser,TxDOT scraper public
+/api/trpc/txdotScraper.* (protected),ANY,Authenticated,protectedProcedure,Browser,TxDOT scraper protected
+/api/trpc/legal.*,ANY,Authenticated,protectedProcedure,Browser,Legal doc generation
+/api/trpc/agent.*,ANY,Public,None,Browser,ChainBot chat (public)
+/api/trpc/leads.*,ANY,Public,None,Browser,Lead capture form (public)
