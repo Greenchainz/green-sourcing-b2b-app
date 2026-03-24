@@ -19,6 +19,36 @@ import { uploadRouter } from "../upload-route";
 import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { sdk } from "./sdk";
 
+// ── Simple in-memory rate limiter ─────────────────────────────────────────────
+// Prevents brute-force abuse of authenticated routes without external packages.
+// Keyed by IP address; resets after the window expires.
+function createRateLimiter(maxRequests: number, windowMs: number) {
+  const counts = new Map<string, { count: number; resetAt: number }>();
+  return function rateLimitMiddleware(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ): void {
+    const ip = String(req.ip ?? req.socket.remoteAddress ?? "unknown");
+    const now = Date.now();
+    const entry = counts.get(ip);
+    if (!entry || now >= entry.resetAt) {
+      counts.set(ip, { count: 1, resetAt: now + windowMs });
+      next();
+      return;
+    }
+    entry.count += 1;
+    if (entry.count > maxRequests) {
+      res.status(429).json({ error: "Too Many Requests" });
+      return;
+    }
+    next();
+  };
+}
+
+const adminRateLimit = createRateLimiter(20, 60_000);   // 20 req/min per IP
+const rfqPdfRateLimit = createRateLimiter(30, 60_000);  // 30 req/min per IP
+
 // Load .env.local in development (overrides .env values)
 if (process.env.NODE_ENV !== "production") {
   if (existsSync(".env.local")) {
@@ -95,7 +125,7 @@ async function startServer() {
 
   // Admin: manually trigger the scraper outreach pipeline
   // Requires: authenticated user with admin role
-  app.post("/api/admin/trigger-outreach", async (req, res) => {
+  app.post("/api/admin/trigger-outreach", adminRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) return res.status(401).json({ error: "Unauthorized" });
@@ -112,7 +142,7 @@ async function startServer() {
   // Admin: seed materials catalog from EC3 (Building Transparency)
   // POST /api/admin/seed-materials?categories=Concrete,Steel&limit=50
   // Requires: authenticated user with admin role
-  app.post("/api/admin/seed-materials", async (req, res) => {
+  app.post("/api/admin/seed-materials", adminRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) return res.status(401).json({ error: "Unauthorized" });
@@ -132,7 +162,7 @@ async function startServer() {
 
   // Admin: run supplier scraper (Azure Maps + EPD International → scraped_suppliers)
   // Requires: authenticated user with admin role
-  app.post("/api/admin/run-supplier-scraper", async (req, res) => {
+  app.post("/api/admin/run-supplier-scraper", adminRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) return res.status(401).json({ error: "Unauthorized" });
@@ -148,7 +178,7 @@ async function startServer() {
 
   // Admin: run TxDOT pricing scraper (TX bid tabulations → pricing_data)
   // Requires: authenticated user with admin role
-  app.post("/api/admin/run-txdot-scraper", async (req, res) => {
+  app.post("/api/admin/run-txdot-scraper", adminRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) return res.status(401).json({ error: "Unauthorized" });
@@ -189,7 +219,7 @@ async function startServer() {
   // ── RFQ PDF Download Endpoints ─────────────────────────────────────────────
   // REST (not tRPC) because they stream binary PDF data.
   // Auth required: caller must own the RFQ or be an admin.
-  app.get("/api/rfq/:rfqId/pdf/summary", async (req, res) => {
+  app.get("/api/rfq/:rfqId/pdf/summary", rfqPdfRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) return res.status(401).json({ error: "Unauthorized" });
@@ -228,7 +258,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/rfq/:rfqId/pdf/bids", async (req, res) => {
+  app.get("/api/rfq/:rfqId/pdf/bids", rfqPdfRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) return res.status(401).json({ error: "Unauthorized" });
