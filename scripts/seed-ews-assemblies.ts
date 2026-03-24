@@ -15,12 +15,13 @@ if (existsSync('.env.local')) {
   config();
 }
 
-import { PrismaClient } from '@prisma/client';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { materialAssemblySpecs } from '../drizzle/schema';
 import { calculateGwpPer1000sf, calculateCarbonTier } from '../lib/utils/carbon-tier';
 
-const prisma = new PrismaClient({
-  log: ['error'],
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool);
 
 interface EwsAssemblyInput {
   name: string;
@@ -161,51 +162,35 @@ const EWS_ASSEMBLIES: EwsAssemblyInput[] = [
 async function seedEwsAssemblies(): Promise<void> {
   console.log('[Seed] Starting EWS assembly upsert...\n');
 
-  await Promise.all(
-    EWS_ASSEMBLIES.map(async (assembly) => {
-      const gwpPer1000sf = calculateGwpPer1000sf(assembly.gwpA1A3, assembly.gwpMsfFactor);
-      const carbonTier = calculateCarbonTier(gwpPer1000sf);
-
-      const data = {
-        category: 'Exterior Wall System',
-        epdNumber: assembly.epdNumber,
-        gwpA1A3: assembly.gwpA1A3,
-        gwpDeclaredUnit: assembly.gwpDeclaredUnit,
-        gwpMsfFactor: assembly.gwpMsfFactor,
-        gwpPer1000sf,
-        carbonTier,
-        assemblyTypeTags: assembly.assemblyTypeTags,
-        framingTypeTags: assembly.framingTypeTags,
-        exteriorFinishTags: assembly.exteriorFinishTags,
-        certificationTags: assembly.certificationTags,
-      }
-        await prisma.materialAssemblySpec.createMany({
-  data: assemblies.map((assembly) => {
+  const rows = EWS_ASSEMBLIES.map((assembly) => {
     const gwpPer1000sf = calculateGwpPer1000sf(assembly.gwpA1A3, assembly.gwpMsfFactor);
     const carbonTier = calculateCarbonTier(gwpPer1000sf);
     return {
       name: assembly.name,
-      category: "Exterior Wall System",
+      category: 'Exterior Wall System',
       epdNumber: assembly.epdNumber,
-      gwpA1A3: assembly.gwpA1A3,
+      gwpA1A3: String(assembly.gwpA1A3),
       gwpDeclaredUnit: assembly.gwpDeclaredUnit,
-      gwpMsfFactor: assembly.gwpMsfFactor,
-      gwpPer1000sf,
+      gwpMsfFactor: String(assembly.gwpMsfFactor),
+      gwpPer1000sf: String(gwpPer1000sf),
       carbonTier,
       assemblyTypeTags: assembly.assemblyTypeTags,
       framingTypeTags: assembly.framingTypeTags,
       exteriorFinishTags: assembly.exteriorFinishTags,
       certificationTags: assembly.certificationTags,
     };
-  }),
-  skipDuplicates: true,
-});
+  });
 
+  await db
+    .insert(materialAssemblySpecs)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: materialAssemblySpecs.name,
+      set: { updatedAt: new Date() },
+    });
 
-      console.log(
-        `[Seed] ✅ ${assembly.name} | gwpPer1000sf=${gwpPer1000sf} | tier=${carbonTier}`
-      );
-    })
+  rows.forEach((r) =>
+    console.log(`[Seed] ✅ ${r.name} | gwpPer1000sf=${r.gwpPer1000sf} | tier=${r.carbonTier}`)
   );
 
   console.log(`\n[Seed] Done. Upserted ${EWS_ASSEMBLIES.length} EWS assemblies.`);
@@ -216,4 +201,4 @@ seedEwsAssemblies()
     console.error('[Seed] FAILED:', err);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(() => pool.end());
