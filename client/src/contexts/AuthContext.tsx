@@ -81,9 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Logout via Azure Container Apps Easy Auth.
-   * The /.auth/logout endpoint clears the auth session cookie and
-   * redirects the user back to the home page.
+   * Logout via the Express auth endpoint.
+   * Clears the app_session_id cookie and redirects to the home page.
    */
   const logout = () => {
     // Clear all local auth state before redirecting
@@ -95,10 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // storage may be unavailable — fail silently
     }
-    // Hit Easy Auth logout endpoint which clears the Azure session cookie
-    // and redirects to the home page. The broken front-channel logout URL
-    // has been removed from the Entra app registration so this now works cleanly.
-    window.location.href = '/.auth/logout?post_logout_redirect_uri=/';
+    // Hit the Express logout endpoint which clears the app_session_id cookie
+    // and redirects to the home page.
+    window.location.href = '/api/auth/logout';
   };
 
   useEffect(() => {

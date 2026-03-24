@@ -55,6 +55,9 @@ async function startServer() {
   await loadSecrets();
 
   const app = express();
+  // Trust Azure Container Apps / Cloudflare reverse proxy headers
+  // so req.protocol reports 'https' correctly and cookies set Secure=true.
+  app.set("trust proxy", true);
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
