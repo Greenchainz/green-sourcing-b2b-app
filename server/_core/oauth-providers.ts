@@ -251,6 +251,42 @@ async function exchangeLinkedInCode(code: string, redirectUri: string): Promise<
 // ── Route registration ────────────────────────────────────────────────────────
 
 export function registerOAuthProviderRoutes(app: Express) {
+  // ── Current user — must register BEFORE /:provider wildcard ───────────────
+  app.get("/api/auth/me", async (req: Request, res: Response) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
+      res.json({
+        user: {
+          id: String(user.id),
+          email: user.email ?? "",
+          name: user.name ?? "",
+          roles: [user.role],
+          isAdmin: user.role === "admin",
+          isSupplier: user.role === "supplier",
+        },
+      });
+    } catch {
+      res.status(401).json({ error: "Not authenticated" });
+    }
+  });
+
+  // ── Logout — must register BEFORE /:provider wildcard ─────────────────────
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    const cookieOptions = getSessionCookieOptions(req);
+    res.clearCookie("app_session_id", { ...cookieOptions, maxAge: -1 });
+    res.json({ success: true });
+  });
+
+  app.get("/api/auth/logout", (req: Request, res: Response) => {
+    const cookieOptions = getSessionCookieOptions(req);
+    res.clearCookie("app_session_id", { ...cookieOptions, maxAge: -1 });
+    res.redirect(302, "/");
+  });
+
   // ── Initiate OAuth flow ────────────────────────────────────────────────────
   app.get("/api/auth/:provider", (req: Request, res: Response) => {
     const { provider } = req.params;
@@ -371,39 +407,4 @@ export function registerOAuthProviderRoutes(app: Express) {
     }
   });
 
-  // ── Current user (REST endpoint for api-client.ts) ─────────────────────────
-  app.get("/api/auth/me", async (req: Request, res: Response) => {
-    try {
-      const user = await sdk.authenticateRequest(req);
-      if (!user) {
-        res.status(401).json({ error: "Not authenticated" });
-        return;
-      }
-      res.json({
-        user: {
-          id: String(user.id),
-          email: user.email ?? "",
-          name: user.name ?? "",
-          roles: [user.role],
-          isAdmin: user.role === "admin",
-          isSupplier: user.role === "supplier",
-        },
-      });
-    } catch {
-      res.status(401).json({ error: "Not authenticated" });
-    }
-  });
-
-  // ── Logout ─────────────────────────────────────────────────────────────────
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    const cookieOptions = getSessionCookieOptions(req);
-    res.clearCookie("app_session_id", { ...cookieOptions, maxAge: -1 });
-    res.json({ success: true });
-  });
-
-  app.get("/api/auth/logout", (req: Request, res: Response) => {
-    const cookieOptions = getSessionCookieOptions(req);
-    res.clearCookie("app_session_id", { ...cookieOptions, maxAge: -1 });
-    res.redirect(302, "/");
-  });
 }

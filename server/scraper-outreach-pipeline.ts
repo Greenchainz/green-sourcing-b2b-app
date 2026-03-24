@@ -46,12 +46,19 @@ interface OpenRfq {
 /**
  * Main pipeline entry point — call this after each scraper run
  */
+// OUTREACH DISABLED — product not ready for cold emails yet
+// Re-enable by removing the early return below
 export async function runScraperOutreachPipeline(): Promise<{
   checked: number;
   sent: number;
   skipped: number;
   errors: number;
 }> {
+  if (process.env.OUTREACH_ENABLED !== "true") {
+    console.log("[outreach] Disabled — set OUTREACH_ENABLED=true to enable");
+    return { checked: 0, sent: 0, skipped: 0, errors: 0 };
+  }
+
   const db = await getDb();
   if (!db) {
     console.error("[outreach] No DB connection");
