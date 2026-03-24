@@ -1,13 +1,14 @@
 /**
  * GreenChainz Backend API Client
  *
- * The frontend and backend are served from the same Container App, so all
- * API calls use relative URLs (no host prefix).  This avoids cross-origin
- * issues and works correctly behind Azure Easy Auth.
+ * ⚠️  VITE_BACKEND_URL MUST BE EMPTY IN PRODUCTION BUILDS.
+ * The frontend and backend run in the same Container App. All API calls
+ * use relative URLs (same-origin). Setting this to the Azure Container
+ * Apps internal hostname breaks auth — the session cookie is set for
+ * greenchainz.com and won't be sent to a different domain.
+ * See docs/AUTH_ARCHITECTURE.md for details.
  *
- * If a VITE_BACKEND_URL env var is set (e.g. for local dev pointing at a
- * remote backend) it will be used as a prefix; otherwise it is empty string
- * so every fetch is same-origin.
+ * Only set VITE_BACKEND_URL for local dev when pointing at a remote backend.
  */
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';

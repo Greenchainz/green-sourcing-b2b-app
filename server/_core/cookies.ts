@@ -1,3 +1,11 @@
+/**
+ * Session cookie configuration.
+ *
+ * ⚠️  SameSite MUST be "lax" in production. Do NOT change to "none".
+ * SameSite=None causes browsers to drop the cookie (third-party cookie
+ * restrictions). SameSite=Lax works for same-origin API calls and
+ * OAuth redirect callbacks. See docs/AUTH_ARCHITECTURE.md.
+ */
 import type { CookieOptions, Request } from "express";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
