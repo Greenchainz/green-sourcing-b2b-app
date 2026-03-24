@@ -79,20 +79,12 @@ export default function Login() {
     try { sessionStorage.setItem("gc_pending_role", r); } catch { /* ignore */ }
   }
 
-  // Easy Auth endpoints — handled by the Azure Container Apps sidecar.
-  // Must use <a> tags (not client-side routing).
-  const buildEasyAuthUrl = (provider: "aad" | "google") => {
-    // Append the pending role as a hint so the post-login guards can route correctly.
-    const dest = pendingRole
-      ? `${returnPath}${returnPath.includes("?") ? "&" : "?"}role=${pendingRole}`
-      : returnPath;
-    return `/.auth/login/${provider}?post_login_redirect_uri=${encodeURIComponent(dest)}`;
-  };
-
-  // Google + LinkedIn both use our server-side OAuth handler — bypasses Easy Auth /
-  // Entra External ID federation which causes "invalid request" errors.
-  const googleUrl = `/api/auth/google?returnPath=${encodeURIComponent(returnPath)}${pendingRole ? `&role=${encodeURIComponent(pendingRole)}` : role ? `&role=${encodeURIComponent(role)}` : ""}`;
-  const linkedInUrl = `/api/auth/linkedin?returnPath=${encodeURIComponent(returnPath)}${role ? `&role=${encodeURIComponent(role)}` : ""}`;
+  // All providers use direct server-side OAuth — no Easy Auth sidecar dependency.
+  // All set the same app_session_id JWT cookie. One auth system.
+  const roleParam = pendingRole ?? role ?? "";
+  const microsoftUrl = `/api/auth/microsoft?returnPath=${encodeURIComponent(returnPath)}${roleParam ? `&role=${encodeURIComponent(roleParam)}` : ""}`;
+  const googleUrl = `/api/auth/google?returnPath=${encodeURIComponent(returnPath)}${roleParam ? `&role=${encodeURIComponent(roleParam)}` : ""}`;
+  const linkedInUrl = `/api/auth/linkedin?returnPath=${encodeURIComponent(returnPath)}${roleParam ? `&role=${encodeURIComponent(roleParam)}` : ""}`;
 
   const errorMessages: Record<string, string> = {
     callback_failed: "Sign-in failed. Please try again.",
@@ -213,7 +205,7 @@ export default function Login() {
                   Easy Auth sidecar endpoints, bypassing client-side routing */}
               <div className="flex flex-col gap-3">
                 <a
-                  href={buildEasyAuthUrl("aad")}
+                  href={microsoftUrl}
                   className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white hover:bg-gray-100 text-gray-900 font-medium rounded-xl transition-colors duration-200 border border-gray-200"
                 >
                   <MicrosoftIcon />
