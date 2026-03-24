@@ -122,58 +122,30 @@ export async function checkHealth() {
 }
 
 /**
- * Get current user — reads from our backend /api/auth/me which
- * internally parses the Easy Auth X-MS-CLIENT-PRINCIPAL header.
- * Falls back to the Easy Auth /.auth/me endpoint if the backend
- * route is unavailable.
+ * Get current user from the Express backend /api/auth/me endpoint.
+ * Session is validated via the app_session_id cookie (JWT).
  */
 export async function getCurrentUser() {
-  try {
-    // Primary: our backend normalises the Easy Auth principal into
-    // a consistent shape that includes the app-level role.
-    const response = await get<{
-      user: {
-        id: string;
-        email: string;
-        name: string;
-        roles: string[];
-        isAdmin: boolean;
-        isSupplier: boolean;
-      };
-    }>('/api/auth/me');
-
-    const { user } = response;
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      // DB stores 'buyer'; we expose it as 'architect' — the canonical term for
-      // non-supplier users. 'buyer' is kept as a fallback for stale cached values.
-      role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'architect') as 'architect' | 'supplier' | 'admin',
+  const response = await get<{
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      roles: string[];
+      isAdmin: boolean;
+      isSupplier: boolean;
     };
-  } catch {
-    // Fallback: call Easy Auth directly (useful during initial setup
-    // before the backend /api/auth/me route is wired up).
-    const res = await fetch('/.auth/me', { credentials: 'include' });
-    if (!res.ok) throw new Error('Not authenticated');
+  }>('/api/auth/me');
 
-    const data = await res.json();
-    // Easy Auth returns an array; first element is the logged-in principal
-    const principal = Array.isArray(data) ? data[0] : data?.clientPrincipal;
-    if (!principal) throw new Error('Not authenticated');
-
-    const claims: Record<string, string> = {};
-    for (const c of principal.claims ?? []) {
-      claims[c.typ] = c.val;
-    }
-
-    return {
-      id: principal.userId ?? claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? '',
-      email: claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ?? claims.email ?? '',
-      name: claims['name'] ?? claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ?? '',
-      role: 'architect' as 'architect' | 'supplier' | 'admin',
-    };
-  }
+  const { user } = response;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    // DB stores 'buyer'; we expose it as 'architect' — the canonical term for
+    // non-supplier users. 'buyer' is kept as a fallback for stale cached values.
+    role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'architect') as 'architect' | 'supplier' | 'admin',
+  };
 }
 
 /**
