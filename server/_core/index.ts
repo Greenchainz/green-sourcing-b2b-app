@@ -94,9 +94,12 @@ async function startServer() {
   app.use(zeptomailWebhookRouter);
 
   // Admin: manually trigger the scraper outreach pipeline
-  // Protected by Easy Auth — only authenticated users can call this
-  app.post("/api/admin/trigger-outreach", async (_req, res) => {
+  // Requires: authenticated user with admin role
+  app.post("/api/admin/trigger-outreach", async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
       const { runScraperOutreachPipeline } = await import("../scraper-outreach-pipeline");
       const result = await runScraperOutreachPipeline();
       res.json({ success: true, ...result });
@@ -108,8 +111,12 @@ async function startServer() {
 
   // Admin: seed materials catalog from EC3 (Building Transparency)
   // POST /api/admin/seed-materials?categories=Concrete,Steel&limit=50
+  // Requires: authenticated user with admin role
   app.post("/api/admin/seed-materials", async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
       const { seedMaterialsFromEC3 } = await import("../seed-materials");
       const categories = req.query.categories
         ? String(req.query.categories).split(",").map((c) => c.trim())
@@ -124,8 +131,12 @@ async function startServer() {
   });
 
   // Admin: run supplier scraper (Azure Maps + EPD International → scraped_suppliers)
-  app.post("/api/admin/run-supplier-scraper", async (_req, res) => {
+  // Requires: authenticated user with admin role
+  app.post("/api/admin/run-supplier-scraper", async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
       const { runSupplierScraper } = await import("../../lib/scrapers/supplier-scraper");
       const result = await runSupplierScraper();
       res.json({ success: true, ...result });
@@ -136,8 +147,12 @@ async function startServer() {
   });
 
   // Admin: run TxDOT pricing scraper (TX bid tabulations → pricing_data)
-  app.post("/api/admin/run-txdot-scraper", async (_req, res) => {
+  // Requires: authenticated user with admin role
+  app.post("/api/admin/run-txdot-scraper", async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
       const { scrapeTxdotPricingData } = await import("../services/txdotScraper");
       const { storePricingData, updateAllMaterialAveragePricing } = await import("../services/pricingDataService");
       const scrapedData = await scrapeTxdotPricingData();
@@ -173,14 +188,20 @@ async function startServer() {
 
   // ── RFQ PDF Download Endpoints ─────────────────────────────────────────────
   // REST (not tRPC) because they stream binary PDF data.
+  // Auth required: caller must own the RFQ or be an admin.
   app.get("/api/rfq/:rfqId/pdf/summary", async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
       const { generateRfqSummaryPdf } = await import("../rfq-pdf-service");
       const { getRfqWithBids } = await import("../rfq-service");
       const rfqId = parseInt(req.params.rfqId);
       if (isNaN(rfqId)) return res.status(400).json({ error: "Invalid RFQ ID" });
       const rfq = await getRfqWithBids(rfqId);
       if (!rfq) return res.status(404).json({ error: "RFQ not found" });
+      if (rfq.rfq.userId !== user.id && user.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const pdfBuffer = await generateRfqSummaryPdf({
         rfqId,
         projectName: rfq.projectName,
@@ -209,12 +230,17 @@ async function startServer() {
 
   app.get("/api/rfq/:rfqId/pdf/bids", async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
       const { generateBidComparisonPdf } = await import("../rfq-pdf-service");
       const { getRfqWithBids } = await import("../rfq-service");
       const rfqId = parseInt(req.params.rfqId);
       if (isNaN(rfqId)) return res.status(400).json({ error: "Invalid RFQ ID" });
       const rfq = await getRfqWithBids(rfqId);
       if (!rfq) return res.status(404).json({ error: "RFQ not found" });
+      if (rfq.rfq.userId !== user.id && user.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const pdfBuffer = await generateBidComparisonPdf({
         rfqId,
         projectName: rfq.projectName,
