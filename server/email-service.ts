@@ -1,18 +1,9 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 /**
- * Email Service — Handles sending transactional emails via Zeptomail SMTP
- *
- * Provider: Zeptomail (by Zoho) — transactional email with dedicated IPs
- * SMTP host:  smtp.zeptomail.com
- * Port:       587 (TLS)
- * User:       emailapikey  (literal string, not a variable)
- * Password:   ZEPTOMAIL_SMTP_PASSWORD (from Key Vault → env var)
- * From:       noreply@greenchainz.com
- *
- * Key Vault secret names:
- *   ZEPTOMAIL-SMTP-USER     → process.env.ZEPTOMAIL_SMTP_USER
- *   ZEPTOMAIL-SMTP-PASSWORD → process.env.ZEPTOMAIL_SMTP_PASSWORD
+ * Email Service — Resend.com transactional email
+ * Env var: RESEND_API_KEY
+ * From:    noreply@greenchainz.com (domain must be verified in Resend dashboard)
  */
 
 interface EmailOptions {
@@ -22,34 +13,26 @@ interface EmailOptions {
   text?: string;
 }
 
-/**
- * Send an email using configured SMTP transport
- */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    // Zeptomail SMTP transporter
-    // Username is always the literal string "emailapikey" — not a variable.
-    // Password is the Zeptomail API key stored in Key Vault as ZEPTOMAIL-SMTP-PASSWORD.
-    const transporter = nodemailer.createTransport({
-      host: "smtp.zeptomail.com",
-      port: 587,
-      secure: false, // TLS via STARTTLS on port 587
-      auth: {
-        user: process.env.ZEPTOMAIL_SMTP_USER || "emailapikey",
-        pass: process.env.ZEPTOMAIL_SMTP_PASSWORD,
-      },
-      tls: {
-        minVersion: "TLSv1.2", // Zeptomail requires TLS 1.2+
-      },
-    });
-
-    await transporter.sendMail({
-      from: '"GreenChainz" <noreply@greenchainz.com>',
+    const key = process.env.RESEND_API_KEY;
+    if (!key) {
+      console.warn("[email] RESEND_API_KEY not set — skipping send");
+      return false;
+    }
+    const resend = new Resend(key);
+    const { error } = await resend.emails.send({
+      from: "GreenChainz <noreply@updates.greenchainz.com>",
       to: options.to,
       subject: options.subject,
-      text: options.text,
       html: options.html,
+      text: options.text,
     });
+
+    if (error) {
+      console.error("[email] Resend error:", error);
+      return false;
+    }
 
     console.log(`[email] Sent to ${options.to}: ${options.subject}`);
     return true;

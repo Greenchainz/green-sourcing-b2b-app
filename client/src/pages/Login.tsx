@@ -37,9 +37,20 @@ export default function Login() {
   const role = params.get("role") || "";
   const error = params.get("error");
 
+  // In local dev, skip the OAuth provider buttons entirely — the External ID
+  // tenant only shows Google, and Google rejects it because
+  // login.microsoftonline.com/<tenant>/oauth2/authresp isn't in Google Cloud Console.
+  // Email/password works with zero Azure config.
+  const isLocalDev = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
   // Email/password form state
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [emailMode, setEmailMode] = useState<EmailMode>("login");
+  const [showEmailForm, setShowEmailForm] = useState(isLocalDev);
+  const [emailMode, setEmailMode] = useState<EmailMode>(() => {
+    // Default to signup if the user came from /get-started or the role param is set
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') === 'login' ? 'login' : 'signup';
+  });
   const [emailVal, setEmailVal] = useState("");
   const [passwordVal, setPasswordVal] = useState("");
   const [nameVal, setNameVal] = useState("");
@@ -78,8 +89,9 @@ export default function Login() {
     return `/.auth/login/${provider}?post_login_redirect_uri=${encodeURIComponent(dest)}`;
   };
 
-  // LinkedIn uses our server-side OAuth handler — bypasses Easy Auth which
-  // fails on LinkedIn's non-standard OIDC token endpoint.
+  // Google + LinkedIn both use our server-side OAuth handler — bypasses Easy Auth /
+  // Entra External ID federation which causes "invalid request" errors.
+  const googleUrl = `/api/auth/google?returnPath=${encodeURIComponent(returnPath)}${pendingRole ? `&role=${encodeURIComponent(pendingRole)}` : role ? `&role=${encodeURIComponent(role)}` : ""}`;
   const linkedInUrl = `/api/auth/linkedin?returnPath=${encodeURIComponent(returnPath)}${role ? `&role=${encodeURIComponent(role)}` : ""}`;
 
   const errorMessages: Record<string, string> = {
@@ -157,6 +169,13 @@ export default function Login() {
             </div>
           )}
 
+          {/* Dev-mode notice */}
+          {isLocalDev && (
+            <div className="mb-5 p-3 bg-amber-900/30 border border-amber-700 rounded-lg text-amber-300 text-xs text-center">
+              <strong>Local dev:</strong> OAuth requires Azure config. Email/password works right now — no setup needed.
+            </div>
+          )}
+
           {!showEmailForm ? (
             <>
               {/* Role picker — sets sessionStorage hint for onboarding guards */}
@@ -202,7 +221,7 @@ export default function Login() {
                 </a>
 
                 <a
-                  href={buildEasyAuthUrl("google")}
+                  href={googleUrl}
                   className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white hover:bg-gray-100 text-gray-900 font-medium rounded-xl transition-colors duration-200 border border-gray-200"
                 >
                   <GoogleIcon />
