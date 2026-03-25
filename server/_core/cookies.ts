@@ -1,3 +1,11 @@
+/**
+ * Session cookie configuration.
+ *
+ * ⚠️  SameSite MUST be "lax" in production. Do NOT change to "none".
+ * SameSite=None causes browsers to drop the cookie (third-party cookie
+ * restrictions). SameSite=Lax works for same-origin API calls and
+ * OAuth redirect callbacks. See docs/AUTH_ARCHITECTURE.md.
+ */
 import type { CookieOptions, Request } from "express";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
@@ -43,9 +51,12 @@ export function getSessionCookieOptions(
   return {
     httpOnly: true,
     path: "/",
-    // SameSite=None requires Secure=true — browsers drop the cookie otherwise.
-    // Use Lax on localhost (HTTP) so the cookie is actually stored.
-    sameSite: secure ? "none" : "lax",
+    // Lax = cookie sent on same-site requests + top-level cross-site navigations.
+    // This is correct for our app: all API calls are same-origin, and OAuth
+    // callbacks are top-level navigations (302 redirects from Microsoft/Google).
+    // SameSite=None was causing cookies to be dropped in some browsers due to
+    // third-party cookie restrictions.
+    sameSite: "lax",
     secure,
   };
 }

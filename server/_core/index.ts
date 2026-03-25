@@ -19,6 +19,36 @@ import { uploadRouter } from "../upload-route";
 import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { sdk } from "./sdk";
 
+// ── Simple in-memory rate limiter ─────────────────────────────────────────────
+// Prevents brute-force abuse of authenticated routes without external packages.
+// Keyed by IP address; resets after the window expires.
+function createRateLimiter(maxRequests: number, windowMs: number) {
+  const counts = new Map<string, { count: number; resetAt: number }>();
+  return function rateLimitMiddleware(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ): void {
+    const ip = String(req.ip ?? req.socket.remoteAddress ?? "unknown");
+    const now = Date.now();
+    const entry = counts.get(ip);
+    if (!entry || now >= entry.resetAt) {
+      counts.set(ip, { count: 1, resetAt: now + windowMs });
+      next();
+      return;
+    }
+    entry.count += 1;
+    if (entry.count > maxRequests) {
+      res.status(429).json({ error: "Too Many Requests" });
+      return;
+    }
+    next();
+  };
+}
+
+const adminRateLimit = createRateLimiter(20, 60_000);   // 20 req/min per IP
+const rfqPdfRateLimit = createRateLimiter(30, 60_000);  // 30 req/min per IP
+
 // Load .env.local in development (overrides .env values)
 if (process.env.NODE_ENV !== "production") {
   if (existsSync(".env.local")) {
@@ -55,6 +85,9 @@ async function startServer() {
   await loadSecrets();
 
   const app = express();
+  // Trust Azure Container Apps / Cloudflare reverse proxy headers
+  // so req.protocol reports 'https' correctly and cookies set Secure=true.
+  app.set("trust proxy", true);
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
@@ -91,9 +124,12 @@ async function startServer() {
   app.use(zeptomailWebhookRouter);
 
   // Admin: manually trigger the scraper outreach pipeline
-  // Protected by Easy Auth — only authenticated users can call this
-  app.post("/api/admin/trigger-outreach", async (_req, res) => {
+  // Requires: authenticated user with admin role
+  app.post("/api/admin/trigger-outreach", adminRateLimit, async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
       const { runScraperOutreachPipeline } = await import("../scraper-outreach-pipeline");
       const result = await runScraperOutreachPipeline();
       res.json({ success: true, ...result });
@@ -105,8 +141,12 @@ async function startServer() {
 
   // Admin: seed materials catalog from EC3 (Building Transparency)
   // POST /api/admin/seed-materials?categories=Concrete,Steel&limit=50
-  app.post("/api/admin/seed-materials", async (req, res) => {
+  // Requires: authenticated user with admin role
+  app.post("/api/admin/seed-materials", adminRateLimit, async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
       const { seedMaterialsFromEC3 } = await import("../seed-materials");
       const categories = req.query.categories
         ? String(req.query.categories).split(",").map((c) => c.trim())
@@ -121,8 +161,12 @@ async function startServer() {
   });
 
   // Admin: run supplier scraper (Azure Maps + EPD International → scraped_suppliers)
-  app.post("/api/admin/run-supplier-scraper", async (_req, res) => {
+  // Requires: authenticated user with admin role
+  app.post("/api/admin/run-supplier-scraper", adminRateLimit, async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
       const { runSupplierScraper } = await import("../../lib/scrapers/supplier-scraper");
       const result = await runSupplierScraper();
       res.json({ success: true, ...result });
@@ -133,8 +177,12 @@ async function startServer() {
   });
 
   // Admin: run TxDOT pricing scraper (TX bid tabulations → pricing_data)
-  app.post("/api/admin/run-txdot-scraper", async (_req, res) => {
+  // Requires: authenticated user with admin role
+  app.post("/api/admin/run-txdot-scraper", adminRateLimit, async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
       const { scrapeTxdotPricingData } = await import("../services/txdotScraper");
       const { storePricingData, updateAllMaterialAveragePricing } = await import("../services/pricingDataService");
       const scrapedData = await scrapeTxdotPricingData();
@@ -170,14 +218,20 @@ async function startServer() {
 
   // ── RFQ PDF Download Endpoints ─────────────────────────────────────────────
   // REST (not tRPC) because they stream binary PDF data.
-  app.get("/api/rfq/:rfqId/pdf/summary", async (req, res) => {
+  // Auth required: caller must own the RFQ or be an admin.
+  app.get("/api/rfq/:rfqId/pdf/summary", rfqPdfRateLimit, async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
       const { generateRfqSummaryPdf } = await import("../rfq-pdf-service");
       const { getRfqWithBids } = await import("../rfq-service");
       const rfqId = parseInt(req.params.rfqId);
       if (isNaN(rfqId)) return res.status(400).json({ error: "Invalid RFQ ID" });
       const rfq = await getRfqWithBids(rfqId);
       if (!rfq) return res.status(404).json({ error: "RFQ not found" });
+      if (rfq.rfq.userId !== user.id && user.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const pdfBuffer = await generateRfqSummaryPdf({
         rfqId,
         projectName: rfq.projectName,
@@ -204,14 +258,19 @@ async function startServer() {
     }
   });
 
-  app.get("/api/rfq/:rfqId/pdf/bids", async (req, res) => {
+  app.get("/api/rfq/:rfqId/pdf/bids", rfqPdfRateLimit, async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
       const { generateBidComparisonPdf } = await import("../rfq-pdf-service");
       const { getRfqWithBids } = await import("../rfq-service");
       const rfqId = parseInt(req.params.rfqId);
       if (isNaN(rfqId)) return res.status(400).json({ error: "Invalid RFQ ID" });
       const rfq = await getRfqWithBids(rfqId);
       if (!rfq) return res.status(404).json({ error: "RFQ not found" });
+      if (rfq.rfq.userId !== user.id && user.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const pdfBuffer = await generateBidComparisonPdf({
         rfqId,
         projectName: rfq.projectName,

@@ -1,13 +1,14 @@
 /**
  * GreenChainz Backend API Client
  *
- * The frontend and backend are served from the same Container App, so all
- * API calls use relative URLs (no host prefix).  This avoids cross-origin
- * issues and works correctly behind Azure Easy Auth.
+ * ⚠️  VITE_BACKEND_URL MUST BE EMPTY IN PRODUCTION BUILDS.
+ * The frontend and backend run in the same Container App. All API calls
+ * use relative URLs (same-origin). Setting this to the Azure Container
+ * Apps internal hostname breaks auth — the session cookie is set for
+ * greenchainz.com and won't be sent to a different domain.
+ * See docs/AUTH_ARCHITECTURE.md for details.
  *
- * If a VITE_BACKEND_URL env var is set (e.g. for local dev pointing at a
- * remote backend) it will be used as a prefix; otherwise it is empty string
- * so every fetch is same-origin.
+ * Only set VITE_BACKEND_URL for local dev when pointing at a remote backend.
  */
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
@@ -122,58 +123,30 @@ export async function checkHealth() {
 }
 
 /**
- * Get current user — reads from our backend /api/auth/me which
- * internally parses the Easy Auth X-MS-CLIENT-PRINCIPAL header.
- * Falls back to the Easy Auth /.auth/me endpoint if the backend
- * route is unavailable.
+ * Get current user from the Express backend /api/auth/me endpoint.
+ * Session is validated via the app_session_id cookie (JWT).
  */
 export async function getCurrentUser() {
-  try {
-    // Primary: our backend normalises the Easy Auth principal into
-    // a consistent shape that includes the app-level role.
-    const response = await get<{
-      user: {
-        id: string;
-        email: string;
-        name: string;
-        roles: string[];
-        isAdmin: boolean;
-        isSupplier: boolean;
-      };
-    }>('/api/auth/me');
-
-    const { user } = response;
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      // DB stores 'buyer'; we expose it as 'architect' — the canonical term for
-      // non-supplier users. 'buyer' is kept as a fallback for stale cached values.
-      role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'architect') as 'architect' | 'supplier' | 'admin',
+  const response = await get<{
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      roles: string[];
+      isAdmin: boolean;
+      isSupplier: boolean;
     };
-  } catch {
-    // Fallback: call Easy Auth directly (useful during initial setup
-    // before the backend /api/auth/me route is wired up).
-    const res = await fetch('/.auth/me', { credentials: 'include' });
-    if (!res.ok) throw new Error('Not authenticated');
+  }>('/api/auth/me');
 
-    const data = await res.json();
-    // Easy Auth returns an array; first element is the logged-in principal
-    const principal = Array.isArray(data) ? data[0] : data?.clientPrincipal;
-    if (!principal) throw new Error('Not authenticated');
-
-    const claims: Record<string, string> = {};
-    for (const c of principal.claims ?? []) {
-      claims[c.typ] = c.val;
-    }
-
-    return {
-      id: principal.userId ?? claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? '',
-      email: claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ?? claims.email ?? '',
-      name: claims['name'] ?? claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ?? '',
-      role: 'architect' as 'architect' | 'supplier' | 'admin',
-    };
-  }
+  const { user } = response;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    // DB stores 'buyer'; we expose it as 'architect' — the canonical term for
+    // non-supplier users. 'buyer' is kept as a fallback for stale cached values.
+    role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'architect') as 'architect' | 'supplier' | 'admin',
+  };
 }
 
 /**
