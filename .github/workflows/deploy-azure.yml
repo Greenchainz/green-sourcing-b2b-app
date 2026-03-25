@@ -55,18 +55,18 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Run Prisma migrations
+      - name: Run Drizzle migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "⚠️  DATABASE_URL secret not set — skipping Prisma migrations"
+            echo "⚠️  DATABASE_URL secret not set — skipping Drizzle migrations"
             echo "   Add DATABASE_URL to GitHub repo secrets to enable automatic migrations."
             exit 0
           fi
           npm install -g pnpm
           pnpm install --frozen-lockfile
-          npx prisma migrate deploy
+          pnpm db:migrate
 
       - name: Deploy to Azure Container Apps
         run: |
@@ -77,5 +77,5 @@ jobs:
             --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}"
 
       - name: Logout from Azure
-        run: az logout
+        uses: azure/logout@v1
         if: always()
