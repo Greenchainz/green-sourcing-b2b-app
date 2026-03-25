@@ -34,7 +34,9 @@
       "Bash(npm uninstall:*)",
       "Bash(curl -s http://localhost:3001/api/auth/me)",
       "Bash(curl -s http://localhost:3001/api/trpc/materials.list)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(gh run:*)",
+      "Bash(az ad:*)"
     ]
   }
 }
