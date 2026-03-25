@@ -63,6 +63,13 @@ jobs:
             echo "⚠️  DATABASE_URL secret not set — skipping Drizzle migrations"
             exit 0
           fi
+          # Extract host and port from DATABASE_URL to test reachability before attempting migration
+          DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
+          DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|; t; s|.*|5432|')
+          if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -t 5 > /dev/null 2>&1; then
+            echo "⚠️  Database host '$DB_HOST' is not reachable — skipping Drizzle migrations"
+            exit 0
+          fi
           npm install -g pnpm
           pnpm install --no-frozen-lockfile
           pnpm db:migrate
