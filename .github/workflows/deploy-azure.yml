@@ -61,11 +61,10 @@ jobs:
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "⚠️  DATABASE_URL secret not set — skipping Drizzle migrations"
-            echo "   Add DATABASE_URL to GitHub repo secrets to enable automatic migrations."
             exit 0
           fi
           npm install -g pnpm
-          pnpm install --frozen-lockfile
+          pnpm install --no-frozen-lockfile
           pnpm db:migrate
 
       - name: Deploy to Azure Container Apps

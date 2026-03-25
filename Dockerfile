@@ -44,8 +44,7 @@ ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
     VITE_FRONTEND_WEBPUBSUB_HUB=$VITE_FRONTEND_WEBPUBSUB_HUB \
     VITE_BACKEND_URL=$VITE_BACKEND_URL \
     NODE_ENV=production
-# Generate Prisma client
-RUN npx prisma generate 2>/dev/null || echo 'Prisma generate skipped'
+# NOTE: This app uses Drizzle ORM, not Prisma. No codegen step needed.
 # Build the app:
 #   - vite build  → dist/public/ (client static assets, VITE_AZURE_MAPS_KEY baked in here)
 #   - esbuild     → dist/index.js (server bundle)
