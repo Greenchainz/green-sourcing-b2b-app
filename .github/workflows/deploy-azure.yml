@@ -76,5 +76,5 @@ jobs:
             --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}"
 
       - name: Logout from Azure
-        uses: azure/logout@v1
+        run: az logout || true
         if: always()
