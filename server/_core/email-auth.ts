@@ -60,7 +60,10 @@ async function verifyPassword(password: string, salt: Buffer, hash: Buffer): Pro
 
 // ── Table bootstrap ──────────────────────────────────────────────────────────
 
+let _tableReady = false;
+
 async function ensureTable(): Promise<void> {
+  if (_tableReady) return;
   const pool = getPool();
   if (!pool) return;
   await pool.query(`
@@ -73,6 +76,8 @@ async function ensureTable(): Promise<void> {
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `);
+  _tableReady = true;
+  console.log("[EmailAuth] email_credentials table ready");
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -127,6 +132,8 @@ export function registerEmailAuthRoutes(app: Express): void {
     }
 
     try {
+      // Ensure email_credentials table exists (idempotent)
+      await ensureTable();
       // Check for existing account
       const existing = await pool.query(
         `SELECT id FROM email_credentials WHERE email = $1`,
@@ -190,6 +197,9 @@ export function registerEmailAuthRoutes(app: Express): void {
     }
 
     try {
+      // Ensure email_credentials table exists (idempotent)
+      await ensureTable();
+
       const result = await pool.query(
         `SELECT ec.salt, ec.hash, ec."userId", u."openId", u.name, u.role
            FROM email_credentials ec
