@@ -5,7 +5,6 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { registerEasyAuthRoutes, registerDevAuthShim, registerDevCallbackHandler } from "./easy-auth";
 import { registerEmailAuthRoutes } from "./email-auth";
@@ -105,10 +104,13 @@ async function startServer() {
   // Email/password auth — additive path for suppliers without SSO accounts
   registerEmailAuthRoutes(app);
 
-  // Legacy custom OAuth routes (kept temporarily for backward compat;
-  // will be removed once Easy Auth is fully validated in production).
-  registerOAuthRoutes(app);
   registerOAuthProviderRoutes(app);
+
+  // Backwards-compatible OAuth callback route.
+  // This prevents legacy clients from landing on a dead /api/oauth/callback URL.
+  app.get("/api/oauth/callback", (_req, res) => {
+    res.redirect("/");
+  });
   
   // Microsoft Marketplace endpoints
   app.get("/api/marketplace/landing", handleLandingPage);
