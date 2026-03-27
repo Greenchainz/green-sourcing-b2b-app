@@ -105,6 +105,12 @@ async function startServer() {
   registerEmailAuthRoutes(app);
 
   registerOAuthProviderRoutes(app);
+
+  // Backwards-compatible OAuth callback route.
+  // This prevents legacy clients from landing on a dead /api/oauth/callback URL.
+  app.get("/api/oauth/callback", (_req, res) => {
+    res.redirect("/");
+  });
   
   // Microsoft Marketplace endpoints
   app.get("/api/marketplace/landing", handleLandingPage);
