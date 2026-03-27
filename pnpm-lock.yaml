@@ -203,7 +203,7 @@ importers:
         version: 0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       nodemailer:
         specifier: '>=7.0.11'
-        version: 8.0.2
+        version: 8.0.4
       pdfkit:
         specifier: ^0.17.2
         version: 0.17.2
@@ -3530,8 +3530,8 @@ packages:
   node-releases@2.0.23:
     resolution: {integrity: sha512-cCmFDMSm26S6tQSDpBCg/NR8NENrVPhAJSf+XbxBG4rPFaaonlEoE9wHQmun+cls499TQGSb7ZyPBRlzgKfpeg==}
 
-  nodemailer@8.0.2:
-    resolution: {integrity: sha512-zbj002pZAIkWQFxyAaqoxvn+zoIwRnS40hgjqTXudKOOJkiFFgBeNqjgD3/YCR12sZnrghWYBY+yP1ZucdDRpw==}
+  nodemailer@8.0.4:
+    resolution: {integrity: sha512-k+jf6N8PfQJ0Fe8ZhJlgqU5qJU44Lpvp2yvidH3vp1lPnVQMgi4yEEMPXg5eJS1gFIJTVq1NHBk7Ia9ARdSBdQ==}
     engines: {node: '>=6.0.0'}
 
   normalize-range@0.1.2:
@@ -8022,7 +8022,7 @@ snapshots:
 
   node-releases@2.0.23: {}
 
-  nodemailer@8.0.2: {}
+  nodemailer@8.0.4: {}
 
   normalize-range@0.1.2: {}
 
