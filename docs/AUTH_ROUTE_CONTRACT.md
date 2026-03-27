@@ -153,7 +153,7 @@ GreenChainz uses a **custom, self-managed authentication model**.
 | #729 | `/api/admin/*` (4 routes) | Add `requireAdmin` middleware |
 | #730 | `/api/rfq/:rfqId/pdf/summary`, `/api/rfq/:rfqId/pdf/bids` | Add `sdk.authenticateRequest` + ownership check |
 | #725 | `server/_core/easy-auth.ts`, `lib/auth/easy-auth.ts` | Delete both files + remove imports from `index.ts` |
-| #731 | Azure resource groups + Managed Identity roles | Least-privilege setup across all Container Apps |
+| #731 | Azure resource groups + Managed Identity roles | ✅ Least-privilege setup complete — see `docs/MANAGED_IDENTITY_SETUP.md` |
 
 ---
 

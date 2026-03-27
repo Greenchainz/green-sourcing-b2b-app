@@ -26,8 +26,10 @@ export async function GET() {
     // These are NOT secrets. They’re safe to expose to the client.
     const azureTenant =
         process.env.NEXT_PUBLIC_AZURE_TENANT || process.env.AZURE_TENANT || process.env.AZURE_TENANT_ID || 'common'
+    // AZURE_AD_CLIENT_ID is the Entra app registration for user sign-in (OIDC/OAuth2).
+    // Do NOT use MANAGED_IDENTITY_CLIENT_ID here — that is for Azure resource access, not user login.
     const azureClientId =
-        process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || process.env.AZURE_CLIENT_ID || ''
+        process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || process.env.AZURE_AD_CLIENT_ID || process.env.AZURE_CLIENT_ID || ''
 
     const redirectUri = origin ? `${origin}/login/callback` : ''
 
