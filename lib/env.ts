@@ -21,8 +21,10 @@ const envSchema = z.object({
     AZURE_POSTGRESQL_USER: z.string().optional().describe('Azure PostgreSQL username'),
     AZURE_POSTGRESQL_PASSWORD: z.string().optional().describe('Azure PostgreSQL password'),
 
-    // Managed identity (optional)
-    AZURE_CLIENT_ID: z.string().optional().describe('User-assigned managed identity client ID'),
+    // Managed identity (optional — production only)
+    // Set to the user-assigned managed identity client ID (id-greenchainz-backend).
+    // Do NOT set this to the Entra app registration CLIENT_ID — they are different identities.
+    MANAGED_IDENTITY_CLIENT_ID: z.string().optional().describe('User-assigned managed identity client ID (id-greenchainz-backend)'),
 
     // Cache (Azure Cache for Redis)
     REDIS_HOST: z.string().min(1, 'Azure Redis Host is required'),
