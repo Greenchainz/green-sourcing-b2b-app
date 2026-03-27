@@ -43,13 +43,23 @@ properties:
             value: production
           - name: PORT
             value: "3000"
-          # Server-side secrets for Next.js API routes (Azure auth)
+          # Server-side Entra app registration (user sign-in only — NOT Azure resource access)
+          - name: AZURE_AD_CLIENT_ID
+            secretRef: azure-ad-client-id
           - name: AZURE_CLIENT_ID
             secretRef: azure-ad-client-id
+          - name: AZURE_AD_CLIENT_SECRET
+            secretRef: azure-ad-client-secret
           - name: AZURE_CLIENT_SECRET
             secretRef: azure-ad-client-secret
+          - name: AZURE_AD_TENANT_ID
+            secretRef: azure-ad-tenant-id
           - name: AZURE_TENANT_ID
             secretRef: azure-ad-tenant-id
+          # User-Assigned Managed Identity (Azure resource access — NOT user sign-in)
+          # Identity: id-greenchainz-backend (rg-greenchainz-infra)
+          - name: MANAGED_IDENTITY_CLIENT_ID
+            value: "ec248abf-f6ce-4d7c-8888-740317709f1b"
           # Public runtime config (also baked in at build time via Docker build args)
           - name: NEXT_PUBLIC_BACKEND_URL
             value: https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io

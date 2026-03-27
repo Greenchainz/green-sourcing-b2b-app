@@ -15,15 +15,18 @@ import { DefaultAzureCredential } from '@azure/identity';
 
 /**
  * Singleton credential instance with User-Assigned Managed Identity
- * 
- * AZURE_CLIENT_ID should be set to: ec248abf-f6ce-4d7c-8888-740317709f1b
- * This enables the app to use the id-greenchainz-backend managed identity
+ *
+ * MANAGED_IDENTITY_CLIENT_ID should be set to: ec248abf-f6ce-4d7c-8888-740317709f1b
+ * This enables the app to use the id-greenchainz-backend managed identity.
+ *
+ * NOTE: MANAGED_IDENTITY_CLIENT_ID is the user-assigned managed identity client ID.
+ * It is NOT the same as the Entra app registration CLIENT_ID used for user sign-in.
  */
 let credential: DefaultAzureCredential | null = null;
 
 /**
  * Get or create the Azure credential with proper managed identity configuration
- * 
+ *
  * @returns DefaultAzureCredential configured for User-Assigned Managed Identity
  */
 export function getAzureCredential(): DefaultAzureCredential {
@@ -31,12 +34,13 @@ export function getAzureCredential(): DefaultAzureCredential {
     return credential;
   }
 
-  const managedIdentityClientId = process.env.AZURE_CLIENT_ID;
+  const managedIdentityClientId = process.env.MANAGED_IDENTITY_CLIENT_ID;
 
   if (!managedIdentityClientId) {
     console.warn(
-      '⚠️ AZURE_CLIENT_ID not set. Managed Identity authentication may fail in Azure. ' +
-      'Set AZURE_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b for production.'
+      '⚠️ MANAGED_IDENTITY_CLIENT_ID not set. Managed Identity authentication may fail in Azure. ' +
+      'Set MANAGED_IDENTITY_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b for production. ' +
+      'Do NOT use the Entra app registration CLIENT_ID here — they are different identities.'
     );
   }
 
@@ -60,5 +64,5 @@ export function resetAzureCredential(): void {
  * @returns true if configuration is valid
  */
 export function isCredentialConfigured(): boolean {
-  return !!process.env.AZURE_CLIENT_ID;
+  return !!process.env.MANAGED_IDENTITY_CLIENT_ID;
 }
