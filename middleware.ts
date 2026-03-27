@@ -19,11 +19,10 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"));
 
   // Lightweight cookie check — no Azure SDK, no Key Vault
+  // app_session_id is the JWT cookie set by oauth-providers.ts and easy-auth dev shim
   const sessionToken =
-    request.cookies.get("better-auth.session_token")?.value ||
-    request.cookies.get("__Secure-better-auth.session_token")?.value ||
-    request.cookies.get("next-auth.session-token")?.value ||
-    request.cookies.get("__Secure-next-auth.session-token")?.value;
+    request.cookies.get("app_session_id")?.value ||
+    request.cookies.get("__Secure-app_session_id")?.value;
 
   const hasSession = !!sessionToken;
 
