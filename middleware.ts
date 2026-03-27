@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 // DO NOT import auth or anything that imports lib/secrets.ts here
 // Edge runtime cannot use @azure/identity
+import { COOKIE_NAME } from "@shared/const";
 
 function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(new URL("/login", request.url));
@@ -19,11 +20,10 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"));
 
   // Lightweight cookie check — no Azure SDK, no Key Vault
+  // COOKIE_NAME is the JWT cookie set by oauth-providers.ts and easy-auth dev shim
   const sessionToken =
-    request.cookies.get("better-auth.session_token")?.value ||
-    request.cookies.get("__Secure-better-auth.session_token")?.value ||
-    request.cookies.get("next-auth.session-token")?.value ||
-    request.cookies.get("__Secure-next-auth.session-token")?.value;
+    request.cookies.get(COOKIE_NAME)?.value ||
+    request.cookies.get(`__Secure-${COOKIE_NAME}`)?.value;
 
   const hasSession = !!sessionToken;
 
