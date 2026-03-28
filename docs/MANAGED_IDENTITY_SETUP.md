@@ -6,8 +6,11 @@ GreenChainz uses **User-Assigned Managed Identity** for Zero Trust authenticatio
 
 **Identity Details:**
 - Identity Name: `id-greenchainz-backend`
+- Resource Group: `rg-greenchainz-infra`
 - Client ID: `ec248abf-f6ce-4d7c-8888-740317709f1b`
-- Used by: Container Apps (frontend & backend)
+- Used by: Container Apps (greenchainz-main-app, greenchainz-audit-api)
+
+> ⚠️ **IMPORTANT:** `MANAGED_IDENTITY_CLIENT_ID` and the Entra app registration `CLIENT_ID` (`479e2a01-70ab-4df9-baa4-560d317c3423`) are **completely different things**. The managed identity grants access to **Azure resources**. The Entra app registration is used for **user sign-in (OAuth2/OIDC)** only. Never mix them.
 
 ## Benefits
 
@@ -16,6 +19,44 @@ GreenChainz uses **User-Assigned Managed Identity** for Zero Trust authenticatio
 ✅ **Fine-grained permissions** - RBAC on each Azure resource  
 ✅ **Audit trail** - All access logged in Azure Activity Log  
 ✅ **Works locally** - Falls back to developer credentials (VS Code, Azure CLI)
+
+## Resource Group Structure
+
+```
+rg-greenchainz-prod        ← main app, API, database, Key Vault
+rg-greenchainz-agents      ← AI Audit Agent, future agent workloads
+rg-greenchainz-infra       ← ACR, managed identities, networking
+```
+
+## Identity Architecture
+
+Each Container App gets a **system-assigned** managed identity for its own operations.  
+Shared resources (Key Vault, ACR) are accessed via the **user-assigned** managed identity `id-greenchainz-backend`.
+
+```
+id-greenchainz-backend (user-assigned, rg-greenchainz-infra)
+  ├── Key Vault Secrets User  → greenchainz-vault (rg-greenchainz-prod)
+  └── AcrPull                 → ACR (rg-greenchainz-infra)
+
+greenchainz-main-app (system-assigned)
+  └── PostgreSQL read/write   → DB level only
+
+greenchainz-audit-api (system-assigned)
+  ├── Key Vault Secrets User  → greenchainz-vault (rg-greenchainz-prod)
+  └── Storage Blob Data Reader → container scope (if needed)
+```
+
+## Managed Identity Role Assignments (Least Privilege)
+
+| Identity | Resource | Role | Scope |
+|---|---|---|---|
+| id-greenchainz-backend (user-assigned) | greenchainz-vault | Key Vault Secrets User | Key Vault resource |
+| id-greenchainz-backend (user-assigned) | ACR | AcrPull | ACR resource |
+| greenchainz-main-app (system-assigned) | PostgreSQL | DB role with read/write only | DB level |
+| greenchainz-audit-api (system-assigned) | greenchainz-vault | Key Vault Secrets User | Key Vault resource |
+| greenchainz-audit-api (system-assigned) | Storage (if needed) | Storage Blob Data Reader | Container scope |
+
+> ✅ **No managed identity has Contributor or Owner at subscription or resource group scope.**
 
 ## Supported Azure Services
 
@@ -37,7 +78,7 @@ The following services authenticate via managed identity:
 ```
 Container App (greenchainz-container)
   ↓ (uses User-Assigned Managed Identity)
-  ↓ Client ID: ec248abf-f6ce-4d7c-8888-740317709f1b
+  ↓ MANAGED_IDENTITY_CLIENT_ID: ec248abf-f6ce-4d7c-8888-740317709f1b
   ↓
   ├── Azure Key Vault (greenchainz-vault)
   │     └── RBAC: "Key Vault Secrets User"
@@ -75,8 +116,10 @@ Developer Machine
 Set these environment variables in Azure Container Apps:
 
 ```bash
-# User-Assigned Managed Identity Client ID (REQUIRED for production)
-AZURE_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b
+# ── User-Assigned Managed Identity ──────────────────────────────────────────
+# REQUIRED for production. This is id-greenchainz-backend in rg-greenchainz-infra.
+# Do NOT set this to the Entra app registration CLIENT_ID.
+MANAGED_IDENTITY_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b
 
 # Key Vault & App Configuration
 KEY_VAULT_NAME=greenchainz-vault
@@ -90,6 +133,19 @@ DOCUMENT_INTELLIGENCE_ENDPOINT=https://greenchainz-content-intel.cognitiveservic
 
 # AI Foundry
 AZURE_AI_FOUNDRY_ENDPOINT=https://greenchainz-foundry.cognitiveservices.azure.com/
+
+# ── Entra App Registration (user sign-in only) ───────────────────────────────
+# These are for OAuth2/OIDC user authentication flows — not Azure resource access.
+AZURE_AD_CLIENT_ID=479e2a01-70ab-4df9-baa4-560d317c3423
+AZURE_CLIENT_ID=479e2a01-70ab-4df9-baa4-560d317c3423
+AZURE_AD_CLIENT_SECRET=<from Key Vault>
+AZURE_CLIENT_SECRET=<from Key Vault>
+AZURE_AD_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
+AZURE_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
+
+# ── OAuth Server (Manus OAuth service) ──────────────────────────────────────
+# Must be in .env — do NOT set this only in .env.local.
+OAUTH_SERVER_URL=https://your-oauth-server-url-here
 ```
 
 ### Local Development
@@ -97,8 +153,8 @@ AZURE_AI_FOUNDRY_ENDPOINT=https://greenchainz-foundry.cognitiveservices.azure.co
 Set these in `.env.local`:
 
 ```bash
-# OPTIONAL: Leave AZURE_CLIENT_ID unset to use VS Code/Azure CLI credentials
-# AZURE_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b
+# OPTIONAL: Leave MANAGED_IDENTITY_CLIENT_ID unset to use VS Code/Azure CLI credentials
+# MANAGED_IDENTITY_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b
 
 # Key Vault & App Configuration (uses VS Code/Azure CLI auth)
 KEY_VAULT_NAME=greenchainz-vault
@@ -123,8 +179,8 @@ import { getAzureCredential } from '@/lib/azure/credentials';
 
 const credential = getAzureCredential();
 // Automatically uses:
-// - User-Assigned Managed Identity (production with AZURE_CLIENT_ID set)
-// - Developer credentials (local dev without AZURE_CLIENT_ID)
+// - User-Assigned Managed Identity (production with MANAGED_IDENTITY_CLIENT_ID set)
+// - Developer credentials (local dev without MANAGED_IDENTITY_CLIENT_ID)
 ```
 
 ### Example: Key Vault Access
@@ -175,101 +231,159 @@ await sendToScraperQueue('process_document', { documentId: '123' });
 
 ## Setting Up Managed Identity (Admin Guide)
 
-### 1. Create User-Assigned Managed Identity
+### 1. Create Resource Groups
 
 ```bash
+az group create --name rg-greenchainz-prod   --location eastus
+az group create --name rg-greenchainz-agents --location eastus
+az group create --name rg-greenchainz-infra  --location eastus
+```
+
+### 2. Create User-Assigned Managed Identity
+
+```bash
+# Identity lives in rg-greenchainz-infra
 az identity create \
   --name id-greenchainz-backend \
-  --resource-group greenchainz-production \
+  --resource-group rg-greenchainz-infra \
   --location eastus
 ```
 
-Get the Client ID:
+Get the Client ID and Principal ID:
 ```bash
 az identity show \
   --name id-greenchainz-backend \
-  --resource-group greenchainz-production \
-  --query clientId -o tsv
+  --resource-group rg-greenchainz-infra \
+  --query '{clientId:clientId, principalId:principalId}' -o json
 ```
 
-### 2. Assign Identity to Container Apps
+### 3. Assign Identity to Container Apps
 
 ```bash
 # Get identity resource ID
 IDENTITY_ID=$(az identity show \
   --name id-greenchainz-backend \
-  --resource-group greenchainz-production \
+  --resource-group rg-greenchainz-infra \
   --query id -o tsv)
 
-# Assign to frontend container app
-az containerapp identity assign \
-  --name greenchainz-frontend \
-  --resource-group greenchainz-production \
-  --user-assigned $IDENTITY_ID
-
-# Assign to backend container app
+# Assign to main app container app
 az containerapp identity assign \
   --name greenchainz-container \
-  --resource-group greenchainz-production \
+  --resource-group rg-greenchainz-prod \
   --user-assigned $IDENTITY_ID
+
+# Enable system-assigned identity on main app
+az containerapp identity assign \
+  --name greenchainz-container \
+  --resource-group rg-greenchainz-prod \
+  --system-assigned
+
+# Enable system-assigned identity on audit API
+az containerapp identity assign \
+  --name greenchainz-audit-api \
+  --resource-group rg-greenchainz-agents \
+  --system-assigned
 ```
 
-### 3. Grant RBAC Permissions
+### 4. Grant RBAC Permissions (Least Privilege)
 
-#### Key Vault
+> ⚠️ **No identity should receive Contributor or Owner at subscription or resource group scope.**
+
+#### id-greenchainz-backend: Key Vault Secrets User (Key Vault resource scope only)
 ```bash
+MI_PRINCIPAL_ID=$(az identity show \
+  --name id-greenchainz-backend \
+  --resource-group rg-greenchainz-infra \
+  --query principalId -o tsv)
+
 az role assignment create \
   --role "Key Vault Secrets User" \
-  --assignee ec248abf-f6ce-4d7c-8888-740317709f1b \
-  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/greenchainz-production/providers/Microsoft.KeyVault/vaults/greenchainz-vault
+  --assignee-object-id "$MI_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/rg-greenchainz-prod/providers/Microsoft.KeyVault/vaults/greenchainz-vault
+```
+
+#### id-greenchainz-backend: AcrPull (ACR resource scope only)
+```bash
+az role assignment create \
+  --role "AcrPull" \
+  --assignee-object-id "$MI_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/rg-greenchainz-infra/providers/Microsoft.ContainerRegistry/registries/acrgreenchainzprod916
+```
+
+#### greenchainz-audit-api: Key Vault Secrets User (Key Vault resource scope only)
+```bash
+AUDIT_PRINCIPAL_ID=$(az containerapp show \
+  --name greenchainz-audit-api \
+  --resource-group rg-greenchainz-agents \
+  --query "identity.principalId" -o tsv)
+
+az role assignment create \
+  --role "Key Vault Secrets User" \
+  --assignee-object-id "$AUDIT_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/rg-greenchainz-prod/providers/Microsoft.KeyVault/vaults/greenchainz-vault
 ```
 
 #### App Configuration
 ```bash
 az role assignment create \
   --role "App Configuration Data Reader" \
-  --assignee ec248abf-f6ce-4d7c-8888-740317709f1b \
-  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/greenchainz-production/providers/Microsoft.AppConfiguration/configurationStores/app-config-green
+  --assignee-object-id "$MI_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/rg-greenchainz-prod/providers/Microsoft.AppConfiguration/configurationStores/app-config-green
 ```
 
 #### Blob Storage
 ```bash
 az role assignment create \
   --role "Storage Blob Data Contributor" \
-  --assignee ec248abf-f6ce-4d7c-8888-740317709f1b \
-  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/greenchainz-production/providers/Microsoft.Storage/storageAccounts/greenchainzstorage
-```
-
-#### Queue Storage
-```bash
-az role assignment create \
-  --role "Storage Queue Data Contributor" \
-  --assignee ec248abf-f6ce-4d7c-8888-740317709f1b \
-  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/greenchainz-production/providers/Microsoft.Storage/storageAccounts/greenchainzstorage
+  --assignee-object-id "$MI_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/rg-greenchainz-prod/providers/Microsoft.Storage/storageAccounts/greenchainzstorage
 ```
 
 #### Document Intelligence
 ```bash
 az role assignment create \
   --role "Cognitive Services User" \
-  --assignee ec248abf-f6ce-4d7c-8888-740317709f1b \
-  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/greenchainz-production/providers/Microsoft.CognitiveServices/accounts/greenchainz-content-intel
+  --assignee-object-id "$MI_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --scope /subscriptions/YOUR_SUBSCRIPTION/resourceGroups/rg-greenchainz-prod/providers/Microsoft.CognitiveServices/accounts/greenchainz-content-intel
 ```
 
-### 4. Set Environment Variables in Container Apps
+### 5. Set MANAGED_IDENTITY_CLIENT_ID in Container Apps
 
 ```bash
-# Frontend
-az containerapp update \
-  --name greenchainz-frontend \
-  --resource-group greenchainz-production \
-  --set-env-vars AZURE_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b
+# Get the managed identity client ID
+MI_CLIENT_ID=$(az identity show \
+  --name id-greenchainz-backend \
+  --resource-group rg-greenchainz-infra \
+  --query clientId -o tsv)
 
-# Backend
+# Main app
 az containerapp update \
   --name greenchainz-container \
-  --resource-group greenchainz-production \
-  --set-env-vars AZURE_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b
+  --resource-group rg-greenchainz-prod \
+  --set-env-vars MANAGED_IDENTITY_CLIENT_ID=$MI_CLIENT_ID
+
+# Audit API
+az containerapp update \
+  --name greenchainz-audit-api \
+  --resource-group rg-greenchainz-agents \
+  --set-env-vars MANAGED_IDENTITY_CLIENT_ID=$MI_CLIENT_ID
+```
+
+### 6. Verify: No Broad Role Assignments
+
+```bash
+# Confirm no managed identity has Contributor or Owner at subscription or RG scope
+az role assignment list \
+  --assignee "$MI_PRINCIPAL_ID" \
+  --query "[?roleDefinitionName=='Contributor' || roleDefinitionName=='Owner']" \
+  -o table
+# Expected: empty result
 ```
 
 ## Troubleshooting
@@ -281,21 +395,21 @@ az containerapp update \
 **Solution:**
 1. Verify identity is assigned to container app
 2. Check RBAC role assignments
-3. Ensure `AZURE_CLIENT_ID` is set correctly
+3. Ensure `MANAGED_IDENTITY_CLIENT_ID` is set correctly
 
 ### Error: "ManagedIdentityCredential authentication failed"
 
-**Cause:** `AZURE_CLIENT_ID` not set or incorrect
+**Cause:** `MANAGED_IDENTITY_CLIENT_ID` not set or incorrect
 
 **Solution:**
 ```bash
 # Verify environment variable
 az containerapp show \
   --name greenchainz-container \
-  --resource-group greenchainz-production \
-  --query "properties.configuration.secrets" -o table
+  --resource-group rg-greenchainz-prod \
+  --query "properties.template.containers[0].env[?name=='MANAGED_IDENTITY_CLIENT_ID']" -o table
 
-# Should show: AZURE_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b
+# Should show: MANAGED_IDENTITY_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b
 ```
 
 ### Local Development: "Authentication failed"
@@ -321,6 +435,7 @@ All Azure SDK clients should use `getAzureCredential()`:
 // ✅ CORRECT
 import { getAzureCredential } from '@/lib/azure/credentials';
 const credential = getAzureCredential();
+// Uses MANAGED_IDENTITY_CLIENT_ID automatically
 
 // ❌ WRONG - missing managedIdentityClientId
 import { DefaultAzureCredential } from '@azure/identity';
@@ -331,10 +446,13 @@ const credential = new DefaultAzureCredential();
 
 ✅ **Always use managed identity in production**  
 ✅ **Never commit connection strings to Git**  
-✅ **Use principle of least privilege** - only grant required RBAC roles  
+✅ **Use principle of least privilege** — only grant required RBAC roles at resource scope  
+✅ **No managed identity should have Contributor or Owner at subscription or RG scope**  
+✅ **Keep MANAGED_IDENTITY_CLIENT_ID and the Entra app CLIENT_ID separate in environment variables**  
 ✅ **Rotate connection strings** used in local dev regularly  
 ✅ **Monitor access** via Azure Monitor and Activity Log  
 ✅ **Test locally with VS Code Azure extension** before deploying  
+✅ **OAUTH_SERVER_URL must be in .env** — do not put it only in .env.local  
 
 ## References
 

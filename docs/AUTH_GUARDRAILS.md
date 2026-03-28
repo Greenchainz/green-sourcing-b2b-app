@@ -59,7 +59,7 @@ These are known gaps that must be fixed before go-live:
 
 - **#729** — Four admin REST routes have no auth check
 - **#730** — Two RFQ PDF routes expose private data without auth
-- **#731** — Managed Identity roles need least-privilege audit
+- **#731** ✅ — Managed Identity roles: least-privilege setup complete (see `docs/MANAGED_IDENTITY_SETUP.md`)
 
 ---
 
