@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -236,6 +236,10 @@ function CheckboxGroup({
   );
 }
 
+// ── Draft persistence ─────────────────────────────────────────────────────────
+
+const DRAFT_KEY = "gc_architect_onboarding_draft";
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ArchitectOnboarding() {
@@ -247,6 +251,7 @@ export default function ArchitectOnboarding() {
   const submitOnboarding = trpc.architect.submitOnboarding.useMutation({
     onSuccess: () => {
       try { sessionStorage.removeItem("gc_pending_role"); } catch { /* ignore */ }
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setDone(true);
       toast.success("You're in! Welcome to GreenChainz.");
     },
@@ -282,6 +287,26 @@ export default function ArchitectOnboarding() {
       primaryProjectRegion: "",
     },
   });
+
+  // Restore draft from localStorage on first mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<FormData>;
+      (Object.entries(draft) as [keyof FormData, unknown][]).forEach(([key, value]) => {
+        setValue(key, value as FormData[typeof key]);
+      });
+    } catch { /* ignore corrupted drafts */ }
+  }, [setValue]);
+
+  // Persist draft to localStorage whenever form values change
+  useEffect(() => {
+    const sub = watch((values) => {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(values)); } catch { /* ignore */ }
+    });
+    return () => sub.unsubscribe();
+  }, [watch]);
 
   const projectTypes = watch("projectTypes") ?? [];
   const sustainabilityGoals = watch("sustainabilityGoals") ?? [];
@@ -334,6 +359,9 @@ export default function ArchitectOnboarding() {
           <h1 className="text-3xl font-bold">Architect Onboarding</h1>
           <p className="text-muted-foreground mt-1">
             Set up your profile to access the verified sustainable materials catalog.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Step {step + 1} of {STEPS.length} — your progress is saved as you go
           </p>
         </div>
 

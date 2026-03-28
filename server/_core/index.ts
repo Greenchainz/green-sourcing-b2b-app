@@ -5,7 +5,6 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { registerEasyAuthRoutes, registerDevAuthShim, registerDevCallbackHandler } from "./easy-auth";
 import { registerEmailAuthRoutes } from "./email-auth";
@@ -39,6 +38,9 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
     }
     entry.count += 1;
     if (entry.count > maxRequests) {
+      const retryAfterSeconds = Math.ceil((entry.resetAt - now) / 1000);
+      console.warn(`[rate-limit] IP ${ip} throttled on ${req.method} ${req.path} — retry after ${retryAfterSeconds}s`);
+      res.setHeader("Retry-After", String(retryAfterSeconds));
       res.status(429).json({ error: "Too Many Requests" });
       return;
     }
@@ -48,6 +50,26 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
 
 const adminRateLimit = createRateLimiter(20, 60_000);   // 20 req/min per IP
 const rfqPdfRateLimit = createRateLimiter(30, 60_000);  // 30 req/min per IP
+
+// ── Shared admin auth helper ───────────────────────────────────────────────────
+// Authenticates the session and enforces admin role in one call.
+// Sends 401/403 and returns null if checks fail; returns the user otherwise.
+// Use this in all admin REST handlers instead of inlining the role check.
+async function getAdminUser(
+  req: express.Request,
+  res: express.Response
+): Promise<{ id: number; role: string; [key: string]: unknown } | null> {
+  const user = await sdk.authenticateRequest(req).catch(() => null);
+  if (!user) {
+    res.status(401).json({ error: "Unauthorized" });
+    return null;
+  }
+  if (user.role !== "admin") {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return user as { id: number; role: string; [key: string]: unknown };
+}
 
 // Load .env.local in development (overrides .env values)
 if (process.env.NODE_ENV !== "production") {
@@ -84,6 +106,22 @@ async function startServer() {
   const { loadSecrets } = await import("../../lib/secrets");
   await loadSecrets();
 
+  // ── Startup assertions ────────────────────────────────────────────────────
+  // Fail fast if required secrets are absent so a misconfigured deploy fails
+  // immediately rather than serving requests with broken auth/db behaviour.
+  if (process.env.NODE_ENV === "production") {
+    const required: Record<string, string | undefined> = {
+      JWT_SECRET:   process.env.JWT_SECRET,
+      DATABASE_URL: process.env.DATABASE_URL,
+    };
+    const missing = Object.entries(required)
+      .filter(([, v]) => !v)
+      .map(([k]) => k);
+    if (missing.length > 0) {
+      throw new Error(`[startup] Missing required environment variables: ${missing.join(", ")}`);
+    }
+  }
+
   const app = express();
   // Trust Azure Container Apps / Cloudflare reverse proxy headers
   // so req.protocol reports 'https' correctly and cookies set Secure=true.
@@ -105,9 +143,6 @@ async function startServer() {
   // Email/password auth — additive path for suppliers without SSO accounts
   registerEmailAuthRoutes(app);
 
-  // Legacy custom OAuth routes (kept temporarily for backward compat;
-  // will be removed once Easy Auth is fully validated in production).
-  registerOAuthRoutes(app);
   registerOAuthProviderRoutes(app);
   
   // Microsoft Marketplace endpoints
@@ -127,9 +162,8 @@ async function startServer() {
   // Requires: authenticated user with admin role
   app.post("/api/admin/trigger-outreach", adminRateLimit, async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
-      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+      const user = await getAdminUser(req, res);
+      if (!user) return;
       const { runScraperOutreachPipeline } = await import("../scraper-outreach-pipeline");
       const result = await runScraperOutreachPipeline();
       res.json({ success: true, ...result });
@@ -144,9 +178,8 @@ async function startServer() {
   // Requires: authenticated user with admin role
   app.post("/api/admin/seed-materials", adminRateLimit, async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
-      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+      const user = await getAdminUser(req, res);
+      if (!user) return;
       const { seedMaterialsFromEC3 } = await import("../seed-materials");
       const categories = req.query.categories
         ? String(req.query.categories).split(",").map((c) => c.trim())
@@ -164,9 +197,8 @@ async function startServer() {
   // Requires: authenticated user with admin role
   app.post("/api/admin/run-supplier-scraper", adminRateLimit, async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
-      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+      const user = await getAdminUser(req, res);
+      if (!user) return;
       const { runSupplierScraper } = await import("../../lib/scrapers/supplier-scraper");
       const result = await runSupplierScraper();
       res.json({ success: true, ...result });
@@ -180,9 +212,8 @@ async function startServer() {
   // Requires: authenticated user with admin role
   app.post("/api/admin/run-txdot-scraper", adminRateLimit, async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
-      if (user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+      const user = await getAdminUser(req, res);
+      if (!user) return;
       const { scrapeTxdotPricingData } = await import("../services/txdotScraper");
       const { storePricingData, updateAllMaterialAveragePricing } = await import("../services/pricingDataService");
       const scrapedData = await scrapeTxdotPricingData();

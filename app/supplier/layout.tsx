@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getLogoutUrl } from "@/lib/auth/easy-auth";
@@ -27,6 +27,11 @@ const navigation = [
   { name: "Settings", href: "/supplier/settings", icon: Settings },
 ];
 
+interface AuthUser {
+  name?: string | null;
+  email?: string | null;
+}
+
 export default function SupplierLayout({
   children,
 }: {
@@ -34,6 +39,14 @@ export default function SupplierLayout({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.user) setAuthUser(data.user); })
+      .catch(() => { /* non-fatal — sidebar falls back to placeholder */ });
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -67,11 +80,15 @@ export default function SupplierLayout({
           <div className="p-4 border-b border-slate-800">
             <div className="flex items-center space-x-3">
               <div className="h-10 w-10 rounded-full bg-forest-600 flex items-center justify-center text-white font-medium">
-                S
+                {(authUser?.name ?? authUser?.email ?? "S").charAt(0).toUpperCase()}
               </div>
-              <div>
-                <p className="text-sm font-medium text-white">Supplier Admin</p>
-                <p className="text-xs text-slate-400">My Company Inc.</p>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {authUser?.name ?? "Supplier User"}
+                </p>
+                <p className="text-xs text-slate-400 truncate">
+                  {authUser?.email ?? ""}
+                </p>
               </div>
             </div>
           </div>

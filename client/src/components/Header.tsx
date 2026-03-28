@@ -53,15 +53,22 @@ export default function Header() {
           <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Materials
           </Link>
-          <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            Assemblies
-          </Link>
-          <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            RFQ
-          </Link>
-          <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            RFQ Status
-          </Link>
+          {/* Architect-only nav items — hidden for supplier accounts */}
+          {user?.role !== 'supplier' && (
+            <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Assemblies
+            </Link>
+          )}
+          {user?.role !== 'supplier' && (
+            <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              RFQ Cart
+            </Link>
+          )}
+          {user?.role !== 'supplier' && (
+            <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              My RFQs
+            </Link>
+          )}
           <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Compare
           </Link>
@@ -76,9 +83,12 @@ export default function Header() {
           <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Subscription
           </Link>
-          <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            Bypass the Gatekeepers
-          </Link>
+          {/* Only show for unauthenticated visitors and architect accounts */}
+          {user?.role !== 'supplier' && (
+            <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Supplier Sign Up
+            </Link>
+          )}
         </nav>
 
         {/* Auth Buttons */}
@@ -138,18 +148,24 @@ export default function Header() {
                onClick={() => setMobileMenuOpen(false)}>
               Materials
             </Link>
-            <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
-              Assemblies
-            </Link>
-            <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
-              RFQ
-            </Link>
-            <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
-              RFQ Status
-            </Link>
+            {user?.role !== 'supplier' && (
+              <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                 onClick={() => setMobileMenuOpen(false)}>
+                Assemblies
+              </Link>
+            )}
+            {user?.role !== 'supplier' && (
+              <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                 onClick={() => setMobileMenuOpen(false)}>
+                RFQ Cart
+              </Link>
+            )}
+            {user?.role !== 'supplier' && (
+              <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                 onClick={() => setMobileMenuOpen(false)}>
+                My RFQs
+              </Link>
+            )}
             <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
               Compare
@@ -167,10 +183,12 @@ export default function Header() {
                onClick={() => setMobileMenuOpen(false)}>
               Subscription
             </Link>
-            <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
-              Bypass the Gatekeepers
-            </Link>
+            {user?.role !== 'supplier' && (
+              <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                 onClick={() => setMobileMenuOpen(false)}>
+                Supplier Sign Up
+              </Link>
+            )}
             {!user && (
               <div className="flex flex-col space-y-2 pt-2">
                 <a href="/login">

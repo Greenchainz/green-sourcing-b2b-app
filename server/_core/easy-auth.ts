@@ -235,11 +235,14 @@ export function registerEasyAuthRoutes(app: Express) {
     const email    = extractEmailFromClaims(principal.claims, principal.userDetails);
     const name     = extractNameFromClaims(principal.claims, principal.userDetails);
 
-    // Determine role — greenchainz.com addresses get admin; default is buyer (architect)
-    let assignedRole: "buyer" | "supplier" | "admin" | "user" = "buyer"; // 'buyer' = architect in DB
-    if (email.endsWith("@greenchainz.com")) {
-      assignedRole = "admin";
-    }
+    // Check the DB first so we never overwrite a manually-set role on every login.
+    // Role is only derived here for brand-new accounts (first login).
+    // TODO: Once migrate-admin-roles.ts has been run against production, remove the
+    //       @greenchainz.com fallback and rely solely on DB-stored roles.
+    const existingUser = await db.getUserByOpenId(openId);
+    const roleForInsert: "buyer" | "admin" | undefined = existingUser
+      ? undefined  // returning user — preserve whatever the DB has
+      : email.endsWith("@greenchainz.com") ? "admin" : "buyer";  // first login bootstrap
 
     // Upsert user into database
     try {
@@ -249,15 +252,15 @@ export function registerEasyAuthRoutes(app: Express) {
         name,
         loginMethod: provider,
         lastSignedIn: new Date(),
-        role: assignedRole,
+        ...(roleForInsert !== undefined && { role: roleForInsert }),
       });
     } catch (err) {
       console.warn("[EasyAuth] DB upsert failed:", err);
     }
 
-    // Look up user to get the authoritative role and numeric DB id
-    const dbUser = await db.getUserByOpenId(openId);
-    const role   = dbUser?.role ?? assignedRole;
+    // Look up the now-upserted record; fall back to bootstrap value only if DB write failed
+    const dbUser = existingUser ?? await db.getUserByOpenId(openId);
+    const role   = dbUser?.role ?? roleForInsert ?? "buyer";
 
     res.json({
       user: {

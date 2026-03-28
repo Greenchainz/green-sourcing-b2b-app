@@ -213,18 +213,27 @@ export default function SupplierDashboardHome() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h2 className="font-semibold text-slate-900 mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <button className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors">
+              <Link
+                href="/supplier/certs"
+                className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors"
+              >
                 Upload New EPD
                 <ArrowUpRight className="h-4 w-4 text-slate-400" />
-              </button>
-              <button className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors">
+              </Link>
+              <Link
+                href="/supplier/products"
+                className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors"
+              >
                 Update Product Catalog
                 <ArrowUpRight className="h-4 w-4 text-slate-400" />
-              </button>
-              <button className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors">
+              </Link>
+              <Link
+                href="/supplier/settings"
+                className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm font-medium text-slate-700 transition-colors"
+              >
                 Add Team Member
                 <ArrowUpRight className="h-4 w-4 text-slate-400" />
-              </button>
+              </Link>
             </div>
           </div>
 
