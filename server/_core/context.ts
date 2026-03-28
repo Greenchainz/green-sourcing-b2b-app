@@ -1,6 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import * as db from "../db";
 import { sdk } from "./sdk";
 
 export type TrpcContext = {
@@ -12,13 +11,8 @@ export type TrpcContext = {
 /**
  * Build the tRPC context for every request.
  *
- * Auth strategy: Azure Easy Auth (sidecar).
- * The easyAuthMiddleware (registered in index.ts before tRPC) parses the
- * individual X-MS-CLIENT-PRINCIPAL-ID/IDP/NAME headers and attaches them
- * to req.easyAuthPrincipal. We read that here to resolve the database user.
- *
- * The base64 X-MS-CLIENT-PRINCIPAL header uses "auth_typ" (not
- * "identityProvider"), so the individual headers are the authoritative source.
+ * Auth strategy: JWT session cookie set by /api/auth/callback/:provider.
+ * The cookie (app_session_id) is verified via sdk.authenticateRequest.
  */
 export async function createContext(
   opts: CreateExpressContextOptions
@@ -26,40 +20,8 @@ export async function createContext(
   let user: User | null = null;
 
   try {
-    const principal = (opts.req as any).easyAuthPrincipal;
-
-    // easyAuthMiddleware guarantees userId and identityProvider are set
-    // from the individual X-MS-CLIENT-PRINCIPAL-ID/IDP headers when present.
-    if (principal?.userId && principal?.identityProvider &&
-        principal.userId !== "undefined" && principal.identityProvider !== "undefined") {
-
-      // Production path: Azure Easy Auth sidecar injects X-MS-CLIENT-PRINCIPAL-* headers
-      const providerMap: Record<string, string> = {
-        aad: "microsoft",
-        google: "google",
-        linkedin: "linkedin",
-      };
-      const prefix = providerMap[principal.identityProvider] ?? principal.identityProvider;
-      const openId = `${prefix}:${principal.userId}`;
-
-      // Upsert so the user always exists in the DB after login
-      await db.upsertUser({
-        openId,
-        email: principal.userDetails ?? "",
-        name: principal.userDetails ?? "",
-        loginMethod: prefix,
-        lastSignedIn: new Date(),
-      }).catch((err: unknown) => {
-        console.warn("[tRPC ctx] upsertUser failed:", err);
-      });
-
-      user = await db.getUserByOpenId(openId);
-    } else {
-      // Fallback: JWT session cookie set by /api/auth/callback/:provider or dev shim
-      user = await sdk.authenticateRequest(opts.req).catch(() => null);
-    }
-  } catch (error) {
-    // Authentication is optional for public procedures.
+    user = await sdk.authenticateRequest(opts.req).catch(() => null);
+  } catch {
     user = null;
   }
 

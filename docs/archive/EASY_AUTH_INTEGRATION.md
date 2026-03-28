@@ -1,3 +1,5 @@
+> **ARCHIVED** — GreenChainz does not use Azure Easy Auth. See docs/AUTH_ROUTE_CONTRACT.md.
+
 # Azure Container Apps Easy Auth Integration
 
 ## Overview

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getLogoutUrl } from "@/lib/auth/easy-auth";
 import {
   LayoutDashboard,
   Package,
@@ -118,7 +117,7 @@ export default function SupplierLayout({
           {/* Logout */}
           <div className="p-4 border-t border-slate-800">
             <button 
-              onClick={() => window.location.href = getLogoutUrl('/')}
+              onClick={() => window.location.href = '/api/auth/logout'}
               className="flex items-center w-full px-3 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
             >
               <LogOut className="mr-3 h-5 w-5" />
