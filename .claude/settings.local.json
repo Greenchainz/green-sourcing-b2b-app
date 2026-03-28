@@ -36,7 +36,14 @@
       "Bash(curl -s http://localhost:3001/api/trpc/materials.list)",
       "Bash(ls:*)",
       "Bash(gh run:*)",
-      "Bash(az ad:*)"
+      "Bash(az ad:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh pr:*)",
+      "Read(//d/perplexitydownloads/**)",
+      "Read(//d/perplexitydownloads//**)",
+      "Bash(find D:/perplexitydownloads/greenchainz-sda-connector -name *.ts -path */routes/*)",
+      "Bash(find D:/perplexitydownloads/green-sourcing-b2b-app/app -name auth*.ts -o -name auth*.tsx)",
+      "Bash(find D:/perplexitydownloads/green-sourcing-b2b-app/app -name auth-client* -o -name auth.ts)"
     ]
   }
 }

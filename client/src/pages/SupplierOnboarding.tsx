@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -140,6 +140,10 @@ function CheckboxGroup({
   );
 }
 
+// ── Draft persistence ─────────────────────────────────────────────────────────
+
+const DRAFT_KEY = "gc_supplier_onboarding_draft";
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SupplierOnboarding() {
@@ -150,6 +154,7 @@ export default function SupplierOnboarding() {
 
   const submitOnboarding = trpc.supplierOnboarding.submitOnboarding.useMutation({
     onSuccess: () => {
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setDone(true);
       toast.success("Profile submitted! Our team will review it shortly.");
     },
@@ -176,6 +181,26 @@ export default function SupplierOnboarding() {
       certifications: [],
     },
   });
+
+  // Restore draft from localStorage on first mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<FormData>;
+      (Object.entries(draft) as [keyof FormData, unknown][]).forEach(([key, value]) => {
+        setValue(key, value as FormData[typeof key]);
+      });
+    } catch { /* ignore corrupted drafts */ }
+  }, [setValue]);
+
+  // Persist draft to localStorage whenever form values change
+  useEffect(() => {
+    const sub = watch((values) => {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(values)); } catch { /* ignore */ }
+    });
+    return () => sub.unsubscribe();
+  }, [watch]);
 
   const materialCategories = watch("materialCategories") ?? [];
   const certifications = watch("certifications") ?? [];
@@ -222,6 +247,9 @@ export default function SupplierOnboarding() {
           <h1 className="text-3xl font-bold">Supplier Onboarding</h1>
           <p className="text-muted-foreground mt-1">
             Join GreenChainz as a verified sustainable materials supplier.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Step {step + 1} of {STEPS.length} — your progress is saved as you go
           </p>
         </div>
 
