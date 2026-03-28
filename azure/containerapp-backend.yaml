@@ -175,14 +175,30 @@ properties:
             secretRef: stripe-webhook-secret
           
           # ─────────────────────────────────────────────────────────────
-          # Azure AD Authentication
+          # Azure AD Authentication (Entra app registration — user sign-in only)
+          # App registration 479e2a01-70ab-4df9-baa4-560d317c3423
+          # Do NOT use this for Azure resource access — use MANAGED_IDENTITY_CLIENT_ID instead.
           # ─────────────────────────────────────────────────────────────
+          - name: AZURE_AD_CLIENT_ID
+            secretRef: azure-client-id
           - name: AZURE_CLIENT_ID
             secretRef: azure-client-id
+          - name: AZURE_AD_CLIENT_SECRET
+            secretRef: azure-client-secret
           - name: AZURE_CLIENT_SECRET
             secretRef: azure-client-secret
+          - name: AZURE_AD_TENANT_ID
+            secretRef: azure-tenant-id
           - name: AZURE_TENANT_ID
             secretRef: azure-tenant-id
+
+          # ─────────────────────────────────────────────────────────────
+          # User-Assigned Managed Identity (Azure resource access — NOT user sign-in)
+          # Identity: id-greenchainz-backend (rg-greenchainz-infra)
+          # Client ID: ec248abf-f6ce-4d7c-8888-740317709f1b
+          # ─────────────────────────────────────────────────────────────
+          - name: MANAGED_IDENTITY_CLIENT_ID
+            value: "ec248abf-f6ce-4d7c-8888-740317709f1b"
 
           # ─────────────────────────────────────────────────────────────
           # Intercom & Internal API

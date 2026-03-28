@@ -6,7 +6,6 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
-import { registerEasyAuthRoutes, registerDevAuthShim, registerDevCallbackHandler } from "./easy-auth";
 import { registerEmailAuthRoutes } from "./email-auth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -131,19 +130,16 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // ── Authentication ─────────────────────────────────────────────────────────
-  // Easy Auth: reads X-MS-CLIENT-PRINCIPAL headers injected by the Azure
-  // Container Apps sidecar. This MUST be registered first so the middleware
-  // runs before any other route handler.
-  registerEasyAuthRoutes(app);
-
-  // Dev-only: simulate /.auth/login/aad and /.auth/callback locally
-  registerDevAuthShim(app);
-  registerDevCallbackHandler(app);
-
   // Email/password auth — additive path for suppliers without SSO accounts
   registerEmailAuthRoutes(app);
 
   registerOAuthProviderRoutes(app);
+
+  // Backwards-compatible OAuth callback route.
+  // This prevents legacy clients from landing on a dead /api/oauth/callback URL.
+  app.get("/api/oauth/callback", (_req, res) => {
+    res.redirect("/");
+  });
   
   // Microsoft Marketplace endpoints
   app.get("/api/marketplace/landing", handleLandingPage);

@@ -5,7 +5,7 @@
       "name": "GreenChainz Dev Server (Express + Vite)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "port": 3001
     },
     {
       "name": "Drizzle Studio",

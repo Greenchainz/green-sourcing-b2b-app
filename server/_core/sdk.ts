@@ -28,6 +28,9 @@ class SDKServer {
 
   private getSessionSecret() {
     const secret = ENV.cookieSecret;
+    if (!secret) {
+      throw new Error("[Auth] JWT_SECRET is not set — refusing to sign/verify sessions with an empty key");
+    }
     return new TextEncoder().encode(secret);
   }
 
@@ -84,14 +87,13 @@ class SDKServer {
 
       if (
         !isNonEmptyString(openId) ||
-        !isNonEmptyString(appId) ||
-        !isNonEmptyString(name)
+        !isNonEmptyString(appId)
       ) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
       }
 
-      return { openId, appId, name };
+      return { openId, appId, name: typeof name === "string" ? name : "" };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
       return null;
