@@ -341,7 +341,8 @@ async function startServer() {
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
 
-  app.options("/api/messages/*", (_req, res) => {
+  // Express v5: bare * wildcards must be named — use {*path} for optional catch-all
+  app.options("/api/messages/{*path}", (_req, res) => {
     setMessagingCorsHeaders(res);
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.sendStatus(204);
