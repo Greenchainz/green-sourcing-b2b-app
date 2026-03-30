@@ -153,11 +153,13 @@ export function ChainBot() {
   const handleSend = async (content: string) => {
     if (!content.trim() || chatMutation.isPending) return;
 
-    // Check AI query usage limit
-    const allowed = await checkUsage("ai_queries");
-    if (!allowed) {
-      setShowUpgradeModal(true);
-      return;
+    // Check AI query usage limit only for authenticated users
+    if (user) {
+      const allowed = await checkUsage("ai_queries");
+      if (!allowed) {
+        setShowUpgradeModal(true);
+        return;
+      }
     }
 
     const userMessage: ChatMessage = {
