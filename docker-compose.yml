@@ -1,5 +1,6 @@
 # FILE: docker-compose.yml
-# PURPOSE: The single, unified configuration for the GreenChainz platform.
+# PURPOSE: Local development environment for the GreenChainz platform.
+# The app is a Vite (client) + Express (server) monorepo — single Dockerfile.
 
 services:
   # ---------------------------------
@@ -19,37 +20,10 @@ services:
       POSTGRES_DB: ${DB_NAME:-greenchainz_dev}
 
   # ---------------------------------
-  # SERVICE 2: Backend (Node.js / Express)
+  # SERVICE 2: App (Vite + Express monorepo)
   # ---------------------------------
-  backend:
-    container_name: greenchainz-backend
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
-    depends_on:
-      - db
-    environment:
-      NODE_ENV: development
-      PORT: 3001
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      # Provide both legacy and app-consumed PG variables
-      POSTGRES_USER: ${DB_USER:-user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
-      POSTGRES_DB: ${DB_NAME:-greenchainz_dev}
-      # Keep DB_* for compatibility if other tools use them
-      DB_USER: ${DB_USER:-user}
-      DB_PASSWORD: ${DB_PASSWORD:-password}
-      DB_NAME: ${DB_NAME:-greenchainz_dev}
-
-  # ---------------------------------
-  # SERVICE 3: Frontend (Next.js)
-  # ---------------------------------
-  frontend:
-    container_name: greenchainz-frontend
+  app:
+    container_name: greenchainz-app
     build:
       context: .
       dockerfile: Dockerfile
@@ -57,11 +31,11 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      - db
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
-      INTERNAL_BACKEND_URL: http://backend:3001
+      PORT: 3000
+      DATABASE_URL: postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-greenchainz_dev}
 
 # ---------------------------------
 # VOLUMES: Ensures DB data persists
