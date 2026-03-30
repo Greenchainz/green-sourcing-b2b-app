@@ -1225,6 +1225,46 @@ export const assemblySpecComponents = pgTable(
 export type AssemblySpecComponent = typeof assemblySpecComponents.$inferSelect;
 export type InsertAssemblySpecComponent = typeof assemblySpecComponents.$inferInsert;
 
+// ─── EWS Assembly Carbon Components (detailed per-layer carbon data) ─────────
+// Each row = one material layer within a wall assembly (e.g. GWB, studs, insulation, cladding)
+// Parent: materialAssemblySpecs.id
+
+export const ewsCarbonComponents = pgTable(
+  "ews_carbon_components",
+  {
+    id: serial("id").primaryKey(),
+    assemblySpecId: integer("assembly_spec_id").notNull(),
+    // Interior/Exterior/Core classification
+    zone: varchar("zone", { length: 20 }).notNull(), // "INTERIOR", "CORE", "EXTERIOR"
+    layerOrder: integer("layer_order").notNull(),
+    layerName: varchar("layer_name", { length: 255 }).notNull(), // e.g. "Interior GWB (5/8\")"
+    // For assemblies with multiple framing options (1=CFMF, 2=HSS, 3=Unitized)
+    framingOption: integer("framing_option"), // null = shared across all options
+    // Manufacturer + product
+    manufacturer: varchar("manufacturer", { length: 255 }),
+    productName: varchar("product_name", { length: 255 }),
+    epdNumber: varchar("epd_number", { length: 100 }),
+    // Dimensions
+    dimensionParam: varchar("dimension_param", { length: 100 }), // e.g. "5/8\"", "4\"", "2\""
+    // GWP data from EPD
+    gwpValue: decimal("gwp_value", { precision: 12, scale: 4 }),
+    gwpUnits: varchar("gwp_units", { length: 50 }), // e.g. "kgCO2e/m2", "kgCO2e/kg"
+    declaredUnit: varchar("declared_unit", { length: 50 }), // e.g. "1 square meter", "1 metric ton"
+    msfFactor: decimal("msf_factor", { length: 50, precision: 12, scale: 4 }), // conversion to 1000 SF
+    // Computed: embodied carbon per 1000 SF facade
+    carbonPer1000sf: decimal("carbon_per_1000sf", { precision: 12, scale: 2 }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    assemblyIdx: index("idx_ews_carbon_comp_assembly").on(table.assemblySpecId),
+    zoneIdx: index("idx_ews_carbon_comp_zone").on(table.zone),
+  })
+);
+
+export type EwsCarbonComponent = typeof ewsCarbonComponents.$inferSelect;
+export type InsertEwsCarbonComponent = typeof ewsCarbonComponents.$inferInsert;
+
 // ─── Scraped Suppliers ──────────────────────────────────────────────────────
 
 export const scrapedSuppliers = pgTable("scraped_suppliers", {
