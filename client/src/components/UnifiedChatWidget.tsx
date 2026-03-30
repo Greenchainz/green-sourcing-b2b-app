@@ -410,17 +410,7 @@ export function UnifiedChatWidget() {
                   >
                     <Phone className="h-4 w-4" />
                   </Button>
-                  {/* Video Call Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-white hover:bg-white/20"
-                    onClick={() => handleInitiateCall("video")}
-                    title={callLimit?.allowed ? `Video call (${callLimit.remainingMinutes !== null ? `${callLimit.remainingMinutes} min remaining` : "unlimited"})` : "Upgrade to make calls"}
-                    disabled={!callLimit?.allowed}
-                  >
-                    <Video className="h-4 w-4" />
-                  </Button>
+                  {/* VIDEO CALLING — cut for launch, restore when ACS is implemented */}
                   <Button
                     variant="ghost"
                     size="icon"

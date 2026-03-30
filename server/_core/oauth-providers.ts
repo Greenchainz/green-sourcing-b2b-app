@@ -56,8 +56,8 @@ function consumeState(state: string) {
 // ── Provider configs ──────────────────────────────────────────────────────────
 
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
-  const tenantId = getEnv("AZURE_AD_TENANT_ID") || "ca4f78d4-c753-4893-9cd8-1b309922b4dc";
-  const clientId = getEnv("AZURE_AD_CLIENT_ID") || "479e2a01-70ab-4df9-baa4-560d317c3423";
+  const tenantId = getEnv("AZURE_AD_TENANT_ID") || getEnv("AZURE_TENANT_ID") || getEnv("TENANT_ID") || "ca4f78d4-c753-4893-9cd8-1b309922b4dc";
+  const clientId = getEnv("AZURE_AD_CLIENT_ID") || getEnv("MICROSOFT_CLIENT_ID") || getEnv("AZURE_CLIENT_ID_APP") || "479e2a01-70ab-4df9-baa4-560d317c3423";
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
@@ -105,9 +105,9 @@ interface OAuthUserInfo {
 }
 
 async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const tenantId = getEnv("AZURE_AD_TENANT_ID") || "ca4f78d4-c753-4893-9cd8-1b309922b4dc";
-  const clientId = getEnv("AZURE_AD_CLIENT_ID") || "479e2a01-70ab-4df9-baa4-560d317c3423";
-  const clientSecret = getEnv("AZURE_AD_CLIENT_SECRET");
+  const tenantId = getEnv("AZURE_AD_TENANT_ID") || getEnv("AZURE_TENANT_ID") || getEnv("TENANT_ID") || "ca4f78d4-c753-4893-9cd8-1b309922b4dc";
+  const clientId = getEnv("AZURE_AD_CLIENT_ID") || getEnv("MICROSOFT_CLIENT_ID") || getEnv("AZURE_CLIENT_ID_APP") || "479e2a01-70ab-4df9-baa4-560d317c3423";
+  const clientSecret = getEnv("MICROSOFT_CLIENT_SECRET") || getEnv("AZURE_AD_CLIENT_SECRET");
 
   const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
     method: "POST",

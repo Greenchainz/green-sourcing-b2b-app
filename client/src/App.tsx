@@ -39,8 +39,9 @@ import MaterialCreditScorePage from "./pages/MaterialCreditScorePage";
 import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
 import { ChainBot } from "./components/ChainBot";
-import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
-import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
+// VIDEO CALLING — cut for launch, restore when ACS is implemented
+// import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
+// import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
 import { UnifiedChatWidget } from "./components/UnifiedChatWidget";
 import { ChatWidget } from "./components/ChatWidget";
 import AdminVerificationQueue from "./pages/AdminVerificationQueue";
@@ -212,19 +213,9 @@ function AppInner() {
   // This hook calls useAuth() so it MUST be inside AuthProvider
   useWebPubSub();
 
-  const [activeCall, setActiveCall] = useState<{
-    conversationId: number;
-    calleeId: number;
-    calleeName: string;
-  } | null>(null);
-
-  const handleAcceptCall = (callData: any) => {
-    setActiveCall({
-      conversationId: callData.conversationId,
-      calleeId: callData.callerId,
-      calleeName: callData.callerName,
-    });
-  };
+  // VIDEO CALLING — cut for launch, restore when ACS is implemented
+  // const [activeCall, setActiveCall] = useState<{...} | null>(null);
+  // const handleAcceptCall = (callData: any) => { ... };
 
   return (
     <ChatWidgetProvider>
@@ -235,15 +226,8 @@ function AppInner() {
         <ArchitectOnboardingGuard />
         <Router />
         <ChainBot />
-        <IncomingCallNotification onAccept={handleAcceptCall} />
-        {activeCall && (
-          <WebRTCVideoCall
-            conversationId={activeCall.conversationId}
-            calleeId={activeCall.calleeId}
-            calleeName={activeCall.calleeName}
-            onCallEnd={() => setActiveCall(null)}
-          />
-        )}
+        {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
+        {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
         <ChatWidget />
       </TooltipProvider>
     </ChatWidgetProvider>
