@@ -97,6 +97,8 @@ export async function loadSecrets(): Promise<void> {
         // Autodesk SDA (Sustainable Design API)
         "AUTODESK-CLIENT-ID": "AUTODESK_CLIENT_ID",
         "AUTODESK-CLIENT-SECRET": "AUTODESK_CLIENT_SECRET",
+        // Intercom (Messenger identity verification)
+        "INTERCOM-SECRET": "INTERCOM_SECRET",
       };
 
       for (const [vaultKey, envKey] of Object.entries(secretMappings)) {
