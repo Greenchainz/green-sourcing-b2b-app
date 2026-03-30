@@ -28,6 +28,7 @@ import RfqDashboard from "./pages/RfqDashboard";
 import { SupplierRegistration } from "./pages/SupplierRegistration";
 import { SupplierProfileDashboard } from "./pages/SupplierProfileDashboard";
 import SupplierRfqDashboard from "./pages/SupplierRfqDashboard";
+import Tools from "./pages/Tools";
 import GetStarted from "./pages/GetStarted";
 import SupplierOnboarding from "./pages/SupplierOnboarding";
 import ArchitectOnboarding from "./pages/ArchitectOnboarding";
@@ -103,6 +104,7 @@ function Router() {
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
       <Route path={"/api-test"} component={ApiTest} />          <Route path="/excel-audit" component={ExcelAudit} />
           <Route path="/excel-audit-tool" component={ExcelAuditWorkingTool} />      <Route path={"/about"} component={About} />
+      <Route path={"/tools"} component={Tools} />
       <Route path={"/tools/extension"} component={BrowserExtension} />
       <Route path={"/tools/revit"} component={RevitPlugin} />
       <Route path={"/tools/submittal"} component={SubmittalGenerator} />
