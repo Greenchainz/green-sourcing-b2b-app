@@ -230,7 +230,8 @@ function AppInner() {
         <SupplierOnboardingGuard />
         <ArchitectOnboardingGuard />
         <Router />
-        <ChainBot />
+        {/* ChainBot disabled — using Intercom for support. Restore when Azure OpenAI is configured. */}
+        {/* <ChainBot /> */}
         <IntercomWidget />
         {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
         {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
