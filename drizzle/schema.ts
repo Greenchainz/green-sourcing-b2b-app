@@ -103,6 +103,21 @@ export const manufacturers = pgTable("manufacturers", {
   sustainabilityPageUrl: text("sustainabilityPageUrl"),
   verified: boolean("verified").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  subcategory: varchar("subcategory", { length: 100 }),
+  location: varchar("location", { length: 255 }),
+  keyProduct: varchar("keyProduct", { length: 255 }),
+  pitchAngle: text("pitchAngle"),
+  hasEpd: boolean("hasEpd").default(false),
+  readinessLevel: varchar("readinessLevel", { length: 20 }),
+  claimed: boolean("claimed").default(false),
+  claimedByUserId: integer("claimedByUserId"),
+  claimedAt: timestamp("claimedAt"),
+  profileViews: integer("profileViews").default(0),
+  featured: boolean("featured").default(false),
+  dataSource: varchar("dataSource", { length: 100 }),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Manufacturer = typeof manufacturers.$inferSelect;
