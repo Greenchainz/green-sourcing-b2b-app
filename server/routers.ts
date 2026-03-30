@@ -42,6 +42,7 @@ import { supplierOnboardingRouter } from "./routers/supplier";
 import { epdRouter } from "./routers/epd";
 import { locationRouter } from "./routers/location";
 import { architectRouter } from "./routers/architect";
+import { manufacturerRouter } from "./manufacturer-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -61,6 +62,7 @@ export const appRouter = router({
   rfqRequests: rfqRouter,
   supplierOnboarding: supplierOnboardingRouter,
   architect: architectRouter,
+  manufacturer: manufacturerRouter,
   epd: epdRouter,
   location: locationRouter,
 

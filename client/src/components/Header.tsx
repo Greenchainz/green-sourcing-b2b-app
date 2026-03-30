@@ -53,6 +53,9 @@ export default function Header() {
           <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Materials
           </Link>
+          <Link href="/manufacturers" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Suppliers
+          </Link>
           {/* Architect-only nav items — hidden for supplier accounts */}
           {user?.role !== 'supplier' && (
             <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
@@ -155,6 +158,10 @@ export default function Header() {
             <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
               Materials
+            </Link>
+            <Link href="/manufacturers" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Suppliers
             </Link>
             {user?.role !== 'supplier' && (
               <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
