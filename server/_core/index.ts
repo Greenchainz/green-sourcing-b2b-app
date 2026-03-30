@@ -206,6 +206,54 @@ async function startServer() {
     }
   });
 
+  // Admin: import materials from an uploaded EPD PDF via GPT-4o extraction
+  // POST /api/admin/import-pdf-materials  (multipart/form-data, field: "pdf")
+  // Optional query: ?dryRun=true  — returns extracted materials without saving
+  app.post(
+    "/api/admin/import-pdf-materials",
+    adminRateLimit,
+    (req, res, next) => {
+      // multer: accept single PDF file up to 20 MB
+      const multer = require("multer");
+      const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+      upload.single("pdf")(req, res, next);
+    },
+    async (req: any, res: any) => {
+      try {
+        const user = await getAdminUser(req, res);
+        if (!user) return;
+
+        if (!req.file) {
+          return res.status(400).json({ error: "No PDF file uploaded. Use field name 'pdf'." });
+        }
+
+        const dryRun = req.query.dryRun === "true";
+        const filename = req.file.originalname || "upload.pdf";
+
+        const { extractTextFromPDFBuffer, extractMaterialsWithAI, importMaterialsToDB } =
+          await import("../import-pdf-service");
+
+        console.log(`[import-pdf] Extracting text from ${filename} (${req.file.size} bytes)`);
+        const pdfText = await extractTextFromPDFBuffer(req.file.buffer);
+        console.log(`[import-pdf] Extracted ${pdfText.length} chars. Sending to GPT-4o...`);
+
+        const extracted = await extractMaterialsWithAI(pdfText, filename);
+        console.log(`[import-pdf] GPT-4o extracted ${extracted.length} materials`);
+
+        const result = await importMaterialsToDB(extracted, dryRun);
+        res.json({
+          ...result,
+          filename,
+          textLength: pdfText.length,
+          dryRun,
+        });
+      } catch (err) {
+        console.error("[import-pdf] Error:", err);
+        res.status(500).json({ error: "PDF import failed", detail: String(err) });
+      }
+    }
+  );
+
   // Admin: run supplier scraper (Azure Maps + EPD International → scraped_suppliers)
   // Requires: authenticated user with admin role
   app.post("/api/admin/run-supplier-scraper", adminRateLimit, async (req, res) => {
