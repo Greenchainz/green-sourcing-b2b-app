@@ -53,7 +53,7 @@ export function RealTimeMessageThread({
     );
 
   const sendMessageMutation = trpc.messaging.sendMessage.useMutation();
-  const markAsReadMutation = trpc.messaging.markAsRead.useMutation();
+  const markAsReadMutation = trpc.messaging.markMessageAsRead.useMutation();
   const broadcastTypingMutation = trpc.messaging.broadcastTyping.useMutation();
 
   // Initialize messages from history

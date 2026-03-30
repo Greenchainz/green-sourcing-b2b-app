@@ -48,7 +48,7 @@ export async function getApsAccessToken(): Promise<string> {
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: 'client_credentials',
-        scope: 'data:read', // Scope for reading sustainability data
+        scope: 'data:read data:write', // Sustainability Data API requires data:read
       }).toString(),
     });
 

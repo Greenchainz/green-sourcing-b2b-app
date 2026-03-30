@@ -75,15 +75,22 @@ async function authenticate(): Promise<string> {
     return cachedToken;
   }
 
+  // Prefer API key if set — no login round-trip needed
+  if (ENV.ec3ApiKey) {
+    cachedToken = ENV.ec3ApiKey;
+    tokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
+    return cachedToken;
+  }
+
+  // Fall back to username/password login
+  if (!ENV.ec3Username || !ENV.ec3Password) {
+    throw new Error("EC3 credentials missing — set EC3_API_KEY or both EC3_USERNAME and EC3_PASSWORD in .env.local");
+  }
+
   const response = await fetch(`${EC3_BASE_URL}/rest-auth/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      username: ENV.ec3Username,
-      password: ENV.ec3Password,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: ENV.ec3Username, password: ENV.ec3Password }),
   });
 
   if (!response.ok) {
@@ -93,7 +100,6 @@ async function authenticate(): Promise<string> {
 
   const data: EC3AuthResponse = await response.json();
   cachedToken = data.key;
-  // Cache token for 23 hours (tokens typically last 24 hours)
   tokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
 
   return cachedToken;

@@ -189,6 +189,23 @@ async function startServer() {
     }
   });
 
+  // Admin: seed materials from Autodesk SDA (v3beta)
+  // POST /api/admin/seed-materials-autodesk
+  // Requires: Sustainability Data API enabled in APS portal
+  app.post("/api/admin/seed-materials-autodesk", adminRateLimit, async (req, res) => {
+    try {
+      const user = await getAdminUser(req, res);
+      if (!user) return;
+      const { fetchSDAMaterialsForSeed } = await import("../autodesk-sda-service");
+      const results = await fetchSDAMaterialsForSeed();
+      const totalFetched = results.reduce((sum, r) => sum + r.fetched, 0);
+      res.json({ success: true, totalFetched, categories: results.map(r => ({ category: r.category, fetched: r.fetched })) });
+    } catch (err) {
+      console.error("[admin] Autodesk SDA seed error:", err);
+      res.status(500).json({ error: "Autodesk seed failed", detail: String(err) });
+    }
+  });
+
   // Admin: run supplier scraper (Azure Maps + EPD International → scraped_suppliers)
   // Requires: authenticated user with admin role
   app.post("/api/admin/run-supplier-scraper", adminRateLimit, async (req, res) => {

@@ -842,7 +842,7 @@ export const appRouter = router({
         return getThreadMessages(input.threadId, input.limit, input.offset);
       }),
 
-    markAsRead: protectedProcedure
+    markMessageAsRead: protectedProcedure
       .input(z.object({ messageId: z.number() }))
       .mutation(async ({ input }) => {
         const { markMessageAsRead } = await import('./webpubsub-manager');

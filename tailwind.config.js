@@ -3,6 +3,8 @@ module.exports = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './emails/**/*.{js,ts,jsx,tsx,mdx}',
+    './client/src/**/*.{js,ts,jsx,tsx}',
+    './client/index.html',
   ],
   theme: {
     extend: {
