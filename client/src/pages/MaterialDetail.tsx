@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, FileText, ExternalLink, CheckCircle2, XCircle, ArrowDownRight, ArrowUpRight, Sparkles, ArrowRight, ShieldCheck, ShieldAlert, BarChart3 } from "lucide-react";
+import { ArrowLeft, FileText, ExternalLink, CheckCircle2, XCircle, ArrowDownRight, ArrowUpRight, Sparkles, ArrowRight, ShieldCheck, ShieldAlert, BarChart3, Download } from "lucide-react";
 import MaterialSwapCard from "@/components/MaterialSwapCard";
 import { EpdPanel } from "@/components/EpdPanel";
 import { CcpsScoreCard } from "@/components/CcpsScoreCard";
@@ -122,6 +122,11 @@ export default function MaterialDetail() {
                       </Button>
                     </a>
                   )}
+                  <a href={`/api/materials/${id}/spec-sheet`} download>
+                    <Button variant="outline" className="gap-1.5">
+                      <Download className="w-4 h-4" />Download Spec Sheet
+                    </Button>
+                  </a>
                 </div>
               </CardContent>
             </Card>
