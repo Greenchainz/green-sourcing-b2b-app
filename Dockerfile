@@ -34,6 +34,11 @@ ARG VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 # Vite reads it during the build step below via the inline env var.
 ARG VITE_AZURE_MAPS_KEY
 ARG VITE_BACKEND_URL
+ARG VITE_SENTRY_DSN
+# Sentry source map upload (runs during vite build via @sentry/vite-plugin)
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
 # Make them available during build
 ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
     NEXT_PUBLIC_AZURE_TENANT_ID=$NEXT_PUBLIC_AZURE_TENANT_ID \
@@ -48,7 +53,12 @@ ENV NEXT_PUBLIC_AZURE_CLIENT_ID=$NEXT_PUBLIC_AZURE_CLIENT_ID \
 # Build the app:
 #   - vite build  → dist/public/ (client static assets, VITE_AZURE_MAPS_KEY baked in here)
 #   - esbuild     → dist/index.js (server bundle)
-RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY pnpm run build
+RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY \
+    VITE_SENTRY_DSN=$VITE_SENTRY_DSN \
+    SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
+    SENTRY_ORG=$SENTRY_ORG \
+    SENTRY_PROJECT=$SENTRY_PROJECT \
+    pnpm run build
 
 # Stage 3: Runtime
 FROM node:20-alpine AS runtime
