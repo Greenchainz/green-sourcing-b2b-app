@@ -577,4 +577,44 @@ export const adminRouter = router({
     feed.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     return feed.slice(0, 20);
   }),
+
+  /**
+   * Send weekly digest emails to all engaged users
+   */
+  sendWeeklyDigests: adminProcedure.mutation(async () => {
+    const { generateWeeklyDigests } = await import("./services/notification-scheduler");
+    const { sendEmail } = await import("./email-service");
+
+    const payloads = await generateWeeklyDigests();
+    let sent = 0;
+    let failed = 0;
+
+    for (const payload of payloads) {
+      const ok = await sendEmail({ to: payload.to, subject: payload.subject, html: payload.html });
+      if (ok) sent++;
+      else failed++;
+    }
+
+    return { total: payloads.length, sent, failed };
+  }),
+
+  /**
+   * Send streak reminder emails to users at risk of losing their streak
+   */
+  sendStreakReminders: adminProcedure.mutation(async () => {
+    const { findAtRiskStreaks } = await import("./services/notification-scheduler");
+    const { sendEmail } = await import("./email-service");
+
+    const payloads = await findAtRiskStreaks();
+    let sent = 0;
+    let failed = 0;
+
+    for (const payload of payloads) {
+      const ok = await sendEmail({ to: payload.to, subject: payload.subject, html: payload.html });
+      if (ok) sent++;
+      else failed++;
+    }
+
+    return { total: payloads.length, sent, failed };
+  }),
 });
