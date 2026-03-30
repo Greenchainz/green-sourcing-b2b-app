@@ -75,6 +75,11 @@ export default function Header() {
           <Link href="/carbon-compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Carbon Compare
           </Link>
+          {user?.role === 'admin' && (
+            <Link href="/admin" className="text-sm font-medium text-red-400 hover:text-red-300 transition-colors">
+              Admin
+            </Link>
+          )}
           <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors relative inline-flex items-center gap-1.5">
             Messages
             {unreadCount > 0 && (
@@ -177,6 +182,12 @@ export default function Header() {
                onClick={() => setMobileMenuOpen(false)}>
               Carbon Compare
             </Link>
+            {user?.role === 'admin' && (
+              <Link href="/admin" className="text-sm font-medium text-red-400 hover:text-red-300 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                 onClick={() => setMobileMenuOpen(false)}>
+                Admin
+              </Link>
+            )}
             <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md flex items-center justify-between"
                onClick={() => setMobileMenuOpen(false)}>
               Messages
