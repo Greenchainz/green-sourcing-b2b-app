@@ -44,6 +44,7 @@ import { locationRouter } from "./routers/location";
 import { architectRouter } from "./routers/architect";
 import { manufacturerRouter } from "./manufacturer-router";
 import { getAllPriceTrends, getPriceTrend } from "./services/price-trends";
+import { engagementRouter } from "./engagement-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -64,6 +65,7 @@ export const appRouter = router({
   supplierOnboarding: supplierOnboardingRouter,
   architect: architectRouter,
   manufacturer: manufacturerRouter,
+  engagement: engagementRouter,
   epd: epdRouter,
   location: locationRouter,
 

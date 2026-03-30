@@ -72,6 +72,9 @@ export default function Header() {
               My RFQs
             </Link>
           )}
+          <Link href="/insider" className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors">
+            Insider
+          </Link>
           <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Compare
           </Link>
@@ -181,6 +184,10 @@ export default function Header() {
                 My RFQs
               </Link>
             )}
+            <Link href="/insider" className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Insider
+            </Link>
             <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
               Compare

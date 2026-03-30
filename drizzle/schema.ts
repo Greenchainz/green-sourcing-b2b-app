@@ -1372,3 +1372,35 @@ export const emailCredentials = pgTable("email_credentials", {
 });
 
 export type EmailCredential = typeof emailCredentials.$inferSelect;
+
+// ─── User Engagement (Insider streak/credit system) ────────────────────────
+
+export const userEngagement = pgTable("user_engagement", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  credits: integer("credits").default(0).notNull(),
+  currentStreak: integer("currentStreak").default(0).notNull(),
+  longestStreak: integer("longestStreak").default(0).notNull(),
+  lastCheckIn: timestamp("lastCheckIn"),
+  totalCheckIns: integer("totalCheckIns").default(0).notNull(),
+  tier: varchar("tier", { length: 20 }).default("explorer").notNull(),
+  rfqsSubmitted: integer("rfqsSubmitted").default(0).notNull(),
+  referrals: integer("referrals").default(0).notNull(),
+  comparisons: integer("comparisons").default(0).notNull(),
+  specSheetsGenerated: integer("specSheetsGenerated").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type UserEngagement = typeof userEngagement.$inferSelect;
+
+export const engagementLog = pgTable("engagement_log", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  action: varchar("action", { length: 50 }).notNull(),
+  creditsEarned: integer("creditsEarned").default(0).notNull(),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EngagementLog = typeof engagementLog.$inferSelect;

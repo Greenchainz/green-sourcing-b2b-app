@@ -52,6 +52,7 @@ import { AdminSupplierDashboard } from "./pages/AdminSupplierDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import SupplierSpecSubmission from "./pages/SupplierSpecSubmission";
 import MaterialSwap from "./pages/MaterialSwap";
+import InsiderPage from "./pages/InsiderPage";
 import ManufacturerDirectory from "./pages/ManufacturerDirectory";
 import ManufacturerProfile from "./pages/ManufacturerProfile";
 import SupplierAgentConfig from "./pages/SupplierAgentConfig";
@@ -85,6 +86,7 @@ function Router() {
       <Route path="/rfq/:id" component={RfqDetail} />
       <Route path="/rfqs" component={RFQListPage} />
       <Route path="/rfqs/:rfqId" component={RFQDetailPage} />
+      <Route path="/insider" component={InsiderPage} />
       <Route path="/manufacturers" component={ManufacturerDirectory} />
       <Route path="/manufacturers/:id" component={ManufacturerProfile} />
       <Route path="/compare" component={Compare} />
