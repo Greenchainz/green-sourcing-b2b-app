@@ -84,7 +84,7 @@ jobs:
             --name ${{ env.AZURE_CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}" "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" "SENTRY_RELEASE=${{ github.sha }}"
 
       - name: Logout from Azure
         run: az logout || true
