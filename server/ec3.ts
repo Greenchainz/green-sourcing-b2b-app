@@ -237,7 +237,8 @@ export async function fetchEC3Categories(): Promise<Array<{
 /**
  * Parse GWP string to number (e.g., "339 kgCO2e" -> 339)
  */
-export function parseGWP(gwpString: string): number {
+export function parseGWP(gwpString: string | null | undefined): number {
+  if (!gwpString) return 0;
   const match = gwpString.match(/^([\d.]+)\s*kgCO2e$/);
   return match ? parseFloat(match[1]) : 0;
 }
