@@ -140,6 +140,35 @@ async function startServer() {
   app.get("/api/oauth/callback", (_req, res) => {
     res.redirect("/");
   });
+
+  // ── Intercom JWT for identity verification ──────────────────────────────
+  app.get("/api/intercom/token", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
+      const secret = process.env.INTERCOM_SECRET;
+      if (!secret) {
+        res.status(500).json({ error: "Intercom secret not configured" });
+        return;
+      }
+      const { SignJWT } = await import("jose");
+      const encoder = new TextEncoder();
+      const token = await new SignJWT({
+        user_id: String(user.id),
+        email: user.email || undefined,
+        name: user.name || undefined,
+      })
+        .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+        .setExpirationTime("1h")
+        .sign(encoder.encode(secret));
+      res.json({ token });
+    } catch {
+      res.status(401).json({ error: "Not authenticated" });
+    }
+  });
   
   // Microsoft Marketplace endpoints
   app.get("/api/marketplace/landing", handleLandingPage);
