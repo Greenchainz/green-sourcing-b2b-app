@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
+import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ResponsiveContainer,
   BarChart,
@@ -19,6 +21,7 @@ import {
   Building2,
   Award,
   Filter,
+  AlertCircle,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -43,120 +46,7 @@ interface Assembly {
   };
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const RAW_ASSEMBLIES: Omit<Assembly, "tier">[] = [
-  {
-    id: "EWS-1A-V",
-    name: "EWS-1A Unitized Vision",
-    epd: null,
-    gwpA1A3: 55.7,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 5172.7,
-    tags: { assemblyType: "Unitized", framingType: "Curtainwall", finish: "Vision" },
-  },
-  {
-    id: "EWS-1A-SB",
-    name: "EWS-1A Unitized Shadowbox",
-    epd: null,
-    gwpA1A3: 55.7,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 5172.7,
-    tags: { assemblyType: "Unitized", framingType: "Curtainwall", finish: "Shadowbox" },
-  },
-  {
-    id: "EWS-1A-SP",
-    name: "EWS-1A Unitized Spandrel",
-    epd: null,
-    gwpA1A3: 25.4,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 2359.7,
-    tags: { assemblyType: "Unitized", framingType: "Curtainwall", finish: "Spandrel" },
-  },
-  {
-    id: "EWS-1B-VF",
-    name: "EWS-1B Unitized Vision Frit",
-    epd: null,
-    gwpA1A3: 80.0,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 7432.2,
-    tags: { assemblyType: "Unitized", framingType: "Curtainwall", finish: "Frit Glass" },
-  },
-  {
-    id: "EWS-2A-G",
-    name: "EWS-2A Granite Panel CFMF",
-    epd: null,
-    gwpA1A3: 39.1,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 3632.5,
-    tags: { assemblyType: "Panel", framingType: "CFMF", finish: "Granite" },
-  },
-  {
-    id: "EWS-2B-LS",
-    name: "EWS-2B Limestone Panel CFMF",
-    epd: null,
-    gwpA1A3: 29.2,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 2712.8,
-    tags: { assemblyType: "Panel", framingType: "CFMF", finish: "Limestone" },
-  },
-  {
-    id: "EWS-2B-SS",
-    name: "EWS-2B Sandstone Panel CFMF",
-    epd: null,
-    gwpA1A3: 24.0,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 2229.7,
-    tags: { assemblyType: "Panel", framingType: "CFMF", finish: "Sandstone" },
-  },
-  {
-    id: "EWS-3A-TC",
-    name: "EWS-3A Terracotta Panel CFMF",
-    epd: null,
-    gwpA1A3: 111.0,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 10312.2,
-    tags: { assemblyType: "Panel", framingType: "CFMF", finish: "Terracotta" },
-  },
-  {
-    id: "EWS-3B-UHPC",
-    name: "EWS-3B UHPC Panel CFMF",
-    epd: null,
-    gwpA1A3: 14.9,
-    unit: "m²",
-    conversionFactor: 92.903,
-    gwpPer1000sf: 1384.3,
-    tags: { assemblyType: "Panel", framingType: "CFMF", finish: "UHPC" },
-  },
-  {
-    id: "EWS-3C-GFRC",
-    name: "EWS-3C GFRC Panel CFMF",
-    epd: null,
-    gwpA1A3: 818.0,
-    unit: "mt",
-    conversionFactor: 4.64,
-    gwpPer1000sf: 3795.5,
-    tags: { assemblyType: "Panel", framingType: "CFMF", finish: "GFRC" },
-  },
-  {
-    id: "EWS-5-AMP",
-    name: "EWS-5 Aluminum Metal Panel",
-    epd: null,
-    gwpA1A3: 10.62,
-    unit: "100m²",
-    conversionFactor: 1000,
-    gwpPer1000sf: 10620.0,
-    tags: { assemblyType: "Panel", framingType: "Metal", finish: "Aluminum" },
-  },
-];
+// ─── Tier helper ──────────────────────────────────────────────────────────────
 
 function getTier(gwpPer1000sf: number): CarbonTier {
   if (gwpPer1000sf < 5000) return "LOW";
@@ -164,10 +54,42 @@ function getTier(gwpPer1000sf: number): CarbonTier {
   return "HIGH";
 }
 
-const ASSEMBLIES: Assembly[] = RAW_ASSEMBLIES.map((a) => ({
-  ...a,
-  tier: getTier(a.gwpPer1000sf),
-}));
+// ─── Map DB rows → Assembly type ──────────────────────────────────────────────
+
+interface DbRow {
+  id: number;
+  name: string;
+  category: string;
+  epdNumber: string | null;
+  gwpA1A3: string | null;
+  gwpDeclaredUnit: string | null;
+  gwpMsfFactor: string | null;
+  gwpPer1000sf: string | null;
+  carbonTier: string | null;
+  assemblyTypeTags: string[] | null;
+  framingTypeTags: string[] | null;
+  exteriorFinishTags: string[] | null;
+  certificationTags: string[] | null;
+}
+
+function mapDbToAssembly(row: DbRow): Assembly {
+  const gwpPer1000sf = Number(row.gwpPer1000sf) || 0;
+  return {
+    id: `EWS-${row.id}`,
+    name: row.name,
+    epd: row.epdNumber,
+    gwpA1A3: Number(row.gwpA1A3) || 0,
+    unit: row.gwpDeclaredUnit || "m²",
+    conversionFactor: Number(row.gwpMsfFactor) || 1,
+    gwpPer1000sf,
+    tier: getTier(gwpPer1000sf),
+    tags: {
+      assemblyType: row.assemblyTypeTags?.[0]?.replace(/-/g, " ") || "—",
+      framingType: row.framingTypeTags?.[0]?.replace(/-/g, " ") || "—",
+      finish: row.exteriorFinishTags?.[0]?.replace(/-/g, " ") || "—",
+    },
+  };
+}
 
 // ─── Tier colour helpers ──────────────────────────────────────────────────────
 
@@ -193,7 +115,7 @@ const TIER_LABELS: Record<CarbonTier, string> = {
 
 interface TooltipPayloadItem {
   value: number;
-  payload: Assembly;
+  payload: Assembly & { shortName: string };
 }
 
 interface CustomTooltipProps {
@@ -246,63 +168,65 @@ function CustomBarLabel({ x = 0, y = 0, width = 0, height = 0, value = 0 }: Cust
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
 
-export default function CarbonCompare() {
-  const [sortMode, setSortMode] = useState<SortMode>("carbon");
-  const [tierFilter, setTierFilter] = useState<TierFilter>("ALL");
-
-  // ── Stats ──
-  const sorted = useMemo(
-    () => [...ASSEMBLIES].sort((a, b) => a.gwpPer1000sf - b.gwpPer1000sf),
-    []
-  );
-  const lowest = sorted[0];
-  const highest = sorted[sorted.length - 1];
-  const average = Math.round(
-    ASSEMBLIES.reduce((sum, a) => sum + a.gwpPer1000sf, 0) / ASSEMBLIES.length
-  );
-
-  // ── Filtered + sorted list for chart & cards ──
-  const displayed = useMemo(() => {
-    let list = tierFilter === "ALL" ? ASSEMBLIES : ASSEMBLIES.filter((a) => a.tier === tierFilter);
-    if (sortMode === "carbon") {
-      list = [...list].sort((a, b) => a.gwpPer1000sf - b.gwpPer1000sf);
-    } else {
-      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-    }
-    return list;
-  }, [sortMode, tierFilter]);
-
-  // ── Chart data — truncate name for Y-axis ──
-  const chartData = useMemo(
-    () =>
-      displayed.map((a) => ({
-        ...a,
-        shortName: a.name.replace(/^EWS-\d+[A-Z]? /, "").replace(" CFMF", ""),
-      })),
-    [displayed]
-  );
-
-  const tierFilters: { value: TierFilter; label: string }[] = [
-    { value: "ALL", label: "All" },
-    { value: "LOW", label: "Low" },
-    { value: "MID", label: "Mid" },
-    { value: "HIGH", label: "High" },
-  ];
-
+function LoadingSkeleton() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0a0a" }}>
       <Header />
-
       <main className="flex-1 container py-8 max-w-6xl mx-auto px-4">
-        {/* ── Page header ── */}
+        {/* Page header skeleton */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-            <span>Tools</span>
-            <span>/</span>
-            <span className="text-foreground">Carbon Compare</span>
+          <Skeleton className="h-4 w-48 bg-gray-800 mb-3" />
+          <div className="flex items-start gap-3">
+            <Skeleton className="h-10 w-10 rounded-lg bg-gray-800 shrink-0" />
+            <div>
+              <Skeleton className="h-7 w-64 bg-gray-800 mb-2" />
+              <Skeleton className="h-4 w-96 bg-gray-800" />
+            </div>
           </div>
+        </div>
+
+        {/* KPI card skeletons */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          {[0, 1, 2].map((i) => (
+            <Card key={i} className="bg-gray-900 border-gray-800 py-5">
+              <CardContent className="px-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Skeleton className="h-7 w-7 rounded-md bg-gray-800" />
+                  <Skeleton className="h-3 w-28 bg-gray-800" />
+                </div>
+                <Skeleton className="h-8 w-40 bg-gray-800 mb-2" />
+                <Skeleton className="h-4 w-36 bg-gray-800 mb-1" />
+                <Skeleton className="h-3 w-24 bg-gray-800" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Chart skeleton */}
+        <Card className="bg-gray-900 border-gray-800 mb-8">
+          <CardHeader className="pb-2">
+            <Skeleton className="h-5 w-56 bg-gray-800" />
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <Skeleton className="h-80 w-full bg-gray-800 rounded-lg" />
+          </CardContent>
+        </Card>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0a0a" }}>
+      <Header />
+      <main className="flex-1 container py-8 max-w-6xl mx-auto px-4">
+        <div className="mb-8">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mt-0.5">
               <Leaf className="w-5 h-5 text-emerald-400" />
@@ -310,220 +234,31 @@ export default function CarbonCompare() {
             <div>
               <h1 className="text-2xl font-bold text-white">Embodied Carbon Compare</h1>
               <p className="text-sm text-gray-400 mt-1">
-                A1–A3 embodied carbon benchmarks for EWS facade assemblies, expressed as kg CO₂e per 1,000 SF.
+                Compare wall assembly systems by embodied carbon intensity
               </p>
             </div>
           </div>
         </div>
-
-        {/* ── Hero KPI cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {/* Lowest */}
-          <Card className="bg-gray-900 border-gray-800 py-5">
-            <CardContent className="px-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-                  <Leaf className="w-4 h-4 text-emerald-400" />
-                </div>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Lowest Carbon</span>
-              </div>
-              <div className="text-2xl font-bold text-emerald-400 mb-1">
-                {lowest.gwpPer1000sf.toLocaleString()}
-                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
-              </div>
-              <div className="text-sm text-gray-300 font-medium truncate">{lowest.name}</div>
-              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
-            </CardContent>
-          </Card>
-
-          {/* Average */}
-          <Card className="bg-gray-900 border-gray-800 py-5">
-            <CardContent className="px-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-md bg-blue-500/10 border border-blue-500/20">
-                  <BarChart3 className="w-4 h-4 text-blue-400" />
-                </div>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Portfolio Average</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-400 mb-1">
-                {average.toLocaleString()}
-                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
-              </div>
-              <div className="text-sm text-gray-300 font-medium">{ASSEMBLIES.length} assemblies</div>
-              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
-            </CardContent>
-          </Card>
-
-          {/* Highest */}
-          <Card className="bg-gray-900 border-gray-800 py-5">
-            <CardContent className="px-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20">
-                  <Award className="w-4 h-4 text-red-400" />
-                </div>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Highest Carbon</span>
-              </div>
-              <div className="text-2xl font-bold text-red-400 mb-1">
-                {highest.gwpPer1000sf.toLocaleString()}
-                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
-              </div>
-              <div className="text-sm text-gray-300 font-medium truncate">{highest.name}</div>
-              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ── Controls ── */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          {/* Sort toggle */}
-          <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
-            <Button
-              size="sm"
-              variant={sortMode === "carbon" ? "default" : "ghost"}
-              className={`h-7 text-xs px-3 ${sortMode === "carbon" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "text-gray-400 hover:text-white"}`}
-              onClick={() => setSortMode("carbon")}
-            >
-              <BarChart3 className="w-3.5 h-3.5 mr-1" />
-              By Carbon
-            </Button>
-            <Button
-              size="sm"
-              variant={sortMode === "name" ? "default" : "ghost"}
-              className={`h-7 text-xs px-3 ${sortMode === "name" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "text-gray-400 hover:text-white"}`}
-              onClick={() => setSortMode("name")}
-            >
-              <Building2 className="w-3.5 h-3.5 mr-1" />
-              By Name
-            </Button>
-          </div>
-
-          {/* Tier filter */}
-          <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
-            <div className="flex items-center px-2">
-              <Filter className="w-3.5 h-3.5 text-gray-500" />
+        <Card className="bg-gray-900 border-gray-800">
+          <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
+            <div className="p-3 rounded-full bg-blue-500/10 border border-blue-500/20">
+              <AlertCircle className="w-6 h-6 text-blue-400" />
             </div>
-            {tierFilters.map(({ value, label }) => (
-              <Button
-                key={value}
-                size="sm"
-                variant="ghost"
-                onClick={() => setTierFilter(value)}
-                className={`h-7 text-xs px-3 ${
-                  tierFilter === value
-                    ? value === "ALL"
-                      ? "bg-gray-700 text-white"
-                      : value === "LOW"
-                      ? "bg-emerald-600/30 text-emerald-400 border border-emerald-500/40"
-                      : value === "MID"
-                      ? "bg-yellow-600/30 text-yellow-400 border border-yellow-500/40"
-                      : "bg-red-600/30 text-red-400 border border-red-500/40"
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-
-          <span className="text-xs text-gray-500 ml-1">
-            {displayed.length} of {ASSEMBLIES.length} assemblies
-          </span>
-        </div>
-
-        {/* ── Bar Chart ── */}
-        <Card className="bg-gray-900 border-gray-800 mb-8">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-gray-200 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-emerald-400" />
-              GWP A1–A3 per 1,000 SF (kg CO₂e)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {displayed.length === 0 ? (
-              <div className="flex items-center justify-center h-40 text-gray-500 text-sm">
-                No assemblies match the selected filter.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={displayed.length * 44 + 20}>
-                <BarChart
-                  data={chartData}
-                  layout="vertical"
-                  margin={{ top: 4, right: 80, bottom: 4, left: 8 }}
-                  barCategoryGap="20%"
-                >
-                  <XAxis
-                    type="number"
-                    tick={{ fill: "#6b7280", fontSize: 11 }}
-                    axisLine={{ stroke: "#374151" }}
-                    tickLine={false}
-                    tickFormatter={(v: number) => v.toLocaleString()}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="shortName"
-                    width={150}
-                    tick={{ fill: "#d1d5db", fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-                  <Bar dataKey="gwpPer1000sf" radius={[0, 4, 4, 0]} label={<CustomBarLabel />}>
-                    {chartData.map((entry) => (
-                      <Cell key={entry.id} fill={TIER_COLORS[entry.tier]} opacity={0.85} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-
-            {/* Legend */}
-            <div className="flex items-center gap-5 mt-4 pt-4 border-t border-gray-800">
-              {(["LOW", "MID", "HIGH"] as CarbonTier[]).map((t) => (
-                <div key={t} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-sm"
-                    style={{ backgroundColor: TIER_COLORS[t] }}
-                  />
-                  <span className="text-xs text-gray-400">{TIER_LABELS[t]}</span>
-                  {t === "LOW" && <span className="text-xs text-gray-600">(&lt;5,000)</span>}
-                  {t === "MID" && <span className="text-xs text-gray-600">(5,000–15,000)</span>}
-                  {t === "HIGH" && <span className="text-xs text-gray-600">(&gt;15,000)</span>}
-                </div>
-              ))}
+            <div className="text-center">
+              <p className="text-white font-semibold mb-1">No assembly data found</p>
+              <p className="text-sm text-gray-400 max-w-sm">
+                Seed your database with assembly specs to see the carbon comparison chart.
+              </p>
             </div>
           </CardContent>
         </Card>
-
-        {/* ── Assembly Detail Cards ── */}
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-gray-200 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-emerald-400" />
-            Assembly Details
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            All values per declared unit (A1–A3 stage). Carbon per 1,000 SF uses a conversion factor per assembly.
-          </p>
-        </div>
-
-        {displayed.length === 0 ? (
-          <div className="text-center py-16 text-gray-500 text-sm">
-            No assemblies match the selected filter.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-            {displayed.map((a) => (
-              <AssemblyCard key={a.id} assembly={a} />
-            ))}
-          </div>
-        )}
       </main>
-
       <Footer />
     </div>
   );
 }
 
-// ─── Assembly Card ─────────────────────────────────────────────────────────────
+// ─── Assembly Card ────────────────────────────────────────────────────────────
 
 interface AssemblyCardProps {
   assembly: Assembly;
@@ -603,5 +338,358 @@ function AssemblyCard({ assembly: a }: AssemblyCardProps) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function CarbonCompare() {
+  const [sortMode, setSortMode] = useState<SortMode>("carbon");
+  const [tierFilter, setTierFilter] = useState<TierFilter>("ALL");
+
+  const { data: rows, isLoading } = trpc.assemblySpecs.list.useQuery();
+
+  // ── Map DB rows to Assembly objects ──
+  const assemblies = useMemo<Assembly[]>(() => {
+    if (!rows) return [];
+    return rows.map((row) => mapDbToAssembly(row as DbRow));
+  }, [rows]);
+
+  // Loading state
+  if (isLoading) return <LoadingSkeleton />;
+
+  // Empty state
+  if (!assemblies.length) return <EmptyState />;
+
+  // ── Stats ──
+  const sorted = [...assemblies].sort((a, b) => a.gwpPer1000sf - b.gwpPer1000sf);
+  const lowest = sorted[0];
+  const highest = sorted[sorted.length - 1];
+  const average = Math.round(
+    assemblies.reduce((sum, a) => sum + a.gwpPer1000sf, 0) / assemblies.length
+  );
+
+  // Tier counts for badges
+  const tierCounts: Record<CarbonTier, number> = {
+    LOW: assemblies.filter((a) => a.tier === "LOW").length,
+    MID: assemblies.filter((a) => a.tier === "MID").length,
+    HIGH: assemblies.filter((a) => a.tier === "HIGH").length,
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0a0a" }}>
+      <Header />
+
+      <main className="flex-1 container py-8 max-w-6xl mx-auto px-4">
+        {/* ── Page header ── */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+            <span>Tools</span>
+            <span>/</span>
+            <span className="text-foreground">Carbon Compare</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mt-0.5">
+              <Leaf className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Embodied Carbon Compare</h1>
+              <p className="text-sm text-gray-400 mt-1">
+                Compare wall assembly systems by embodied carbon intensity
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Hero KPI cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          {/* Lowest */}
+          <Card className="bg-gray-900 border-gray-800 py-5">
+            <CardContent className="px-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                  <Leaf className="w-4 h-4 text-emerald-400" />
+                </div>
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Lowest Carbon</span>
+              </div>
+              <div className="text-2xl font-bold text-emerald-400 mb-1">
+                {lowest.gwpPer1000sf.toLocaleString()}
+                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
+              </div>
+              <div className="text-sm text-gray-300 font-medium truncate">{lowest.name}</div>
+              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
+            </CardContent>
+          </Card>
+
+          {/* Average */}
+          <Card className="bg-gray-900 border-gray-800 py-5">
+            <CardContent className="px-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-md bg-blue-500/10 border border-blue-500/20">
+                  <BarChart3 className="w-4 h-4 text-blue-400" />
+                </div>
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Portfolio Average</span>
+              </div>
+              <div className="text-2xl font-bold text-blue-400 mb-1">
+                {average.toLocaleString()}
+                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
+              </div>
+              <div className="text-sm text-gray-300 font-medium">{assemblies.length} assemblies</div>
+              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
+            </CardContent>
+          </Card>
+
+          {/* Highest */}
+          <Card className="bg-gray-900 border-gray-800 py-5">
+            <CardContent className="px-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20">
+                  <Award className="w-4 h-4 text-red-400" />
+                </div>
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Highest Carbon</span>
+              </div>
+              <div className="text-2xl font-bold text-red-400 mb-1">
+                {highest.gwpPer1000sf.toLocaleString()}
+                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
+              </div>
+              <div className="text-sm text-gray-300 font-medium truncate">{highest.name}</div>
+              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── Controls ── */}
+        <FilterAndSortControls
+          sortMode={sortMode}
+          setSortMode={setSortMode}
+          tierFilter={tierFilter}
+          setTierFilter={setTierFilter}
+          tierCounts={tierCounts}
+          assemblies={assemblies}
+        />
+
+        {/* ── Chart + Cards ── */}
+        <ChartAndCards
+          assemblies={assemblies}
+          sortMode={sortMode}
+          tierFilter={tierFilter}
+        />
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+// ─── Filter & Sort Controls ───────────────────────────────────────────────────
+
+interface FilterAndSortControlsProps {
+  sortMode: SortMode;
+  setSortMode: (m: SortMode) => void;
+  tierFilter: TierFilter;
+  setTierFilter: (f: TierFilter) => void;
+  tierCounts: Record<CarbonTier, number>;
+  assemblies: Assembly[];
+}
+
+function FilterAndSortControls({
+  sortMode,
+  setSortMode,
+  tierFilter,
+  setTierFilter,
+  tierCounts,
+  assemblies,
+}: FilterAndSortControlsProps) {
+  const tierFilters: { value: TierFilter; label: string; count?: number }[] = [
+    { value: "ALL", label: "All" },
+    { value: "LOW", label: "Low", count: tierCounts.LOW },
+    { value: "MID", label: "Mid", count: tierCounts.MID },
+    { value: "HIGH", label: "High", count: tierCounts.HIGH },
+  ];
+
+  const displayedCount =
+    tierFilter === "ALL"
+      ? assemblies.length
+      : assemblies.filter((a) => a.tier === tierFilter).length;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 mb-6">
+      {/* Sort toggle */}
+      <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
+        <Button
+          size="sm"
+          variant={sortMode === "carbon" ? "default" : "ghost"}
+          className={`h-7 text-xs px-3 ${sortMode === "carbon" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "text-gray-400 hover:text-white"}`}
+          onClick={() => setSortMode("carbon")}
+        >
+          <BarChart3 className="w-3.5 h-3.5 mr-1" />
+          By Carbon
+        </Button>
+        <Button
+          size="sm"
+          variant={sortMode === "name" ? "default" : "ghost"}
+          className={`h-7 text-xs px-3 ${sortMode === "name" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "text-gray-400 hover:text-white"}`}
+          onClick={() => setSortMode("name")}
+        >
+          <Building2 className="w-3.5 h-3.5 mr-1" />
+          By Name
+        </Button>
+      </div>
+
+      {/* Tier filter */}
+      <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
+        <div className="flex items-center px-2">
+          <Filter className="w-3.5 h-3.5 text-gray-500" />
+        </div>
+        {tierFilters.map(({ value, label, count }) => (
+          <Button
+            key={value}
+            size="sm"
+            variant="ghost"
+            onClick={() => setTierFilter(value)}
+            className={`h-7 text-xs px-3 gap-1 ${
+              tierFilter === value
+                ? value === "ALL"
+                  ? "bg-gray-700 text-white"
+                  : value === "LOW"
+                  ? "bg-emerald-600/30 text-emerald-400 border border-emerald-500/40"
+                  : value === "MID"
+                  ? "bg-yellow-600/30 text-yellow-400 border border-yellow-500/40"
+                  : "bg-red-600/30 text-red-400 border border-red-500/40"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {label}
+            {count !== undefined && (
+              <span className="ml-0.5 text-[10px] opacity-70">({count})</span>
+            )}
+          </Button>
+        ))}
+      </div>
+
+      <span className="text-xs text-gray-500 ml-1">
+        {displayedCount} of {assemblies.length} assemblies
+      </span>
+    </div>
+  );
+}
+
+// ─── Chart + Cards Section ────────────────────────────────────────────────────
+
+interface ChartAndCardsProps {
+  assemblies: Assembly[];
+  sortMode: SortMode;
+  tierFilter: TierFilter;
+}
+
+function ChartAndCards({ assemblies, sortMode, tierFilter }: ChartAndCardsProps) {
+  const displayed = useMemo(() => {
+    let list = tierFilter === "ALL" ? assemblies : assemblies.filter((a) => a.tier === tierFilter);
+    if (sortMode === "carbon") {
+      list = [...list].sort((a, b) => a.gwpPer1000sf - b.gwpPer1000sf);
+    } else {
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return list;
+  }, [assemblies, sortMode, tierFilter]);
+
+  const chartData = useMemo(
+    () =>
+      displayed.map((a) => ({
+        ...a,
+        shortName: a.name.length > 22 ? a.name.slice(0, 22) + "…" : a.name,
+      })),
+    [displayed]
+  );
+
+  return (
+    <>
+      {/* ── Bar Chart ── */}
+      <Card className="bg-gray-900 border-gray-800 mb-8">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-gray-200 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-emerald-400" />
+            GWP A1–A3 per 1,000 SF (kg CO₂e)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          {displayed.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-gray-500 text-sm">
+              No assemblies match the selected filter.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={displayed.length * 44 + 20}>
+              <BarChart
+                data={chartData}
+                layout="vertical"
+                margin={{ top: 4, right: 80, bottom: 4, left: 8 }}
+                barCategoryGap="20%"
+              >
+                <XAxis
+                  type="number"
+                  tick={{ fill: "#6b7280", fontSize: 11 }}
+                  axisLine={{ stroke: "#374151" }}
+                  tickLine={false}
+                  tickFormatter={(v: number) => v.toLocaleString()}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="shortName"
+                  width={150}
+                  tick={{ fill: "#d1d5db", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                <Bar dataKey="gwpPer1000sf" radius={[0, 4, 4, 0]} label={<CustomBarLabel />}>
+                  {chartData.map((entry) => (
+                    <Cell key={entry.id} fill={TIER_COLORS[entry.tier]} opacity={0.85} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+
+          {/* Legend */}
+          <div className="flex items-center gap-5 mt-4 pt-4 border-t border-gray-800">
+            {(["LOW", "MID", "HIGH"] as CarbonTier[]).map((t) => (
+              <div key={t} className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-sm"
+                  style={{ backgroundColor: TIER_COLORS[t] }}
+                />
+                <span className="text-xs text-gray-400">{TIER_LABELS[t]}</span>
+                {t === "LOW" && <span className="text-xs text-gray-600">(&lt;5,000)</span>}
+                {t === "MID" && <span className="text-xs text-gray-600">(5,000–15,000)</span>}
+                {t === "HIGH" && <span className="text-xs text-gray-600">(&gt;15,000)</span>}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Assembly Detail Cards ── */}
+      <div className="mb-4">
+        <h2 className="text-base font-semibold text-gray-200 flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-emerald-400" />
+          Assembly Details
+        </h2>
+        <p className="text-xs text-gray-500 mt-1">
+          All values per declared unit (A1–A3 stage). Carbon per 1,000 SF uses a conversion factor per assembly.
+        </p>
+      </div>
+
+      {displayed.length === 0 ? (
+        <div className="text-center py-16 text-gray-500 text-sm">
+          No assemblies match the selected filter.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+          {displayed.map((a) => (
+            <AssemblyCard key={a.id} assembly={a} />
+          ))}
+        </div>
+      )}
+    </>
   );
 }

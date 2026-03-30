@@ -10,6 +10,7 @@ import {
   assemblies,
   assemblyComponents,
   materialCertifications,
+  materialAssemblySpecs,
   ccpsBaselines,
   ccpsScores,
   decisionMakerPersonas,
@@ -61,6 +62,19 @@ export const appRouter = router({
   architect: architectRouter,
   epd: epdRouter,
   location: locationRouter,
+
+  // ─── Assembly Specs (EWS carbon data for Carbon Compare page) ────────────
+  assemblySpecs: router({
+    list: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(materialAssemblySpecs)
+        .orderBy(asc(materialAssemblySpecs.gwpPer1000sf));
+    }),
+  }),
+
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
