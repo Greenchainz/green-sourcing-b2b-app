@@ -72,6 +72,9 @@ export default function Header() {
           <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Compare
           </Link>
+          <Link href="/carbon-compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Carbon Compare
+          </Link>
           <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors relative inline-flex items-center gap-1.5">
             Messages
             {unreadCount > 0 && (
@@ -169,6 +172,10 @@ export default function Header() {
             <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
               Compare
+            </Link>
+            <Link href="/carbon-compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+               onClick={() => setMobileMenuOpen(false)}>
+              Carbon Compare
             </Link>
             <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md flex items-center justify-between"
                onClick={() => setMobileMenuOpen(false)}>
