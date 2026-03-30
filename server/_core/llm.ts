@@ -30,6 +30,7 @@ export type Message = {
   content: MessageContent | MessageContent[];
   name?: string;
   tool_call_id?: string;
+  tool_calls?: ToolCall[];
 };
 
 export type Tool = {
@@ -137,7 +138,7 @@ const normalizeContentPart = (
 };
 
 const normalizeMessage = (message: Message) => {
-  const { role, name, tool_call_id } = message;
+  const { role, name, tool_call_id, tool_calls } = message;
 
   if (role === "tool" || role === "function") {
     const content = ensureArray(message.content)
@@ -156,18 +157,22 @@ const normalizeMessage = (message: Message) => {
 
   // If there's only text content, collapse to a single string for compatibility
   if (contentParts.length === 1 && contentParts[0].type === "text") {
-    return {
+    const normalized: Record<string, unknown> = {
       role,
       name,
       content: contentParts[0].text,
     };
+    if (tool_calls && tool_calls.length > 0) normalized.tool_calls = tool_calls;
+    return normalized;
   }
 
-  return {
+  const normalized: Record<string, unknown> = {
     role,
     name,
     content: contentParts,
   };
+  if (tool_calls && tool_calls.length > 0) normalized.tool_calls = tool_calls;
+  return normalized;
 };
 
 const normalizeToolChoice = (

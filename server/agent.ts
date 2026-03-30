@@ -791,10 +791,11 @@ async function runSpecialist(
 
     // Check if the model wants to call a tool
     if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
-      // Add assistant message with tool calls to history
+      // Add assistant message with tool calls to history (must include tool_calls array)
       messages.push({
         role: "assistant",
         content: choice.message.content || "",
+        tool_calls: choice.message.tool_calls,
       });
 
       for (const toolCall of choice.message.tool_calls) {
