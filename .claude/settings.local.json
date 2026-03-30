@@ -50,7 +50,8 @@
       "Bash(rm -f \"$WDIR/server/_core/types/manusTypes.ts\")",
       "Bash(rm -rf \"$WDIR/client/public/__manus__\")",
       "WebFetch(domain:aps.autodesk.com)",
-      "WebFetch(domain:developer.api.autodesk.com)"
+      "WebFetch(domain:developer.api.autodesk.com)",
+      "Bash(node -e \"console.log\\(require\\(''./node_modules/@azure/functions/package.json''\\).version\\)\")"
     ]
   }
 }

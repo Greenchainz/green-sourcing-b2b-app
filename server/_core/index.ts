@@ -171,6 +171,29 @@ async function startServer() {
     }
   });
   
+  // User: update own role (used during onboarding to select buyer/supplier)
+  app.post("/api/user/set-role", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req).catch(() => null);
+      if (!user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const { role } = req.body as { role?: string };
+      const validRoles = ["buyer", "supplier"] as const;
+      if (!role || !validRoles.includes(role as (typeof validRoles)[number])) {
+        res.status(400).json({ error: "Invalid role. Must be 'buyer' or 'supplier'." });
+        return;
+      }
+      const { updateUserRole } = await import("../db");
+      await updateUserRole(user.id, role as "buyer" | "supplier");
+      res.json({ success: true, role });
+    } catch (err) {
+      console.error("[user] POST /api/user/set-role error:", err);
+      res.status(500).json({ error: "Failed to update role" });
+    }
+  });
+
   // Microsoft Marketplace endpoints
   app.get("/api/marketplace/landing", handleLandingPage);
   app.post("/api/marketplace/webhook", handleWebhook);
@@ -570,6 +593,16 @@ async function startServer() {
       createContext,
     })
   );
+
+  // Global error handler — catches any unhandled errors thrown in route handlers
+  app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    const message = err instanceof Error ? err.message : "Internal server error";
+    console.error("[server] Unhandled error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: message });
+    }
+  });
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
