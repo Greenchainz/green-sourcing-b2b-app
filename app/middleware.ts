@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = [
   '/privacy',
   '/terms',
   '/supplier-agreement',
+  '/tools',
 ]
 
 const PUBLIC_PREFIXES = ['/blog/', '/legal/', '/terms/', '/privacy/']
