@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --sourcemap --outdir=dist",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
@@ -100,7 +100,8 @@
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
     "zod": "^4.3.6",
-    "@sentry/react": "^9.0.0"
+    "@sentry/react": "^9.0.0",
+    "@sentry/node": "^9.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",

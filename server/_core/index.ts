@@ -1,3 +1,4 @@
+import "../instrument"; // Sentry must init before all other modules
 import "dotenv/config";
 import { config } from "dotenv";
 import { existsSync } from "fs";
@@ -575,6 +576,10 @@ async function startServer() {
   } else {
     serveStatic(app);
   }
+
+  // Sentry Express error handler — must be registered after all routes
+  const Sentry = await import("@sentry/node");
+  Sentry.setupExpressErrorHandler(app);
 
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
