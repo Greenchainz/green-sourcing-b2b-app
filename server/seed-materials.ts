@@ -18,7 +18,7 @@
 import { getDb } from "./db";
 import { materials } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { fetchEC3EPDs } from "./ec3";
+import { searchEC3EPDs } from "./ec3";
 import { transformEC3Batch } from "./ec3-transform";
 
 // Priority categories for initial seed — covers ~80% of AEC material requests
@@ -72,7 +72,7 @@ export async function seedMaterialsFromEC3(
   for (const category of categories) {
     try {
       console.log(`[Seed] Fetching EC3 EPDs for category: ${category}`);
-      const epds = await fetchEC3EPDs(category, limit);
+      const epds = await searchEC3EPDs(category, limit);
 
       if (epds.length === 0) {
         console.log(`[Seed] No EPDs found for category: ${category}`);
