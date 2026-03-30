@@ -48,29 +48,11 @@ export async function getACSUserToken(userId: number): Promise<{ token: string; 
     throw new Error("Azure Communication Services is not configured. Set ACS_CONNECTION_STRING and ACS_ENDPOINT_URL environment variables.");
   }
 
-  // TODO: Implement actual ACS token generation
-  // For now, return placeholder
-  // In production, use @azure/communication-identity to generate real tokens
-  
-  /*
-  Example implementation:
-  
-  const { CommunicationIdentityClient } = require('@azure/communication-identity');
-  const identityClient = new CommunicationIdentityClient(process.env.ACS_CONNECTION_STRING);
-  
-  const user = await identityClient.createUser();
-  const tokenResponse = await identityClient.getToken(user, ["voip"]);
-  
-  return {
-    token: tokenResponse.token,
-    userId: user.communicationUserId
-  };
-  */
-
-  return {
-    token: "acs-token-placeholder",
-    userId: `8:acs:${userId}`,
-  };
+  // ACS token generation requires @azure/communication-identity.
+  // Install it and implement this before enabling video calling.
+  throw new Error(
+    `ACS video calling is not yet implemented. Install @azure/communication-identity and implement getACSUserToken. userId=${userId}`
+  );
 }
 
 /**
@@ -191,26 +173,9 @@ export async function startCallRecording(callId: string): Promise<{ recordingId:
   const session = acsActiveCalls.get(callId);
   if (!session) throw new Error("Call session not found");
 
-  // TODO: Implement actual ACS call recording
-  // For now, return placeholder
-  
-  /*
-  Example implementation:
-  
-  const { CallAutomationClient } = require('@azure/communication-call-automation');
-  const client = new CallAutomationClient(process.env.ACS_CONNECTION_STRING);
-  
-  const recordingResult = await client.startRecording({
-    callLocator: { id: session.acsCallId, kind: "groupCallLocator" }
-  });
-  
-  return { recordingId: recordingResult.recordingId };
-  */
-
-  session.recordingEnabled = true;
-  acsActiveCalls.set(callId, session);
-
-  return { recordingId: `recording-${callId}` };
+  // ACS call recording requires @azure/communication-call-automation.
+  // Install it and implement this before enabling recording.
+  throw new Error("ACS call recording is not yet implemented.");
 }
 
 /**
@@ -220,8 +185,6 @@ export async function stopCallRecording(callId: string, recordingId: string): Pr
   const session = acsActiveCalls.get(callId);
   if (!session) throw new Error("Call session not found");
 
-  // TODO: Implement actual ACS call recording stop
-  
-  session.recordingEnabled = false;
-  acsActiveCalls.set(callId, session);
+  // ACS call recording stop requires @azure/communication-call-automation.
+  throw new Error("ACS call recording stop is not yet implemented.");
 }

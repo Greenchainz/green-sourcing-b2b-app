@@ -1250,7 +1250,7 @@ export const ewsCarbonComponents = pgTable(
     gwpValue: decimal("gwp_value", { precision: 12, scale: 4 }),
     gwpUnits: varchar("gwp_units", { length: 50 }), // e.g. "kgCO2e/m2", "kgCO2e/kg"
     declaredUnit: varchar("declared_unit", { length: 50 }), // e.g. "1 square meter", "1 metric ton"
-    msfFactor: decimal("msf_factor", { length: 50, precision: 12, scale: 4 }), // conversion to 1000 SF
+    msfFactor: decimal("msf_factor", { precision: 12, scale: 4 }), // conversion to 1000 SF
     // Computed: embodied carbon per 1000 SF facade
     carbonPer1000sf: decimal("carbon_per_1000sf", { precision: 12, scale: 2 }),
     notes: text("notes"),

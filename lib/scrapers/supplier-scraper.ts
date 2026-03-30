@@ -106,6 +106,7 @@ export async function saveSuppliers(
   for (const supplier of suppliers) {
     try {
       const drizzle = await getDb();
+      if (!drizzle) throw new Error('Database not available');
       const result = await drizzle
         .insert(scrapedSuppliers)
         .values({

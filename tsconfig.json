@@ -47,6 +47,11 @@
     "node_modules",
     "server/**/*",
     "drizzle/**/*",
-    "client/**/*"
+    "client/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "tests/**/*"
   ]
 }

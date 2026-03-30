@@ -9,19 +9,19 @@ export interface AuthenticatedRequest extends NextRequest {
  * Verify JWT token from Authorization header or cookie
  * Returns decoded token payload or null if invalid
  */
-export function authenticateRequest(request: NextRequest): JWTPayload | null {
+export async function authenticateRequest(request: NextRequest): Promise<JWTPayload | null> {
   // Try Authorization header first (Bearer token)
   const authHeader = request.headers.get('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
+    const decoded = await verifyToken(token);
     if (decoded) return decoded;
   }
 
   // Fallback to cookie-based authentication
   const cookieToken = request.headers.get('cookie')?.match(/greenchainz-auth-token=([^;]+)/)?.[1] ||
                       request.headers.get('cookie')?.match(/token=([^;]+)/)?.[1];
-  
+
   if (cookieToken) {
     return verifyToken(cookieToken);
   }
@@ -32,7 +32,7 @@ export function authenticateRequest(request: NextRequest): JWTPayload | null {
 /**
  * Create a 401 Unauthorized response
  */
-export function unauthorizedResponse(message = 'Authentication required'): NextResponse {
+export function unauthorizedResponse(message = 'Authentication required'): Response {
   return NextResponse.json(
     { error: message },
     { status: 401 }
@@ -42,7 +42,7 @@ export function unauthorizedResponse(message = 'Authentication required'): NextR
 /**
  * Create a 403 Forbidden response
  */
-export function forbiddenResponse(message = 'Insufficient permissions'): NextResponse {
+export function forbiddenResponse(message = 'Insufficient permissions'): Response {
   return NextResponse.json(
     { error: message },
     { status: 403 }

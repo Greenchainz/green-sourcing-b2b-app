@@ -32,11 +32,18 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/api")) {
+    const allowedOrigins = (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS || "https://greenchainz.com")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const origin = request.headers.get("origin") || "";
+    const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+
     if (request.method === "OPTIONS") {
       return new NextResponse(null, {
         status: 200,
         headers: {
-          "Access-Control-Allow-Origin": request.headers.get("origin") || "*",
+          "Access-Control-Allow-Origin": corsOrigin,
           "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
           "Access-Control-Allow-Credentials": "true",
@@ -45,7 +52,7 @@ export async function middleware(request: NextRequest) {
       });
     }
     const response = NextResponse.next();
-    response.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+    response.headers.set("Access-Control-Allow-Origin", corsOrigin);
     response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
     response.headers.set("Access-Control-Allow-Credentials", "true");

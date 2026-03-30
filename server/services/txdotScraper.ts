@@ -86,13 +86,12 @@ function inferMaterialCategory(projectType: string): { category: string; unit: s
   return null;
 }
 
-// ─── HTTP Fetch with SSL bypass ──────────────────────────────────────────────
+// ─── HTTP Fetch ───────────────────────────────────────────────────────────────
 
 function fetchPageHtml(pageNumber: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = `https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/bidtab/BidTot${String(pageNumber).padStart(2, '0')}.htm`;
     const options = {
-      rejectUnauthorized: false,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'text/html,application/xhtml+xml',
