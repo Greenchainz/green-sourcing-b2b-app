@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MaterialCard from "@/components/MaterialCard";
+import { InsiderDashboard } from "@/components/InsiderDashboard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -550,6 +551,9 @@ export default function MaterialsCatalog() {
           </div>
           <div className="px-4 pb-6 flex-1">
             <FilterPanel {...filterPanelProps} />
+          </div>
+          <div className="px-4 pb-4 shrink-0">
+            <InsiderDashboard compact />
           </div>
         </aside>
 
