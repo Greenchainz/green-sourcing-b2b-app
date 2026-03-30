@@ -48,7 +48,9 @@
       "Bash(WDIR=\"/d/perplexitydownloads/green-sourcing-b2b-app/.claude/worktrees/jolly-colden\")",
       "Bash(rm -f \"$WDIR/server/_core/oauth.ts\")",
       "Bash(rm -f \"$WDIR/server/_core/types/manusTypes.ts\")",
-      "Bash(rm -rf \"$WDIR/client/public/__manus__\")"
+      "Bash(rm -rf \"$WDIR/client/public/__manus__\")",
+      "WebFetch(domain:aps.autodesk.com)",
+      "WebFetch(domain:developer.api.autodesk.com)"
     ]
   }
 }
