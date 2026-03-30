@@ -10,6 +10,11 @@ export const ENV = {
   get isProduction()  { return process.env.NODE_ENV === "production"; },
   get forgeApiUrl()   { return process.env.BUILT_IN_FORGE_API_URL ?? ""; },
   get forgeApiKey()   { return process.env.BUILT_IN_FORGE_API_KEY ?? ""; },
+  // Azure OpenAI fallback (used when Forge API is not configured)
+  get azureOpenAiEndpoint()   { return process.env.AZURE_OPENAI_ENDPOINT ?? ""; },
+  get azureOpenAiKey()        { return process.env.AZURE_OPENAI_API_KEY ?? ""; },
+  get azureOpenAiDeployment() { return process.env.AZURE_OPENAI_DEPLOYMENT ?? "gpt-4o"; },
+  get azureOpenAiVersion()    { return process.env.AZURE_OPENAI_API_VERSION ?? "2024-08-01-preview"; },
   get ec3ApiKey()     { return process.env.EC3_API_KEY ?? ""; },
   get ec3ClientId()   { return process.env.EC3_CLIENT_ID ?? ""; },
   get ec3ClientSecret(){ return process.env.EC3_CLIENT_SECRET ?? ""; },

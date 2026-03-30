@@ -214,14 +214,31 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+const useForge = () => !!ENV.forgeApiKey;
+
+const resolveApiUrl = () => {
+  if (useForge()) {
+    return ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+      ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
+      : "https://forge.manus.im/v1/chat/completions";
+  }
+  // Azure OpenAI fallback
+  const endpoint = ENV.azureOpenAiEndpoint.replace(/\/$/, "");
+  const deployment = ENV.azureOpenAiDeployment;
+  const version = ENV.azureOpenAiVersion;
+  return `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${version}`;
+};
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (!ENV.forgeApiKey && !ENV.azureOpenAiKey) {
+    throw new Error(
+      "No LLM API key configured. Set BUILT_IN_FORGE_API_KEY or AZURE_OPENAI_API_KEY in your .env.local"
+    );
+  }
+  if (!useForge() && !ENV.azureOpenAiEndpoint) {
+    throw new Error(
+      "AZURE_OPENAI_ENDPOINT is required when BUILT_IN_FORGE_API_KEY is not set"
+    );
   }
 };
 
@@ -285,7 +302,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model: useForge() ? "gemini-2.5-flash" : ENV.azureOpenAiDeployment,
     messages: messages.map(normalizeMessage),
   };
 
@@ -301,9 +318,12 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
+  if (useForge()) {
+    payload.max_tokens = 32768;
+    payload.thinking = { budget_tokens: 128 };
+  } else {
+    // Azure OpenAI: standard token limit, no thinking param
+    payload.max_tokens = 4096;
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({
@@ -317,12 +337,17 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (useForge()) {
+    headers["authorization"] = `Bearer ${ENV.forgeApiKey}`;
+  } else {
+    // Azure OpenAI uses api-key header, not Bearer
+    headers["api-key"] = ENV.azureOpenAiKey;
+  }
+
   const response = await fetch(resolveApiUrl(), {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
