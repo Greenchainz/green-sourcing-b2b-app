@@ -1,8 +1,11 @@
 import { protectedProcedure, router } from "./_core/trpc";
 import { runManufacturerPdfIngestion, MANUFACTURER_SPEC_SHEETS } from "./services/manufacturerPdfIngestion";
 import { getDb } from "./db";
-import { suppliers, users, materials, materialCertifications, buyerSubscriptions } from "../drizzle/schema";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import {
+  suppliers, users, materials, materialCertifications, buyerSubscriptions,
+  rfqs, rfqBids, rfqItems, leads, conversations, messages, notifications,
+} from "../drizzle/schema";
+import { eq, and, inArray, desc, count, sql, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateComplianceReport } from "./compliance-service";
@@ -449,5 +452,129 @@ export const adminRouter = router({
         ? Math.round((Number(specsCount.count) / Number(totalMaterials.count)) * 100)
         : 0,
     };
+  }),
+
+  // ─── God-mode: Platform overview ─────────────────────────────────────────
+  platformStats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [totalUsers] = await db.select({ count: count() }).from(users);
+    const [totalSuppliers] = await db.select({ count: count() }).from(suppliers);
+    const [totalRfqs] = await db.select({ count: count() }).from(rfqs);
+    const [totalBids] = await db.select({ count: count() }).from(rfqBids);
+    const [totalLeads] = await db.select({ count: count() }).from(leads);
+    const [totalMaterials] = await db.select({ count: count() }).from(materials);
+    const [totalConversations] = await db.select({ count: count() }).from(conversations);
+    const [totalMessages] = await db.select({ count: count() }).from(messages);
+
+    // Activity in last 24h
+    const [usersToday] = await db.select({ count: count() }).from(users).where(gte(users.lastSignedIn, oneDayAgo));
+    const [rfqsThisWeek] = await db.select({ count: count() }).from(rfqs).where(gte(rfqs.createdAt, sevenDaysAgo));
+    const [leadsThisWeek] = await db.select({ count: count() }).from(leads).where(gte(leads.createdAt, sevenDaysAgo));
+
+    return {
+      totals: {
+        users: Number(totalUsers.count),
+        suppliers: Number(totalSuppliers.count),
+        rfqs: Number(totalRfqs.count),
+        bids: Number(totalBids.count),
+        leads: Number(totalLeads.count),
+        materials: Number(totalMaterials.count),
+        conversations: Number(totalConversations.count),
+        messages: Number(totalMessages.count),
+      },
+      activity: {
+        activeUsersToday: Number(usersToday.count),
+        rfqsThisWeek: Number(rfqsThisWeek.count),
+        leadsThisWeek: Number(leadsThisWeek.count),
+      },
+    };
+  }),
+
+  // ─── God-mode: All RFQs ──────────────────────────────────────────────
+  getAllRfqs: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db
+      .select({
+        id: rfqs.id,
+        projectName: rfqs.projectName,
+        projectLocation: rfqs.projectLocation,
+        status: rfqs.status,
+        createdAt: rfqs.createdAt,
+        userId: rfqs.userId,
+      })
+      .from(rfqs)
+      .orderBy(desc(rfqs.createdAt))
+      .limit(100);
+    return rows;
+  }),
+
+  // ─── God-mode: All leads ─────────────────────────────────────────────
+  getAllLeads: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(leads).orderBy(desc(leads.createdAt)).limit(200);
+  }),
+
+  // ─── God-mode: Recent conversations (no message content, just metadata) ───
+  getConversationOverview: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db
+      .select({
+        id: conversations.id,
+        buyerId: conversations.buyerId,
+        supplierId: conversations.supplierId,
+        rfqId: conversations.rfqId,
+        lastMessageAt: conversations.lastMessageAt,
+        agentMode: conversations.agentMode,
+        handoffStatus: conversations.handoffStatus,
+        isArchived: conversations.isArchived,
+      })
+      .from(conversations)
+      .orderBy(desc(conversations.lastMessageAt))
+      .limit(50);
+  }),
+
+  // ─── God-mode: Recent activity feed ──────────────────────────────────
+  getActivityFeed: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    // Pull recent events from multiple tables, merge into a timeline
+    const recentUsers = await db
+      .select({ id: users.id, name: users.name, email: users.email, role: users.role, createdAt: users.createdAt })
+      .from(users)
+      .orderBy(desc(users.createdAt))
+      .limit(10);
+
+    const recentRfqs = await db
+      .select({ id: rfqs.id, projectName: rfqs.projectName, status: rfqs.status, createdAt: rfqs.createdAt })
+      .from(rfqs)
+      .orderBy(desc(rfqs.createdAt))
+      .limit(10);
+
+    const recentLeads = await db
+      .select({ id: leads.id, email: leads.email, company: leads.company, createdAt: leads.createdAt })
+      .from(leads)
+      .orderBy(desc(leads.createdAt))
+      .limit(10);
+
+    // Merge into a single feed sorted by time
+    type FeedItem = { type: string; timestamp: Date; data: Record<string, unknown> };
+    const feed: FeedItem[] = [
+      ...recentUsers.map((u) => ({ type: "user_signup" as const, timestamp: u.createdAt, data: { name: u.name, email: u.email, role: u.role } })),
+      ...recentRfqs.map((r) => ({ type: "rfq_created" as const, timestamp: r.createdAt, data: { projectName: r.projectName, status: r.status } })),
+      ...recentLeads.map((l) => ({ type: "lead_captured" as const, timestamp: l.createdAt, data: { email: l.email, company: l.company } })),
+    ];
+
+    feed.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    return feed.slice(0, 20);
   }),
 });
