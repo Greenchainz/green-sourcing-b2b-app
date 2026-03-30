@@ -43,6 +43,7 @@ import { epdRouter } from "./routers/epd";
 import { locationRouter } from "./routers/location";
 import { architectRouter } from "./routers/architect";
 import { manufacturerRouter } from "./manufacturer-router";
+import { getAllPriceTrends, getPriceTrend } from "./services/price-trends";
 
 export const appRouter = router({
   system: systemRouter,
@@ -455,6 +456,16 @@ export const appRouter = router({
           },
           history,
         };
+      }),
+
+    getPriceTrends: publicProcedure.query(() => {
+      return getAllPriceTrends();
+    }),
+
+    getPriceTrend: publicProcedure
+      .input(z.object({ category: z.string() }))
+      .query(({ input }) => {
+        return getPriceTrend(input.category);
       }),
   }),
 
