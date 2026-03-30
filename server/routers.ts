@@ -204,7 +204,7 @@ export const appRouter = router({
           });
         }
 
-        return { items: scoredItems, total: scoredItems.length };
+        return { items: scoredItems, total };
       }),
 
     getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
