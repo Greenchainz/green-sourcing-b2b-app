@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { ScoreBadge } from "@/components/MaterialCreditScore/ScoreBadge";
+import { getMaterialImage } from "@/lib/material-images";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -118,10 +119,22 @@ export default function MaterialCard(props: MaterialCardProps) {
     );
   };
 
+  const materialImage = getMaterialImage(category);
+
   // ── List variant ────────────────────────────────────────────────────────────
   if (variant === "list") {
     return (
       <div className="group flex items-center gap-3 px-4 py-3 bg-card border border-border/60 rounded-lg hover:border-border hover:shadow-sm transition-all duration-150">
+
+        {/* Thumbnail */}
+        <div className="shrink-0 w-10 h-10 rounded overflow-hidden bg-muted">
+          <img
+            src={materialImage}
+            alt={category}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
 
         {/* GreenScore badge */}
         <div className="shrink-0 flex flex-col items-center gap-0.5">
@@ -228,6 +241,17 @@ export default function MaterialCard(props: MaterialCardProps) {
   return (
     <Card className="group hover:shadow-md transition-all duration-150 border-border/60 overflow-hidden flex flex-col">
       <CardContent className="p-0 flex flex-col flex-1">
+
+        {/* ── Hero image ──────────────────────────────────────────────── */}
+        <div className="relative w-full h-32 bg-muted overflow-hidden">
+          <img
+            src={materialImage}
+            alt={category}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        </div>
 
         {/* ── Zone 1: Header ────────────────────────────────────────────── */}
         <div className="p-4 pb-3 flex-1 relative">
