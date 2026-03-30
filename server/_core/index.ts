@@ -16,6 +16,7 @@ import { handleWebhook } from "../marketplace-webhook";
 import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 import { uploadRouter } from "../upload-route";
 import { zeptomailWebhookRouter } from "../zeptomail-webhook";
+import { specSheetRouter } from "../spec-sheet-router";
 import { sdk } from "./sdk";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
@@ -206,6 +207,9 @@ async function startServer() {
 
   // Zeptomail email event webhooks (bounce, open, click, unsubscribe, spam)
   app.use(zeptomailWebhookRouter);
+
+  // Material Spec Sheet PDF download (public, no auth required)
+  app.use("/api", specSheetRouter);
 
   // Admin: manually trigger the scraper outreach pipeline
   // Requires: authenticated user with admin role
