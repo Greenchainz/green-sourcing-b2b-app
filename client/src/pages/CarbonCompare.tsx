@@ -13,683 +13,1161 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Cell,
+  Legend,
 } from "recharts";
 import {
   Leaf,
-  BarChart3,
-  Building2,
-  Award,
-  Filter,
+  ChevronDown,
+  ChevronUp,
   AlertCircle,
+  TrendingDown,
+  BarChart3,
+  TrendingUp,
 } from "lucide-react";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
+type Zone = "INTERIOR" | "CORE" | "EXTERIOR";
 type CarbonTier = "LOW" | "MID" | "HIGH";
-type SortMode = "carbon" | "name";
-type TierFilter = "ALL" | CarbonTier;
+type FramingOption = 1 | 2 | 3;
 
-interface Assembly {
-  id: string;
-  name: string;
-  epd: string | null;
-  gwpA1A3: number;
-  unit: string;
-  conversionFactor: number;
-  gwpPer1000sf: number;
-  tier: CarbonTier;
-  tags: {
-    assemblyType: string;
-    framingType: string;
-    finish: string;
-  };
+interface EwsComponent {
+  id: number;
+  assemblySpecId: number;
+  zone: string;
+  layerOrder: number;
+  layerName: string;
+  framingOption: number | null;
+  manufacturer: string | null;
+  productName: string | null;
+  epdNumber: string | null;
+  dimensionParam: string | null;
+  gwpValue: string | null;
+  gwpUnits: string | null;
+  declaredUnit: string | null;
+  msfFactor: string | null;
+  carbonPer1000sf: string | null;
+  notes: string | null;
+  createdAt: Date;
 }
 
-// ─── Tier helper ──────────────────────────────────────────────────────────────
-
-function getTier(gwpPer1000sf: number): CarbonTier {
-  if (gwpPer1000sf < 5000) return "LOW";
-  if (gwpPer1000sf <= 15000) return "MID";
-  return "HIGH";
-}
-
-// ─── Map DB rows → Assembly type ──────────────────────────────────────────────
-
-interface DbRow {
+interface AssemblySpec {
   id: number;
   name: string;
   category: string;
+  description: string | null;
+  totalThicknessInches: string | null;
+  totalRValue: string | null;
+  fireRating: string | null;
+  ulDesignNumber: string | null;
+  stcRating: number | null;
+  iicRating: number | null;
+  totalCostPerSf: string | null;
+  totalGwpPerSf: string | null;
+  createdAt: Date;
+  updatedAt: Date;
   epdNumber: string | null;
   gwpA1A3: string | null;
   gwpDeclaredUnit: string | null;
-  gwpMsfFactor: string | null;
   gwpPer1000sf: string | null;
+  gwpMsfFactor: string | null;
   carbonTier: string | null;
   assemblyTypeTags: string[] | null;
   framingTypeTags: string[] | null;
   exteriorFinishTags: string[] | null;
   certificationTags: string[] | null;
+  components: EwsComponent[];
 }
 
-function mapDbToAssembly(row: DbRow): Assembly {
-  const gwpPer1000sf = Number(row.gwpPer1000sf) || 0;
-  return {
-    id: `EWS-${row.id}`,
-    name: row.name,
-    epd: row.epdNumber,
-    gwpA1A3: Number(row.gwpA1A3) || 0,
-    unit: row.gwpDeclaredUnit || "m²",
-    conversionFactor: Number(row.gwpMsfFactor) || 1,
-    gwpPer1000sf,
-    tier: getTier(gwpPer1000sf),
-    tags: {
-      assemblyType: row.assemblyTypeTags?.[0]?.replace(/-/g, " ") || "—",
-      framingType: row.framingTypeTags?.[0]?.replace(/-/g, " ") || "—",
-      finish: row.exteriorFinishTags?.[0]?.replace(/-/g, " ") || "—",
-    },
-  };
-}
+// ─── Zone colours ────────────────────────────────────────────────────────────
 
-// ─── Tier colour helpers ──────────────────────────────────────────────────────
+const ZONE_COLORS: Record<Zone, string> = {
+  INTERIOR: "#60a5fa", // blue-400
+  CORE: "#94a3b8",     // slate-400
+  EXTERIOR: "#34d399", // emerald-400
+};
+
+const ZONE_BG: Record<Zone, string> = {
+  INTERIOR: "bg-blue-400/20 text-blue-300 border-blue-400/30",
+  CORE: "bg-slate-400/20 text-slate-300 border-slate-400/30",
+  EXTERIOR: "bg-emerald-400/20 text-emerald-300 border-emerald-400/30",
+};
 
 const TIER_COLORS: Record<CarbonTier, string> = {
-  LOW: "#10b981",  // emerald-500
-  MID: "#eab308",  // yellow-500
-  HIGH: "#ef4444", // red-500
+  LOW: "#10b981",
+  MID: "#eab308",
+  HIGH: "#ef4444",
 };
 
-const TIER_BG_CLASSES: Record<CarbonTier, string> = {
-  LOW: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-  MID: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-  HIGH: "bg-red-500/10 text-red-400 border-red-500/30",
+const TIER_BG: Record<CarbonTier, string> = {
+  LOW: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  MID: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  HIGH: "bg-red-500/20 text-red-300 border-red-500/30",
 };
 
-const TIER_LABELS: Record<CarbonTier, string> = {
-  LOW: "Low Carbon",
-  MID: "Mid Carbon",
-  HIGH: "High Carbon",
+const FRAMING_LABELS: Record<FramingOption, string> = {
+  1: "CFMF Studs",
+  2: "HSS Mega Panel",
+  3: "Unitized",
 };
 
-// ─── Custom Tooltip ───────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-interface TooltipPayloadItem {
+function isZone(z: string): z is Zone {
+  return z === "INTERIOR" || z === "CORE" || z === "EXTERIOR";
+}
+
+function isTier(t: string | null | undefined): t is CarbonTier {
+  return t === "LOW" || t === "MID" || t === "HIGH";
+}
+
+function calcTotal(components: EwsComponent[], framingOption: FramingOption): number {
+  return components.reduce((sum, c) => {
+    const opt = c.framingOption as FramingOption | null;
+    if (opt === null || opt === framingOption) {
+      return sum + (parseFloat(c.carbonPer1000sf ?? "0") || 0);
+    }
+    return sum;
+  }, 0);
+}
+
+function calcZoneTotals(
+  components: EwsComponent[],
+  framingOption: FramingOption
+): Record<Zone, number> {
+  const totals: Record<Zone, number> = { INTERIOR: 0, CORE: 0, EXTERIOR: 0 };
+  for (const c of components) {
+    const opt = c.framingOption as FramingOption | null;
+    if (opt !== null && opt !== framingOption) continue;
+    if (!isZone(c.zone)) continue;
+    totals[c.zone] += parseFloat(c.carbonPer1000sf ?? "0") || 0;
+  }
+  return totals;
+}
+
+function fmtCarbon(value: number): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+function assemblyHasFramingOptions(a: AssemblySpec): boolean {
+  return a.components.some((c) => c.framingOption !== null);
+}
+
+// ─── Custom tooltip ───────────────────────────────────────────────────────────
+
+interface TooltipPayloadEntry {
+  name: string;
   value: number;
-  payload: Assembly & { shortName: string };
+  fill: string;
 }
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: TooltipPayloadItem[];
+  payload?: TooltipPayloadEntry[];
+  label?: string;
+  assemblies: AssemblySpec[];
+  framingOption: FramingOption;
 }
 
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null;
-  const a = payload[0].payload;
+function CustomBarTooltip({
+  active,
+  payload,
+  label,
+  assemblies,
+  framingOption,
+}: CustomTooltipProps) {
+  if (!active || !payload || !payload.length || !label) return null;
+
+  const assembly = assemblies.find((a) => a.name === label);
+  if (!assembly) return null;
+
+  const total = calcTotal(assembly.components, framingOption);
+  const relevantComponents = assembly.components.filter((c) => {
+    const opt = c.framingOption as FramingOption | null;
+    return opt === null || opt === framingOption;
+  });
+
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-xl text-xs">
-      <p className="font-semibold text-white mb-1 max-w-[200px] leading-snug">{a.name}</p>
-      <p className="text-gray-300">
-        <span className="text-gray-400">GWP/1000 sf: </span>
-        <span className="font-medium text-white">{a.gwpPer1000sf.toLocaleString()} kg CO₂e</span>
-      </p>
-      <p className="text-gray-300">
-        <span className="text-gray-400">GWP A1-A3: </span>
-        <span className="font-medium text-white">{a.gwpA1A3} kg CO₂e/{a.unit}</span>
-      </p>
-      <span className={`inline-flex items-center mt-2 px-2 py-0.5 rounded border text-[10px] font-medium ${TIER_BG_CLASSES[a.tier]}`}>
-        {TIER_LABELS[a.tier]}
-      </span>
+    <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 shadow-2xl max-w-xs">
+      <p className="text-white font-semibold text-sm mb-3">{label}</p>
+      <div className="space-y-1.5 mb-3">
+        {relevantComponents.map((c) => {
+          const zone = isZone(c.zone) ? c.zone : "CORE";
+          const carbon = parseFloat(c.carbonPer1000sf ?? "0") || 0;
+          return (
+            <div key={c.id} className="flex items-start gap-2 text-xs">
+              <span
+                className="mt-0.5 shrink-0 w-2 h-2 rounded-full"
+                style={{ backgroundColor: ZONE_COLORS[zone] }}
+              />
+              <div className="flex-1 min-w-0">
+                <span className="text-gray-200 truncate block">{c.layerName}</span>
+                {c.manufacturer && (
+                  <span className="text-gray-500 text-[10px]">{c.manufacturer}</span>
+                )}
+              </div>
+              <span className="text-gray-300 font-mono shrink-0">{fmtCarbon(carbon)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="border-t border-gray-700 pt-2 flex justify-between text-xs font-semibold">
+        <span className="text-gray-400">Total</span>
+        <span className="text-emerald-400">{fmtCarbon(total)} kg CO₂e</span>
+      </div>
     </div>
   );
 }
 
-// ─── Custom Bar Label ─────────────────────────────────────────────────────────
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
 
-interface CustomLabelProps {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  value?: number;
+interface KpiCardProps {
+  label: string;
+  value: string;
+  sub: string;
+  icon: React.ReactNode;
+  accent: string;
 }
 
-function CustomBarLabel({ x = 0, y = 0, width = 0, height = 0, value = 0 }: CustomLabelProps) {
+function KpiCard({ label, value, sub, icon, accent }: KpiCardProps) {
   return (
-    <text
-      x={x + width + 6}
-      y={y + height / 2}
-      fill="#9ca3af"
-      fontSize={11}
-      dominantBaseline="middle"
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-start gap-4">
+      <div
+        className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+        style={{ backgroundColor: `${accent}22` }}
+      >
+        <span style={{ color: accent }}>{icon}</span>
+      </div>
+      <div className="min-w-0">
+        <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">{label}</p>
+        <p className="text-white text-xl font-bold font-mono leading-none">{value}</p>
+        <p className="text-gray-500 text-xs mt-1 truncate">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Framing Toggle ──────────────────────────────────────────────────────────
+
+interface FramingToggleProps {
+  selected: FramingOption;
+  onChange: (opt: FramingOption) => void;
+}
+
+function FramingToggle({ selected, onChange }: FramingToggleProps) {
+  const options: FramingOption[] = [1, 2, 3];
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={[
+            "px-4 py-2 rounded-lg border text-sm font-medium transition-all duration-150",
+            selected === opt
+              ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+              : "bg-gray-900 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200",
+          ].join(" ")}
+        >
+          <span className="text-[10px] font-mono mr-1.5 opacity-60">#{opt}</span>
+          {FRAMING_LABELS[opt]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Component detail row ─────────────────────────────────────────────────────
+
+interface ComponentRowProps {
+  component: EwsComponent;
+  framingOption: FramingOption;
+}
+
+function ComponentRow({ component, framingOption }: ComponentRowProps) {
+  const zone = isZone(component.zone) ? component.zone : "CORE";
+  const carbon = parseFloat(component.carbonPer1000sf ?? "0") || 0;
+  const isOptionSpecific = component.framingOption !== null;
+  const isCurrentOption = component.framingOption === framingOption;
+
+  return (
+    <tr
+      className={[
+        "border-b border-gray-800 text-sm transition-colors",
+        isOptionSpecific && !isCurrentOption
+          ? "opacity-40"
+          : "hover:bg-gray-800/50",
+      ].join(" ")}
     >
-      {value.toLocaleString()}
-    </text>
+      <td className="px-4 py-2.5">
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium ${ZONE_BG[zone]}`}
+        >
+          {zone}
+        </span>
+      </td>
+      <td className="px-4 py-2.5 text-gray-200">
+        <div className="flex items-center gap-2">
+          {component.layerName}
+          {component.dimensionParam && (
+            <span className="text-gray-500 text-xs">({component.dimensionParam})</span>
+          )}
+          {isOptionSpecific && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700 font-mono">
+              {FRAMING_LABELS[component.framingOption as FramingOption]}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-2.5 text-gray-400">
+        {component.manufacturer ?? "—"}
+      </td>
+      <td className="px-4 py-2.5 text-gray-400">
+        {component.productName ?? "—"}
+      </td>
+      <td className="px-4 py-2.5">
+        {component.epdNumber ? (
+          <span className="font-mono text-xs text-emerald-400">{component.epdNumber}</span>
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
+      </td>
+      <td className="px-4 py-2.5 text-right">
+        {component.gwpValue ? (
+          <span className="text-gray-300 font-mono text-xs">
+            {parseFloat(component.gwpValue).toFixed(3)}
+            {component.gwpUnits && (
+              <span className="text-gray-600 ml-1">{component.gwpUnits}</span>
+            )}
+          </span>
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
+      </td>
+      <td className="px-4 py-2.5 text-right">
+        <span className="font-mono text-sm text-white font-medium">
+          {fmtCarbon(carbon)}
+        </span>
+      </td>
+    </tr>
   );
 }
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
-
-function LoadingSkeleton() {
-  return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0a0a" }}>
-      <Header />
-      <main className="flex-1 container py-8 max-w-6xl mx-auto px-4">
-        {/* Page header skeleton */}
-        <div className="mb-8">
-          <Skeleton className="h-4 w-48 bg-gray-800 mb-3" />
-          <div className="flex items-start gap-3">
-            <Skeleton className="h-10 w-10 rounded-lg bg-gray-800 shrink-0" />
-            <div>
-              <Skeleton className="h-7 w-64 bg-gray-800 mb-2" />
-              <Skeleton className="h-4 w-96 bg-gray-800" />
-            </div>
-          </div>
-        </div>
-
-        {/* KPI card skeletons */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {[0, 1, 2].map((i) => (
-            <Card key={i} className="bg-gray-900 border-gray-800 py-5">
-              <CardContent className="px-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Skeleton className="h-7 w-7 rounded-md bg-gray-800" />
-                  <Skeleton className="h-3 w-28 bg-gray-800" />
-                </div>
-                <Skeleton className="h-8 w-40 bg-gray-800 mb-2" />
-                <Skeleton className="h-4 w-36 bg-gray-800 mb-1" />
-                <Skeleton className="h-3 w-24 bg-gray-800" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Chart skeleton */}
-        <Card className="bg-gray-900 border-gray-800 mb-8">
-          <CardHeader className="pb-2">
-            <Skeleton className="h-5 w-56 bg-gray-800" />
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <Skeleton className="h-80 w-full bg-gray-800 rounded-lg" />
-          </CardContent>
-        </Card>
-      </main>
-      <Footer />
-    </div>
-  );
-}
-
-// ─── Empty State ──────────────────────────────────────────────────────────────
-
-function EmptyState() {
-  return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0a0a" }}>
-      <Header />
-      <main className="flex-1 container py-8 max-w-6xl mx-auto px-4">
-        <div className="mb-8">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mt-0.5">
-              <Leaf className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Embodied Carbon Compare</h1>
-              <p className="text-sm text-gray-400 mt-1">
-                Compare wall assembly systems by embodied carbon intensity
-              </p>
-            </div>
-          </div>
-        </div>
-        <Card className="bg-gray-900 border-gray-800">
-          <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
-            <div className="p-3 rounded-full bg-blue-500/10 border border-blue-500/20">
-              <AlertCircle className="w-6 h-6 text-blue-400" />
-            </div>
-            <div className="text-center">
-              <p className="text-white font-semibold mb-1">No assembly data found</p>
-              <p className="text-sm text-gray-400 max-w-sm">
-                Seed your database with assembly specs to see the carbon comparison chart.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-      <Footer />
-    </div>
-  );
-}
-
-// ─── Assembly Card ────────────────────────────────────────────────────────────
+// ─── Assembly accordion card ──────────────────────────────────────────────────
 
 interface AssemblyCardProps {
-  assembly: Assembly;
+  assembly: AssemblySpec;
+  framingOption: FramingOption;
+  rank: number;
 }
 
-function AssemblyCard({ assembly: a }: AssemblyCardProps) {
-  return (
-    <Card className="bg-gray-900 border-gray-800 hover:border-gray-700 transition-colors py-0 overflow-hidden">
-      {/* Tier accent bar */}
-      <div
-        className="h-0.5 w-full"
-        style={{ backgroundColor: TIER_COLORS[a.tier] }}
-      />
+function AssemblyCard({ assembly, framingOption, rank }: AssemblyCardProps) {
+  const [expanded, setExpanded] = useState(false);
 
-      <CardContent className="p-4">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-mono text-gray-500 mb-0.5">{a.id}</p>
-            <h3 className="text-sm font-semibold text-white leading-snug">{a.name}</h3>
-          </div>
-          {a.epd ? (
-            <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 text-[10px] shrink-0">
-              EPD
-            </Badge>
-          ) : (
-            <Badge className="bg-gray-800 text-gray-500 border-gray-700 text-[10px] shrink-0">
-              No EPD
-            </Badge>
-          )}
-        </div>
-
-        {/* Carbon values */}
-        <div className="bg-gray-800/60 rounded-lg p-3 mb-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">GWP / 1,000 SF</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-white">
-                {a.gwpPer1000sf.toLocaleString()}
-              </span>
-              <span className="text-xs text-gray-500">kg CO₂e</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">GWP A1–A3</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-200">
-                {a.gwpA1A3}
-              </span>
-              <span className="text-xs text-gray-500">kg CO₂e/{a.unit}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tier badge */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-500">Carbon Tier</span>
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded border text-[11px] font-medium ${TIER_BG_CLASSES[a.tier]}`}
-          >
-            {a.tier === "LOW" && <Leaf className="w-3 h-3 mr-1" />}
-            {TIER_LABELS[a.tier]}
-          </span>
-        </div>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-1.5">
-          <span className="text-[10px] px-2 py-0.5 bg-gray-800 text-gray-400 rounded-md border border-gray-700">
-            {a.tags.assemblyType}
-          </span>
-          <span className="text-[10px] px-2 py-0.5 bg-gray-800 text-gray-400 rounded-md border border-gray-700">
-            {a.tags.framingType}
-          </span>
-          <span className="text-[10px] px-2 py-0.5 bg-gray-800 text-gray-400 rounded-md border border-gray-700">
-            {a.tags.finish}
-          </span>
-        </div>
-      </CardContent>
-    </Card>
+  const zoneTotals = useMemo(
+    () => calcZoneTotals(assembly.components, framingOption),
+    [assembly.components, framingOption]
   );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-export default function CarbonCompare() {
-  const [sortMode, setSortMode] = useState<SortMode>("carbon");
-  const [tierFilter, setTierFilter] = useState<TierFilter>("ALL");
-
-  const { data: rows, isLoading } = trpc.assemblySpecs.list.useQuery();
-
-  // ── Map DB rows to Assembly objects ──
-  const assemblies = useMemo<Assembly[]>(() => {
-    if (!rows) return [];
-    return rows.map((row) => mapDbToAssembly(row as DbRow));
-  }, [rows]);
-
-  // Loading state
-  if (isLoading) return <LoadingSkeleton />;
-
-  // Empty state
-  if (!assemblies.length) return <EmptyState />;
-
-  // ── Stats ──
-  const sorted = [...assemblies].sort((a, b) => a.gwpPer1000sf - b.gwpPer1000sf);
-  const lowest = sorted[0];
-  const highest = sorted[sorted.length - 1];
-  const average = Math.round(
-    assemblies.reduce((sum, a) => sum + a.gwpPer1000sf, 0) / assemblies.length
+  const total = useMemo(
+    () => calcTotal(assembly.components, framingOption),
+    [assembly.components, framingOption]
   );
 
-  // Tier counts for badges
-  const tierCounts: Record<CarbonTier, number> = {
-    LOW: assemblies.filter((a) => a.tier === "LOW").length,
-    MID: assemblies.filter((a) => a.tier === "MID").length,
-    HIGH: assemblies.filter((a) => a.tier === "HIGH").length,
-  };
+  const tier = isTier(assembly.carbonTier) ? assembly.carbonTier : null;
+  const relevantComponents = assembly.components.filter((c) => {
+    const opt = c.framingOption as FramingOption | null;
+    return opt === null || opt === framingOption;
+  });
+
+  // Mini zone bar (proportional)
+  const zoneBar = (["INTERIOR", "CORE", "EXTERIOR"] as Zone[]).map((z) => ({
+    zone: z,
+    pct: total > 0 ? (zoneTotals[z] / total) * 100 : 0,
+    color: ZONE_COLORS[z],
+  }));
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0a0a" }}>
-      <Header />
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      {/* Header row */}
+      <button
+        className="w-full px-5 py-4 flex items-center gap-4 hover:bg-gray-800/50 transition-colors text-left"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {/* Rank badge */}
+        <span className="shrink-0 w-7 h-7 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-mono text-gray-400">
+          {rank}
+        </span>
 
-      <main className="flex-1 container py-8 max-w-6xl mx-auto px-4">
-        {/* ── Page header ── */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-            <span>Tools</span>
-            <span>/</span>
-            <span className="text-foreground">Carbon Compare</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mt-0.5">
-              <Leaf className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Embodied Carbon Compare</h1>
-              <p className="text-sm text-gray-400 mt-1">
-                Compare wall assembly systems by embodied carbon intensity
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Hero KPI cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {/* Lowest */}
-          <Card className="bg-gray-900 border-gray-800 py-5">
-            <CardContent className="px-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-                  <Leaf className="w-4 h-4 text-emerald-400" />
-                </div>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Lowest Carbon</span>
-              </div>
-              <div className="text-2xl font-bold text-emerald-400 mb-1">
-                {lowest.gwpPer1000sf.toLocaleString()}
-                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
-              </div>
-              <div className="text-sm text-gray-300 font-medium truncate">{lowest.name}</div>
-              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
-            </CardContent>
-          </Card>
-
-          {/* Average */}
-          <Card className="bg-gray-900 border-gray-800 py-5">
-            <CardContent className="px-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-md bg-blue-500/10 border border-blue-500/20">
-                  <BarChart3 className="w-4 h-4 text-blue-400" />
-                </div>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Portfolio Average</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-400 mb-1">
-                {average.toLocaleString()}
-                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
-              </div>
-              <div className="text-sm text-gray-300 font-medium">{assemblies.length} assemblies</div>
-              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
-            </CardContent>
-          </Card>
-
-          {/* Highest */}
-          <Card className="bg-gray-900 border-gray-800 py-5">
-            <CardContent className="px-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20">
-                  <Award className="w-4 h-4 text-red-400" />
-                </div>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Highest Carbon</span>
-              </div>
-              <div className="text-2xl font-bold text-red-400 mb-1">
-                {highest.gwpPer1000sf.toLocaleString()}
-                <span className="text-sm font-normal text-gray-500 ml-1">kg CO₂e</span>
-              </div>
-              <div className="text-sm text-gray-300 font-medium truncate">{highest.name}</div>
-              <div className="text-xs text-gray-500 mt-0.5">per 1,000 SF</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ── Controls ── */}
-        <FilterAndSortControls
-          sortMode={sortMode}
-          setSortMode={setSortMode}
-          tierFilter={tierFilter}
-          setTierFilter={setTierFilter}
-          tierCounts={tierCounts}
-          assemblies={assemblies}
-        />
-
-        {/* ── Chart + Cards ── */}
-        <ChartAndCards
-          assemblies={assemblies}
-          sortMode={sortMode}
-          tierFilter={tierFilter}
-        />
-      </main>
-
-      <Footer />
-    </div>
-  );
-}
-
-// ─── Filter & Sort Controls ───────────────────────────────────────────────────
-
-interface FilterAndSortControlsProps {
-  sortMode: SortMode;
-  setSortMode: (m: SortMode) => void;
-  tierFilter: TierFilter;
-  setTierFilter: (f: TierFilter) => void;
-  tierCounts: Record<CarbonTier, number>;
-  assemblies: Assembly[];
-}
-
-function FilterAndSortControls({
-  sortMode,
-  setSortMode,
-  tierFilter,
-  setTierFilter,
-  tierCounts,
-  assemblies,
-}: FilterAndSortControlsProps) {
-  const tierFilters: { value: TierFilter; label: string; count?: number }[] = [
-    { value: "ALL", label: "All" },
-    { value: "LOW", label: "Low", count: tierCounts.LOW },
-    { value: "MID", label: "Mid", count: tierCounts.MID },
-    { value: "HIGH", label: "High", count: tierCounts.HIGH },
-  ];
-
-  const displayedCount =
-    tierFilter === "ALL"
-      ? assemblies.length
-      : assemblies.filter((a) => a.tier === tierFilter).length;
-
-  return (
-    <div className="flex flex-wrap items-center gap-3 mb-6">
-      {/* Sort toggle */}
-      <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
-        <Button
-          size="sm"
-          variant={sortMode === "carbon" ? "default" : "ghost"}
-          className={`h-7 text-xs px-3 ${sortMode === "carbon" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "text-gray-400 hover:text-white"}`}
-          onClick={() => setSortMode("carbon")}
-        >
-          <BarChart3 className="w-3.5 h-3.5 mr-1" />
-          By Carbon
-        </Button>
-        <Button
-          size="sm"
-          variant={sortMode === "name" ? "default" : "ghost"}
-          className={`h-7 text-xs px-3 ${sortMode === "name" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "text-gray-400 hover:text-white"}`}
-          onClick={() => setSortMode("name")}
-        >
-          <Building2 className="w-3.5 h-3.5 mr-1" />
-          By Name
-        </Button>
-      </div>
-
-      {/* Tier filter */}
-      <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
-        <div className="flex items-center px-2">
-          <Filter className="w-3.5 h-3.5 text-gray-500" />
-        </div>
-        {tierFilters.map(({ value, label, count }) => (
-          <Button
-            key={value}
-            size="sm"
-            variant="ghost"
-            onClick={() => setTierFilter(value)}
-            className={`h-7 text-xs px-3 gap-1 ${
-              tierFilter === value
-                ? value === "ALL"
-                  ? "bg-gray-700 text-white"
-                  : value === "LOW"
-                  ? "bg-emerald-600/30 text-emerald-400 border border-emerald-500/40"
-                  : value === "MID"
-                  ? "bg-yellow-600/30 text-yellow-400 border border-yellow-500/40"
-                  : "bg-red-600/30 text-red-400 border border-red-500/40"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            {label}
-            {count !== undefined && (
-              <span className="ml-0.5 text-[10px] opacity-70">({count})</span>
-            )}
-          </Button>
-        ))}
-      </div>
-
-      <span className="text-xs text-gray-500 ml-1">
-        {displayedCount} of {assemblies.length} assemblies
-      </span>
-    </div>
-  );
-}
-
-// ─── Chart + Cards Section ────────────────────────────────────────────────────
-
-interface ChartAndCardsProps {
-  assemblies: Assembly[];
-  sortMode: SortMode;
-  tierFilter: TierFilter;
-}
-
-function ChartAndCards({ assemblies, sortMode, tierFilter }: ChartAndCardsProps) {
-  const displayed = useMemo(() => {
-    let list = tierFilter === "ALL" ? assemblies : assemblies.filter((a) => a.tier === tierFilter);
-    if (sortMode === "carbon") {
-      list = [...list].sort((a, b) => a.gwpPer1000sf - b.gwpPer1000sf);
-    } else {
-      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-    }
-    return list;
-  }, [assemblies, sortMode, tierFilter]);
-
-  const chartData = useMemo(
-    () =>
-      displayed.map((a) => ({
-        ...a,
-        shortName: a.name.length > 22 ? a.name.slice(0, 22) + "…" : a.name,
-      })),
-    [displayed]
-  );
-
-  return (
-    <>
-      {/* ── Bar Chart ── */}
-      <Card className="bg-gray-900 border-gray-800 mb-8">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-gray-200 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-emerald-400" />
-            GWP A1–A3 per 1,000 SF (kg CO₂e)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          {displayed.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-gray-500 text-sm">
-              No assemblies match the selected filter.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={displayed.length * 44 + 20}>
-              <BarChart
-                data={chartData}
-                layout="vertical"
-                margin={{ top: 4, right: 80, bottom: 4, left: 8 }}
-                barCategoryGap="20%"
+        {/* Name + tags */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white font-semibold">{assembly.name}</span>
+            {tier && (
+              <Badge
+                className={`text-[10px] px-1.5 py-0 border ${TIER_BG[tier]}`}
               >
-                <XAxis
-                  type="number"
-                  tick={{ fill: "#6b7280", fontSize: 11 }}
-                  axisLine={{ stroke: "#374151" }}
-                  tickLine={false}
-                  tickFormatter={(v: number) => v.toLocaleString()}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="shortName"
-                  width={150}
-                  tick={{ fill: "#d1d5db", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-                <Bar dataKey="gwpPer1000sf" radius={[0, 4, 4, 0]} label={<CustomBarLabel />}>
-                  {chartData.map((entry) => (
-                    <Cell key={entry.id} fill={TIER_COLORS[entry.tier]} opacity={0.85} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-
-          {/* Legend */}
-          <div className="flex items-center gap-5 mt-4 pt-4 border-t border-gray-800">
-            {(["LOW", "MID", "HIGH"] as CarbonTier[]).map((t) => (
-              <div key={t} className="flex items-center gap-2">
+                {tier}
+              </Badge>
+            )}
+            {assembly.epdNumber && (
+              <span className="text-[10px] font-mono text-gray-500 hidden sm:inline">
+                EPD: {assembly.epdNumber}
+              </span>
+            )}
+          </div>
+          {/* Mini zone bar */}
+          <div className="mt-2 flex rounded-full overflow-hidden h-1.5 w-full max-w-xs gap-px">
+            {zoneBar.map(({ zone, pct, color }) =>
+              pct > 0 ? (
                 <div
-                  className="w-3 h-3 rounded-sm"
-                  style={{ backgroundColor: TIER_COLORS[t] }}
+                  key={zone}
+                  style={{ width: `${pct}%`, backgroundColor: color }}
+                  title={`${zone}: ${fmtCarbon(zoneTotals[zone])} kg CO₂e`}
                 />
-                <span className="text-xs text-gray-400">{TIER_LABELS[t]}</span>
-                {t === "LOW" && <span className="text-xs text-gray-600">(&lt;5,000)</span>}
-                {t === "MID" && <span className="text-xs text-gray-600">(5,000–15,000)</span>}
-                {t === "HIGH" && <span className="text-xs text-gray-600">(&gt;15,000)</span>}
+              ) : null
+            )}
+          </div>
+        </div>
+
+        {/* Total carbon */}
+        <div className="shrink-0 text-right">
+          <div className="text-white font-bold font-mono text-lg leading-none">
+            {fmtCarbon(total)}
+          </div>
+          <div className="text-gray-500 text-xs mt-0.5">kg CO₂e / 1k SF</div>
+        </div>
+
+        {/* Chevron */}
+        <span className="shrink-0 text-gray-500">
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </span>
+      </button>
+
+      {/* Expanded detail table */}
+      {expanded && (
+        <div className="border-t border-gray-800">
+          {/* Zone summary row */}
+          <div className="px-5 py-3 flex gap-6 bg-gray-950/60 flex-wrap">
+            {(["INTERIOR", "CORE", "EXTERIOR"] as Zone[]).map((z) => (
+              <div key={z} className="flex items-center gap-1.5 text-xs">
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: ZONE_COLORS[z] }}
+                />
+                <span className="text-gray-400">{z}:</span>
+                <span className="text-gray-200 font-mono font-medium">
+                  {fmtCarbon(zoneTotals[z])}
+                </span>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* ── Assembly Detail Cards ── */}
-      <div className="mb-4">
-        <h2 className="text-base font-semibold text-gray-200 flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-emerald-400" />
-          Assembly Details
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">
-          All values per declared unit (A1–A3 stage). Carbon per 1,000 SF uses a conversion factor per assembly.
-        </p>
-      </div>
-
-      {displayed.length === 0 ? (
-        <div className="text-center py-16 text-gray-500 text-sm">
-          No assemblies match the selected filter.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-          {displayed.map((a) => (
-            <AssemblyCard key={a.id} assembly={a} />
-          ))}
+          {/* Component table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-800 bg-gray-950/40">
+                  <th className="px-4 py-2 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    Zone
+                  </th>
+                  <th className="px-4 py-2 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    Layer
+                  </th>
+                  <th className="px-4 py-2 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    Manufacturer
+                  </th>
+                  <th className="px-4 py-2 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    Product
+                  </th>
+                  <th className="px-4 py-2 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    EPD #
+                  </th>
+                  <th className="px-4 py-2 text-right text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    GWP
+                  </th>
+                  <th className="px-4 py-2 text-right text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    Carbon / 1k SF
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {relevantComponents.map((c) => (
+                  <ComponentRow
+                    key={c.id}
+                    component={c}
+                    framingOption={framingOption}
+                  />
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-700 bg-gray-900">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-3 text-gray-400 font-semibold text-xs uppercase tracking-wider"
+                  >
+                    Assembly Total
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold font-mono text-emerald-400">
+                    {fmtCarbon(total)} kg CO₂e
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
-    </>
+    </div>
+  );
+}
+
+// ─── Chart data shape ─────────────────────────────────────────────────────────
+
+interface ChartDatum {
+  name: string;
+  INTERIOR: number;
+  CORE: number;
+  EXTERIOR: number;
+  total: number;
+}
+
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      <Header />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
+        {/* Hero skeleton */}
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-72 bg-gray-800" />
+          <Skeleton className="h-5 w-[480px] max-w-full bg-gray-800" />
+        </div>
+        {/* KPI cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 rounded-xl bg-gray-800" />
+          ))}
+        </div>
+        {/* Chart skeleton */}
+        <Skeleton className="h-80 w-full rounded-xl bg-gray-800" />
+        {/* Accordion skeletons */}
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl bg-gray-800" />
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      <Header />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 flex flex-col items-center justify-center text-center">
+        <div className="w-16 h-16 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center mb-6">
+          <AlertCircle className="text-gray-400" size={28} />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-3">No Assembly Data Found</h2>
+        <p className="text-gray-400 max-w-md">
+          No assembly data found. Run the seed scripts to populate the carbon comparison data.
+        </p>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+// ─── Legend renderer ──────────────────────────────────────────────────────────
+
+interface LegendEntry {
+  value: string;
+  color: string;
+}
+
+function ChartLegend({ items }: { items: LegendEntry[] }) {
+  return (
+    <div className="flex gap-5 justify-center mt-2 flex-wrap">
+      {items.map(({ value, color }) => (
+        <div key={value} className="flex items-center gap-1.5 text-xs text-gray-400">
+          <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+          {value}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function CarbonCompare() {
+  const { data: assemblies, isLoading } = trpc.assemblySpecs.listWithComponents.useQuery();
+  const [framingOption, setFramingOption] = useState<FramingOption>(1);
+  const [expandedAll, setExpandedAll] = useState(false);
+
+  // ── Derived chart data ────────────────────────────────────────────────────
+
+  const chartData = useMemo<ChartDatum[]>(() => {
+    if (!assemblies) return [];
+    return assemblies
+      .map((a) => {
+        const zoneTotals = calcZoneTotals(a.components, framingOption);
+        const total =
+          zoneTotals.INTERIOR + zoneTotals.CORE + zoneTotals.EXTERIOR;
+        return {
+          name: a.name,
+          INTERIOR: Math.round(zoneTotals.INTERIOR),
+          CORE: Math.round(zoneTotals.CORE),
+          EXTERIOR: Math.round(zoneTotals.EXTERIOR),
+          total,
+        };
+      })
+      .sort((a, b) => a.total - b.total);
+  }, [assemblies, framingOption]);
+
+  // ── Sorted assembly list (for accordion) ─────────────────────────────────
+
+  const sortedAssemblies = useMemo<AssemblySpec[]>(() => {
+    if (!assemblies) return [];
+    return [...assemblies].sort((a, b) => {
+      const ta = calcTotal(a.components, framingOption);
+      const tb = calcTotal(b.components, framingOption);
+      return ta - tb;
+    });
+  }, [assemblies, framingOption]);
+
+  // ── KPI values ────────────────────────────────────────────────────────────
+
+  const kpis = useMemo(() => {
+    if (!sortedAssemblies.length) return null;
+    const totals = sortedAssemblies.map((a) => calcTotal(a.components, framingOption));
+    const lowest = totals[0];
+    const highest = totals[totals.length - 1];
+    const avg = totals.reduce((s, v) => s + v, 0) / totals.length;
+    const lowestAssembly = sortedAssemblies[0];
+    const highestAssembly = sortedAssemblies[sortedAssemblies.length - 1];
+    return { lowest, highest, avg, lowestAssembly, highestAssembly };
+  }, [sortedAssemblies, framingOption]);
+
+  // ── Whether any assembly has framing options ──────────────────────────────
+
+  const anyHasFraming = useMemo(
+    () => (assemblies ?? []).some(assemblyHasFramingOptions),
+    [assemblies]
+  );
+
+  // ── Render states ─────────────────────────────────────────────────────────
+
+  if (isLoading) return <LoadingSkeleton />;
+  if (!assemblies || assemblies.length === 0) return <EmptyState />;
+
+  // ── Main render ───────────────────────────────────────────────────────────
+
+  const legendItems: LegendEntry[] = [
+    { value: "Interior", color: ZONE_COLORS.INTERIOR },
+    { value: "Core", color: ZONE_COLORS.CORE },
+    { value: "Exterior", color: ZONE_COLORS.EXTERIOR },
+  ];
+
+  // Dynamic chart height based on number of assemblies
+  const chartHeight = Math.max(320, chartData.length * 56 + 60);
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      <Header />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
+        {/* ── Section 1: Hero ───────────────────────────────────────────────── */}
+        <section>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+              <Leaf className="text-emerald-400" size={20} />
+            </div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">
+              Embodied Carbon Compare
+            </h1>
+          </div>
+          <p className="text-gray-400 text-base max-w-2xl leading-relaxed">
+            Interactive comparison of exterior wall systems by embodied carbon intensity{" "}
+            <span className="text-gray-300">(kg CO₂e per 1,000 SF)</span>. Stacked by
+            interior, core, and exterior zone contributions.
+          </p>
+        </section>
+
+        {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
+        {kpis && (
+          <section>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <KpiCard
+                label="Lowest Carbon"
+                value={`${fmtCarbon(kpis.lowest)} kg`}
+                sub={kpis.lowestAssembly.name}
+                icon={<TrendingDown size={18} />}
+                accent="#10b981"
+              />
+              <KpiCard
+                label="Average Carbon"
+                value={`${fmtCarbon(kpis.avg)} kg`}
+                sub={`Across ${sortedAssemblies.length} assemblies`}
+                icon={<BarChart3 size={18} />}
+                accent="#94a3b8"
+              />
+              <KpiCard
+                label="Highest Carbon"
+                value={`${fmtCarbon(kpis.highest)} kg`}
+                sub={kpis.highestAssembly.name}
+                icon={<TrendingUp size={18} />}
+                accent="#ef4444"
+              />
+            </div>
+          </section>
+        )}
+
+        {/* ── Section 2: Framing Option Toggle ─────────────────────────────── */}
+        {anyHasFraming && (
+          <section>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-base font-semibold text-white">Framing Option</h2>
+                <Badge className="bg-gray-800 text-gray-400 border-gray-700 text-[10px]">
+                  EWS-2A through EWS-5
+                </Badge>
+              </div>
+              <p className="text-gray-500 text-sm mb-4">
+                Select a framing strategy to recalculate totals. Shared components (null
+                framing option) are always included.
+              </p>
+              <FramingToggle selected={framingOption} onChange={setFramingOption} />
+            </div>
+          </section>
+        )}
+
+        {/* ── Section 3: Stacked Horizontal Bar Chart ───────────────────────── */}
+        <section>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 sm:p-6">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-white">
+                  Carbon Intensity by Assembly
+                </h2>
+                <p className="text-gray-500 text-sm mt-0.5">
+                  Sorted ascending — lower is better. Stacked by zone.
+                </p>
+              </div>
+              <ChartLegend items={legendItems} />
+            </div>
+
+            <div style={{ height: chartHeight }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={chartData}
+                  margin={{ top: 0, right: 80, bottom: 0, left: 10 }}
+                  barCategoryGap="20%"
+                >
+                  <XAxis
+                    type="number"
+                    tick={{ fill: "#6b7280", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: "#374151" }}
+                    tickFormatter={(v: number) =>
+                      v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                    }
+                    label={{
+                      value: "kg CO₂e / 1,000 SF",
+                      position: "insideBottomRight",
+                      offset: -10,
+                      fill: "#6b7280",
+                      fontSize: 11,
+                    }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={110}
+                    tick={{ fill: "#d1d5db", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    content={
+                      <CustomBarTooltip
+                        assemblies={assemblies}
+                        framingOption={framingOption}
+                      />
+                    }
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                  />
+                  <Bar
+                    dataKey="INTERIOR"
+                    stackId="a"
+                    fill={ZONE_COLORS.INTERIOR}
+                    radius={[0, 0, 0, 0]}
+                    maxBarSize={40}
+                  />
+                  <Bar
+                    dataKey="CORE"
+                    stackId="a"
+                    fill={ZONE_COLORS.CORE}
+                    maxBarSize={40}
+                  />
+                  <Bar
+                    dataKey="EXTERIOR"
+                    stackId="a"
+                    fill={ZONE_COLORS.EXTERIOR}
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={40}
+                    label={{
+                      position: "right",
+                      fill: "#9ca3af",
+                      fontSize: 10,
+                      formatter: (v: number) => {
+                        // v here is the EXTERIOR value, not total — we need total
+                        return "";
+                      },
+                    }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Total labels rendered outside Recharts for reliability */}
+            <div className="mt-2 text-right">
+              <p className="text-gray-600 text-[10px]">
+                Values shown in kg CO₂e per 1,000 SF facade area
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 4: Assembly Detail Accordion ─────────────────────────── */}
+        <section>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Assembly Details</h2>
+              <p className="text-gray-500 text-sm mt-0.5">
+                Expand each assembly to see full component-level carbon data
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 bg-transparent"
+              onClick={() => setExpandedAll((v) => !v)}
+            >
+              {expandedAll ? "Collapse All" : "Expand All"}
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {sortedAssemblies.map((assembly, idx) => (
+              <AssemblyCardControlled
+                key={assembly.id}
+                assembly={assembly}
+                framingOption={framingOption}
+                rank={idx + 1}
+                forceExpanded={expandedAll}
+              />
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+// ─── Controlled Assembly Card (respects forceExpanded) ────────────────────────
+
+interface AssemblyCardControlledProps {
+  assembly: AssemblySpec;
+  framingOption: FramingOption;
+  rank: number;
+  forceExpanded: boolean;
+}
+
+function AssemblyCardControlled({
+  assembly,
+  framingOption,
+  rank,
+  forceExpanded,
+}: AssemblyCardControlledProps) {
+  const [localExpanded, setLocalExpanded] = useState(false);
+  const expanded = forceExpanded || localExpanded;
+
+  const zoneTotals = useMemo(
+    () => calcZoneTotals(assembly.components, framingOption),
+    [assembly.components, framingOption]
+  );
+  const total = useMemo(
+    () => calcTotal(assembly.components, framingOption),
+    [assembly.components, framingOption]
+  );
+
+  const tier = isTier(assembly.carbonTier) ? assembly.carbonTier : null;
+
+  const relevantComponents = assembly.components.filter((c) => {
+    const opt = c.framingOption as FramingOption | null;
+    return opt === null || opt === framingOption;
+  });
+
+  // Mini zone bar (proportional)
+  const zoneBar = (["INTERIOR", "CORE", "EXTERIOR"] as Zone[]).map((z) => ({
+    zone: z,
+    pct: total > 0 ? (zoneTotals[z] / total) * 100 : 0,
+    color: ZONE_COLORS[z],
+    value: zoneTotals[z],
+  }));
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      {/* Header row */}
+      <button
+        className="w-full px-5 py-4 flex items-center gap-4 hover:bg-gray-800/50 transition-colors text-left"
+        onClick={() => setLocalExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        {/* Rank badge */}
+        <span className="shrink-0 w-7 h-7 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-mono text-gray-400">
+          {rank}
+        </span>
+
+        {/* Name + tags + zone bar */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white font-semibold text-sm sm:text-base">
+              {assembly.name}
+            </span>
+            {tier && (
+              <span
+                className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-medium ${TIER_BG[tier]}`}
+              >
+                {tier}
+              </span>
+            )}
+            {assembly.epdNumber && (
+              <span className="text-[10px] font-mono text-gray-500 hidden sm:inline">
+                EPD: {assembly.epdNumber}
+              </span>
+            )}
+          </div>
+
+          {/* Zone mini-bar */}
+          <div className="mt-2 flex rounded-full overflow-hidden h-1.5 w-full max-w-xs gap-px">
+            {zoneBar.map(({ zone, pct, color, value }) =>
+              pct > 0 ? (
+                <div
+                  key={zone}
+                  style={{ width: `${pct}%`, backgroundColor: color }}
+                  title={`${zone}: ${fmtCarbon(value)} kg CO₂e`}
+                />
+              ) : null
+            )}
+          </div>
+
+          {/* Zone labels — visible on wider screens */}
+          <div className="mt-1.5 hidden sm:flex gap-3">
+            {zoneBar.map(({ zone, pct, color, value }) =>
+              pct > 0 ? (
+                <div key={zone} className="flex items-center gap-1 text-[10px] text-gray-500">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  {zone.charAt(0) + zone.slice(1).toLowerCase()}:{" "}
+                  <span className="text-gray-400">{fmtCarbon(value)}</span>
+                </div>
+              ) : null
+            )}
+          </div>
+        </div>
+
+        {/* Total */}
+        <div className="shrink-0 text-right">
+          <div
+            className="text-white font-bold font-mono text-base sm:text-lg leading-none"
+            style={{ color: tier ? TIER_COLORS[tier] : "#ffffff" }}
+          >
+            {fmtCarbon(total)}
+          </div>
+          <div className="text-gray-500 text-[10px] mt-0.5">kg CO₂e / 1k SF</div>
+        </div>
+
+        {/* Chevron */}
+        <span className="shrink-0 text-gray-500">
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </span>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-gray-800">
+          {/* Zone summary strip */}
+          <div className="px-5 py-3 flex gap-6 bg-gray-950/60 flex-wrap border-b border-gray-800">
+            {(["INTERIOR", "CORE", "EXTERIOR"] as Zone[]).map((z) => (
+              <div key={z} className="flex items-center gap-2 text-xs">
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: ZONE_COLORS[z] }}
+                />
+                <span className="text-gray-400">{z}:</span>
+                <span className="text-gray-200 font-mono font-medium">
+                  {fmtCarbon(zoneTotals[z])} kg
+                </span>
+                {total > 0 && (
+                  <span className="text-gray-600">
+                    ({((zoneTotals[z] / total) * 100).toFixed(1)}%)
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Component table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-950/40">
+                  <th className="px-4 py-2.5 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px] whitespace-nowrap">
+                    Zone
+                  </th>
+                  <th className="px-4 py-2.5 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    Layer
+                  </th>
+                  <th className="px-4 py-2.5 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    Manufacturer
+                  </th>
+                  <th className="px-4 py-2.5 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    Product
+                  </th>
+                  <th className="px-4 py-2.5 text-left text-gray-500 font-medium uppercase tracking-wider text-[10px] whitespace-nowrap">
+                    EPD #
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                    GWP
+                  </th>
+                  <th className="px-4 py-2.5 text-right text-gray-500 font-medium uppercase tracking-wider text-[10px] whitespace-nowrap">
+                    Carbon / 1k SF
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {relevantComponents.map((c) => {
+                  const zone = isZone(c.zone) ? c.zone : "CORE";
+                  const carbon = parseFloat(c.carbonPer1000sf ?? "0") || 0;
+                  const isOptionSpecific = c.framingOption !== null;
+
+                  return (
+                    <tr
+                      key={c.id}
+                      className="border-b border-gray-800 hover:bg-gray-800/40 transition-colors"
+                    >
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-medium ${ZONE_BG[zone]}`}
+                        >
+                          {zone}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-200 text-sm">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{c.layerName}</span>
+                          {c.dimensionParam && (
+                            <span className="text-gray-500 text-xs">
+                              ({c.dimensionParam})
+                            </span>
+                          )}
+                          {isOptionSpecific && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700 font-mono whitespace-nowrap">
+                              {FRAMING_LABELS[c.framingOption as FramingOption]}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-400 text-sm">
+                        {c.manufacturer ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-400 text-sm max-w-[160px]">
+                        <span className="block truncate" title={c.productName ?? undefined}>
+                          {c.productName ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {c.epdNumber ? (
+                          <span className="font-mono text-xs text-emerald-400">
+                            {c.epdNumber}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 text-sm">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        {c.gwpValue ? (
+                          <span className="text-gray-300 font-mono text-xs">
+                            {parseFloat(c.gwpValue).toFixed(3)}
+                            {c.gwpUnits && (
+                              <span className="text-gray-600 ml-1 text-[10px]">
+                                {c.gwpUnits}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 text-sm">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <span className="font-mono text-sm text-white font-medium">
+                          {fmtCarbon(carbon)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-700 bg-gray-900/80">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-3 text-gray-400 font-semibold text-xs uppercase tracking-wider"
+                  >
+                    Assembly Total
+                    <span className="ml-2 text-gray-600 font-normal normal-case">
+                      ({relevantComponents.length} components)
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold font-mono text-emerald-400">
+                    {fmtCarbon(total)} kg CO₂e
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Notes section if any component has notes */}
+          {relevantComponents.some((c) => c.notes) && (
+            <div className="px-5 py-3 bg-gray-950/40 border-t border-gray-800">
+              <p className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-2">
+                Notes
+              </p>
+              <div className="space-y-1.5">
+                {relevantComponents
+                  .filter((c) => c.notes)
+                  .map((c) => (
+                    <p key={c.id} className="text-gray-400 text-xs leading-relaxed">
+                      <span className="text-gray-500 font-medium">{c.layerName}:</span>{" "}
+                      {c.notes}
+                    </p>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

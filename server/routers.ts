@@ -11,6 +11,7 @@ import {
   assemblyComponents,
   materialCertifications,
   materialAssemblySpecs,
+  ewsCarbonComponents,
   ccpsBaselines,
   ccpsScores,
   decisionMakerPersonas,
@@ -72,6 +73,35 @@ export const appRouter = router({
         .select()
         .from(materialAssemblySpecs)
         .orderBy(asc(materialAssemblySpecs.gwpPer1000sf));
+    }),
+
+    // Full assembly + component breakdown for Carbon Compare chart
+    listWithComponents: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const specs = await db
+        .select()
+        .from(materialAssemblySpecs)
+        .orderBy(asc(materialAssemblySpecs.gwpPer1000sf));
+
+      const components = await db
+        .select()
+        .from(ewsCarbonComponents)
+        .orderBy(asc(ewsCarbonComponents.assemblySpecId), asc(ewsCarbonComponents.layerOrder));
+
+      // Group components by assemblySpecId
+      const componentMap = new Map<number, typeof components>();
+      for (const c of components) {
+        const arr = componentMap.get(c.assemblySpecId) || [];
+        arr.push(c);
+        componentMap.set(c.assemblySpecId, arr);
+      }
+
+      return specs.map((spec) => ({
+        ...spec,
+        components: componentMap.get(spec.id) || [],
+      }));
     }),
   }),
 
