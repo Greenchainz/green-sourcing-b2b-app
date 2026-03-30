@@ -15,6 +15,7 @@ import { ScoreRing } from "@/components/MaterialCreditScore/ScoreRing";
 import { Link, useParams, useLocation } from "wouter";
 import { toast } from "sonner";
 import { PaywallGate } from "@/components/paywall/PaywallGate";
+import { PriceTrendBadge } from "@/components/PriceTrendBadge";
 
 
 export default function MaterialDetail() {
@@ -247,7 +248,11 @@ export default function MaterialDetail() {
                     { label: "Warranty", value: m.warrantyYears ? `${m.warrantyYears} years` : "—" },
                     { label: "Data Source", value: m.dataSource || "—" },
                   ].map((spec) => (<div key={spec.label} className="py-2 border-b border-border/30"><p className="text-xs text-muted-foreground">{spec.label}</p><p className="text-sm font-semibold">{spec.value}</p></div>))}
-                </div></CardContent></Card>
+                </div>
+                <div className="mt-4 pt-3 border-t border-border/30">
+                  <PriceTrendBadge category={m.category} mode="full" />
+                </div>
+                </CardContent></Card>
               </TabsContent>
               <TabsContent value="certs">
                 <Card><CardContent className="p-6"><div className="space-y-3">

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { ScoreBadge } from "@/components/MaterialCreditScore/ScoreBadge";
+import { PriceTrendBadge } from "@/components/PriceTrendBadge";
 import { getMaterialImage } from "@/lib/material-images";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -193,9 +194,12 @@ export default function MaterialCard(props: MaterialCardProps) {
               <span className="text-[9px] font-normal text-muted-foreground">/{priceUnit || "unit"}</span>
             </p>
           ) : null}
-          {leadTimeDays ? (
-            <p className="text-[10px] text-muted-foreground">{leadTimeDays}d lead</p>
-          ) : null}
+          <div className="flex items-center justify-end gap-1">
+            {leadTimeDays ? (
+              <p className="text-[10px] text-muted-foreground">{leadTimeDays}d lead</p>
+            ) : null}
+            <PriceTrendBadge category={category} mode="compact" />
+          </div>
         </div>
 
         {/* Carbon Score */}
@@ -317,6 +321,7 @@ export default function MaterialCard(props: MaterialCardProps) {
                   <span className="text-muted-foreground">/{priceUnit || "unit"}</span>
                 </span>
               )}
+              <PriceTrendBadge category={category} mode="compact" />
               {leadTimeDays && (
                 <span className="text-muted-foreground">{leadTimeDays}d lead</span>
               )}
