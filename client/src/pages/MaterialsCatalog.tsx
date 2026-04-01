@@ -409,9 +409,27 @@ export default function MaterialsCatalog() {
     { placeholderData: (prev) => prev }
   );
 
+  // Semantic search: fires when search text has 3+ words
+  const searchWords = (filters.search || "").trim().split(/\s+/).filter(Boolean);
+  const useSemanticMode = searchWords.length >= 3;
+
+  const { data: semanticData, isLoading: semanticLoading } =
+    trpc.materials.semanticSearch.useQuery(
+      { query: filters.search || "", limit: 48 },
+      {
+        enabled: useSemanticMode && !!filters.search,
+        placeholderData: (prev: unknown) => prev,
+        staleTime: 30_000,
+      }
+    );
+
+  const showSemantic = useSemanticMode && semanticData && semanticData.items.length > 0;
+
   const { data: rawCategories } = trpc.materials.categories.useQuery();
   const categories = rawCategories ?? [];
-  const totalMatches = data?.total ?? 0;
+  const totalMatches = showSemantic
+    ? semanticData.items.length
+    : data?.total ?? 0;
 
   // Count of active filters for mobile badge
   const activeFilterCount = useMemo(
@@ -476,6 +494,11 @@ export default function MaterialsCatalog() {
             >
               <X className="w-3.5 h-3.5" />
             </button>
+          )}
+          {!filters.search && (
+            <p className="absolute -bottom-4 left-0 text-[10px] text-muted-foreground/60 hidden lg:block">
+              Try: &quot;low-carbon insulation for cold climates&quot; or &quot;fire-rated concrete alternative&quot;
+            </p>
           )}
         </div>
 
@@ -564,12 +587,17 @@ export default function MaterialsCatalog() {
             {/* Results header: count + sort + view toggle */}
             <div className="flex items-center justify-between mb-3 gap-3">
               <p className="text-sm text-muted-foreground shrink-0">
-                {isLoading ? (
+                {(isLoading || (useSemanticMode && semanticLoading)) ? (
                   <span className="inline-block w-24 h-4 bg-muted animate-pulse rounded align-middle" />
                 ) : (
                   <>
                     <span className="font-medium text-foreground">{totalMatches}</span>{" "}
                     material{totalMatches !== 1 ? "s" : ""}
+                    {showSemantic && (
+                      <span className="ml-1.5 text-[10px] text-emerald-600 font-medium">
+                        (semantic match)
+                      </span>
+                    )}
                   </>
                 )}
               </p>
@@ -624,35 +652,45 @@ export default function MaterialsCatalog() {
             <ActiveChips filters={filters} onChange={updateFilters} />
 
             {/* Grid or List */}
-            {isLoading ? (
-              viewMode === "grid" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                  {Array.from({ length: 12 }).map((_, i) => (
-                    <Skeleton key={i} className="h-72 rounded-lg" />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 rounded-lg" />
-                  ))}
-                </div>
-              )
-            ) : data?.items && data.items.length > 0 ? (
-              viewMode === "grid" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                  {data.items.map((item) => (
-                    <MaterialCard key={item.id} {...item} />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {data.items.map((item) => (
-                    <MaterialCard key={item.id} {...item} variant="list" />
-                  ))}
-                </div>
-              )
-            ) : (
+            {(() => {
+              const activeLoading = showSemantic ? semanticLoading : isLoading;
+              const activeItems = showSemantic
+                ? (semanticData?.items as any[])
+                : data?.items;
+
+              if (activeLoading) {
+                return viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <Skeleton key={i} className="h-72 rounded-lg" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <Skeleton key={i} className="h-16 rounded-lg" />
+                    ))}
+                  </div>
+                );
+              }
+
+              if (activeItems && activeItems.length > 0) {
+                return viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                    {activeItems.map((item: any) => (
+                      <MaterialCard key={item.id} {...item} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {activeItems.map((item: any) => (
+                      <MaterialCard key={item.id} {...item} variant="list" />
+                    ))}
+                  </div>
+                );
+              }
+
+              return (
               <div className="text-center py-20">
                 <Search className="w-10 h-10 text-muted-foreground/25 mx-auto mb-3" />
                 <p className="text-sm font-medium mb-1">No materials found</p>
@@ -663,7 +701,8 @@ export default function MaterialsCatalog() {
                   Clear all filters
                 </Button>
               </div>
-            )}
+              );
+            })()}
 
             {/* Footer inside scroll area */}
             <div className="mt-16 pt-8 border-t border-border/40">

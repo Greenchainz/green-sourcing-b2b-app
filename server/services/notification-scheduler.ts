@@ -18,6 +18,7 @@ import {
   type StreakReminderData,
   type NewMaterialAlertData,
 } from "./email-templates";
+import { query, queryMany } from "../pg-db";
 
 interface EmailPayload {
   to: string;
@@ -256,4 +257,86 @@ export async function findNewMaterialMatches(): Promise<EmailPayload[]> {
   }
 
   return payloads;
+}
+
+// ============================================================================
+// RFQ Lifecycle Scheduler
+// ============================================================================
+
+/** In-memory set of RFQ IDs that have already received an expiry reminder */
+const remindedRfqIds = new Set<string>();
+
+/** Check for RFQs expiring within 24 hours and log reminders */
+async function checkExpiringRfqs(): Promise<void> {
+  try {
+    const rows = await queryMany<{ id: string; title: string; deadline: Date; buyer_id: number }>(
+      `SELECT id, title, deadline, buyer_id
+       FROM rfqs
+       WHERE status = 'open'
+         AND deadline BETWEEN NOW() AND NOW() + INTERVAL '24 hours'`
+    );
+
+    for (const rfq of rows) {
+      if (remindedRfqIds.has(rfq.id)) continue;
+
+      console.log(
+        `[rfq-scheduler] RFQ "${rfq.title}" (${rfq.id}) expires at ${rfq.deadline.toISOString()} — reminder pending`
+      );
+      remindedRfqIds.add(rfq.id);
+    }
+
+    if (rows.length > 0) {
+      console.log(`[rfq-scheduler] ${rows.length} RFQ(s) expiring within 24h, ${remindedRfqIds.size} total reminded`);
+    }
+  } catch (err) {
+    console.error("[rfq-scheduler] Error checking expiring RFQs:", err);
+  }
+}
+
+/** Auto-expire overdue RFQs (status = 'open' and deadline < NOW()) */
+async function expireOverdueRfqs(): Promise<void> {
+  try {
+    const result = await query(
+      `UPDATE rfqs SET status = 'expired', updated_at = NOW()
+       WHERE status = 'open' AND deadline < NOW()`
+    );
+
+    const count = result.rowCount ?? 0;
+    if (count > 0) {
+      console.log(`[rfq-scheduler] Expired ${count} overdue RFQ(s)`);
+    }
+  } catch (err) {
+    console.error("[rfq-scheduler] Error expiring overdue RFQs:", err);
+  }
+}
+
+/** 15-minute interval handle (for cleanup on shutdown) */
+let schedulerInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Start the RFQ notification scheduler.
+ * Runs every 15 minutes: checks for expiring RFQs and auto-expires overdue ones.
+ * Call once on server startup.
+ */
+export function startNotificationScheduler(): void {
+  if (schedulerInterval) {
+    console.warn("[rfq-scheduler] Scheduler already running — skipping duplicate start");
+    return;
+  }
+
+  const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+
+  console.log("[rfq-scheduler] Starting RFQ notification scheduler (every 15 min)");
+
+  // Run immediately on startup, then every 15 minutes
+  void runSchedulerTick();
+
+  schedulerInterval = setInterval(() => {
+    void runSchedulerTick();
+  }, FIFTEEN_MINUTES_MS);
+}
+
+async function runSchedulerTick(): Promise<void> {
+  await checkExpiringRfqs();
+  await expireOverdueRfqs();
 }
