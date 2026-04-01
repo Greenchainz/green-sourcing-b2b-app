@@ -1,216 +1,203 @@
 /**
  * Pricing Data Service
- * 
- * Handles database operations for scraped pricing data from TXDOT and other sources
+ *
+ * Aggregates supplier quote data for materials.
+ * Uses raw SQL via pg pool (parameterized queries only).
+ *
+ * Expected schema:
+ *
+ * -- CREATE TABLE supplier_quotes (
+ * --   id SERIAL PRIMARY KEY,
+ * --   "materialId" INTEGER NOT NULL REFERENCES materials(id),
+ * --   "supplierId" INTEGER REFERENCES suppliers(id),
+ * --   "supplierName" VARCHAR(255),
+ * --   "pricePerUnit" DECIMAL(12,2) NOT NULL,
+ * --   "priceUnit" VARCHAR(50) DEFAULT 'USD',
+ * --   quantity INTEGER,
+ * --   "leadTimeDays" INTEGER,
+ * --   "quoteDate" TIMESTAMP DEFAULT NOW(),
+ * --   "isActive" BOOLEAN DEFAULT TRUE,
+ * --   "createdAt" TIMESTAMP DEFAULT NOW(),
+ * --   "updatedAt" TIMESTAMP DEFAULT NOW()
+ * -- );
  */
 
-import { getDb } from '../db';
-import { pricingData, materials } from '../../drizzle/schema';
-import { eq, and, desc } from 'drizzle-orm';
-import type { ScrapedPricingData } from './txdotScraper';
+import { query, queryOne, queryMany } from '../pg-db';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface StorePricingDataResult {
-  success: boolean;
-  recordsInserted: number;
-  recordsSkipped: number;
-  errors: string[];
+export interface PricingData {
+  materialId: number;
+  avgPrice: number;
+  medianPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  supplierCount: number;
+  lastUpdated: string | null;
+  priceUnit: string;
 }
 
-// ─── Material Matching ──────────────────────────────────────────────────────
+export interface PricingComparison {
+  materialId: number;
+  avgPrice: number;
+  medianPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  supplierCount: number;
+  lastUpdated: string | null;
+  priceUnit: string;
+}
+
+export interface SupplierQuote {
+  id: number;
+  materialId: number;
+  supplierId: number | null;
+  supplierName: string | null;
+  pricePerUnit: number;
+  priceUnit: string;
+  quantity: number | null;
+  quoteDate: string | null;
+  leadTimeDays: number | null;
+}
+
+// ─── Row Types ──────────────────────────────────────────────────────────────
+
+interface AggregatedPricingRow {
+  avg_price: string;
+  min_price: string;
+  max_price: string;
+  supplier_count: string;
+  last_updated: string | null;
+  price_unit: string | null;
+  all_prices: string; // comma-separated
+}
+
+interface SupplierQuoteRow {
+  id: number;
+  materialId: number;
+  supplierId: number | null;
+  supplierName: string | null;
+  pricePerUnit: string;
+  priceUnit: string | null;
+  quantity: number | null;
+  quoteDate: string | null;
+  leadTimeDays: number | null;
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function calculateMedian(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// ─── Service Functions ──────────────────────────────────────────────────────
 
 /**
- * Finds or creates a material by category name
- * Returns material ID for linking pricing data
+ * Get aggregated pricing data for a single material.
+ * Calculates min, max, average, and median from active supplier quotes.
  */
-async function findOrCreateMaterial(categoryName: string): Promise<number> {
-  const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
-  // Try to find existing material by name
-  const existing = await db
-    .select({ id: materials.id })
-    .from(materials)
-    .where(eq(materials.name, categoryName))
-    .limit(1);
-  
-  if (existing.length > 0) {
-    return existing[0].id;
+export async function getAggregatedPricing(materialId: number): Promise<PricingData> {
+  const row = await queryOne<AggregatedPricingRow>(
+    `SELECT
+       AVG("pricePerUnit") AS avg_price,
+       MIN("pricePerUnit") AS min_price,
+       MAX("pricePerUnit") AS max_price,
+       COUNT(DISTINCT "supplierId") AS supplier_count,
+       MAX("quoteDate")::TEXT AS last_updated,
+       MODE() WITHIN GROUP (ORDER BY "priceUnit") AS price_unit,
+       STRING_AGG("pricePerUnit"::TEXT, ',' ORDER BY "pricePerUnit") AS all_prices
+     FROM supplier_quotes
+     WHERE "materialId" = $1 AND "isActive" = TRUE`,
+    [materialId]
+  );
+
+  if (!row || row.avg_price == null) {
+    return {
+      materialId,
+      avgPrice: 0,
+      medianPrice: 0,
+      minPrice: 0,
+      maxPrice: 0,
+      supplierCount: 0,
+      lastUpdated: null,
+      priceUnit: 'USD',
+    };
   }
-  
-  // Create new material placeholder
-  const [newMaterial] = await db.insert(materials).values({
-    name: categoryName,
-    description: `Auto-generated from TXDOT bid tab scraper`,
-    category: 'Construction Materials',
-    subcategory: categoryName,
-    pricePerUnit: '0', // Will be updated with average pricing
-    priceUnit: 'Various',
-    leadTimeDays: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
-  
-  return newMaterial.insertId;
-}
 
-// ─── Pricing Data Storage ───────────────────────────────────────────────────
+  const allPrices = row.all_prices
+    ? row.all_prices.split(',').map(Number).filter(n => !isNaN(n))
+    : [];
 
-/**
- * Stores scraped pricing data in the database
- * Handles material matching and duplicate detection
- */
-export async function storePricingData(
-  scrapedData: ScrapedPricingData[]
-): Promise<StorePricingDataResult> {
-  const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
-  const result: StorePricingDataResult = {
-    success: true,
-    recordsInserted: 0,
-    recordsSkipped: 0,
-    errors: [],
+  return {
+    materialId,
+    avgPrice: parseFloat(parseFloat(row.avg_price).toFixed(2)),
+    medianPrice: parseFloat(calculateMedian(allPrices).toFixed(2)),
+    minPrice: parseFloat(parseFloat(row.min_price).toFixed(2)),
+    maxPrice: parseFloat(parseFloat(row.max_price).toFixed(2)),
+    supplierCount: parseInt(row.supplier_count, 10),
+    lastUpdated: row.last_updated,
+    priceUnit: row.price_unit ?? 'USD',
   };
-  
-  for (const data of scrapedData) {
-    try {
-      // Find or create material
-      const materialId = await findOrCreateMaterial(data.materialCategory);
-      
-      // Check for duplicate pricing data
-      // Skip if we already have pricing from the same source/contract
-      const existing = await db
-        .select({ id: pricingData.id })
-        .from(pricingData)
-        .where(
-          and(
-            eq(pricingData.materialId, materialId),
-            eq(pricingData.source, data.source),
-            eq(pricingData.contractNumber, data.contractNumber || '')
-          )
-        )
-        .limit(1);
-      
-      if (existing.length > 0) {
-        result.recordsSkipped++;
-        continue;
-      }
-      
-      // Insert pricing data
-      await db.insert(pricingData).values({
-        materialId,
-        pricePerUnit: data.pricePerUnit.toString(),
-        unit: data.unit,
-        currency: 'USD',
-        state: data.state,
-        city: null,
-        zipCode: null,
-        county: data.county,
-        source: data.source,
-        sourceDate: data.sourceDate,
-        sourceUrl: data.sourceUrl,
-        projectName: data.projectName,
-        contractNumber: data.contractNumber,
-        laborRatePerHour: null,
-        totalLaborCost: null,
-        dataConfidence: data.dataConfidence,
-        isActive: true,
-        expiresAt: null, // Set expiration date 6 months from source date
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      
-      result.recordsInserted++;
-    } catch (error) {
-      result.success = false;
-      result.errors.push(`Error storing pricing data for ${data.materialCategory}: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-  
-  return result;
 }
 
 /**
- * Gets pricing data for a specific material
+ * Get pricing comparison for multiple materials at once.
  */
-export async function getMaterialPricing(materialId: number) {
-  const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
-  return db
-    .select()
-    .from(pricingData)
-    .where(
-      and(
-        eq(pricingData.materialId, materialId),
-        eq(pricingData.isActive, true)
-      )
-    )
-    .orderBy(desc(pricingData.sourceDate));
+export async function getPricingComparison(materialIds: number[]): Promise<PricingComparison[]> {
+  if (materialIds.length === 0) return [];
+
+  const results: PricingComparison[] = [];
+  for (const id of materialIds) {
+    const pricing = await getAggregatedPricing(id);
+    results.push(pricing);
+  }
+  return results;
 }
 
 /**
- * Gets pricing data by state and county
+ * Get individual supplier quotes for a material.
  */
-export async function getRegionalPricing(state: string, county?: string) {
-  const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
-  const conditions = [
-    eq(pricingData.state, state),
-    eq(pricingData.isActive, true),
-  ];
-  
-  if (county) {
-    conditions.push(eq(pricingData.county, county));
-  }
-  
-  return db
-    .select()
-    .from(pricingData)
-    .where(and(...conditions))
-    .orderBy(desc(pricingData.sourceDate));
-}
+export async function getSupplierQuotes(
+  materialId: number,
+  options?: { limit?: number; sortBy?: 'price' | 'date' }
+): Promise<SupplierQuote[]> {
+  const limit = options?.limit ?? 50;
+  const orderBy = options?.sortBy === 'date'
+    ? '"quoteDate" DESC NULLS LAST'
+    : '"pricePerUnit" ASC';
 
-/**
- * Updates material average pricing based on regional data
- */
-export async function updateMaterialAveragePricing(materialId: number) {
-  const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
-  const pricing = await getMaterialPricing(materialId);
-  
-  if (pricing.length === 0) {
-    return;
-  }
-  
-  // Calculate average price
-  const totalPrice = pricing.reduce((sum: number, p: any) => sum + parseFloat(p.pricePerUnit), 0);
-  const averagePrice = totalPrice / pricing.length;
-  
-  // Update material with average price
-  await db
-    .update(materials)
-    .set({
-      pricePerUnit: averagePrice.toString(),
-      updatedAt: new Date(),
-    })
-    .where(eq(materials.id, materialId));
-}
+  const rows = await queryMany<SupplierQuoteRow>(
+    `SELECT
+       id,
+       "materialId",
+       "supplierId",
+       "supplierName",
+       "pricePerUnit",
+       "priceUnit",
+       quantity,
+       "quoteDate"::TEXT AS "quoteDate",
+       "leadTimeDays"
+     FROM supplier_quotes
+     WHERE "materialId" = $1 AND "isActive" = TRUE
+     ORDER BY ${orderBy}
+     LIMIT $2`,
+    [materialId, limit]
+  );
 
-/**
- * Batch update all material average pricing
- */
-export async function updateAllMaterialAveragePricing() {
-  const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
-  const allMaterials = await db.select({ id: materials.id }).from(materials);
-  
-  for (const material of allMaterials) {
-    await updateMaterialAveragePricing(material.id);
-  }
+  return rows.map(r => ({
+    id: r.id,
+    materialId: r.materialId,
+    supplierId: r.supplierId,
+    supplierName: r.supplierName,
+    pricePerUnit: parseFloat(r.pricePerUnit),
+    priceUnit: r.priceUnit ?? 'USD',
+    quantity: r.quantity,
+    quoteDate: r.quoteDate,
+    leadTimeDays: r.leadTimeDays,
+  }));
 }
