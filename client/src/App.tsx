@@ -60,6 +60,7 @@ import SupplierAgentConfig from "./pages/SupplierAgentConfig";
 import SupplierMaterials from "./pages/SupplierMaterials";
 import SupplierBulkUpload from "./pages/SupplierBulkUpload";
 import SupplierAnalytics from "./pages/SupplierAnalytics";
+import { SupplierLayout } from "./components/SupplierLayout";
 import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
 import { HowItWorks } from "./pages/HowItWorks";
@@ -92,21 +93,25 @@ function Router() {
       <Route path="/manufacturers/:id" component={ManufacturerProfile} />
       <Route path="/compare" component={Compare} />
       <Route path="/carbon-compare" component={CarbonCompare} />
+<<<<<<< HEAD
       <Route path="/carbon-dashboard" component={CarbonDashboard} />
       <Route path="/supplier-dashboard" component={SupplierDashboard} />
+=======
+      <Route path="/supplier-dashboard">{() => <SupplierLayout><SupplierDashboard /></SupplierLayout>}</Route>
+>>>>>>> 67a20ed2 (feat: supplier portal sidebar nav, real analytics, and getStats endpoint)
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
       <Route path="/supplier/onboarding" component={SupplierOnboarding} />
       <Route path="/architect/onboarding" component={ArchitectOnboarding} />
       <Route path="/search" component={MaterialSearchPage} />
       <Route path="/supplier/register" component={SupplierRegistration} />
-      <Route path="/supplier/dashboard" component={SupplierProfileDashboard} />
-      <Route path="/supplier/rfqs" component={SupplierRfqDashboard} />
-      <Route path="/supplier/submit-spec" component={SupplierSpecSubmission} />
-      <Route path="/supplier/agent-config" component={SupplierAgentConfig} />
-      <Route path="/supplier/materials" component={SupplierMaterials} />
-      <Route path="/supplier/upload" component={SupplierBulkUpload} />
-      <Route path="/supplier/analytics" component={SupplierAnalytics} />
+      <Route path="/supplier/dashboard">{() => <SupplierLayout><SupplierProfileDashboard /></SupplierLayout>}</Route>
+      <Route path="/supplier/rfqs">{() => <SupplierLayout><SupplierRfqDashboard /></SupplierLayout>}</Route>
+      <Route path="/supplier/submit-spec">{() => <SupplierLayout><SupplierSpecSubmission /></SupplierLayout>}</Route>
+      <Route path="/supplier/agent-config">{() => <SupplierLayout><SupplierAgentConfig /></SupplierLayout>}</Route>
+      <Route path="/supplier/materials">{() => <SupplierLayout><SupplierMaterials /></SupplierLayout>}</Route>
+      <Route path="/supplier/upload">{() => <SupplierLayout><SupplierBulkUpload /></SupplierLayout>}</Route>
+      <Route path="/supplier/analytics">{() => <SupplierLayout><SupplierAnalytics /></SupplierLayout>}</Route>
       <Route path="/material-swap" component={MaterialSwap} />
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />
