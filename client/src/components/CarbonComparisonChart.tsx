@@ -64,7 +64,7 @@ function exportCsv(data: CarbonReportData, projectId?: string): void {
   URL.revokeObjectURL(url);
 }
 
-async function generateLeedPdf(data: CarbonReportData, projectId?: string): Promise<void> {
+export async function generateLeedPdf(data: CarbonReportData, projectId?: string): Promise<void> {
   // Dynamically import pdf-lib (already in dependencies)
   const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
 
@@ -363,7 +363,15 @@ export function CarbonComparisonChart({ data, projectId }: Props) {
           <FileText className="h-4 w-4 mr-1" />
           Export CSV
         </Button>
-        <Button variant="outline" size="sm" onClick={() => void generateLeedPdf(data, projectId)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            generateLeedPdf(data, projectId).catch((err) => {
+              console.error("Failed to generate LEED PDF:", err);
+            });
+          }}
+        >
           <FileBarChart className="h-4 w-4 mr-1" />
           Generate LEED Report PDF
         </Button>

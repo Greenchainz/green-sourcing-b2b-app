@@ -11,7 +11,7 @@
 
 import { getDb } from "../db";
 import { epdMaterials, suppliers } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 // ─── Benchmarks ───────────────────────────────────────────────────────────────
 
@@ -163,7 +163,12 @@ export async function compute(
     const siblings = await db
       .select({ coreOption: epdMaterials.coreOption })
       .from(epdMaterials)
-      .where(eq(epdMaterials.assemblyType, row.assemblyType));
+      .where(
+        and(
+          eq(epdMaterials.assemblyType, row.assemblyType),
+          eq(epdMaterials.supplierId, row.supplierId)
+        )
+      );
 
     for (const s of siblings) {
       if (s.coreOption != null) {

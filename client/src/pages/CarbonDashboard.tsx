@@ -10,11 +10,11 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { CarbonComparisonChart } from "@/components/CarbonComparisonChart";
+import { CarbonComparisonChart, generateLeedPdf } from "@/components/CarbonComparisonChart";
 import { MaterialCreditScoreCard } from "@/components/MaterialCreditScoreCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,14 +158,17 @@ function CoreOptionToggles({ selected, onChange }: CoreOptionTogglesProps) {
 
 export default function CarbonDashboard() {
   const [, navigate] = useLocation();
+  const searchStr = useSearch();
 
-  // Initialise state from URL params on mount
-  const initial = decodeState(window.location.search);
-  const [projectName, setProjectName] = useState(initial.projectName);
-  const [selectedAssemblies, setSelectedAssemblies] = useState<string[]>(initial.assemblies);
-  const [selectedOptions, setSelectedOptions] = useState<number[]>(
-    initial.options.length ? initial.options : [1, 2, 3]
+  // Initialise state from URL params on mount (lazy initializers to avoid re-running)
+  const [projectName, setProjectName] = useState(() => decodeState(searchStr).projectName);
+  const [selectedAssemblies, setSelectedAssemblies] = useState<string[]>(
+    () => decodeState(searchStr).assemblies
   );
+  const [selectedOptions, setSelectedOptions] = useState<number[]>(() => {
+    const opts = decodeState(searchStr).options;
+    return opts.length ? opts : [1, 2, 3];
+  });
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
 
   // Fetch EPD materials for all selected assemblies in a single query
@@ -224,15 +227,13 @@ export default function CarbonDashboard() {
     navigate("/carbon-dashboard");
   }, [navigate]);
 
-  // We also expose a standalone "Generate Report" that triggers PDF export
+  // Generate Report — calls pdf-lib directly via the exported helper
   const handleGenerateReport = useCallback(() => {
     if (!chartData) return;
-    // Trigger PDF via the CarbonComparisonChart internal button via DOM click
-    const btn = document.querySelector<HTMLButtonElement>(
-      '[data-action="generate-pdf"]'
-    );
-    btn?.click();
-  }, [chartData]);
+    generateLeedPdf(chartData, projectName || undefined).catch((err) => {
+      console.error("Failed to generate LEED PDF:", err);
+    });
+  }, [chartData, projectName]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

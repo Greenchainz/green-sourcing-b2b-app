@@ -302,9 +302,11 @@ export async function getRegionalPricing(
   county?: string
 ): Promise<RegionalPricingResult[]> {
   const params: unknown[] = [state.toUpperCase()];
-  const countyClause = county
-    ? `AND UPPER(pd.county) = UPPER($${params.push(county)})`
-    : '';
+  let countyClause = '';
+  if (county) {
+    params.push(county);
+    countyClause = `AND UPPER(pd.county) = UPPER($${params.length})`;
+  }
 
   const rows = await queryMany<PricingAggRow>(
     `SELECT
