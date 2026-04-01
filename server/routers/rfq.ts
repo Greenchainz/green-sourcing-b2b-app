@@ -1,331 +1,325 @@
-import { router, protectedProcedure, publicProcedure, architectProcedure } from "../_core/trpc";
+import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { getDb } from "../db";
-import { rfqRequests, suppliers } from "../../drizzle/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
-import { sendDirectRfqAlert } from "../email-service";
+import { query, queryOne, queryMany, withTransaction } from "../pg-db";
 
 /**
- * RFQ Requests Router
+ * RFQ Marketplace Lifecycle Router
  *
- * Direct-assignment model: an architect sends an RFQ to a specific supplier.
- * Suppliers receive the request and respond with accept/decline.
+ * Full lifecycle: buyers create RFQs and invite suppliers,
+ * suppliers submit quotes, buyers accept a winning quote,
+ * and overdue RFQs are auto-expired by the scheduler.
  *
- * Routes:
- *   rfqRequests.create        — architect creates an RFQ for a supplier
- *   rfqRequests.listMine      — architect sees their own submitted RFQs
- *   rfqRequests.listIncoming  — supplier sees RFQs directed at them
- *   rfqRequests.respond       — supplier accepts or declines an RFQ
- *   rfqRequests.listSuppliers — public: list verified suppliers for the form dropdown
+ * Procedures:
+ *   rfq.create       — buyer creates an RFQ with invited suppliers
+ *   rfq.list         — list RFQs (buyer sees own, supplier sees invited)
+ *   rfq.getById      — full RFQ detail with quotes
+ *   rfq.submitQuote  — supplier submits a quote on an open RFQ
+ *   rfq.acceptQuote  — buyer accepts a winning quote
+ *   rfq.expire       — scheduler: auto-expire overdue RFQs (no auth)
  */
 export const rfqRouter = router({
-  // ── Architect: create an RFQ directed at one supplier ─────────────────────
+  // ── Buyer: create an RFQ and invite suppliers ─────────────────────────────
   create: protectedProcedure
     .input(
       z.object({
-        supplierId: z.number().int().positive(),
-        materialType: z.string().min(1, "Material type is required"),
+        title: z.string().min(1, "Title is required"),
+        description: z.string().optional(),
+        material_category: z.string().optional(),
         quantity: z.number().positive("Quantity must be positive"),
-        specs: z.string().optional(),
+        unit: z.string().min(1, "Unit is required"),
+        delivery_location: z.string().optional(),
+        deadline: z.string().refine(
+          (d) => new Date(d) > new Date(),
+          "Deadline must be in the future"
+        ),
+        supplier_ids: z.array(z.number().int().positive()).min(1, "At least one supplier required"),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (ctx.user.role !== "buyer" && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only buyers can create RFQs" });
+      }
 
-      // Verify supplier exists
-      const [supplier] = await db
-        .select({ id: suppliers.id, companyName: suppliers.companyName })
-        .from(suppliers)
-        .where(eq(suppliers.id, input.supplierId))
-        .limit(1);
-      if (!supplier) throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found" });
+      const rfqRow = await queryOne<{ id: string }>(
+        `INSERT INTO rfqs (buyer_id, title, description, material_category, quantity, unit, delivery_location, deadline)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [
+          ctx.user.id,
+          input.title,
+          input.description ?? null,
+          input.material_category ?? null,
+          input.quantity,
+          input.unit,
+          input.delivery_location ?? null,
+          new Date(input.deadline),
+        ]
+      );
 
-      const [row] = await db
-        .insert(rfqRequests)
-        .values({
-          architectId: ctx.user.id,
-          supplierId: input.supplierId,
-          materialType: input.materialType,
-          quantity: input.quantity.toString(),
-          specs: input.specs ?? null,
-        })
-        .returning({ id: rfqRequests.id });
+      if (!rfqRow) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create RFQ" });
+      }
 
-      return { id: row.id, supplierName: supplier.companyName };
+      // Insert invited suppliers
+      for (const supplierId of input.supplier_ids) {
+        await query(
+          `INSERT INTO rfq_suppliers (rfq_id, supplier_id) VALUES ($1, $2)
+           ON CONFLICT (rfq_id, supplier_id) DO NOTHING`,
+          [rfqRow.id, supplierId]
+        );
+      }
+
+      return { rfq_id: rfqRow.id };
     }),
 
-  // ── Architect: list their own RFQs ────────────────────────────────────────
-  listMine: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
-
-    return db
-      .select({
-        id: rfqRequests.id,
-        supplierId: rfqRequests.supplierId,
-        supplierName: suppliers.companyName,
-        materialType: rfqRequests.materialType,
-        quantity: rfqRequests.quantity,
-        specs: rfqRequests.specs,
-        status: rfqRequests.status,
-        createdAt: rfqRequests.createdAt,
-      })
-      .from(rfqRequests)
-      .leftJoin(suppliers, eq(rfqRequests.supplierId, suppliers.id))
-      .where(eq(rfqRequests.architectId, ctx.user.id))
-      .orderBy(desc(rfqRequests.createdAt));
-  }),
-
-  // ── Supplier: list RFQs directed at them ──────────────────────────────────
-  listIncoming: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
-
-    const [supplierRow] = await db
-      .select({ id: suppliers.id })
-      .from(suppliers)
-      .where(eq(suppliers.userId, ctx.user.id))
-      .limit(1);
-    if (!supplierRow) return [];
-
-    return db
-      .select({
-        id: rfqRequests.id,
-        architectId: rfqRequests.architectId,
-        materialType: rfqRequests.materialType,
-        quantity: rfqRequests.quantity,
-        specs: rfqRequests.specs,
-        status: rfqRequests.status,
-        createdAt: rfqRequests.createdAt,
-      })
-      .from(rfqRequests)
-      .where(eq(rfqRequests.supplierId, supplierRow.id))
-      .orderBy(desc(rfqRequests.createdAt));
-  }),
-
-  // ── Supplier: respond to an RFQ ───────────────────────────────────────────
-  respond: protectedProcedure
+  // ── List RFQs (buyer sees own, supplier sees invited) ─────────────────────
+  list: protectedProcedure
     .input(
       z.object({
-        id: z.number().int().positive(),
-        status: z.enum(["accepted", "declined"]),
+        status: z.string().optional(),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(20),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const page = input?.page ?? 1;
+      const limit = input?.limit ?? 20;
+      const offset = (page - 1) * limit;
+      const userId = ctx.user.id;
+      const role = ctx.user.role;
+
+      let rows: Array<Record<string, unknown>>;
+
+      if (role === "supplier") {
+        // Supplier sees RFQs they were invited to
+        const params: unknown[] = [userId, limit, offset];
+        let where = "";
+        if (input?.status) {
+          where = " AND r.status = $4";
+          params.push(input.status);
+        }
+
+        rows = await queryMany(
+          `SELECT r.*, COUNT(q.id) AS quote_count
+           FROM rfqs r
+           JOIN rfq_suppliers rs ON rs.rfq_id = r.id
+           LEFT JOIN rfq_quotes q ON q.rfq_id = r.id
+           WHERE rs.supplier_id = $1${where}
+           GROUP BY r.id
+           ORDER BY r.created_at DESC
+           LIMIT $2 OFFSET $3`,
+          params
+        );
+      } else {
+        // Buyer / admin sees their own RFQs
+        const params: unknown[] = [userId, limit, offset];
+        let where = "";
+        if (input?.status) {
+          where = " AND r.status = $4";
+          params.push(input.status);
+        }
+
+        rows = await queryMany(
+          `SELECT r.*, COUNT(q.id) AS quote_count
+           FROM rfqs r
+           LEFT JOIN rfq_quotes q ON q.rfq_id = r.id
+           WHERE r.buyer_id = $1${where}
+           GROUP BY r.id
+           ORDER BY r.created_at DESC
+           LIMIT $2 OFFSET $3`,
+          params
+        );
+      }
+
+      return rows.map((r) => ({
+        ...r,
+        quote_count: Number(r.quote_count ?? 0),
+      }));
+    }),
+
+  // ── Get full RFQ detail with quotes ───────────────────────────────────────
+  getById: protectedProcedure
+    .input(z.object({ rfq_id: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const rfq = await queryOne<Record<string, unknown>>(
+        `SELECT * FROM rfqs WHERE id = $1`,
+        [input.rfq_id]
+      );
+
+      if (!rfq) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
+      }
+
+      const userId = ctx.user.id;
+      const role = ctx.user.role;
+
+      // Check access: buyer must own, supplier must be invited
+      if (role === "supplier") {
+        const invite = await queryOne(
+          `SELECT id FROM rfq_suppliers WHERE rfq_id = $1 AND supplier_id = $2`,
+          [input.rfq_id, userId]
+        );
+        if (!invite) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You are not invited to this RFQ" });
+        }
+      } else if (rfq.buyer_id !== userId && role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+
+      // Fetch quotes — buyer sees all, supplier sees only their own
+      let quotes: Array<Record<string, unknown>>;
+      if (role === "supplier") {
+        quotes = await queryMany(
+          `SELECT * FROM rfq_quotes WHERE rfq_id = $1 AND supplier_id = $2`,
+          [input.rfq_id, userId]
+        );
+      } else {
+        quotes = await queryMany(
+          `SELECT * FROM rfq_quotes WHERE rfq_id = $1 ORDER BY submitted_at ASC`,
+          [input.rfq_id]
+        );
+      }
+
+      // Fetch invited suppliers
+      const suppliers = await queryMany(
+        `SELECT * FROM rfq_suppliers WHERE rfq_id = $1`,
+        [input.rfq_id]
+      );
+
+      return { ...rfq, quotes, suppliers };
+    }),
+
+  // ── Supplier: submit a quote ──────────────────────────────────────────────
+  submitQuote: protectedProcedure
+    .input(
+      z.object({
+        rfq_id: z.string().uuid(),
+        price_per_unit: z.number().positive("Price per unit must be positive"),
+        lead_time_days: z.number().int().positive("Lead time must be positive"),
+        notes: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (ctx.user.role !== "supplier" && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only suppliers can submit quotes" });
+      }
 
-      // Resolve the supplier record for this user
-      const [supplierRow] = await db
-        .select({ id: suppliers.id })
-        .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
-        .limit(1);
-      if (!supplierRow)
-        throw new TRPCError({ code: "FORBIDDEN", message: "No supplier profile for this account" });
+      const userId = ctx.user.id;
 
-      // Make sure the RFQ actually belongs to this supplier
-      const [rfq] = await db
-        .select({ id: rfqRequests.id })
-        .from(rfqRequests)
-        .where(and(eq(rfqRequests.id, input.id), eq(rfqRequests.supplierId, supplierRow.id)))
-        .limit(1);
-      if (!rfq) throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
+      // Verify RFQ is open
+      const rfq = await queryOne<{ id: string; status: string; quantity: number }>(
+        `SELECT id, status, quantity FROM rfqs WHERE id = $1`,
+        [input.rfq_id]
+      );
 
-      await db
-        .update(rfqRequests)
-        .set({ status: input.status })
-        .where(eq(rfqRequests.id, input.id));
+      if (!rfq) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
+      }
+      if (rfq.status !== "open") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "RFQ is no longer open for quotes" });
+      }
+
+      // Verify supplier is invited
+      const invite = await queryOne(
+        `SELECT id FROM rfq_suppliers WHERE rfq_id = $1 AND supplier_id = $2`,
+        [input.rfq_id, userId]
+      );
+      if (!invite) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You are not invited to this RFQ" });
+      }
+
+      // Check for duplicate quote
+      const existing = await queryOne(
+        `SELECT id FROM rfq_quotes WHERE rfq_id = $1 AND supplier_id = $2`,
+        [input.rfq_id, userId]
+      );
+      if (existing) {
+        throw new TRPCError({ code: "CONFLICT", message: "You have already submitted a quote for this RFQ" });
+      }
+
+      const totalPrice = input.price_per_unit * Number(rfq.quantity);
+
+      const quoteRow = await queryOne<Record<string, unknown>>(
+        `INSERT INTO rfq_quotes (rfq_id, supplier_id, price_per_unit, total_price, lead_time_days, notes)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [
+          input.rfq_id,
+          userId,
+          input.price_per_unit,
+          totalPrice,
+          input.lead_time_days,
+          input.notes ?? null,
+        ]
+      );
+
+      return quoteRow;
+    }),
+
+  // ── Buyer: accept a winning quote ─────────────────────────────────────────
+  acceptQuote: protectedProcedure
+    .input(
+      z.object({
+        rfq_id: z.string().uuid(),
+        quote_id: z.string().uuid(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+
+      // Verify RFQ ownership and status
+      const rfq = await queryOne<{ id: string; buyer_id: number; status: string }>(
+        `SELECT id, buyer_id, status FROM rfqs WHERE id = $1`,
+        [input.rfq_id]
+      );
+
+      if (!rfq) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
+      }
+      if (rfq.buyer_id !== userId && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the RFQ buyer can accept quotes" });
+      }
+      if (rfq.status !== "open") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "RFQ is no longer open" });
+      }
+
+      // Verify quote belongs to this RFQ
+      const quoteCheck = await queryOne<{ id: string }>(
+        `SELECT id FROM rfq_quotes WHERE id = $1 AND rfq_id = $2`,
+        [input.quote_id, input.rfq_id]
+      );
+      if (!quoteCheck) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found for this RFQ" });
+      }
+
+      // Accept quote and award RFQ in a transaction
+      await withTransaction(async (client) => {
+        await client.query(
+          `UPDATE rfq_quotes SET is_accepted = true WHERE id = $1`,
+          [input.quote_id]
+        );
+        await client.query(
+          `UPDATE rfqs SET status = 'awarded', updated_at = NOW() WHERE id = $1`,
+          [input.rfq_id]
+        );
+      });
 
       return { success: true };
     }),
 
-  // ── Public: list verified suppliers for the form dropdown ─────────────────
-  listSuppliers: publicProcedure
-    .input(z.object({ search: z.string().optional() }).optional())
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return [];
+  // ── Scheduler: auto-expire overdue RFQs (no auth) ────────────────────────
+  expire: publicProcedure.mutation(async () => {
+    const result = await query(
+      `UPDATE rfqs SET status = 'expired', updated_at = NOW()
+       WHERE status = 'open' AND deadline < NOW()`,
+    );
 
-      const rows = await db
-        .select({
-          id: suppliers.id,
-          companyName: suppliers.companyName,
-          city: suppliers.city,
-          state: suppliers.state,
-          certifications: suppliers.certifications,
-          sustainabilityScore: suppliers.sustainabilityScore,
-          isPremium: suppliers.isPremium,
-        })
-        .from(suppliers)
-        .where(eq(suppliers.verified, true))
-        .orderBy(suppliers.companyName)
-        .limit(200);
+    const count = result.rowCount ?? 0;
+    if (count > 0) {
+      console.log(`[rfq.expire] Expired ${count} overdue RFQ(s)`);
+    }
 
-      if (input?.search) {
-        const q = input.search.toLowerCase();
-        return rows.filter((s) => s.companyName.toLowerCase().includes(q));
-      }
-
-      return rows;
-    }),
-
-  // ── Architect: create rich RFQ to multiple suppliers ──────────────────────
-  createMulti: architectProcedure
-    .input(z.object({
-      projectInfo: z.object({
-        projectName: z.string().min(1),
-        projectType: z.string().min(1),
-        projectCity: z.string().min(1),
-        projectState: z.string().min(2).max(2),
-        startDate: z.string().optional(),
-        projectSqFt: z.number().positive().optional(),
-      }),
-      materialRequest: z.object({
-        category: z.string().min(1),
-        description: z.string().min(1),
-        quantity: z.number().positive(),
-        unit: z.enum(["SF", "LF", "EA", "CY", "tons"]),
-        certifications: z.array(z.string()).optional(),
-        maxGwp: z.number().positive().optional(),
-        epdRequired: z.enum(["yes", "no", "preferred"]).optional(),
-        targetDeliveryDate: z.string().optional(),
-      }),
-      supplierIds: z.array(z.number().int().positive()).min(1).max(5),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-
-      const supplierRows = await db
-        .select({ id: suppliers.id, companyName: suppliers.companyName, email: suppliers.email })
-        .from(suppliers)
-        .where(inArray(suppliers.id, input.supplierIds));
-
-      if (supplierRows.length === 0)
-        throw new TRPCError({ code: "NOT_FOUND", message: "No valid suppliers found" });
-
-      const materialType =
-        `${input.materialRequest.category}: ${input.materialRequest.description}`.slice(0, 255);
-
-      const specsPayload = {
-        version: 2,
-        projectInfo: input.projectInfo,
-        materialRequest: input.materialRequest,
-        batchSupplierIds: input.supplierIds,
-      };
-      const specs = JSON.stringify(specsPayload);
-
-      const ids: number[] = [];
-      for (const supplierId of input.supplierIds) {
-        const [row] = await db
-          .insert(rfqRequests)
-          .values({
-            architectId: ctx.user.id,
-            supplierId,
-            materialType,
-            quantity: input.materialRequest.quantity.toString(),
-            specs,
-          })
-          .returning({ id: rfqRequests.id });
-        ids.push(row.id);
-      }
-
-      // Fire-and-forget supplier notifications
-      void Promise.all(
-        supplierRows.map((s, i) =>
-          sendDirectRfqAlert({
-            supplierEmail: s.email,
-            supplierCompanyName: s.companyName,
-            architectName: ctx.user.name ?? "An architect",
-            projectName: input.projectInfo.projectName,
-            materialCategory: input.materialRequest.category,
-            rfqId: ids[i] ?? ids[0],
-          })
-        )
-      ).catch((err: unknown) => console.error("[rfq] Email send failed:", err));
-
-      return { ids, primaryId: ids[0] };
-    }),
-
-  // ── Get full RFQ by ID ─────────────────────────────────────────────────────
-  getById: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-
-      const [row] = await db
-        .select({
-          id: rfqRequests.id,
-          architectId: rfqRequests.architectId,
-          supplierId: rfqRequests.supplierId,
-          supplierName: suppliers.companyName,
-          supplierEmail: suppliers.email,
-          supplierCity: suppliers.city,
-          supplierState: suppliers.state,
-          materialType: rfqRequests.materialType,
-          quantity: rfqRequests.quantity,
-          specs: rfqRequests.specs,
-          status: rfqRequests.status,
-          createdAt: rfqRequests.createdAt,
-        })
-        .from(rfqRequests)
-        .leftJoin(suppliers, eq(rfqRequests.supplierId, suppliers.id))
-        .where(eq(rfqRequests.id, input.id))
-        .limit(1);
-
-      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
-
-      // Auth: only the architect who created it or the receiving supplier may view
-      const [supplierRow] = await db
-        .select({ id: suppliers.id })
-        .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
-        .limit(1);
-
-      const isOwner = row.architectId === ctx.user.id;
-      const isRecipient = supplierRow?.id === row.supplierId;
-      if (!isOwner && !isRecipient)
-        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
-
-      let parsedSpecs: Record<string, unknown> | null = null;
-      if (row.specs) {
-        try { parsedSpecs = JSON.parse(row.specs); } catch { /* not JSON — legacy */ }
-      }
-
-      return { ...row, parsedSpecs };
-    }),
-
-  // ── Architect: cancel a pending RFQ ───────────────────────────────────────
-  cancel: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-
-      const [row] = await db
-        .select({ id: rfqRequests.id, architectId: rfqRequests.architectId, specs: rfqRequests.specs })
-        .from(rfqRequests)
-        .where(eq(rfqRequests.id, input.id))
-        .limit(1);
-
-      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
-      if (row.architectId !== ctx.user.id)
-        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
-
-      let specs: Record<string, unknown> = {};
-      if (row.specs) { try { specs = JSON.parse(row.specs); } catch { /* ignore */ } }
-      specs.cancelledByArchitect = true;
-      specs.cancelledAt = new Date().toISOString();
-
-      await db
-        .update(rfqRequests)
-        .set({ specs: JSON.stringify(specs), status: "declined" })
-        .where(eq(rfqRequests.id, input.id));
-
-      return { success: true };
-    }),
+    return { expired_count: count };
+  }),
 });
