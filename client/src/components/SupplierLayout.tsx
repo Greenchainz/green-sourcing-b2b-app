@@ -60,18 +60,18 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const isActive = location === href;
             return (
-              <Link key={href} href={href}>
-                <a
-                  className={cn(
-                    "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground font-medium"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {label}
-                </a>
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {label}
               </Link>
             );
           })}
@@ -79,24 +79,24 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
 
         {/* Bottom links */}
         <div className="p-2 border-t space-y-0.5">
-          <Link href="/supplier/agent-config">
-            <a
-              className={cn(
-                "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
-                location === "/supplier/agent-config"
-                  ? "bg-primary text-primary-foreground font-medium"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Settings className="w-4 h-4 shrink-0" />
-              Agent Config
-            </a>
+          <Link
+            href="/supplier/agent-config"
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
+              location === "/supplier/agent-config"
+                ? "bg-primary text-primary-foreground font-medium"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            Agent Config
           </Link>
-          <Link href="/">
-            <a className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-              <Home className="w-4 h-4 shrink-0" />
-              Back to App
-            </a>
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Home className="w-4 h-4 shrink-0" />
+            Back to App
           </Link>
         </div>
       </aside>
