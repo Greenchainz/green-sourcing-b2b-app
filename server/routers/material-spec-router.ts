@@ -1,309 +1,330 @@
-import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
-import { materialSpecs, materials, suppliers } from "../../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
-
 /**
- * Material Specification Submission Router
- * Handles supplier-submitted specs with all CCPS metrics
+ * Material Spec Router
+ *
+ * tRPC router for fetching engineering specs, comparing materials,
+ * and searching by spec criteria. Uses raw SQL via pg pool.
+ *
+ * Expected schema (materials table — already exists, relevant columns shown):
+ *
+ * -- CREATE TABLE materials (
+ * --   id SERIAL PRIMARY KEY,
+ * --   name VARCHAR(255) NOT NULL,
+ * --   category VARCHAR(100) NOT NULL,
+ * --   "gwpValue" DECIMAL(12,4),
+ * --   "gwpUnit" VARCHAR(50),
+ * --   "fireRating" VARCHAR(50),
+ * --   "compressiveStrength" DECIMAL(12,2),
+ * --   "tensileStrength" DECIMAL(12,2),
+ * --   "flexuralStrength" DECIMAL(12,2),
+ * --   density DECIMAL(10,4),
+ * --   "thermalConductivity" DECIMAL(8,4),
+ * --   "waterAbsorption" DECIMAL(8,4),
+ * --   "recycledContentPct" DECIMAL(5,2),
+ * --   "embodiedEnergy" DECIMAL(12,4),
+ * --   voc DECIMAL(8,4),
+ * --   "epdUrl" TEXT,
+ * --   certifications TEXT[],
+ * --   "pricePerUnit" DECIMAL(12,2),
+ * --   "priceUnit" VARCHAR(50),
+ * --   "createdAt" TIMESTAMP DEFAULT NOW(),
+ * --   "updatedAt" TIMESTAMP DEFAULT NOW()
+ * -- );
  */
 
-// Validation schema for material spec submission
-const submitSpecSchema = z.object({
-  materialId: z.number().int().positive(),
-  supplierId: z.number().int().positive(),
-  
-  // Compliance metrics
-  fireRating: z.string().optional(),
-  fireRatingStandard: z.string().optional(),
-  rValue: z.number().optional(),
-  thermalUValue: z.number().optional(),
-  compressiveStrength: z.string().optional(),
-  tensileStrength: z.string().optional(),
-  astmStandards: z.array(z.string()).optional(),
-  meetsTitle24: z.boolean().optional(),
-  meetsIecc: z.boolean().optional(),
-  buildingCodes: z.array(z.string()).optional(),
-  
-  // Cost metrics
-  pricePerUnit: z.number().optional(),
-  priceUnit: z.string().optional(),
-  minimumOrderQuantity: z.number().int().optional(),
-  moqUnit: z.string().optional(),
-  bulkDiscountAvailable: z.boolean().optional(),
-  
-  // Supply chain metrics
-  leadTimeDays: z.number().int().optional(),
-  manufacturingLocation: z.string().optional(),
-  usManufactured: z.boolean().optional(),
-  regionalAvailabilityMiles: z.number().int().optional(),
-  shippingRegions: z.array(z.string()).optional(),
-  inStock: z.boolean().optional(),
-  stockQuantity: z.number().int().optional(),
-  
-  // Health metrics
-  vocLevel: z.string().optional(),
-  vocCertification: z.string().optional(),
-  onRedList: z.boolean().optional(),
-  toxicityRating: z.string().optional(),
-  indoorAirQualityRating: z.string().optional(),
-  
-  // Certifications
-  hasEpd: z.boolean().optional(),
-  hasHpd: z.boolean().optional(),
-  hasFsc: z.boolean().optional(),
-  hasC2c: z.boolean().optional(),
-  hasGreenguard: z.boolean().optional(),
-  hasDeclare: z.boolean().optional(),
-  certificationUrls: z.record(z.string(), z.string()).optional(), // {EPD: "url", HPD: "url"}
-  
-  // Supporting documents
-  datasheetUrl: z.string().url().optional(),
-  specSheetUrl: z.string().url().optional(),
-  testReportUrls: z.array(z.string().url()).optional(),
-  
-  // Additional info
-  notes: z.string().optional(),
-  recycledContentPct: z.number().min(0).max(100).optional(),
-  warrantyYears: z.number().int().optional(),
-  expectedLifecycleYears: z.number().int().optional(),
-});
+import { z } from 'zod';
+import { publicProcedure, router } from '../_core/trpc';
+import { TRPCError } from '@trpc/server';
+import { queryMany, queryOne } from '../pg-db';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface MaterialSpecRow {
+  id: number;
+  name: string;
+  category: string;
+  compressiveStrength: string | null;
+  tensileStrength: string | null;
+  flexuralStrength: string | null;
+  density: string | null;
+  thermalConductivity: string | null;
+  fireRating: string | null;
+  waterAbsorption: string | null;
+  gwpValue: string | null;
+  recycledContentPct: string | null;
+  voc: string | null;
+  embodiedEnergy: string | null;
+  epdUrl: string | null;
+  certifications: string[] | null;
+  pricePerUnit: string | null;
+  priceUnit: string | null;
+}
+
+interface MaterialSpecResult {
+  materialId: number;
+  materialName: string;
+  category: string;
+  specs: {
+    compressiveStrength: number | null;
+    tensileStrength: number | null;
+    flexuralStrength: number | null;
+    density: number | null;
+    thermalConductivity: number | null;
+    fireRating: string | null;
+    waterAbsorption: number | null;
+    gwp: number | null;
+    recycledContent: number | null;
+    voc: number | null;
+    embodiedEnergy: number | null;
+  };
+  certifications: string[];
+  epdUrl: string | null;
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const SELECT_COLS = `
+  id, name, category,
+  "compressiveStrength"::TEXT AS "compressiveStrength",
+  "tensileStrength"::TEXT AS "tensileStrength",
+  "flexuralStrength"::TEXT AS "flexuralStrength",
+  density::TEXT AS density,
+  "thermalConductivity"::TEXT AS "thermalConductivity",
+  "fireRating",
+  "waterAbsorption"::TEXT AS "waterAbsorption",
+  "gwpValue"::TEXT AS "gwpValue",
+  "recycledContentPct"::TEXT AS "recycledContentPct",
+  voc::TEXT AS voc,
+  "embodiedEnergy"::TEXT AS "embodiedEnergy",
+  "epdUrl",
+  certifications,
+  "pricePerUnit"::TEXT AS "pricePerUnit",
+  "priceUnit"
+`;
+
+function toNum(val: string | null | undefined): number | null {
+  if (val == null) return null;
+  const n = parseFloat(val);
+  return isNaN(n) ? null : n;
+}
+
+function rowToSpec(row: MaterialSpecRow): MaterialSpecResult {
+  return {
+    materialId: row.id,
+    materialName: row.name,
+    category: row.category,
+    specs: {
+      compressiveStrength: toNum(row.compressiveStrength),
+      tensileStrength: toNum(row.tensileStrength),
+      flexuralStrength: toNum(row.flexuralStrength),
+      density: toNum(row.density),
+      thermalConductivity: toNum(row.thermalConductivity),
+      fireRating: row.fireRating,
+      waterAbsorption: toNum(row.waterAbsorption),
+      gwp: toNum(row.gwpValue),
+      recycledContent: toNum(row.recycledContentPct),
+      voc: toNum(row.voc),
+      embodiedEnergy: toNum(row.embodiedEnergy),
+    },
+    certifications: row.certifications ?? [],
+    epdUrl: row.epdUrl,
+  };
+}
+
+// Spec property metadata for comparison matrix
+const SPEC_PROPERTIES: {
+  key: string;
+  property: string;
+  unit: string;
+  bestDirection: 'low' | 'high' | 'none';
+}[] = [
+  { key: 'compressiveStrength', property: 'Compressive Strength', unit: 'psi', bestDirection: 'high' },
+  { key: 'tensileStrength', property: 'Tensile Strength', unit: 'psi', bestDirection: 'high' },
+  { key: 'flexuralStrength', property: 'Flexural Strength', unit: 'psi', bestDirection: 'high' },
+  { key: 'density', property: 'Density', unit: 'lb/ft³', bestDirection: 'none' },
+  { key: 'thermalConductivity', property: 'Thermal Conductivity', unit: 'W/mK', bestDirection: 'low' },
+  { key: 'fireRating', property: 'Fire Rating', unit: 'class', bestDirection: 'none' },
+  { key: 'waterAbsorption', property: 'Water Absorption', unit: '%', bestDirection: 'low' },
+  { key: 'gwp', property: 'Global Warming Potential', unit: 'kgCO₂e', bestDirection: 'low' },
+  { key: 'recycledContent', property: 'Recycled Content', unit: '%', bestDirection: 'high' },
+  { key: 'voc', property: 'VOC', unit: 'g/L', bestDirection: 'low' },
+  { key: 'embodiedEnergy', property: 'Embodied Energy', unit: 'MJ/kg', bestDirection: 'low' },
+];
+
+// ─── Router ─────────────────────────────────────────────────────────────────
 
 export const materialSpecRouter = router({
   /**
-   * Submit a new material specification
-   * Requires authentication (supplier role)
-   */
-  submit: protectedProcedure
-    .input(submitSpecSchema)
-    .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      
-      // Convert arrays/objects to JSON strings for storage
-      const specData = {
-        ...input,
-        submittedBy: ctx.user.id,
-        status: "pending" as const,
-        astmStandards: input.astmStandards ? JSON.stringify(input.astmStandards) : null,
-        buildingCodes: input.buildingCodes ? JSON.stringify(input.buildingCodes) : null,
-        shippingRegions: input.shippingRegions ? JSON.stringify(input.shippingRegions) : null,
-        certificationUrls: input.certificationUrls ? JSON.stringify(input.certificationUrls) : null,
-        testReportUrls: input.testReportUrls ? JSON.stringify(input.testReportUrls) : null,
-        meetsTitle24: input.meetsTitle24 ? 1 : 0,
-        meetsIecc: input.meetsIecc ? 1 : 0,
-        bulkDiscountAvailable: input.bulkDiscountAvailable ? 1 : 0,
-        usManufactured: input.usManufactured ? 1 : 0,
-        inStock: input.inStock !== false ? 1 : 0, // Default to in stock
-        onRedList: input.onRedList ? 1 : 0,
-        hasEpd: input.hasEpd ? 1 : 0,
-        hasHpd: input.hasHpd ? 1 : 0,
-        hasFsc: input.hasFsc ? 1 : 0,
-        hasC2c: input.hasC2c ? 1 : 0,
-        hasGreenguard: input.hasGreenguard ? 1 : 0,
-        hasDeclare: input.hasDeclare ? 1 : 0,
-      };
-      
-      const [result] = await db.insert(materialSpecs).values(specData as any);
-      
-      return {
-        success: true,
-        message: "Specification submitted successfully. Pending admin review.",
-      };
-    }),
-
-  /**
-   * Update an existing material specification
-   * Only the submitter or admin can update
-   */
-  update: protectedProcedure
-    .input(z.object({
-      specId: z.number().int().positive(),
-      updates: submitSpecSchema.partial(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      
-      // Check if user owns this spec or is admin
-      const [existing] = await db
-        .select()
-        .from(materialSpecs)
-        .where(eq(materialSpecs.id, input.specId))
-        .limit(1);
-      
-      if (!existing) {
-        throw new Error("Specification not found");
-      }
-      
-      if (existing.submittedBy !== ctx.user.id && ctx.user.role !== "admin") {
-        throw new Error("Unauthorized to update this specification");
-      }
-      
-      // Convert arrays/objects to JSON strings
-      const updates = {
-        ...input.updates,
-        astmStandards: input.updates.astmStandards ? JSON.stringify(input.updates.astmStandards) : undefined,
-        buildingCodes: input.updates.buildingCodes ? JSON.stringify(input.updates.buildingCodes) : undefined,
-        shippingRegions: input.updates.shippingRegions ? JSON.stringify(input.updates.shippingRegions) : undefined,
-        certificationUrls: input.updates.certificationUrls ? JSON.stringify(input.updates.certificationUrls) : undefined,
-        testReportUrls: input.updates.testReportUrls ? JSON.stringify(input.updates.testReportUrls) : undefined,
-        meetsTitle24: input.updates.meetsTitle24 !== undefined ? (input.updates.meetsTitle24 ? 1 : 0) : undefined,
-        meetsIecc: input.updates.meetsIecc !== undefined ? (input.updates.meetsIecc ? 1 : 0) : undefined,
-        bulkDiscountAvailable: input.updates.bulkDiscountAvailable !== undefined ? (input.updates.bulkDiscountAvailable ? 1 : 0) : undefined,
-        usManufactured: input.updates.usManufactured !== undefined ? (input.updates.usManufactured ? 1 : 0) : undefined,
-        inStock: input.updates.inStock !== undefined ? (input.updates.inStock ? 1 : 0) : undefined,
-        onRedList: input.updates.onRedList !== undefined ? (input.updates.onRedList ? 1 : 0) : undefined,
-        hasEpd: input.updates.hasEpd !== undefined ? (input.updates.hasEpd ? 1 : 0) : undefined,
-        hasHpd: input.updates.hasHpd !== undefined ? (input.updates.hasHpd ? 1 : 0) : undefined,
-        hasFsc: input.updates.hasFsc !== undefined ? (input.updates.hasFsc ? 1 : 0) : undefined,
-        hasC2c: input.updates.hasC2c !== undefined ? (input.updates.hasC2c ? 1 : 0) : undefined,
-        hasGreenguard: input.updates.hasGreenguard !== undefined ? (input.updates.hasGreenguard ? 1 : 0) : undefined,
-        hasDeclare: input.updates.hasDeclare !== undefined ? (input.updates.hasDeclare ? 1 : 0) : undefined,
-      };
-      
-      await db
-        .update(materialSpecs)
-        .set(updates as any)
-        .where(eq(materialSpecs.id, input.specId));
-      
-      return {
-        success: true,
-        message: "Specification updated successfully",
-      };
-    }),
-
-  /**
-   * Get specs for a specific material
-   * Returns all approved specs by default, or all if user is admin
+   * Get full engineering specs for a single material.
    */
   getByMaterial: publicProcedure
-    .input(z.object({
-      materialId: z.number().int().positive(),
-      includeAll: z.boolean().optional(), // Admin only: include pending/rejected
-    }))
-    .query(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      
-      const isAdmin = ctx.user?.role === "admin";
-      const showAll = input.includeAll && isAdmin;
-      
-      const specs = await db
-        .select()
-        .from(materialSpecs)
-        .where(
-          showAll
-            ? eq(materialSpecs.materialId, input.materialId)
-            : and(
-                eq(materialSpecs.materialId, input.materialId),
-                eq(materialSpecs.status, "approved")
-              )
-        )
-        .orderBy(desc(materialSpecs.createdAt));
-      
-      // Parse JSON fields back to objects/arrays
-      return specs.map((spec: any) => ({
-        ...spec,
-        astmStandards: spec.astmStandards ? JSON.parse(spec.astmStandards) : null,
-        buildingCodes: spec.buildingCodes ? JSON.parse(spec.buildingCodes) : null,
-        shippingRegions: spec.shippingRegions ? JSON.parse(spec.shippingRegions) : null,
-        certificationUrls: spec.certificationUrls ? JSON.parse(spec.certificationUrls) : null,
-        testReportUrls: spec.testReportUrls ? JSON.parse(spec.testReportUrls) : null,
-      }));
+    .input(z.object({ materialId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const row = await queryOne<MaterialSpecRow>(
+        `SELECT ${SELECT_COLS} FROM materials WHERE id = $1`,
+        [input.materialId]
+      );
+
+      if (!row) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: `Material with ID ${input.materialId} not found`,
+        });
+      }
+
+      return rowToSpec(row);
     }),
 
   /**
-   * Get specs submitted by a specific supplier
+   * Compare specs for 2-10 materials side by side.
+   * Returns a comparison matrix with isBest flags per property.
    */
-  getBySupplier: protectedProcedure
-    .input(z.object({
-      supplierId: z.number().int().positive(),
-    }))
-    .query(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      
-      // Only allow supplier to see their own specs, or admin to see all
-      if (ctx.user.role !== "admin" && ctx.user.id !== input.supplierId) {
-        throw new Error("Unauthorized to view these specifications");
+  compareSpecs: publicProcedure
+    .input(
+      z.object({
+        materialIds: z.array(z.number().int().positive()).min(2).max(10),
+      })
+    )
+    .query(async ({ input }) => {
+      if (input.materialIds.length === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'At least 2 material IDs required' });
       }
-      
-      const specs = await db
-        .select()
-        .from(materialSpecs)
-        .where(eq(materialSpecs.supplierId, input.supplierId))
-        .orderBy(desc(materialSpecs.createdAt));
-      
-      return specs.map((spec: any) => ({
-        ...spec,
-        astmStandards: spec.astmStandards ? JSON.parse(spec.astmStandards) : null,
-        buildingCodes: spec.buildingCodes ? JSON.parse(spec.buildingCodes) : null,
-        shippingRegions: spec.shippingRegions ? JSON.parse(spec.shippingRegions) : null,
-        certificationUrls: spec.certificationUrls ? JSON.parse(spec.certificationUrls) : null,
-        testReportUrls: spec.testReportUrls ? JSON.parse(spec.testReportUrls) : null,
-      }));
+
+      // Build parameterized IN clause
+      const placeholders = input.materialIds.map((_, i) => `$${i + 1}`).join(', ');
+      const rows = await queryMany<MaterialSpecRow>(
+        `SELECT ${SELECT_COLS} FROM materials WHERE id IN (${placeholders})`,
+        input.materialIds
+      );
+
+      if (rows.length === 0) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'No materials found for given IDs' });
+      }
+
+      const materials = rows.map(rowToSpec);
+
+      // Build comparison matrix
+      const comparisonMatrix: Record<string, {
+        property: string;
+        unit: string;
+        values: { materialId: number; value: number | string | null; isBest: boolean }[];
+      }> = {};
+
+      for (const prop of SPEC_PROPERTIES) {
+        const values = materials.map(m => {
+          const val = m.specs[prop.key as keyof typeof m.specs];
+          return { materialId: m.materialId, value: val, isBest: false };
+        });
+
+        // Determine best value
+        if (prop.bestDirection !== 'none') {
+          const numericValues = values
+            .map(v => ({ ...v, numVal: typeof v.value === 'number' ? v.value : null }))
+            .filter(v => v.numVal != null);
+
+          if (numericValues.length > 0) {
+            let bestVal: number;
+            if (prop.bestDirection === 'high') {
+              bestVal = Math.max(...numericValues.map(v => v.numVal!));
+            } else {
+              bestVal = Math.min(...numericValues.map(v => v.numVal!));
+            }
+            for (const v of values) {
+              if (typeof v.value === 'number' && v.value === bestVal) {
+                v.isBest = true;
+              }
+            }
+          }
+        }
+
+        comparisonMatrix[prop.key] = {
+          property: prop.property,
+          unit: prop.unit,
+          values,
+        };
+      }
+
+      return { materials, comparisonMatrix };
     }),
 
   /**
-   * Admin: Approve or reject a spec
+   * Search materials by spec filters with pagination and sorting.
    */
-  review: protectedProcedure
-    .input(z.object({
-      specId: z.number().int().positive(),
-      status: z.enum(["approved", "rejected"]),
-      rejectionReason: z.string().optional(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      
-      if (ctx.user.role !== "admin") {
-        throw new Error("Only admins can review specifications");
+  searchBySpecs: publicProcedure
+    .input(
+      z.object({
+        category: z.string().optional(),
+        minCompressiveStrength: z.number().optional(),
+        maxGwp: z.number().optional(),
+        minRecycledContent: z.number().optional(),
+        fireRating: z.string().optional(),
+        maxPrice: z.number().optional(),
+        sortBy: z.string().optional(),
+        limit: z.number().int().min(1).max(100).default(20),
+        offset: z.number().int().min(0).default(0),
+      })
+    )
+    .query(async ({ input }) => {
+      const conditions: string[] = [];
+      const params: unknown[] = [];
+      let paramIdx = 1;
+
+      if (input.category) {
+        conditions.push(`category = $${paramIdx++}`);
+        params.push(input.category);
       }
-      
-      await db
-        .update(materialSpecs)
-        .set({
-          status: input.status,
-          reviewedBy: ctx.user.id,
-          reviewedAt: new Date(),
-          rejectionReason: input.rejectionReason || null,
-        })
-        .where(eq(materialSpecs.id, input.specId));
-      
-      return {
-        success: true,
-        message: `Specification ${input.status}`,
+      if (input.minCompressiveStrength != null) {
+        conditions.push(`"compressiveStrength" >= $${paramIdx++}`);
+        params.push(input.minCompressiveStrength);
+      }
+      if (input.maxGwp != null) {
+        conditions.push(`"gwpValue" <= $${paramIdx++}`);
+        params.push(input.maxGwp);
+      }
+      if (input.minRecycledContent != null) {
+        conditions.push(`"recycledContentPct" >= $${paramIdx++}`);
+        params.push(input.minRecycledContent);
+      }
+      if (input.fireRating) {
+        conditions.push(`"fireRating" = $${paramIdx++}`);
+        params.push(input.fireRating);
+      }
+      if (input.maxPrice != null) {
+        conditions.push(`"pricePerUnit" <= $${paramIdx++}`);
+        params.push(input.maxPrice);
+      }
+
+      const whereClause = conditions.length > 0
+        ? `WHERE ${conditions.join(' AND ')}`
+        : '';
+
+      // Validate sortBy to prevent SQL injection
+      const allowedSortColumns: Record<string, string> = {
+        name: 'name',
+        category: 'category',
+        gwp: '"gwpValue"',
+        compressiveStrength: '"compressiveStrength"',
+        tensileStrength: '"tensileStrength"',
+        density: 'density',
+        recycledContent: '"recycledContentPct"',
+        price: '"pricePerUnit"',
+        embodiedEnergy: '"embodiedEnergy"',
       };
-    }),
+      const sortCol = (input.sortBy && allowedSortColumns[input.sortBy]) ?? '"gwpValue"';
+      const orderClause = `ORDER BY ${sortCol} ASC NULLS LAST`;
 
-  /**
-   * Get pending specs for admin review
-   */
-  getPending: protectedProcedure
-    .query(async ({ ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      
-      if (ctx.user.role !== "admin") {
-        throw new Error("Only admins can view pending specifications");
-      }
-      
-      const specs = await db
-        .select()
-        .from(materialSpecs)
-        .where(eq(materialSpecs.status, "pending"))
-        .orderBy(desc(materialSpecs.createdAt));
-      
-      return specs.map((spec: any) => ({
-        ...spec,
-        astmStandards: spec.astmStandards ? JSON.parse(spec.astmStandards) : null,
-        buildingCodes: spec.buildingCodes ? JSON.parse(spec.buildingCodes) : null,
-        shippingRegions: spec.shippingRegions ? JSON.parse(spec.shippingRegions) : null,
-        certificationUrls: spec.certificationUrls ? JSON.parse(spec.certificationUrls) : null,
-        testReportUrls: spec.testReportUrls ? JSON.parse(spec.testReportUrls) : null,
-      }));
+      const limitParam = `$${paramIdx++}`;
+      const offsetParam = `$${paramIdx}`;
+      params.push(input.limit, input.offset);
+
+      const rows = await queryMany<MaterialSpecRow>(
+        `SELECT ${SELECT_COLS}
+         FROM materials
+         ${whereClause}
+         ${orderClause}
+         LIMIT ${limitParam} OFFSET ${offsetParam}`,
+        params
+      );
+
+      return rows.map(rowToSpec);
     }),
 });
