@@ -10,6 +10,7 @@ import {
   Settings,
   MessageSquare,
   Home,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/supplier/rfqs", label: "RFQs", icon: FileText },
   { href: "/supplier-dashboard", label: "Messages", icon: MessageSquare },
   { href: "/supplier/materials", label: "Materials", icon: Package },
+  { href: "/supplier/filters", label: "Filters", icon: SlidersHorizontal },
   { href: "/supplier/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/supplier/dashboard", label: "Profile", icon: User },
   { href: "/supplier/upload", label: "Bulk Upload", icon: Upload },
