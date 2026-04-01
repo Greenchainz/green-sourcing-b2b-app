@@ -302,6 +302,43 @@ export const supplierRfqRouter = router({
     }),
 
   /**
+   * Get aggregated stats for the supplier analytics dashboard
+   */
+  getStats: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database connection failed");
+
+    const [supplier] = await db
+      .select()
+      .from(suppliers)
+      .where(eq(suppliers.userId, ctx.user.id))
+      .limit(1);
+
+    if (!supplier) {
+      return { matchedRfqs: 0, totalBids: 0, activeBids: 0, acceptedBids: 0, winRate: 0, avgBidPrice: 0 };
+    }
+
+    const allBids = await db
+      .select({ status: rfqBids.status, bidPrice: rfqBids.bidPrice })
+      .from(rfqBids)
+      .where(eq(rfqBids.supplierId, supplier.id));
+
+    const totalBids = allBids.length;
+    const activeBids = allBids.filter((b) => b.status === "submitted").length;
+    const acceptedBids = allBids.filter((b) => b.status === "accepted").length;
+    const winRate = totalBids > 0 ? Math.round((acceptedBids / totalBids) * 100) : 0;
+    const avgBidPrice =
+      totalBids > 0
+        ? Math.round(allBids.reduce((sum, b) => sum + parseFloat(b.bidPrice ?? "0"), 0) / totalBids)
+        : 0;
+
+    const { getSupplierMatchedRfqs } = await import("./rfq-service");
+    const matchedRfqs = await getSupplierMatchedRfqs(supplier.id);
+
+    return { matchedRfqs: matchedRfqs.length, totalBids, activeBids, acceptedBids, winRate, avgBidPrice };
+  }),
+
+  /**
    * Get route from supplier to RFQ location
    */
   getRoute: protectedProcedure
