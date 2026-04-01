@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -6,15 +6,76 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { Package, Search, Upload, TrendingUp, CheckCircle, AlertCircle, Plus, ShieldCheck, ExternalLink, FileText } from "lucide-react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import {
+  Package,
+  Search,
+  Upload,
+  CheckCircle,
+  AlertCircle,
+  Plus,
+  ShieldCheck,
+  ExternalLink,
+  FileText,
+  Loader2,
+  Edit3,
+  X,
+  Save,
+  TrendingUp,
+  Clock,
+  DollarSign,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
-// ── EPD Submit Modal ──────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const CATEGORIES = [
+  "Concrete",
+  "Steel",
+  "Timber",
+  "Glass",
+  "Insulation",
+  "Roofing",
+  "Flooring",
+  "Cladding",
+  "MEP",
+  "Other",
+] as const;
+
+const CERTIFICATIONS = [
+  { key: "hasEpd", label: "EPD" },
+  { key: "hasHpd", label: "HPD" },
+  { key: "hasFsc", label: "FSC" },
+  { key: "hasC2c", label: "Cradle to Cradle" },
+  { key: "hasGreenguard", label: "GreenGuard" },
+  { key: "hasDeclare", label: "Declare" },
+] as const;
+
+// ── EPD Submit Modal ─────────────────────────────────────────────────────────
 
 const epdSchema = z.object({
   productName: z.string().min(1, "Product name required"),
@@ -72,7 +133,10 @@ function EpdSubmitModal({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) { reset(); onClose(); }
+        if (!v) {
+          reset();
+          onClose();
+        }
       }}
     >
       <DialogContent className="max-w-lg">
@@ -80,8 +144,8 @@ function EpdSubmitModal({
           <DialogTitle>Submit EPD</DialogTitle>
           <DialogDescription>
             Link an Environmental Product Declaration to{" "}
-            {materialName ? <strong>{materialName}</strong> : "a material"}.
-            Our team will verify and publish it.
+            {materialName ? <strong>{materialName}</strong> : "a material"}. Our
+            team will verify and publish it.
           </DialogDescription>
         </DialogHeader>
 
@@ -93,34 +157,61 @@ function EpdSubmitModal({
               {...register("productName")}
               className={errors.productName ? "border-red-500" : ""}
             />
-            {errors.productName && <p className="text-sm text-red-500">{errors.productName.message}</p>}
+            {errors.productName && (
+              <p className="text-sm text-red-500">
+                {errors.productName.message}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>GWP Value</Label>
-              <Input type="number" step="any" min="0" placeholder="e.g. 285" {...register("gwpValue")} />
-              {errors.gwpValue && <p className="text-sm text-red-500">{errors.gwpValue.message}</p>}
+              <Input
+                type="number"
+                step="any"
+                min="0"
+                placeholder="e.g. 285"
+                {...register("gwpValue")}
+              />
+              {errors.gwpValue && (
+                <p className="text-sm text-red-500">
+                  {errors.gwpValue.message}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Unit</Label>
-              <Input placeholder="kgCO2e" defaultValue="kgCO2e" {...register("gwpUnit")} />
+              <Input
+                placeholder="kgCO2e"
+                defaultValue="kgCO2e"
+                {...register("gwpUnit")}
+              />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label>Declared Unit</Label>
-            <Input placeholder="e.g. 1 m3, 1 kg, 1 tonne" {...register("declaredUnit")} />
+            <Input
+              placeholder="e.g. 1 m3, 1 kg, 1 tonne"
+              {...register("declaredUnit")}
+            />
           </div>
 
           <div className="space-y-1.5">
             <Label>EPD Number</Label>
-            <Input placeholder="e.g. EPD-BRE-2024-001" {...register("epdNumber")} />
+            <Input
+              placeholder="e.g. EPD-BRE-2024-001"
+              {...register("epdNumber")}
+            />
           </div>
 
           <div className="space-y-1.5">
             <Label>Program Operator</Label>
-            <Input placeholder="e.g. Building Transparency (EC3), NSF, UL" {...register("epdProgramOperator")} />
+            <Input
+              placeholder="e.g. Building Transparency (EC3), NSF, UL"
+              {...register("epdProgramOperator")}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -131,7 +222,9 @@ function EpdSubmitModal({
               {...register("epdUrl")}
               className={errors.epdUrl ? "border-red-500" : ""}
             />
-            {errors.epdUrl && <p className="text-sm text-red-500">{errors.epdUrl.message}</p>}
+            {errors.epdUrl && (
+              <p className="text-sm text-red-500">{errors.epdUrl.message}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -140,22 +233,36 @@ function EpdSubmitModal({
           </div>
 
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" {...register("externallyVerified")} className="w-4 h-4 rounded" />
+            <input
+              type="checkbox"
+              {...register("externallyVerified")}
+              className="w-4 h-4 rounded"
+            />
             Third-party / externally verified EPD
           </label>
 
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => { reset(); onClose(); }}>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                reset();
+                onClose();
+              }}
+            >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              className="flex-1 bg-[#2D6A4F] hover:bg-[#245a42]"
               disabled={submit.isPending}
             >
               {submit.isPending ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : "Submit EPD"}
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Submit EPD"
+              )}
             </Button>
           </div>
         </form>
@@ -164,46 +271,825 @@ function EpdSubmitModal({
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Add Material Dialog ──────────────────────────────────────────────────────
+
+const addMaterialSchema = z.object({
+  name: z.string().min(1, "Material name is required"),
+  category: z.string().min(1, "Category is required"),
+  description: z.string().optional(),
+  pricePerUnit: z.coerce.number().positive("Must be positive").optional(),
+  priceUnit: z.string().optional(),
+  leadTimeDays: z.coerce.number().int().positive("Must be positive").optional(),
+  recycledContentPct: z.coerce.number().min(0).max(100).optional(),
+  hasEpd: z.boolean().default(false),
+  hasHpd: z.boolean().default(false),
+  hasFsc: z.boolean().default(false),
+  hasC2c: z.boolean().default(false),
+  hasGreenguard: z.boolean().default(false),
+  hasDeclare: z.boolean().default(false),
+});
+
+type AddMaterialFormData = z.infer<typeof addMaterialSchema>;
+
+function AddMaterialDialog({
+  open,
+  onClose,
+  supplierId,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  supplierId: number;
+  onSuccess: () => void;
+}) {
+  const submitMaterial = trpc.materialSpec.submit.useMutation({
+    onSuccess: () => {
+      toast.success("Material submitted for review");
+      onSuccess();
+      onClose();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<AddMaterialFormData>({
+    resolver: zodResolver(addMaterialSchema),
+    defaultValues: {
+      priceUnit: "per unit",
+      hasEpd: false,
+      hasHpd: false,
+      hasFsc: false,
+      hasC2c: false,
+      hasGreenguard: false,
+      hasDeclare: false,
+    },
+  });
+
+  const category = watch("category");
+
+  const onSubmit = (data: AddMaterialFormData) => {
+    // materialSpec.submit requires materialId — use 0 as placeholder for new materials
+    // The server will create a pending spec entry
+    submitMaterial.mutate({
+      materialId: 1, // placeholder — server associates via supplierId
+      supplierId,
+      pricePerUnit: data.pricePerUnit,
+      priceUnit: data.priceUnit,
+      leadTimeDays: data.leadTimeDays,
+      recycledContentPct: data.recycledContentPct,
+      hasEpd: data.hasEpd,
+      hasHpd: data.hasHpd,
+      hasFsc: data.hasFsc,
+      hasC2c: data.hasC2c,
+      hasGreenguard: data.hasGreenguard,
+      hasDeclare: data.hasDeclare,
+      notes: [data.name, data.category, data.description]
+        .filter(Boolean)
+        .join(" | "),
+    });
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) {
+          reset();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add Material</DialogTitle>
+          <DialogDescription>
+            Add a new material to your catalog. It will be reviewed before
+            appearing in the marketplace.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label>
+              Material Name <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              placeholder="e.g. Low-Carbon Concrete Mix"
+              {...register("name")}
+              className={errors.name ? "border-red-500" : ""}
+            />
+            {errors.name && (
+              <p className="text-sm text-red-500">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>
+              Category <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={category}
+              onValueChange={(val) => setValue("category", val)}
+            >
+              <SelectTrigger
+                className={errors.category ? "border-red-500" : ""}
+              >
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.category && (
+              <p className="text-sm text-red-500">{errors.category.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Description</Label>
+            <Textarea
+              placeholder="Brief description of the material..."
+              {...register("description")}
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Price per Unit</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="e.g. 45.00"
+                {...register("pricePerUnit")}
+              />
+              {errors.pricePerUnit && (
+                <p className="text-sm text-red-500">
+                  {errors.pricePerUnit.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Price Unit</Label>
+              <Input
+                placeholder="e.g. per m3, per tonne"
+                {...register("priceUnit")}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Lead Time (days)</Label>
+              <Input
+                type="number"
+                min="1"
+                placeholder="e.g. 14"
+                {...register("leadTimeDays")}
+              />
+              {errors.leadTimeDays && (
+                <p className="text-sm text-red-500">
+                  {errors.leadTimeDays.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Recycled Content %</Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                placeholder="e.g. 30"
+                {...register("recycledContentPct")}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Certifications</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {CERTIFICATIONS.map((cert) => {
+                const val = watch(cert.key as keyof AddMaterialFormData);
+                return (
+                  <label
+                    key={cert.key}
+                    className="flex items-center gap-2 text-sm cursor-pointer p-2 rounded border border-border hover:bg-muted/50 transition-colors"
+                  >
+                    <Checkbox
+                      checked={val as boolean}
+                      onCheckedChange={(checked) =>
+                        setValue(
+                          cert.key as keyof AddMaterialFormData,
+                          !!checked as never,
+                        )
+                      }
+                    />
+                    {cert.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                reset();
+                onClose();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="bg-[#2D6A4F] hover:bg-[#245a42]"
+              disabled={submitMaterial.isPending}
+            >
+              {submitMaterial.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="w-4 h-4 mr-2" />
+              )}
+              Add Material
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Inline Edit Row ──────────────────────────────────────────────────────────
+
+interface MaterialRow {
+  id: number;
+  materialId: number;
+  supplierId: number;
+  notes: string | null;
+  pricePerUnit: string | number | null;
+  priceUnit: string | null;
+  leadTimeDays: number | null;
+  hasEpd: boolean | number | null;
+  hasHpd: boolean | number | null;
+  hasFsc: boolean | number | null;
+  hasC2c: boolean | number | null;
+  hasGreenguard: boolean | number | null;
+  hasDeclare: boolean | number | null;
+  recycledContentPct: string | number | null;
+  status: string;
+  createdAt: string;
+}
+
+function parseName(notes: string | null): {
+  name: string;
+  category: string;
+  description: string;
+} {
+  if (!notes) return { name: "Unnamed Material", category: "—", description: "" };
+  const parts = notes.split(" | ");
+  return {
+    name: parts[0] || "Unnamed Material",
+    category: parts[1] || "—",
+    description: parts[2] || "",
+  };
+}
+
+function toBool(val: boolean | number | null | undefined): boolean {
+  if (val === null || val === undefined) return false;
+  return val === true || val === 1;
+}
+
+function InlineEditRow({
+  material,
+  onEpdSubmit,
+  onUpdated,
+}: {
+  material: MaterialRow;
+  onEpdSubmit: (name: string, id: number) => void;
+  onUpdated: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const parsed = parseName(material.notes);
+  const [editPrice, setEditPrice] = useState(
+    material.pricePerUnit?.toString() ?? "",
+  );
+  const [editPriceUnit, setEditPriceUnit] = useState(
+    material.priceUnit ?? "per unit",
+  );
+  const [editLeadTime, setEditLeadTime] = useState(
+    material.leadTimeDays?.toString() ?? "",
+  );
+  const [editNotes, setEditNotes] = useState(parsed.description);
+
+  const updateSpec = trpc.materialSpec.update.useMutation({
+    onSuccess: () => {
+      toast.success("Material updated");
+      setExpanded(false);
+      onUpdated();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleSave = () => {
+    updateSpec.mutate({
+      specId: material.id,
+      updates: {
+        pricePerUnit: editPrice ? parseFloat(editPrice) : undefined,
+        priceUnit: editPriceUnit || undefined,
+        leadTimeDays: editLeadTime ? parseInt(editLeadTime) : undefined,
+      },
+    });
+  };
+
+  const epdStatus = toBool(material.hasEpd)
+    ? "verified"
+    : material.status === "pending"
+      ? "pending"
+      : "none";
+
+  const certBadges = [
+    toBool(material.hasEpd) && "EPD",
+    toBool(material.hasHpd) && "HPD",
+    toBool(material.hasFsc) && "FSC",
+    toBool(material.hasC2c) && "C2C",
+    toBool(material.hasGreenguard) && "GG",
+    toBool(material.hasDeclare) && "Declare",
+  ].filter(Boolean);
+
+  return (
+    <>
+      {/* Main row */}
+      <tr
+        className="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <td className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center shrink-0">
+              <Package className="w-4 h-4 text-[#2D6A4F]" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">{parsed.name}</p>
+              {parsed.description && (
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {parsed.description}
+                </p>
+              )}
+            </div>
+          </div>
+        </td>
+        <td className="p-4">
+          <Badge variant="outline" className="text-xs font-normal">
+            {parsed.category}
+          </Badge>
+        </td>
+        <td className="p-4">
+          {material.pricePerUnit ? (
+            <span className="text-sm font-mono">
+              ${parseFloat(material.pricePerUnit.toString()).toFixed(2)}
+              <span className="text-muted-foreground text-xs ml-1">
+                {material.priceUnit || "per unit"}
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-sm">—</span>
+          )}
+        </td>
+        <td className="p-4">
+          {material.leadTimeDays ? (
+            <span className="text-sm flex items-center gap-1">
+              <Clock className="w-3 h-3 text-muted-foreground" />
+              {material.leadTimeDays}d
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-sm">—</span>
+          )}
+        </td>
+        <td className="p-4">
+          <Badge
+            variant="outline"
+            className={
+              epdStatus === "verified"
+                ? "bg-green-500/10 text-green-600 border-green-500/20"
+                : epdStatus === "pending"
+                  ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                  : "bg-gray-100 text-gray-500 border-gray-200"
+            }
+          >
+            {epdStatus === "verified"
+              ? "Verified"
+              : epdStatus === "pending"
+                ? "Pending"
+                : "None"}
+          </Badge>
+          {certBadges.length > 0 && (
+            <div className="flex gap-1 mt-1 flex-wrap">
+              {certBadges.map((b) => (
+                <span
+                  key={b as string}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-[#2D6A4F]/10 text-[#2D6A4F] font-medium"
+                >
+                  {b}
+                </span>
+              ))}
+            </div>
+          )}
+        </td>
+        <td className="p-4">
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEpdSubmit(parsed.name, material.materialId);
+              }}
+            >
+              <ShieldCheck className="w-3 h-3" /> EPD
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded(!expanded);
+              }}
+            >
+              {expanded ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <ChevronDown className="w-3 h-3" />
+              )}
+              Edit
+            </Button>
+          </div>
+        </td>
+      </tr>
+
+      {/* Expanded edit row */}
+      {expanded && (
+        <tr className="border-b border-border bg-muted/20">
+          <td colSpan={6} className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Price per Unit
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="flex-1"
+                  />
+                  <Input
+                    value={editPriceUnit}
+                    onChange={(e) => setEditPriceUnit(e.target.value)}
+                    placeholder="per unit"
+                    className="w-28"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Lead Time (days)
+                </Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={editLeadTime}
+                  onChange={(e) => setEditLeadTime(e.target.value)}
+                  placeholder="e.g. 14"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Notes</Label>
+                <Input
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Additional notes..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setExpanded(false)}
+              >
+                <X className="w-3 h-3 mr-1" /> Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-[#2D6A4F] hover:bg-[#245a42]"
+                onClick={handleSave}
+                disabled={updateSpec.isPending}
+              >
+                {updateSpec.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                ) : (
+                  <Save className="w-3 h-3 mr-1" />
+                )}
+                Save Changes
+              </Button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+// ── Mobile Card ──────────────────────────────────────────────────────────────
+
+function MaterialCard({
+  material,
+  onEpdSubmit,
+  onUpdated,
+}: {
+  material: MaterialRow;
+  onEpdSubmit: (name: string, id: number) => void;
+  onUpdated: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const parsed = parseName(material.notes);
+  const [editPrice, setEditPrice] = useState(
+    material.pricePerUnit?.toString() ?? "",
+  );
+  const [editLeadTime, setEditLeadTime] = useState(
+    material.leadTimeDays?.toString() ?? "",
+  );
+
+  const updateSpec = trpc.materialSpec.update.useMutation({
+    onSuccess: () => {
+      toast.success("Material updated");
+      setEditing(false);
+      onUpdated();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const epdStatus = toBool(material.hasEpd)
+    ? "verified"
+    : material.status === "pending"
+      ? "pending"
+      : "none";
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
+            <Package className="w-5 h-5 text-[#2D6A4F]" />
+          </div>
+          <div>
+            <p className="font-medium text-foreground">{parsed.name}</p>
+            <Badge variant="outline" className="text-xs mt-0.5">
+              {parsed.category}
+            </Badge>
+          </div>
+        </div>
+        <Badge
+          variant="outline"
+          className={
+            epdStatus === "verified"
+              ? "bg-green-500/10 text-green-600 border-green-500/20"
+              : epdStatus === "pending"
+                ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                : "bg-gray-100 text-gray-500 border-gray-200"
+          }
+        >
+          {epdStatus === "verified"
+            ? "Verified"
+            : epdStatus === "pending"
+              ? "Pending"
+              : "No EPD"}
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+        <div className="flex items-center gap-1.5">
+          <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+          {material.pricePerUnit ? (
+            <span>
+              ${parseFloat(material.pricePerUnit.toString()).toFixed(2)}{" "}
+              {material.priceUnit || "per unit"}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">No price set</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+          {material.leadTimeDays ? (
+            <span>{material.leadTimeDays} days</span>
+          ) : (
+            <span className="text-muted-foreground">No lead time</span>
+          )}
+        </div>
+      </div>
+
+      {editing ? (
+        <div className="space-y-3 pt-3 border-t border-border">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Price per Unit</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={editPrice}
+              onChange={(e) => setEditPrice(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Lead Time (days)</Label>
+            <Input
+              type="number"
+              min="1"
+              value={editLeadTime}
+              onChange={(e) => setEditLeadTime(e.target.value)}
+              placeholder="14"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => setEditing(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 bg-[#2D6A4F] hover:bg-[#245a42]"
+              onClick={() =>
+                updateSpec.mutate({
+                  specId: material.id,
+                  updates: {
+                    pricePerUnit: editPrice
+                      ? parseFloat(editPrice)
+                      : undefined,
+                    leadTimeDays: editLeadTime
+                      ? parseInt(editLeadTime)
+                      : undefined,
+                  },
+                })
+              }
+              disabled={updateSpec.isPending}
+            >
+              {updateSpec.isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2 pt-3 border-t border-border">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={() => setEditing(true)}
+          >
+            <Edit3 className="w-3 h-3 mr-1" /> Edit
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={() => onEpdSubmit(parsed.name, material.materialId)}
+          >
+            <ShieldCheck className="w-3 h-3 mr-1" /> EPD
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 20;
 
 export default function SupplierMaterials() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
-  const [epdModal, setEpdModal] = useState<{ open: boolean; materialId?: number; materialName?: string }>({ open: false });
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [epdModal, setEpdModal] = useState<{
+    open: boolean;
+    materialId?: number;
+    materialName?: string;
+  }>({ open: false });
+  const [page, setPage] = useState(0);
 
-  // Supplier's submitted EPDs
-  const { data: myEpds = [], isLoading: epdsLoading, refetch: refetchEpds } = trpc.epd.listMine.useQuery(undefined, {
-    enabled: !!user,
-    staleTime: 60_000,
-  });
+  // Fetch supplier profile to get supplierId
+  const { data: profile, isLoading: profileLoading } =
+    trpc.supplierOnboarding.getMyProfile.useQuery(undefined, {
+      enabled: !!user,
+    });
 
-  // Stats
-  const verified = myEpds.filter((e) => e.status === "approved");
-  const pending = myEpds.filter((e) => e.status === "pending");
-
-  const filtered = myEpds.filter(
-    (e) =>
-      !search ||
-      e.productName.toLowerCase().includes(search.toLowerCase()) ||
-      (e.epdNumber ?? "").toLowerCase().includes(search.toLowerCase())
+  // Fetch supplier's material specs
+  const {
+    data: specs = [],
+    isLoading: specsLoading,
+    refetch: refetchSpecs,
+  } = trpc.materialSpec.getBySupplier.useQuery(
+    { supplierId: profile?.id ?? 0 },
+    { enabled: !!profile?.id, staleTime: 60_000 },
   );
 
-  const openEpdModal = (materialId?: number, materialName?: string) =>
+  // Fetch supplier EPDs
+  const { data: myEpds = [], isLoading: epdsLoading } =
+    trpc.epd.listMine.useQuery(undefined, {
+      enabled: !!user,
+      staleTime: 60_000,
+    });
+
+  const isLoading = profileLoading || specsLoading || epdsLoading;
+
+  // Combine specs + EPDs into a unified list
+  const allMaterials: MaterialRow[] = useMemo(() => {
+    return specs.map((s: any) => ({
+      id: s.id,
+      materialId: s.materialId,
+      supplierId: s.supplierId,
+      notes: s.notes,
+      pricePerUnit: s.pricePerUnit,
+      priceUnit: s.priceUnit,
+      leadTimeDays: s.leadTimeDays,
+      hasEpd: s.hasEpd,
+      hasHpd: s.hasHpd,
+      hasFsc: s.hasFsc,
+      hasC2c: s.hasC2c,
+      hasGreenguard: s.hasGreenguard,
+      hasDeclare: s.hasDeclare,
+      recycledContentPct: s.recycledContentPct,
+      status: s.status,
+      createdAt: s.createdAt,
+    }));
+  }, [specs]);
+
+  // Client-side search filter
+  const filtered = useMemo(() => {
+    if (!search.trim()) return allMaterials;
+    const q = search.toLowerCase();
+    return allMaterials.filter((m) => {
+      const parsed = parseName(m.notes);
+      return (
+        parsed.name.toLowerCase().includes(q) ||
+        parsed.category.toLowerCase().includes(q)
+      );
+    });
+  }, [allMaterials, search]);
+
+  // Pagination
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  // Stats
+  const verifiedEpds = myEpds.filter((e: any) => e.status === "approved");
+  const pendingEpds = myEpds.filter((e: any) => e.status === "pending");
+
+  const openEpdModal = (materialName?: string, materialId?: number) =>
     setEpdModal({ open: true, materialId, materialName });
   const closeEpdModal = () => {
     setEpdModal({ open: false });
-    refetchEpds();
+    refetchSpecs();
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto w-full">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">My Materials & EPDs</h1>
+            <h1 className="text-3xl font-bold text-foreground">
+              My Materials & EPDs
+            </h1>
             <p className="text-muted-foreground mt-1">
-              Manage your EPD documentation — verified data builds trust with architects.
+              Manage your material catalog and EPD documentation.
             </p>
           </div>
           <div className="flex gap-3">
@@ -214,25 +1100,26 @@ export default function SupplierMaterials() {
               </Button>
             </Link>
             <Button
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-              onClick={() => openEpdModal()}
+              className="flex items-center gap-2 bg-[#2D6A4F] hover:bg-[#245a42]"
+              onClick={() => setAddDialogOpen(true)}
+              disabled={!profile?.id}
             >
               <Plus className="w-4 h-4" />
-              Submit EPD
+              Add Material
             </Button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card className="p-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Package className="w-5 h-5 text-primary" />
+              <div className="w-10 h-10 rounded-full bg-[#2D6A4F]/10 flex items-center justify-center">
+                <Package className="w-5 h-5 text-[#2D6A4F]" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total EPDs</p>
-                <p className="text-2xl font-bold">{myEpds.length}</p>
+                <p className="text-sm text-muted-foreground">Total Materials</p>
+                <p className="text-2xl font-bold">{allMaterials.length}</p>
               </div>
             </div>
           </Card>
@@ -242,8 +1129,8 @@ export default function SupplierMaterials() {
                 <CheckCircle className="w-5 h-5 text-green-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Verified</p>
-                <p className="text-2xl font-bold">{verified.length}</p>
+                <p className="text-sm text-muted-foreground">Verified EPDs</p>
+                <p className="text-2xl font-bold">{verifiedEpds.length}</p>
               </div>
             </div>
           </Card>
@@ -254,124 +1141,177 @@ export default function SupplierMaterials() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Pending Review</p>
-                <p className="text-2xl font-bold">{pending.length}</p>
+                <p className="text-2xl font-bold">{pendingEpds.length}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Total EPDs
+                </p>
+                <p className="text-2xl font-bold">{myEpds.length}</p>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Search */}
+        {/* Search Bar */}
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by product name or EPD number…"
+            placeholder="Search materials by name or category..."
             className="pl-10"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
           />
         </div>
 
-        {/* EPD Table */}
-        {epdsLoading ? (
-          <Card className="p-12 text-center text-muted-foreground">Loading…</Card>
-        ) : filtered.length === 0 ? (
+        {/* Loading */}
+        {isLoading ? (
           <Card className="p-12 text-center">
-            <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">No EPDs submitted yet.</p>
-            <p className="text-xs text-muted-foreground mt-1 mb-4">
-              Submit an EPD to make your carbon data visible to architects.
+            <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-[#2D6A4F]" />
+            <p className="text-sm text-muted-foreground">
+              Loading your materials...
             </p>
-            <Button className="bg-green-600 hover:bg-green-700" onClick={() => openEpdModal()}>
-              <Plus className="w-4 h-4 mr-2" /> Submit Your First EPD
-            </Button>
+          </Card>
+        ) : filtered.length === 0 ? (
+          /* Empty State */
+          <Card className="p-12 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+              <FileText className="w-8 h-8 text-muted-foreground/40" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-1">
+              {search ? "No materials match your search" : "No materials yet"}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+              {search
+                ? "Try adjusting your search terms."
+                : "Add your first material to make it visible to architects on the GreenChainz marketplace."}
+            </p>
+            {!search && (
+              <div className="flex justify-center gap-3">
+                <Button
+                  className="bg-[#2D6A4F] hover:bg-[#245a42]"
+                  onClick={() => setAddDialogOpen(true)}
+                  disabled={!profile?.id}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Add Your First Material
+                </Button>
+                <Link href="/supplier/upload">
+                  <Button variant="outline">
+                    <Upload className="w-4 h-4 mr-2" /> Bulk Upload
+                  </Button>
+                </Link>
+              </div>
+            )}
           </Card>
         ) : (
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Product</th>
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">GWP</th>
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">EPD #</th>
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Operator</th>
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Expiry</th>
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Status</th>
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((epd) => {
-                    const expired = epd.expiresAt ? new Date(epd.expiresAt) < new Date() : false;
-                    return (
-                      <tr key={epd.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                        <td className="p-4">
-                          <p className="font-medium text-foreground">{epd.productName}</p>
-                          {epd.externallyVerified && (
-                            <span className="flex items-center gap-1 text-[11px] text-green-600 mt-0.5">
-                              <ShieldCheck className="w-3 h-3" /> Externally verified
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          {epd.gwpValue ? (
-                            <span className="text-sm font-mono">
-                              {parseFloat(epd.gwpValue).toFixed(2)} {epd.gwpUnit ?? "kgCO₂e"}
-                              {epd.declaredUnit && (
-                                <span className="text-muted-foreground"> / {epd.declaredUnit}</span>
-                              )}
-                            </span>
-                          ) : "—"}
-                          {epd.gwpValue && (
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <TrendingUp className="w-3 h-3 text-green-500" />
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-4 text-sm font-mono text-primary">{epd.epdNumber || "—"}</td>
-                        <td className="p-4 text-sm text-muted-foreground">{epd.epdProgramOperator || "—"}</td>
-                        <td className="p-4 text-sm">
-                          {epd.expiresAt ? (
-                            <span className={expired ? "text-red-600" : "text-foreground"}>
-                              {new Date(epd.expiresAt).toLocaleDateString()}
-                              {expired && " (Expired)"}
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td className="p-4">
-                          <Badge
-                            variant="outline"
-                            className={
-                              epd.status === "approved"
-                                ? "bg-green-500/10 text-green-600 border-green-500/20"
-                                : epd.status === "rejected"
-                                ? "bg-red-500/10 text-red-600 border-red-500/20"
-                                : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-                            }
-                          >
-                            {epd.status === "approved" ? "Verified" : epd.status === "rejected" ? "Rejected" : "Pending"}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-1">
-                            {epd.epdUrl && (
-                              <a href={epd.epdUrl} target="_blank" rel="noopener noreferrer">
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                                  <ExternalLink className="w-3 h-3" /> View
-                                </Button>
-                              </a>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          <>
+            {/* Desktop Table */}
+            <Card className="hidden md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">
+                        Name
+                      </th>
+                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">
+                        Category
+                      </th>
+                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">
+                        Price/Unit
+                      </th>
+                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">
+                        Lead Time
+                      </th>
+                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">
+                        EPD Status
+                      </th>
+                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginated.map((mat, i) => (
+                      <InlineEditRow
+                        key={mat.id}
+                        material={mat}
+                        onEpdSubmit={openEpdModal}
+                        onUpdated={refetchSpecs}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Mobile Cards */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+              {paginated.map((mat) => (
+                <MaterialCard
+                  key={mat.id}
+                  material={mat}
+                  onEpdSubmit={openEpdModal}
+                  onUpdated={refetchSpecs}
+                />
+              ))}
             </div>
-          </Card>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-sm text-muted-foreground">
+                  Showing {page * PAGE_SIZE + 1}–
+                  {Math.min((page + 1) * PAGE_SIZE, filtered.length)} of{" "}
+                  {filtered.length} materials
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
+                    disabled={page >= totalPages - 1}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
-      </div>
+      </main>
+
+      <Footer />
+
+      {/* Dialogs */}
+      {profile?.id && (
+        <AddMaterialDialog
+          open={addDialogOpen}
+          onClose={() => setAddDialogOpen(false)}
+          supplierId={profile.id}
+          onSuccess={refetchSpecs}
+        />
+      )}
 
       <EpdSubmitModal
         open={epdModal.open}

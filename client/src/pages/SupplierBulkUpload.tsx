@@ -1,40 +1,350 @@
-import React, { useState } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, ArrowLeft, Download } from "lucide-react";
+import { toast } from "sonner";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import {
+  Upload,
+  FileSpreadsheet,
+  CheckCircle,
+  AlertCircle,
+  ArrowLeft,
+  Download,
+  Loader2,
+  FileWarning,
+  X,
+  RotateCcw,
+  ChevronRight,
+} from "lucide-react";
 
-type UploadStatus = "idle" | "uploading" | "success" | "error";
+// ── CSV Template ─────────────────────────────────────────────────────────────
+
+const TEMPLATE_HEADERS = [
+  "name",
+  "category",
+  "description",
+  "pricePerUnit",
+  "priceUnit",
+  "leadTimeDays",
+  "hasEpd",
+  "recycledContentPct",
+] as const;
+
+const TEMPLATE_EXAMPLE = [
+  "Low-Carbon Concrete Mix",
+  "Concrete",
+  "Sustainable concrete with 30% recycled aggregate",
+  "85.00",
+  "per m3",
+  "14",
+  "true",
+  "30",
+];
+
+const VALID_CATEGORIES = [
+  "Concrete",
+  "Steel",
+  "Timber",
+  "Glass",
+  "Insulation",
+  "Roofing",
+  "Flooring",
+  "Cladding",
+  "MEP",
+  "Other",
+];
+
+function downloadTemplate() {
+  const header = TEMPLATE_HEADERS.join(",");
+  const example = TEMPLATE_EXAMPLE.join(",");
+  const csv = `${header}\n${example}\n`;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "greenchainz_material_template.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── CSV Parsing ──────────────────────────────────────────────────────────────
+
+interface ParsedRow {
+  rowNum: number;
+  name: string;
+  category: string;
+  description: string;
+  pricePerUnit: string;
+  priceUnit: string;
+  leadTimeDays: string;
+  hasEpd: string;
+  recycledContentPct: string;
+  errors: string[];
+  valid: boolean;
+}
+
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      fields.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+function parseCSV(text: string): ParsedRow[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return [];
+
+  // Skip header row
+  const dataLines = lines.slice(1);
+  return dataLines.map((line, idx) => {
+    const fields = parseCSVLine(line);
+    const errors: string[] = [];
+
+    const name = fields[0] ?? "";
+    const category = fields[1] ?? "";
+    const description = fields[2] ?? "";
+    const pricePerUnit = fields[3] ?? "";
+    const priceUnit = fields[4] ?? "";
+    const leadTimeDays = fields[5] ?? "";
+    const hasEpd = fields[6] ?? "";
+    const recycledContentPct = fields[7] ?? "";
+
+    // Validation
+    if (!name) errors.push("Name is required");
+    if (!category) {
+      errors.push("Category is required");
+    } else if (!VALID_CATEGORIES.includes(category)) {
+      errors.push(
+        `Invalid category "${category}". Valid: ${VALID_CATEGORIES.join(", ")}`,
+      );
+    }
+    if (pricePerUnit && (isNaN(Number(pricePerUnit)) || Number(pricePerUnit) < 0)) {
+      errors.push("Price must be a positive number");
+    }
+    if (leadTimeDays && (!Number.isInteger(Number(leadTimeDays)) || Number(leadTimeDays) < 1)) {
+      errors.push("Lead time must be a positive integer");
+    }
+    if (
+      recycledContentPct &&
+      (isNaN(Number(recycledContentPct)) ||
+        Number(recycledContentPct) < 0 ||
+        Number(recycledContentPct) > 100)
+    ) {
+      errors.push("Recycled content must be 0-100");
+    }
+
+    return {
+      rowNum: idx + 1,
+      name,
+      category,
+      description,
+      pricePerUnit,
+      priceUnit,
+      leadTimeDays,
+      hasEpd,
+      recycledContentPct,
+      errors,
+      valid: errors.length === 0,
+    };
+  });
+}
+
+// ── Upload States ────────────────────────────────────────────────────────────
+
+type UploadPhase = "upload" | "preview" | "submitting" | "complete";
+
+interface SubmitResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SupplierBulkUpload() {
-  const [status, setStatus] = useState<UploadStatus>("idle");
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [phase, setPhase] = useState<UploadPhase>("upload");
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [rows, setRows] = useState<ParsedRow[]>([]);
+  const [submitProgress, setSubmitProgress] = useState(0);
+  const [result, setResult] = useState<SubmitResult | null>(null);
 
-  const handleFile = (file: File) => {
+  // Fetch supplier profile
+  const { data: profile } = trpc.supplierOnboarding.getMyProfile.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
+
+  const submitMaterial = trpc.materialSpec.submit.useMutation();
+
+  const validRows = rows.filter((r) => r.valid);
+  const errorRows = rows.filter((r) => !r.valid);
+
+  // ── File Handling ──────────────────────────────────────────────────────────
+
+  const processFile = useCallback((file: File) => {
     if (!file) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "xlsx" || ext === "xls") {
+      toast.error(
+        "XLSX support coming soon. Please export your spreadsheet as CSV for now.",
+      );
+      return;
+    }
+    if (ext !== "csv") {
+      toast.error("Please upload a .csv file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 10MB.");
+      return;
+    }
+
     setFileName(file.name);
-    setStatus("uploading");
-    // Simulate upload
-    setTimeout(() => setStatus("success"), 2000);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const parsed = parseCSV(text);
+      if (parsed.length === 0) {
+        toast.error(
+          "No data rows found. Make sure your CSV has a header row and at least one data row.",
+        );
+        return;
+      }
+      setRows(parsed);
+      setPhase("preview");
+      toast.success(`Parsed ${parsed.length} rows from ${file.name}`);
+    };
+    reader.onerror = () => toast.error("Failed to read file");
+    reader.readAsText(file);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    },
+    [processFile],
+  );
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file);
+      // Reset input so re-selecting same file triggers change
+      e.target.value = "";
+    },
+    [processFile],
+  );
+
+  // ── Batch Submit ───────────────────────────────────────────────────────────
+
+  const handleSubmit = async () => {
+    if (!profile?.id) {
+      toast.error("Supplier profile not found. Please complete onboarding first.");
+      return;
+    }
+    if (validRows.length === 0) {
+      toast.error("No valid rows to submit");
+      return;
+    }
+
+    setPhase("submitting");
+    setSubmitProgress(0);
+
+    let succeeded = 0;
+    let failed = 0;
+
+    for (let i = 0; i < validRows.length; i++) {
+      const row = validRows[i];
+      try {
+        await submitMaterial.mutateAsync({
+          materialId: 1, // placeholder
+          supplierId: profile.id,
+          pricePerUnit: row.pricePerUnit
+            ? parseFloat(row.pricePerUnit)
+            : undefined,
+          priceUnit: row.priceUnit || undefined,
+          leadTimeDays: row.leadTimeDays
+            ? parseInt(row.leadTimeDays)
+            : undefined,
+          hasEpd:
+            row.hasEpd.toLowerCase() === "true" ||
+            row.hasEpd === "1" ||
+            row.hasEpd.toLowerCase() === "yes",
+          recycledContentPct: row.recycledContentPct
+            ? parseFloat(row.recycledContentPct)
+            : undefined,
+          notes: [row.name, row.category, row.description]
+            .filter(Boolean)
+            .join(" | "),
+        });
+        succeeded++;
+      } catch {
+        failed++;
+      }
+      setSubmitProgress(i + 1);
+    }
+
+    setResult({ total: validRows.length, succeeded, failed });
+    setPhase("complete");
+
+    if (failed === 0) {
+      toast.success(`All ${succeeded} materials submitted successfully!`);
+    } else {
+      toast.warning(`${succeeded} succeeded, ${failed} failed`);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  };
+  // ── Reset ──────────────────────────────────────────────────────────────────
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
+  const resetUpload = () => {
+    setPhase("upload");
+    setFileName(null);
+    setRows([]);
+    setSubmitProgress(0);
+    setResult(null);
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-8 max-w-3xl">
-        {/* Back */}
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8 max-w-4xl mx-auto w-full">
+        {/* Back Link */}
         <Link href="/supplier/materials">
           <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -42,107 +352,377 @@ export default function SupplierBulkUpload() {
           </button>
         </Link>
 
-        <h1 className="text-3xl font-bold text-foreground mb-2">Bulk Upload Materials</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">
+          Bulk Upload Materials
+        </h1>
         <p className="text-muted-foreground mb-8">
-          Upload a CSV or Excel file to add multiple materials at once. Download the template to get started.
+          Upload a CSV file to add multiple materials at once. Download our
+          template to ensure correct formatting.
         </p>
 
-        {/* Template Download */}
-        <Card className="p-5 mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <FileSpreadsheet className="w-5 h-5 text-primary" />
+        {/* Template Download Card */}
+        <Card className="p-5 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#2D6A4F]/10 flex items-center justify-center shrink-0">
+                <FileSpreadsheet className="w-5 h-5 text-[#2D6A4F]" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">
+                  GreenChainz Material Template
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  CSV with all required headers and an example row
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-foreground">GreenChainz Material Template</p>
-              <p className="text-sm text-muted-foreground">CSV format with all required fields</p>
-            </div>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 border-[#2D6A4F] text-[#2D6A4F] hover:bg-[#2D6A4F]/5"
+              onClick={downloadTemplate}
+            >
+              <Download className="w-4 h-4" />
+              Download Template
+            </Button>
           </div>
-          <Button variant="outline" className="flex items-center gap-2">
-            <Download className="w-4 h-4" />
-            Download Template
-          </Button>
         </Card>
 
-        {/* Upload Zone */}
-        {status === "idle" || status === "uploading" ? (
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-200 ${
-              dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/30"
-            }`}
-          >
-            {status === "uploading" ? (
-              <div className="space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <p className="text-lg font-medium text-foreground">Uploading {fileName}...</p>
-                <div className="w-48 h-2 bg-muted rounded-full mx-auto overflow-hidden">
-                  <div className="h-full bg-primary rounded-full animate-pulse w-2/3" />
-                </div>
-              </div>
-            ) : (
+        {/* ── Phase: Upload ─────────────────────────────────────────────── */}
+        {phase === "upload" && (
+          <>
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-200 ${
+                dragOver
+                  ? "border-[#2D6A4F] bg-[#2D6A4F]/5"
+                  : "border-border hover:border-[#2D6A4F]/50 hover:bg-muted/30"
+              }`}
+            >
               <div className="space-y-4">
                 <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
                   <Upload className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-lg font-medium text-foreground">Drop your file here</p>
-                  <p className="text-sm text-muted-foreground mt-1">Supports CSV and XLSX up to 10MB</p>
+                  <p className="text-lg font-medium text-foreground">
+                    Drop your CSV file here
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Supports .csv files up to 10MB
+                  </p>
                 </div>
-                <label>
-                  <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleChange} />
-                  <Button className="cursor-pointer">Browse Files</Button>
-                </label>
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleChange}
+                  />
+                  <Button
+                    className="bg-[#2D6A4F] hover:bg-[#245a42]"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Browse Files
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
-        ) : status === "success" ? (
-          <Card className="p-12 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-green-500/10 flex items-center justify-center">
-              <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <h3 className="text-xl font-semibold text-foreground">Upload Successful</h3>
-            <p className="text-muted-foreground">
-              <span className="font-medium text-foreground">{fileName}</span> has been uploaded and is being processed.
-              Your materials will appear in your catalog once verified.
+
+            {/* Template Columns Reference */}
+            <Card className="p-6 mt-6">
+              <h3 className="font-semibold text-foreground mb-3">
+                Required CSV Columns
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                {TEMPLATE_HEADERS.map((header) => (
+                  <div key={header} className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F]" />
+                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                      {header}
+                    </code>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                <strong>name</strong> and <strong>category</strong> are required.
+                Valid categories: {VALID_CATEGORIES.join(", ")}.
+              </p>
+            </Card>
+          </>
+        )}
+
+        {/* ── Phase: Preview ────────────────────────────────────────────── */}
+        {phase === "preview" && (
+          <>
+            {/* Summary Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{fileName}</span>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="bg-green-500/10 text-green-600 border-green-500/20"
+                >
+                  {validRows.length} valid
+                </Badge>
+                {errorRows.length > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="bg-red-500/10 text-red-600 border-red-500/20"
+                  >
+                    {errorRows.length} errors
+                  </Badge>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={resetUpload}>
+                  <X className="w-3 h-3 mr-1" /> Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-[#2D6A4F] hover:bg-[#245a42]"
+                  onClick={handleSubmit}
+                  disabled={validRows.length === 0}
+                >
+                  <ChevronRight className="w-3 h-3 mr-1" />
+                  Submit {validRows.length} Material
+                  {validRows.length !== 1 ? "s" : ""}
+                </Button>
+              </div>
+            </div>
+
+            {/* Preview Table */}
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left p-3 font-semibold text-muted-foreground w-12">
+                        #
+                      </th>
+                      <th className="text-left p-3 font-semibold text-muted-foreground w-12">
+                        Status
+                      </th>
+                      <th className="text-left p-3 font-semibold text-muted-foreground">
+                        Name
+                      </th>
+                      <th className="text-left p-3 font-semibold text-muted-foreground">
+                        Category
+                      </th>
+                      <th className="text-left p-3 font-semibold text-muted-foreground">
+                        Price
+                      </th>
+                      <th className="text-left p-3 font-semibold text-muted-foreground">
+                        Lead Time
+                      </th>
+                      <th className="text-left p-3 font-semibold text-muted-foreground">
+                        EPD
+                      </th>
+                      <th className="text-left p-3 font-semibold text-muted-foreground">
+                        Error
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr
+                        key={row.rowNum}
+                        className={`border-b border-border transition-colors ${
+                          row.valid
+                            ? "hover:bg-muted/20"
+                            : "bg-red-50 dark:bg-red-950/20"
+                        }`}
+                      >
+                        <td className="p-3 text-muted-foreground font-mono text-xs">
+                          {row.rowNum}
+                        </td>
+                        <td className="p-3">
+                          {row.valid ? (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-red-500" />
+                          )}
+                        </td>
+                        <td className="p-3 font-medium">
+                          {row.name || (
+                            <span className="text-red-400 italic">Missing</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {row.category ? (
+                            <Badge variant="outline" className="text-xs">
+                              {row.category}
+                            </Badge>
+                          ) : (
+                            <span className="text-red-400 italic">Missing</span>
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-xs">
+                          {row.pricePerUnit ? (
+                            <>
+                              ${row.pricePerUnit}
+                              {row.priceUnit && (
+                                <span className="text-muted-foreground ml-1">
+                                  {row.priceUnit}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-xs">
+                          {row.leadTimeDays ? `${row.leadTimeDays}d` : "—"}
+                        </td>
+                        <td className="p-3">
+                          {row.hasEpd &&
+                          (row.hasEpd.toLowerCase() === "true" ||
+                            row.hasEpd === "1" ||
+                            row.hasEpd.toLowerCase() === "yes") ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-green-500/10 text-green-600 border-green-500/20 text-xs"
+                            >
+                              Yes
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              No
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {row.errors.length > 0 && (
+                            <span
+                              className="text-xs text-red-600"
+                              title={row.errors.join("; ")}
+                            >
+                              {row.errors[0]}
+                              {row.errors.length > 1 &&
+                                ` (+${row.errors.length - 1})`}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </>
+        )}
+
+        {/* ── Phase: Submitting ─────────────────────────────────────────── */}
+        {phase === "submitting" && (
+          <Card className="p-12 text-center">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[#2D6A4F]/10 flex items-center justify-center mb-6">
+              <Loader2 className="w-8 h-8 text-[#2D6A4F] animate-spin" />
+            </div>
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              Submitting Materials
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              Submitting {submitProgress} of {validRows.length} materials...
             </p>
-            <div className="flex justify-center gap-3 pt-2">
+            <div className="w-full max-w-md mx-auto h-3 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#2D6A4F] rounded-full transition-all duration-300"
+                style={{
+                  width: `${(submitProgress / validRows.length) * 100}%`,
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {Math.round((submitProgress / validRows.length) * 100)}% complete
+            </p>
+          </Card>
+        )}
+
+        {/* ── Phase: Complete ───────────────────────────────────────────── */}
+        {phase === "complete" && result && (
+          <Card className="p-12 text-center">
+            {result.failed === 0 ? (
+              <>
+                <div className="w-16 h-16 mx-auto rounded-full bg-green-500/10 flex items-center justify-center mb-6">
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  Upload Complete!
+                </h3>
+                <p className="text-muted-foreground mb-6">
+                  All{" "}
+                  <span className="font-semibold text-foreground">
+                    {result.succeeded}
+                  </span>{" "}
+                  materials were submitted successfully and are pending review.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 mx-auto rounded-full bg-yellow-500/10 flex items-center justify-center mb-6">
+                  <FileWarning className="w-8 h-8 text-yellow-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  Upload Partially Complete
+                </h3>
+                <p className="text-muted-foreground mb-6">
+                  <span className="font-semibold text-green-600">
+                    {result.succeeded} succeeded
+                  </span>
+                  {" and "}
+                  <span className="font-semibold text-red-600">
+                    {result.failed} failed
+                  </span>{" "}
+                  out of {result.total} materials.
+                </p>
+              </>
+            )}
+
+            {/* Result Stats */}
+            <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto mb-8">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-foreground">
+                  {result.total}
+                </p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">
+                  {result.succeeded}
+                </p>
+                <p className="text-xs text-muted-foreground">Succeeded</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600">
+                  {result.failed}
+                </p>
+                <p className="text-xs text-muted-foreground">Failed</p>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-3">
               <Link href="/supplier/materials">
-                <Button>View Materials</Button>
+                <Button className="bg-[#2D6A4F] hover:bg-[#245a42]">
+                  View Materials
+                </Button>
               </Link>
-              <Button variant="outline" onClick={() => { setStatus("idle"); setFileName(null); }}>
+              <Button variant="outline" onClick={resetUpload}>
+                <RotateCcw className="w-4 h-4 mr-2" />
                 Upload Another
               </Button>
             </div>
           </Card>
-        ) : (
-          <Card className="p-12 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
-              <AlertCircle className="w-8 h-8 text-red-500" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground">Upload Failed</h3>
-            <p className="text-muted-foreground">Something went wrong. Please check your file format and try again.</p>
-            <Button onClick={() => { setStatus("idle"); setFileName(null); }}>Try Again</Button>
-          </Card>
         )}
+      </main>
 
-        {/* Requirements */}
-        <Card className="p-6 mt-6">
-          <h3 className="font-semibold text-foreground mb-3">Required Fields</h3>
-          <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-            {["material_name", "category", "gwp_value", "gwp_unit", "epd_number", "epd_expiry", "manufacturer", "country_of_origin"].map((field) => (
-              <div key={field} className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                <code className="text-xs">{field}</code>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      <Footer />
     </div>
   );
 }
