@@ -7,7 +7,12 @@
  * Reference: https://learn.microsoft.com/en-us/azure/marketplace/partner-center-portal/pc-saas-fulfillment-api-v2
  */
 
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { MarketplaceSubscription } from "./marketplace-landing";
+
+const AZURE_AD_JWKS = createRemoteJWKSet(
+  new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys")
+);
 
 /**
  * Validate marketplace token with Azure AD
@@ -30,7 +35,7 @@ export async function validateMarketplaceToken(token: string): Promise<boolean> 
       return false;
     }
 
-    const header = JSON.parse(Buffer.from(parts[0], 'base64').toString());
+    const _header = JSON.parse(Buffer.from(parts[0], 'base64').toString());
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
 
     // Basic validation checks
@@ -57,26 +62,30 @@ export async function validateMarketplaceToken(token: string): Promise<boolean> 
       return false;
     }
 
-    // Verify audience matches our application
+    // Verify JWT signature against Azure AD public keys
     const validAudiences = [
       process.env.AZURE_AD_CLIENT_ID,
       "https://marketplaceapi.microsoft.com",
       "20e940b3-4c77-4b0b-9a53-9e16a1b010a7", // Microsoft Marketplace resource ID
-    ];
+    ].filter(Boolean) as string[];
 
-    if (!validAudiences.includes(payload.aud)) {
-      console.error("[Marketplace Auth] Invalid audience:", payload.aud);
+    let verified = false;
+    for (const audience of validAudiences) {
+      try {
+        await jwtVerify(token, AZURE_AD_JWKS, { audience });
+        verified = true;
+        break;
+      } catch {
+        // try next audience
+      }
+    }
+
+    if (!verified) {
+      console.error("[Marketplace Auth] JWT signature verification failed for all valid audiences");
       return false;
     }
 
-    // TODO: Verify JWT signature with Azure AD public keys
-    // This requires fetching JWKS from https://login.microsoftonline.com/common/discovery/keys
-    // and verifying the signature using the public key matching the 'kid' in the JWT header
-    //
-    // For production, use a library like 'jsonwebtoken' or 'jose' to handle signature verification
-    // Example: https://github.com/auth0/node-jsonwebtoken
-
-    console.log("[Marketplace Auth] Token validation passed (signature verification pending)");
+    console.log("[Marketplace Auth] Token validation passed (signature verified)");
     return true;
   } catch (error) {
     console.error("[Marketplace Auth] Token validation error:", error);

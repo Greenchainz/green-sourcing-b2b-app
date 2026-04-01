@@ -18,6 +18,9 @@
 import { Request, Response } from "express";
 import { validateMarketplaceToken, resolveSubscription } from "./marketplace-auth";
 import { getBuyerSubscription, createBuyerSubscription, upgradeBuyerSubscription } from "./subscription-service";
+import { getDb } from "./db";
+import { users } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 export interface MarketplaceSubscription {
   id: string; // Microsoft subscription ID
@@ -101,9 +104,8 @@ export async function handleLandingPage(req: Request, res: Response) {
 
     // Step 4: Find or create user by email (beneficiary is the end user)
     const userEmail = subscription.beneficiary.emailId;
-    // TODO: Look up user by email in database
-    // For now, we'll assume the user exists and has userId = 1
-    const userId = 1; // PLACEHOLDER - replace with actual user lookup
+    const userObjectId = subscription.beneficiary.objectId;
+    const userId = await findOrCreateUserByEmail(userEmail, userObjectId);
 
     // Step 5: Create or update subscription in our database
     // First check if subscription exists
@@ -145,6 +147,51 @@ export async function handleLandingPage(req: Request, res: Response) {
       message: error instanceof Error ? error.message : "Unknown error",
     });
   }
+}
+
+/**
+ * Find an existing user by email, or create a minimal account for a new AppSource subscriber.
+ * The user can later sign in via Microsoft Entra (Easy Auth) and the account will be recognised
+ * by email or openId.
+ */
+async function findOrCreateUserByEmail(email: string, objectId: string): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database connection failed");
+
+  // 1. Try to find by email
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (existing) {
+    return existing.id;
+  }
+
+  // 2. Try to find by openId (objectId from Azure AD)
+  const [existingByOid] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.openId, objectId))
+    .limit(1);
+
+  if (existingByOid) {
+    return existingByOid.id;
+  }
+
+  // 3. Create a new user record seeded from AppSource subscriber info
+  const [inserted] = await db
+    .insert(users)
+    .values({
+      openId: objectId,
+      email,
+      loginMethod: "marketplace",
+    })
+    .returning({ id: users.id });
+
+  console.log("[Marketplace Landing] Created new user from AppSource:", { id: inserted.id, email });
+  return inserted.id;
 }
 
 /**
