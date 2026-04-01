@@ -42,6 +42,9 @@ interface FilterState {
   usManufactured: boolean | undefined;
   state: string;
   sortBy: "ccps" | "carbon" | "price" | "name" | "leadTime";
+  maxGwp: number | undefined;
+  priceMin: number | undefined;
+  priceMax: number | undefined;
 }
 
 function FilterPanel({
@@ -67,7 +70,10 @@ function FilterPanel({
     filters.certifications.length > 0 ||
     filters.hasEpd !== undefined ||
     filters.usManufactured !== undefined ||
-    filters.state;
+    filters.state ||
+    filters.maxGwp !== undefined ||
+    filters.priceMin !== undefined ||
+    filters.priceMax !== undefined;
 
   return (
     <div className="space-y-6 text-sm">
@@ -157,7 +163,7 @@ function FilterPanel({
         </div>
       </div>
 
-      {/* State */}
+      {/* State / Region */}
       <div className="space-y-2">
         <p className="font-medium text-muted-foreground uppercase tracking-wide text-xs">Supplier State</p>
         <Select value={filters.state || "any"} onValueChange={(v) => onChange({ state: v === "any" ? "" : v })}>
@@ -169,6 +175,49 @@ function FilterPanel({
             {US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Max GWP */}
+      <div className="space-y-2">
+        <p className="font-medium text-muted-foreground uppercase tracking-wide text-xs">Max GWP (kgCO₂e)</p>
+        <Input
+          type="number"
+          min={0}
+          placeholder="e.g. 500"
+          className="h-8 text-xs"
+          value={filters.maxGwp ?? ""}
+          onChange={(e) =>
+            onChange({ maxGwp: e.target.value === "" ? undefined : Number(e.target.value) })
+          }
+        />
+      </div>
+
+      {/* Price Range */}
+      <div className="space-y-2">
+        <p className="font-medium text-muted-foreground uppercase tracking-wide text-xs">Price Range (USD)</p>
+        <div className="flex gap-2 items-center">
+          <Input
+            type="number"
+            min={0}
+            placeholder="Min"
+            className="h-8 text-xs"
+            value={filters.priceMin ?? ""}
+            onChange={(e) =>
+              onChange({ priceMin: e.target.value === "" ? undefined : Number(e.target.value) })
+            }
+          />
+          <span className="text-muted-foreground text-xs shrink-0">–</span>
+          <Input
+            type="number"
+            min={0}
+            placeholder="Max"
+            className="h-8 text-xs"
+            value={filters.priceMax ?? ""}
+            onChange={(e) =>
+              onChange({ priceMax: e.target.value === "" ? undefined : Number(e.target.value) })
+            }
+          />
+        </div>
       </div>
     </div>
   );
@@ -184,6 +233,9 @@ const DEFAULT_FILTERS: FilterState = {
   usManufactured: undefined,
   state: "",
   sortBy: "ccps",
+  maxGwp: undefined,
+  priceMin: undefined,
+  priceMax: undefined,
 };
 
 export default function MaterialSearchPage() {
@@ -227,7 +279,16 @@ export default function MaterialSearchPage() {
   };
 
   const total = data?.total ?? 0;
-  const items = data?.items ?? [];
+  const rawItems = data?.items ?? [];
+
+  // Client-side filtering for GWP and price range
+  const filteredItems = rawItems.filter((m: any) => {
+    if (filters.maxGwp !== undefined && m.gwpValue && Number(m.gwpValue) > filters.maxGwp) return false;
+    if (filters.priceMin !== undefined && m.pricePerUnit && Number(m.pricePerUnit) < filters.priceMin) return false;
+    if (filters.priceMax !== undefined && m.pricePerUnit && Number(m.pricePerUnit) > filters.priceMax) return false;
+    return true;
+  });
+
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const activeFilterCount = [
@@ -236,6 +297,9 @@ export default function MaterialSearchPage() {
     filters.hasEpd !== undefined && "epd",
     filters.usManufactured !== undefined && "us",
     filters.state,
+    filters.maxGwp !== undefined && "gwp",
+    filters.priceMin !== undefined && "priceMin",
+    filters.priceMax !== undefined && "priceMax",
   ].filter(Boolean).length;
 
   return (
@@ -293,11 +357,19 @@ export default function MaterialSearchPage() {
           {/* ── Results ─────────────────────────────────────────────────── */}
           <div className="flex-1 min-w-0 space-y-4">
             {/* Results header */}
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {isLoading ? "Loading…" : `${total.toLocaleString()} material${total !== 1 ? "s" : ""}`}
-                {filters.search && <span className="ml-1">for "<strong>{filters.search}</strong>"</span>}
-              </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {isLoading ? "Loading…" : `${filteredItems.length.toLocaleString()} material${filteredItems.length !== 1 ? "s" : ""}`}
+                  {filters.search && <span className="ml-1">for "<strong>{filters.search}</strong>"</span>}
+                </p>
+                {/* Carbon score legend */}
+                <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                  <span>🟢 &lt; 100 kgCO₂e</span>
+                  <span>🟡 &lt; 500 kgCO₂e</span>
+                  <span>🔴 &gt; 500 kgCO₂e</span>
+                </p>
+              </div>
               {/* Active filter chips */}
               <div className="flex flex-wrap gap-1.5 justify-end">
                 {filters.category && (
@@ -318,6 +390,18 @@ export default function MaterialSearchPage() {
                     <button onClick={() => patchFilters({ usManufactured: undefined })}><X className="w-2.5 h-2.5" /></button>
                   </Badge>
                 )}
+                {filters.maxGwp !== undefined && (
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    Max GWP: {filters.maxGwp} kgCO₂e
+                    <button onClick={() => patchFilters({ maxGwp: undefined })}><X className="w-2.5 h-2.5" /></button>
+                  </Badge>
+                )}
+                {(filters.priceMin !== undefined || filters.priceMax !== undefined) && (
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    Price: {filters.priceMin !== undefined ? `$${filters.priceMin}` : "$0"} – {filters.priceMax !== undefined ? `$${filters.priceMax}` : "∞"}
+                    <button onClick={() => patchFilters({ priceMin: undefined, priceMax: undefined })}><X className="w-2.5 h-2.5" /></button>
+                  </Badge>
+                )}
                 {filters.certifications.map((c) => (
                   <Badge key={c} variant="secondary" className="text-xs gap-1">
                     {CERT_OPTIONS.find((o) => o.id === c)?.label ?? c}
@@ -334,7 +418,7 @@ export default function MaterialSearchPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[...Array(12)].map((_, i) => <Skeleton key={i} className="h-64 rounded-lg" />)}
               </div>
-            ) : items.length === 0 ? (
+            ) : filteredItems.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground">
                 <Search className="w-10 h-10 mx-auto mb-3 opacity-30" />
                 <p>No materials matched your filters.</p>
@@ -342,8 +426,8 @@ export default function MaterialSearchPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {items.map((m: any) => (
-                  <MaterialCard key={m.id} material={m} />
+                {filteredItems.map((m: any) => (
+                  <MaterialCard key={m.id} {...m} />
                 ))}
               </div>
             )}
