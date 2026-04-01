@@ -10,13 +10,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { Building2, Package, Award, CheckCircle } from "lucide-react";
+import {
+  Building2,
+  User,
+  Package,
+  Award,
+  ClipboardCheck,
+  CheckCircle,
+  Loader2,
+  ChevronRight,
+  ChevronLeft,
+  Pencil,
+} from "lucide-react";
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────────
 
 const MATERIAL_CATEGORIES = [
   "Concrete",
@@ -41,59 +58,85 @@ const CERTIFICATIONS = [
   "Other",
 ];
 
-// ── Schema ───────────────────────────────────────────────────────────────────
+// ── Schema ─────────────────────────────────────────────────────────────────────
 
 const schema = z.object({
   companyName: z.string().min(1, "Company name is required"),
-  contactName: z.string().min(1, "Contact name is required"),
-  email: z.string().email("Valid email required"),
-  phone: z.string().optional(),
-  website: z.string().url("Enter a valid URL (include https://)").optional().or(z.literal("")),
+  website: z
+    .string()
+    .url("Enter a valid URL (include https://)")
+    .optional()
+    .or(z.literal("")),
   description: z.string().optional(),
-  materialCategories: z.array(z.string()).min(1, "Select at least one category"),
+  contactName: z.string().min(1, "Contact name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().optional(),
+  materialCategories: z
+    .array(z.string())
+    .min(1, "Select at least one category"),
   certifications: z.array(z.string()).optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
-// ── Step indicator ───────────────────────────────────────────────────────────
+// ── Steps ──────────────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { label: "Company Info", icon: Building2 },
-  { label: "Materials", icon: Package },
-  { label: "Certifications", icon: Award },
+  { label: "Company Info", icon: Building2, description: "Basic company details" },
+  { label: "Contact", icon: User, description: "Contact information" },
+  { label: "Materials", icon: Package, description: "Material categories" },
+  { label: "Certifications", icon: Award, description: "Sustainability certs" },
+  { label: "Review", icon: ClipboardCheck, description: "Review & submit" },
 ];
+
+// Fields to validate per step
+const STEP_FIELDS: (keyof FormData)[][] = [
+  ["companyName", "website", "description"],
+  ["contactName", "email", "phone"],
+  ["materialCategories"],
+  ["certifications"],
+  [],
+];
+
+// ── Step Indicator ─────────────────────────────────────────────────────────────
 
 function StepIndicator({ current }: { current: number }) {
   return (
-    <div className="flex items-center justify-center gap-0 mb-8">
+    <div className="flex items-center justify-center mb-10">
       {STEPS.map((step, i) => {
-        const Icon = step.icon;
         const done = i < current;
         const active = i === current;
         return (
           <div key={i} className="flex items-center">
-            <div
-              className={`flex flex-col items-center gap-1 px-4 ${
-                active ? "text-green-600" : done ? "text-green-500" : "text-muted-foreground"
-              }`}
-            >
+            <div className="flex flex-col items-center gap-1.5">
               <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center border-2 ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all text-sm font-semibold ${
                   done
-                    ? "border-green-500 bg-green-500 text-white"
+                    ? "border-[#2D6A4F] bg-[#2D6A4F] text-white"
                     : active
-                    ? "border-green-600 bg-background"
-                    : "border-muted-foreground/30 bg-background"
+                    ? "border-[#2D6A4F] bg-white text-[#2D6A4F]"
+                    : "border-gray-300 bg-white text-gray-400"
                 }`}
               >
-                {done ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                {done ? <CheckCircle className="w-5 h-5" /> : i + 1}
               </div>
-              <span className="text-xs font-medium hidden sm:block">{step.label}</span>
+              <span
+                className={`text-xs font-medium hidden sm:block ${
+                  active
+                    ? "text-[#2D6A4F]"
+                    : done
+                    ? "text-[#2D6A4F]"
+                    : "text-gray-400"
+                }`}
+              >
+                {step.label}
+              </span>
             </div>
             {i < STEPS.length - 1 && (
               <div
-                className={`h-0.5 w-12 sm:w-20 ${i < current ? "bg-green-500" : "bg-muted-foreground/20"}`}
+                className={`h-0.5 w-8 sm:w-14 mx-1 transition-all ${
+                  i < current ? "bg-[#2D6A4F]" : "bg-gray-200"
+                }`}
               />
             )}
           </div>
@@ -103,7 +146,7 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-// ── Checkbox group ────────────────────────────────────────────────────────────
+// ── Checkbox Group ─────────────────────────────────────────────────────────────
 
 function CheckboxGroup({
   options,
@@ -117,15 +160,23 @@ function CheckboxGroup({
   error?: string;
 }) {
   const toggle = (item: string) =>
-    onChange(value.includes(item) ? value.filter((x) => x !== item) : [...value, item]);
+    onChange(
+      value.includes(item)
+        ? value.filter((x) => x !== item)
+        : [...value, item]
+    );
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {options.map((opt) => (
           <label
             key={opt}
-            className="flex items-center gap-2 p-2 rounded-md border cursor-pointer hover:bg-muted/50 text-sm"
+            className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all hover:border-[#2D6A4F]/50 hover:bg-[#2D6A4F]/5 text-sm ${
+              value.includes(opt)
+                ? "border-[#2D6A4F] bg-[#2D6A4F]/5"
+                : "border-gray-200"
+            }`}
           >
             <Checkbox
               checked={value.includes(opt)}
@@ -135,31 +186,31 @@ function CheckboxGroup({
           </label>
         ))}
       </div>
-      {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+      {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
     </div>
   );
 }
 
-// ── Draft persistence ─────────────────────────────────────────────────────────
-
-const DRAFT_KEY = "gc_supplier_onboarding_draft";
-
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Page ────────────────────────────────────────────────────────────────────────
 
 export default function SupplierOnboarding() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [step, setStep] = useState(0);
-  const [done, setDone] = useState(false);
 
-  const submitOnboarding = trpc.supplierOnboarding.submitOnboarding.useMutation({
-    onSuccess: () => {
-      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-      setDone(true);
-      toast.success("Profile submitted! Our team will review it shortly.");
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const profileQuery = trpc.supplierOnboarding.getMyProfile.useQuery(
+    undefined,
+    { enabled: !!user }
+  );
+
+  const submitOnboarding =
+    trpc.supplierOnboarding.submitOnboarding.useMutation({
+      onSuccess: () => {
+        toast.success("Profile submitted! Redirecting to your dashboard…");
+        setTimeout(() => navigate("/supplier/dashboard"), 1500);
+      },
+      onError: (err) => toast.error(err.message),
+    });
 
   const {
     register,
@@ -167,13 +218,14 @@ export default function SupplierOnboarding() {
     watch,
     setValue,
     trigger,
+    reset,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       companyName: "",
       contactName: user?.name ?? "",
-      email: typeof user?.email === "string" ? user.email : "",
+      email: user?.email ?? "",
       phone: "",
       website: "",
       description: "",
@@ -182,57 +234,52 @@ export default function SupplierOnboarding() {
     },
   });
 
-  // Restore draft from localStorage on first mount
+  // Pre-fill from existing profile
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-      const draft = JSON.parse(raw) as Partial<FormData>;
-      (Object.entries(draft) as [keyof FormData, unknown][]).forEach(([key, value]) => {
-        setValue(key, value as FormData[typeof key]);
+    if (profileQuery.data) {
+      const p = profileQuery.data as any;
+      reset({
+        companyName: p.companyName ?? "",
+        contactName: p.contactName ?? user?.name ?? "",
+        email: p.email ?? user?.email ?? "",
+        phone: p.phone ?? "",
+        website: p.website ?? "",
+        description: p.description ?? "",
+        materialCategories: p.materialCategories ?? [],
+        certifications: p.certifications ?? [],
       });
-    } catch { /* ignore corrupted drafts */ }
-  }, [setValue]);
-
-  // Persist draft to localStorage whenever form values change
-  useEffect(() => {
-    const sub = watch((values) => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(values)); } catch { /* ignore */ }
-    });
-    return () => sub.unsubscribe();
-  }, [watch]);
+    }
+  }, [profileQuery.data, reset, user]);
 
   const materialCategories = watch("materialCategories") ?? [];
   const certifications = watch("certifications") ?? [];
+  const allValues = watch();
 
   const nextStep = async () => {
-    let fields: (keyof FormData)[] = [];
-    if (step === 0) fields = ["companyName", "contactName", "email", "phone", "website", "description"];
-    if (step === 1) fields = ["materialCategories"];
-    const ok = await trigger(fields);
-    if (ok) setStep((s) => s + 1);
+    const fields = STEP_FIELDS[step];
+    if (fields.length > 0) {
+      const ok = await trigger(fields);
+      if (!ok) return;
+    }
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
+
+  const prevStep = () => setStep((s) => Math.max(s - 1, 0));
 
   const onSubmit = (data: FormData) => submitOnboarding.mutate(data);
 
-  if (done) {
+  // Loading state while checking for existing profile
+  if (profileQuery.isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="min-h-screen flex flex-col bg-gray-50">
         <Header />
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center px-4">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold">Application Submitted!</h2>
-            <p className="text-muted-foreground mt-2 max-w-sm">
-              Thanks for joining GreenChainz. Our team will review your profile and verify your
-              sustainability credentials — usually within 2 business days.
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-[#2D6A4F]" />
+            <p className="text-sm text-muted-foreground">
+              Checking your profile…
             </p>
           </div>
-          <Button className="bg-green-600 hover:bg-green-700" onClick={() => navigate("/supplier/dashboard")}>
-            Go to Dashboard
-          </Button>
         </div>
         <Footer />
       </div>
@@ -240,182 +287,441 @@ export default function SupplierOnboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
-      <div className="container max-w-2xl py-10 flex-1">
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold">Supplier Onboarding</h1>
-          <p className="text-muted-foreground mt-1">
-            Join GreenChainz as a verified sustainable materials supplier.
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Step {step + 1} of {STEPS.length} — your progress is saved as you go
-          </p>
-        </div>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Page Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Supplier Onboarding
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Join GreenChainz as a verified sustainable materials supplier.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Step {step + 1} of {STEPS.length}
+            </p>
+          </div>
 
-        <StepIndicator current={step} />
+          <StepIndicator current={step} />
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          {/* ── Step 1: Company Info ─────────────────────────────────── */}
-          {step === 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Company Information</CardTitle>
-                <CardDescription>Tell architects who you are.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="companyName">Company Name *</Label>
-                  <Input
-                    id="companyName"
-                    placeholder="Acme Green Materials Inc."
-                    {...register("companyName")}
-                    className={errors.companyName ? "border-red-500" : ""}
-                  />
-                  {errors.companyName && (
-                    <p className="text-sm text-red-500">{errors.companyName.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="contactName">Contact Name *</Label>
-                  <Input
-                    id="contactName"
-                    placeholder="Jane Smith"
-                    {...register("contactName")}
-                    className={errors.contactName ? "border-red-500" : ""}
-                  />
-                  {errors.contactName && (
-                    <p className="text-sm text-red-500">{errors.contactName.message}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {/* ── Step 1: Company Info ─────────────────────────────── */}
+            {step === 0 && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-[#2D6A4F]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">
+                        Company Information
+                      </CardTitle>
+                      <CardDescription>
+                        Tell architects about your company.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-5">
                   <div className="space-y-1.5">
-                    <Label htmlFor="email">Email *</Label>
+                    <Label htmlFor="companyName">Company Name *</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="jane@acmegreenco.com"
-                      {...register("email")}
-                      className={errors.email ? "border-red-500" : ""}
+                      id="companyName"
+                      placeholder="Acme Green Materials Inc."
+                      {...register("companyName")}
+                      className={errors.companyName ? "border-red-500" : ""}
                     />
-                    {errors.email && (
-                      <p className="text-sm text-red-500">{errors.email.message}</p>
+                    {errors.companyName && (
+                      <p className="text-sm text-red-500">
+                        {errors.companyName.message}
+                      </p>
                     )}
                   </div>
+
                   <div className="space-y-1.5">
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="website">Website</Label>
                     <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+1 (555) 000-0000"
-                      {...register("phone")}
+                      id="website"
+                      type="url"
+                      placeholder="https://acmegreenco.com"
+                      {...register("website")}
+                      className={errors.website ? "border-red-500" : ""}
+                    />
+                    {errors.website && (
+                      <p className="text-sm text-red-500">
+                        {errors.website.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="description">Company Description</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Describe your company, sustainability mission, and what makes your materials unique."
+                      rows={4}
+                      {...register("description")}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            )}
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    type="url"
-                    placeholder="https://acmegreenco.com"
-                    {...register("website")}
-                    className={errors.website ? "border-red-500" : ""}
+            {/* ── Step 2: Contact ──────────────────────────────────── */}
+            {step === 1 && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
+                      <User className="w-5 h-5 text-[#2D6A4F]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">
+                        Contact Details
+                      </CardTitle>
+                      <CardDescription>
+                        How architects can reach you.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="contactName">Contact Name *</Label>
+                    <Input
+                      id="contactName"
+                      placeholder="Jane Smith"
+                      {...register("contactName")}
+                      className={errors.contactName ? "border-red-500" : ""}
+                    />
+                    {errors.contactName && (
+                      <p className="text-sm text-red-500">
+                        {errors.contactName.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="jane@acmegreenco.com"
+                        {...register("email")}
+                        className={errors.email ? "border-red-500" : ""}
+                      />
+                      {errors.email && (
+                        <p className="text-sm text-red-500">
+                          {errors.email.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="+1 (555) 000-0000"
+                        {...register("phone")}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ── Step 3: Material Categories ──────────────────────── */}
+            {step === 2 && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-[#2D6A4F]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">
+                        Material Categories
+                      </CardTitle>
+                      <CardDescription>
+                        Which sustainable materials do you supply? Select all
+                        that apply.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CheckboxGroup
+                    options={MATERIAL_CATEGORIES}
+                    value={materialCategories}
+                    onChange={(v) =>
+                      setValue("materialCategories", v, {
+                        shouldValidate: true,
+                      })
+                    }
+                    error={errors.materialCategories?.message as string | undefined}
                   />
-                  {errors.website && (
-                    <p className="text-sm text-red-500">{errors.website.message}</p>
-                  )}
-                </div>
+                </CardContent>
+              </Card>
+            )}
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="description">Company Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe your company, sustainability mission, and what makes your materials unique."
-                    rows={4}
-                    {...register("description")}
+            {/* ── Step 4: Certifications ───────────────────────────── */}
+            {step === 3 && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
+                      <Award className="w-5 h-5 text-[#2D6A4F]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Certifications</CardTitle>
+                      <CardDescription>
+                        Select sustainability certifications your products hold.
+                        These help architects find and trust your materials.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CheckboxGroup
+                    options={CERTIFICATIONS}
+                    value={certifications}
+                    onChange={(v) => setValue("certifications", v)}
                   />
-                </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Certifications are optional — you can add them later.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
-                <Button type="button" className="w-full bg-green-600 hover:bg-green-700" onClick={nextStep}>
-                  Next: Material Categories
+            {/* ── Step 5: Review & Submit ──────────────────────────── */}
+            {step === 4 && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
+                      <ClipboardCheck className="w-5 h-5 text-[#2D6A4F]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">
+                        Review & Submit
+                      </CardTitle>
+                      <CardDescription>
+                        Verify your information before submitting.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Company Info Summary */}
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-sm text-[#2D6A4F] flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        Company Info
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-[#2D6A4F] h-8"
+                        onClick={() => setStep(0)}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div>
+                        <dt className="text-muted-foreground">Company</dt>
+                        <dd className="font-medium">
+                          {allValues.companyName || "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Website</dt>
+                        <dd className="font-medium">
+                          {allValues.website || "—"}
+                        </dd>
+                      </div>
+                      {allValues.description && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-muted-foreground">Description</dt>
+                          <dd className="font-medium">
+                            {allValues.description}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                  </div>
+
+                  {/* Contact Summary */}
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-sm text-[#2D6A4F] flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        Contact
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-[#2D6A4F] h-8"
+                        onClick={() => setStep(1)}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div>
+                        <dt className="text-muted-foreground">Name</dt>
+                        <dd className="font-medium">
+                          {allValues.contactName || "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Email</dt>
+                        <dd className="font-medium">
+                          {allValues.email || "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Phone</dt>
+                        <dd className="font-medium">
+                          {allValues.phone || "—"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  {/* Materials Summary */}
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-sm text-[#2D6A4F] flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        Material Categories
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-[#2D6A4F] h-8"
+                        onClick={() => setStep(2)}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {materialCategories.length > 0 ? (
+                        materialCategories.map((cat) => (
+                          <span
+                            key={cat}
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#2D6A4F]/10 text-[#2D6A4F]"
+                          >
+                            {cat}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          None selected
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Certifications Summary */}
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-sm text-[#2D6A4F] flex items-center gap-2">
+                        <Award className="w-4 h-4" />
+                        Certifications
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-[#2D6A4F] h-8"
+                        onClick={() => setStep(3)}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {certifications.length > 0 ? (
+                        certifications.map((cert) => (
+                          <span
+                            key={cert}
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700"
+                          >
+                            {cert}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          None selected
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ── Navigation Buttons ──────────────────────────────── */}
+            <div className="flex gap-3 mt-6">
+              {step > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={prevStep}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Back
                 </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ── Step 2: Material Categories ──────────────────────────── */}
-          {step === 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Material Categories</CardTitle>
-                <CardDescription>
-                  Which sustainable materials do you supply? Select all that apply.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <CheckboxGroup
-                  options={MATERIAL_CATEGORIES}
-                  value={materialCategories}
-                  onChange={(v) => setValue("materialCategories", v, { shouldValidate: true })}
-                  error={errors.materialCategories?.message as string | undefined}
-                />
-
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(0)}>
-                    Back
-                  </Button>
-                  <Button type="button" className="flex-1 bg-green-600 hover:bg-green-700" onClick={nextStep}>
-                    Next: Certifications
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ── Step 3: Certifications + Submit ──────────────────────── */}
-          {step === 2 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Certifications</CardTitle>
-                <CardDescription>
-                  Select any sustainability certifications your products hold. These help architects
-                  filter and trust your materials.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <CheckboxGroup
-                  options={CERTIFICATIONS}
-                  value={certifications}
-                  onChange={(v) => setValue("certifications", v)}
-                />
-
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
-                    Back
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    disabled={submitOnboarding.isPending}
-                  >
-                    {submitOnboarding.isPending ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Submitting…
-                      </>
-                    ) : (
-                      "Submit Application"
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </form>
-      </div>
+              )}
+              {step < STEPS.length - 1 && (
+                <Button
+                  type="button"
+                  className={`flex-1 bg-[#2D6A4F] hover:bg-[#245a42] text-white ${
+                    step === 0 ? "w-full" : ""
+                  }`}
+                  onClick={nextStep}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              )}
+              {step === STEPS.length - 1 && (
+                <Button
+                  type="submit"
+                  className="flex-1 bg-[#2D6A4F] hover:bg-[#245a42] text-white"
+                  disabled={submitOnboarding.isPending}
+                >
+                  {submitOnboarding.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Submit Application
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </form>
+        </div>
+      </main>
       <Footer />
     </div>
   );
