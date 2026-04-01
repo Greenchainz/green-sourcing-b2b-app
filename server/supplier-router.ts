@@ -8,6 +8,9 @@ import {
   upgradeToPremium,
   downgradeToFree,
 } from "./supplier-service";
+import { getDb } from "./db";
+import { suppliers, supplierFilters } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Supplier Portal Router
@@ -128,5 +131,88 @@ export const supplierRouter = router({
 
       const results = await query.limit(20).execute();
       return results;
+    }),
+
+  /**
+   * Get the current supplier's RFQ matching filter settings
+   */
+  getMyFilters: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database connection failed");
+
+    const [supplier] = await db
+      .select({ id: suppliers.id })
+      .from(suppliers)
+      .where(eq(suppliers.userId, ctx.user.id))
+      .limit(1);
+
+    if (!supplier) return null;
+
+    const [filter] = await db
+      .select()
+      .from(supplierFilters)
+      .where(eq(supplierFilters.supplierId, supplier.id))
+      .limit(1);
+
+    return filter ?? null;
+  }),
+
+  /**
+   * Create or update the current supplier's RFQ matching filter settings
+   */
+  saveFilters: protectedProcedure
+    .input(
+      z.object({
+        materialTypePreferences: z.array(z.string()).default([]),
+        serviceRadius: z.number().int().min(0).max(2000).nullable().default(null),
+        acceptedLocations: z.string().max(500).default(""),
+        minPrice: z.number().positive().nullable().default(null),
+        maxPrice: z.number().positive().nullable().default(null),
+        minLeadDays: z.number().int().positive().nullable().default(null),
+        maxLeadDays: z.number().int().positive().nullable().default(null),
+        minOrderQuantity: z.number().positive().nullable().default(null),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database connection failed");
+
+      const [supplier] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(eq(suppliers.userId, ctx.user.id))
+        .limit(1);
+
+      if (!supplier) throw new Error("Supplier profile not found");
+
+      const [existing] = await db
+        .select({ id: supplierFilters.id })
+        .from(supplierFilters)
+        .where(eq(supplierFilters.supplierId, supplier.id))
+        .limit(1);
+
+      const values = {
+        supplierId: supplier.id,
+        materialTypePreferences: input.materialTypePreferences,
+        serviceRadius: input.serviceRadius,
+        acceptedLocations: input.acceptedLocations || null,
+        minPrice: input.minPrice !== null ? String(input.minPrice) : null,
+        maxPrice: input.maxPrice !== null ? String(input.maxPrice) : null,
+        minLeadDays: input.minLeadDays,
+        maxLeadDays: input.maxLeadDays,
+        minOrderQuantity: input.minOrderQuantity !== null ? String(input.minOrderQuantity) : null,
+        updatedAt: new Date(),
+      };
+
+      if (existing) {
+        await db
+          .update(supplierFilters)
+          .set(values)
+          .where(eq(supplierFilters.id, existing.id));
+      } else {
+        await db.insert(supplierFilters).values({ ...values, createdAt: new Date() });
+      }
+
+      return { success: true };
     }),
 });

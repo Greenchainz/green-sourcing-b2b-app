@@ -60,6 +60,7 @@ import SupplierAgentConfig from "./pages/SupplierAgentConfig";
 import SupplierMaterials from "./pages/SupplierMaterials";
 import SupplierBulkUpload from "./pages/SupplierBulkUpload";
 import SupplierAnalytics from "./pages/SupplierAnalytics";
+import SupplierFilterSetup from "./pages/SupplierFilterSetup";
 import { SupplierLayout } from "./components/SupplierLayout";
 import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
@@ -112,6 +113,7 @@ function Router() {
       <Route path="/supplier/materials">{() => <SupplierLayout><SupplierMaterials /></SupplierLayout>}</Route>
       <Route path="/supplier/upload">{() => <SupplierLayout><SupplierBulkUpload /></SupplierLayout>}</Route>
       <Route path="/supplier/analytics">{() => <SupplierLayout><SupplierAnalytics /></SupplierLayout>}</Route>
+      <Route path="/supplier/filters">{() => <SupplierLayout><SupplierFilterSetup /></SupplierLayout>}</Route>
       <Route path="/material-swap" component={MaterialSwap} />
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />
