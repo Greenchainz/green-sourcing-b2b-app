@@ -159,6 +159,186 @@ export async function getPricingComparison(materialIds: number[]): Promise<Prici
   return results;
 }
 
+// ─── TxDOT Scraper Integration ──────────────────────────────────────────────
+
+export interface ScrapedPricingDataInput {
+  materialCategory: string;
+  pricePerUnit: number;
+  unit: string;
+  state: string;
+  county: string;
+  source: string;
+  sourceDate: Date;
+  sourceUrl: string;
+  projectName: string;
+  contractNumber: string;
+  dataConfidence: number;
+}
+
+export interface StorePricingDataResult {
+  success: boolean;
+  recordsInserted: number;
+  recordsSkipped: number;
+  errors: string[];
+}
+
+export interface RegionalPricingResult {
+  state: string;
+  county: string | null;
+  materialCategory: string;
+  avgPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  recordCount: number;
+  priceUnit: string;
+  lastUpdated: string | null;
+}
+
+interface MaterialLookupRow {
+  id: number;
+  name: string;
+}
+
+interface PricingAggRow {
+  material_id: string;
+  material_category: string;
+  avg_price: string;
+  min_price: string;
+  max_price: string;
+  record_count: string;
+  price_unit: string | null;
+  last_updated: string | null;
+}
+
+/**
+ * Store an array of scraped TxDOT pricing records.
+ * Looks up matching materials by category and inserts into pricing_data.
+ */
+export async function storePricingData(
+  scrapedData: ScrapedPricingDataInput[]
+): Promise<StorePricingDataResult> {
+  const result: StorePricingDataResult = {
+    success: true,
+    recordsInserted: 0,
+    recordsSkipped: 0,
+    errors: [],
+  };
+
+  for (const record of scrapedData) {
+    try {
+      // Find a material that matches this category
+      const materialRow = await queryOne<MaterialLookupRow>(
+        `SELECT id, name FROM materials
+         WHERE category ILIKE $1
+            OR name ILIKE $1
+         LIMIT 1`,
+        [`%${record.materialCategory}%`]
+      );
+
+      if (!materialRow) {
+        result.recordsSkipped++;
+        continue;
+      }
+
+      await query(
+        `INSERT INTO pricing_data (
+           material_id, price_per_unit, unit, state, county, source,
+           source_date, source_url, project_name, contract_number,
+           data_confidence, is_active, created_at, updated_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, NOW(), NOW())
+         ON CONFLICT DO NOTHING`,
+        [
+          materialRow.id,
+          record.pricePerUnit.toString(),
+          record.unit,
+          record.state,
+          record.county,
+          record.source,
+          record.sourceDate.toISOString(),
+          record.sourceUrl,
+          record.projectName,
+          record.contractNumber,
+          record.dataConfidence,
+        ]
+      );
+
+      result.recordsInserted++;
+    } catch (err) {
+      result.errors.push(
+        err instanceof Error ? err.message : String(err)
+      );
+      result.success = false;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Update the pricePerUnit field on all materials based on the average
+ * of active pricing_data rows for that material.
+ */
+export async function updateAllMaterialAveragePricing(): Promise<void> {
+  await query(
+    `UPDATE materials m
+     SET "pricePerUnit" = sub.avg_price,
+         "updatedAt"    = NOW()
+     FROM (
+       SELECT material_id,
+              AVG(price_per_unit)::DECIMAL(10,2) AS avg_price
+       FROM pricing_data
+       WHERE is_active = TRUE
+       GROUP BY material_id
+     ) sub
+     WHERE m.id = sub.material_id`
+  );
+}
+
+/**
+ * Retrieve aggregated pricing data for a given US state (and optional county).
+ */
+export async function getRegionalPricing(
+  state: string,
+  county?: string
+): Promise<RegionalPricingResult[]> {
+  const params: unknown[] = [state.toUpperCase()];
+  const countyClause = county
+    ? `AND UPPER(pd.county) = UPPER($${params.push(county)})`
+    : '';
+
+  const rows = await queryMany<PricingAggRow>(
+    `SELECT
+       pd.material_id::TEXT               AS material_id,
+       m.category                         AS material_category,
+       AVG(pd.price_per_unit)::TEXT       AS avg_price,
+       MIN(pd.price_per_unit)::TEXT       AS min_price,
+       MAX(pd.price_per_unit)::TEXT       AS max_price,
+       COUNT(*)::TEXT                     AS record_count,
+       MODE() WITHIN GROUP
+         (ORDER BY pd.unit)               AS price_unit,
+       MAX(pd.source_date)::TEXT          AS last_updated
+     FROM pricing_data pd
+     JOIN materials m ON m.id = pd.material_id
+     WHERE UPPER(pd.state) = $1
+       ${countyClause}
+       AND pd.is_active = TRUE
+     GROUP BY pd.material_id, m.category`,
+    params
+  );
+
+  return rows.map(r => ({
+    state: state.toUpperCase(),
+    county: county ?? null,
+    materialCategory: r.material_category,
+    avgPrice: parseFloat(parseFloat(r.avg_price).toFixed(2)),
+    minPrice: parseFloat(parseFloat(r.min_price).toFixed(2)),
+    maxPrice: parseFloat(parseFloat(r.max_price).toFixed(2)),
+    recordCount: parseInt(r.record_count, 10),
+    priceUnit: r.price_unit ?? 'USD',
+    lastUpdated: r.last_updated,
+  }));
+}
+
 /**
  * Get individual supplier quotes for a material.
  */

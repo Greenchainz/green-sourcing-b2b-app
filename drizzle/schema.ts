@@ -1427,3 +1427,33 @@ export const engagementLog = pgTable("engagement_log", {
 });
 
 export type EngagementLog = typeof engagementLog.$inferSelect;
+
+// ─── EPD Materials ──────────────────────────────────────────────────────────
+
+export const epdMaterials = pgTable(
+  "epd_materials",
+  {
+    id: serial("id").primaryKey(),
+    supplierId: integer("supplier_id").notNull(),
+    manufacturerName: varchar("manufacturer_name", { length: 255 }),
+    productName: varchar("product_name", { length: 255 }).notNull(),
+    epdNumber: varchar("epd_number", { length: 100 }),
+    assemblyType: varchar("assembly_type", { length: 50 }),
+    coreOption: integer("core_option"),
+    gwpRaw: decimal("gwp_raw", { precision: 14, scale: 4 }),
+    gwpUnit: varchar("gwp_unit", { length: 50 }),
+    gwpPer1000sf: decimal("gwp_per_1000sf", { precision: 14, scale: 4 }),
+    declaredUnit: varchar("declared_unit", { length: 100 }),
+    dimensionParam: varchar("dimension_param", { length: 100 }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    supplierIdx: index("idx_epd_materials_supplier").on(table.supplierId),
+    assemblyIdx: index("idx_epd_materials_assembly").on(table.assemblyType),
+  })
+);
+
+export type EpdMaterial = typeof epdMaterials.$inferSelect;
+export type InsertEpdMaterial = typeof epdMaterials.$inferInsert;

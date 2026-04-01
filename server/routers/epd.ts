@@ -2,20 +2,26 @@
  * EPD (Environmental Product Declaration) Router
  *
  * Routes:
- *   epd.submit        — supplier submits/attaches an EPD to a material
- *   epd.update        — supplier updates their EPD record
- *   epd.listMine      — supplier lists their submitted EPDs
- *   epd.listForMaterial — public: EPDs for a given catalog material
- *   epd.lookup        — live EC3 lookup by EPD UUID (wraps EC3 API)
+ *   epd.submit            — supplier submits/attaches an EPD to a material
+ *   epd.update            — supplier updates their EPD record
+ *   epd.listMine          — supplier lists their submitted EPDs
+ *   epd.listForMaterial   — public: EPDs for a given catalog material
+ *   epd.lookup            — live EC3 lookup by EPD UUID (wraps EC3 API)
+ *   epd.ingest            — ingest a JSON EPD record into epd_materials
+ *   epd.listByAssembly    — list epd_materials rows filtered by assembly_type
+ *   epd.listByAssemblies  — list epd_materials rows filtered by multiple assembly types
+ *   epd.listBySupplier    — list epd_materials rows filtered by supplier_id
+ *   epd.delete            — delete an epd_materials row (supplier-scoped)
  */
 
 import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { supplierMaterialEpds, suppliers } from "../../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { supplierMaterialEpds, suppliers, epdMaterials } from "../../drizzle/schema";
+import { eq, desc, inArray } from "drizzle-orm";
 import { fetchEC3EPDById } from "../ec3";
+import { normaliseEpdPayload } from "../services/epd-ingestion";
 
 const epdInput = z.object({
   productName: z.string().min(1, "Product name required"),
@@ -176,5 +182,139 @@ export const epdRouter = router({
       } catch {
         return null;
       }
+    }),
+
+  // ── EPD Pipeline: ingest a JSON EPD record ────────────────────────────────
+  ingest: protectedProcedure
+    .input(
+      z.object({
+        manufacturerName: z.string().optional(),
+        productName: z.string().min(1, "Product name is required"),
+        epdNumber: z.string().optional(),
+        gwpValue: z.number().nonnegative("GWP must be ≥ 0"),
+        gwpUnit: z.enum(["per m2", "per kg", "per metric ton", "per 1000 sqft"]),
+        declaredUnit: z.string().optional(),
+        dimension: z.string().optional(),
+        assemblyType: z.string().optional(),
+        coreOption: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable().optional(),
+        notes: z.string().optional(),
+        massKgPer1000sf: z.number().positive().optional(),
+        msfFactor: z.number().positive().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const [supplierRow] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(eq(suppliers.userId, ctx.user.id))
+        .limit(1);
+      if (!supplierRow)
+        throw new TRPCError({ code: "FORBIDDEN", message: "No supplier profile found" });
+
+      let normalised;
+      try {
+        normalised = normaliseEpdPayload(input);
+      } catch (err) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: err instanceof Error ? err.message : "Normalisation failed",
+        });
+      }
+
+      const [row] = await db
+        .insert(epdMaterials)
+        .values({
+          supplierId: supplierRow.id,
+          manufacturerName: normalised.manufacturerName ?? null,
+          productName: normalised.productName,
+          epdNumber: normalised.epdNumber ?? null,
+          assemblyType: normalised.assemblyType ?? null,
+          coreOption: normalised.coreOption ?? null,
+          gwpRaw: normalised.gwpValue.toString(),
+          gwpUnit: normalised.gwpUnit,
+          gwpPer1000sf: normalised.gwpPer1000sf.toString(),
+          declaredUnit: normalised.declaredUnit ?? null,
+          dimensionParam: normalised.dimension ?? null,
+          notes: normalised.notes ?? null,
+        })
+        .returning({ id: epdMaterials.id });
+
+      return { id: row.id, gwpPer1000sf: normalised.gwpPer1000sf };
+    }),
+
+  // ── EPD Pipeline: list by multiple assembly types ─────────────────────────
+  listByAssemblies: publicProcedure
+    .input(z.object({ assemblyTypes: z.array(z.string()).min(1) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      return db
+        .select()
+        .from(epdMaterials)
+        .where(inArray(epdMaterials.assemblyType, input.assemblyTypes))
+        .orderBy(desc(epdMaterials.createdAt));
+    }),
+
+  // ── EPD Pipeline: list by assembly type ───────────────────────────────────
+  listByAssembly: publicProcedure
+    .input(z.object({ assemblyType: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      return db
+        .select()
+        .from(epdMaterials)
+        .where(eq(epdMaterials.assemblyType, input.assemblyType))
+        .orderBy(desc(epdMaterials.createdAt));
+    }),
+
+  // ── EPD Pipeline: list by supplier ────────────────────────────────────────
+  listBySupplier: publicProcedure
+    .input(z.object({ supplierId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      return db
+        .select()
+        .from(epdMaterials)
+        .where(eq(epdMaterials.supplierId, input.supplierId))
+        .orderBy(desc(epdMaterials.createdAt));
+    }),
+
+  // ── EPD Pipeline: delete (supplier-scoped) ────────────────────────────────
+  delete: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const [supplierRow] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(eq(suppliers.userId, ctx.user.id))
+        .limit(1);
+      if (!supplierRow)
+        throw new TRPCError({ code: "FORBIDDEN", message: "No supplier profile found" });
+
+      const [existing] = await db
+        .select({ id: epdMaterials.id, supplierId: epdMaterials.supplierId })
+        .from(epdMaterials)
+        .where(eq(epdMaterials.id, input.id))
+        .limit(1);
+
+      if (!existing)
+        throw new TRPCError({ code: "NOT_FOUND", message: "EPD record not found" });
+      if (existing.supplierId !== supplierRow.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to delete this record" });
+
+      await db.delete(epdMaterials).where(eq(epdMaterials.id, input.id));
+
+      return { success: true };
     }),
 });

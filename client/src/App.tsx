@@ -22,6 +22,7 @@ import RFQForm from "./pages/RFQForm";
 import RfqDetail from "./pages/RfqDetail";
 import Compare from "./pages/Compare";
 import CarbonCompare from "./pages/CarbonCompare";
+import CarbonDashboard from "./pages/CarbonDashboard";
 import SupplierDashboard from "./pages/SupplierDashboard";
 import BuyerRfqDashboard from "./pages/BuyerRfqDashboard";
 import RfqDashboard from "./pages/RfqDashboard";
@@ -91,6 +92,7 @@ function Router() {
       <Route path="/manufacturers/:id" component={ManufacturerProfile} />
       <Route path="/compare" component={Compare} />
       <Route path="/carbon-compare" component={CarbonCompare} />
+      <Route path="/carbon-dashboard" component={CarbonDashboard} />
       <Route path="/supplier-dashboard" component={SupplierDashboard} />
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
