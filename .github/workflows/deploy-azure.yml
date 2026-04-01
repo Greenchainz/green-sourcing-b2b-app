@@ -1,6 +1,7 @@
 name: Deploy to Azure Container Apps
 
 # Triggers: every push to main + manual dispatch
+# Triggers: every push to main + manual dispatch
 on:
   push:
     branches:
@@ -8,31 +9,20 @@ on:
   workflow_dispatch:
 
 # ─── GitHub Variables (Settings → Variables → Actions) ──────────────────────
-# These are non-sensitive identifiers — not secrets.
-#   AZURE_CLIENT_ID      → 479e2a01-70ab-4df9-baa4-560d317c3423
-#   AZURE_TENANT_ID      → ca4f78d4-c753-4893-9cd8-1b309922b4dc
+# Non-sensitive identifiers — NOT secrets:
+#   AZURE_CLIENT_ID       → 479e2a01-70ab-4df9-baa4-560d317c3423
+#   AZURE_TENANT_ID       → ca4f78d4-c753-4893-9cd8-1b309922b4dc
 #   AZURE_SUBSCRIPTION_ID → your Azure subscription ID
 #
-# ─── Azure prerequisites ─────────────────────────────────────────────────────
-# 1. Federated credential on App Registration 479e2a01:
-#      Azure Portal → App Registrations → 479e2a01 → Certificates & secrets
-#      → Federated credentials → Add credential
-#        Entity type: GitHub Actions
-#        Org: <your-github-org>
-#        Repo: green-sourcing-b2b-app
-#        Entity: Branch → main
-#
-# 2. Key Vault access for the CI service principal:
-#      az keyvault set-policy \
-#        --name greenchainz-core-vault \
-#        --spn 479e2a01-70ab-4df9-baa4-560d317c3423 \
-#        --secret-permissions get list
-#
-# 3. ACR pull permission (replaces username/password):
-#      az role assignment create \
-#        --assignee 479e2a01-70ab-4df9-baa4-560d317c3423 \
-#        --role AcrPush \
-#        --scope /subscriptions/<SUB>/resourceGroups/rg-greenchainz-prod-container/providers/Microsoft.ContainerRegistry/registries/acrgreenchainzprod916
+# Azure prerequisites (one-time setup):
+#   1. Federated credential on App Registration 479e2a01:
+#        Azure Portal → App Registrations → 479e2a01
+#        → Certificates & secrets → Federated credentials → Add
+#        Entity: GitHub Actions / Branch: main
+#   2. Key Vault access: az keyvault set-policy --name greenchainz-core-vault
+#        --spn 479e2a01-... --secret-permissions get list
+#   3. ACR push: az role assignment create --assignee 479e2a01-...
+#        --role AcrPush --scope .../registries/acrgreenchainzprod916
 # ─────────────────────────────────────────────────────────────────────────────
 
 env:
@@ -45,6 +35,9 @@ env:
   KEY_VAULT: greenchainz-core-vault
 
 jobs:
+  # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
+  test:
+    name: Typecheck & Tests
   # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
   test:
     name: Typecheck & Tests
@@ -76,14 +69,65 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     permissions:
-      id-token: write   # required for OIDC token
+      id-token: write
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
+      - name: Log in to Azure (OIDC — no stored credentials)
       - name: Log in to Azure (OIDC — no stored credentials)
         uses: azure/login@v2
         with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pull build secrets from Key Vault
+        uses: azure/get-keyvault-secrets@v1
+        with:
+          keyvault: ${{ env.KEY_VAULT }}
+          secrets: >-
+            azure-maps-key,
+            sentry-dsn,
+            sentry-auth-token,
+            sentry-org,
+            sentry-project
+        id: kv
+
+      - name: Log in to ACR (token-based — no username/password)
+        run: az acr login --name ${{ env.ACR }}
+
+      - name: Set up Docker Buildx (layer caching)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache
+          cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache,mode=max
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=https://greenchainz.com
+            NEXT_PUBLIC_AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}
+            NEXT_PUBLIC_AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}
+            NEXT_PUBLIC_BACKEND_URL=
+            VITE_BACKEND_URL=
+            VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
+            VITE_SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}
+            SENTRY_AUTH_TOKEN=${{ steps.kv.outputs.sentry-auth-token }}
+            SENTRY_ORG=${{ steps.kv.outputs.sentry-org }}
+            SENTRY_PROJECT=${{ steps.kv.outputs.sentry-project }}
+            VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
+            VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v6
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
@@ -160,9 +204,9 @@ jobs:
         run: az logout || true
         if: always()
 
-  # ── Job 3: Run Drizzle migrations ─────────────────────────────────────────
+  # ── Job 3: Migrate + seed ─────────────────────────────────────────────────
   migrate:
-    name: Database Migrations
+    name: Migrate & Seed DB
     runs-on: ubuntu-latest
     needs: build
     permissions:
@@ -196,19 +240,53 @@ jobs:
           keyvault: ${{ env.KEY_VAULT }}
           secrets: Database-URL
         id: kv
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pull DATABASE_URL from Key Vault
+        uses: azure/get-keyvault-secrets@v1
+        with:
+          keyvault: ${{ env.KEY_VAULT }}
+          secrets: Database-URL
+        id: kv
 
       - name: Run Drizzle migrations
         env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
           DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|; t; s|.*|5432|')
           if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -t 10 > /dev/null 2>&1; then
             echo "⚠️  Database '$DB_HOST' unreachable from runner (firewall?)"
-            echo "   Allow GitHub Actions IPs in Azure PostgreSQL firewall, or run migrations manually."
+            echo "   Add GitHub Actions IPs to Azure PostgreSQL firewall, or run manually."
             exit 0
           fi
           pnpm db:migrate
+
+      - name: Run seed scripts (idempotent)
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+        run: |
+          DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
+          DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|; t; s|.*|5432|')
+          if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -t 5 > /dev/null 2>&1; then
+            echo "⚠️  Database not reachable — skipping seeds"
+            exit 0
+          fi
+          echo "🌱 Seeding manufacturer profiles..."
+          pnpm tsx scripts/seed-manufacturers.ts || echo "⚠️  Manufacturer seed failed (non-blocking)"
+          echo "🌱 Seeding lead time estimates..."
+          pnpm tsx scripts/seed-lead-times.ts || echo "⚠️  Lead time seed failed (non-blocking)"
 
   # ── Job 4: Deploy both Container Apps ─────────────────────────────────────
   deploy:
@@ -254,7 +332,15 @@ jobs:
               "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
               "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
               "SENTRY_RELEASE=${{ github.sha }}"
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --set-env-vars \
+              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
+              "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
+              "SENTRY_RELEASE=${{ github.sha }}"
 
+      - name: Azure logout
       - name: Azure logout
         run: az logout || true
         if: always()
