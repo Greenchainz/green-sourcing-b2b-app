@@ -25,9 +25,9 @@ export async function setupVite(app: Express, server: Server) {
   app.use("{*path}", async (req, res, next) => {
     const url = req.originalUrl;
 
-    // Skip /api routes in development too
-    if (url.startsWith("/api")) {
-      res.status(404).json({ error: "API route not found", path: url });
+    // Skip /api and /.auth routes — Easy Auth sidecar handles /.auth/*
+    if (url.startsWith("/api") || url.startsWith("/.auth")) {
+      res.status(404).json({ error: "Route not found", path: url });
       return;
     }
 
@@ -71,8 +71,8 @@ export function serveStatic(app: Express) {
   // IMPORTANT: skip /api routes so they are handled by Express, not the SPA catch-all
   // Express v5: bare * must be named — {*path} is an optional catch-all
   app.use("{*path}", (req, res) => {
-    if (req.originalUrl.startsWith("/api")) {
-      res.status(404).json({ error: "API route not found", path: req.originalUrl });
+    if (req.originalUrl.startsWith("/api") || req.originalUrl.startsWith("/.auth")) {
+      res.status(404).json({ error: "Route not found", path: req.originalUrl });
       return;
     }
     res.sendFile(path.resolve(distPath, "index.html"));
