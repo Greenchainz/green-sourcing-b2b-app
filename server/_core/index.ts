@@ -628,6 +628,75 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
+
+  // EC3 sync: run once at startup (non-blocking), then every 24 hours
+  if (process.env.EC3_API_KEY || (process.env.EC3_USERNAME && process.env.EC3_PASSWORD)) {
+    const { fetchEC3EPDs } = await import("../ec3");
+    const { transformEC3Batch } = await import("../ec3-transform");
+    const { getDb } = await import("../db");
+    const { materials } = await import("../../drizzle/schema");
+    const { inArray, eq } = await import("drizzle-orm");
+
+    const EC3_SYNC_CATEGORIES = [
+      "Concrete",
+      "Steel",
+      "Wood",
+      "Insulation",
+      "Glass",
+      "Aluminum",
+      "Masonry",
+      "Roofing",
+    ];
+
+    const runEC3Sync = async () => {
+      console.log("[EC3 Sync] Starting scheduled sync...");
+      const db = await getDb();
+      if (!db) { console.error("[EC3 Sync] No DB connection"); return; }
+
+      let totalCreated = 0;
+      let totalUpdated = 0;
+
+      for (const category of EC3_SYNC_CATEGORIES) {
+        try {
+          const epds = await fetchEC3EPDs(category, 50);
+          if (epds.length === 0) continue;
+
+          const transformed = transformEC3Batch(epds);
+          const ec3Ids = epds.map(e => e.id).filter(Boolean);
+
+          const existing = await db
+            .select({ ec3Id: materials.ec3Id })
+            .from(materials)
+            .where(inArray(materials.ec3Id, ec3Ids));
+
+          const existingSet = new Set(existing.map((m: any) => m.ec3Id));
+          const toCreate = transformed.filter(m => m.ec3Id && !existingSet.has(m.ec3Id));
+          const toUpdate = transformed.filter(m => m.ec3Id && existingSet.has(m.ec3Id));
+
+          if (toCreate.length > 0) {
+            await db.insert(materials).values(toCreate as any);
+            totalCreated += toCreate.length;
+          }
+          for (const m of toUpdate) {
+            await db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!));
+            totalUpdated++;
+          }
+        } catch (err) {
+          console.error(`[EC3 Sync] Error syncing category "${category}":`, err);
+        }
+      }
+
+      console.log(`[EC3 Sync] Done — created: ${totalCreated}, updated: ${totalUpdated}`);
+    };
+
+    // Run once at startup after a short delay so the server is fully up first
+    setTimeout(() => runEC3Sync().catch(e => console.error("[EC3 Sync] Startup sync failed:", e)), 10_000);
+
+    // Then re-run every 24 hours
+    setInterval(() => runEC3Sync().catch(e => console.error("[EC3 Sync] Scheduled sync failed:", e)), 24 * 60 * 60 * 1000);
+  } else {
+    console.warn("[EC3 Sync] No credentials set — skipping sync. Set EC3_API_KEY in env.");
+  }
 }
 
 startServer().catch(console.error);

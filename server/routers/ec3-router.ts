@@ -11,7 +11,7 @@ import { fetchEC3EPDs, searchEC3EPDs } from "../ec3";
 import { transformEC3ToMaterial, transformEC3Batch } from "../ec3-transform";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
-import { eq, and, gte, lte, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, inArray } from "drizzle-orm";
 
 export const ec3Router = router({
   /**
@@ -48,11 +48,7 @@ export const ec3Router = router({
       const existingMaterials = await db
         .select()
         .from(materials)
-        .where(
-          and(
-            ...ec3Ids.map(id => eq(materials.ec3Id, id))
-          )
-        );
+        .where(inArray(materials.ec3Id, ec3Ids));
 
       const existingEc3Ids = new Set(existingMaterials.map((m: any) => m.ec3Id));
 
