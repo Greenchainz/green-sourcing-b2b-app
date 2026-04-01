@@ -21,6 +21,26 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   },
 });
 
+// pgvector custom type — stores embeddings for semantic search
+export const vector = customType<{
+  data: number[];
+  driverData: string;
+  config: { dimensions: number };
+}>({
+  dataType(config) {
+    return `vector(${config?.dimensions ?? 1536})`;
+  },
+  fromDriver(value: string): number[] {
+    return value
+      .replace(/[\[\]]/g, "")
+      .split(",")
+      .map(Number);
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(",")}]`;
+  },
+});
+
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 export const userRoleEnum = pgEnum("user_role", ["user", "admin", "buyer", "supplier"]);
@@ -180,6 +200,9 @@ export const materials = pgTable("materials", {
   complianceGrade: complianceGradeEnum("complianceGrade").default("C"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  // Semantic search: pgvector embedding (text-embedding-3-small, 1536 dim)
+  embedding: vector("embedding", { dimensions: 1536 }),
+  searchText: text("searchText"),
 });
 
 export type Material = typeof materials.$inferSelect;

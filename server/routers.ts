@@ -44,6 +44,7 @@ import { locationRouter } from "./routers/location";
 import { architectRouter } from "./routers/architect";
 import { manufacturerRouter } from "./manufacturer-router";
 import { getAllPriceTrends, getPriceTrend } from "./services/price-trends";
+import { generateEmbedding } from "./services/embedding-service";
 import { engagementRouter } from "./engagement-router";
 
 export const appRouter = router({
@@ -460,6 +461,69 @@ export const appRouter = router({
         };
       }),
 
+    semanticSearch: publicProcedure
+      .input(
+        z.object({
+          query: z.string().min(1),
+          limit: z.number().min(1).max(50).default(20),
+        })
+      )
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { items: [], semantic: false };
+
+        // Try embedding-based search first
+        const embedding = await generateEmbedding(input.query);
+
+        if (embedding) {
+          const embString = `[${embedding.join(",")}]`;
+          const rows = await db.execute(
+            sql`SELECT m.*,
+                       mfg.name AS "manufacturerName",
+                       mfg.website AS "manufacturerWebsite",
+                       mfg."logoUrl" AS "manufacturerLogoUrl",
+                       m.embedding <=> ${embString}::vector AS distance
+                FROM materials m
+                LEFT JOIN manufacturers mfg ON m."manufacturerId" = mfg.id
+                WHERE m.embedding IS NOT NULL
+                ORDER BY m.embedding <=> ${embString}::vector
+                LIMIT ${input.limit}`
+          );
+          return { items: rows.rows ?? rows, semantic: true };
+        }
+
+        // Fallback: ILIKE keyword search across multiple columns
+        const term = `%${input.query}%`;
+        const rows = await db
+          .select({
+            material: materials,
+            manufacturerName: manufacturers.name,
+            manufacturerWebsite: manufacturers.website,
+            manufacturerLogoUrl: manufacturers.logoUrl,
+          })
+          .from(materials)
+          .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+          .where(
+            or(
+              like(materials.name, term),
+              like(materials.productName, term),
+              like(materials.category, term),
+              like(materials.subcategory, term),
+              like(materials.description, term)
+            )
+          )
+          .limit(input.limit);
+
+        const items = rows.map((r) => ({
+          ...r.material,
+          manufacturerName: r.manufacturerName,
+          manufacturerWebsite: r.manufacturerWebsite,
+          manufacturerLogoUrl: r.manufacturerLogoUrl,
+        }));
+
+        return { items, semantic: false };
+      }),
+
     getPriceTrends: publicProcedure.query(() => {
       return getAllPriceTrends();
     }),
@@ -468,6 +532,13 @@ export const appRouter = router({
       .input(z.object({ category: z.string() }))
       .query(({ input }) => {
         return getPriceTrend(input.category);
+      }),
+
+    searchEC3: publicProcedure
+      .input(z.object({ query: z.string(), category: z.string().optional() }))
+      .query(async ({ input }) => {
+        const { searchEC3Materials } = await import("./services/ec3-service");
+        return searchEC3Materials(input.query, input.category);
       }),
   }),
 

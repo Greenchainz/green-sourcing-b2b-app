@@ -78,6 +78,25 @@ jobs:
           pnpm install --no-frozen-lockfile
           pnpm db:migrate
 
+      - name: Run seed scripts (idempotent)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "⚠️  DATABASE_URL not set — skipping seeds"
+            exit 0
+          fi
+          DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
+          DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|; t; s|.*|5432|')
+          if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -t 5 > /dev/null 2>&1; then
+            echo "⚠️  Database not reachable — skipping seeds"
+            exit 0
+          fi
+          echo "🌱 Seeding manufacturer profiles..."
+          npx tsx scripts/seed-manufacturers.ts || echo "⚠️  Manufacturer seed failed (non-blocking)"
+          echo "🌱 Seeding lead time estimates..."
+          npx tsx scripts/seed-lead-times.ts || echo "⚠️  Lead time seed failed (non-blocking)"
+
       - name: Deploy to Azure Container Apps
         run: |
           az containerapp update \
