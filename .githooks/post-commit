@@ -1,0 +1,19 @@
+#!/bin/bash
+# GreenChainz post-commit hook
+# Auto-syncs all 5 repos to F: drive after every commit
+# Silently exits if F: drive is not present
+
+SYNC_SCRIPT="$(git rev-parse --show-toplevel)/sync-repos-to-f-drive.sh"
+
+# Exit silently if F: drive not plugged in
+if [ ! -d "/f" ]; then
+  exit 0
+fi
+
+# Exit silently if sync script missing
+if [ ! -f "$SYNC_SCRIPT" ]; then
+  exit 0
+fi
+
+chmod +x "$SYNC_SCRIPT"
+"$SYNC_SCRIPT"
