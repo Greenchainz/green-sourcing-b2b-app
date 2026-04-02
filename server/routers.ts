@@ -47,6 +47,7 @@ import { getAllPriceTrends, getPriceTrend } from "./services/price-trends";
 import { generateEmbedding } from "./services/embedding-service";
 import { engagementRouter } from "./engagement-router";
 import { materialCreditScoreRouter } from "./routers/material-credit-score";
+import { crmRouter } from "./routers/crm-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -71,6 +72,7 @@ export const appRouter = router({
   epd: epdRouter,
   location: locationRouter,
   materialCreditScore: materialCreditScoreRouter,
+  crm: crmRouter,
 
   // ─── Assembly Specs (EWS carbon data for Carbon Compare page) ────────────
   assemblySpecs: router({

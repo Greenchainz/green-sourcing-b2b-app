@@ -1457,3 +1457,186 @@ export const epdMaterials = pgTable(
 
 export type EpdMaterial = typeof epdMaterials.$inferSelect;
 export type InsertEpdMaterial = typeof epdMaterials.$inferInsert;
+
+// ─── CRM Enums ───────────────────────────────────────────────────────────────
+
+export const crmContactTypeEnum = pgEnum("crm_contact_type", [
+  "supplier", "architect_firm", "architect",
+]);
+export const crmStageEnum = pgEnum("crm_stage", [
+  "prospect", "contacted", "engaged", "claimed", "trial", "paying", "churned", "dead",
+]);
+export const crmEventTypeEnum = pgEnum("crm_event_type", [
+  "email_sent", "email_opened", "email_clicked", "replied",
+  "profile_claimed", "demo_booked", "converted_trial", "converted_paying",
+  "note_added", "status_changed", "profile_viewed",
+]);
+
+// ─── CRM Contacts ─────────────────────────────────────────────────────────────
+
+export const crmContacts = pgTable(
+  "crm_contacts",
+  {
+    id: serial("id").primaryKey(),
+    type: crmContactTypeEnum("type").notNull().default("supplier"),
+    companyName: varchar("company_name", { length: 255 }).notNull(),
+    contactName: varchar("contact_name", { length: 255 }),
+    email: varchar("email", { length: 320 }),
+    website: varchar("website", { length: 500 }),
+    location: varchar("location", { length: 255 }),
+    category: varchar("category", { length: 100 }),
+    subcategory: varchar("subcategory", { length: 100 }),
+    keyProduct: text("key_product"),
+    pitchAngle: text("pitch_angle"),
+    hasEpd: boolean("has_epd").default(false),
+    readinessLevel: varchar("readiness_level", { length: 20 }), // high / medium / low
+    stage: crmStageEnum("stage").notNull().default("prospect"),
+    internalNotes: text("internal_notes"),
+    source: varchar("source", { length: 100 }),
+    linkedinUrl: varchar("linkedin_url", { length: 500 }),
+    supplierId: integer("supplier_id"), // populated when they claim profile
+    lastContactedAt: timestamp("last_contacted_at"),
+    nextFollowUpAt: timestamp("next_follow_up_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    companyIdx: index("idx_crm_contacts_company").on(t.companyName),
+    stageIdx: index("idx_crm_contacts_stage").on(t.stage),
+    categoryIdx: index("idx_crm_contacts_category").on(t.category),
+    emailIdx: index("idx_crm_contacts_email").on(t.email),
+  })
+);
+
+export type CrmContact = typeof crmContacts.$inferSelect;
+export type InsertCrmContact = typeof crmContacts.$inferInsert;
+
+// ─── CRM Events (activity log) ────────────────────────────────────────────────
+
+export const crmEvents = pgTable(
+  "crm_events",
+  {
+    id: serial("id").primaryKey(),
+    contactId: integer("contact_id").notNull(),
+    eventType: crmEventTypeEnum("event_type").notNull(),
+    subject: varchar("subject", { length: 500 }),
+    body: text("body"),
+    notes: text("notes"),
+    performedBy: varchar("performed_by", { length: 100 }).default("system"),
+    metadata: json("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    contactIdx: index("idx_crm_events_contact").on(t.contactId),
+    typeIdx: index("idx_crm_events_type").on(t.eventType),
+    createdIdx: index("idx_crm_events_created").on(t.createdAt),
+  })
+);
+
+export type CrmEvent = typeof crmEvents.$inferSelect;
+export type InsertCrmEvent = typeof crmEvents.$inferInsert;
+
+// ─── CRM Email Sequences ──────────────────────────────────────────────────────
+
+export const crmEmailSequences = pgTable(
+  "crm_email_sequences",
+  {
+    id: serial("id").primaryKey(),
+    contactId: integer("contact_id").notNull(),
+    sequenceName: varchar("sequence_name", { length: 100 }).notNull(),
+    step: integer("step").notNull().default(1),
+    scheduledAt: timestamp("scheduled_at"),
+    sentAt: timestamp("sent_at"),
+    openedAt: timestamp("opened_at"),
+    clickedAt: timestamp("clicked_at"),
+    repliedAt: timestamp("replied_at"),
+    bouncedAt: timestamp("bounced_at"),
+    unsubscribedAt: timestamp("unsubscribed_at"),
+    resendMessageId: varchar("resend_message_id", { length: 255 }),
+    status: varchar("status", { length: 50 }).default("pending").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    contactStepIdx: index("idx_crm_seq_contact_step").on(t.contactId, t.step),
+    statusIdx: index("idx_crm_seq_status").on(t.status),
+    scheduledIdx: index("idx_crm_seq_scheduled").on(t.scheduledAt),
+  })
+);
+
+export type CrmEmailSequence = typeof crmEmailSequences.$inferSelect;
+export type InsertCrmEmailSequence = typeof crmEmailSequences.$inferInsert;
+
+// ─── Price Indices (BLS/FRED) ─────────────────────────────────────────────────
+
+export const priceIndices = pgTable(
+  "price_indices",
+  {
+    id: serial("id").primaryKey(),
+    category: varchar("category", { length: 100 }).notNull(),
+    seriesId: varchar("series_id", { length: 50 }).notNull(),
+    seriesName: varchar("series_name", { length: 255 }),
+    period: varchar("period", { length: 10 }).notNull(), // "2025-11"
+    value: decimal("value", { precision: 14, scale: 4 }).notNull(),
+    yoyChangePct: decimal("yoy_change_pct", { precision: 8, scale: 4 }), // % vs same period last year
+    source: varchar("source", { length: 50 }).default("FRED").notNull(),
+    scrapedAt: timestamp("scraped_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    seriesPeriodIdx: uniqueIndex("idx_price_series_period").on(t.seriesId, t.period),
+    categoryIdx: index("idx_price_category").on(t.category),
+  })
+);
+
+export type PriceIndex = typeof priceIndices.$inferSelect;
+export type InsertPriceIndex = typeof priceIndices.$inferInsert;
+
+// ─── Lead Time Catalog ────────────────────────────────────────────────────────
+
+export const leadTimeCatalog = pgTable(
+  "lead_time_catalog",
+  {
+    id: serial("id").primaryKey(),
+    category: varchar("category", { length: 100 }).notNull(),
+    subcategory: varchar("subcategory", { length: 100 }),
+    product: varchar("product", { length: 255 }),
+    weeksMin: integer("weeks_min").notNull(),
+    weeksMax: integer("weeks_max").notNull(),
+    notes: text("notes"),
+    source: varchar("source", { length: 255 }),
+    asOf: timestamp("as_of").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    categoryIdx: index("idx_lead_time_category").on(t.category),
+  })
+);
+
+export type LeadTimeCatalog = typeof leadTimeCatalog.$inferSelect;
+export type InsertLeadTimeCatalog = typeof leadTimeCatalog.$inferInsert;
+
+// ─── Scraper Run Log ──────────────────────────────────────────────────────────
+
+export const scraperRuns = pgTable(
+  "scraper_runs",
+  {
+    id: serial("id").primaryKey(),
+    scraperName: varchar("scraper_name", { length: 100 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("running"), // running | success | error
+    recordsProcessed: integer("records_processed").default(0),
+    recordsCreated: integer("records_created").default(0),
+    recordsUpdated: integer("records_updated").default(0),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    completedAt: timestamp("completed_at"),
+    durationMs: integer("duration_ms"),
+    metadata: json("metadata"),
+  },
+  (t) => ({
+    nameIdx: index("idx_scraper_runs_name").on(t.scraperName),
+    statusIdx: index("idx_scraper_runs_status").on(t.status),
+    startedIdx: index("idx_scraper_runs_started").on(t.startedAt),
+  })
+);
+
+export type ScraperRun = typeof scraperRuns.$inferSelect;
+export type InsertScraperRun = typeof scraperRuns.$inferInsert;

@@ -697,6 +697,49 @@ async function startServer() {
   } else {
     console.warn("[EC3 Sync] No credentials set — skipping sync. Set EC3_API_KEY in env.");
   }
+
+  // ── FRED price index scraper — weekly (every Sunday) ────────────────────────
+  // First run: 30s after boot (gives DB time to settle)
+  setTimeout(async () => {
+    try {
+      const { runFredScraper } = await import("../services/fred-scraper");
+      console.log("[FRED] Running initial price index scrape...");
+      await runFredScraper();
+    } catch (e) {
+      console.error("[FRED] Initial scrape failed:", e);
+    }
+  }, 30_000);
+
+  // Weekly interval: 7 days
+  setInterval(async () => {
+    try {
+      const { runFredScraper } = await import("../services/fred-scraper");
+      await runFredScraper();
+    } catch (e) {
+      console.error("[FRED] Weekly scrape failed:", e);
+    }
+  }, 7 * 24 * 60 * 60 * 1000);
+
+  // ── Outreach drip processor — runs daily ─────────────────────────────────────
+  // First run: 60s after boot
+  setTimeout(async () => {
+    try {
+      const { processDueSequenceSteps } = await import("../services/outreach-email-service");
+      await processDueSequenceSteps();
+    } catch (e) {
+      console.error("[Outreach] Daily drip failed:", e);
+    }
+  }, 60_000);
+
+  // Every 24 hours
+  setInterval(async () => {
+    try {
+      const { processDueSequenceSteps } = await import("../services/outreach-email-service");
+      await processDueSequenceSteps();
+    } catch (e) {
+      console.error("[Outreach] Daily drip failed:", e);
+    }
+  }, 24 * 60 * 60 * 1000);
 }
 
 startServer().catch(console.error);
