@@ -49,6 +49,23 @@ export default function MaterialDetail() {
   const id = Number(params.id);
   const { data: m, isLoading } = trpc.materials.getById.useQuery({ id }, { enabled: !!id });
   const { data: swaps, isLoading: swapsLoading } = trpc.materialSwaps.getSavedSwaps.useQuery({ materialId: id }, { enabled: !!id });
+
+  // Live alternatives from findAlternatives — enabled once material data is loaded
+  const { data: alternatives, isLoading: alternativesLoading } = trpc.materialSwap.findAlternatives.useQuery(
+    {
+      materialName: m?.name ?? "",
+      category: m?.category ?? "",
+      specs: {
+        gwp: m?.gwpValue ? Number(m.gwpValue) : undefined,
+        compressiveStrength: (m as any)?.compressiveStrength ? Number((m as any).compressiveStrength) : undefined,
+        tensileStrength: (m as any)?.tensileStrength ? Number((m as any).tensileStrength) : undefined,
+        fireRating: (m as any)?.fireRating ?? undefined,
+        density: (m as any)?.density ? Number((m as any).density) : undefined,
+      },
+    },
+    { enabled: !!m?.name && !!m?.category }
+  );
+
   const [swapAnalysisAttempted, setSwapAnalysisAttempted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [, navigate] = useLocation();
@@ -132,6 +149,28 @@ export default function MaterialDetail() {
     );
 
   const defaultCcps = m.ccpsByPersona?.default || m.ccpsByPersona?.[Object.keys(m.ccpsByPersona)[0]] || {};
+
+  // Map findAlternatives results → MaterialSwapCard shape
+  const liveSwapCards = (alternatives ?? []).slice(0, 6).map((alt) => {
+    const pct = alt.gwpReductionPercent ?? 0;
+    const tier: "good" | "better" | "best" = pct >= 30 ? "best" : pct >= 15 ? "better" : "good";
+    const score = Math.min(100, Math.round(pct * 2));
+    const confidence = Math.min(95, 65 + Math.round(pct / 2));
+    const gwp = alt.specs?.gwp;
+    return {
+      id: alt.materialId,
+      name: alt.materialName,
+      manufacturer: alt.supplier ?? null,
+      tier,
+      score,
+      confidence: `${confidence}%`,
+      reason: `Reduces embodied carbon by ${pct.toFixed(1)}% versus this material in the same category.`,
+      embodiedCarbon: gwp != null ? `${gwp.toFixed(4)} kgCO₂e` : "—",
+      price: alt.pricePerUnit != null ? `$${alt.pricePerUnit.toFixed(2)}` : "—",
+      leadTime: "—",
+      source: "ec3",
+    };
+  });
 
   // ── Derived display values (safe helpers) ──────────────────────────────────
   const gwpValue = m.gwpValue ? Number(m.gwpValue).toFixed(4) : "—";
@@ -330,11 +369,48 @@ export default function MaterialDetail() {
                       </p>
                     </CardHeader>
                     <CardContent>
-                      {swapsLoading ? (
-                        <div className="space-y-4">
+                      {(swapsLoading || alternativesLoading) ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <Skeleton className="h-64" />
                           <Skeleton className="h-64" />
                         </div>
+                      ) : liveSwapCards.length > 0 ? (
+                        <>
+                          <p className="text-xs text-muted-foreground mb-4 flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-purple-500" />
+                            {liveSwapCards.length} lower-carbon alternative{liveSwapCards.length !== 1 ? "s" : ""} found in the same category, ranked by GWP reduction.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {liveSwapCards.map((swap) => (
+                              <MaterialSwapCard
+                                key={swap.id}
+                                swap={swap}
+                                originalCarbon={Number(m?.gwpValue) || 0}
+                                originalPrice={m?.pricePerUnit ? Number(m.pricePerUnit) : undefined}
+                                onAddToRfq={(materialId) => {
+                                  try {
+                                    const existing = JSON.parse(localStorage.getItem("rfq-items") || "[]");
+                                    if (existing.some((item: any) => item.materialId === materialId)) {
+                                      toast.info("Already in RFQ cart");
+                                      return;
+                                    }
+                                    existing.push({
+                                      materialId,
+                                      name: swap.name,
+                                      manufacturerName: swap.manufacturer ?? "Unknown",
+                                      quantity: 1,
+                                      quantityUnit: "unit",
+                                    });
+                                    localStorage.setItem("rfq-items", JSON.stringify(existing));
+                                    toast.success("Added to RFQ cart");
+                                  } catch {
+                                    toast.error("Failed to add");
+                                  }
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </>
                       ) : swaps && swaps.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {swaps.map((swap: any) => (
@@ -387,10 +463,10 @@ export default function MaterialDetail() {
                         <div className="text-center py-12">
                           <Sparkles className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
                           <p className="text-sm text-muted-foreground mb-2">
-                            No swap recommendations available yet.
+                            No lower-carbon alternatives found in this category yet.
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Our Material Intelligence system is analyzing this material. Check back soon!
+                            EC3 data syncs daily — check back as more EPDs are published.
                           </p>
                         </div>
                       )}
