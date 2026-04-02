@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { query } from "@/lib/db";
 import { calculateGwpPer1000sf, calculateCarbonTier } from "@/lib/utils/carbon-tier";
 import {
   AssemblyTypeTag,
@@ -23,19 +23,35 @@ export async function upsertAssemblyEpdData(input: AssemblyEpdInput) {
   const gwpPer1000sf = calculateGwpPer1000sf(input.gwpA1A3, input.gwpMsfFactor);
   const carbonTier = calculateCarbonTier(gwpPer1000sf);
 
-  return prisma.materialAssemblySpec.update({
-    where: { id: input.assemblySpecId },
-    data: {
-      epdNumber: input.epdNumber,
-      gwpA1A3: input.gwpA1A3,
-      gwpDeclaredUnit: input.gwpDeclaredUnit,
-      gwpMsfFactor: input.gwpMsfFactor,
+  const result = await query(
+    `UPDATE material_assembly_specs
+     SET
+       epd_number         = $1,
+       gwp_a1_a3          = $2,
+       gwp_declared_unit  = $3,
+       gwp_msf_factor     = $4,
+       gwp_per_1000sf     = $5,
+       carbon_tier        = $6,
+       assembly_type_tags = $7,
+       framing_type_tags  = $8,
+       exterior_finish_tags = $9,
+       certification_tags = $10
+     WHERE id = $11
+     RETURNING *`,
+    [
+      input.epdNumber,
+      input.gwpA1A3,
+      input.gwpDeclaredUnit,
+      input.gwpMsfFactor,
       gwpPer1000sf,
       carbonTier,
-      assemblyTypeTags: input.assemblyTypeTags,
-      framingTypeTags: input.framingTypeTags,
-      exteriorFinishTags: input.exteriorFinishTags,
-      certificationTags: input.certificationTags,
-    },
-  });
+      JSON.stringify(input.assemblyTypeTags),
+      JSON.stringify(input.framingTypeTags),
+      JSON.stringify(input.exteriorFinishTags),
+      JSON.stringify(input.certificationTags),
+      input.assemblySpecId,
+    ]
+  );
+
+  return result.rows[0] ?? null;
 }
