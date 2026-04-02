@@ -7,6 +7,14 @@
 import { invokeLLM } from "./_core/llm";
 import type { AgentType } from "./agent-triage-service";
 
+interface UserLocation {
+  state?: string;       // 2-letter state code, e.g. "TX"
+  city?: string;
+  zipCode?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 interface AgentContext {
   userId: number;
   conversationId: number;
@@ -17,6 +25,7 @@ interface AgentContext {
   }>;
   conversationContext?: string; // RFQ details, supplier info, etc.
   customPrompt?: string; // Custom agent prompt (for supplier agent)
+  userLocation?: UserLocation;
 }
 
 /**
@@ -25,7 +34,21 @@ interface AgentContext {
 export async function generateAgentResponse(
   context: AgentContext
 ): Promise<string> {
-  const { agentType, messageHistory, conversationContext, customPrompt } = context;
+  const { agentType, messageHistory, conversationContext, customPrompt, userLocation } = context;
+
+  // Build a location context string to inject into prompts
+  const locationLine = userLocation
+    ? [
+        userLocation.city && userLocation.state
+          ? `User location: ${userLocation.city}, ${userLocation.state}`
+          : userLocation.state
+          ? `User location: ${userLocation.state}`
+          : null,
+        userLocation.zipCode ? `ZIP: ${userLocation.zipCode}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | ")
+    : null;
 
   const systemPrompts: Record<AgentType, string> = {
     material: `You are the Material Intelligence Agent for GreenChainz.
@@ -43,9 +66,10 @@ Always provide:
 - Certification details and compliance information
 - Actionable recommendations for sustainable choices
 - References to EPD data when available
+- When location is known, tailor recommendations to local building codes, climate zone, and regional supplier availability
 
 Keep responses concise (2-3 paragraphs max). Use bullet points for lists.
-
+${locationLine ? `\n${locationLine}` : ""}
 ${conversationContext ? `\nContext: ${conversationContext}` : ""}`,
 
     rfq: `You are the RFQ Assistant Agent for GreenChainz.
@@ -62,14 +86,15 @@ Always provide:
 - Expected timelines and response times
 - Tips for getting better bids (detailed specs, certifications, etc.)
 - Supplier matching criteria explanations
+- When location is known, highlight nearby suppliers and estimated shipping costs to project site
 
 Keep responses actionable and process-focused.
-
+${locationLine ? `\n${locationLine}` : ""}
 ${conversationContext ? `\nContext: ${conversationContext}` : ""}`,
 
     supplier: customPrompt
       ? `${customPrompt}
-
+${locationLine ? `\n${locationLine}` : ""}
 ${conversationContext ? `Context: ${conversationContext}` : ""}`
       : `You are a Supplier Agent for GreenChainz.
 
@@ -85,9 +110,10 @@ Always provide:
 - Clear product recommendations
 - Transparent pricing and timeline expectations
 - Next steps for placing orders or getting detailed quotes
+- When buyer location is known, mention delivery range and whether the project site is within your typical service area
 
 Be professional, helpful, and sales-oriented without being pushy.
-
+${locationLine ? `\n${locationLine}` : ""}
 ${conversationContext ? `\nContext: ${conversationContext}` : ""}`,
 
     support: `You are the Support Agent for GreenChainz.
