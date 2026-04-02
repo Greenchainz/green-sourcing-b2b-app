@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { jsPDF } from "jspdf";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -43,28 +44,39 @@ import {
   Cell,
 } from "recharts";
 
-
 export default function MaterialDetail() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
-  const { data: m, isLoading } = trpc.materials.getById.useQuery({ id }, { enabled: !!id });
-  const { data: swaps, isLoading: swapsLoading } = trpc.materialSwaps.getSavedSwaps.useQuery({ materialId: id }, { enabled: !!id });
+  const { data: m, isLoading } = trpc.materials.getById.useQuery(
+    { id },
+    { enabled: !!id }
+  );
+  const { data: swaps, isLoading: swapsLoading } =
+    trpc.materialSwaps.getSavedSwaps.useQuery(
+      { materialId: id },
+      { enabled: !!id }
+    );
 
   // Live alternatives from findAlternatives — enabled once material data is loaded
-  const { data: alternatives, isLoading: alternativesLoading } = trpc.materialSwap.findAlternatives.useQuery(
-    {
-      materialName: m?.name ?? "",
-      category: m?.category ?? "",
-      specs: {
-        gwp: m?.gwpValue ? Number(m.gwpValue) : undefined,
-        compressiveStrength: (m as any)?.compressiveStrength ? Number((m as any).compressiveStrength) : undefined,
-        tensileStrength: (m as any)?.tensileStrength ? Number((m as any).tensileStrength) : undefined,
-        fireRating: (m as any)?.fireRating ?? undefined,
-        density: (m as any)?.density ? Number((m as any).density) : undefined,
+  const { data: alternatives, isLoading: alternativesLoading } =
+    trpc.materialSwap.findAlternatives.useQuery(
+      {
+        materialName: m?.name ?? "",
+        category: m?.category ?? "",
+        specs: {
+          gwp: m?.gwpValue ? Number(m.gwpValue) : undefined,
+          compressiveStrength: (m as any)?.compressiveStrength
+            ? Number((m as any).compressiveStrength)
+            : undefined,
+          tensileStrength: (m as any)?.tensileStrength
+            ? Number((m as any).tensileStrength)
+            : undefined,
+          fireRating: (m as any)?.fireRating ?? undefined,
+          density: (m as any)?.density ? Number((m as any).density) : undefined,
+        },
       },
-    },
-    { enabled: !!m?.name && !!m?.category }
-  );
+      { enabled: !!m?.name && !!m?.category }
+    );
 
   const [swapAnalysisAttempted, setSwapAnalysisAttempted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -122,6 +134,89 @@ export default function MaterialDetail() {
     }
   };
 
+  function isCalgreenCompliant(material: any) {
+    return !!material?.meetsTitle24;
+  }
+
+  function downloadSpecSheet(material: any) {
+    const doc = new jsPDF();
+    const now = new Date().toLocaleDateString();
+
+    doc.setFontSize(18);
+    doc.setTextColor(22, 101, 52); // green-800
+    doc.text("GreenChainz Material Spec Sheet", 20, 20);
+
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    doc.text(`Generated: ${now}`, 20, 30);
+
+    doc.setFontSize(14);
+    doc.text(material.name ?? "Material", 20, 45);
+
+    doc.setFontSize(10);
+    const rows: [string, string][] = [
+      ["Manufacturer", material.manufacturerName ?? "—"],
+      ["Category", material.category ?? "—"],
+      ["Subcategory", material.subcategory ?? "—"],
+      [
+        "Price",
+        material.pricePerUnit
+          ? `$${Number(material.pricePerUnit).toFixed(2)}/${material.priceUnit ?? "unit"}`
+          : "—",
+      ],
+      ["Lead Time", material.leadTimeDays ? `${material.leadTimeDays} days` : "—"],
+      ["GWP (kgCO₂e)", material.gwpValue != null ? String(material.gwpValue) : "—"],
+      ["EPD Number", material.epdNumber ?? "—"],
+      ["US Manufactured", material.usManufactured ? "Yes" : "No"],
+      [
+        "Certifications",
+        [
+          material.hasEpd && "EPD",
+          material.hasHpd && "HPD",
+          material.hasFsc && "FSC",
+          material.hasC2c && "Cradle to Cradle",
+          material.hasGreenguard && "GREENGUARD",
+          material.hasDeclare && "Declare",
+        ]
+          .filter(Boolean)
+          .join(", ") || "None",
+      ],
+      [
+        "CALGreen Compliant",
+        isCalgreenCompliant(material) ? "Yes — Title 24 Part 11 (2026)" : "No",
+      ],
+      ["EPD URL", material.epdUrl ?? "—"],
+      ["Spec Sheet URL", material.specSheetUrl ?? "—"],
+    ];
+
+    let y = 58;
+    for (const [label, value] of rows) {
+      doc.setFont("helvetica", "bold");
+      doc.text(`${label}:`, 20, y);
+      doc.setFont("helvetica", "normal");
+
+      const lines = doc.splitTextToSize(String(value), 110);
+      doc.text(lines, 80, y);
+      y += 8 * lines.length;
+
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+    }
+
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(
+      "Data sourced via GreenChainz.com — Verified sustainable building materials platform.",
+      20,
+      280
+    );
+
+    const filenameBase = (material.name ?? "material").replace(/\s+/g, "_");
+    doc.save(`${filenameBase}_GreenChainz_Spec.pdf`);
+  }
+
   if (isLoading)
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -148,12 +243,16 @@ export default function MaterialDetail() {
       </div>
     );
 
-  const defaultCcps = m.ccpsByPersona?.default || m.ccpsByPersona?.[Object.keys(m.ccpsByPersona)[0]] || {};
+  const defaultCcps =
+    m.ccpsByPersona?.default ||
+    m.ccpsByPersona?.[Object.keys(m.ccpsByPersona)[0]] ||
+    {};
 
   // Map findAlternatives results → MaterialSwapCard shape
   const liveSwapCards = (alternatives ?? []).slice(0, 6).map((alt) => {
     const pct = alt.gwpReductionPercent ?? 0;
-    const tier: "good" | "better" | "best" = pct >= 30 ? "best" : pct >= 15 ? "better" : "good";
+    const tier: "good" | "better" | "best" =
+      pct >= 30 ? "best" : pct >= 15 ? "better" : "good";
     const score = Math.min(100, Math.round(pct * 2));
     const confidence = Math.min(95, 65 + Math.round(pct / 2));
     const gwp = alt.specs?.gwp;
@@ -178,7 +277,9 @@ export default function MaterialDetail() {
   const embodiedCarbon = m.embodiedCarbonPer1000sf
     ? `${Number(m.embodiedCarbonPer1000sf).toFixed(2)} kgCO₂e`
     : "—";
-  const recycledPct = m.recycledContentPct ? Number(m.recycledContentPct).toFixed(0) : "—";
+  const recycledPct = m.recycledContentPct
+    ? Number(m.recycledContentPct).toFixed(0)
+    : "—";
   const leadTimeDays = m.leadTimeDays ? String(m.leadTimeDays) : "—";
   const price = m.pricePerUnit ? Number(m.pricePerUnit).toFixed(2) : "—";
   const unit = m.priceUnit || "unit";
@@ -229,20 +330,27 @@ export default function MaterialDetail() {
                     </Badge>
                   )}
                   {m.usManufactured && (
-                    <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-blue-200 text-blue-700 bg-blue-50"
+                    >
                       🇺🇸 US Made
                     </Badge>
                   )}
                   {m.verified && <Badge className="text-xs bg-green-600">Verified</Badge>}
                   {m.complianceGrade && (
-                    <Badge className="text-xs font-bold bg-lime-600">Grade {m.complianceGrade}</Badge>
+                    <Badge className="text-xs font-bold bg-lime-600">
+                      Grade {m.complianceGrade}
+                    </Badge>
                   )}
                 </div>
 
                 {/* Name + score ring side-by-side */}
                 <div className="flex items-start gap-5">
                   <div className="flex-1 min-w-0">
-                    <h1 className="text-2xl font-bold text-foreground leading-tight">{m.name}</h1>
+                    <h1 className="text-2xl font-bold text-foreground leading-tight">
+                      {m.name}
+                    </h1>
                     {m.productName && m.productName !== m.name && (
                       <p className="text-sm text-muted-foreground mt-0.5">{m.productName}</p>
                     )}
@@ -259,11 +367,13 @@ export default function MaterialDetail() {
                     <div className="mt-3 flex items-center gap-1.5">
                       {m.hasEpd ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                          <ShieldCheck className="w-3 h-3" />EPD Verified
+                          <ShieldCheck className="w-3 h-3" />
+                          EPD Verified
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                          <ShieldAlert className="w-3 h-3" />No EPD — get one to boost score
+                          <ShieldAlert className="w-3 h-3" />
+                          No EPD — get one to boost score
                         </span>
                       )}
                     </div>
@@ -273,7 +383,9 @@ export default function MaterialDetail() {
                   <div className="shrink-0 flex flex-col items-center gap-1">
                     <ScoreRing score={defaultCcps.ccpsTotal || 0} size="md" showLabel />
                     <Link href={`/materials/${id}/score`}>
-                      <button className="text-[10px] text-primary hover:underline">Full score →</button>
+                      <button className="text-[10px] text-primary hover:underline">
+                        Full score →
+                      </button>
                     </Link>
                   </div>
                 </div>
@@ -301,7 +413,9 @@ export default function MaterialDetail() {
                   {/* ── Requirement 5: Save Material button ── */}
                   <Button
                     variant="outline"
-                    className={`gap-1.5 ${isSaved ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}`}
+                    className={`gap-1.5 ${
+                      isSaved ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""
+                    }`}
                     onClick={toggleSaved}
                   >
                     {isSaved ? (
@@ -320,22 +434,29 @@ export default function MaterialDetail() {
                   {m.specSheetUrl && (
                     <a href={m.specSheetUrl} target="_blank" rel="noopener noreferrer">
                       <Button variant="outline" className="gap-1.5">
-                        <FileText className="w-4 h-4" />Spec Sheet
+                        <FileText className="w-4 h-4" />
+                        Spec Sheet
                       </Button>
                     </a>
                   )}
                   {m.epdUrl && (
                     <a href={m.epdUrl} target="_blank" rel="noopener noreferrer">
                       <Button variant="outline" className="gap-1.5">
-                        <ExternalLink className="w-4 h-4" />EPD Document
+                        <ExternalLink className="w-4 h-4" />
+                        EPD Document
                       </Button>
                     </a>
                   )}
-                  <a href={`/api/materials/${id}/spec-sheet`} download>
-                    <Button variant="outline" className="gap-1.5">
-                      <Download className="w-4 h-4" />Download Spec Sheet
-                    </Button>
-                  </a>
+
+                  {/* Updated: client-side PDF download via jsPDF */}
+                  <Button
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => downloadSpecSheet(m)}
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Spec Sheet
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -349,7 +470,8 @@ export default function MaterialDetail() {
                 <TabsTrigger value="certs">Certifications</TabsTrigger>
                 <TabsTrigger value="leed">LEED Context</TabsTrigger>
                 <TabsTrigger value="swaps">
-                  <Sparkles className="w-3.5 h-3.5 mr-1 inline" />Swaps
+                  <Sparkles className="w-3.5 h-3.5 mr-1 inline" />
+                  Swaps
                 </TabsTrigger>
                 <TabsTrigger value="alternatives">Alternatives</TabsTrigger>
               </TabsList>
@@ -369,7 +491,7 @@ export default function MaterialDetail() {
                       </p>
                     </CardHeader>
                     <CardContent>
-                      {(swapsLoading || alternativesLoading) ? (
+                      {swapsLoading || alternativesLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <Skeleton className="h-64" />
                           <Skeleton className="h-64" />
@@ -378,7 +500,9 @@ export default function MaterialDetail() {
                         <>
                           <p className="text-xs text-muted-foreground mb-4 flex items-center gap-1.5">
                             <Sparkles className="w-3 h-3 text-purple-500" />
-                            {liveSwapCards.length} lower-carbon alternative{liveSwapCards.length !== 1 ? "s" : ""} found in the same category, ranked by GWP reduction.
+                            {liveSwapCards.length} lower-carbon alternative
+                            {liveSwapCards.length !== 1 ? "s" : ""} found in the same category,
+                            ranked by GWP reduction.
                           </p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {liveSwapCards.map((swap) => (
@@ -386,10 +510,14 @@ export default function MaterialDetail() {
                                 key={swap.id}
                                 swap={swap}
                                 originalCarbon={Number(m?.gwpValue) || 0}
-                                originalPrice={m?.pricePerUnit ? Number(m.pricePerUnit) : undefined}
+                                originalPrice={
+                                  m?.pricePerUnit ? Number(m.pricePerUnit) : undefined
+                                }
                                 onAddToRfq={(materialId) => {
                                   try {
-                                    const existing = JSON.parse(localStorage.getItem("rfq-items") || "[]");
+                                    const existing = JSON.parse(
+                                      localStorage.getItem("rfq-items") || "[]"
+                                    );
                                     if (existing.some((item: any) => item.materialId === materialId)) {
                                       toast.info("Already in RFQ cart");
                                       return;
@@ -425,7 +553,9 @@ export default function MaterialDetail() {
                                 confidence: `${swap.confidence}%`,
                                 reason: swap.swapReason,
                                 embodiedCarbon: swap.embodiedCarbonPer1000sf
-                                  ? `${Number(swap.embodiedCarbonPer1000sf).toFixed(2)} kgCO₂e/1000SF`
+                                  ? `${Number(swap.embodiedCarbonPer1000sf).toFixed(
+                                      2
+                                    )} kgCO₂e/1000SF`
                                   : "—",
                                 price: swap.pricePerUnit
                                   ? `$${Number(swap.pricePerUnit).toFixed(2)}`
@@ -437,12 +567,16 @@ export default function MaterialDetail() {
                               originalPrice={Number(m?.pricePerUnit) || undefined}
                               onAddToRfq={(materialId) => {
                                 try {
-                                  const existing = JSON.parse(localStorage.getItem("rfq-items") || "[]");
+                                  const existing = JSON.parse(
+                                    localStorage.getItem("rfq-items") || "[]"
+                                  );
                                   if (existing.some((item: any) => item.materialId === materialId)) {
                                     toast.info("Already in RFQ cart");
                                     return;
                                   }
-                                  const swapMaterial = swaps.find((s: any) => s.materialId === materialId);
+                                  const swapMaterial = swaps.find(
+                                    (s: any) => s.materialId === materialId
+                                  );
                                   existing.push({
                                     materialId,
                                     name: swapMaterial?.materialName,
@@ -549,7 +683,11 @@ export default function MaterialDetail() {
                         </div>
 
                         {carbonPctDiff !== null && (
-                          <p className={`text-sm font-medium mt-3 text-center ${isBelowMedian ? "text-green-600" : "text-red-500"}`}>
+                          <p
+                            className={`text-sm font-medium mt-3 text-center ${
+                              isBelowMedian ? "text-green-600" : "text-red-500"
+                            }`}
+                          >
                             {carbonPctDiff}%{" "}
                             <span className="font-normal text-muted-foreground">
                               {isBelowMedian ? "below" : "above"} category average
@@ -590,14 +728,8 @@ export default function MaterialDetail() {
                               property: "Compressive Strength",
                               value: (m as any).compressiveStrength ?? "—",
                             },
-                            {
-                              property: "Density",
-                              value: (m as any).density ?? "—",
-                            },
-                            {
-                              property: "Fire Rating",
-                              value: m.fireRating || "—",
-                            },
+                            { property: "Density", value: (m as any).density ?? "—" },
+                            { property: "Fire Rating", value: m.fireRating || "—" },
                             {
                               property: "Thermal Conductivity",
                               value: (m as any).thermalConductivity ?? "—",
@@ -608,19 +740,12 @@ export default function MaterialDetail() {
                             },
                             {
                               property: "GWP",
-                              value:
-                                m.gwpValue
-                                  ? `${Number(m.gwpValue).toFixed(4)} ${m.gwpUnit || "kgCO₂e"}`
-                                  : "—",
+                              value: m.gwpValue
+                                ? `${Number(m.gwpValue).toFixed(4)} ${m.gwpUnit || "kgCO₂e"}`
+                                : "—",
                             },
-                            {
-                              property: "Embodied Carbon / 1000 SF",
-                              value: embodiedCarbon,
-                            },
-                            {
-                              property: "VOC Level",
-                              value: m.vocLevel || "—",
-                            },
+                            { property: "Embodied Carbon / 1000 SF", value: embodiedCarbon },
+                            { property: "VOC Level", value: m.vocLevel || "—" },
                             {
                               property: "Recycled Content",
                               value: m.recycledContentPct
@@ -641,10 +766,7 @@ export default function MaterialDetail() {
                               property: "Warranty",
                               value: m.warrantyYears ? `${m.warrantyYears} years` : "—",
                             },
-                            {
-                              property: "Data Source",
-                              value: m.dataSource || "—",
-                            },
+                            { property: "Data Source", value: m.dataSource || "—" },
                           ].map((row, idx) => (
                             <tr
                               key={row.property}
@@ -693,7 +815,11 @@ export default function MaterialDetail() {
                           ) : (
                             <XCircle className="w-5 h-5 text-muted-foreground/30" />
                           )}
-                          <span className={`text-sm ${cert.active ? "font-medium" : "text-muted-foreground"}`}>
+                          <span
+                            className={`text-sm ${
+                              cert.active ? "font-medium" : "text-muted-foreground"
+                            }`}
+                          >
                             {cert.label}
                           </span>
                         </div>
@@ -709,8 +835,8 @@ export default function MaterialDetail() {
                   <CardHeader>
                     <CardTitle className="text-base">LEED Credit Context</CardTitle>
                     <p className="text-xs text-muted-foreground">
-                      Credit areas this material commonly contributes to. Confirm applicability
-                      with your LEED AP — project-specific factors apply.
+                      Credit areas this material commonly contributes to. Confirm applicability with
+                      your LEED AP — project-specific factors apply.
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -892,7 +1018,8 @@ export default function MaterialDetail() {
                     rel="noopener"
                     className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
                   >
-                    <ExternalLink className="w-3 h-3" />Website
+                    <ExternalLink className="w-3 h-3" />
+                    Website
                   </a>
                 )}
                 {m.manufacturerPhone && (
