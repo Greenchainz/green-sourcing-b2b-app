@@ -41,6 +41,9 @@ export const rfqRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Only buyers can create RFQs" });
       }
 
+      const { enforceAndTrack } = await import("../usage-tracking-service");
+      await enforceAndTrack(ctx.user.id, "rfq_submission");
+
       const rfqRow = await queryOne<{ id: string }>(
         `INSERT INTO rfqs (buyer_id, title, description, material_category, quantity, unit, delivery_location, deadline)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)

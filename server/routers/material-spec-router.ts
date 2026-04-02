@@ -32,9 +32,10 @@
  */
 
 import { z } from 'zod';
-import { publicProcedure, router } from '../_core/trpc';
+import { publicProcedure, protectedProcedure, router } from '../_core/trpc';
 import { TRPCError } from '@trpc/server';
 import { queryMany, queryOne } from '../pg-db';
+import { enforceAndTrack } from '../usage-tracking-service';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -178,13 +179,14 @@ export const materialSpecRouter = router({
    * Compare specs for 2-10 materials side by side.
    * Returns a comparison matrix with isBest flags per property.
    */
-  compareSpecs: publicProcedure
+  compareSpecs: protectedProcedure
     .input(
       z.object({
         materialIds: z.array(z.number().int().positive()).min(2).max(10),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await enforceAndTrack(ctx.user.id, "material_comparison");
       if (input.materialIds.length === 0) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'At least 2 material IDs required' });
       }
