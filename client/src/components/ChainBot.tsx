@@ -57,6 +57,36 @@ export function ChainBot() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [userLocation, setUserLocation] = useState<string | undefined>(undefined);
+
+  // One-time browser geolocation → reverse-geocode to "City, ST"
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          const city =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.village ||
+            data.address?.county;
+          const state = data.address?.state;
+          if (city && state) setUserLocation(`${city}, ${state}`);
+          else if (state) setUserLocation(state);
+        } catch {
+          // geo not critical — silently skip
+        }
+      },
+      () => {} // permission denied — silently skip
+    );
+  }, []);
 
   // Parse page context from current URL
   const getPageContext = useCallback(() => {
@@ -65,6 +95,7 @@ export function ChainBot() {
       materialId?: number;
       assemblyId?: number;
       cartItems?: number[];
+      projectLocation?: string;
     } = {
       currentPage: location,
     };
@@ -83,8 +114,11 @@ export function ChainBot() {
       if (cart.length > 0) ctx.cartItems = cart;
     } catch {}
 
+    // Attach browser-resolved geolocation if available
+    if (userLocation) ctx.projectLocation = userLocation;
+
     return ctx;
-  }, [location]);
+  }, [location, userLocation]);
 
   // Load conversation history on mount
   const { data: historyData } = trpc.agent.history.useQuery(
@@ -253,7 +287,9 @@ export function ChainBot() {
                 {!isMinimized && (
                   <p className="text-xs text-emerald-100">
                     {user
-                      ? `Hi ${user.name?.split(" ")[0] || "there"}`
+                      ? `Hi ${user.name?.split(" ")[0] || "there"}${userLocation ? ` · ${userLocation}` : ""}`
+                      : userLocation
+                      ? userLocation
                       : "AI Material Intelligence"}
                   </p>
                 )}
