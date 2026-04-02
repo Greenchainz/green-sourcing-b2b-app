@@ -51,6 +51,7 @@ import { ChatWidget } from "./components/ChatWidget";
 import AdminVerificationQueue from "./pages/AdminVerificationQueue";
 import { AdminSupplierDashboard } from "./pages/AdminSupplierDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import CrmDashboard from "./pages/admin/CrmDashboard";
 import SupplierSpecSubmission from "./pages/SupplierSpecSubmission";
 import MaterialSwap from "./pages/MaterialSwap";
 import InsiderPage from "./pages/InsiderPage";
@@ -120,6 +121,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/verification" component={AdminVerificationQueue} />
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
+      <Route path="/admin/crm" component={CrmDashboard} />
       <Route path={"/api-test"} component={ApiTest} />          <Route path="/excel-audit" component={ExcelAudit} />
           <Route path="/excel-audit-tool" component={ExcelAuditWorkingTool} />      <Route path={"/about"} component={About} />
       <Route path={"/tools"} component={Tools} />
