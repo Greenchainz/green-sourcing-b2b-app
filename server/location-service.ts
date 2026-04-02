@@ -43,7 +43,7 @@ export async function getNearbySuppliers(latitude: number, longitude: number, ra
       .from(suppliers)
       .where(eq(suppliers.verified, 1));
 
-    // Filter by distance and criteria
+    // Filter by distance and criteria, attach computed distance
     const nearby = allSuppliers
       .filter((supplier) => {
         if (!supplier.latitude || !supplier.longitude) return false;
@@ -55,12 +55,16 @@ export async function getNearbySuppliers(latitude: number, longitude: number, ra
         const supplierCerts = supplier.certifications ? JSON.parse(String(supplier.certifications)) : [];
         return options.certifications.some((cert) => supplierCerts.includes(cert));
       })
+      .map((supplier) => ({
+        ...supplier,
+        distanceMiles: Math.round(
+          calculateDistance(latitude, longitude, Number(supplier.latitude), Number(supplier.longitude)) * 10
+        ) / 10,
+      }))
       .sort((a, b) => {
-        // Sort by sustainability score (descending), then by premium status
-        if (b.sustainabilityScore !== a.sustainabilityScore) {
-          return (Number(b.sustainabilityScore) || 0) - (Number(a.sustainabilityScore) || 0);
-        }
-        return (b.isPremium ? 1 : 0) - (a.isPremium ? 1 : 0);
+        // Sort by distance (ascending), break ties by sustainability score
+        if (a.distanceMiles !== b.distanceMiles) return a.distanceMiles - b.distanceMiles;
+        return (Number(b.sustainabilityScore) || 0) - (Number(a.sustainabilityScore) || 0);
       });
 
     return nearby;
@@ -239,6 +243,51 @@ export async function isSwapTypicalForRegion(state: string, fromMaterialType: st
   } catch (error) {
     console.error("Error checking regional swap pattern:", error);
     return false;
+  }
+}
+
+/**
+ * Get all verified suppliers with their distance from a given point, sorted nearest-first.
+ * Unlike getNearbySuppliers, this has no radius cutoff — returns all suppliers.
+ */
+export async function getSuppliersWithDistance(latitude: number, longitude: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    const allSuppliers = await db
+      .select({
+        id: suppliers.id,
+        companyName: suppliers.companyName,
+        city: suppliers.city,
+        state: suppliers.state,
+        zipCode: suppliers.zipCode,
+        latitude: suppliers.latitude,
+        longitude: suppliers.longitude,
+        certifications: suppliers.certifications,
+        materialCategories: suppliers.materialCategories,
+        sustainabilityScore: suppliers.sustainabilityScore,
+        isPremium: suppliers.isPremium,
+        currentCapacity: suppliers.currentCapacity,
+        email: suppliers.email,
+        phone: suppliers.phone,
+      })
+      .from(suppliers)
+      .where(eq(suppliers.verified, 1));
+
+    return allSuppliers
+      .filter((s) => s.latitude != null && s.longitude != null)
+      .map((s) => ({
+        ...s,
+        distanceMiles:
+          Math.round(
+            calculateDistance(latitude, longitude, Number(s.latitude), Number(s.longitude)) * 10
+          ) / 10,
+      }))
+      .sort((a, b) => a.distanceMiles - b.distanceMiles);
+  } catch (error) {
+    console.error("Error getting suppliers with distance:", error);
+    return [];
   }
 }
 
