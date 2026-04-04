@@ -66,9 +66,6 @@ export async function loadSecrets(): Promise<void> {
         "AZURE-AD-TENANT-ID": "AZURE_AD_TENANT_ID",
         // microsoft-client-secret is the real Azure AD client secret
         "microsoft-client-secret": "AZURE_AD_CLIENT_SECRET",
-        // Google OAuth
-        "GOOGLE-CLIENTID": "GOOGLE_CLIENT_ID",
-        "GOOGLE-SECRET": "GOOGLE_CLIENT_SECRET",
         // LinkedIn OAuth
         "LINKEDIN-CLIENTID": "LINKEDIN_CLIENT_ID",
         "LINKEDIN-SECRET": "LINKEDIN_CLIENT_SECRET",
