@@ -12,7 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { isCalgreenCompliant } from "@/lib/calgreen";
 
 const PAGE_SIZE = 24;
 
@@ -32,8 +34,6 @@ const US_STATES = [
   "VA","WA","WV","WI","WY",
 ];
 
-// ── Sidebar filters ───────────────────────────────────────────────────────────
-
 interface FilterState {
   search: string;
   category: string;
@@ -45,6 +45,7 @@ interface FilterState {
   maxGwp: number | undefined;
   priceMin: number | undefined;
   priceMax: number | undefined;
+  calgreenOnly: boolean;
 }
 
 function FilterPanel({
@@ -73,7 +74,8 @@ function FilterPanel({
     filters.state ||
     filters.maxGwp !== undefined ||
     filters.priceMin !== undefined ||
-    filters.priceMax !== undefined;
+    filters.priceMax !== undefined ||
+    filters.calgreenOnly;
 
   return (
     <div className="space-y-6 text-sm">
@@ -84,6 +86,37 @@ function FilterPanel({
             <X className="w-3 h-3" /> Clear all
           </button>
         )}
+      </div>
+
+      {/* ── CALGreen Toggle ─────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800 p-3 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
+              CALGreen Compliant
+            </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3 h-3 text-green-600 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-60 text-xs">
+                  California Title 24 Part 11 (eff. Jan 1 2026) — Prescriptive EPD Pathway.
+                  Requires a verified EPD and GWP ≤ 175% of category industry average.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <Switch
+            id="calgreen-toggle"
+            checked={filters.calgreenOnly}
+            onCheckedChange={(v) => onChange({ calgreenOnly: v })}
+            className="data-[state=checked]:bg-green-600"
+          />
+        </div>
+        <p className="text-[10px] text-green-600 dark:text-green-500 leading-snug">
+          EPD required · GWP ≤ 175% industry avg
+        </p>
       </div>
 
       {/* Category */}
@@ -223,8 +256,6 @@ function FilterPanel({
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
 const DEFAULT_FILTERS: FilterState = {
   search: "",
   category: "",
@@ -236,6 +267,7 @@ const DEFAULT_FILTERS: FilterState = {
   maxGwp: undefined,
   priceMin: undefined,
   priceMax: undefined,
+  calgreenOnly: false,
 };
 
 export default function MaterialSearchPage() {
@@ -258,7 +290,7 @@ export default function MaterialSearchPage() {
     {
       search: filters.search || undefined,
       category: filters.category || undefined,
-      hasEpd: filters.hasEpd,
+      hasEpd: filters.calgreenOnly ? true : filters.hasEpd,
       usManufactured: filters.usManufactured,
       sortBy: filters.sortBy,
       sortOrder: "desc",
@@ -281,11 +313,11 @@ export default function MaterialSearchPage() {
   const total = data?.total ?? 0;
   const rawItems = data?.items ?? [];
 
-  // Client-side filtering for GWP and price range
   const filteredItems = rawItems.filter((m: any) => {
     if (filters.maxGwp !== undefined && m.gwpValue && Number(m.gwpValue) > filters.maxGwp) return false;
     if (filters.priceMin !== undefined && m.pricePerUnit && Number(m.pricePerUnit) < filters.priceMin) return false;
     if (filters.priceMax !== undefined && m.pricePerUnit && Number(m.pricePerUnit) > filters.priceMax) return false;
+    if (filters.calgreenOnly && !isCalgreenCompliant(m)) return false;
     return true;
   });
 
@@ -300,13 +332,13 @@ export default function MaterialSearchPage() {
     filters.maxGwp !== undefined && "gwp",
     filters.priceMin !== undefined && "priceMin",
     filters.priceMax !== undefined && "priceMax",
+    filters.calgreenOnly && "calgreen",
   ].filter(Boolean).length;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      {/* Search bar */}
       <div className="border-b bg-card/50 sticky top-0 z-10 backdrop-blur">
         <div className="container max-w-7xl py-3 flex gap-3 items-center">
           <form onSubmit={handleSearch} className="flex-1 flex gap-2">
@@ -321,7 +353,6 @@ export default function MaterialSearchPage() {
             </div>
             <Button type="submit" className="bg-green-600 hover:bg-green-700 shrink-0">Search</Button>
           </form>
-          {/* Mobile filter trigger */}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" size="sm" className="md:hidden shrink-0">
@@ -348,37 +379,37 @@ export default function MaterialSearchPage() {
 
       <div className="container max-w-7xl flex-1 py-6">
         <div className="flex gap-6">
-
-          {/* ── Desktop sidebar ─────────────────────────────────────────── */}
           <aside className="hidden md:block w-52 shrink-0 sticky top-20 self-start">
             <FilterPanel filters={filters} categories={categories} onChange={patchFilters} onReset={resetFilters} />
           </aside>
 
-          {/* ── Results ─────────────────────────────────────────────────── */}
           <div className="flex-1 min-w-0 space-y-4">
-            {/* Results header */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
                   {isLoading ? "Loading…" : `${filteredItems.length.toLocaleString()} material${filteredItems.length !== 1 ? "s" : ""}`}
                   {filters.search && <span className="ml-1">for "<strong>{filters.search}</strong>"</span>}
                 </p>
-                {/* Carbon score legend */}
                 <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5">
                   <span>🟢 &lt; 100 kgCO₂e</span>
                   <span>🟡 &lt; 500 kgCO₂e</span>
                   <span>🔴 &gt; 500 kgCO₂e</span>
                 </p>
               </div>
-              {/* Active filter chips */}
               <div className="flex flex-wrap gap-1.5 justify-end">
+                {filters.calgreenOnly && (
+                  <Badge className="text-xs gap-1 bg-green-600 text-white border-0">
+                    🌿 CALGreen
+                    <button onClick={() => patchFilters({ calgreenOnly: false })}><X className="w-2.5 h-2.5" /></button>
+                  </Badge>
+                )}
                 {filters.category && (
                   <Badge variant="secondary" className="text-xs gap-1">
                     {filters.category}
                     <button onClick={() => patchFilters({ category: "" })}><X className="w-2.5 h-2.5" /></button>
                   </Badge>
                 )}
-                {filters.hasEpd && (
+                {filters.hasEpd && !filters.calgreenOnly && (
                   <Badge variant="secondary" className="text-xs gap-1">
                     Has EPD
                     <button onClick={() => patchFilters({ hasEpd: undefined })}><X className="w-2.5 h-2.5" /></button>
@@ -413,7 +444,6 @@ export default function MaterialSearchPage() {
               </div>
             </div>
 
-            {/* Grid */}
             {isLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[...Array(12)].map((_, i) => <Skeleton key={i} className="h-64 rounded-lg" />)}
@@ -422,6 +452,11 @@ export default function MaterialSearchPage() {
               <div className="py-20 text-center text-muted-foreground">
                 <Search className="w-10 h-10 mx-auto mb-3 opacity-30" />
                 <p>No materials matched your filters.</p>
+                {filters.calgreenOnly && (
+                  <p className="text-xs mt-1 text-green-600">
+                    CALGreen requires a verified EPD and GWP ≤ 175% of category average.
+                  </p>
+                )}
                 <Button variant="ghost" size="sm" className="mt-2" onClick={resetFilters}>Clear filters</Button>
               </div>
             ) : (
@@ -432,7 +467,6 @@ export default function MaterialSearchPage() {
               </div>
             )}
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-3 pt-4">
                 <Button
