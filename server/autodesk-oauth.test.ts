@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getApsAccessToken, clearCachedToken } from './autodesk-oauth';
 
+const hasCredentials = !!(
+  process.env.AUTODESK_CLIENT_ID && process.env.AUTODESK_CLIENT_SECRET
+);
+
 describe('Autodesk OAuth Token Service', () => {
   beforeEach(() => {
     clearCachedToken();
   });
 
-  it('should obtain valid APS access token', async () => {
+  it.skipIf(!hasCredentials)('should obtain valid APS access token', async () => {
     const token = await getApsAccessToken();
-    
+
     expect(token).toBeDefined();
     expect(typeof token).toBe('string');
     expect(token.length).toBeGreaterThan(0);
@@ -16,10 +20,10 @@ describe('Autodesk OAuth Token Service', () => {
     expect(token.startsWith('ey')).toBe(true);
   });
 
-  it('should return same token on subsequent calls (caching)', async () => {
+  it.skipIf(!hasCredentials)('should return same token on subsequent calls (caching)', async () => {
     const token1 = await getApsAccessToken();
     const token2 = await getApsAccessToken();
-    
+
     expect(token1).toBe(token2);
   });
 
@@ -27,12 +31,12 @@ describe('Autodesk OAuth Token Service', () => {
     // Temporarily unset credentials
     const originalId = process.env.AUTODESK_CLIENT_ID;
     const originalSecret = process.env.AUTODESK_CLIENT_SECRET;
-    
+
     delete process.env.AUTODESK_CLIENT_ID;
     delete process.env.AUTODESK_CLIENT_SECRET;
-    
+
     clearCachedToken();
-    
+
     try {
       await expect(getApsAccessToken()).rejects.toThrow('Missing Autodesk credentials');
     } finally {
@@ -42,11 +46,11 @@ describe('Autodesk OAuth Token Service', () => {
     }
   });
 
-  it('should clear cached token', async () => {
+  it.skipIf(!hasCredentials)('should clear cached token', async () => {
     const token1 = await getApsAccessToken();
     clearCachedToken();
     const token2 = await getApsAccessToken();
-    
+
     // After cache clear, should get new token (might be same or different)
     expect(token1).toBeDefined();
     expect(token2).toBeDefined();
