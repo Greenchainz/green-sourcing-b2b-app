@@ -17,8 +17,9 @@ describe("calcCarbonScore", () => {
   it("returns 100 for zero GWP", () => {
     expect(calcCarbonScore({ gwpValue: "0" }, { baselineGwpPerUnit: "10" })).toBe(100);
   });
-  it("returns 100 for material at baseline GWP (ratio=1)", () => {
-    expect(calcCarbonScore({ gwpValue: "10" }, { baselineGwpPerUnit: "10" })).toBe(100);
+  it("returns 50 for material at baseline GWP (ratio=1)", () => {
+    // ratio=1.0 → score = 100 - (1.0 * 50) = 50
+    expect(calcCarbonScore({ gwpValue: "10" }, { baselineGwpPerUnit: "10" })).toBe(50);
   });
   it("returns lower score for material above baseline", () => {
     expect(calcCarbonScore({ gwpValue: "20" }, { baselineGwpPerUnit: "10" })).toBeLessThan(100);
@@ -129,7 +130,7 @@ describe("calcSupplyChainScore", () => {
 
 describe("calcHealthScore", () => {
   it("returns 0 for worst health profile", () => {
-    // start 50, voc high -20, onRedList true -30 = 0
+    // start 50, voc high -20, onRedList=1 (truthy) -30 = 0
     expect(calcHealthScore({ vocLevel: "high", onRedList: 1, hasTakeBackProgram: 0, hasGreenguard: 0 })).toBe(0);
   });
   it("returns high score for best health profile", () => {
