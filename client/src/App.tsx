@@ -69,6 +69,8 @@ import { Privacy } from "./pages/Privacy";
 import { HowItWorks } from "./pages/HowItWorks";
 import Support from "./pages/Support";
 import Login from "./pages/Login";
+import Pricing from "./pages/Pricing";
+import Features from "./pages/Features";
 import { Redirect } from "wouter";
 import { useState, useEffect } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
@@ -129,6 +131,8 @@ function Router() {
       <Route path={"/privacy"} component={Privacy} />
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
+      <Route path={"/pricing"} component={Pricing} />
+      <Route path={"/features"} component={Features} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={ArchitectDashboard} />
       <Route path={"404"} component={NotFound} />
