@@ -30,7 +30,7 @@ export default function Home() {
               The fastest EPD lookup and sustainable materials procurement platform for architects and GCs.
             </p>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Data in. Specs out. Built for street fighters in a market of preppy incumbents.
+              Data in. Specs out. EC3 tells you the carbon — we fill your RFQ queue and get you compliant before the pre-con meeting.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
               We intercept legacy procurement workflows and inject compliance-ready data directly into your model—before the slow suppliers even know a project exists.
@@ -38,12 +38,12 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link href="/get-started">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300">
-                  Weaponize Your Specs →
+                  Get Bulletproof Specs →
                 </Button>
               </Link>
-              <Link href="/about">
+              <Link href="/how-it-works">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                  See the Damage
+                  See How It Works
                 </Button>
               </Link>
             </div>
@@ -71,18 +71,43 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Trust / Social Proof Bar */}
+      <section className="py-10 border-y border-border bg-card/50">
+        <div className="container">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Trusted by</p>
+            <div className="flex flex-wrap items-center justify-center gap-8">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <img src="/brand/autodesk-logo-white.png" alt="Autodesk" className="h-5 w-auto opacity-60" />
+                <span className="text-xs">SDA Partner</span>
+              </div>
+              <div className="text-sm text-muted-foreground font-medium">Building Transparency / EC3</div>
+              <div className="text-sm text-muted-foreground font-medium">EPD International</div>
+              <a
+                href="https://appsource.microsoft.com/en-us/product/web-apps/jeritnorville.greenchainz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-muted-foreground font-medium hover:text-primary transition-colors"
+              >
+                Microsoft Marketplace →
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Value Proposition */}
       <section className="py-20 bg-card">
         <div className="container">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
-              THE COLD CALCULUS
+              THE HONEST CALCULUS
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               Liability-Free. Code-Compliant. No Excuses.
             </h2>
             <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-              Architects don't specify sustainable materials to save trees. They do it to avoid toxic tort litigation, failed audits, and stranded assets. We arm them with the data to win both.
+              You care about both. The planet and the liability exposure. GreenChainz doesn't make you choose. Bulletproof EPD data protects you from toxic tort claims and advances projects worth building. Winning both is the point.
             </p>
           </div>
 
@@ -302,23 +327,23 @@ export default function Home() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide">
-              THE STREET FIGHT STARTS NOW
+              THE SPEC ADVANTAGE
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              The Legacy System Is Losing. Get on the Right Side.
+              The Architect Who Specs Faster Wins the Project.
             </h2>
             <p className="text-lg text-muted-foreground">
-              Procurement teams drowning in manual RFQs and architects waiting days for quotes are bleeding time and projects to competitors who've already switched.
+              Procurement teams drowning in manual RFQs and architects waiting days for quotes are bleeding time and projects to competitors who've already switched. In five minutes, not five days.
             </p>
             <div className="pt-4">
               <Link href="/get-started">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90">
-                  Weaponize Your Specs
+                  Run a Free Compliance Check
                 </Button>
               </Link>
             </div>
             <p className="text-sm text-muted-foreground">
-              No credit card required • Live in 5 minutes • Cancel if you somehow get slower
+              No credit card required • Live in 5 minutes • Cancel anytime
             </p>
           </div>
         </div>
