@@ -28,15 +28,15 @@ export default function About() {
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              We Crashed the{' '}
+              We Opened the{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[oklch(0.85_0.15_145)] to-[oklch(0.65_0.14_145)]">
-                Old Boys' Club.
+                Door.
               </span>
               {' '}Bring Your Data.
             </h1>
 
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Legacy monopolies spent a century locking innovative suppliers out of the specification workflow. We built the door kicker. Data in. Disruption out.
+              For decades, sustainable material procurement was locked behind expensive consultants, siloed databases, and 3-day quote cycles. We built the platform that puts 50,000+ verified EPDs, instant RFQs, and real-time compliance data into every architect's hands. Data in. Specs out.
             </p>
           </div>
         </div>
@@ -280,7 +280,7 @@ export default function About() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <a href="/get-started" className="w-full sm:w-auto">
                 <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg bg-gradient-to-r from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] text-white hover:shadow-lg hover:scale-105 transition-all duration-300">
-                  Weaponize Your Specs
+                  Get Bulletproof Specs
                 </button>
               </a>
               <a href="/contact" className="w-full sm:w-auto">
