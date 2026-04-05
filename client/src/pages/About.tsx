@@ -2,10 +2,16 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VideoPlaceholder from '../components/VideoPlaceholder';
 import { Card } from '../components/ui/card';
+import SEOHead from '../components/SEOHead';
 
 export default function About() {
   return (
     <div className="min-h-screen flex flex-col">
+      <SEOHead
+        title="About GreenChainz — B2B Sustainable Building Materials Compliance Platform"
+        description="GreenChainz was built to fix construction's data access problem. Learn how our platform delivers 50,000+ verified EPDs, automated RFQ workflows, and real-time greenwashing detection for architects and GCs."
+        canonicalPath="/about"
+      />
       <Header />
 
       {/* Hero Section */}
