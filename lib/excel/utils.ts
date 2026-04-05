@@ -39,9 +39,10 @@ export async function getSelectedMaterials(): Promise<string[]> {
     if (!window.Excel) {
         throw new Error("Excel.js library not loaded");
     }
+    const Excel = window.Excel;
 
     return new Promise((resolve, reject) => {
-        window.Excel.run(async (context: ExcelSyncContext) => {
+        Excel.run(async (context: ExcelSyncContext) => {
             try {
                 const range = context.workbook.getSelectedRange();
                 range.load("values, rowCount, columnCount");
@@ -79,9 +80,10 @@ export async function writeAuditResults(results: AuditResult[]): Promise<void> {
     if (!window.Excel) {
         throw new Error("Excel.js library not loaded");
     }
+    const Excel = window.Excel;
 
     return new Promise((resolve, reject) => {
-        window.Excel.run(async (context: ExcelSyncContext) => {
+        Excel.run(async (context: ExcelSyncContext) => {
             try {
                 const range = context.workbook.getSelectedRange();
                 range.load("rowCount, columnCount");

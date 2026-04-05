@@ -153,7 +153,7 @@ export async function rateLimit(
     const allowed = count <= config.maxRequests;
     const remaining = Math.max(0, config.maxRequests - count);
 
-    const headers = {
+    const headers: Record<string, string> = {
       'X-RateLimit-Limit': config.maxRequests.toString(),
       'X-RateLimit-Remaining': remaining.toString(),
       'X-RateLimit-Reset': (Date.now() + resetIn * 1000).toString(),
