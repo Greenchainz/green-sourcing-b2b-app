@@ -56,9 +56,7 @@ export async function uploadSpecToAzure(
  */
 export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
     try {
-        const result = await analyzeDocument(fileBuffer, {
-            modelId: "prebuilt-read"
-        });
+        const result = await analyzeDocument(fileBuffer);
 
         const text = result.content;
         console.log(`✅ Extracted ${text.length} characters from PDF`);
