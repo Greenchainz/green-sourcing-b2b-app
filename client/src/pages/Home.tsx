@@ -3,10 +3,16 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import SEOHead from '../components/SEOHead';
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
+      <SEOHead
+        title="EPD Lookup & Sustainable Materials Procurement Software — GreenChainz"
+        description="GreenChainz is the B2B procurement platform for architects and contractors delivering instant EPD lookups, automated RFQs, and real-time LEED/Buy Clean/Title 24 compliance — inside Excel, Revit, and your browser."
+        canonicalPath="/"
+      />
       <Header />
 
       {/* Hero Section */}
@@ -17,7 +23,10 @@ export default function Home() {
               Stop Waiting Days{' '}
               <span className="text-primary">for Quotes.</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl font-semibold text-muted-foreground max-w-2xl mx-auto">
+              The fastest EPD lookup and sustainable materials procurement platform for architects and GCs.
+            </p>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Data in. Specs out. Built for street fighters in a market of preppy incumbents.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">

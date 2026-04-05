@@ -16,6 +16,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SEOHead from "@/components/SEOHead";
 import MaterialCard from "@/components/MaterialCard";
 import { InsiderDashboard } from "@/components/InsiderDashboard";
 import { Input } from "@/components/ui/input";
@@ -464,6 +465,11 @@ export default function MaterialsCatalog() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
+      <SEOHead
+        title="Verified Sustainable Building Materials Database — Search 50,000+ EPDs | GreenChainz"
+        description="Browse and compare 50,000+ verified Environmental Product Declarations. Filter by carbon footprint, LEED credits, Buy Clean compliance, and certifications."
+        canonicalPath="/materials"
+      />
       <Header />
 
       {/* ── Hero / search bar ──────────────────────────────────────────── */}
