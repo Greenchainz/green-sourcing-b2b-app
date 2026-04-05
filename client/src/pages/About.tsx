@@ -3,6 +3,7 @@ import Footer from '../components/Footer';
 import VideoPlaceholder from '../components/VideoPlaceholder';
 import { Card } from '../components/ui/card';
 import SEOHead from '../components/SEOHead';
+import StructuredData, { aboutPageSchema } from '../components/StructuredData';
 
 export default function About() {
   return (
@@ -12,6 +13,7 @@ export default function About() {
         description="GreenChainz was built to fix construction's data access problem. Learn how our platform delivers 50,000+ verified EPDs, automated RFQ workflows, and real-time greenwashing detection for architects and GCs."
         canonicalPath="/about"
       />
+      <StructuredData data={aboutPageSchema} />
       <Header />
 
       {/* Hero Section */}
