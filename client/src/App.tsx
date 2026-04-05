@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
+import { HelmetProvider } from "react-helmet-async";
 import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -95,12 +96,8 @@ function Router() {
       <Route path="/manufacturers/:id" component={ManufacturerProfile} />
       <Route path="/compare" component={Compare} />
       <Route path="/carbon-compare" component={CarbonCompare} />
-<<<<<<< HEAD
       <Route path="/carbon-dashboard" component={CarbonDashboard} />
-      <Route path="/supplier-dashboard" component={SupplierDashboard} />
-=======
       <Route path="/supplier-dashboard">{() => <SupplierLayout><SupplierDashboard /></SupplierLayout>}</Route>
->>>>>>> 67a20ed2 (feat: supplier portal sidebar nav, real analytics, and getStats endpoint)
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
       <Route path="/supplier/onboarding" component={SupplierOnboarding} />
@@ -263,11 +260,13 @@ function AppInner() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
-        <AuthProvider>
-          <AppInner />
-        </AuthProvider>
-      </ThemeProvider>
+      <HelmetProvider>
+        <ThemeProvider defaultTheme="dark">
+          <AuthProvider>
+            <AppInner />
+          </AuthProvider>
+        </ThemeProvider>
+      </HelmetProvider>
     </ErrorBoundary>
   );
 }

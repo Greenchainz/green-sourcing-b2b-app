@@ -17,6 +17,8 @@ Disallow: /reset-password
 Allow: /suppliers
 Allow: /architects
 Allow: /about
+Allow: /how-it-works
+Allow: /materials
 Allow: /contact
 
 # Sitemap location
