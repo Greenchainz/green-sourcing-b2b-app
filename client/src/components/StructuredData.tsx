@@ -158,4 +158,52 @@ export const faqPageSchema = {
       },
     },
   ],
+ *
+ * Keep FAQ content in a single shared constant so the visible FAQ copy and
+ * JSON-LD can reuse the exact same text and avoid schema/content drift.
+ */
+export const faqItems = [
+  {
+    question: 'What is an Environmental Product Declaration (EPD) and why do architects need it?',
+    answer:
+      'An EPD (Environmental Product Declaration) is a third-party verified document that quantifies the environmental impact of a building material across its entire life cycle — from raw material extraction through manufacturing, transportation, use, and end-of-life. Architects need EPDs because LEED v5 now makes embodied carbon quantification mandatory for all new construction projects. Without verified EPDs, architects face compliance failures, audit risks, and potential liability exposure from specifying materials with unverified environmental claims.',
+  },
+  {
+    question: 'How does GreenChainz help architects find verified EPDs?',
+    answer:
+      'GreenChainz helps architects find verified EPDs by letting them search building materials by type, carbon footprint, and compliance requirement, with compliance information available directly in the browser extension.',
+  },
+  {
+    question: 'Does GreenChainz support LEED v5 compliance?',
+    answer:
+      'Yes. GreenChainz tracks LEED v5, LEED v4.1, Buy Clean California Act, Local Law 97 (NYC), and Title 24 (California) compliance requirements. The platform automatically flags materials that meet or fail specific regulatory thresholds and generates compliance documentation for LEED submissions. LEED v5\'s new mandatory embodied carbon prerequisite (MRp2) requires exactly the kind of EPD-based documentation that GreenChainz automates.',
+  },
+  {
+    question: 'What is the Buy Clean Act and how does GreenChainz help contractors comply?',
+    answer:
+      'The Buy Clean Act (Buy Clean California Act and related federal/state policies) requires contractors and procurement teams to source building materials — primarily structural steel, concrete, flat glass, and mineral wool insulation — that meet maximum allowable Global Warming Potential (GWP) limits verified through facility-specific EPDs. GreenChainz helps by automatically filtering materials against Buy Clean thresholds, flagging non-compliant products, and connecting procurement teams with verified suppliers who meet the requirements.',
+  },
+  {
+    question: 'Is GreenChainz free to use?',
+    answer:
+      'Yes, GreenChainz is free to start with no credit card required. Setup takes under 5 minutes. The platform includes EPD lookup, material comparison, and basic RFQ functionality at no cost. Enterprise features including advanced analytics, team collaboration, and priority supplier matching are available through paid plans.',
+  },
+  {
+    question: 'How is GreenChainz different from EC3 or One Click LCA?',
+    answer:
+      'EC3 (Embodied Carbon in Construction Calculator) and One Click LCA are carbon calculation and LCA tools — they tell you the carbon impact of a material but do not help you buy it. GreenChainz is a procurement execution platform that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, real-time greenwashing detection via browser extension, and direct supplier connection. EC3 is a noted GreenChainz data partner, and the two platforms are complementary.',
+  },
+];
+
+export const faqPageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqItems.map(({ question, answer }) => ({
+    '@type': 'Question',
+    name: question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: answer,
+    },
+  })),
 };

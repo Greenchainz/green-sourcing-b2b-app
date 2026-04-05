@@ -31,6 +31,7 @@ export default function Home() {
             </p>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Data in. Specs out. EC3 tells you the carbon — we fill your RFQ queue and get you compliant before the pre-con meeting.
+              Data in. Specs out. Built for street fighters in a market of preppy incumbents.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
               We intercept legacy procurement workflows and inject compliance-ready data directly into your model—before the slow suppliers even know a project exists.
