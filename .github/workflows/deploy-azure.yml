@@ -1,7 +1,5 @@
 name: Deploy to Azure Container Apps
 
-# Triggers: every push to main + manual dispatch
-# Triggers: every push to main + manual dispatch
 on:
   push:
     branches:
@@ -13,16 +11,6 @@ on:
 #   AZURE_CLIENT_ID       → 479e2a01-70ab-4df9-baa4-560d317c3423
 #   AZURE_TENANT_ID       → ca4f78d4-c753-4893-9cd8-1b309922b4dc
 #   AZURE_SUBSCRIPTION_ID → your Azure subscription ID
-#
-# Azure prerequisites (one-time setup):
-#   1. Federated credential on App Registration 479e2a01:
-#        Azure Portal → App Registrations → 479e2a01
-#        → Certificates & secrets → Federated credentials → Add
-#        Entity: GitHub Actions / Branch: main
-#   2. Key Vault access: az keyvault set-policy --name greenchainz-core-vault
-#        --spn 479e2a01-... --secret-permissions get list
-#   3. ACR push: az role assignment create --assignee 479e2a01-...
-#        --role AcrPush --scope .../registries/acrgreenchainzprod916
 # ─────────────────────────────────────────────────────────────────────────────
 
 env:
@@ -35,33 +23,24 @@ env:
   KEY_VAULT: greenchainz-core-vault
 
 jobs:
-  ci:
-  # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
-  test:
-    name: Typecheck & Tests
   # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
   test:
     name: Typecheck & Tests
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-
-      - name: Install pnpm
-        run: npm install -g pnpm@10.4.1
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: pnpm-${{ runner.os }}-
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -70,31 +49,6 @@ jobs:
         run: pnpm check
 
       - name: Run unit tests
-        run: pnpm test
-
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    needs: ci
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.2
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: TypeScript check
-        run: pnpm check
-
-      - name: Unit tests
         run: pnpm test
 
   # ── Job 2: Build + push both Docker images ────────────────────────────────
@@ -107,9 +61,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
 
-      - name: Log in to Azure (OIDC — no stored credentials)
       - name: Log in to Azure (OIDC — no stored credentials)
         uses: azure/login@v2
         with:
@@ -145,22 +97,6 @@ jobs:
             ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
             ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:latest
           no-cache: true
-          build-args: |
-            NEXT_PUBLIC_SITE_URL=https://greenchainz.com
-            NEXT_PUBLIC_AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}
-            NEXT_PUBLIC_AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}
-            NEXT_PUBLIC_BACKEND_URL=
-            VITE_BACKEND_URL=
-            VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
-            VITE_SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}
-            SENTRY_AUTH_TOKEN=${{ steps.kv.outputs.sentry-auth-token }}
-            SENTRY_ORG=${{ steps.kv.outputs.sentry-org }}
-            SENTRY_PROJECT=${{ steps.kv.outputs.sentry-project }}
-            VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
-            VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
-
-      - name: Build & push backend image
-        uses: docker/build-push-action@v6
           build-args: |
             NEXT_PUBLIC_SITE_URL=https://greenchainz.com
             NEXT_PUBLIC_AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}
@@ -240,28 +176,9 @@ jobs:
           keyvault: ${{ env.KEY_VAULT }}
           secrets: Database-URL
         id: kv
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Log in to Azure (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Pull DATABASE_URL from Key Vault
-        uses: azure/get-keyvault-secrets@v1
-        with:
-          keyvault: ${{ env.KEY_VAULT }}
-          secrets: Database-URL
-        id: kv
 
       - name: Run Drizzle migrations
         env:
-          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
@@ -332,15 +249,7 @@ jobs:
               "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
               "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
               "SENTRY_RELEASE=${{ github.sha }}"
-            --name ${{ env.FRONTEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars \
-              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
-              "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
-              "SENTRY_RELEASE=${{ github.sha }}"
 
-      - name: Azure logout
       - name: Azure logout
         run: az logout || true
         if: always()
