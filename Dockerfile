@@ -90,3 +90,4 @@ EXPOSE 3000
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 # Start the Express server (dist/index.js is the esbuild output of server/_core/index.ts)
 CMD ["node", "dist/index.js"]
+# Cache bust: 1775333736
