@@ -825,6 +825,10 @@ const SEED_MATERIALS = [
 
 async function main() {
   const db = await getDb();
+  if (!db) {
+    console.error("Could not connect to database.");
+    process.exit(1);
+  }
 
   // Check for existing seed rows
   const existing = await db
