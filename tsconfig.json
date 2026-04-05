@@ -52,6 +52,8 @@
     "**/*.test.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx",
-    "tests/**/*"
+    "tests/**/*",
+    "azure-functions/**/*",
+    "playwright.config.ts"
   ]
 }
