@@ -145,6 +145,7 @@ export function validateSecrets(): boolean {
   // Only DATABASE_URL and JWT_SECRET (for legacy session compat) are required.
   const requiredSecrets = [
     "DATABASE_URL",
+    "JWT_SECRET",
   ];
 
   const missing = requiredSecrets.filter((key) => !getSecret(key));
