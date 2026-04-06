@@ -42,7 +42,6 @@ import RFQListPage from "./pages/rfq/RFQListPage";
 import MaterialCreditScorePage from "./pages/MaterialCreditScorePage";
 import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
-import { ChainBot } from "./components/ChainBot";
 import IntercomWidget from "./components/IntercomWidget";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 // VIDEO CALLING — cut for launch, restore when ACS is implemented
@@ -251,8 +250,7 @@ function AppInner() {
         <SupplierOnboardingGuard />
         <ArchitectOnboardingGuard />
         <Router />
-        {/* ChainBot disabled — using Intercom for support. Restore when Azure OpenAI is configured. */}
-        {/* <ChainBot /> */}
+        {/* Intercom support widget */}
         <IntercomWidget />
         {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
         {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
