@@ -102,14 +102,11 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
         variant="outline"
         size="sm"
         onClick={handleStartCall}
-        disabled={isInitiating || !videoLimit?.canCall}
+        disabled
+        title="Video calling coming soon"
       >
-        {isInitiating ? (
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        ) : (
-          <Video className="h-4 w-4 mr-2" />
-        )}
-        {usageStats?.tier === "premium" ? "HD Video Call" : "Video Call"}
+        <Video className="h-4 w-4 mr-2" />
+        {usageStats?.tier === "premium" ? "HD Video Call (coming soon)" : "Video Call (coming soon)"}
       </Button>
 
       {videoLimit && (
