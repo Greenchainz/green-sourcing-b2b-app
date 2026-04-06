@@ -76,7 +76,7 @@ export const supplierRouter = router({
     .input(
       z.object({
         msSubscriptionId: z.string(),
-        msPlanId: z.string().optional(),
+        msPlanId: z.string(),
         renewalDate: z.date(),
       })
     )
