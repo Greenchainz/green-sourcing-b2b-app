@@ -44,6 +44,7 @@ import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
 import { ChainBot } from "./components/ChainBot";
 import IntercomWidget from "./components/IntercomWidget";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 // VIDEO CALLING — cut for launch, restore when ACS is implemented
 // import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 // import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
@@ -256,6 +257,7 @@ function AppInner() {
         {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
         {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
         <ChatWidget />
+        <CookieConsentBanner />
       </TooltipProvider>
     </ChatWidgetProvider>
   );
