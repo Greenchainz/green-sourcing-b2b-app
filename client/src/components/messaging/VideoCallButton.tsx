@@ -23,6 +23,7 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
   const initiateWebRTCCall = trpc.videoCalling.initiateWebRTCCall.useMutation();
   const initiateACSCall = trpc.videoCalling.initiateACSCall.useMutation();
 
+  // VIDEO CALLING — disabled for launch; handler preserved for when ACS/WebRTC is ready
   const handleStartCall = async () => {
     if (!usageStats || !videoLimit) return;
 
