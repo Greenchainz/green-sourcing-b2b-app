@@ -71,12 +71,12 @@ export const supplierRouter = router({
     return getSubscriptionTier(profile.id);
   }),
 
-  // Upgrade to premium (placeholder - actual Stripe integration needed)
+  // Microsoft AppSource subscription upgrade — MSSubscriptionId from webhook
   upgradeToPremium: protectedProcedure
     .input(
       z.object({
-        stripeSubscriptionId: z.string(),
-        stripeCustomerId: z.string(),
+        msSubscriptionId: z.string(),
+        msPlanId: z.string().optional(),
         renewalDate: z.date(),
       })
     )
@@ -85,8 +85,8 @@ export const supplierRouter = router({
       if (!profile) throw new Error("Supplier profile not found");
       await upgradeToPremium(
         profile.id,
-        input.stripeSubscriptionId,
-        input.stripeCustomerId,
+        input.msSubscriptionId,
+        input.msPlanId,
         input.renewalDate
       );
       return { success: true };
