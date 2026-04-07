@@ -24,7 +24,8 @@ import RfqDetail from "./pages/RfqDetail";
 import Compare from "./pages/Compare";
 import CarbonCompare from "./pages/CarbonCompare";
 import CarbonDashboard from "./pages/CarbonDashboard";
-import SupplierDashboard from "./pages/SupplierDashboard";
+// TODO: verify no external links to /supplier-dashboard, then remove this import and SupplierDashboard.tsx
+// import SupplierDashboard from "./pages/SupplierDashboard";
 import BuyerRfqDashboard from "./pages/BuyerRfqDashboard";
 import RfqDashboard from "./pages/RfqDashboard";
 import { SupplierRegistration } from "./pages/SupplierRegistration";
@@ -99,7 +100,7 @@ function Router() {
       <Route path="/compare" component={Compare} />
       <Route path="/carbon-compare" component={CarbonCompare} />
       <Route path="/carbon-dashboard" component={CarbonDashboard} />
-      <Route path="/supplier-dashboard">{() => <SupplierLayout><SupplierDashboard /></SupplierLayout>}</Route>
+      <Route path="/supplier-dashboard">{() => <Redirect to="/supplier/dashboard" />}</Route>
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
       <Route path="/supplier/onboarding" component={SupplierOnboarding} />
