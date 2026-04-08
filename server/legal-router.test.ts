@@ -8,6 +8,12 @@ vi.mock("./db", () => ({
   getDb: vi.fn(),
 }));
 
+// Mock request object that satisfies rate limiter's ctx.req.headers access
+const mockReq = {
+  headers: { "x-forwarded-for": "127.0.0.1" },
+  socket: { remoteAddress: "127.0.0.1" },
+};
+
 describe("Legal Router", () => {
   let mockDb: any;
   let mockCtx: any;
@@ -23,6 +29,7 @@ describe("Legal Router", () => {
       user: {
         id: 123,
       },
+      req: mockReq,
     };
 
     vi.mocked(getDb).mockResolvedValue(mockDb);
@@ -32,11 +39,14 @@ describe("Legal Router", () => {
     it("should return default values when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
       const result = await caller.getAcceptanceStatus();
 
-      expect(result).toEqual({
+      // Use toMatchObject since the response may include additional fields
+      // like termsVersion, privacyVersion, timestamps
+      expect(result).toMatchObject({
         termsAccepted: false,
         privacyAccepted: false,
         cookieConsentGiven: false,
@@ -84,7 +94,7 @@ describe("Legal Router", () => {
       const caller = legalRouter.createCaller(mockCtx as any);
       const result = await caller.getAcceptanceStatus();
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         termsAccepted: false,
         privacyAccepted: false,
         cookieConsentGiven: false,
@@ -96,6 +106,7 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
       await expect(
@@ -152,6 +163,7 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
       await expect(
@@ -185,6 +197,7 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
       await expect(caller.acceptCookieConsent()).rejects.toThrow(
@@ -218,6 +231,7 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
       await expect(
