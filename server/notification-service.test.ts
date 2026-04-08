@@ -143,9 +143,6 @@ describe("Notification Service", () => {
     });
 
     it("should process email notification when provided", async () => {
-      const logSpy = vi.spyOn(console, "log");
-      const errorSpy = vi.spyOn(console, "error");
-      
       const result = await sendEmailNotification({
         userId: 1,
         type: "rfq_match",
@@ -154,17 +151,12 @@ describe("Notification Service", () => {
         email: "test@example.com",
       });
 
-      // Either succeeds (console.log) or fails gracefully (console.error)
-      expect(logSpy.mock.calls.length + errorSpy.mock.calls.length).toBeGreaterThan(0);
-      
-      logSpy.mockRestore();
-      errorSpy.mockRestore();
+      // Returns a result object (success or failure) without throwing
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty("success");
     });
 
     it("should process SMS notification when provided", async () => {
-      const logSpy = vi.spyOn(console, "log");
-      const errorSpy = vi.spyOn(console, "error");
-      
       const result = await sendSmsNotification({
         userId: 1,
         type: "rfq_match",
@@ -173,11 +165,9 @@ describe("Notification Service", () => {
         phone: "+1234567890",
       });
 
-      // Either succeeds (console.log) or fails gracefully (console.error)
-      expect(logSpy.mock.calls.length + errorSpy.mock.calls.length).toBeGreaterThan(0);
-      
-      logSpy.mockRestore();
-      errorSpy.mockRestore();
+      // Returns a result object (success or failure) without throwing
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty("success");
     });
   });
 
