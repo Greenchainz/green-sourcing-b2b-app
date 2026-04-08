@@ -77,6 +77,22 @@ export function serveStatic(app: Express) {
     console.log(`[static] cannot read distPath: ${e.message}`);
   }
 
+  // Diagnostic endpoint — remove after debugging
+  app.get('/api/debug-static', (_req, res) => {
+    const sitemapPath = path.join(distPath, 'sitemap.xml');
+    let files: string[] = [];
+    try { files = fs.readdirSync(distPath); } catch {}
+    res.json({
+      distPath,
+      distPathExists: fs.existsSync(distPath),
+      sitemapExists: fs.existsSync(sitemapPath),
+      fileCount: files.length,
+      files: files.slice(0, 30),
+      dirname: import.meta.dirname,
+      nodeEnv: process.env.NODE_ENV,
+    });
+  });
+
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
