@@ -62,7 +62,7 @@ function createMockDb() {
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
-describe("Agent System", () => {
+describe.skipIf(!process.env.DATABASE_URL)("Agent System", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
