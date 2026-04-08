@@ -1,9 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { sendEmail } from './email-service';
 
+const hasZohoCredentials = !!(
+  process.env.ZOHO_SMTP_HOST &&
+  process.env.ZOHO_EMAIL_USER &&
+  process.env.ZOHO_EMAIL_PASSWORD
+);
+
 describe('Email Service', () => {
-  it('should validate Zoho SMTP credentials', async () => {
-    // Test email sending with Zoho credentials
+  it.skipIf(!hasZohoCredentials)('should validate Zoho SMTP credentials', async () => {
     const result = await sendEmail({
       to: process.env.ZOHO_EMAIL_USER || 'test@example.com',
       subject: 'GreenChainz Email Service Test',
@@ -11,7 +16,6 @@ describe('Email Service', () => {
       text: 'This is a test email to validate Zoho SMTP configuration.',
     });
 
-    // Should return true if credentials are valid
     expect(result).toBe(true);
-  }, 30000); // 30 second timeout for email sending
+  }, 30000);
 });
