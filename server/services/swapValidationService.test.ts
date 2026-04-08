@@ -1,151 +1,194 @@
 /**
  * Swap Validation Service Tests
- * 
- * Tests all showstopper checks and classification logic.
- * Test fixtures use MaterialTechnicalSpecs (flat) which are wrapped
- * into MaterialSpec (nested .specs) via the helper below.
+ *
+ * Tests the core validateSwap function which checks:
+ * - compressiveStrength: substitute must be >= original
+ * - fireRating: substitute must be >= original
+ * - density: substitute must be within tolerance
+ * - LEED credit calculation
  */
 
 import { describe, it, expect } from 'vitest';
-import { validateSwap, type MaterialTechnicalSpecs, type MaterialSpec } from './swapValidationService';
+import { validateSwap, type MaterialSpec } from './swapValidationService';
 
-/** Wrap a flat MaterialTechnicalSpecs into the MaterialSpec envelope that validateSwap expects */
-function toMaterialSpec(flat: MaterialTechnicalSpecs, id = 1, name = 'Test Material', category = 'Concrete'): MaterialSpec {
-  return {
-    materialId: id,
-    materialName: name,
-    category,
-    specs: {
-      compressiveStrength: flat.compressiveStrength ?? null,
-      tensileStrength: flat.tensileStrength ?? null,
-      density: null,
-      thermalConductivity: null,
-      fireRating: flat.fireRatingHours != null ? `${flat.fireRatingHours}hr` : null,
-      waterAbsorption: null,
-      gwp: null,
-      recycledContent: null,
-      voc: null,
-      embodiedEnergy: null,
-      flexuralStrength: null,
-      modulusOfElasticity: flat.modulusOfElasticity ?? null,
-      rValuePerInch: flat.rValuePerInch ?? null,
-      permRating: flat.permRating ?? null,
-      stcRating: flat.stcRating ?? null,
-      iicRating: flat.iicRating ?? null,
-      laborUnitsPerUnit: flat.laborUnitsPerUnit ?? null,
-      astmCodes: flat.astmCodes ?? null,
-      ulListing: flat.ulListing ?? null,
-      iccEsReportNumber: flat.iccEsReportNumber ?? null,
-      fireRatingHours: flat.fireRatingHours ?? null,
-    } as any,
-    certifications: [],
-  };
-}
+// ─── Test Fixtures ─────────────────────────────────────────────────────────
 
-describe('Swap Validation Engine', () => {
-  // ─── Test Materials ───────────────────────────────────────────────────────
-  
-  const incumbentConcreteFlat: MaterialTechnicalSpecs = {
-    astmCodes: 'C150, C595',
-    ulListing: 'UL263',
-    iccEsReportNumber: 'ESR-1234',
-    fireRatingHours: 2,
+const incumbentConcrete: MaterialSpec = {
+  materialId: 1,
+  materialName: 'Portland Cement Concrete',
+  category: 'Concrete',
+  specs: {
     compressiveStrength: 4000,
     tensileStrength: 400,
-    modulusOfElasticity: 3600000,
-    rValuePerInch: 0.08,
-    permRating: 0.8,
-    stcRating: 50,
-    iicRating: 50,
-    laborUnitsPerUnit: 0.5,
-  };
-  
-  const sustainableConcreteFlat: MaterialTechnicalSpecs = {
-    astmCodes: 'C150, C595',
-    ulListing: 'UL263',
-    iccEsReportNumber: 'ESR-5678',
-    fireRatingHours: 2,
+    flexuralStrength: null,
+    density: 150,
+    thermalConductivity: null,
+    fireRating: '2hr',
+    waterAbsorption: null,
+    gwp: 400,
+    recycledContent: 10,
+    voc: null,
+    embodiedEnergy: 1200,
+  },
+  certifications: ['ASTM C150'],
+};
+
+const sustainableConcrete: MaterialSpec = {
+  materialId: 2,
+  materialName: 'Fly Ash Blend Concrete',
+  category: 'Concrete',
+  specs: {
     compressiveStrength: 4200,
     tensileStrength: 410,
-    modulusOfElasticity: 3700000,
-    rValuePerInch: 0.08,
-    permRating: 0.9,
-    stcRating: 51,
-    iicRating: 51,
-    laborUnitsPerUnit: 0.55,
-  };
-  
-  const incumbentInsulationFlat: MaterialTechnicalSpecs = {
-    astmCodes: 'C578',
-    ulListing: 'UL723',
-    iccEsReportNumber: 'ESR-2000',
-    fireRatingHours: 1,
-    rValuePerInch: 6.5,
-    permRating: 1.5,
-    stcRating: null,
-    iicRating: null,
-    compressiveStrength: 25,
-    tensileStrength: null,
-    modulusOfElasticity: null,
-    laborUnitsPerUnit: 0.3,
-  };
+    flexuralStrength: null,
+    density: 148,
+    thermalConductivity: null,
+    fireRating: '2hr',
+    waterAbsorption: null,
+    gwp: 280,
+    recycledContent: 35,
+    voc: null,
+    embodiedEnergy: 900,
+  },
+  certifications: ['ASTM C150', 'ASTM C618'],
+};
 
-  const incumbentConcrete = toMaterialSpec(incumbentConcreteFlat, 1, 'Incumbent Concrete');
-  const sustainableConcrete = toMaterialSpec(sustainableConcreteFlat, 2, 'Sustainable Concrete');
-  const incumbentInsulation = toMaterialSpec(incumbentInsulationFlat, 3, 'Incumbent Insulation', 'Insulation');
-  
-  // ─── Basic validation tests ───────────────────────────────────────────────
-  
-  describe('Basic Validation', () => {
-    it('should return a validation result with status and score', () => {
+const weakConcrete: MaterialSpec = {
+  materialId: 3,
+  materialName: 'Weak Concrete',
+  category: 'Concrete',
+  specs: {
+    compressiveStrength: 2500, // way below 4000
+    tensileStrength: 200,
+    flexuralStrength: null,
+    density: 140,
+    thermalConductivity: null,
+    fireRating: '1hr', // downgrade from 2hr
+    waterAbsorption: null,
+    gwp: 500,
+    recycledContent: 0,
+    voc: null,
+    embodiedEnergy: 1500,
+  },
+  certifications: [],
+};
+
+// ─── Tests ─────────────────────────────────────────────────────────────────
+
+describe('Swap Validation Engine', () => {
+  describe('Valid swap — functionally equivalent materials', () => {
+    it('should return valid=true for equivalent or better substitute', () => {
       const result = validateSwap(incumbentConcrete, sustainableConcrete);
-      
-      expect(result).toBeDefined();
-      expect(result).toHaveProperty('validationStatus');
-      expect(result).toHaveProperty('overallScore');
-      expect(result.overallScore).toBeGreaterThanOrEqual(0);
-      expect(result.overallScore).toBeLessThanOrEqual(100);
+
+      expect(result.valid).toBe(true);
+      expect(result.checks.compressiveStrength).toBe('PASS');
+      expect(result.checks.fireRating).toBe('PASS');
     });
-    
-    it('should return showstopper results object', () => {
+
+    it('should return an empty warnings array for clean swap', () => {
       const result = validateSwap(incumbentConcrete, sustainableConcrete);
-      
-      expect(result).toHaveProperty('showstopperResults');
-      expect(result).toHaveProperty('passedChecks');
-      expect(result).toHaveProperty('failedChecks');
-      expect(result).toHaveProperty('skippedChecks');
+
+      expect(result.warnings).toEqual([]);
     });
-    
-    it('should classify identical materials as APPROVED or better', () => {
+
+    it('should calculate LEED credits for sustainable swap', () => {
       const result = validateSwap(incumbentConcrete, sustainableConcrete);
-      
-      expect(['APPROVED', 'EXPERIMENTAL']).toContain(result.validationStatus);
-      expect(result.overallScore).toBeGreaterThanOrEqual(70);
-    });
-    
-    it('should count total checks correctly', () => {
-      const result = validateSwap(incumbentConcrete, sustainableConcrete);
-      
-      const total = result.passedChecks + result.failedChecks + result.skippedChecks;
-      expect(total).toBeGreaterThan(0);
+
+      expect(result.leedCredits).toBeDefined();
+      expect(result.leedCredits.potentialPoints).toBeGreaterThanOrEqual(0);
+      expect(Array.isArray(result.leedCredits.categories)).toBe(true);
     });
   });
 
-  // ─── Scoring Algorithm Tests ──────────────────────────────────────────────
-  
-  describe('Scoring Algorithm', () => {
-    it('should calculate weighted score between 0 and 100', () => {
-      const result = validateSwap(incumbentConcrete, sustainableConcrete);
-      
-      expect(result.overallScore).toBeGreaterThan(0);
-      expect(result.overallScore).toBeLessThanOrEqual(100);
+  describe('Invalid swap — weaker substitute', () => {
+    it('should fail compressive strength when substitute is weaker', () => {
+      const result = validateSwap(incumbentConcrete, weakConcrete);
+
+      expect(result.checks.compressiveStrength).toBe('FAIL');
     });
-    
-    it('should generate a recommendation string', () => {
+
+    it('should fail fire rating when substitute is downgraded', () => {
+      const result = validateSwap(incumbentConcrete, weakConcrete);
+
+      expect(result.checks.fireRating).toBe('FAIL');
+    });
+
+    it('should set valid=false when checks fail', () => {
+      const result = validateSwap(incumbentConcrete, weakConcrete);
+
+      expect(result.valid).toBe(false);
+    });
+  });
+
+  describe('Edge cases — missing data', () => {
+    it('should warn when substitute is missing compressive strength', () => {
+      const noStrength: MaterialSpec = {
+        ...sustainableConcrete,
+        specs: { ...sustainableConcrete.specs, compressiveStrength: null },
+      };
+
+      const result = validateSwap(incumbentConcrete, noStrength);
+
+      expect(result.checks.compressiveStrength).toBe('FAIL');
+      expect(result.warnings.length).toBeGreaterThan(0);
+    });
+
+    it('should warn when substitute is missing fire rating', () => {
+      const noFireRating: MaterialSpec = {
+        ...sustainableConcrete,
+        specs: { ...sustainableConcrete.specs, fireRating: null },
+      };
+
+      const result = validateSwap(incumbentConcrete, noFireRating);
+
+      expect(result.warnings.length).toBeGreaterThan(0);
+    });
+
+    it('should pass checks when original has no data (nothing to compare)', () => {
+      const noSpecsOriginal: MaterialSpec = {
+        materialId: 99,
+        materialName: 'Unknown',
+        category: 'Concrete',
+        specs: {
+          compressiveStrength: null,
+          tensileStrength: null,
+          flexuralStrength: null,
+          density: null,
+          thermalConductivity: null,
+          fireRating: null,
+          waterAbsorption: null,
+          gwp: null,
+          recycledContent: null,
+          voc: null,
+          embodiedEnergy: null,
+        },
+        certifications: [],
+      };
+
+      const result = validateSwap(noSpecsOriginal, sustainableConcrete);
+
+      // When original has no data, checks should pass (nothing to violate)
+      expect(result.checks.compressiveStrength).toBe('PASS');
+      expect(result.checks.fireRating).toBe('PASS');
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('Return shape', () => {
+    it('should return all required fields', () => {
       const result = validateSwap(incumbentConcrete, sustainableConcrete);
-      expect(result.recommendation).toBeDefined();
-      expect(typeof result.recommendation).toBe('string');
-      expect(result.recommendation.length).toBeGreaterThan(0);
+
+      expect(result).toHaveProperty('valid');
+      expect(result).toHaveProperty('checks');
+      expect(result).toHaveProperty('warnings');
+      expect(result).toHaveProperty('leedCredits');
+
+      expect(result.checks).toHaveProperty('compressiveStrength');
+      expect(result.checks).toHaveProperty('fireRating');
+      expect(result.checks).toHaveProperty('density');
+
+      expect(result.leedCredits).toHaveProperty('potentialPoints');
+      expect(result.leedCredits).toHaveProperty('categories');
     });
   });
 });
