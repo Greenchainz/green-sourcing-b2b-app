@@ -68,6 +68,15 @@ export function serveStatic(app: Express) {
     );
   }
 
+  // Debug: log what path is being used and whether sitemap exists
+  console.log(`[static] distPath=${distPath}, exists=${fs.existsSync(distPath)}, sitemap=${fs.existsSync(path.join(distPath, 'sitemap.xml'))}`);
+  try {
+    const files = fs.readdirSync(distPath);
+    console.log(`[static] files in distPath: ${files.join(', ')}`);
+  } catch (e: any) {
+    console.log(`[static] cannot read distPath: ${e.message}`);
+  }
+
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
