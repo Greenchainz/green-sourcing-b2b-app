@@ -158,7 +158,9 @@ export const faqPageSchema = {
       },
     },
   ],
- *
+};
+
+/**
  * Keep FAQ content in a single shared constant so the visible FAQ copy and
  * JSON-LD can reuse the exact same text and avoid schema/content drift.
  */
