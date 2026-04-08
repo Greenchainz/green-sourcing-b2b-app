@@ -9,7 +9,7 @@ import {
   sendSignalingData,
 } from "./webrtc-video-service";
 
-describe("WebRTC Video Service", () => {
+describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
   let testCallerId: number;
   let testCalleeId: number;
   let testCallId: string;

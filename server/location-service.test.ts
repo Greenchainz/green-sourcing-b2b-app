@@ -12,7 +12,7 @@ import {
   getRegionalSwapCarbonReduction,
 } from "./location-service";
 
-describe("Location Service", () => {
+describe.skipIf(!process.env.DATABASE_URL)("Location Service", () => {
   describe("calculateDistance", () => {
     it("should calculate distance between two coordinates", () => {
       // New York to Los Angeles: ~2451 miles
