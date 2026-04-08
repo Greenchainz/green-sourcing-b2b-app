@@ -68,16 +68,20 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Pull build secrets from Key Vault
-        uses: azure/get-keyvault-secrets@v1
-        with:
-          keyvault: ${{ env.KEY_VAULT }}
-          secrets: >-
-            azure-maps-key,
-            sentry-dsn,
-            sentry-auth-token,
-            sentry-org,
-            sentry-project
         id: kv
+        run: |
+          get_secret() {
+            local name="$1"
+            local value
+            value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "$name" --query value -o tsv 2>/dev/null) || value=""
+            echo "::add-mask::$value"
+            echo "${name}=${value}" >> $GITHUB_OUTPUT
+          }
+          get_secret azure-maps-key
+          get_secret sentry-dsn
+          get_secret sentry-auth-token
+          get_secret sentry-org
+          get_secret sentry-project
 
       - name: Log in to ACR (token-based — no username/password)
         run: az acr login --name ${{ env.ACR }}
@@ -167,11 +171,11 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Pull DATABASE_URL from Key Vault
-        uses: azure/get-keyvault-secrets@v1
-        with:
-          keyvault: ${{ env.KEY_VAULT }}
-          secrets: Database-URL
         id: kv
+        run: |
+          DB_URL=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "Database-URL" --query value -o tsv 2>/dev/null) || DB_URL=""
+          echo "::add-mask::$DB_URL"
+          echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
 
       - name: Run Drizzle migrations
         env:
@@ -217,34 +221,36 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Pull Sentry DSN from Key Vault
-        uses: azure/get-keyvault-secrets@v1
-        with:
-          keyvault: ${{ env.KEY_VAULT }}
-          secrets: sentry-dsn
+      - name: Pull Sentry DSN from Key Vault (optional)
         id: kv
+        run: |
+          DSN=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "sentry-dsn" --query value -o tsv 2>/dev/null) || DSN=""
+          echo "::add-mask::$DSN"
+          echo "sentry-dsn=${DSN}" >> $GITHUB_OUTPUT
 
       - name: Deploy backend
         run: |
+          ENV_VARS="DEPLOY_TIMESTAMP=${{ github.run_id }}"
+          if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
+            ENV_VARS="$ENV_VARS SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }} SENTRY_RELEASE=${{ github.sha }}"
+          fi
           az containerapp update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars \
-              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
-              "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
-              "SENTRY_RELEASE=${{ github.sha }}"
+            --set-env-vars $ENV_VARS
 
       - name: Deploy frontend
         run: |
+          ENV_VARS="DEPLOY_TIMESTAMP=${{ github.run_id }}"
+          if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
+            ENV_VARS="$ENV_VARS SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }} SENTRY_RELEASE=${{ github.sha }}"
+          fi
           az containerapp update \
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars \
-              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
-              "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
-              "SENTRY_RELEASE=${{ github.sha }}"
+            --set-env-vars $ENV_VARS
 
       - name: Azure logout
         run: az logout || true
