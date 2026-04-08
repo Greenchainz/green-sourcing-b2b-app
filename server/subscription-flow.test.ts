@@ -17,7 +17,7 @@ vi.mock('./marketplace-metering', () => ({
   }),
 }));
 
-describe('Premium Subscription Flow', () => {
+describe.skipIf(!process.env.DATABASE_URL)('Premium Subscription Flow', () => {
   const testUserId = 123;
   const msSubscriptionId = 'ms-sub-12345';
   const msPlanId = 'plan-premium';
