@@ -55,9 +55,13 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  // In dev:  import.meta.dirname = <repo>/server/_core → go up 2 to repo root, then dist/public
-  // In prod:  import.meta.dirname = /app/dist/server/_core → go up 2 to /app/dist, then public
-  const distPath = path.resolve(import.meta.dirname, "../..", "public");
+  // esbuild bundles all server code into dist/index.js (flat, no subdirs).
+  // In prod: import.meta.dirname = /app/dist/ → "public" = /app/dist/public/ (Vite output)
+  // In dev:  import.meta.dirname = <repo>/server/_core/ → need "../../dist/public"
+  const distPath =
+    process.env.NODE_ENV === "production"
+      ? path.resolve(import.meta.dirname, "public")
+      : path.resolve(import.meta.dirname, "../..", "dist", "public");
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
