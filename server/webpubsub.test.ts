@@ -97,7 +97,7 @@ describe.skipIf(!process.env.DATABASE_URL)("WebSocket Access Token Generation", 
   });
 });
 
-describe("Real-Time Messaging Functions", () => {
+describe.skipIf(!process.env.DATABASE_URL)("Real-Time Messaging Functions", () => {
   it("should broadcast typing indicator", async () => {
     try {
       const result = await broadcastTypingIndicator(1, 1, true);
@@ -142,7 +142,7 @@ describe("Real-Time Messaging Functions", () => {
   });
 });
 
-describe("Message Sending", () => {
+describe.skipIf(!process.env.DATABASE_URL)("Message Sending", () => {
   it("should enforce 1000 character limit", async () => {
     const longMessage = "a".repeat(1500);
     try {
