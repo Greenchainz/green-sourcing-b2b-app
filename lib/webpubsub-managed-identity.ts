@@ -92,7 +92,7 @@ export async function sendToGroup(
   hubName: string = WEB_PUBSUB_HUB
 ): Promise<void> {
   const serviceClient = createServiceClient(hubName);
-  await serviceClient.sendToGroup(groupName, message);
+  await serviceClient.group(groupName).sendToAll(message);
 }
 
 /**
@@ -128,7 +128,8 @@ export async function userExistsInGroup(
   hubName: string = WEB_PUBSUB_HUB
 ): Promise<boolean> {
   const serviceClient = createServiceClient(hubName);
-  return await serviceClient.group(groupName).hasUser(userId);
+  // userExists checks if the user has any active connections to the hub
+  return await serviceClient.userExists(userId);
 }
 
 /**

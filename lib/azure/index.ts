@@ -161,20 +161,12 @@ export {
   getDocumentClient,
   resetDocumentClient,
   isDocumentIntelligenceConfigured,
-  type DocumentIntelligenceConfig,
-  
+
   // Document analysis
   analyzeDocument,
   analyzeDocumentFromUrl,
-  type DocumentAnalysisOptions,
-  type ExtractedDocument,
-  type ExtractedTable,
-  type ExtractedKeyValue,
-  
-  // EPD extraction
+
+  // EPD & invoice extraction
   extractEPDData,
-  type EPDExtraction,
-  
-  // Invoice processing
   extractInvoiceData,
 } from "./document-intelligence";

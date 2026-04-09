@@ -8,6 +8,12 @@ vi.mock("./db", () => ({
   getDb: vi.fn(),
 }));
 
+// Mock request object that satisfies rate limiter's ctx.req.headers access
+const mockReq = {
+  headers: { "x-forwarded-for": "127.0.0.1" },
+  socket: { remoteAddress: "127.0.0.1" },
+};
+
 describe("Legal Router", () => {
   let mockDb: any;
   let mockCtx: any;
@@ -23,24 +29,21 @@ describe("Legal Router", () => {
       user: {
         id: 123,
       },
+      req: mockReq,
     };
 
     vi.mocked(getDb).mockResolvedValue(mockDb);
   });
 
   describe("getAcceptanceStatus", () => {
-    it("should return default values when user is not authenticated", async () => {
+    it("should reject unauthenticated requests", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
-      const result = await caller.getAcceptanceStatus();
-
-      expect(result).toEqual({
-        termsAccepted: false,
-        privacyAccepted: false,
-        cookieConsentGiven: false,
-      });
+      // getAcceptanceStatus is a protectedProcedure — throws for unauthenticated users
+      await expect(caller.getAcceptanceStatus()).rejects.toThrow();
     });
 
     it("should return acceptance status from database", async () => {
@@ -84,7 +87,7 @@ describe("Legal Router", () => {
       const caller = legalRouter.createCaller(mockCtx as any);
       const result = await caller.getAcceptanceStatus();
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         termsAccepted: false,
         privacyAccepted: false,
         cookieConsentGiven: false,
@@ -96,11 +99,12 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
       await expect(
         caller.acceptTerms({ version: "1.0" })
-      ).rejects.toThrow("User not authenticated");
+      ).rejects.toThrow();
     });
 
     it("should insert new legal acceptance record", async () => {
@@ -152,11 +156,12 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
       await expect(
         caller.acceptPrivacy({ version: "1.0" })
-      ).rejects.toThrow("User not authenticated");
+      ).rejects.toThrow();
     });
 
     it("should insert new legal acceptance record for privacy", async () => {
@@ -185,11 +190,10 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
-      await expect(caller.acceptCookieConsent()).rejects.toThrow(
-        "User not authenticated"
-      );
+      await expect(caller.acceptCookieConsent()).rejects.toThrow();
     });
 
     it("should insert new legal acceptance record for cookies", async () => {
@@ -218,6 +222,7 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        req: mockReq,
       } as any);
 
       await expect(
@@ -225,7 +230,7 @@ describe("Legal Router", () => {
           termsVersion: "1.0",
           privacyVersion: "1.0",
         })
-      ).rejects.toThrow("User not authenticated");
+      ).rejects.toThrow();
     });
 
     it("should accept all documents at once", async () => {

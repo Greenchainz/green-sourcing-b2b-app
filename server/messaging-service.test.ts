@@ -10,7 +10,7 @@ import {
 import { getDb } from "./db";
 import { users, rfqs } from "../drizzle/schema";
 
-describe("Messaging Service", () => {
+describe.skipIf(!process.env.DATABASE_URL)("Messaging Service", () => {
   it("should create conversation, send messages, and mark as read", async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
