@@ -206,9 +206,7 @@ Every push to `main` on `github.com/Greenchainz/green-sourcing-b2b-app` triggers
 2. OIDC login to Azure using repository variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`).
 3. Docker Buildx builds frontend and backend images and pushes SHA + latest tags to `acrgreenchainzprod916.azurecr.io`.
 4. Migration job pulls `Database-URL` from Key Vault and fails deployment if DB is unreachable.
-5. Deploy job updates both Container Apps and runs smoke checks:
-  - `GET /api/health` must return `200`
-  - `GET /api/auth/me` without auth must return `401`
+5. Deploy job updates both Container Apps and runs smoke checks: `GET /api/health` must return `200`, and unauthenticated `GET /api/auth/me` must return `401`.
 
 **Typical build time:** 3–5 minutes.
 
@@ -260,6 +258,7 @@ Two scrapers populate the database. Both are triggered via admin endpoints.
 ### 6.1 Supplier Discovery Scraper (Azure Maps POI)
 
 **Trigger:**
+
 ```bash
 curl -s -X POST "https://greenchainz.com/api/admin/scrape/suppliers"
 ```
@@ -273,6 +272,7 @@ curl -s -X POST "https://greenchainz.com/api/admin/scrape/suppliers"
 ### 6.2 TxDOT Pricing Scraper
 
 **Trigger:**
+
 ```bash
 curl -s -X POST "https://greenchainz.com/api/admin/scrape/txdot"
 ```
@@ -286,6 +286,7 @@ curl -s -X POST "https://greenchainz.com/api/admin/scrape/txdot"
 ### 6.3 EC3 Material Sync
 
 Triggered via tRPC:
+
 ```bash
 curl -s "https://greenchainz.com/api/trpc/ec3.syncMaterials"
 ```
@@ -299,6 +300,7 @@ curl -s "https://greenchainz.com/api/trpc/ec3.syncMaterials"
 ### 7.1 Check Active Subscriptions
 
 Via tRPC admin endpoint (requires admin auth cookie):
+
 ```text
 GET /api/trpc/admin.getSubscriptionStats
 ```
@@ -315,6 +317,7 @@ curl -s -X POST "https://greenchainz.com/api/trpc/subscription.adminUpgrade" \
 ### 7.3 Microsoft Marketplace Webhook
 
 All subscription lifecycle events (purchase, suspend, reinstate, cancel) hit:
+
 ```text
 POST https://greenchainz.com/api/marketplace/webhook
 ```
