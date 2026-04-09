@@ -743,6 +743,66 @@ async function startServer() {
       console.error("[Outreach] Daily drip failed:", e);
     }
   }, 24 * 60 * 60 * 1000);
+
+  // ── RFQ expiry/reminder scheduler — every 15 min ─────────────────────────────
+  const { startNotificationScheduler } = await import("../services/notification-scheduler");
+  startNotificationScheduler();
+
+  // ── Notification email helper ─────────────────────────────────────────────────
+  // Shared helper: generate payloads via `generator`, send each via Resend, and log results.
+  async function runNotificationEmails(
+    label: string,
+    generator: () => Promise<Array<{ to: string; subject: string; html: string }>>
+  ): Promise<void> {
+    const { sendEmail } = await import("../email-service");
+    const payloads = await generator();
+    let sent = 0;
+    for (const p of payloads) {
+      const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
+      if (ok) sent++;
+    }
+    if (payloads.length > 0) console.log(`[Notifications] ${label}: ${sent}/${payloads.length} sent`);
+  }
+
+  // ── Streak reminder emails — daily ───────────────────────────────────────────
+  // First run: 90s after boot (avoids duplicate sends right after a restart)
+  async function runStreakReminders(): Promise<void> {
+    try {
+      const { findAtRiskStreaks } = await import("../services/notification-scheduler");
+      await runNotificationEmails("Streak reminders", findAtRiskStreaks);
+    } catch (e) {
+      console.error("[Notifications] Streak reminder run failed:", e);
+    }
+  }
+
+  setTimeout(runStreakReminders, 90_000);
+  setInterval(runStreakReminders, 24 * 60 * 60 * 1000);
+
+  // ── New-material alert emails — daily ─────────────────────────────────────────
+  // Offset by 2 hours after boot so alerts don't fire alongside the streak reminder
+  async function runNewMaterialAlerts(): Promise<void> {
+    try {
+      const { findNewMaterialMatches } = await import("../services/notification-scheduler");
+      await runNotificationEmails("New-material alerts", findNewMaterialMatches);
+    } catch (e) {
+      console.error("[Notifications] New-material alert run failed:", e);
+    }
+  }
+
+  setTimeout(runNewMaterialAlerts, 2 * 60 * 60 * 1000);
+  setInterval(runNewMaterialAlerts, 24 * 60 * 60 * 1000);
+
+  // ── Weekly digest emails — every 7 days ──────────────────────────────────────
+  // No immediate run on startup — first send is deferred to the weekly interval
+  // to avoid sending digests on a random day caused by a server restart.
+  setInterval(async () => {
+    try {
+      const { generateWeeklyDigests } = await import("../services/notification-scheduler");
+      await runNotificationEmails("Weekly digests", generateWeeklyDigests);
+    } catch (e) {
+      console.error("[Notifications] Weekly digest run failed:", e);
+    }
+  }, 7 * 24 * 60 * 60 * 1000);
 }
 
 startServer().catch(console.error);
