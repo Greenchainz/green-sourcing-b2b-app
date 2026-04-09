@@ -17,6 +17,78 @@
 | **GitHub** | `github.com/Greenchainz/green-sourcing-b2b-app` | GitHub login |
 | **Admin tRPC** | `https://greenchainz.com/api/trpc/admin.*` | Auth-gated (admin role) |
 
+### 1.1 Release Commander Checklist (Launch Day)
+
+Use this section as the single execution path for a production release.
+
+#### Pre-flight (must all pass)
+
+- [ ] CI pipeline green on `main` in GitHub Actions (`Deploy to Azure Container Apps`).
+- [ ] Key Vault `Greenchainz-vault-2026` contains required secrets (`jwt-secret`, `session-secret`, `cookie-secret`, `Database-URL`).
+- [ ] Auth guard tests pass locally:
+
+```bash
+pnpm vitest run server/_core/route-auth-guards.test.ts
+```
+
+#### Deploy verification (must all pass)
+
+- [ ] Backend smoke checks:
+
+```bash
+BACKEND_FQDN=$(az containerapp show \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod-container \
+  --query properties.configuration.ingress.fqdn -o tsv)
+
+curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/health"
+curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/auth/me"
+```
+
+Expected:
+
+- `/api/health` returns `200`
+- `/api/auth/me` returns `401` without a session cookie
+
+- [ ] Active revisions are current SHA for both apps:
+
+```bash
+az containerapp revision list \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod-container \
+  --query "[?properties.active==\`true\`].{name:name,image:properties.template.containers[0].image}" \
+  -o table
+
+az containerapp revision list \
+  --name greenchainz-frontend \
+  --resource-group rg-greenchainz-prod-container \
+  --query "[?properties.active==\`true\`].{name:name,image:properties.template.containers[0].image}" \
+  -o table
+```
+
+#### Go / No-Go rule
+
+- **GO** only if all pre-flight and deploy verification checks pass.
+- **NO-GO** if any required check fails, migration failed, or smoke checks return unexpected status codes.
+
+#### Immediate rollback (if no-go after deploy)
+
+```bash
+COMMIT_SHA="<previous-good-sha>"
+
+az containerapp update \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod-container \
+  --image "acrgreenchainzprod916.azurecr.io/greenchainz-backend:${COMMIT_SHA}"
+
+az containerapp update \
+  --name greenchainz-frontend \
+  --resource-group rg-greenchainz-prod-container \
+  --image "acrgreenchainzprod916.azurecr.io/greenchainz-frontend:${COMMIT_SHA}"
+```
+
+- [ ] Re-run smoke checks after rollback and confirm healthy status.
+
 ---
 
 ## 2. Daily Health Checks (5 minutes)
