@@ -127,11 +127,50 @@ The `.github/workflows/deploy-azure.yml` workflow:
 
 2. **Deploys:**
 
-  Builds Docker images with caching, pushes to Azure Container Registry, updates Container Apps, and verifies smoke checks.
+   Builds Docker images with caching, pushes to Azure Container Registry, updates Container Apps, and verifies smoke checks.
 
-  `GET /api/health` returns `200`.
+   `GET /api/health` returns `200`.
 
-  `GET /api/auth/me` without auth returns `401`.
+   `GET /api/auth/me` without auth returns `401`.
+
+## Post-Deploy Verification (Day 2)
+
+Run these checks after any production deploy:
+
+```bash
+BACKEND_FQDN=$(az containerapp show \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod-container \
+  --query properties.configuration.ingress.fqdn -o tsv)
+
+FRONTEND_FQDN=$(az containerapp show \
+  --name greenchainz-frontend \
+  --resource-group rg-greenchainz-prod-container \
+  --query properties.configuration.ingress.fqdn -o tsv)
+
+# Backend public health must be 200
+curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/health"
+
+# Protected route must reject anonymous access with 401
+curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/auth/me"
+
+# Frontend root must be reachable
+curl -s -o /dev/null -w "%{http_code}" "https://${FRONTEND_FQDN}/"
+
+# Backend runtime origin must point to production domain
+az containerapp show \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod-container \
+  --query "properties.template.containers[0].env[?name=='FRONTEND_URL'].value | [0]" \
+  -o tsv
+```
+
+Expected values:
+
+- `https://${BACKEND_FQDN}/api/health` => `200`
+- `https://${BACKEND_FQDN}/api/auth/me` => `401`
+- `https://${FRONTEND_FQDN}/` => `200`
+- `FRONTEND_URL` => `https://greenchainz.com`
 
 ## Deployment Commands
 
