@@ -320,7 +320,7 @@ export default function SupplierOnboarding() {
                         Company Information
                       </CardTitle>
                       <CardDescription>
-                        Tell architects about your company.
+                        Tell architects about your company. Fields marked * are required to appear in marketplace search.
                       </CardDescription>
                     </div>
                   </div>
@@ -447,8 +447,7 @@ export default function SupplierOnboarding() {
                         Material Categories
                       </CardTitle>
                       <CardDescription>
-                        Which sustainable materials do you supply? Select all
-                        that apply.
+                        Which sustainable materials do you supply? Select at least one category — required for your profile to appear in search results.
                       </CardDescription>
                     </div>
                   </div>
@@ -479,8 +478,7 @@ export default function SupplierOnboarding() {
                     <div>
                       <CardTitle className="text-lg">Certifications</CardTitle>
                       <CardDescription>
-                        Select sustainability certifications your products hold.
-                        These help architects find and trust your materials.
+                        Select sustainability certifications your products hold. These help architects find and trust your materials. If you have EPDs in EC3 or EPD International, you'll be able to link them to individual materials later.
                       </CardDescription>
                     </div>
                   </div>
@@ -491,7 +489,7 @@ export default function SupplierOnboarding() {
                     value={certifications}
                     onChange={(v) => setValue("certifications", v)}
                   />
-                  <p className="text-xs text-muted-foreground mt-3">
+                  <p className="text-sm font-medium text-muted-foreground mt-3">
                     Certifications are optional — you can add them later.
                   </p>
                 </CardContent>

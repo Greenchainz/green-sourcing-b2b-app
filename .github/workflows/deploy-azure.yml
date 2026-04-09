@@ -122,11 +122,7 @@ jobs:
         with:
           keyvault: ${{ env.KEY_VAULT }}
           secrets: >-
-            azure-maps-key,
-            sentry-dsn,
-            sentry-auth-token,
-            sentry-org,
-            sentry-project
+            azure-maps-key
         id: kv
 
       - name: Log in to ACR (token-based — no username/password)
@@ -153,10 +149,6 @@ jobs:
             NEXT_PUBLIC_BACKEND_URL=
             VITE_BACKEND_URL=
             VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
-            VITE_SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}
-            SENTRY_AUTH_TOKEN=${{ steps.kv.outputs.sentry-auth-token }}
-            SENTRY_ORG=${{ steps.kv.outputs.sentry-org }}
-            SENTRY_PROJECT=${{ steps.kv.outputs.sentry-project }}
             VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
             VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 
@@ -171,11 +163,7 @@ jobs:
         with:
           keyvault: ${{ env.KEY_VAULT }}
           secrets: >-
-            azure-maps-key,
-            sentry-dsn,
-            sentry-auth-token,
-            sentry-org,
-            sentry-project
+            azure-maps-key
         id: kv
 
       - name: Log in to ACR (token-based — no username/password)
@@ -202,10 +190,6 @@ jobs:
             NEXT_PUBLIC_BACKEND_URL=
             VITE_BACKEND_URL=
             VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
-            VITE_SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}
-            SENTRY_AUTH_TOKEN=${{ steps.kv.outputs.sentry-auth-token }}
-            SENTRY_ORG=${{ steps.kv.outputs.sentry-org }}
-            SENTRY_PROJECT=${{ steps.kv.outputs.sentry-project }}
             VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
             VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 
@@ -227,10 +211,6 @@ jobs:
             NEXT_PUBLIC_BACKEND_URL=
             VITE_BACKEND_URL=
             VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
-            VITE_SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}
-            SENTRY_AUTH_TOKEN=${{ steps.kv.outputs.sentry-auth-token }}
-            SENTRY_ORG=${{ steps.kv.outputs.sentry-org }}
-            SENTRY_PROJECT=${{ steps.kv.outputs.sentry-project }}
             VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
             VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 
@@ -338,23 +318,13 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Pull Sentry DSN from Key Vault
-        uses: azure/get-keyvault-secrets@v1
-        with:
-          keyvault: ${{ env.KEY_VAULT }}
-          secrets: sentry-dsn
-        id: kv
-
       - name: Deploy backend
         run: |
           az containerapp update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars \
-              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
-              "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
-              "SENTRY_RELEASE=${{ github.sha }}"
+            --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}"
 
       - name: Deploy frontend
         run: |
@@ -362,17 +332,7 @@ jobs:
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars \
-              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
-              "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
-              "SENTRY_RELEASE=${{ github.sha }}"
-            --name ${{ env.FRONTEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars \
-              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
-              "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}" \
-              "SENTRY_RELEASE=${{ github.sha }}"
+            --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}"
 
       - name: Azure logout
       - name: Azure logout

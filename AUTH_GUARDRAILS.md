@@ -5,6 +5,8 @@
 > identity provider configuration must update this file **and**
 > `AuthMethod-Route-HowItWorks.csv`.
 
+> **Status (April 2026):** Centralized JWT model is canonical. Easy Auth and Next.js edge middleware references are deprecated and being removed.
+
 ---
 
 ## Centralized Auth Model
@@ -95,3 +97,4 @@ After review, update **both** this file and `AuthMethod-Route-HowItWorks.csv`.
 | Date | Author | Change Summary | Reviewed By |
 |------|--------|---------------|-------------|
 | 2026-03-24 | @copilot | Initial creation; added auth checks to unprotected admin and RFQ PDF routes | architecture-review-required |
+| 2026-04-06 | operations | Confirmed centralized JWT as canonical; deprecated Easy Auth and middleware.ts references | architecture-review-complete |

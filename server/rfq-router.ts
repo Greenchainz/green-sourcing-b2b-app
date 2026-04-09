@@ -7,18 +7,14 @@ import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers, users } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { enrichRfqWithAiAnalysis } from "./ai-agent-service";
+import { getMarketplaceAccessToken } from "./marketplace-auth";
 
 /**
  * Microsoft Commercial Marketplace — SaaS Fulfillment API v2
  * https://learn.microsoft.com/en-us/azure/marketplace/partner-center-portal/pc-saas-fulfillment-api-v2
  *
- * TODO (post-ISV activation):
- *   1. Exchange purchaseToken for subscriptionId via POST /saas/subscriptions/resolve
- *   2. Activate subscription via POST /saas/subscriptions/{subscriptionId}/activate
- *   3. Store subscriptionId on the user record for entitlement checks
- *
- * Until activation, microsoftOrderId is optional — platform is transactable
- * through the Microsoft ISV program and billing is handled by Microsoft.
+ * Validates a Microsoft subscription ID against the live Fulfillment API.
+ * Requires AZURE_AD_CLIENT_ID + AZURE_AD_CLIENT_SECRET + AZURE_AD_TENANT_ID in env.
  */
 async function verifyMicrosoftOrder(microsoftOrderId?: string): Promise<{
   verified: boolean;
@@ -26,19 +22,53 @@ async function verifyMicrosoftOrder(microsoftOrderId?: string): Promise<{
   amount: number;
 }> {
   if (!microsoftOrderId) {
-    // Dev / pre-activation bypass — Microsoft billing not yet live
-    return { verified: true, orderId: "msft_dev_" + Date.now(), amount: 25 };
+    // No order ID supplied — allow free-tier / dev flows through
+    return { verified: true, orderId: "msft_dev_" + Date.now(), amount: 0 };
   }
 
-  // TODO: call Microsoft SaaS Fulfillment API to validate the order
-  // const endpoint = `https://marketplaceapi.microsoft.com/api/saas/subscriptions/${microsoftOrderId}?api-version=2018-08-31`;
-  // const token = await getMicrosoftMarketplaceToken(); // Azure Entra ID client-credentials
-  // const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-  // if (!res.ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Microsoft order verification failed" });
-  // const subscription = await res.json();
-  // return { verified: true, orderId: subscription.id, amount: 25 };
+  const endpoint = `https://marketplaceapi.microsoft.com/api/saas/subscriptions/${microsoftOrderId}?api-version=2018-08-31`;
 
-  return { verified: true, orderId: microsoftOrderId, amount: 25 };
+  let token: string;
+  try {
+    token = await getMarketplaceAccessToken();
+  } catch (err) {
+    console.error("[rfq] Failed to obtain Marketplace access token:", err);
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Could not reach Microsoft Marketplace — try again shortly",
+    });
+  }
+
+  const res = await fetch(endpoint, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[rfq] Marketplace order verification failed (${res.status}):`, body);
+    throw new TRPCError({
+      code: "PAYMENT_REQUIRED",
+      message: "Microsoft Marketplace order verification failed — subscription may be inactive or cancelled",
+    });
+  }
+
+  const subscription = await res.json() as {
+    id: string;
+    saasSubscriptionStatus: string;
+    planId: string;
+    quantity?: number;
+  };
+
+  // Only allow orders with an active subscription
+  if (subscription.saasSubscriptionStatus !== "Subscribed") {
+    throw new TRPCError({
+      code: "PAYMENT_REQUIRED",
+      message: `Subscription is not active (status: ${subscription.saasSubscriptionStatus})`,
+    });
+  }
+
+  console.log(`[rfq] Marketplace order verified: ${subscription.id} (${subscription.planId})`);
+  return { verified: true, orderId: subscription.id, amount: 25 };
 }
 
 /**

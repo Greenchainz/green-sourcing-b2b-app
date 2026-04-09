@@ -1,3 +1,6 @@
+// DEAD CODE — This was a Next.js edge middleware from a prior architecture.
+// The app now uses Express + Vite. Do not delete without confirming no deployment step references it.
+// See AUTH_GUARDRAILS.md for the canonical auth model.
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 // DO NOT import auth or anything that imports lib/secrets.ts here

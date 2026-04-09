@@ -1,6 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { sentryVitePlugin } from "@sentry/vite-plugin";
 import path from "node:path";
 import { defineConfig } from "vite";
 
@@ -8,12 +7,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    sentryVitePlugin({
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      disable: !process.env.SENTRY_AUTH_TOKEN,
-    }),
   ],
   resolve: {
     alias: {
@@ -28,7 +21,6 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    sourcemap: "hidden",
   },
   server: {
     host: true,

@@ -67,6 +67,30 @@ app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), requi
 }
 ```
 
+**Request 4: LOAD-TEST-SCRIPTS**
+```json
+{
+  "scripts": {
+    "lt:seed":   "tsx tests/load/seed-test-users.ts",
+    "lt:smoke":  "k6 run tests/load/smoke.js",
+    "lt:load":   "k6 run tests/load/load.js",
+    "lt:stress": "k6 run tests/load/stress.js"
+  }
+}
+```
+
+**Request 3: REMOVE-SENTRY**
+```json
+{
+  "agent": "REMOVE-SENTRY",
+  "file": "package.json",
+  "change": "Remove all @sentry/* packages — Sentry has been fully removed from the codebase. instrument.ts files gutted, imports removed from main.tsx and server/_core/index.ts, sentryVitePlugin removed from vite.config.ts, all SENTRY_* env vars removed from deploy-azure.yml. Four packages to remove from dependencies:",
+  "code": "// Remove all four lines from \"dependencies\":\n\"@sentry/nextjs\": \"^10.46.0\",\n\"@sentry/node\": \"^10.47.0\",\n\"@sentry/react\": \"^10.46.0\",\n\"@sentry/vite-plugin\": \"^5.1.1\"",
+  "position": "remove: all four @sentry/* entries from dependencies",
+  "priority": "required"
+}
+```
+
 ---
 
 ### app/globals.css
