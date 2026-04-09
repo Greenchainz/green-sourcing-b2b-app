@@ -205,6 +205,21 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Pull build secrets from Key Vault
+        id: kv
+        run: |
+          get_secret() {
+            local name="$1"
+            local value
+            value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "$name" --query value -o tsv 2>/dev/null) || value=""
+            echo "::add-mask::$value"
+            echo "${name}=${value}" >> $GITHUB_OUTPUT
+          }
+          get_secret sentry-dsn
+          get_secret sentry-auth-token
+          get_secret sentry-org
+          get_secret sentry-project
+
       - name: Deploy backend
         run: |
           ENV_VARS="DEPLOY_TIMESTAMP=${{ github.run_id }}"
