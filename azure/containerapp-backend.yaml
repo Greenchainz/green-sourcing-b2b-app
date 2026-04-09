@@ -104,7 +104,7 @@ properties:
           # Frontend URL (for CORS)
           # ─────────────────────────────────────────────────────────────
           - name: FRONTEND_URL
-            value: https://greenchainz-frontend.azurecontainerapps.io
+            value: https://greenchainz.com
           
           # ─────────────────────────────────────────────────────────────
           # Database Configuration
