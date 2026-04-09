@@ -78,7 +78,7 @@ properties:
           - name: AZURE_POSTGRES_AAD
             value: "true"
           - name: FRONTEND_URL
-            value: https://greenchainz-frontend.azurecontainerapps.io
+            value: https://greenchainz.com
           - name: DATABASE_URL
             secretRef: database-url
           - name: JWT_SECRET
