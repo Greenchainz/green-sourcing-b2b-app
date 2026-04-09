@@ -16,6 +16,7 @@ import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 import { uploadRouter } from "../upload-route";
 import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { specSheetRouter } from "../spec-sheet-router";
+import { canAccessRfqPdf, requireAdminUser } from "./route-auth-guards";
 import { sdk } from "./sdk";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
@@ -50,26 +51,6 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
 
 const adminRateLimit = createRateLimiter(20, 60_000);   // 20 req/min per IP
 const rfqPdfRateLimit = createRateLimiter(30, 60_000);  // 30 req/min per IP
-
-// ── Shared admin auth helper ───────────────────────────────────────────────────
-// Authenticates the session and enforces admin role in one call.
-// Sends 401/403 and returns null if checks fail; returns the user otherwise.
-// Use this in all admin REST handlers instead of inlining the role check.
-async function getAdminUser(
-  req: express.Request,
-  res: express.Response
-): Promise<{ id: number; role: string;[key: string]: unknown } | null> {
-  const user = await sdk.authenticateRequest(req).catch(() => null);
-  if (!user) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  if (user.role !== "admin") {
-    res.status(403).json({ error: "Forbidden" });
-    return null;
-  }
-  return user as { id: number; role: string;[key: string]: unknown };
-}
 
 // Load .env.local in development (overrides .env values)
 if (process.env.NODE_ENV !== "production") {
@@ -239,7 +220,7 @@ async function startServer() {
   // Requires: authenticated user with admin role
   app.post("/api/admin/trigger-outreach", adminRateLimit, async (req, res) => {
     try {
-      const user = await getAdminUser(req, res);
+      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
       if (!user) return;
       const { runScraperOutreachPipeline } = await import("../scraper-outreach-pipeline");
       const result = await runScraperOutreachPipeline();
@@ -255,7 +236,7 @@ async function startServer() {
   // Requires: authenticated user with admin role
   app.post("/api/admin/seed-materials", adminRateLimit, async (req, res) => {
     try {
-      const user = await getAdminUser(req, res);
+      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
       if (!user) return;
       const { seedMaterialsFromEC3 } = await import("../seed-materials");
       const categories = req.query.categories
@@ -275,7 +256,7 @@ async function startServer() {
   // Requires: Sustainability Data API enabled in APS portal
   app.post("/api/admin/seed-materials-autodesk", adminRateLimit, async (req, res) => {
     try {
-      const user = await getAdminUser(req, res);
+      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
       if (!user) return;
       const { fetchSDAMaterialsForSeed } = await import("../autodesk-sda-service");
       const results = await fetchSDAMaterialsForSeed();
@@ -301,7 +282,7 @@ async function startServer() {
     },
     async (req: any, res: any) => {
       try {
-        const user = await getAdminUser(req, res);
+        const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
         if (!user) return;
 
         if (!req.file) {
@@ -339,7 +320,7 @@ async function startServer() {
   // Requires: authenticated user with admin role
   app.post("/api/admin/run-supplier-scraper", adminRateLimit, async (req, res) => {
     try {
-      const user = await getAdminUser(req, res);
+      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
       if (!user) return;
       const { runSupplierScraper } = await import("../../lib/scrapers/supplier-scraper");
       const result = await runSupplierScraper();
@@ -354,7 +335,7 @@ async function startServer() {
   // Requires: authenticated user with admin role
   app.post("/api/admin/run-txdot-scraper", adminRateLimit, async (req, res) => {
     try {
-      const user = await getAdminUser(req, res);
+      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
       if (!user) return;
       const { scrapeTxdotPricingData } = await import("../services/txdotScraper");
       const { storePricingData, updateAllMaterialAveragePricing } = await import("../services/pricingDataService");
@@ -402,7 +383,7 @@ async function startServer() {
       if (isNaN(rfqId)) return res.status(400).json({ error: "Invalid RFQ ID" });
       const rfq = await getRfqWithBids(rfqId);
       if (!rfq) return res.status(404).json({ error: "RFQ not found" });
-      if (rfq.rfq.userId !== user.id && user.role !== "admin") {
+      if (!canAccessRfqPdf(user, rfq.rfq.userId)) {
         return res.status(403).json({ error: "Forbidden" });
       }
       const pdfBuffer = await generateRfqSummaryPdf({
@@ -441,7 +422,7 @@ async function startServer() {
       if (isNaN(rfqId)) return res.status(400).json({ error: "Invalid RFQ ID" });
       const rfq = await getRfqWithBids(rfqId);
       if (!rfq) return res.status(404).json({ error: "RFQ not found" });
-      if (rfq.rfq.userId !== user.id && user.role !== "admin") {
+      if (!canAccessRfqPdf(user, rfq.rfq.userId)) {
         return res.status(403).json({ error: "Forbidden" });
       }
       const pdfBuffer = await generateBidComparisonPdf({
