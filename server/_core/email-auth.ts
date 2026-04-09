@@ -26,6 +26,35 @@ const scryptAsync = promisify(scrypt);
 const SALT_BYTES = 16;
 const KEY_LEN = 64;
 
+type RateLimitEntry = { count: number; resetAt: number };
+const signupRateLimit = new Map<string, RateLimitEntry>();
+const loginRateLimit = new Map<string, RateLimitEntry>();
+
+function getRequestIp(req: Request): string {
+  return String(req.ip ?? req.socket.remoteAddress ?? "unknown");
+}
+
+function isRateLimited(
+  bucket: Map<string, RateLimitEntry>,
+  key: string,
+  maxRequests: number,
+  windowMs: number
+): { limited: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const entry = bucket.get(key);
+  if (!entry || now >= entry.resetAt) {
+    bucket.set(key, { count: 1, resetAt: now + windowMs });
+    return { limited: false, retryAfterSeconds: 0 };
+  }
+
+  entry.count += 1;
+  if (entry.count > maxRequests) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+    return { limited: true, retryAfterSeconds };
+  }
+  return { limited: false, retryAfterSeconds: 0 };
+}
+
 // ── Lazy pg pool (uses same DATABASE_URL as the rest of the app) ─────────────
 
 let _pool: Pool | null = null;
@@ -37,7 +66,7 @@ function getPool(): Pool | null {
       connectionString: process.env.DATABASE_URL,
       ssl:
         process.env.DATABASE_URL.includes("azure") ||
-        process.env.DATABASE_URL.includes("postgres.database.azure.com")
+          process.env.DATABASE_URL.includes("postgres.database.azure.com")
           ? { rejectUnauthorized: false }
           : false,
     });
@@ -114,6 +143,12 @@ export function registerEmailAuthRoutes(app: Express): void {
 
   // ── POST /api/auth/email/signup ──────────────────────────────────────────
   app.post("/api/auth/email/signup", async (req: Request, res: Response) => {
+    const signupLimit = isRateLimited(signupRateLimit, getRequestIp(req), 5, 60_000);
+    if (signupLimit.limited) {
+      res.setHeader("Retry-After", String(signupLimit.retryAfterSeconds));
+      return void res.status(429).json({ error: "Too many signup attempts. Please try again shortly." });
+    }
+
     const { email, password, name, role } = req.body ?? {};
 
     if (!email || !password) {
@@ -185,6 +220,12 @@ export function registerEmailAuthRoutes(app: Express): void {
 
   // ── POST /api/auth/email/login ───────────────────────────────────────────
   app.post("/api/auth/email/login", async (req: Request, res: Response) => {
+    const loginLimit = isRateLimited(loginRateLimit, getRequestIp(req), 10, 60_000);
+    if (loginLimit.limited) {
+      res.setHeader("Retry-After", String(loginLimit.retryAfterSeconds));
+      return void res.status(429).json({ error: "Too many login attempts. Please try again shortly." });
+    }
+
     const { email, password } = req.body ?? {};
 
     if (!email || !password) {
