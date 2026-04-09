@@ -4,17 +4,15 @@ Complete guide for deploying GreenChainz to Azure Container Apps.
 
 ## Required Secrets
 
-### GitHub Secrets (for CI/CD)
+### GitHub Variables (for CI/CD)
 
-Configure these in your repository under **Settings → Secrets and variables → Actions**:
+Configure these in your repository under **Settings → Secrets and variables → Actions → Variables**:
 
-| Secret Name | Description | How to Obtain |
+| Variable Name | Description | How to Obtain |
 |-------------|-------------|---------------|
-| `AZURE_CREDENTIALS` | Azure Service Principal JSON | `az ad sp create-for-rbac --name "greenchainz-deploy" --role contributor --scopes /subscriptions/{subscription-id} --sdk-auth` |
-| `ACR_USERNAME` | Azure Container Registry username | Azure Portal → Container Registry → Access keys |
-| `ACR_PASSWORD` | Azure Container Registry password | Azure Portal → Container Registry → Access keys |
-| `NEXT_PUBLIC_AZURE_TENANT` | Azure AD tenant name | e.g., `greenchainz2025.onmicrosoft.com` |
-| `NEXT_PUBLIC_AZURE_CLIENT_ID` | Azure AD app client ID | Azure Portal → App registrations → Your app → Application (client) ID |
+| `AZURE_CLIENT_ID` | OIDC app registration client ID for GitHub Actions | Azure AD App Registration |
+| `AZURE_TENANT_ID` | Azure tenant ID | Azure Portal / `az account show` |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID | Azure Portal / `az account show` |
 
 ### Key Vault Secrets (for runtime)
 
@@ -33,7 +31,7 @@ Configure these in **Greenchainz-vault-2026** Key Vault:
 |----------|------|----------|----------------|
 | acrgreenchainzprod916 | Container Registry | East US | rg-greenchainz-prod-container |
 | cae-greenchainz-env | Container Apps Environment | East US | rg-greenchainz-prod-container |
-| greenchainz-container | Container App (Backend) | East US | rg-greenchainz-prod-container |
+| greenchainz-backend | Container App (Backend) | East US | rg-greenchainz-prod-container |
 | greenchainz-frontend | Container App (Frontend) | East US | rg-greenchainz-prod-container |
 | greenchainz | Redis Cache | East US 2 | greenchainz-production |
 | Greenchainz-vault-2026 | Key Vault | East US | greenchainz-production |
@@ -69,22 +67,15 @@ chmod +x azure/grant-keyvault-access.sh
 ./azure/grant-keyvault-access.sh
 ```
 
-### 3. Configure GitHub Secrets
+### 3. Configure GitHub Variables
 
 ```bash
-# Create Service Principal for GitHub Actions
-az ad sp create-for-rbac \
-  --name "greenchainz-deploy" \
-  --role contributor \
-  --scopes /subscriptions/$(az account show --query id -o tsv) \
-  --sdk-auth
-
-# Copy the JSON output to GitHub Secret: AZURE_CREDENTIALS
-
-# Get ACR credentials
-az acr credential show --name acrgreenchainzprod916
-
-# Copy username and password to GitHub Secrets: ACR_USERNAME, ACR_PASSWORD
+# Ensure this OIDC app is configured for GitHub Actions and has access to
+# your target subscription/resource group.
+# Then set the following repository variables:
+#   AZURE_CLIENT_ID
+#   AZURE_TENANT_ID
+#   AZURE_SUBSCRIPTION_ID
 ```
 
 ### 4. Deploy
@@ -126,21 +117,19 @@ git push origin main
 
 ## CI/CD Pipeline
 
-The `.github/workflows/azure-deploy.yml` workflow:
+The `.github/workflows/deploy-azure.yml` workflow:
 
 1. **Triggers on:**
    - Push to `main` branch (with path filters)
    - Manual workflow dispatch
 
-2. **Detects changes:**
-   - Backend changes: `backend/**`, `database-schemas/**`
-   - Frontend changes: `app/**`, `lib/**`, `public/**`, `Dockerfile`
-
-3. **Deploys:**
+2. **Deploys:**
    - Builds Docker images with caching
    - Pushes to Azure Container Registry
    - Updates Container Apps with new images
-   - Verifies health endpoints
+  - Verifies smoke checks:
+    - `GET /api/health` returns `200`
+    - `GET /api/auth/me` without auth returns `401`
 
 ## Deployment Commands
 
@@ -165,7 +154,10 @@ The `.github/workflows/azure-deploy.yml` workflow:
 
 | App | Endpoint | Purpose |
 |-----|----------|---------|
-| Backend | `/health` | Liveness, readiness, and startup probes |
+| Backend | `/api/health` | Public health check used by CI smoke tests |
+| Backend | `/health` | Container liveness probe |
+| Backend | `/ready` | Container readiness probe |
+| Backend | `/api/auth/me` | Protected route; should return `401` without auth |
 | Frontend | `/` | Liveness, readiness, and startup probes |
 
 ## Scaling
@@ -190,13 +182,13 @@ az containerapp update \
 ```bash
 # Check logs
 az containerapp logs show \
-  --name greenchainz-container \
+  --name greenchainz-backend \
   --resource-group rg-greenchainz-prod-container \
   --follow
 
 # Check revision status
 az containerapp revision list \
-  --name greenchainz-container \
+  --name greenchainz-backend \
   --resource-group rg-greenchainz-prod-container \
   -o table
 ```
@@ -206,7 +198,7 @@ az containerapp revision list \
 ```bash
 # Get Container App managed identity
 PRINCIPAL_ID=$(az containerapp show \
-  --name greenchainz-container \
+  --name greenchainz-backend \
   --resource-group rg-greenchainz-prod-container \
   --query "identity.principalId" -o tsv)
 
