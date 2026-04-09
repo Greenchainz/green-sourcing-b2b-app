@@ -9,7 +9,7 @@ import {
 import { materials, materialSwaps } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-describe("Material Swap Intelligence", () => {
+describe.skipIf(!process.env.DATABASE_URL)("Material Swap Intelligence", () => {
   let testMaterialId: number;
   let candidateMaterialId: number;
 

@@ -1,7 +1,5 @@
 name: Deploy to Azure Container Apps
 
-# Triggers: every push to main + manual dispatch
-# Triggers: every push to main + manual dispatch
 on:
   push:
     branches:
@@ -13,16 +11,6 @@ on:
 #   AZURE_CLIENT_ID       → 479e2a01-70ab-4df9-baa4-560d317c3423
 #   AZURE_TENANT_ID       → ca4f78d4-c753-4893-9cd8-1b309922b4dc
 #   AZURE_SUBSCRIPTION_ID → your Azure subscription ID
-#
-# Azure prerequisites (one-time setup):
-#   1. Federated credential on App Registration 479e2a01:
-#        Azure Portal → App Registrations → 479e2a01
-#        → Certificates & secrets → Federated credentials → Add
-#        Entity: GitHub Actions / Branch: main
-#   2. Key Vault access: az keyvault set-policy --name greenchainz-core-vault
-#        --spn 479e2a01-... --secret-permissions get list
-#   3. ACR push: az role assignment create --assignee 479e2a01-...
-#        --role AcrPush --scope .../registries/acrgreenchainzprod916
 # ─────────────────────────────────────────────────────────────────────────────
 
 env:
@@ -35,33 +23,22 @@ env:
   KEY_VAULT: greenchainz-core-vault
 
 jobs:
-  ci:
-  # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
-  test:
-    name: Typecheck & Tests
   # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
   test:
     name: Typecheck & Tests
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-
-      - name: Install pnpm
-        run: npm install -g pnpm@10.4.1
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: pnpm-${{ runner.os }}-
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -70,31 +47,6 @@ jobs:
         run: pnpm check
 
       - name: Run unit tests
-        run: pnpm test
-
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    needs: ci
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.2
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: TypeScript check
-        run: pnpm check
-
-      - name: Unit tests
         run: pnpm test
 
   # ── Job 2: Build + push both Docker images ────────────────────────────────
@@ -107,9 +59,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
 
-      - name: Log in to Azure (OIDC — no stored credentials)
       - name: Log in to Azure (OIDC — no stored credentials)
         uses: azure/login@v2
         with:
@@ -124,6 +74,19 @@ jobs:
           secrets: >-
             azure-maps-key
         id: kv
+        run: |
+          get_secret() {
+            local name="$1"
+            local value
+            value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "$name" --query value -o tsv 2>/dev/null) || value=""
+            echo "::add-mask::$value"
+            echo "${name}=${value}" >> $GITHUB_OUTPUT
+          }
+          get_secret azure-maps-key
+          get_secret sentry-dsn
+          get_secret sentry-auth-token
+          get_secret sentry-org
+          get_secret sentry-project
 
       - name: Log in to ACR (token-based — no username/password)
         run: az acr login --name ${{ env.ACR }}
@@ -230,8 +193,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.2
 
       - uses: actions/setup-node@v4
         with:
@@ -249,33 +210,14 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Pull DATABASE_URL from Key Vault
-        uses: azure/get-keyvault-secrets@v1
-        with:
-          keyvault: ${{ env.KEY_VAULT }}
-          secrets: Database-URL
         id: kv
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Log in to Azure (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Pull DATABASE_URL from Key Vault
-        uses: azure/get-keyvault-secrets@v1
-        with:
-          keyvault: ${{ env.KEY_VAULT }}
-          secrets: Database-URL
-        id: kv
+        run: |
+          DB_URL=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "Database-URL" --query value -o tsv 2>/dev/null) || DB_URL=""
+          echo "::add-mask::$DB_URL"
+          echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
 
       - name: Run Drizzle migrations
         env:
-          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
@@ -320,6 +262,10 @@ jobs:
 
       - name: Deploy backend
         run: |
+          ENV_VARS="DEPLOY_TIMESTAMP=${{ github.run_id }}"
+          if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
+            ENV_VARS="$ENV_VARS SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }} SENTRY_RELEASE=${{ github.sha }}"
+          fi
           az containerapp update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -328,6 +274,10 @@ jobs:
 
       - name: Deploy frontend
         run: |
+          ENV_VARS="DEPLOY_TIMESTAMP=${{ github.run_id }}"
+          if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
+            ENV_VARS="$ENV_VARS SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }} SENTRY_RELEASE=${{ github.sha }}"
+          fi
           az containerapp update \
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \

@@ -127,9 +127,12 @@ async function startServer() {
   // so req.protocol reports 'https' correctly and cookies set Secure=true.
   app.set("trust proxy", true);
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Configure body parser; raw body is captured for HMAC webhook verification
+  app.use(express.json({
+    limit: "5mb",
+    verify: (req: any, _res, buf) => { req.rawBody = buf; },
+  }));
+  app.use(express.urlencoded({ limit: "5mb", extended: true }));
   // ── Authentication ─────────────────────────────────────────────────────────
   // Email/password auth — additive path for suppliers without SSO accounts
   registerEmailAuthRoutes(app);
@@ -454,12 +457,14 @@ async function startServer() {
   // ── Messages REST API (for greenchainz-mobile) ──────────────────────────────
   // Mirrors the tRPC messaging router for mobile fetch() consumers.
   // Auth: session cookie via sdk.authenticateRequest (same pattern as PDF endpoints).
-  const MOBILE_ORIGIN = process.env.NEXT_PUBLIC_MOBILE_ORIGIN || "http://localhost:3001";
+  const MOBILE_ORIGIN = process.env.NEXT_PUBLIC_MOBILE_ORIGIN || "";
 
   function setMessagingCorsHeaders(res: express.Response) {
-    res.setHeader("Access-Control-Allow-Origin", MOBILE_ORIGIN);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (MOBILE_ORIGIN) {
+      res.setHeader("Access-Control-Allow-Origin", MOBILE_ORIGIN);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
   }
 
   // Express v5: bare * wildcards must be named — use {*path} for optional catch-all

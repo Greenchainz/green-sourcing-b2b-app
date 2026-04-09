@@ -18,8 +18,6 @@ Create a Key Vault and add the following secrets (do not put these in `Container
 | `JWT_SECRET`             | 32+ char random string for Auth             | `openssl rand -base64 48` |
 | `SESSION_SECRET`         | 32+ char random string for Sessions         | `openssl rand -base64 48` |
 | `COOKIE_SECRET`          | 32+ char random string for Cookies          | `openssl rand -base64 48` |
-| `STRIPE_SECRET_KEY`      | Stripe Live Secret Key (`sk_live_...`)      | Stripe Dashboard          |
-| `STRIPE_WEBHOOK_SECRET`  | Stripe Webhook Signing Secret (`whsec_...`) | Stripe Dashboard          |
 | `AZURE_CLIENT_SECRET`    | Azure AD App Client Secret                  | Azure Portal (App Reg)    |
 | `LINKEDIN_CLIENT_SECRET` | LinkedIn App Client Secret                  | LinkedIn Developers       |
 | `SMTP_PASS`              | Email Provider Password                     | Zoho/SendGrid             |
@@ -50,25 +48,17 @@ Ensure the following are set in your `Container App` configuration:
    - **Model**: GPT-4o
    - **API Version**: `2024-10-21`
 
-### B. Stripe Dashboard
+### B. Microsoft AppSource
 
-1. **Create Products & Prices**:
-   - **Standard Plan**: Create Product "Standard Membership". Create two prices (Monthly, Yearly). Copy Price IDs to env vars:
-     - `STRIPE_PRICE_STANDARD_MONTHLY`
-     - `STRIPE_PRICE_STANDARD_YEARLY`
-   - **Premium Plan**: Create Product "Premium Membership". Create two prices. Copy IDs:
-     - `STRIPE_PRICE_PREMIUM_MONTHLY`
-     - `STRIPE_PRICE_PREMIUM_YEARLY`
-2. **Webhooks**:
-   - Add endpoint: `https://api.your-domain.com/api/webhooks/stripe`
-   - Events:
-     - `payment_intent.succeeded`
-     - `payment_intent.payment_failed`
-     - `customer.subscription.created`
-     - `customer.subscription.updated`
-     - `customer.subscription.deleted`
-     - `invoice.paid`
-     - `invoice.payment_failed`
+Billing is handled via Microsoft AppSource ISV certification. Refer to
+`MICROSOFT_MARKETPLACE_SETUP.md` for subscription webhook setup.
+
+Required environment variables:
+
+- `MICROSOFT_WEBHOOK_SECRET`
+- `AZURE_AD_CLIENT_ID`
+- `AZURE_AD_CLIENT_SECRET`
+- `AZURE_AD_TENANT_ID`
 
 ### C. LinkedIn Developers
 
@@ -122,7 +112,7 @@ Ensure the following are set in your `Container App` configuration:
 - [ ] **Subscriptions**:
   - Go to Supplier Settings.
   - Click "Upgrade".
-  - Verify Stripe Checkout loads with correct branding and prices.
+  - Verify Microsoft AppSource subscription upgrade flow completes successfully.
 - [ ] **AI Gateway**:
   - Attempt to generate an RFQ or use Chat.
   - verify `AI_User_Quotas` record is created.

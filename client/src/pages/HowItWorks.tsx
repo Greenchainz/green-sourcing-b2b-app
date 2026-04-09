@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useLocation } from 'wouter';
 import { Search, FileText, Users, BarChart3, CheckCircle } from 'lucide-react';
+import SEOHead from '@/components/SEOHead';
 
 export function HowItWorks() {
   const [, setLocation] = useLocation();
@@ -65,6 +66,11 @@ export function HowItWorks() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SEOHead
+        title="How GreenChainz Works — Instant EPD Lookup, Automated RFQs, LEED Compliance"
+        description="From account setup to verified sustainable sourcing in under 5 minutes. See how GreenChainz automates EPD lookup, RFQ generation, and LEED v5 compliance tracking."
+        canonicalPath="/how-it-works"
+      />
       {/* Header */}
       <div className="border-b border-border">
         <div className="container py-6">
@@ -75,7 +81,7 @@ export function HowItWorks() {
           >
             ← Back to Home
           </Button>
-          <h1 className="text-4xl font-bold mb-4">How GreenChainz Works</h1>
+          <h1 className="text-4xl font-bold mb-4">How GreenChainz Works: From EPD Lookup to Automated RFQ in Minutes</h1>
           <p className="text-xl text-muted-foreground max-w-3xl">
             From material search to compliance reporting, GreenChainz streamlines sustainable procurement for architects, contractors, and procurement teams.
           </p>

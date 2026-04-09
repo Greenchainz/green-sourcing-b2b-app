@@ -394,8 +394,9 @@ export function calcHealthScore(material: Partial<Material>): number {
   else if (voc === "high") score -= 20; // Active penalty
 
   // Red List — active penalty for containing restricted substances
-  if (material.onRedList === true) score -= 30;
-  else if (material.onRedList === false) score += 15; // Confirmed clean
+  // Use truthy/falsy check (not strict equality) since DB stores 1/0 integers
+  if (material.onRedList) score -= 30;
+  else if (material.onRedList !== undefined && material.onRedList !== null) score += 15; // Confirmed clean
 
   // Take-back program (end-of-life responsibility)
   if (material.hasTakeBackProgram) score += 10;

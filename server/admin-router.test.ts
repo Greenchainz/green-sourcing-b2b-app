@@ -13,7 +13,7 @@ vi.mock('./email-service', () => ({
   sendEmail: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-describe('Admin Router - Supplier Verification', () => {
+describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification', () => {
   let mockDb: any;
   let mockCaller: any;
 

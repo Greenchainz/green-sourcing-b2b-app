@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
+import { HelmetProvider } from "react-helmet-async";
 import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -42,8 +43,8 @@ import RFQListPage from "./pages/rfq/RFQListPage";
 import MaterialCreditScorePage from "./pages/MaterialCreditScorePage";
 import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
-import { ChainBot } from "./components/ChainBot";
 import IntercomWidget from "./components/IntercomWidget";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 // VIDEO CALLING — cut for launch, restore when ACS is implemented
 // import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 // import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
@@ -69,6 +70,8 @@ import { Privacy } from "./pages/Privacy";
 import { HowItWorks } from "./pages/HowItWorks";
 import Support from "./pages/Support";
 import Login from "./pages/Login";
+import Pricing from "./pages/Pricing";
+import Features from "./pages/Features";
 import { Redirect } from "wouter";
 import { useState, useEffect } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
@@ -129,6 +132,8 @@ function Router() {
       <Route path={"/privacy"} component={Privacy} />
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
+      <Route path={"/pricing"} component={Pricing} />
+      <Route path={"/features"} component={Features} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={ArchitectDashboard} />
       <Route path={"404"} component={NotFound} />
@@ -246,12 +251,12 @@ function AppInner() {
         <SupplierOnboardingGuard />
         <ArchitectOnboardingGuard />
         <Router />
-        {/* ChainBot disabled — using Intercom for support. Restore when Azure OpenAI is configured. */}
-        {/* <ChainBot /> */}
+        {/* Intercom support widget */}
         <IntercomWidget />
         {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
         {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
         <ChatWidget />
+        <CookieConsentBanner />
       </TooltipProvider>
     </ChatWidgetProvider>
   );
@@ -260,11 +265,13 @@ function AppInner() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
-        <AuthProvider>
-          <AppInner />
-        </AuthProvider>
-      </ThemeProvider>
+      <HelmetProvider>
+        <ThemeProvider defaultTheme="dark">
+          <AuthProvider>
+            <AppInner />
+          </AuthProvider>
+        </ThemeProvider>
+      </HelmetProvider>
     </ErrorBoundary>
   );
 }

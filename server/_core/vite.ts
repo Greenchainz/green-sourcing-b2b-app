@@ -55,15 +55,43 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
+  // esbuild bundles all server code into dist/index.js (flat, no subdirs).
+  // In prod: import.meta.dirname = /app/dist/ → "public" = /app/dist/public/ (Vite output)
+  // In dev:  import.meta.dirname = <repo>/server/_core/ → need "../../dist/public"
   const distPath =
-    process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
+    process.env.NODE_ENV === "production"
+      ? path.resolve(import.meta.dirname, "public")
+      : path.resolve(import.meta.dirname, "../..", "dist", "public");
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
+
+  // Debug: log what path is being used and whether sitemap exists
+  console.log(`[static] distPath=${distPath}, exists=${fs.existsSync(distPath)}, sitemap=${fs.existsSync(path.join(distPath, 'sitemap.xml'))}`);
+  try {
+    const files = fs.readdirSync(distPath);
+    console.log(`[static] files in distPath: ${files.join(', ')}`);
+  } catch (e: any) {
+    console.log(`[static] cannot read distPath: ${e.message}`);
+  }
+
+  // Diagnostic endpoint — remove after debugging
+  app.get('/__debug-static', (_req, res) => {
+    const sitemapPath = path.join(distPath, 'sitemap.xml');
+    let files: string[] = [];
+    try { files = fs.readdirSync(distPath); } catch {}
+    res.json({
+      distPath,
+      distPathExists: fs.existsSync(distPath),
+      sitemapExists: fs.existsSync(sitemapPath),
+      fileCount: files.length,
+      files: files.slice(0, 30),
+      dirname: import.meta.dirname,
+      nodeEnv: process.env.NODE_ENV,
+    });
+  });
 
   app.use(express.static(distPath));
 

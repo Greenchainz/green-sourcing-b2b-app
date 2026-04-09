@@ -8,7 +8,7 @@ import {
   downgradeToFree,
 } from "./supplier-service";
 
-describe("Supplier Service", () => {
+describe.skipIf(!process.env.DATABASE_URL)("Supplier Service", () => {
   const mockInput = {
     userId: 1,
     companyName: "GreenMaterials Inc",

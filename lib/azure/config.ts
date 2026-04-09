@@ -213,7 +213,7 @@ export async function uploadFileToBlob(
 /**
  * Azure SQL configuration with connection pooling
  */
-const sqlConfig: sql.config = {
+const sqlConfig: any = {
     user: process.env.AZURE_SQL_USER,
     password: process.env.AZURE_SQL_PASSWORD,
     server: process.env.AZURE_SQL_SERVER || '', // e.g., 'greenchainz.database.windows.net'

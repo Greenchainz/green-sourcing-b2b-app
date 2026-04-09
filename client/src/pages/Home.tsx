@@ -3,10 +3,19 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import SEOHead from '../components/SEOHead';
+import StructuredData, { homepageSchema, faqPageSchema } from '../components/StructuredData';
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
+      <SEOHead
+        title="EPD Lookup & Sustainable Materials Procurement Software — GreenChainz"
+        description="GreenChainz is the B2B procurement platform for architects and contractors delivering instant EPD lookups, automated RFQs, and real-time LEED/Buy Clean/Title 24 compliance — inside Excel, Revit, and your browser."
+        canonicalPath="/"
+      />
+      <StructuredData data={homepageSchema} />
+      <StructuredData data={faqPageSchema} />
       <Header />
 
       {/* Hero Section */}
@@ -17,7 +26,11 @@ export default function Home() {
               Stop Waiting Days{' '}
               <span className="text-primary">for Quotes.</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl font-semibold text-muted-foreground max-w-2xl mx-auto">
+              The fastest EPD lookup and sustainable materials procurement platform for architects and GCs.
+            </p>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Data in. Specs out. EC3 tells you the carbon — we fill your RFQ queue and get you compliant before the pre-con meeting.
               Data in. Specs out. Built for street fighters in a market of preppy incumbents.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
@@ -26,12 +39,12 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link href="/get-started">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300">
-                  Weaponize Your Specs →
+                  Get Bulletproof Specs →
                 </Button>
               </Link>
-              <Link href="/about">
+              <Link href="/how-it-works">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                  See the Damage
+                  See How It Works
                 </Button>
               </Link>
             </div>
@@ -59,18 +72,43 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Trust / Social Proof Bar */}
+      <section className="py-10 border-y border-border bg-card/50">
+        <div className="container">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Trusted by</p>
+            <div className="flex flex-wrap items-center justify-center gap-8">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <img src="/brand/autodesk-logo-white.png" alt="Autodesk" className="h-5 w-auto opacity-60" />
+                <span className="text-xs">SDA Partner</span>
+              </div>
+              <div className="text-sm text-muted-foreground font-medium">Building Transparency / EC3</div>
+              <div className="text-sm text-muted-foreground font-medium">EPD International</div>
+              <a
+                href="https://appsource.microsoft.com/en-us/product/web-apps/jeritnorville.greenchainz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-muted-foreground font-medium hover:text-primary transition-colors"
+              >
+                Microsoft Marketplace →
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Value Proposition */}
       <section className="py-20 bg-card">
         <div className="container">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
-              THE COLD CALCULUS
+              THE HONEST CALCULUS
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               Liability-Free. Code-Compliant. No Excuses.
             </h2>
             <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-              Architects don't specify sustainable materials to save trees. They do it to avoid toxic tort litigation, failed audits, and stranded assets. We arm them with the data to win both.
+              You care about both. The planet and the liability exposure. GreenChainz doesn't make you choose. Bulletproof EPD data protects you from toxic tort claims and advances projects worth building. Winning both is the point.
             </p>
           </div>
 
@@ -290,24 +328,96 @@ export default function Home() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide">
-              THE STREET FIGHT STARTS NOW
+              THE SPEC ADVANTAGE
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              The Legacy System Is Losing. Get on the Right Side.
+              The Architect Who Specs Faster Wins the Project.
             </h2>
             <p className="text-lg text-muted-foreground">
-              Procurement teams drowning in manual RFQs and architects waiting days for quotes are bleeding time and projects to competitors who've already switched.
+              Procurement teams drowning in manual RFQs and architects waiting days for quotes are bleeding time and projects to competitors who've already switched. In five minutes, not five days.
             </p>
             <div className="pt-4">
               <Link href="/get-started">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90">
-                  Weaponize Your Specs
+                  Run a Free Compliance Check
                 </Button>
               </Link>
             </div>
             <p className="text-sm text-muted-foreground">
-              No credit card required • Live in 5 minutes • Cancel if you somehow get slower
+              No credit card required • Live in 5 minutes • Cancel anytime
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section — visible content mirrors FAQPage schema for GEO */}
+      <section className="py-16 bg-secondary/20">
+        <div className="container">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              <details className="group border border-border rounded-lg p-4 bg-card" open>
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  What is an EPD and why do architects need it?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  An EPD (Environmental Product Declaration) is a third-party verified document that quantifies the environmental impact of a building material across its entire life cycle. Architects need EPDs because LEED v5 now makes embodied carbon quantification mandatory for all new construction projects. Without verified EPDs, architects face compliance failures, audit risks, and potential liability exposure.
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  How does GreenChainz help architects find verified EPDs?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  GreenChainz provides instant lookup across 50,000+ verified EPDs directly inside Excel, Revit, and your web browser. Search by material type, carbon footprint, certification, and compliance requirement. The browser extension also overlays compliance data on supplier websites in real time, catching greenwashing claims before they become a liability.
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  Does GreenChainz support LEED v5 compliance?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  Yes. GreenChainz tracks LEED v5, LEED v4.1, Buy Clean California Act, Local Law 97 (NYC), and Title 24 (California). The platform automatically flags materials that meet or fail specific regulatory thresholds and generates compliance documentation for LEED submissions.
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  What is the Buy Clean Act and how does GreenChainz help?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  The Buy Clean Act requires contractors to source building materials that meet maximum allowable Global Warming Potential (GWP) limits verified through facility-specific EPDs. GreenChainz automatically filters materials against Buy Clean thresholds, flags non-compliant products, and connects procurement teams with verified suppliers who meet the requirements.
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  Is GreenChainz free to use?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  Yes, GreenChainz is free to start with no credit card required. Setup takes under 5 minutes. The platform includes EPD lookup, material comparison, and basic RFQ functionality at no cost.
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  How is GreenChainz different from EC3 or One Click LCA?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  EC3 and One Click LCA are carbon calculation and LCA tools — they tell you the carbon impact of a material but do not help you buy it. GreenChainz is a procurement execution platform that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, real-time greenwashing detection, and direct supplier connection. EC3 is a noted GreenChainz data partner.
+                </p>
+              </details>
+            </div>
           </div>
         </div>
       </section>

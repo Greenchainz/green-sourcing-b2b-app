@@ -312,3 +312,22 @@ export async function reportUsageToMicrosoft(
     console.error(`[Metering API] Failed to report usage: ${dimension} = ${quantity} for subscription ${msSubscriptionId}`);
   }
 }
+
+/**
+ * Enforce usage limit and track usage in one call.
+ * Throws if the user has exceeded their tier limit for the given dimension.
+ */
+export async function enforceAndTrack(
+  userId: number,
+  dimension: "rfq_submission" | "ai_query" | "swap_analysis" | "ccps_export" | "material_comparison"
+): Promise<void> {
+  const { allowed, current, limit } = await checkBuyerUsageLimit(userId, dimension);
+
+  if (!allowed) {
+    throw new Error(
+      `Usage limit exceeded for ${dimension}: ${current}/${limit} this month. Upgrade your plan for higher limits.`
+    );
+  }
+
+  await trackBuyerUsage(userId, dimension, 1);
+}
