@@ -61,11 +61,15 @@ export async function loadSecrets(): Promise<void> {
         "AUTH-SECRET": "AUTH_SECRET",
         "BETTER-AUTH-URL": "BETTER_AUTH_URL",
         // Microsoft Entra ID (user login + Marketplace API)
+        // "microsoft-client-secret" is the canonical production vault key for the
+        // Azure AD / Entra ID client secret (App Registration client secret).
+        // The old "AZURE-AD-CLIENT-SECRET" key has been removed from the vault;
+        // if you ever need to re-create it, update this entry instead of adding
+        // a second mapping — duplicate keys both writing AZURE_AD_CLIENT_SECRET
+        // caused the first entry to be silently overwritten at runtime.
         "AZURE-AD-CLIENT-ID": "AZURE_AD_CLIENT_ID",
-        "AZURE-AD-CLIENT-SECRET": "AZURE_AD_CLIENT_SECRET",
-        "AZURE-AD-TENANT-ID": "AZURE_AD_TENANT_ID",
-        // microsoft-client-secret is the real Azure AD client secret
         "microsoft-client-secret": "AZURE_AD_CLIENT_SECRET",
+        "AZURE-AD-TENANT-ID": "AZURE_AD_TENANT_ID",
         // LinkedIn OAuth
         "LINKEDIN-CLIENTID": "LINKEDIN_CLIENT_ID",
         "LINKEDIN-SECRET": "LINKEDIN_CLIENT_SECRET",
