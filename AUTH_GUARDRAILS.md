@@ -66,7 +66,7 @@ User JWTs **must never** be forwarded to another service.
 
 ## OAuth Provider Credentials
 
-Secrets are stored in Azure Key Vault (`greenchainz-vault`), not in env vars.
+Secrets are stored in Azure Key Vault (`Greenchainz-vault-2026`), not in env vars.
 
 | Provider | Client ID env var | Key Vault secret |
 |----------|------------------|-----------------|

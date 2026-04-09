@@ -38,7 +38,7 @@ export async function loadSecrets(): Promise<void> {
     return;
   }
 
-  const keyVaultName = process.env.KEY_VAULT_NAME || "greenchainz-vault";
+  const keyVaultName = process.env.KEY_VAULT_NAME || "greenchainz-vault-2026";
   const isProduction = process.env.NODE_ENV === "production";
 
   if (isProduction) {
