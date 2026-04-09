@@ -259,7 +259,16 @@ jobs:
             echo "❌ Could not resolve backend ingress FQDN"
             exit 1
           fi
+
+          # Public endpoint should return 200.
           curl -fsS "https://${BACKEND_FQDN}/api/health" > /dev/null
+
+          # Protected endpoint should reject unauthenticated requests.
+          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/auth/me")
+          if [ "$AUTH_STATUS" != "401" ]; then
+            echo "❌ Expected 401 from protected route /api/auth/me, got ${AUTH_STATUS}"
+            exit 1
+          fi
 
       - name: Azure logout
         run: az logout || true
