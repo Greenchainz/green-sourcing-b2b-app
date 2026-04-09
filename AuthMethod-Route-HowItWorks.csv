@@ -8,6 +8,8 @@ Route,Method,Auth Level,Auth Mechanism,Who Calls It,Notes
 /api/auth/me,GET,Authenticated,JWT cookie (app_session_id),Browser (fetch),Returns current user from session
 /api/auth/logout,GET/POST,Authenticated,JWT cookie (app_session_id),Browser,Clears session cookie and redirects to /
 /api/health,GET,Public,None,Azure healthcheck,Container health probe
+/health,GET,Public,None,Azure healthcheck,Container liveness probe
+/ready,GET,Public,None,Azure healthcheck,Container readiness probe
 /api/marketplace/landing,GET,Public,None,Microsoft Marketplace,Marketplace landing page handler
 /api/marketplace/webhook,POST,Public,None,Microsoft Marketplace,Marketplace subscription webhook (verified by MS signature)
 /api/microsoft/subscription-webhook,POST,Public,None,Microsoft,Subscription lifecycle webhook (verified by MS signature)
