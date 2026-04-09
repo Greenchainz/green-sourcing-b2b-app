@@ -743,6 +743,78 @@ async function startServer() {
       console.error("[Outreach] Daily drip failed:", e);
     }
   }, 24 * 60 * 60 * 1000);
+
+  // ── RFQ expiry/reminder scheduler — every 15 min ─────────────────────────────
+  const { startNotificationScheduler } = await import("../services/notification-scheduler");
+  startNotificationScheduler();
+
+  // ── Streak reminder emails — daily ───────────────────────────────────────────
+  // First run: 90s after boot
+  setTimeout(async () => {
+    try {
+      const { findAtRiskStreaks } = await import("../services/notification-scheduler");
+      const { sendEmail } = await import("../email-service");
+      const payloads = await findAtRiskStreaks();
+      let sent = 0;
+      for (const p of payloads) {
+        const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
+        if (ok) sent++;
+      }
+      if (payloads.length > 0) console.log(`[Notifications] Streak reminders: ${sent}/${payloads.length} sent`);
+    } catch (e) {
+      console.error("[Notifications] Streak reminder run failed:", e);
+    }
+  }, 90_000);
+
+  setInterval(async () => {
+    try {
+      const { findAtRiskStreaks } = await import("../services/notification-scheduler");
+      const { sendEmail } = await import("../email-service");
+      const payloads = await findAtRiskStreaks();
+      let sent = 0;
+      for (const p of payloads) {
+        const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
+        if (ok) sent++;
+      }
+      if (payloads.length > 0) console.log(`[Notifications] Streak reminders: ${sent}/${payloads.length} sent`);
+    } catch (e) {
+      console.error("[Notifications] Streak reminder run failed:", e);
+    }
+  }, 24 * 60 * 60 * 1000);
+
+  // ── New-material alert emails — daily ─────────────────────────────────────────
+  setInterval(async () => {
+    try {
+      const { findNewMaterialMatches } = await import("../services/notification-scheduler");
+      const { sendEmail } = await import("../email-service");
+      const payloads = await findNewMaterialMatches();
+      let sent = 0;
+      for (const p of payloads) {
+        const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
+        if (ok) sent++;
+      }
+      if (payloads.length > 0) console.log(`[Notifications] New-material alerts: ${sent}/${payloads.length} sent`);
+    } catch (e) {
+      console.error("[Notifications] New-material alert run failed:", e);
+    }
+  }, 24 * 60 * 60 * 1000);
+
+  // ── Weekly digest emails — every 7 days ──────────────────────────────────────
+  setInterval(async () => {
+    try {
+      const { generateWeeklyDigests } = await import("../services/notification-scheduler");
+      const { sendEmail } = await import("../email-service");
+      const payloads = await generateWeeklyDigests();
+      let sent = 0;
+      for (const p of payloads) {
+        const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
+        if (ok) sent++;
+      }
+      if (payloads.length > 0) console.log(`[Notifications] Weekly digests: ${sent}/${payloads.length} sent`);
+    } catch (e) {
+      console.error("[Notifications] Weekly digest run failed:", e);
+    }
+  }, 7 * 24 * 60 * 60 * 1000);
 }
 
 startServer().catch(console.error);
