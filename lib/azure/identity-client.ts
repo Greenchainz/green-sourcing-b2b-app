@@ -31,7 +31,7 @@ function initializeClients() {
   credential = getAzureCredential();
 
   // Key Vault client
-  const keyVaultName = process.env.KEY_VAULT_NAME || 'greenchainz-vault';
+  const keyVaultName = process.env.KEY_VAULT_NAME || 'greenchainz-vault-2026';
   const keyVaultUrl = `https://${keyVaultName}.vault.azure.net`;
   secretClient = new SecretClient(keyVaultUrl, credential);
 

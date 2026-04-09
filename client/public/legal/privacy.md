@@ -158,11 +158,11 @@ You have the right to request access to the personal information we hold about y
 
 ### 7.2 Correction and Deletion
 
-You have the right to request correction of inaccurate information or deletion of your personal information, subject to legal retention requirements. You may update your profile information directly through your account settings or by contacting us.
+You have the right to request correction of inaccurate information or deletion of your personal information, subject to legal retention requirements. GreenChainz currently processes correction, deletion, and data portability requests through a verified support workflow (privacy@greenchainz.com) rather than automated self-service export/erasure endpoints.
 
 ### 7.3 Opt-Out of Communications
 
-You may opt out of marketing communications by clicking the "unsubscribe" link in any email or by updating your communication preferences in your account settings. You cannot opt out of transactional communications necessary to provide the Service.
+You may opt out of marketing communications by clicking the "unsubscribe" link in any email or by contacting privacy@greenchainz.com. You cannot opt out of transactional communications necessary to provide the Service.
 
 ### 7.4 Do Not Track
 
