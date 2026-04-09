@@ -270,6 +270,17 @@ jobs:
             exit 1
           fi
 
+      - name: Verify backend runtime frontend origin
+        run: |
+          FRONTEND_URL_VALUE=$(az containerapp show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.template.containers[0].env[?name=='FRONTEND_URL'].value | [0]" -o tsv)
+          if [ "$FRONTEND_URL_VALUE" != "https://greenchainz.com" ]; then
+            echo "❌ Expected backend FRONTEND_URL=https://greenchainz.com, got '${FRONTEND_URL_VALUE}'"
+            exit 1
+          fi
+
       - name: Smoke test deployed frontend
         run: |
           FRONTEND_FQDN=$(az containerapp show \
