@@ -78,7 +78,7 @@ export function serveStatic(app: Express) {
   }
 
   // Diagnostic endpoint — remove after debugging
-  app.get('/api/debug-static', (_req, res) => {
+  app.get('/__debug-static', (_req, res) => {
     const sitemapPath = path.join(distPath, 'sitemap.xml');
     let files: string[] = [];
     try { files = fs.readdirSync(distPath); } catch {}
