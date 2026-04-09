@@ -2,6 +2,8 @@
 
 Complete guide for deploying GreenChainz to Azure Container Apps.
 
+For launch-day execution, use the Release Commander checklist in [docs/ADMIN_RUNBOOK.md](../docs/ADMIN_RUNBOOK.md#11-release-commander-checklist-launch-day).
+
 ## Required Secrets
 
 ### GitHub Variables (for CI/CD)
