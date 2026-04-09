@@ -85,7 +85,7 @@ ENV NODE_ENV=production \
     NODE_PG_FORCE_NATIVE=""
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+    CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 EXPOSE 3000
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 # Start the Express server (dist/index.js is the esbuild output of server/_core/index.ts)
