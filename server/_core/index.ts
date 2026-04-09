@@ -748,69 +748,57 @@ async function startServer() {
   const { startNotificationScheduler } = await import("../services/notification-scheduler");
   startNotificationScheduler();
 
-  // ── Streak reminder emails — daily ───────────────────────────────────────────
-  // First run: 90s after boot
-  setTimeout(async () => {
-    try {
-      const { findAtRiskStreaks } = await import("../services/notification-scheduler");
-      const { sendEmail } = await import("../email-service");
-      const payloads = await findAtRiskStreaks();
-      let sent = 0;
-      for (const p of payloads) {
-        const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
-        if (ok) sent++;
-      }
-      if (payloads.length > 0) console.log(`[Notifications] Streak reminders: ${sent}/${payloads.length} sent`);
-    } catch (e) {
-      console.error("[Notifications] Streak reminder run failed:", e);
+  // ── Notification email helper ─────────────────────────────────────────────────
+  // Shared helper: generate payloads via `generator`, send each via Resend, and log results.
+  async function runNotificationEmails(
+    label: string,
+    generator: () => Promise<Array<{ to: string; subject: string; html: string }>>
+  ): Promise<void> {
+    const { sendEmail } = await import("../email-service");
+    const payloads = await generator();
+    let sent = 0;
+    for (const p of payloads) {
+      const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
+      if (ok) sent++;
     }
-  }, 90_000);
+    if (payloads.length > 0) console.log(`[Notifications] ${label}: ${sent}/${payloads.length} sent`);
+  }
 
-  setInterval(async () => {
+  // ── Streak reminder emails — daily ───────────────────────────────────────────
+  // First run: 90s after boot (avoids duplicate sends right after a restart)
+  async function runStreakReminders(): Promise<void> {
     try {
       const { findAtRiskStreaks } = await import("../services/notification-scheduler");
-      const { sendEmail } = await import("../email-service");
-      const payloads = await findAtRiskStreaks();
-      let sent = 0;
-      for (const p of payloads) {
-        const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
-        if (ok) sent++;
-      }
-      if (payloads.length > 0) console.log(`[Notifications] Streak reminders: ${sent}/${payloads.length} sent`);
+      await runNotificationEmails("Streak reminders", findAtRiskStreaks);
     } catch (e) {
       console.error("[Notifications] Streak reminder run failed:", e);
     }
-  }, 24 * 60 * 60 * 1000);
+  }
+
+  setTimeout(runStreakReminders, 90_000);
+  setInterval(runStreakReminders, 24 * 60 * 60 * 1000);
 
   // ── New-material alert emails — daily ─────────────────────────────────────────
-  setInterval(async () => {
+  // Offset by 2 hours after boot so alerts don't fire alongside the streak reminder
+  async function runNewMaterialAlerts(): Promise<void> {
     try {
       const { findNewMaterialMatches } = await import("../services/notification-scheduler");
-      const { sendEmail } = await import("../email-service");
-      const payloads = await findNewMaterialMatches();
-      let sent = 0;
-      for (const p of payloads) {
-        const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
-        if (ok) sent++;
-      }
-      if (payloads.length > 0) console.log(`[Notifications] New-material alerts: ${sent}/${payloads.length} sent`);
+      await runNotificationEmails("New-material alerts", findNewMaterialMatches);
     } catch (e) {
       console.error("[Notifications] New-material alert run failed:", e);
     }
-  }, 24 * 60 * 60 * 1000);
+  }
+
+  setTimeout(runNewMaterialAlerts, 2 * 60 * 60 * 1000);
+  setInterval(runNewMaterialAlerts, 24 * 60 * 60 * 1000);
 
   // ── Weekly digest emails — every 7 days ──────────────────────────────────────
+  // No immediate run on startup — first send is deferred to the weekly interval
+  // to avoid sending digests on a random day caused by a server restart.
   setInterval(async () => {
     try {
       const { generateWeeklyDigests } = await import("../services/notification-scheduler");
-      const { sendEmail } = await import("../email-service");
-      const payloads = await generateWeeklyDigests();
-      let sent = 0;
-      for (const p of payloads) {
-        const ok = await sendEmail({ to: p.to, subject: p.subject, html: p.html });
-        if (ok) sent++;
-      }
-      if (payloads.length > 0) console.log(`[Notifications] Weekly digests: ${sent}/${payloads.length} sent`);
+      await runNotificationEmails("Weekly digests", generateWeeklyDigests);
     } catch (e) {
       console.error("[Notifications] Weekly digest run failed:", e);
     }
