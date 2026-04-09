@@ -7,7 +7,7 @@
 ## 1. Quick Reference
 
 | System | URL / Endpoint | Access |
-|---|---|---|
+| --- | --- | --- |
 | **Production app** | `https://greenchainz.com` | Public |
 | **Azure Portal** | `https://portal.azure.com` | Azure AD login |
 | **Container App** | `rg-greenchainz-prod-container` / `greenchainz-frontend` | Azure CLI / Portal |
@@ -40,6 +40,7 @@ curl -s --max-time 8 "https://greenchainz.com/api/trpc/system.health" | head -50
 ```
 
 Expected:
+
 - `/` returns `200`.
 - `/api/health` returns `200`.
 - `/api/auth/me` returns `401` without a session cookie.
@@ -68,6 +69,7 @@ az containerapp logs show \
 ```
 
 **Red flags to watch for:**
+
 - `Key Vault secret fetch failed` — a secret expired or RBAC changed
 - `Database connection refused` — PostgreSQL firewall rule expired or VNet issue
 - `ECONNREFUSED` or `ETIMEDOUT` — downstream API (EC3, Autodesk, WebPubSub) is down
@@ -95,7 +97,7 @@ az postgres flexible-server firewall-rule create \
 **Key tables and healthy thresholds:**
 
 | Table | What It Stores | Healthy Range | Alert If |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `materials` | EPD-verified materials from EC3 | 200–500 | < 100 (EC3 sync broken) |
 | `manufacturers` | Linked manufacturer records | 50–200 | < 20 |
 | `scraped_suppliers` | Azure Maps POI supplier data | 5,000–15,000 | < 1,000 (scraper failed) |
@@ -184,7 +186,7 @@ az containerapp update \
 **Secrets requiring rotation (90-day schedule):**
 
 | Secret | Rotation Method | Impact if Expired |
-|---|---|---|
+| --- | --- | --- |
 | `jwt-secret` | `openssl rand -base64 64` | API auth broken |
 | `session-secret` | `openssl rand -base64 64` | Session issuance/validation broken |
 | `cookie-secret` | `openssl rand -base64 64` | Session verification broken |
@@ -297,7 +299,7 @@ curl -s "https://greenchainz.com/api/trpc/ec3.syncMaterials"
 ### 7.1 Check Active Subscriptions
 
 Via tRPC admin endpoint (requires admin auth cookie):
-```
+```text
 GET /api/trpc/admin.getSubscriptionStats
 ```
 
@@ -313,7 +315,7 @@ curl -s -X POST "https://greenchainz.com/api/trpc/subscription.adminUpgrade" \
 ### 7.3 Microsoft Marketplace Webhook
 
 All subscription lifecycle events (purchase, suspend, reinstate, cancel) hit:
-```
+```text
 POST https://greenchainz.com/api/marketplace/webhook
 ```
 
@@ -354,7 +356,7 @@ UPDATE suppliers SET status = 'suspended' WHERE user_id = 'USER_ID';
 ### 9.1 Azure Monitor Alerts (Set These Up)
 
 | Alert | Condition | Action |
-|---|---|---|
+| --- | --- | --- |
 | Container restart | Restart count > 3 in 1 hour | Page on-call |
 | HTTP 5xx rate | > 5% of requests | Page on-call |
 | PostgreSQL CPU | > 80% for 5 min | Scale up |
@@ -403,10 +405,10 @@ ContainerAppConsoleLogs_CL
 
 ### Auth is Broken
 
-1. Check Easy Auth config: `az containerapp auth show ...`
-2. Check `NEXTAUTH-SECRET` in Key Vault is not expired
-3. Check Azure AD App Registration redirect URIs include `https://greenchainz.com/.auth/login/aad/callback`
-4. Check Google OAuth consent screen is not in "Testing" mode (limits to 100 test users)
+1. Check backend auth health: `curl -i https://greenchainz.com/api/auth/me` should return `401` without a cookie.
+2. Verify `jwt-secret`, `session-secret`, and `cookie-secret` exist and are current in `Greenchainz-vault-2026`.
+3. Verify Azure AD App Registration redirect URIs include `https://greenchainz.com/api/auth/callback/microsoft`.
+4. Check Google OAuth consent screen is not in "Testing" mode (limits to 100 test users).
 
 ### Swap Engine Returning Wrong Results
 
