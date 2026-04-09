@@ -12,7 +12,7 @@
 | **Azure Portal** | `https://portal.azure.com` | Azure AD login |
 | **Container App** | `rg-greenchainz-prod-container` / `greenchainz-frontend` | Azure CLI / Portal |
 | **ACR** | `acrgreenchainzprod916.azurecr.io` | Azure CLI |
-| **Key Vault** | `greenchainz-vault` | Managed Identity |
+| **Key Vault** | `Greenchainz-vault-2026` | Managed Identity |
 | **PostgreSQL** | `greenchainz-db-prod.postgres.database.azure.com` | VNet only |
 | **GitHub** | `github.com/Greenchainz/green-sourcing-b2b-app` | GitHub login |
 | **Admin tRPC** | `https://greenchainz.com/api/trpc/admin.*` | Auth-gated (admin role) |
@@ -29,14 +29,21 @@ Run these every morning before your first meeting.
 # App responding
 curl -s -o /dev/null -w "%{http_code}" https://greenchainz.com/
 
-# Auth working
-curl -s -o /dev/null -w "%{http_code}" https://greenchainz.com/.auth/login/aad
+# Backend health endpoint
+curl -s -o /dev/null -w "%{http_code}" https://greenchainz.com/api/health
+
+# Protected route should reject unauthenticated requests
+curl -s -o /dev/null -w "%{http_code}" https://greenchainz.com/api/auth/me
 
 # API responding
 curl -s --max-time 8 "https://greenchainz.com/api/trpc/system.health" | head -50
 ```
 
-Expected: all three return `200` or `302`.
+Expected:
+- `/` returns `200`.
+- `/api/health` returns `200`.
+- `/api/auth/me` returns `401` without a session cookie.
+- `/api/trpc/system.health` returns a valid JSON payload.
 
 ### 2.2 Container Revision
 
@@ -163,8 +170,8 @@ Secrets do not auto-expire but should be rotated every 90 days. Rotation procedu
 ```bash
 # 1. Update the secret value
 az keyvault secret set \
-  --vault-name greenchainz-vault \
-  --name "NEXTAUTH-SECRET" \
+  --vault-name Greenchainz-vault-2026 \
+  --name "jwt-secret" \
   --value "$(openssl rand -base64 64)"
 
 # 2. Force a new container revision to pick up the new value
@@ -178,10 +185,10 @@ az containerapp update \
 
 | Secret | Rotation Method | Impact if Expired |
 |---|---|---|
-| `NEXTAUTH-SECRET` | `openssl rand -base64 64` | All sessions invalidated |
 | `jwt-secret` | `openssl rand -base64 64` | API auth broken |
-| `AZURE-AD-CLIENT-SECRET` | Azure AD App Registration portal | Microsoft login broken |
-| `microsoft-client-secret-easyauth` | Azure AD App Registration portal | Easy Auth broken |
+| `session-secret` | `openssl rand -base64 64` | Session issuance/validation broken |
+| `cookie-secret` | `openssl rand -base64 64` | Session verification broken |
+| `AzureAD-ClientSecret` | Azure AD App Registration portal | Microsoft login broken |
 | `GOOGLE-SECRET` | Google Cloud Console | Google login broken |
 | `LINKEDIN-SECRET` | LinkedIn Developer portal | LinkedIn login broken |
 
@@ -193,10 +200,13 @@ az containerapp update \
 
 Every push to `main` on `github.com/Greenchainz/green-sourcing-b2b-app` triggers:
 
-1. GitHub Actions builds Docker image via `az acr build`
-2. Image tagged with full commit SHA, pushed to `acrgreenchainzprod916.azurecr.io`
-3. `az containerapp update` deploys new revision
-4. Old revision deactivated automatically
+1. GitHub Actions runs type-check and unit tests.
+2. OIDC login to Azure using repository variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`).
+3. Docker Buildx builds frontend and backend images and pushes SHA + latest tags to `acrgreenchainzprod916.azurecr.io`.
+4. Migration job pulls `Database-URL` from Key Vault and fails deployment if DB is unreachable.
+5. Deploy job updates both Container Apps and runs smoke checks:
+  - `GET /api/health` must return `200`
+  - `GET /api/auth/me` without auth must return `401`
 
 **Typical build time:** 3–5 minutes.
 
@@ -208,10 +218,24 @@ If CI/CD fails or you need to roll back:
 # Roll back to a specific commit SHA
 COMMIT_SHA="548ddd9"  # replace with target SHA
 
+# Roll back frontend
 az containerapp update \
   --name greenchainz-frontend \
   --resource-group rg-greenchainz-prod-container \
   --image "acrgreenchainzprod916.azurecr.io/greenchainz-frontend:${COMMIT_SHA}"
+
+# Roll back backend
+az containerapp update \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod-container \
+  --image "acrgreenchainzprod916.azurecr.io/greenchainz-backend:${COMMIT_SHA}"
+
+# Verify rollback
+BACKEND_FQDN=$(az containerapp show \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod-container \
+  --query properties.configuration.ingress.fqdn -o tsv)
+curl -fsS "https://${BACKEND_FQDN}/api/health" > /dev/null
 ```
 
 ### 5.3 Check Available Images
