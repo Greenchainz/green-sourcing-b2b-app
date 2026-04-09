@@ -270,6 +270,24 @@ jobs:
             exit 1
           fi
 
+      - name: Smoke test deployed frontend
+        run: |
+          FRONTEND_FQDN=$(az containerapp show \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          if [ -z "$FRONTEND_FQDN" ]; then
+            echo "❌ Could not resolve frontend ingress FQDN"
+            exit 1
+          fi
+
+          # Frontend root should respond successfully.
+          FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${FRONTEND_FQDN}/")
+          if [ "$FRONTEND_STATUS" != "200" ]; then
+            echo "❌ Expected 200 from frontend root '/', got ${FRONTEND_STATUS}"
+            exit 1
+          fi
+
       - name: Azure logout
         run: az logout || true
         if: always()
