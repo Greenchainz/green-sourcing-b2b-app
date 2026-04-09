@@ -97,10 +97,13 @@ export default function Header() {
           <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Subscription
           </Link>
-          {/* Only show for unauthenticated visitors and architect accounts */}
-          {user?.role !== 'supplier' && (
+          {user?.role === 'supplier' ? (
+            <Link href="/supplier/dashboard" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              My Hub
+            </Link>
+          ) : (
             <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Supplier Sign Up
+              Supplier Hub
             </Link>
           )}
         </nav>
@@ -215,10 +218,15 @@ export default function Header() {
                onClick={() => setMobileMenuOpen(false)}>
               Subscription
             </Link>
-            {user?.role !== 'supplier' && (
+            {user?.role === 'supplier' ? (
+              <Link href="/supplier/dashboard" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                 onClick={() => setMobileMenuOpen(false)}>
+                My Hub
+              </Link>
+            ) : (
               <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                  onClick={() => setMobileMenuOpen(false)}>
-                Supplier Sign Up
+                Supplier Hub
               </Link>
             )}
             {!user && (

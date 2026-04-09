@@ -51,7 +51,9 @@
       "Bash(rm -rf \"$WDIR/client/public/__manus__\")",
       "WebFetch(domain:aps.autodesk.com)",
       "WebFetch(domain:developer.api.autodesk.com)",
-      "Bash(node -e \"console.log\\(require\\(''./node_modules/@azure/functions/package.json''\\).version\\)\")"
+      "Bash(node -e \"console.log\\(require\\(''./node_modules/@azure/functions/package.json''\\).version\\)\")",
+      "mcp__Desktop_Commander__read_file",
+      "mcp__Desktop_Commander__list_directory"
     ]
   }
 }
