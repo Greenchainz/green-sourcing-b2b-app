@@ -50,6 +50,35 @@ Expected:
 - `/api/health` returns `200`
 - `/api/auth/me` returns `401` without a session cookie
 
+- [ ] Frontend smoke check:
+
+```bash
+FRONTEND_FQDN=$(az containerapp show \
+  --name greenchainz-frontend \
+  --resource-group rg-greenchainz-prod-container \
+  --query properties.configuration.ingress.fqdn -o tsv)
+
+curl -s -o /dev/null -w "%{http_code}" "https://${FRONTEND_FQDN}/"
+```
+
+Expected:
+
+- Frontend `/` returns `200`
+
+- [ ] Backend `FRONTEND_URL` runtime value is set to production domain:
+
+```bash
+az containerapp show \
+  --name greenchainz-backend \
+  --resource-group rg-greenchainz-prod-container \
+  --query "properties.template.containers[0].env[?name=='FRONTEND_URL'].value | [0]" \
+  -o tsv
+```
+
+Expected:
+
+- Value equals `https://greenchainz.com`
+
 - [ ] Active revisions are current SHA for both apps:
 
 ```bash
