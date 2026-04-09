@@ -10,7 +10,7 @@ echo "🔐 Granting Key Vault access to Container App..."
 # Variables
 CONTAINER_APP_NAME="greenchainz-container"
 RESOURCE_GROUP="rg-greenchainz-prod-container"
-VAULT_NAME="greenchianz-vault"
+VAULT_NAME="Greenchainz-vault-2026"
 VAULT_RG="greenchainz-production"
 
 # Check if logged in
