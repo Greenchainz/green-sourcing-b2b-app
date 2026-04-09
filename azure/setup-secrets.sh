@@ -16,7 +16,7 @@
 set -e
 
 # Configuration
-VAULT_NAME="greenchianz-vault"
+VAULT_NAME="Greenchainz-vault-2026"
 REDIS_NAME="greenchainz"
 REDIS_RG="greenchainz-production"
 

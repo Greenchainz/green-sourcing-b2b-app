@@ -224,7 +224,7 @@ properties:
           - name: AZURE_USE_MANAGED_IDENTITY
             value: "true"
           - name: AZURE_KEY_VAULT_URL
-            value: https://greenchianz-vault.vault.azure.net/
+            value: https://Greenchainz-vault-2026.vault.azure.net/
           - name: AZURE_STORAGE_ACCOUNT_NAME
             value: revitfiles
           - name: AZURE_STORAGE_CONTAINER_NAME

@@ -58,7 +58,7 @@ const rfqPdfRateLimit = createRateLimiter(30, 60_000);  // 30 req/min per IP
 async function getAdminUser(
   req: express.Request,
   res: express.Response
-): Promise<{ id: number; role: string; [key: string]: unknown } | null> {
+): Promise<{ id: number; role: string;[key: string]: unknown } | null> {
   const user = await sdk.authenticateRequest(req).catch(() => null);
   if (!user) {
     res.status(401).json({ error: "Unauthorized" });
@@ -68,7 +68,7 @@ async function getAdminUser(
     res.status(403).json({ error: "Forbidden" });
     return null;
   }
-  return user as { id: number; role: string; [key: string]: unknown };
+  return user as { id: number; role: string;[key: string]: unknown };
 }
 
 // Load .env.local in development (overrides .env values)
@@ -111,7 +111,7 @@ async function startServer() {
   // immediately rather than serving requests with broken auth/db behaviour.
   if (process.env.NODE_ENV === "production") {
     const required: Record<string, string | undefined> = {
-      JWT_SECRET:   process.env.JWT_SECRET,
+      JWT_SECRET: process.env.JWT_SECRET,
       DATABASE_URL: process.env.DATABASE_URL,
     };
     const missing = Object.entries(required)
@@ -145,6 +145,28 @@ async function startServer() {
     res.redirect("/");
   });
 
+  // Health endpoints used by Docker, Azure probes, and CI smoke checks.
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({ status: "ok", service: "greenchainz-backend", timestamp: new Date().toISOString() });
+  });
+
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
+  app.get("/ready", async (_req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) {
+        return res.status(503).json({ status: "not_ready", reason: "database_unavailable" });
+      }
+      res.status(200).json({ status: "ready" });
+    } catch {
+      res.status(503).json({ status: "not_ready", reason: "startup_dependency_failure" });
+    }
+  });
+
   // ── Intercom JWT for identity verification ──────────────────────────────
   app.get("/api/intercom/token", async (req, res) => {
     try {
@@ -173,7 +195,7 @@ async function startServer() {
       res.status(401).json({ error: "Not authenticated" });
     }
   });
-  
+
   // User: update own role (used during onboarding to select buyer/supplier)
   app.post("/api/user/set-role", async (req, res) => {
     try {
@@ -200,10 +222,10 @@ async function startServer() {
   // Microsoft Marketplace endpoints
   app.get("/api/marketplace/landing", handleLandingPage);
   app.post("/api/marketplace/webhook", handleWebhook);
-  
+
   // Microsoft AppSource subscription webhook
   app.post("/api/microsoft/subscription-webhook", handleMicrosoftWebhook);
-  
+
   // File upload route
   app.use("/api", uploadRouter);
 

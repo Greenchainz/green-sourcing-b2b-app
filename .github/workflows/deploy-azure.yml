@@ -20,7 +20,7 @@ env:
   BACKEND_APP: greenchainz-backend
   FRONTEND_IMAGE: greenchainz-frontend
   BACKEND_IMAGE: greenchainz-backend
-  KEY_VAULT: greenchainz-core-vault
+  KEY_VAULT: Greenchainz-vault-2026
 
 jobs:
   # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
@@ -104,6 +104,7 @@ jobs:
             NEXT_PUBLIC_SITE_URL=https://greenchainz.com
             NEXT_PUBLIC_AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}
             NEXT_PUBLIC_AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}
+            # Same-origin auth model: keep backend URL vars empty in production.
             NEXT_PUBLIC_BACKEND_URL=
             VITE_BACKEND_URL=
             VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
@@ -113,8 +114,8 @@ jobs:
       - name: Build & push backend image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
@@ -165,12 +166,16 @@ jobs:
         env:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
           DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
           DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|; t; s|.*|5432|')
           if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -t 10 > /dev/null 2>&1; then
-            echo "⚠️  Database '$DB_HOST' unreachable from runner (firewall?)"
-            echo "   Add GitHub Actions IPs to Azure PostgreSQL firewall, or run manually."
-            exit 0
+            echo "❌ Database '$DB_HOST' unreachable from runner (firewall?)"
+            echo "   Add GitHub Actions IPs to Azure PostgreSQL firewall before deploy."
+            exit 1
           fi
           pnpm db:migrate
 
@@ -230,7 +235,7 @@ jobs:
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            --set-env-vars $ENV_VARS
 
       - name: Deploy frontend
         run: |
@@ -242,7 +247,19 @@ jobs:
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            --set-env-vars $ENV_VARS
+
+      - name: Smoke test deployed backend
+        run: |
+          BACKEND_FQDN=$(az containerapp show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          if [ -z "$BACKEND_FQDN" ]; then
+            echo "❌ Could not resolve backend ingress FQDN"
+            exit 1
+          fi
+          curl -fsS "https://${BACKEND_FQDN}/api/health" > /dev/null
 
       - name: Azure logout
         run: az logout || true
