@@ -110,3 +110,6 @@ temp/
 .webdev/
 Commercial-Marketplace-SaaS-Accelerator/
 /green-sourcing-b2b-app/
+
+# npm lock file (pnpm is the declared package manager)
+package-lock.json

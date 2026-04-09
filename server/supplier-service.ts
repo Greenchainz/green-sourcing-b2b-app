@@ -59,23 +59,24 @@ export async function registerSupplier(input: SupplierRegistrationInput): Promis
     throw new Error("Supplier profile already exists for this user");
   }
 
-  // Create supplier profile
-  const result = await db.insert(suppliers).values({
-    userId: input.userId,
-    companyName: input.companyName,
-    email: input.email,
-    phone: input.phone,
-    address: input.address,
-    city: input.city,
-    state: input.state,
-    zipCode: input.zipCode,
-    country: input.country,
-    website: input.website,
-    isPremium: 0,
-    verified: 0,
-  });
-
-  const supplierId = (result[0] as any)?.insertId || 1;
+  // Create supplier profile — use .returning() to get the new row's id (PostgreSQL, not MySQL)
+  const [{ id: supplierId }] = await db
+    .insert(suppliers)
+    .values({
+      userId: input.userId,
+      companyName: input.companyName,
+      email: input.email,
+      phone: input.phone,
+      address: input.address,
+      city: input.city,
+      state: input.state,
+      zipCode: input.zipCode,
+      country: input.country,
+      website: input.website,
+      isPremium: false,
+      verified: false,
+    })
+    .returning({ id: suppliers.id });
 
   // Create free subscription by default
   await db.insert(supplierSubscriptions).values({
@@ -106,10 +107,10 @@ export async function registerSupplier(input: SupplierRegistrationInput): Promis
     country: profile[0].country || "",
     website: profile[0].website || undefined,
     logoUrl: profile[0].logoUrl || undefined,
-    isPremium: profile[0].isPremium === 1,
+    isPremium: profile[0].isPremium ?? false,
     premiumExpiresAt: profile[0].premiumExpiresAt || undefined,
     sustainabilityScore: profile[0].sustainabilityScore ? Number(profile[0].sustainabilityScore) : undefined,
-    verified: profile[0].verified === 1,
+    verified: profile[0].verified ?? false,
     createdAt: profile[0].createdAt,
     updatedAt: profile[0].updatedAt,
   };
@@ -143,10 +144,10 @@ export async function getSupplierProfile(userId: number): Promise<SupplierProfil
     country: profile[0].country || "",
     website: profile[0].website || undefined,
     logoUrl: profile[0].logoUrl || undefined,
-    isPremium: profile[0].isPremium === 1,
+    isPremium: profile[0].isPremium ?? false,
     premiumExpiresAt: profile[0].premiumExpiresAt || undefined,
     sustainabilityScore: profile[0].sustainabilityScore ? Number(profile[0].sustainabilityScore) : undefined,
-    verified: profile[0].verified === 1,
+    verified: profile[0].verified ?? false,
     createdAt: profile[0].createdAt,
     updatedAt: profile[0].updatedAt,
   };
@@ -214,10 +215,10 @@ export async function updateSupplierProfile(
     country: updated[0].country || "",
     website: updated[0].website || undefined,
     logoUrl: updated[0].logoUrl || undefined,
-    isPremium: updated[0].isPremium === 1,
+    isPremium: updated[0].isPremium ?? false,
     premiumExpiresAt: updated[0].premiumExpiresAt || undefined,
     sustainabilityScore: updated[0].sustainabilityScore ? Number(updated[0].sustainabilityScore) : undefined,
-    verified: updated[0].verified === 1,
+    verified: updated[0].verified ?? false,
     createdAt: updated[0].createdAt,
     updatedAt: updated[0].updatedAt,
   };
@@ -264,7 +265,7 @@ export async function upgradeToPremium(
   await db
     .update(suppliers)
     .set({
-      isPremium: 1,
+      isPremium: true,
       premiumExpiresAt: renewalDate,
       updatedAt: new Date(),
     })
@@ -312,7 +313,7 @@ export async function downgradeToFree(supplierId: number): Promise<void> {
   await db
     .update(suppliers)
     .set({
-      isPremium: 0,
+      isPremium: false,
       premiumExpiresAt: null,
       updatedAt: new Date(),
     })
