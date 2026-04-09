@@ -94,7 +94,7 @@ git push origin main
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            Azure Container Apps                              │
 │  ┌─────────────────────────────┐   ┌─────────────────────────────────────┐  │
-│  │    greenchainz-frontend     │   │       greenchainz-container         │  │
+│  │    greenchainz-frontend     │   │       greenchainz-backend           │  │
 │  │         (Next.js)           │──▶│       (Node.js + Express)           │  │
 │  │    Port: 3000               │   │       Port: 3001                    │  │
 │  └─────────────────────────────┘   └─────────────────────────────────────┘  │
@@ -147,7 +147,7 @@ The `.github/workflows/deploy-azure.yml` workflow:
 ./azure/deploy.sh status
 
 # View logs
-./azure/deploy.sh logs greenchainz-container
+./azure/deploy.sh logs greenchainz-backend
 ```
 
 ## Health Endpoints
@@ -169,7 +169,7 @@ Container Apps auto-scale based on:
 ```bash
 # Manual scaling
 az containerapp update \
-  --name greenchainz-container \
+  --name greenchainz-backend \
   --resource-group rg-greenchainz-prod-container \
   --min-replicas 2 \
   --max-replicas 20
