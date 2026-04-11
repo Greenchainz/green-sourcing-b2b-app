@@ -21,6 +21,8 @@ env:
   FRONTEND_IMAGE: greenchainz-frontend
   BACKEND_IMAGE: greenchainz-backend
   KEY_VAULT: Greenchainz-vault
+  DB_SERVER_RG: rg-greenchainz
+  DB_SERVER_NAME: greenchainz-db-prod
 
 jobs:
   # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
@@ -162,19 +164,31 @@ jobs:
           echo "::add-mask::$DB_URL"
           echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
 
+      - name: Open PostgreSQL firewall for runner
+        id: firewall
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          if [ -z "$RUNNER_IP" ]; then
+            echo "❌ Could not determine runner IP"
+            exit 1
+          fi
+          echo "Runner IP: $RUNNER_IP"
+          az postgres flexible-server firewall-rule create \
+            --resource-group ${{ env.DB_SERVER_RG }} \
+            --name ${{ env.DB_SERVER_NAME }} \
+            --rule-name "github-actions-${{ github.run_id }}" \
+            --start-ip-address "$RUNNER_IP" \
+            --end-ip-address "$RUNNER_IP"
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          # Allow firewall rule to propagate
+          sleep 8
+
       - name: Run Drizzle migrations
         env:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
-            exit 1
-          fi
-          DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
-          DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|; t; s|.*|5432|')
-          if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -t 10 > /dev/null 2>&1; then
-            echo "❌ Database '$DB_HOST' unreachable from runner (firewall?)"
-            echo "   Add GitHub Actions IPs to Azure PostgreSQL firewall before deploy."
             exit 1
           fi
           pnpm db:migrate
@@ -187,17 +201,23 @@ jobs:
             echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
-          DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/]+).*|\1|')
-          DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|; t; s|.*|5432|')
-          if ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -t 5 > /dev/null 2>&1; then
-            echo "❌ Database '$DB_HOST' unreachable from runner (firewall?)"
-            echo "   Add GitHub Actions IPs to Azure PostgreSQL firewall before deploy."
-            exit 1
-          fi
           echo "🌱 Seeding manufacturer profiles..."
           pnpm tsx scripts/seed-manufacturers.ts
           echo "🌱 Seeding lead time estimates..."
           pnpm tsx scripts/seed-lead-times.ts
+
+      - name: Close PostgreSQL firewall for runner
+        if: always()
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group ${{ env.DB_SERVER_RG }} \
+            --name ${{ env.DB_SERVER_NAME }} \
+            --rule-name "github-actions-${{ github.run_id }}" \
+            --yes || true
+
+      - name: Azure logout
+        run: az logout || true
+        if: always()
 
   # ── Job 4: Deploy both Container Apps ─────────────────────────────────────
   deploy:
