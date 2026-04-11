@@ -14,7 +14,7 @@
     "@azure/storage-queue": "^12.23.0",
     "@azure/keyvault-secrets": "^4.9.0",
     "pg": "^8.13.1",
-    "axios": "^1.7.9",
+    "axios": "^1.15.0",
     "nodemailer": "^8.0.5"
   },
   "devDependencies": {
