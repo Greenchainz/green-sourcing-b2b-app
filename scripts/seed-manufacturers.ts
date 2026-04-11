@@ -8,6 +8,10 @@
 import { config } from "dotenv";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = resolve(__filename, "..");
 
 if (existsSync(".env.local")) {
   config({ path: ".env.local", override: true });
@@ -91,7 +95,6 @@ async function main() {
   console.log(`Parsed ${rows.length} rows from CSV`);
 
   let inserted = 0;
-  let updated = 0;
 
   for (const row of rows) {
     if (!row.company_name) continue;
@@ -113,7 +116,7 @@ async function main() {
       updatedAt: new Date(),
     };
 
-    const result = await db
+    await db
       .insert(manufacturers)
       .values(values)
       .onConflictDoUpdate({
@@ -133,8 +136,6 @@ async function main() {
         },
       });
 
-    // Drizzle doesn't return affected row count reliably for upserts,
-    // so we count all as processed
     inserted++;
   }
 
