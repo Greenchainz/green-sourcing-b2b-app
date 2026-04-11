@@ -7,7 +7,7 @@
 
 | Repo | Status | Signal | Remaining to Launch |
 |---|---|---|---|
-| `green-sourcing-b2b-app` | 🟡 | Active commits; open website-audit issues; deploy workflow was failing due broken lockfile (now fixed in branch) | Merge lockfile fix to `main`; confirm deploy run passes end-to-end |
+| `green-sourcing-b2b-app` | 🟡 | Active commits; open website-audit issues; deploy workflow was failing due to broken lockfile (now fixed in branch) | Merge lockfile fix to `main`; confirm deploy run passes end-to-end |
 | `greenchainz-sda-connector` | 🟡 | Active recently; limited visibility here | Confirm CI green, tag MVP release, verify connector handshake with core app |
 | `greenchainz-intelligence` | 🟡 | Active recently; limited visibility here | Confirm CI green, tag MVP release, verify scoring/recommendation API contracts |
 | `greenchainz-revit-plugin` | 🟡 | Active recently; limited visibility here | Confirm CI green, installer smoke test, auth + API compatibility with core app |
