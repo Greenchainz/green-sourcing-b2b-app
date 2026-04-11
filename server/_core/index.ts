@@ -331,6 +331,34 @@ async function startServer() {
     }
   });
 
+  // Admin: run lead scraper (Bing + Azure Maps → scraped_leads decision makers)
+  app.post("/api/admin/run-lead-scraper", adminRateLimit, async (req, res) => {
+    try {
+      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      if (!user) return;
+      const { runLeadScraper } = await import("../../lib/scrapers/lead-scraper");
+      const result = await runLeadScraper();
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error("[admin] Lead scraper error:", err);
+      res.status(500).json({ error: "Lead scraper failed", detail: String(err) });
+    }
+  });
+
+  // Admin: trigger buyer lead outreach pipeline (scraped_leads → cold email)
+  app.post("/api/admin/trigger-lead-outreach", adminRateLimit, async (req, res) => {
+    try {
+      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      if (!user) return;
+      const { runLeadOutreachPipeline } = await import("../lead-outreach-pipeline");
+      const result = await runLeadOutreachPipeline();
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error("[admin] Lead outreach error:", err);
+      res.status(500).json({ error: "Lead outreach failed", detail: String(err) });
+    }
+  });
+
   // Admin: run TxDOT pricing scraper (TX bid tabulations → pricing_data)
   // Requires: authenticated user with admin role
   app.post("/api/admin/run-txdot-scraper", adminRateLimit, async (req, res) => {
@@ -801,6 +829,59 @@ async function startServer() {
       await runNotificationEmails("Weekly digests", generateWeeklyDigests);
     } catch (e) {
       console.error("[Notifications] Weekly digest run failed:", e);
+    }
+  }, 7 * 24 * 60 * 60 * 1000);
+
+  // ── EPD Sync Scheduler (Autodesk SDA → materials table) — hourly ─────────────
+  // First run: 3min after boot — staggered after EC3 (10s) and FRED (30s)
+  setTimeout(async () => {
+    try {
+      const { startEpdSyncScheduler } = await import("../epd-sync-scheduler");
+      startEpdSyncScheduler(60 * 60 * 1000); // hourly
+    } catch (e) {
+      console.error("[EPD Sync] Failed to start scheduler:", e);
+    }
+  }, 3 * 60 * 1000);
+
+  // ── Supplier Scraper (Azure Maps + EPD International) — weekly ────────────────
+  // First run: 5min after boot
+  setTimeout(async () => {
+    try {
+      const { runSupplierScraper } = await import("../../lib/scrapers/supplier-scraper");
+      console.log("[Supplier Scraper] Running initial scrape...");
+      await runSupplierScraper();
+    } catch (e) {
+      console.error("[Supplier Scraper] Initial scrape failed:", e);
+    }
+  }, 5 * 60 * 1000);
+
+  setInterval(async () => {
+    try {
+      const { runSupplierScraper } = await import("../../lib/scrapers/supplier-scraper");
+      await runSupplierScraper();
+    } catch (e) {
+      console.error("[Supplier Scraper] Weekly scrape failed:", e);
+    }
+  }, 7 * 24 * 60 * 60 * 1000);
+
+  // ── Lead Scraper (architects / GCs / sustainability directors) — weekly ────────
+  // First run: 7min after boot (after supplier scraper at 5min)
+  setTimeout(async () => {
+    try {
+      const { runLeadScraper } = await import("../../lib/scrapers/lead-scraper");
+      console.log("[Lead Scraper] Running initial decision-maker scrape...");
+      await runLeadScraper();
+    } catch (e) {
+      console.error("[Lead Scraper] Initial scrape failed:", e);
+    }
+  }, 7 * 60 * 1000);
+
+  setInterval(async () => {
+    try {
+      const { runLeadScraper } = await import("../../lib/scrapers/lead-scraper");
+      await runLeadScraper();
+    } catch (e) {
+      console.error("[Lead Scraper] Weekly scrape failed:", e);
     }
   }, 7 * 24 * 60 * 60 * 1000);
 }

@@ -1331,6 +1331,37 @@ export const scrapedSuppliers = pgTable("scraped_suppliers", {
 export type ScrapedSupplier = typeof scrapedSuppliers.$inferSelect;
 export type InsertScrapedSupplier = typeof scrapedSuppliers.$inferInsert;
 
+// ─── Scraped Leads (Decision Makers) ─────────────────────────────────────────
+// Architects, GCs, sustainability directors, procurement managers discovered
+// via Bing Search and Azure Maps — buyer-side lead pipeline.
+
+export const scrapedLeads = pgTable("scraped_leads", {
+  id: serial("id").primaryKey(),
+  fullName: varchar("full_name", { length: 255 }),
+  title: varchar("title", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 50 }),
+  company: varchar("company", { length: 255 }).notNull(),
+  website: text("website"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 2 }),
+  // 'architect' | 'general_contractor' | 'sustainability_director' | 'procurement'
+  role: varchar("role", { length: 50 }).notNull(),
+  source: varchar("source", { length: 100 }).notNull(),
+  linkedinUrl: text("linkedin_url"),
+  outreachSentAt: timestamp("outreach_sent_at"),
+  emailStatus: varchar("email_status", { length: 50 }).default("pending"),
+  emailOpens: integer("email_opens").default(0),
+  emailClicks: integer("email_clicks").default(0),
+  emailBouncedAt: timestamp("email_bounced_at"),
+  lastEngagedAt: timestamp("last_engaged_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type ScrapedLead = typeof scrapedLeads.$inferSelect;
+export type InsertScrapedLead = typeof scrapedLeads.$inferInsert;
+
 // ─── RFQ Requests ────────────────────────────────────────────────────────────
 // Simpler direct-assignment model: one architect → one supplier per request.
 // Complements the existing rfqs/rfq_bids wave-matching tables.

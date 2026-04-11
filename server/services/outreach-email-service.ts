@@ -155,6 +155,14 @@ export async function enrollInClaimSequence(contactId: number): Promise<void> {
 // ─── Drip processor — called daily by scheduler ───────────────────────────────
 
 export async function processDueSequenceSteps(): Promise<{ sent: number; errors: number }> {
+  // Also run buyer role drip alongside the supplier claim sequence
+  try {
+    const { processBuyerRoleDrip } = await import("./buyer-drip-sequences");
+    await processBuyerRoleDrip();
+  } catch (e) {
+    console.error("[Outreach] Buyer drip failed:", e);
+  }
+
   const db = await getDb();
   if (!db) return { sent: 0, errors: 0 };
 
