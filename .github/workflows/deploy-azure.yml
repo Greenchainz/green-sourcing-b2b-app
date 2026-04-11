@@ -6,12 +6,12 @@ on:
       - main
   workflow_dispatch:
 
-# ─── GitHub Variables (Settings → Variables → Actions) ──────────────────────
+# ─── GitHub Variables (Settings → Variables → Actions) ──────────────────────────────────
 # Non-sensitive identifiers — NOT secrets:
 #   AZURE_CLIENT_ID       → 479e2a01-70ab-4df9-baa4-560d317c3423
 #   AZURE_TENANT_ID       → ca4f78d4-c753-4893-9cd8-1b309922b4dc
 #   AZURE_SUBSCRIPTION_ID → your Azure subscription ID
-# ─────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
 
 env:
   ACR: acrgreenchainzprod916
@@ -25,7 +25,7 @@ env:
   DB_SERVER_NAME: greenchainz-db-prod
 
 jobs:
-  # ── Job 1: Typecheck + unit tests ─────────────────────────────────────────
+  # ── Job 1: Typecheck + unit tests ───────────────────────────────────────────────
   test:
     name: Typecheck & Tests
     runs-on: ubuntu-latest
@@ -51,7 +51,7 @@ jobs:
       - name: Run unit tests
         run: pnpm test
 
-  # ── Job 2: Build + push both Docker images ────────────────────────────────
+  # ── Job 2: Build + push both Docker images ──────────────────────────────────────────
   build:
     name: Build & Push Images
     runs-on: ubuntu-latest
@@ -129,7 +129,7 @@ jobs:
         run: az logout || true
         if: always()
 
-  # ── Job 3: Migrate + seed ─────────────────────────────────────────────────
+  # ── Job 3: Migrate + seed ──────────────────────────────────────────────────────────────
   migrate:
     name: Migrate & Seed DB
     runs-on: ubuntu-latest
@@ -193,7 +193,7 @@ jobs:
           fi
           pnpm db:migrate
 
-      - name: Run seed scripts (idempotent)
+      - name: Seed manufacturer profiles (skipped if CSV not present)
         env:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
@@ -201,8 +201,22 @@ jobs:
             echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
-          echo "🌱 Seeding manufacturer profiles..."
-          pnpm tsx scripts/seed-manufacturers.ts
+          if [ ! -f "greenchainz-supplier-targets.csv" ]; then
+            echo "⚠️ greenchainz-supplier-targets.csv not found — skipping manufacturer seed."
+            echo "ℹ️  To seed: add the CSV to the repo root or run locally with pnpm tsx scripts/seed-manufacturers.ts"
+          else
+            echo "🌱 Seeding manufacturer profiles..."
+            pnpm tsx scripts/seed-manufacturers.ts
+          fi
+
+      - name: Seed lead time estimates
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
           echo "🌱 Seeding lead time estimates..."
           pnpm tsx scripts/seed-lead-times.ts
 
@@ -219,7 +233,7 @@ jobs:
         run: az logout || true
         if: always()
 
-  # ── Job 4: Deploy both Container Apps ─────────────────────────────────────
+  # ── Job 4: Deploy both Container Apps ───────────────────────────────────────────────
   deploy:
     name: Deploy to Azure
     runs-on: ubuntu-latest
