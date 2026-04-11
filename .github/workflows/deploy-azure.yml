@@ -175,7 +175,7 @@ jobs:
           echo "Runner IP: $RUNNER_IP"
           az postgres flexible-server firewall-rule create \
             --resource-group ${{ env.DB_SERVER_RG }} \
-            --name ${{ env.DB_SERVER_NAME }} \
+            --server-name ${{ env.DB_SERVER_NAME }} \
             --rule-name "github-actions-${{ github.run_id }}" \
             --start-ip-address "$RUNNER_IP" \
             --end-ip-address "$RUNNER_IP"
@@ -225,7 +225,7 @@ jobs:
         run: |
           az postgres flexible-server firewall-rule delete \
             --resource-group ${{ env.DB_SERVER_RG }} \
-            --name ${{ env.DB_SERVER_NAME }} \
+            --server-name ${{ env.DB_SERVER_NAME }} \
             --rule-name "github-actions-${{ github.run_id }}" \
             --yes || true
 
