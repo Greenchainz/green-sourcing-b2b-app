@@ -18,6 +18,7 @@ import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { specSheetRouter } from "../spec-sheet-router";
 import { canAccessRfqPdf, requireAdminUser } from "./route-auth-guards";
 import { sdk } from "./sdk";
+import { checkMaterialScorePdfAccess } from "../services/pdf-access-guard";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 // Prevents brute-force abuse of authenticated routes without external packages.
@@ -49,8 +50,9 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
   };
 }
 
-const adminRateLimit = createRateLimiter(20, 60_000);   // 20 req/min per IP
-const rfqPdfRateLimit = createRateLimiter(30, 60_000);  // 30 req/min per IP
+const adminRateLimit = createRateLimiter(20, 60_000);         // 20 req/min per IP
+const rfqPdfRateLimit = createRateLimiter(30, 60_000);        // 30 req/min per IP
+const materialScorePdfRateLimit = createRateLimiter(10, 60_000); // 10 req/min per IP
 
 // Load .env.local in development (overrides .env values)
 if (process.env.NODE_ENV !== "production") {
@@ -118,6 +120,7 @@ async function startServer() {
   // Email/password auth — additive path for suppliers without SSO accounts
   registerEmailAuthRoutes(app);
 
+  // Custom OAuth — Azure Easy Auth sidecar is disabled. See docs/AUTH_ARCHITECTURE.md
   registerOAuthProviderRoutes(app);
 
   // Backwards-compatible OAuth callback route.
@@ -378,14 +381,22 @@ async function startServer() {
   });
 
   // ── Material Credit Score PDF ──────────────────────────────────────────────
-  // Auth required. Credits are consumed via tRPC BEFORE this endpoint is hit.
-  app.get("/api/pdf/material-score/:materialId", async (req, res) => {
+  // Auth + subscription entitlement required.
+  // Free-tier users are blocked server-side — Standard/Premium only.
+  // Rate limited to 10 req/min per IP to prevent generation abuse.
+  app.get("/api/pdf/material-score/:materialId", materialScorePdfRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) return res.status(401).json({ error: "Unauthorized" });
 
       const materialId = parseInt(req.params.materialId);
       if (isNaN(materialId)) return res.status(400).json({ error: "Invalid material ID" });
+
+      // Enforce subscription entitlement — fail closed if DB is unreachable
+      const access = await checkMaterialScorePdfAccess(user.id);
+      if (!access.allowed) {
+        return res.status(403).json({ error: access.reason ?? "Subscription required" });
+      }
 
       const { generateMaterialScorePdf } = await import("../material-score-pdf-service");
       const pdfBuffer = await generateMaterialScorePdf(materialId, user);
