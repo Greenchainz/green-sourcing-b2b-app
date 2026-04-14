@@ -1,3 +1,8 @@
+/**
+ * Azure SQL (MSSQL) connector.
+ *
+ * Note: This module targets Azure SQL Server (mssql), not PostgreSQL.
+ */
 import sql from 'mssql';
 
 const config: sql.config = {
