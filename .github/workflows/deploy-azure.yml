@@ -336,10 +336,12 @@ jobs:
             local curl_exit_code=0
 
             for i in $(seq 1 "$attempts"); do
-              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
+              status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
               curl_exit_code=$?
               if [ "$curl_exit_code" -ne 0 ]; then
                 status="CURL_EXIT_${curl_exit_code}"
+              elif [ -z "$status" ]; then
+                status="HTTP_CODE_EMPTY"
               elif ! [[ "$status" =~ ^[0-9]{3}$ ]]; then
                 status="HTTP_CODE_PARSE_ERROR"
               fi
