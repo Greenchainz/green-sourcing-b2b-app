@@ -271,8 +271,11 @@ jobs:
       - name: Upsert backend runtime secrets in Container App
         # Ensure backend uses Container App-managed secret values (not Key Vault refs),
         # so revision provisioning does not depend on the missing system identity path.
+        env:
+          FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
+          RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
         run: |
-          if [ -z "${{ steps.kv.outputs.fred-api-key }}" ] || [ -z "${{ steps.kv.outputs.resend-api-key }}" ]; then
+          if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
             echo "❌ Required backend secrets (fred-api-key/resend-api-key) are missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
@@ -280,8 +283,8 @@ jobs:
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --secrets \
-              "fred-api-key=${{ steps.kv.outputs.fred-api-key }}" \
-              "resend-api-key=${{ steps.kv.outputs.resend-api-key }}"
+              "fred-api-key=$FRED_API_KEY" \
+              "resend-api-key=$RESEND_API_KEY"
 
       - name: Deploy backend
         run: |
