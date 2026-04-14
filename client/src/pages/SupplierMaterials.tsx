@@ -116,7 +116,7 @@ function EpdSubmitModal({
     reset,
     formState: { errors },
   } = useForm<EpdFormData>({
-    resolver: zodResolver(epdSchema),
+    resolver: zodResolver(epdSchema) as any,
     defaultValues: { productName: materialName ?? "", gwpUnit: "kgCO2e" },
   });
 
@@ -319,7 +319,7 @@ function AddMaterialDialog({
     watch,
     formState: { errors },
   } = useForm<AddMaterialFormData>({
-    resolver: zodResolver(addMaterialSchema),
+    resolver: zodResolver(addMaterialSchema) as any,
     defaultValues: {
       priceUnit: "per unit",
       hasEpd: false,

@@ -232,7 +232,7 @@ export default function MaterialCreditScorePage() {
                 )}
 
                 {/* PDF download — architects only */}
-                {isArchitect() && (
+                {isArchitect && (
                   <div className="mt-3">
                     <Button
                       size="sm"

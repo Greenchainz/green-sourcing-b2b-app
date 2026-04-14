@@ -20,7 +20,7 @@ interface Message {
   agentType?: string | null;
   content: string;
   createdAt: Date;
-  isRead: number;
+  isRead: boolean;
   readAt?: Date | null;
   attachmentUrl?: string | null;
   attachmentType?: string | null;

@@ -83,7 +83,7 @@ export default function RFQForm() {
     setValue,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = useForm<FormData>({ resolver: zodResolver(schema) as any });
 
   const onSubmit = (data: FormData) => createRfq.mutate(data);
 

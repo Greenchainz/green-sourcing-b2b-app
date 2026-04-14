@@ -96,7 +96,7 @@ export default function SupplierRfqDashboard() {
   const respondToRequest = trpc.rfqRequests.respond.useMutation({
     onSuccess: (_, variables) => {
       toast.success(
-        variables.response === "accepted"
+        variables.status === "accepted"
           ? "Request accepted!"
           : "Request declined"
       );
@@ -156,7 +156,7 @@ export default function SupplierRfqDashboard() {
     response: "accepted" | "declined"
   ) => {
     setRespondingId(rfqRequestId);
-    respondToRequest.mutate({ rfqRequestId, response });
+    respondToRequest.mutate({ id: rfqRequestId, status: response });
   };
 
   // Filter and sort matched RFQs

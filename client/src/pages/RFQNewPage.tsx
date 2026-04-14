@@ -231,7 +231,7 @@ export default function RFQNewPage() {
     getValues,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: { unit: "SF", epdRequired: "preferred" },
   });
 
@@ -588,7 +588,7 @@ export default function RFQNewPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <ScoreBadge score={s.sustainabilityScore} />
+                          <ScoreBadge score={s.sustainabilityScore != null ? Number(s.sustainabilityScore) : null} />
                           {s.isPremium && (
                             <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                           )}
@@ -648,7 +648,7 @@ export default function RFQNewPage() {
                     <div key={s.id} className="flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="text-sm font-medium flex-1">{s.companyName}</span>
-                      <ScoreBadge score={s.sustainabilityScore} />
+                      <ScoreBadge score={s.sustainabilityScore != null ? Number(s.sustainabilityScore) : null} />
                       {s.isPremium && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />}
                     </div>
                   ))}
