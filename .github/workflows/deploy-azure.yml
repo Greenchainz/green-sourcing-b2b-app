@@ -365,7 +365,9 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --remove-env-vars AZURE_MI_CLIENT_ID \
-            --set-env-vars "${ENV_VARS[@]}"
+            --set-env-vars "${ENV_VARS[@]}" \
+            --min-replicas 1 \
+            --max-replicas 3
           # Ensure ingress target port is always 3000 — guards against portal
           # misconfig or a previous deployment that set a different port.
           az containerapp ingress update \
