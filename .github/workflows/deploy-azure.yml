@@ -329,12 +329,13 @@ jobs:
             local url="$1"
             local expected_status="$2"
             local label="$3"
-            local attempts="${4:-24}"
-            local sleep_seconds="${5:-10}"
+            local method="${4:-GET}"
+            local attempts="${5:-24}"
+            local sleep_seconds="${6:-10}"
             local status=""
 
             for i in $(seq 1 "$attempts"); do
-              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$url" || echo "000")
+              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url" || echo "000")
               if [ "$status" = "$expected_status" ]; then
                 echo "✅ ${label}: ${status}"
                 return 0
@@ -358,7 +359,7 @@ jobs:
           wait_for_expected_status "https://${BACKEND_FQDN}/api/auth/me" "401" "/api/auth/me"
 
           # Admin REST routes must reject unauthenticated callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach"
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST"
 
           # RFQ PDF routes must reject unauthenticated callers.
           wait_for_expected_status "https://${BACKEND_FQDN}/api/rfq/1/pdf/summary" "401" "/api/rfq/:rfqId/pdf/summary"
