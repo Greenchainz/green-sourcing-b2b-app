@@ -8,6 +8,7 @@
 import type { Pool } from 'pg';
 import { getPool, closePool } from './pg-pool';
 
+/** @deprecated Legacy name retained for compatibility; returns the shared PostgreSQL pool. */
 export async function getAzureSqlConnection(): Promise<Pool> {
   return getPool();
 }
