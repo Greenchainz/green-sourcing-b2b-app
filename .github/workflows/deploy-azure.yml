@@ -352,17 +352,17 @@ jobs:
           }
 
           # Public endpoint should return 200.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/health" "200" "/api/health"
-          wait_for_expected_status "https://${BACKEND_FQDN}/health" "200" "/health"
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/health" "200" "/api/health" || exit 1
+          wait_for_expected_status "https://${BACKEND_FQDN}/health" "200" "/health" || exit 1
 
           # Protected endpoint should reject unauthenticated requests.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/auth/me" "401" "/api/auth/me"
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/auth/me" "401" "/api/auth/me" || exit 1
 
           # Admin REST routes must reject unauthenticated callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST"
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST" || exit 1
 
           # RFQ PDF routes must reject unauthenticated callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/rfq/1/pdf/summary" "401" "/api/rfq/:rfqId/pdf/summary"
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/rfq/1/pdf/summary" "401" "/api/rfq/:rfqId/pdf/summary" || exit 1
 
       - name: Verify backend runtime frontend origin
         run: |
