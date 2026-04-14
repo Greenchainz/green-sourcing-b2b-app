@@ -333,9 +333,14 @@ jobs:
             local attempts="${5:-24}"
             local sleep_seconds="${6:-10}"
             local status=""
+            local curl_exit_code=0
 
             for i in $(seq 1 "$attempts"); do
-              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url" || echo "000")
+              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
+              curl_exit_code=$?
+              if [ "$curl_exit_code" -ne 0 ]; then
+                status="CURL_EXIT_${curl_exit_code}"
+              fi
               if [ "$status" = "$expected_status" ]; then
                 echo "✅ ${label}: ${status}"
                 return 0
