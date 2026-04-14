@@ -329,7 +329,11 @@ jobs:
 
       - name: Deploy frontend
         run: |
-          ENV_VARS=("DEPLOY_TIMESTAMP=${{ github.run_id }}")
+          ENV_VARS=(
+            "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            "PORT=3000"
+            "AZURE_MI_CLIENT_ID="
+          )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
               "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}"
@@ -341,6 +345,14 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}"
+          # Ensure ingress target port is always 3000 — guards against portal
+          # misconfig or a previous deployment that set a different port.
+          az containerapp ingress update \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --target-port 3000 \
+            --type external \
+            --transport http
 
       - name: Smoke test deployed backend
         run: |
@@ -423,28 +435,52 @@ jobs:
             exit 1
           fi
 
-          # Retry up to 24 attempts (4 min) — new revision may still be rolling out.
-          # Use "|| echo 000" inside the substitution so bash -e never sees a
-          # non-zero exit: curl timeouts / connection resets return "000" instead
-          # of killing the loop with exit code 28 or 7.
-          ATTEMPTS=24
-          SLEEP=10
-          STATUS=""
-          for i in $(seq 1 "$ATTEMPTS"); do
-            STATUS=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 \
-              "https://${FRONTEND_FQDN}/" 2>/dev/null || echo "000")
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ Frontend root /: 200"
-              break
-            fi
-            echo "⏳ Frontend root /: expected 200, got ${STATUS} (attempt ${i}/${ATTEMPTS})"
-            if [ "$i" -lt "$ATTEMPTS" ]; then sleep "$SLEEP"; fi
-          done
+          # Identical retry helper used by the backend smoke test.
+          wait_for_expected_status() {
+            local url="$1"
+            local expected_status="$2"
+            local label="$3"
+            local method="${4:-GET}"
+            local attempts="${5:-24}"
+            local sleep_seconds="${6:-10}"
+            local status=""
+            local curl_exit_code=0
 
-          if [ "$STATUS" != "200" ]; then
-            echo "❌ Expected 200 from frontend root '/', got ${STATUS} after ${ATTEMPTS} attempts"
-            exit 1
-          fi
+            for i in $(seq 1 "$attempts"); do
+              status=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
+              curl_exit_code=$?
+              if [ "$curl_exit_code" -ne 0 ]; then
+                status="CURL_EXIT_${curl_exit_code}"
+              elif [ -z "$status" ]; then
+                status="HTTP_CODE_EMPTY"
+              elif ! [[ "$status" =~ ^[0-9]{3}$ ]]; then
+                status="HTTP_CODE_PARSE_ERROR"
+              fi
+              if [ "$status" = "$expected_status" ]; then
+                echo "✅ ${label}: ${status}"
+                return 0
+              fi
+
+              echo "⏳ ${label}: expected ${expected_status}, got ${status} (attempt ${i}/${attempts})"
+              if [ "$i" -lt "$attempts" ]; then
+                sleep "$sleep_seconds"
+              fi
+            done
+
+            echo "❌ ${label}: expected ${expected_status}, got ${status} after ${attempts} attempts"
+            return 1
+          }
+
+          wait_for_expected_status "https://${FRONTEND_FQDN}/" "200" "Frontend root /" || exit 1
+
+      - name: Dump frontend container logs on failure
+        if: failure()
+        run: |
+          echo "=== greenchainz-frontend container logs (last 100 lines) ==="
+          az containerapp logs show \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --tail 100 2>/dev/null || echo "(log fetch failed)"
 
       - name: Azure logout
         run: az logout || true
