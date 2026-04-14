@@ -258,21 +258,29 @@ jobs:
           get_secret sentry-auth-token
           get_secret sentry-org
           get_secret sentry-project
+          get_secret Database-URL
           # These were added via the Azure portal as KV-reference secrets, but the
           # system identity lacks access. Pull them here and pass as plain env vars.
           get_secret fred-api-key
           get_secret resend-api-key
 
-      - name: Remove broken KV-reference secrets from backend
-        # These secrets were added via the Azure portal with identity: system, but the
-        # system-assigned managed identity has no Key Vault access policy, so every new
-        # revision fails to provision. Remove the KV references; values are passed as
-        # plain env vars in the update step below instead.
+      - name: Upsert backend runtime secrets in Container App
+        # Ensure backend uses Container App-managed secret values (not Key Vault refs),
+        # so revision provisioning does not depend on the missing system identity path.
+        env:
+          FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
+          RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
         run: |
-          az containerapp secret remove \
+          if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
+            echo "❌ Required backend secrets (fred-api-key/resend-api-key) are missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          az containerapp secret set \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --secret-names fred-api-key resend-api-key 2>/dev/null || true
+            --secrets \
+              "fred-api-key=$FRED_API_KEY" \
+              "resend-api-key=$RESEND_API_KEY"
 
       - name: Ensure system identity + KV access
         run: |
@@ -312,8 +320,8 @@ jobs:
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
             "FRONTEND_URL=https://greenchainz.com"
-            "FRED_API_KEY=${{ steps.kv.outputs.fred-api-key }}"
-            "RESEND_API_KEY=${{ steps.kv.outputs.resend-api-key }}"
+            "FRED_API_KEY=secretref:fred-api-key"
+            "RESEND_API_KEY=secretref:resend-api-key"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
@@ -328,7 +336,19 @@ jobs:
             --set-env-vars "${ENV_VARS[@]}"
 
       - name: Deploy frontend
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          az containerapp secret set \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --secrets "database-url=$DATABASE_URL"
+
+          ENV_VARS=("DEPLOY_TIMESTAMP=${{ github.run_id }}")
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
             "NODE_ENV=production"
