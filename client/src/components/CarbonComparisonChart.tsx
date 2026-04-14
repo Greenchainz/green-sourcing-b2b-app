@@ -168,7 +168,7 @@ export async function generateLeedPdf(data: CarbonReportData, projectId?: string
   });
 
   const pdfBytes = await doc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const blob = new Blob([pdfBytes as unknown as Uint8Array<ArrayBuffer>], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -217,9 +217,10 @@ function MultiCoreChart({
         <Tooltip formatter={(value: number) => [formatGwp(value), ""]} />
         <Legend
           wrapperStyle={{ paddingTop: 16 }}
-          formatter={(_: unknown, entry: { dataKey: string }) => {
-            const idx = ["option1", "option2", "option3"].indexOf(entry.dataKey);
-            return OPTION_LABELS[idx] ?? entry.dataKey;
+          formatter={(_: unknown, entry: { dataKey?: string | number | ((...args: unknown[]) => unknown) }) => {
+            const key = typeof entry.dataKey === "string" ? entry.dataKey : "";
+            const idx = ["option1", "option2", "option3"].indexOf(key);
+            return OPTION_LABELS[idx] ?? key;
           }}
         />
         {(["option1", "option2", "option3"] as const).map((key, i) => (

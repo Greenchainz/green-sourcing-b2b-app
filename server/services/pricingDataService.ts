@@ -22,7 +22,7 @@
  * -- );
  */
 
-import { query, queryOne, queryMany } from '../pg-db';
+import { query, queryOne, queryMany } from '../../lib/pg-pool';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

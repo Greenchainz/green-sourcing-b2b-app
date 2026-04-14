@@ -98,7 +98,7 @@ async function authenticate(): Promise<string> {
     throw new Error(`EC3 authentication failed (${response.status}): ${errorText}`);
   }
 
-  const data: EC3AuthResponse = await response.json();
+  const data = await response.json() as EC3AuthResponse;
   cachedToken = data.key;
   tokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
 
@@ -164,7 +164,7 @@ export async function fetchEC3EPDById(epdId: string): Promise<EC3EPD | null> {
     throw new Error(`EC3 API error (${response.status}): ${errorText}`);
   }
 
-  return response.json();
+  return response.json() as Promise<EC3EPD | null>;
 }
 
 /**

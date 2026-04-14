@@ -46,7 +46,7 @@ export default function SupplierAgentConfig() {
       setHandoffMode(config.handoffMode);
       setMaxMessages(config.maxAgentMessages);
       setCustomPrompt(config.customAgentPrompt || "");
-      setBusinessHoursEnabled(config.businessHoursEnabled === 1);
+      setBusinessHoursEnabled(config.businessHoursStart !== null);
       if (config.businessDays) {
         setBusinessDays(config.businessDays.split(","));
       }
@@ -65,7 +65,6 @@ export default function SupplierAgentConfig() {
       handoffMode,
       maxAgentMessages: maxMessages,
       customAgentPrompt: customPrompt || undefined,
-      businessHoursEnabled: businessHoursEnabled ? 1 : 0,
       businessDays: businessDays.join(","),
       businessHoursStart,
       businessHoursEnd,

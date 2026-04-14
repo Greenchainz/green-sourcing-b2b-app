@@ -19,7 +19,7 @@
  * -- CREATE INDEX idx_price_history_date ON price_history("recordDate");
  */
 
-import { queryOne, queryMany } from '../pg-db';
+import { queryOne, queryMany } from '../../lib/pg-pool';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

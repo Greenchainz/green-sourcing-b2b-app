@@ -911,8 +911,8 @@ export async function handleChat(
         confidence: String(routing.confidence) as any,
         toolsUsed: JSON.stringify(response.toolsUsed),
         responseTimeMs: Date.now() - startTime,
-        escalated: response.escalated ? 1 : 0,
-        handedOffToHuman: response.content.includes("connect you with") ? 1 : 0,
+        escalated: !!response.escalated,
+        handedOffToHuman: response.content.includes("connect you with"),
       });
     } catch (err) {
       console.error("Failed to store agent conversation:", err);

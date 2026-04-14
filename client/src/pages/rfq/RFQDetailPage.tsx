@@ -250,7 +250,7 @@ export default function RFQDetailPage() {
   const projectInfo = parsed?.projectInfo;
   const matReq = parsed?.materialRequest;
   const isCancelled = !!parsed?.cancelledByArchitect;
-  const isOwner = rfq.architectId === user?.id;
+  const isOwner = rfq.architectId === Number(user?.id);
   const displayStatus = isCancelled ? "cancelled" : rfq.status;
 
   return (

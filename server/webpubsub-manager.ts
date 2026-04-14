@@ -104,14 +104,14 @@ export async function sendMessageToThread(
   }
 
   const now = new Date();
-  const insertedMessage = await db.insert(rfqMessages).values({
+  const [insertedMessage] = await db.insert(rfqMessages).values({
     threadId,
     senderId: userId,
     senderType: isBuyer ? "buyer" : "supplier",
     content: message.substring(0, 1000),
     createdAt: now,
-    isRead: 0,
-  });
+    isRead: false,
+  }).returning({ id: rfqMessages.id });
 
   const c = getClient();
 
@@ -129,13 +129,13 @@ export async function sendMessageToThread(
   await c.sendToUser(`user-${userId}`, {
     type: "message_sent",
     threadId,
-    messageId: insertedMessage[0].insertId,
+    messageId: insertedMessage?.id,
     timestamp: now.toISOString(),
   });
 
   return {
     success: true,
-    messageId: insertedMessage[0].insertId,
+    messageId: insertedMessage?.id,
     timestamp: now,
   };
 }
@@ -183,7 +183,7 @@ export async function markMessageAsRead(messageId: number) {
 
   await db
     .update(rfqMessages)
-    .set({ isRead: 1 })
+    .set({ isRead: true })
     .where(eq(rfqMessages.id, messageId));
 
   return { success: true };

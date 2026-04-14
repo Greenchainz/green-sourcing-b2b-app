@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "paths": {
+      "@/*": ["./*"],
+      "@shared/*": ["./shared/*"]
+    }
+  },
+  "include": [
+    "server/**/*.ts",
+    "lib/**/*.ts",
+    "shared/**/*.ts",
+    "drizzle/**/*.ts",
+    "scripts/**/*.ts",
+    "types/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib/excel/**",
+    "lib/azure/identity-client.ts",
+    "lib/azure/keyvault.ts",
+    "lib/auth/**",
+    "server/seeds/**",
+    "server/_core/imageGeneration.ts",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}

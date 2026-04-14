@@ -118,7 +118,7 @@ export async function resolveSubscription(token: string): Promise<MarketplaceSub
       return null;
     }
 
-    const subscription: MarketplaceSubscription = await response.json();
+    const subscription = await response.json() as MarketplaceSubscription;
     return subscription;
   } catch (error) {
     console.error("[Marketplace Auth] Error resolving subscription:", error);
@@ -155,7 +155,7 @@ export async function getMarketplaceAccessToken(): Promise<string> {
     throw new Error(`Failed to get access token: ${response.status} ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { access_token: string };
   return data.access_token;
 }
 
@@ -183,7 +183,7 @@ export async function getSubscriptionDetails(subscriptionId: string): Promise<Ma
       return null;
     }
 
-    const subscription: MarketplaceSubscription = await response.json();
+    const subscription = await response.json() as MarketplaceSubscription;
     return subscription;
   } catch (error) {
     console.error("[Marketplace Auth] Error getting subscription details:", error);

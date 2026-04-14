@@ -207,7 +207,7 @@ export async function checkHandoffRules(params: {
     }
 
     // Check business hours if enabled
-    if (rule.businessHoursEnabled) {
+    if (rule.businessHoursStart !== null) {
       const now = new Date();
       const currentHour = now.getHours();
       const currentDay = now.toLocaleDateString("en-US", { weekday: "short" });

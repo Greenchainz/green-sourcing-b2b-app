@@ -28,13 +28,13 @@ export const legalRouter = router({
     const acceptance = rows[0];
 
     return {
-      termsAccepted: acceptance?.termsAccepted === 1,
+      termsAccepted: !!acceptance?.termsAccepted,
       termsAcceptedAt: acceptance?.termsAcceptedAt,
       termsVersion: acceptance?.termsVersion || "1.0",
-      privacyAccepted: acceptance?.privacyAccepted === 1,
+      privacyAccepted: !!acceptance?.privacyAccepted,
       privacyAcceptedAt: acceptance?.privacyAcceptedAt,
       privacyVersion: acceptance?.privacyVersion || "1.0",
-      cookieConsentGiven: acceptance?.cookieConsentGiven === 1,
+      cookieConsentGiven: !!acceptance?.cookieConsentGiven,
       cookieConsentAt: acceptance?.cookieConsentAt,
     };
   }),
@@ -66,7 +66,7 @@ export const legalRouter = router({
         await db
           .update(legalAcceptances)
           .set({
-            termsAccepted: 1,
+            termsAccepted: true,
             termsAcceptedAt: now,
             termsVersion: input.version,
             updatedAt: now,
@@ -75,11 +75,11 @@ export const legalRouter = router({
       } else {
         await db.insert(legalAcceptances).values({
           userId,
-          termsAccepted: 1,
+          termsAccepted: true,
           termsAcceptedAt: now,
           termsVersion: input.version,
-          privacyAccepted: 0,
-          cookieConsentGiven: 0,
+          privacyAccepted: false,
+          cookieConsentGiven: false,
           createdAt: now,
           updatedAt: now,
         });
@@ -115,7 +115,7 @@ export const legalRouter = router({
         await db
           .update(legalAcceptances)
           .set({
-            privacyAccepted: 1,
+            privacyAccepted: true,
             privacyAcceptedAt: now,
             privacyVersion: input.version,
             updatedAt: now,
@@ -124,11 +124,11 @@ export const legalRouter = router({
       } else {
         await db.insert(legalAcceptances).values({
           userId,
-          privacyAccepted: 1,
+          privacyAccepted: true,
           privacyAcceptedAt: now,
           privacyVersion: input.version,
-          termsAccepted: 0,
-          cookieConsentGiven: 0,
+          termsAccepted: false,
+          cookieConsentGiven: false,
           createdAt: now,
           updatedAt: now,
         });
@@ -158,7 +158,7 @@ export const legalRouter = router({
       await db
         .update(legalAcceptances)
         .set({
-          cookieConsentGiven: 1,
+          cookieConsentGiven: true,
           cookieConsentAt: now,
           updatedAt: now,
         })
@@ -166,10 +166,10 @@ export const legalRouter = router({
     } else {
       await db.insert(legalAcceptances).values({
         userId,
-        cookieConsentGiven: 1,
+        cookieConsentGiven: true,
         cookieConsentAt: now,
-        termsAccepted: 0,
-        privacyAccepted: 0,
+        termsAccepted: false,
+        privacyAccepted: false,
         createdAt: now,
         updatedAt: now,
       });
@@ -206,13 +206,13 @@ export const legalRouter = router({
         await db
           .update(legalAcceptances)
           .set({
-            termsAccepted: 1,
+            termsAccepted: true,
             termsAcceptedAt: now,
             termsVersion: input.termsVersion,
-            privacyAccepted: 1,
+            privacyAccepted: true,
             privacyAcceptedAt: now,
             privacyVersion: input.privacyVersion,
-            cookieConsentGiven: 1,
+            cookieConsentGiven: true,
             cookieConsentAt: now,
             updatedAt: now,
           })
@@ -220,13 +220,13 @@ export const legalRouter = router({
       } else {
         await db.insert(legalAcceptances).values({
           userId,
-          termsAccepted: 1,
+          termsAccepted: true,
           termsAcceptedAt: now,
           termsVersion: input.termsVersion,
-          privacyAccepted: 1,
+          privacyAccepted: true,
           privacyAcceptedAt: now,
           privacyVersion: input.privacyVersion,
-          cookieConsentGiven: 1,
+          cookieConsentGiven: true,
           cookieConsentAt: now,
           createdAt: now,
           updatedAt: now,

@@ -13,7 +13,7 @@ interface Message {
   senderType: "buyer" | "supplier";
   content: string;
   createdAt: Date;
-  isRead: number | null;
+  isRead: boolean | null;
 }
 
 interface RealTimeChatProps {
@@ -75,7 +75,7 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
                   senderType: data.senderType,
                   content: data.content,
                   createdAt: new Date(data.timestamp),
-                  isRead: 0,
+                  isRead: false,
                 },
               ]);
               // Mark as read
@@ -168,7 +168,8 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
       await sendMessageMutation.mutateAsync({
         threadId,
         message: input,
-        isBuyer,
+        senderId: user!.id,
+        senderType: isBuyer ? "buyer" : "supplier",
       });
 
       // Add message to local state optimistically
@@ -180,7 +181,7 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
           senderType: isBuyer ? "buyer" : "supplier",
           content: input,
           createdAt: new Date(),
-          isRead: 1,
+          isRead: true,
         },
       ]);
 
