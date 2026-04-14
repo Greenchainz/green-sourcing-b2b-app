@@ -95,7 +95,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.frontend
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
@@ -112,7 +112,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.backend
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
