@@ -72,6 +72,7 @@ COPY --from=builder --chown=appuser:nodejs /app/package.json ./package.json
 USER appuser
 # Set environment variables
 ENV NODE_ENV=production \
+    PORT=3000 \
     NODE_PG_FORCE_NATIVE=""
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
