@@ -488,13 +488,13 @@ async function upsertTechnicalSpecs(
   if (existing.length > 0) {
     await db
       .update(materialTechnicalSpecs)
-      .set(specData)
+      .set(specData as any)
       .where(eq(materialTechnicalSpecs.materialId, materialId));
   } else {
     await db.insert(materialTechnicalSpecs).values({
       ...specData,
       createdAt: new Date(),
-    });
+    } as any);
   }
 }
 

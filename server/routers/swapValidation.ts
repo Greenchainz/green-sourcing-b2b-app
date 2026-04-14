@@ -6,10 +6,35 @@
 
 import { z } from 'zod';
 import { publicProcedure, router } from '../_core/trpc';
-import { validateSwap, type MaterialTechnicalSpecs } from '../services/swapValidationService';
+import { validateSwap, type MaterialSpec } from '../services/swapValidationService';
 import { getDb } from '../db';
 import { materialTechnicalSpecs, swapValidations, materials } from '../../drizzle/schema';
 import { eq, and, desc } from 'drizzle-orm';
+
+type TechSpecRow = typeof materialTechnicalSpecs.$inferSelect;
+
+/** Map a flat materialTechnicalSpecs row to the nested MaterialSpec shape. */
+function toMaterialSpec(row: TechSpecRow, materialName: string, category: string): MaterialSpec {
+  return {
+    materialId: row.materialId,
+    materialName,
+    category,
+    certifications: [],
+    specs: {
+      compressiveStrength: row.compressiveStrengthPsi ?? null,
+      tensileStrength: row.tensileStrengthPsi ?? null,
+      flexuralStrength: row.flexuralStrengthPsi ?? null,
+      density: row.weightPerUnit !== null ? parseFloat(row.weightPerUnit ?? '0') : null,
+      thermalConductivity: row.thermalUValue !== null ? parseFloat(row.thermalUValue ?? '0') : null,
+      fireRating: row.fireRating ?? null,
+      waterAbsorption: null,
+      gwp: null,
+      recycledContent: null,
+      voc: null,
+      embodiedEnergy: null,
+    },
+  };
+}
 
 // ─── CSI Form Generator ──────────────────────────────────────────────────────
 
@@ -143,14 +168,19 @@ export const swapValidationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new Error('Database unavailable');
 
-      const [incumbentSpecs, sustainableSpecs] = await Promise.all([
+      const [incumbentSpecs, sustainableSpecs, incumbentMaterials, sustainableMaterials] = await Promise.all([
         db.select().from(materialTechnicalSpecs)
           .where(eq(materialTechnicalSpecs.materialId, input.incumbentMaterialId))
           .limit(1),
         db.select().from(materialTechnicalSpecs)
           .where(eq(materialTechnicalSpecs.materialId, input.sustainableMaterialId))
           .limit(1),
+        db.select({ name: materials.name, category: materials.category })
+          .from(materials).where(eq(materials.id, input.incumbentMaterialId)).limit(1),
+        db.select({ name: materials.name, category: materials.category })
+          .from(materials).where(eq(materials.id, input.sustainableMaterialId)).limit(1),
       ]);
 
       if (incumbentSpecs.length === 0) {
@@ -160,7 +190,18 @@ export const swapValidationRouter = router({
         throw new Error(`No technical specs found for sustainable material ID ${input.sustainableMaterialId}`);
       }
 
-      const validationResult = validateSwap(incumbentSpecs[0], sustainableSpecs[0]);
+      const incumbentSpec = toMaterialSpec(
+        incumbentSpecs[0],
+        incumbentMaterials[0]?.name ?? `Material ${input.incumbentMaterialId}`,
+        incumbentMaterials[0]?.category ?? 'Unknown',
+      );
+      const sustainableSpec = toMaterialSpec(
+        sustainableSpecs[0],
+        sustainableMaterials[0]?.name ?? `Material ${input.sustainableMaterialId}`,
+        sustainableMaterials[0]?.category ?? 'Unknown',
+      );
+
+      const validationResult = validateSwap(incumbentSpec, sustainableSpec);
 
       if (input.saveResult) {
         const insertData = {
@@ -170,9 +211,9 @@ export const swapValidationRouter = router({
           validationStatus: validationResult.validationStatus,
           overallScore: validationResult.overallScore.toString(),
           showstopperResults: validationResult.showstopperResults as any,
-          failedChecks: validationResult.failedChecks,
-          passedChecks: validationResult.passedChecks,
-          skippedChecks: validationResult.skippedChecks,
+          failedChecks: validationResult.failedChecks.length,
+          passedChecks: validationResult.passedChecks.length,
+          skippedChecks: validationResult.skippedChecks.length,
           recommendation: validationResult.recommendation,
           validatedAt: new Date(),
           expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
@@ -202,6 +243,7 @@ export const swapValidationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new Error('Database unavailable');
 
       let query = db.select().from(swapValidations);
 
@@ -230,6 +272,7 @@ export const swapValidationRouter = router({
     .input(z.object({ validationId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new Error('Database unavailable');
 
       const [validation] = await db.select().from(swapValidations)
         .where(eq(swapValidations.id, input.validationId))
@@ -257,6 +300,7 @@ export const swapValidationRouter = router({
     .input(z.object({ validationId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new Error('Database unavailable');
 
       const [existingValidation] = await db.select().from(swapValidations)
         .where(eq(swapValidations.id, input.validationId))
@@ -273,16 +317,26 @@ export const swapValidationRouter = router({
         throw new Error('Technical specs not found for one or both materials');
       }
 
-      const validationResult = validateSwap(incumbentSpecs[0], sustainableSpecs[0]);
+      const incumbentSpec = toMaterialSpec(
+        incumbentSpecs[0],
+        `Material ${existingValidation.incumbentMaterialId}`,
+        'Unknown',
+      );
+      const sustainableSpec = toMaterialSpec(
+        sustainableSpecs[0],
+        `Material ${existingValidation.sustainableMaterialId}`,
+        'Unknown',
+      );
+      const validationResult = validateSwap(incumbentSpec, sustainableSpec);
 
       await db.update(swapValidations)
         .set({
           validationStatus: validationResult.validationStatus,
           overallScore: validationResult.overallScore.toString(),
           showstopperResults: validationResult.showstopperResults as any,
-          failedChecks: validationResult.failedChecks,
-          passedChecks: validationResult.passedChecks,
-          skippedChecks: validationResult.skippedChecks,
+          failedChecks: validationResult.failedChecks.length,
+          passedChecks: validationResult.passedChecks.length,
+          skippedChecks: validationResult.skippedChecks.length,
           recommendation: validationResult.recommendation,
           validatedAt: new Date(),
           expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
@@ -298,6 +352,7 @@ export const swapValidationRouter = router({
   getValidationStats: publicProcedure
     .query(async () => {
       const db = await getDb();
+      if (!db) throw new Error('Database unavailable');
 
       const allValidations = await db.select().from(swapValidations);
 
@@ -327,6 +382,7 @@ export const swapValidationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new Error('Database unavailable');
 
       const [validation] = await db.select().from(swapValidations)
         .where(eq(swapValidations.id, input.validationId))

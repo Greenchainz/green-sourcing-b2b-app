@@ -28,9 +28,9 @@ export function isCalgreenCompliant(material: {
   const gwp = Number(material.gwpValue);
   if (isNaN(gwp)) return false;
 
-  const threshold =
-    (material.category && CALGREEN_GWP_THRESHOLDS[material.category]) ??
-    CALGREEN_FALLBACK_GWP;
+  const threshold = material.category
+    ? (CALGREEN_GWP_THRESHOLDS[material.category] ?? CALGREEN_FALLBACK_GWP)
+    : CALGREEN_FALLBACK_GWP;
 
   return gwp <= threshold;
 }

@@ -34,7 +34,7 @@
 import { z } from 'zod';
 import { publicProcedure, protectedProcedure, router } from '../_core/trpc';
 import { TRPCError } from '@trpc/server';
-import { queryMany, queryOne } from '../pg-db';
+import { queryMany, queryOne } from '../../lib/pg-pool';
 import { enforceAndTrack } from '../usage-tracking-service';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -325,6 +325,111 @@ export const materialSpecRouter = router({
          ${orderClause}
          LIMIT ${limitParam} OFFSET ${offsetParam}`,
         params
+      );
+
+      return rows.map(rowToSpec);
+    }),
+
+  /**
+   * Submit a new material spec entry (supplier submitting a material for review).
+   * Creates or updates a material record associated with a supplier.
+   */
+  submit: protectedProcedure
+    .input(
+      z.object({
+        materialId: z.number().int(),
+        supplierId: z.number().int(),
+        pricePerUnit: z.number().optional(),
+        priceUnit: z.string().optional(),
+        leadTimeDays: z.number().int().optional(),
+        recycledContentPct: z.number().optional(),
+        hasEpd: z.boolean().optional(),
+        hasHpd: z.boolean().optional(),
+        hasFsc: z.boolean().optional(),
+        hasC2c: z.boolean().optional(),
+        hasGreenguard: z.boolean().optional(),
+        hasDeclare: z.boolean().optional(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await enforceAndTrack(input.supplierId, "rfq_submission");
+
+      const updates: string[] = ['"updatedAt" = NOW()'];
+      const params: unknown[] = [];
+      let idx = 1;
+
+      if (input.pricePerUnit !== undefined) { updates.push(`"pricePerUnit" = $${idx++}`); params.push(input.pricePerUnit); }
+      if (input.priceUnit !== undefined) { updates.push(`"priceUnit" = $${idx++}`); params.push(input.priceUnit); }
+      if (input.leadTimeDays !== undefined) { updates.push(`"leadTimeDays" = $${idx++}`); params.push(input.leadTimeDays); }
+      if (input.recycledContentPct !== undefined) { updates.push(`"recycledContentPct" = $${idx++}`); params.push(input.recycledContentPct); }
+      if (input.hasEpd !== undefined) { updates.push(`"hasEpd" = $${idx++}`); params.push(input.hasEpd); }
+      if (input.hasHpd !== undefined) { updates.push(`"hasHpd" = $${idx++}`); params.push(input.hasHpd); }
+      if (input.hasFsc !== undefined) { updates.push(`"hasFsc" = $${idx++}`); params.push(input.hasFsc); }
+      if (input.hasC2c !== undefined) { updates.push(`"hasC2c" = $${idx++}`); params.push(input.hasC2c); }
+      if (input.hasGreenguard !== undefined) { updates.push(`"hasGreenguard" = $${idx++}`); params.push(input.hasGreenguard); }
+      if (input.hasDeclare !== undefined) { updates.push(`"hasDeclare" = $${idx++}`); params.push(input.hasDeclare); }
+      if (input.notes !== undefined) { updates.push(`"description" = $${idx++}`); params.push(input.notes); }
+
+      if (updates.length > 1) {
+        params.push(input.materialId);
+        await queryOne(
+          `UPDATE materials SET ${updates.join(', ')} WHERE id = $${idx}`,
+          params
+        );
+      }
+
+      return { success: true, materialId: input.materialId };
+    }),
+
+  /**
+   * Update an existing spec entry (price, lead time, etc.)
+   */
+  update: protectedProcedure
+    .input(
+      z.object({
+        specId: z.number().int(),
+        updates: z.object({
+          pricePerUnit: z.number().optional(),
+          priceUnit: z.string().optional(),
+          leadTimeDays: z.number().int().optional(),
+        }),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { updates, specId } = input;
+
+      const setClauses: string[] = ['"updatedAt" = NOW()'];
+      const params: unknown[] = [];
+      let idx = 1;
+
+      if (updates.pricePerUnit !== undefined) { setClauses.push(`"pricePerUnit" = $${idx++}`); params.push(updates.pricePerUnit); }
+      if (updates.priceUnit !== undefined) { setClauses.push(`"priceUnit" = $${idx++}`); params.push(updates.priceUnit); }
+      if (updates.leadTimeDays !== undefined) { setClauses.push(`"leadTimeDays" = $${idx++}`); params.push(updates.leadTimeDays); }
+
+      if (setClauses.length > 1) {
+        params.push(specId);
+        await queryOne(
+          `UPDATE materials SET ${setClauses.join(', ')} WHERE id = $${idx}`,
+          params
+        );
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Get all material specs submitted by a specific supplier.
+   */
+  getBySupplier: publicProcedure
+    .input(z.object({ supplierId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const rows = await queryMany<MaterialSpecRow>(
+        `SELECT ${SELECT_COLS}
+         FROM materials
+         WHERE "supplierId" = $1
+         ORDER BY name ASC`,
+        [input.supplierId]
       );
 
       return rows.map(rowToSpec);

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { agentHandoffRules } from "../drizzle/agent-handoff-schema";
+import { agentHandoffRules } from "../drizzle/schema";
 import { suppliers, agentAnalytics, supplierSubscriptions } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -61,15 +61,14 @@ export const agentConfigRouter = router({
         supplierId: supplier.id,
         handoffMode: "hybrid",
         maxAgentMessages: 5,
-        businessHoursEnabled: 0,
         customAgentPrompt: null,
-        autoDeflectEnabled: 1,
-      });
+        autoDeflectEnabled: true,
+      }).returning({ id: agentHandoffRules.id });
 
       rules = await db
         .select()
         .from(agentHandoffRules)
-        .where(eq(agentHandoffRules.id, newRule.insertId))
+        .where(eq(agentHandoffRules.id, newRule.id))
         .limit(1);
     }
 
@@ -84,13 +83,12 @@ export const agentConfigRouter = router({
       z.object({
         handoffMode: z.enum(["always_agent", "hybrid", "immediate_human"]).optional(),
         maxAgentMessages: z.number().min(1).max(20).optional(),
-        businessHoursEnabled: z.number().min(0).max(1).optional(),
         businessHoursStart: z.string().optional(),
         businessHoursEnd: z.string().optional(),
         businessDays: z.string().optional(),
         timezone: z.string().optional(),
         customAgentPrompt: z.string().max(2000).optional(),
-        autoDeflectEnabled: z.number().min(0).max(1).optional(),
+        autoDeflectEnabled: z.boolean().optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {

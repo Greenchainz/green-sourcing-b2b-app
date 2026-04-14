@@ -215,12 +215,12 @@ export async function createBuyerSubscription(
     msSubscriptionId: options?.msSubscriptionId || null,
     msPlanId: options?.msPlanId || null,
     status: options?.trialEndsAt ? "trial" : "active",
-    isBeta: options?.isBeta ? 1 : 0,
+    isBeta: options?.isBeta ? true : false,
     trialEndsAt: options?.trialEndsAt || undefined,
     maxSeats,
-  });
+  }).returning({ id: buyerSubscriptions.id });
 
-  return result.insertId;
+  return result.id;
 }
 
 export async function createSupplierSubscription(
@@ -241,10 +241,10 @@ export async function createSupplierSubscription(
     msSubscriptionId: options?.msSubscriptionId || null,
     msPlanId: options?.msPlanId || null,
     status: "active",
-    isBeta: options?.isBeta ? 1 : 0,
-  });
+    isBeta: options?.isBeta ? true : false,
+  }).returning({ id: supplierSubscriptions.id });
 
-  return result.insertId;
+  return result.id;
 }
 
 export async function upgradeBuyerSubscription(
@@ -330,7 +330,7 @@ export async function checkBuyerFeatureAccess(
   }
 
   // Beta users get premium access
-  if (subscription.isBeta === 1) {
+  if (subscription.isBeta === true) {
     return TIER_LIMITS.buyer.premium.features[feature];
   }
 
@@ -364,7 +364,7 @@ export async function checkSupplierFeatureAccess(
   }
 
   // Beta users get premium access
-  if (subscription.isBeta === 1) {
+  if (subscription.isBeta === true) {
     return TIER_LIMITS.supplier.premium.features[feature];
   }
 
@@ -386,7 +386,7 @@ export async function getBuyerTierLimits(userId: number) {
   }
 
   // Beta users get premium limits
-  if (subscription.isBeta === 1) {
+  if (subscription.isBeta === true) {
     return TIER_LIMITS.buyer.premium;
   }
 
@@ -415,7 +415,7 @@ export async function getSupplierTierLimits(supplierId: number) {
   }
 
   // Beta users get premium limits
-  if (subscription.isBeta === 1) {
+  if (subscription.isBeta === true) {
     return TIER_LIMITS.supplier.premium;
   }
 

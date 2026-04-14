@@ -41,7 +41,7 @@ export async function getNearbySuppliers(latitude: number, longitude: number, ra
         currentCapacity: suppliers.currentCapacity,
       })
       .from(suppliers)
-      .where(eq(suppliers.verified, 1));
+      .where(eq(suppliers.verified, true));
 
     // Filter by distance and criteria, attach computed distance
     const nearby = allSuppliers
@@ -210,7 +210,7 @@ export async function getSuppliersByState(state: string) {
         currentCapacity: suppliers.currentCapacity,
       })
       .from(suppliers)
-      .where(and(eq(suppliers.state, state), eq(suppliers.verified, 1)));
+      .where(and(eq(suppliers.state, state), eq(suppliers.verified, true)));
 
     return stateSuppliers;
   } catch (error) {
@@ -273,7 +273,7 @@ export async function getSuppliersWithDistance(latitude: number, longitude: numb
         phone: suppliers.phone,
       })
       .from(suppliers)
-      .where(eq(suppliers.verified, 1));
+      .where(eq(suppliers.verified, true));
 
     return allSuppliers
       .filter((s) => s.latitude != null && s.longitude != null)

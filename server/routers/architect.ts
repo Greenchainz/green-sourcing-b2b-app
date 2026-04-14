@@ -479,18 +479,7 @@ async function _applyProfileCreditsInternal(
   const totalNew = unclaimed.reduce((sum, k) => sum + PROFILE_CREDIT_KEYS[k].credits, 0);
   const newGranted = [...alreadyGranted, ...unclaimed];
 
-  await db
-    .update(architects)
-    .set({
-      profileCreditsGranted: newGranted,
-      // Use raw SQL increment to avoid race conditions
-      downloadCredits: (db as any).raw
-        ? db.select({ c: architects.downloadCredits }).from(architects).where(eq(architects.id, architectId))
-        : undefined,
-    })
-    .where(eq(architects.id, architectId));
-
-  // Simpler: fetch current credits and add
+  // Fetch current credits and add
   const [cur] = await db
     .select({ downloadCredits: architects.downloadCredits })
     .from(architects)

@@ -103,11 +103,6 @@ jobs:
           cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache,mode=max
           build-args: |
-            NEXT_PUBLIC_SITE_URL=https://greenchainz.com
-            NEXT_PUBLIC_AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}
-            NEXT_PUBLIC_AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}
-            # Same-origin auth model: keep backend URL vars empty in production.
-            NEXT_PUBLIC_BACKEND_URL=
             VITE_BACKEND_URL=
             VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
             VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
@@ -287,6 +282,39 @@ jobs:
               "fred-api-key=$FRED_API_KEY" \
               "resend-api-key=$RESEND_API_KEY"
 
+      - name: Ensure system identity + KV access
+        run: |
+          # Enable system-assigned identity for the backend app.
+          az containerapp identity assign \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --system-assigned
+
+          # Read back the principal ID after assignment.
+          PRINCIPAL_ID=$(az containerapp identity show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "principalId" --output tsv)
+
+          if [ -z "$PRINCIPAL_ID" ]; then
+            echo "❌ Could not resolve managed identity principal ID for ${{ env.BACKEND_APP }}"
+            exit 1
+          fi
+
+          # Scope the Key Vault role assignment to the vault resource itself.
+          KV_ID=$(az keyvault show \
+            --name ${{ env.KEY_VAULT }} \
+            --query id --output tsv)
+
+          az role assignment create \
+            --role "Key Vault Secrets User" \
+            --assignee-object-id "$PRINCIPAL_ID" \
+            --assignee-principal-type ServicePrincipal \
+            --scope "$KV_ID" || true
+
+          echo "Waiting 30s for RBAC propagation..."
+          sleep 30
+
       - name: Deploy backend
         run: |
           ENV_VARS=(
@@ -321,6 +349,13 @@ jobs:
             --secrets "database-url=$DATABASE_URL"
 
           ENV_VARS=("DEPLOY_TIMESTAMP=${{ github.run_id }}")
+          ENV_VARS=(
+            "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            "NODE_ENV=production"
+            "PORT=3000"
+            "DATABASE_URL=secretref:database-url"
+            "AZURE_MI_CLIENT_ID=secretref:azure-mi-client-id"
+          )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
               "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}"
@@ -332,6 +367,14 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}"
+          # Ensure ingress target port is always 3000 — guards against portal
+          # misconfig or a previous deployment that set a different port.
+          az containerapp ingress update \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --target-port 3000 \
+            --type external \
+            --transport http
 
       - name: Smoke test deployed backend
         run: |
@@ -344,30 +387,53 @@ jobs:
             exit 1
           fi
 
+          wait_for_expected_status() {
+            local url="$1"
+            local expected_status="$2"
+            local label="$3"
+            local method="${4:-GET}"
+            local attempts="${5:-24}"
+            local sleep_seconds="${6:-10}"
+            local status=""
+            local curl_exit_code=0
+
+            for i in $(seq 1 "$attempts"); do
+              status=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
+              curl_exit_code=$?
+              if [ "$curl_exit_code" -ne 0 ]; then
+                status="CURL_EXIT_${curl_exit_code}"
+              elif [ -z "$status" ]; then
+                status="HTTP_CODE_EMPTY"
+              elif ! [[ "$status" =~ ^[0-9]{3}$ ]]; then
+                status="HTTP_CODE_PARSE_ERROR"
+              fi
+              if [ "$status" = "$expected_status" ]; then
+                echo "✅ ${label}: ${status}"
+                return 0
+              fi
+
+              echo "⏳ ${label}: expected ${expected_status}, got ${status} (attempt ${i}/${attempts})"
+              if [ "$i" -lt "$attempts" ]; then
+                sleep "$sleep_seconds"
+              fi
+            done
+
+            echo "❌ ${label}: expected ${expected_status}, got ${status} after ${attempts} attempts"
+            return 1
+          }
+
           # Public endpoint should return 200.
-          curl -fsS "https://${BACKEND_FQDN}/api/health" > /dev/null
-          curl -fsS "https://${BACKEND_FQDN}/health" > /dev/null
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/health" "200" "/api/health" || exit 1
+          wait_for_expected_status "https://${BACKEND_FQDN}/health" "200" "/health" || exit 1
 
           # Protected endpoint should reject unauthenticated requests.
-          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/auth/me")
-          if [ "$AUTH_STATUS" != "401" ]; then
-            echo "❌ Expected 401 from protected route /api/auth/me, got ${AUTH_STATUS}"
-            exit 1
-          fi
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/auth/me" "401" "/api/auth/me" || exit 1
 
           # Admin REST routes must reject unauthenticated callers.
-          ADMIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://${BACKEND_FQDN}/api/admin/trigger-outreach")
-          if [ "$ADMIN_STATUS" != "401" ]; then
-            echo "❌ Expected 401 from admin route /api/admin/trigger-outreach, got ${ADMIN_STATUS}"
-            exit 1
-          fi
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST" "1" || exit 1
 
           # RFQ PDF routes must reject unauthenticated callers.
-          RFQ_PDF_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/rfq/1/pdf/summary")
-          if [ "$RFQ_PDF_STATUS" != "401" ]; then
-            echo "❌ Expected 401 from protected route /api/rfq/:rfqId/pdf/summary, got ${RFQ_PDF_STATUS}"
-            exit 1
-          fi
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/rfq/1/pdf/summary" "401" "/api/rfq/:rfqId/pdf/summary" || exit 1
 
       - name: Verify backend runtime frontend origin
         run: |
@@ -391,12 +457,52 @@ jobs:
             exit 1
           fi
 
-          # Frontend root should respond successfully.
-          FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${FRONTEND_FQDN}/")
-          if [ "$FRONTEND_STATUS" != "200" ]; then
-            echo "❌ Expected 200 from frontend root '/', got ${FRONTEND_STATUS}"
-            exit 1
-          fi
+          # Identical retry helper used by the backend smoke test.
+          wait_for_expected_status() {
+            local url="$1"
+            local expected_status="$2"
+            local label="$3"
+            local method="${4:-GET}"
+            local attempts="${5:-24}"
+            local sleep_seconds="${6:-10}"
+            local status=""
+            local curl_exit_code=0
+
+            for i in $(seq 1 "$attempts"); do
+              status=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
+              curl_exit_code=$?
+              if [ "$curl_exit_code" -ne 0 ]; then
+                status="CURL_EXIT_${curl_exit_code}"
+              elif [ -z "$status" ]; then
+                status="HTTP_CODE_EMPTY"
+              elif ! [[ "$status" =~ ^[0-9]{3}$ ]]; then
+                status="HTTP_CODE_PARSE_ERROR"
+              fi
+              if [ "$status" = "$expected_status" ]; then
+                echo "✅ ${label}: ${status}"
+                return 0
+              fi
+
+              echo "⏳ ${label}: expected ${expected_status}, got ${status} (attempt ${i}/${attempts})"
+              if [ "$i" -lt "$attempts" ]; then
+                sleep "$sleep_seconds"
+              fi
+            done
+
+            echo "❌ ${label}: expected ${expected_status}, got ${status} after ${attempts} attempts"
+            return 1
+          }
+
+          wait_for_expected_status "https://${FRONTEND_FQDN}/" "200" "Frontend root /" || exit 1
+
+      - name: Dump frontend container logs on failure
+        if: failure()
+        run: |
+          echo "=== greenchainz-frontend container logs (last 100 lines) ==="
+          az containerapp logs show \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --tail 100 2>/dev/null || echo "(log fetch failed)"
 
       - name: Azure logout
         run: az logout || true

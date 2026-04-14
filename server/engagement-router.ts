@@ -135,7 +135,7 @@ export const engagementRouter = router({
     .input(
       z.object({
         action: z.enum(["rfq_submit", "comparison", "spec_sheet", "referral"]),
-        metadata: z.record(z.unknown()).optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -237,9 +237,9 @@ export async function submitBid(
       notes,
       expiresAt,
     })
-    .execute();
+    .returning({ id: rfqBids.id });
 
-  const bidId = (bidResult as any).insertId;
+  const bidId = bidResult.id;
 
   // Update RFQ analytics
   const analytics = await db.select().from(rfqAnalytics).where(eq(rfqAnalytics.rfqId, rfqId)).execute();
@@ -353,9 +353,9 @@ export async function getOrCreateThread(rfqId: number, supplierId: number, buyer
       buyerId,
       status: "active",
     })
-    .execute();
+    .returning({ id: rfqThreads.id });
 
-  return { threadId: (threadResult as any).insertId };
+  return { threadId: threadResult.id };
 }
 
 /**
@@ -377,11 +377,11 @@ export async function sendMessage(threadId: number, senderId: number, senderType
       senderId,
       senderType,
       content,
-      isRead: 0,
+      isRead: false,
     })
-    .execute();
+    .returning({ id: rfqMessages.id });
 
-  const messageId = (msgResult as any).insertId;
+  const messageId = msgResult.id;
 
   // Update thread's lastMessageAt
   await db.update(rfqThreads).set({ lastMessageAt: new Date() }).where(eq(rfqThreads.id, threadId)).execute();
