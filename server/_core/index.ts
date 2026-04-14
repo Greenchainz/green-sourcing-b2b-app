@@ -111,7 +111,10 @@ async function startServer() {
       .filter(([, v]) => !v)
       .map(([k]) => k);
     if (missing.length > 0) {
-      throw new Error(`[startup] Missing required environment variables: ${missing.join(", ")}`);
+      // Warn but don't crash — the frontend container app serves static files
+      // and does not need these secrets. API calls will fail gracefully if
+      // DATABASE_URL is absent; the SPA itself will still load.
+      console.warn(`[startup] Missing env vars (API features degraded): ${missing.join(", ")}`);
     }
   }
 
