@@ -419,7 +419,7 @@ export default function MaterialsCatalog() {
       { query: filters.search || "", limit: 48 },
       {
         enabled: useSemanticMode && !!filters.search,
-        placeholderData: (prev: unknown) => prev,
+        placeholderData: (prev) => prev,
         staleTime: 30_000,
       }
     );

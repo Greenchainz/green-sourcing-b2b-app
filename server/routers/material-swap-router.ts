@@ -47,7 +47,7 @@
 import { z } from 'zod';
 import { publicProcedure, router } from '../_core/trpc';
 import { TRPCError } from '@trpc/server';
-import { queryMany, queryOne } from '../pg-db';
+import { queryMany, queryOne } from '../../lib/pg-pool';
 import {
   validateSwap as validateSwapService,
   type MaterialSpec,
@@ -373,5 +373,229 @@ export const materialSwapRouter = router({
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
       }));
+    }),
+
+  /**
+   * Search materials by name, category, or product description.
+   * Used by the Material Swap Engine search bar.
+   */
+  search: publicProcedure
+    .input(z.object({ query: z.string(), limit: z.number().int().min(1).max(100).default(20) }))
+    .query(async ({ input }) => {
+      const term = `%${input.query.toLowerCase()}%`;
+      const rows = await queryMany<MaterialRow & { hasEpd: boolean; productName: string | null }>(
+        `SELECT id, name, category,
+                "gwpValue"::TEXT AS "gwpValue",
+                "fireRating",
+                "compressiveStrength"::TEXT AS "compressiveStrength",
+                "tensileStrength"::TEXT AS "tensileStrength",
+                "flexuralStrength"::TEXT AS "flexuralStrength",
+                density::TEXT AS density,
+                "thermalConductivity"::TEXT AS "thermalConductivity",
+                "waterAbsorption"::TEXT AS "waterAbsorption",
+                "recycledContentPct"::TEXT AS "recycledContentPct",
+                "embodiedEnergy"::TEXT AS "embodiedEnergy",
+                voc::TEXT AS voc,
+                "epdUrl",
+                certifications,
+                "pricePerUnit"::TEXT AS "pricePerUnit",
+                "priceUnit",
+                "supplierName",
+                "hasEpd",
+                "productName"
+         FROM materials
+         WHERE LOWER(name) LIKE $1
+            OR LOWER(category) LIKE $1
+            OR LOWER(COALESCE("productName", '')) LIKE $1
+         ORDER BY name
+         LIMIT $2`,
+        [term, input.limit]
+      );
+      return rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        category: r.category,
+        gwpValue: r.gwpValue,
+        hasEpd: r.hasEpd,
+        pricePerUnit: r.pricePerUnit,
+        priceUnit: r.priceUnit,
+        productName: r.productName ?? null,
+      }));
+    }),
+
+  /**
+   * Find swap alternatives for a material identified by integer ID.
+   * Looks up the material, then delegates to the same alternative-finding logic.
+   */
+  findSwaps: publicProcedure
+    .input(
+      z.object({
+        materialId: z.number().int().positive(),
+        maxGwpIncrease: z.number().default(0),
+        maxPriceIncrease: z.number().default(20),
+        limit: z.number().int().min(1).max(50).default(10),
+      })
+    )
+    .query(async ({ input }) => {
+      const selectCols = `id, name, category,
+        "gwpValue"::TEXT AS "gwpValue", "fireRating",
+        "compressiveStrength"::TEXT AS "compressiveStrength",
+        "tensileStrength"::TEXT AS "tensileStrength",
+        "flexuralStrength"::TEXT AS "flexuralStrength",
+        density::TEXT AS density,
+        "thermalConductivity"::TEXT AS "thermalConductivity",
+        "waterAbsorption"::TEXT AS "waterAbsorption",
+        "recycledContentPct"::TEXT AS "recycledContentPct",
+        "embodiedEnergy"::TEXT AS "embodiedEnergy",
+        voc::TEXT AS voc, "epdUrl", certifications,
+        "pricePerUnit"::TEXT AS "pricePerUnit", "priceUnit", "supplierName"`;
+
+      const originalRow = await queryOne<MaterialRow>(
+        `SELECT ${selectCols} FROM materials WHERE id = $1`,
+        [input.materialId]
+      );
+
+      if (!originalRow) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: `Material ${input.materialId} not found` });
+      }
+
+      const origGwp = toNum(originalRow.gwpValue);
+      const origPrice = toNum(originalRow.pricePerUnit);
+
+      // Candidates: same category, GWP within bounds
+      const candidates = await queryMany<MaterialRow>(
+        `SELECT ${selectCols}
+         FROM materials
+         WHERE category = $1
+           AND id != $2
+           AND ("gwpValue" IS NULL OR "gwpValue"::FLOAT <= COALESCE($3::FLOAT * (1 + $4 / 100.0), 9999))
+         ORDER BY "gwpValue" ASC NULLS LAST
+         LIMIT $5`,
+        [originalRow.category, input.materialId, origGwp, input.maxGwpIncrease, input.limit * 3]
+      );
+
+      // Post-filter by price and fire rating, then shape the response
+      const swaps = candidates
+        .filter(c => {
+          const cPrice = toNum(c.pricePerUnit);
+          if (origPrice !== null && cPrice !== null) {
+            const priceDeltaPct = ((cPrice - origPrice) / origPrice) * 100;
+            if (priceDeltaPct > input.maxPriceIncrease) return false;
+          }
+          if (origGwp !== null) {
+            return fireRank(c.fireRating) >= fireRank(originalRow.fireRating);
+          }
+          return true;
+        })
+        .slice(0, input.limit)
+        .map(c => {
+          const cPrice = toNum(c.pricePerUnit);
+          const cGwp = toNum(c.gwpValue);
+          const priceDelta = origPrice !== null && cPrice !== null
+            ? parseFloat((((cPrice - origPrice) / origPrice) * 100).toFixed(1))
+            : null;
+          const leadTimeDelta: number | null = null; // not stored in current schema
+
+          return {
+            original: originalRow,
+            candidate: c,
+            tradeoffs: { priceDelta, leadTimeDelta },
+          };
+        });
+
+      return { swaps };
+    }),
+
+  /**
+   * Full CCPS scorecard comparison between two materials.
+   */
+  compareScorecard: publicProcedure
+    .input(
+      z.object({
+        materialId1: z.number().int().positive(),
+        materialId2: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input }) => {
+      const selectCols = `id, name, category,
+        "gwpValue"::TEXT AS "gwpValue", "fireRating",
+        "compressiveStrength"::TEXT AS "compressiveStrength",
+        "tensileStrength"::TEXT AS "tensileStrength",
+        "flexuralStrength"::TEXT AS "flexuralStrength",
+        density::TEXT AS density,
+        "thermalConductivity"::TEXT AS "thermalConductivity",
+        "waterAbsorption"::TEXT AS "waterAbsorption",
+        "recycledContentPct"::TEXT AS "recycledContentPct",
+        "embodiedEnergy"::TEXT AS "embodiedEnergy",
+        voc::TEXT AS voc, "epdUrl", certifications,
+        "pricePerUnit"::TEXT AS "pricePerUnit", "priceUnit", "supplierName",
+        "hasEpd", "hasDeclare", "hasHpd", "hasFsc", "hasC2c",
+        "usManufactured", "regionalAvailabilityMiles",
+        "leadTimeDays"`;
+
+      const [row1, row2] = await Promise.all([
+        queryOne<MaterialRow & {
+          hasEpd: boolean; hasDeclare: boolean; hasHpd: boolean; hasFsc: boolean; hasC2c: boolean;
+          usManufactured: boolean; regionalAvailabilityMiles: number | null; leadTimeDays: number | null;
+        }>(`SELECT ${selectCols} FROM materials WHERE id = $1`, [input.materialId1]),
+        queryOne<MaterialRow & {
+          hasEpd: boolean; hasDeclare: boolean; hasHpd: boolean; hasFsc: boolean; hasC2c: boolean;
+          usManufactured: boolean; regionalAvailabilityMiles: number | null; leadTimeDays: number | null;
+        }>(`SELECT ${selectCols} FROM materials WHERE id = $1`, [input.materialId2]),
+      ]);
+
+      if (!row1) throw new TRPCError({ code: 'NOT_FOUND', message: `Material ${input.materialId1} not found` });
+      if (!row2) throw new TRPCError({ code: 'NOT_FOUND', message: `Material ${input.materialId2} not found` });
+
+      type ScorecardRow = NonNullable<typeof row1>;
+      function buildScorecard(r: ScorecardRow) {
+        return {
+          carbon: { gwp: toNum(r.gwpValue) },
+          compliance: {
+            fireRating: r.fireRating,
+            rValue: null as number | null,
+            meetsTitle24: false,
+            meetsIecc: false,
+          },
+          certifications: {
+            hasEpd: r.hasEpd,
+            hasDeclare: r.hasDeclare,
+            hasHpd: r.hasHpd,
+            hasFsc: r.hasFsc,
+            hasC2c: r.hasC2c,
+          },
+          cost: {
+            pricePerUnit: toNum(r.pricePerUnit),
+            priceUnit: r.priceUnit,
+            leadTimeDays: r.leadTimeDays,
+          },
+          supplyChain: {
+            usManufactured: r.usManufactured,
+            regionalAvailabilityMiles: r.regionalAvailabilityMiles,
+          },
+          health: {
+            vocLevel: r.voc,
+            onRedList: false,
+          },
+        };
+      }
+
+      const gwp1 = toNum(row1.gwpValue);
+      const gwp2 = toNum(row2.gwpValue);
+      const carbonSavings = gwp1 !== null && gwp2 !== null && gwp1 > 0
+        ? parseFloat((((gwp1 - gwp2) / gwp1) * 100).toFixed(2))
+        : null;
+
+      const price1 = toNum(row1.pricePerUnit);
+      const price2 = toNum(row2.pricePerUnit);
+      const priceDifference = price1 !== null && price2 !== null
+        ? parseFloat((price2 - price1).toFixed(2))
+        : null;
+
+      return {
+        material1: { id: row1.id, name: row1.name, category: row1.category, scorecard: buildScorecard(row1) },
+        material2: { id: row2.id, name: row2.name, category: row2.category, scorecard: buildScorecard(row2) },
+        comparison: { carbonSavings, priceDifference },
+      };
     }),
 });

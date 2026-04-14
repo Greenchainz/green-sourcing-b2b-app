@@ -4,11 +4,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ShieldCheck, Wind, Award, MapPin, Eye, Info } from "lucide-react";
 
 export interface McsBreakdown {
-  epd: { score: number; max: 30; hasEpd: boolean; hasEpdNumber: boolean };
-  carbon: { score: number; max: 25; gwp: number | null; median: number | null; bestPractice: number | null };
-  certifications: { score: number; max: 20; certNames: string[] };
-  localSourcing: { score: number; max: 15; miles: number | null; usManufactured: boolean };
-  transparency: { score: number; max: 10; filledFields: number; totalFields: number };
+  epd: { score: number; max: number; hasEpd: boolean; hasEpdNumber: boolean };
+  carbon: { score: number; max: number; gwp: number | null; median: number | null; bestPractice: number | null };
+  certifications: { score: number; max: number; certNames: string[] };
+  localSourcing: { score: number; max: number; miles: number | null; usManufactured: boolean };
+  transparency: { score: number; max: number; filledFields: number; totalFields: number };
 }
 
 const TIPS: Record<string, string> = {

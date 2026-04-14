@@ -116,7 +116,13 @@ export function useAuth() {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+  return {
+    ...context,
+    loading: context.isLoading,
+    isArchitect: context.user?.role === 'architect',
+    isSupplier: context.user?.role === 'supplier',
+    isAdmin: context.user?.role === 'admin',
+  };
 }
 
 export function useIsArchitect(): boolean {

@@ -20,7 +20,7 @@ env:
   BACKEND_APP: greenchainz-backend
   FRONTEND_IMAGE: greenchainz-frontend
   BACKEND_IMAGE: greenchainz-backend
-  KEY_VAULT: Greenchainz-vault
+  KEY_VAULT: Greenchainz-vault-2026
   DB_SERVER_RG: rg-greenchainz
   DB_SERVER_NAME: greenchainz-db-prod
 
@@ -267,6 +267,39 @@ jobs:
           # system identity lacks access. Pull them here and pass as plain env vars.
           get_secret fred-api-key
           get_secret resend-api-key
+
+      - name: Ensure system identity + KV access
+        run: |
+          # Enable system-assigned identity for the backend app.
+          az containerapp identity assign \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --system-assigned
+
+          # Read back the principal ID after assignment.
+          PRINCIPAL_ID=$(az containerapp identity show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "principalId" --output tsv)
+
+          if [ -z "$PRINCIPAL_ID" ]; then
+            echo "❌ Could not resolve managed identity principal ID for ${{ env.BACKEND_APP }}"
+            exit 1
+          fi
+
+          # Scope the Key Vault role assignment to the vault resource itself.
+          KV_ID=$(az keyvault show \
+            --name ${{ env.KEY_VAULT }} \
+            --query id --output tsv)
+
+          az role assignment create \
+            --role "Key Vault Secrets User" \
+            --assignee-object-id "$PRINCIPAL_ID" \
+            --assignee-principal-type ServicePrincipal \
+            --scope "$KV_ID" || true
+
+          echo "Waiting 30s for RBAC propagation..."
+          sleep 30
 
       - name: Remove broken KV-reference secrets from backend
         # These secrets were added via the Azure portal with identity: system, but the

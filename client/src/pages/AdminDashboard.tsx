@@ -67,7 +67,7 @@ type VerificationStatus = 'pending' | 'approved' | 'rejected';
 interface AdminUser {
   id: number;
   name: string | null;
-  email: string;
+  email: string | null;
   role: string;
   createdAt: Date | string | null;
   lastSignedIn: Date | string | null;
@@ -545,7 +545,7 @@ function UsersTab() {
     const matchesSearch =
       !q ||
       (u.name ?? '').toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
+      (u.email ?? '').toLowerCase().includes(q) ||
       u.role.toLowerCase().includes(q);
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
