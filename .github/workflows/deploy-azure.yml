@@ -335,6 +335,31 @@ jobs:
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}"
 
+      - name: Clear broken KEDA scale rules from frontend
+        # az containerapp update --min-replicas only sets the floor; it does NOT
+        # remove existing custom scale rules. The broken ScaledObject ("Target
+        # resource doesn't exist") is inherited by every new revision unless
+        # explicitly wiped. Use a REST PATCH to set rules:[] on the template.
+        run: |
+          echo "=== Current scale config ==="
+          az containerapp show \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.template.scale" -o json 2>/dev/null || true
+
+          RESOURCE_ID=$(az containerapp show \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query id -o tsv)
+
+          az rest \
+            --method PATCH \
+            --uri "${RESOURCE_ID}?api-version=2023-05-01" \
+            --body '{"properties":{"template":{"scale":{"minReplicas":1,"maxReplicas":3,"rules":[]}}}}' \
+            --output none \
+          && echo "✅ Scale rules cleared" \
+          || echo "⚠️  REST PATCH failed — will rely on --min-replicas in update step"
+
       - name: Deploy frontend
         env:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
