@@ -20,7 +20,7 @@ env:
   BACKEND_APP: greenchainz-backend
   FRONTEND_IMAGE: greenchainz-frontend
   BACKEND_IMAGE: greenchainz-backend
-  KEY_VAULT: Greenchainz-vault-2026
+  KEY_VAULT: Greenchainz-vault
   DB_SERVER_RG: rg-greenchainz
   DB_SERVER_NAME: greenchainz-db-prod
 
