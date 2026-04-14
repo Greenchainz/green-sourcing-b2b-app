@@ -10,6 +10,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { getPool } from './pg-pool';
 
+// Re-exported from lib/pg-pool for backwards compatibility.
 export {
   DEFAULT_QUERY_TIMEOUT_MS,
   MAX_POOL_SIZE,
