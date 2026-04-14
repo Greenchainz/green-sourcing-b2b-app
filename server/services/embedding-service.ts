@@ -57,7 +57,7 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
     return null;
   }
 
-  const data = await response.json();
+  const data = await response.json() as { data?: Array<{ embedding: number[] }> };
   return data.data?.[0]?.embedding ?? null;
 }
 
@@ -90,7 +90,7 @@ export async function generateEmbeddingsBatch(texts: string[]): Promise<(number[
     return texts.map(() => null);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { data?: Array<{ index: number; embedding: number[] }> };
   const embeddings: (number[] | null)[] = texts.map(() => null);
   for (const item of data.data ?? []) {
     embeddings[item.index] = item.embedding;

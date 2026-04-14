@@ -232,7 +232,7 @@ export function registerOAuthProviderRoutes(app: Express) {
 
   // ── Initiate OAuth flow ────────────────────────────────────────────────────
   app.get("/api/auth/:provider", (req: Request, res: Response) => {
-    const { provider } = req.params;
+    const provider = req.params.provider as string;
     const rawReturnPath = (req.query.returnPath as string) || "/";
     // Prevent open redirect: only allow relative paths (starts with / but not //)
     const returnPath = /^\/(?!\/)/.test(rawReturnPath) ? rawReturnPath : "/";
@@ -265,7 +265,7 @@ export function registerOAuthProviderRoutes(app: Express) {
 
   // ── OAuth callback ─────────────────────────────────────────────────────────
   app.get("/api/auth/callback/:provider", async (req: Request, res: Response) => {
-    const { provider } = req.params;
+    const provider = req.params.provider as string;
     const code = req.query.code as string;
     const state = req.query.state as string;
     const error = req.query.error as string;

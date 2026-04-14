@@ -14,7 +14,7 @@
 import { getDb } from './db';
 import { materials } from '../drizzle/schema';
 import { eq, sql } from 'drizzle-orm';
-import { searchEpds, getEpdDetail } from './autodesk-sda-service';
+import { searchEpds, getEpdDetail, type SDAProductEpd } from './autodesk-sda-service';
 
 interface SyncStatus {
   lastSync: Date;
@@ -92,15 +92,20 @@ export async function syncEpdData(): Promise<SyncStatus> {
               .where(eq(materials.epdNumber, detail.id))
               .limit(1);
 
+            const d = detail as SDAProductEpd & {
+              category?: string;
+              gwp?: number;
+              certifications?: string[];
+            };
             const materialData = {
-              name: detail.name,
-              category: detail.category,
-              description: detail.description,
-              epdNumber: detail.id,
-              gwpValue: detail.gwp.toString(),
+              name: d.name,
+              category: d.category ?? d.categoryIds?.[0] ?? 'Unknown',
+              description: d.description,
+              epdNumber: d.id,
+              gwpValue: d.gwp != null ? d.gwp.toString() : null,
               gwpUnit: 'kg CO2-eq',
-              hasEpd: 1,
-              vocCertification: detail.certifications.join(','),
+              hasEpd: true,
+              vocCertification: d.certifications ? d.certifications.join(',') : null,
             };
 
             if (existing.length > 0) {

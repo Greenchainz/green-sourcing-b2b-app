@@ -48,7 +48,7 @@ specSheetRouter.get("/materials/:id/spec-sheet", async (req, res) => {
 
     const inputs = buildSpecSheetInputs(mat, mfgName, mfgWebsite);
 
-    const pdf = await generate({
+    const pdf = await (generate as unknown as (opts: { template: unknown; inputs: unknown[]; plugins: Record<string, unknown> }) => Promise<Uint8Array>)({
       template: specSheetTemplate,
       inputs: [inputs],
       plugins: { text, rectangle, line },

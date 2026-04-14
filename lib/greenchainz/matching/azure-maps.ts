@@ -53,7 +53,7 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
     const response = await fetch(
       `${AZURE_MAPS_BASE_URL}/search/address/json?${params}`
     );
-    const data = await response.json();
+    const data = await response.json() as any;
 
     if (!data.results || data.results.length === 0) {
       console.warn(`No geocoding results for: ${address}`);
@@ -110,7 +110,7 @@ export async function calculateDistance(
       }
     );
 
-    const data = await response.json();
+    const data = await response.json() as any;
     const matrix = data?.matrix;
 
     if (!matrix || matrix.length === 0 || !matrix[0] || matrix[0].length === 0) {
@@ -154,7 +154,7 @@ export async function calculateRoute(
     const response = await fetch(
       `${AZURE_MAPS_BASE_URL}/route/directions/json?${params}`
     );
-    const data = await response.json();
+    const data = await response.json() as any;
     const routes = data?.routes;
 
     if (!routes || routes.length === 0) {

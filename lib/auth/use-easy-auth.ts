@@ -64,8 +64,8 @@ export function useAuth(): UseAuthResult {
           throw new Error(`Failed to fetch user: ${response.status}`);
         }
 
-        const data = await response.json();
-        setUser(data.user);
+        const data = await response.json() as { user: unknown };
+        setUser(data.user as any);
       } catch (err) {
         console.error('[useAuth] Error fetching user:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch user');

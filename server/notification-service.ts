@@ -32,7 +32,7 @@ export async function sendInAppNotification(payload: NotificationPayload) {
       title: payload.title,
       content: payload.content,
       relatedRfqId: payload.relatedId,
-      isRead: 0,
+      isRead: false,
     });
     
     // Broadcast notification in real-time via WebPubSub
@@ -220,7 +220,7 @@ export async function markNotificationAsRead(notificationId: number) {
     await db
       .update(notifications)
       .set({
-        isRead: 1,
+        isRead: true,
         readAt: new Date(),
       })
       .where(eq(notifications.id, notificationId));
@@ -292,7 +292,7 @@ export async function markAllNotificationsAsRead(userId: number) {
   try {
     await db
       .update(notifications)
-      .set({ isRead: 1 })
+      .set({ isRead: true })
       .where(eq(notifications.userId, userId));
     
     console.log(`✅ Marked all notifications as read for user ${userId}`);

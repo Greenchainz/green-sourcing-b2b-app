@@ -133,7 +133,7 @@ export async function activateSubscription(
   }
 
   // Create new subscription
-  const result = await db
+  const [inserted] = await db
     .insert(subscriptions)
     .values({
       userId,
@@ -143,14 +143,14 @@ export async function activateSubscription(
       startDate,
       endDate,
       lastRenewalDate: new Date(),
-    });
+    })
+    .returning({ id: subscriptions.id });
 
   // Fetch newly created record
-  const insertId = Number(result[0].insertId);
   const [newSubscription] = await db
     .select()
     .from(subscriptions)
-    .where(eq(subscriptions.id, insertId))
+    .where(eq(subscriptions.id, inserted.id))
     .limit(1);
 
   return newSubscription;
@@ -350,7 +350,7 @@ export async function updateUserTier(
 
   if (!subscription) {
     // Create new subscription for manual tier assignment
-    const result = await db
+    const [inserted] = await db
       .insert(subscriptions)
       .values({
         userId,
@@ -360,13 +360,13 @@ export async function updateUserTier(
         startDate: new Date(),
         endDate: null, // Manual assignments don't expire
         lastRenewalDate: null,
-      });
+      })
+      .returning({ id: subscriptions.id });
 
-    const insertId = Number(result[0].insertId);
     const [newSubscription] = await db
       .select()
       .from(subscriptions)
-      .where(eq(subscriptions.id, insertId))
+      .where(eq(subscriptions.id, inserted.id))
       .limit(1);
 
     return newSubscription;

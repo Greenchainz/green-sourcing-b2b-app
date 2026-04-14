@@ -59,7 +59,7 @@ export async function makeAzureMapsRequest<T = any>(
     throw new Error(`Azure Maps API error: ${response.statusText}`);
   }
   
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
 // ============================================================================

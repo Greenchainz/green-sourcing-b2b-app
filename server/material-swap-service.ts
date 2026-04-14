@@ -191,9 +191,9 @@ export async function saveSwapRecommendation(
     swapTier,
     confidence: confidence.toString(),
     createdBy,
-  });
+  }).returning({ id: materialSwaps.id });
 
-  return result.insertId;
+  return result.id;
 }
 
 /**
