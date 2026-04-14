@@ -348,13 +348,12 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --secrets "database-url=$DATABASE_URL"
 
-          ENV_VARS=("DEPLOY_TIMESTAMP=${{ github.run_id }}")
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
             "NODE_ENV=production"
             "PORT=3000"
             "DATABASE_URL=secretref:database-url"
-            "AZURE_MI_CLIENT_ID=secretref:azure-mi-client-id"
+            "AZURE_MI_CLIENT_ID=${{ vars.AZURE_MI_CLIENT_ID }}"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
@@ -366,6 +365,7 @@ jobs:
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --remove-env-vars AZURE_MI_CLIENT_ID \
             --set-env-vars "${ENV_VARS[@]}"
           # Ensure ingress target port is always 3000 — guards against portal
           # misconfig or a previous deployment that set a different port.
