@@ -263,6 +263,7 @@ jobs:
           get_secret sentry-auth-token
           get_secret sentry-org
           get_secret sentry-project
+          get_secret Database-URL
           # These were added via the Azure portal as KV-reference secrets, but the
           # system identity lacks access. Pull them here and pass as plain env vars.
           get_secret fred-api-key
@@ -307,7 +308,18 @@ jobs:
             --set-env-vars "${ENV_VARS[@]}"
 
       - name: Deploy frontend
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          az containerapp secret set \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --secrets "database-url=$DATABASE_URL"
+
           ENV_VARS=("DEPLOY_TIMESTAMP=${{ github.run_id }}")
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
