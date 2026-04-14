@@ -28,13 +28,13 @@ export const legalRouter = router({
     const acceptance = rows[0];
 
     return {
-      termsAccepted: acceptance?.termsAccepted === true,
+      termsAccepted: !!acceptance?.termsAccepted,
       termsAcceptedAt: acceptance?.termsAcceptedAt,
       termsVersion: acceptance?.termsVersion || "1.0",
-      privacyAccepted: acceptance?.privacyAccepted === true,
+      privacyAccepted: !!acceptance?.privacyAccepted,
       privacyAcceptedAt: acceptance?.privacyAcceptedAt,
       privacyVersion: acceptance?.privacyVersion || "1.0",
-      cookieConsentGiven: acceptance?.cookieConsentGiven === true,
+      cookieConsentGiven: !!acceptance?.cookieConsentGiven,
       cookieConsentAt: acceptance?.cookieConsentAt,
     };
   }),
