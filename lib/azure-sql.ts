@@ -1,18 +1,44 @@
 /**
- * lib/azure-sql.ts
+ * Azure SQL (MSSQL) connector.
  *
- * Legacy compatibility shim kept for old imports. Connection handling has been
- * consolidated to the shared PostgreSQL pool module.
+ * Note: This module targets Azure SQL Server (mssql), not PostgreSQL.
  */
+import sql from 'mssql';
 
-import type { Pool } from 'pg';
-import { getPool, closePool } from './pg-pool';
+const config: sql.config = {
+  server: process.env.AZURE_SQL_SERVER || '',
+  database: process.env.AZURE_SQL_DATABASE || '',
+  authentication: {
+    type: 'default',
+    options: {
+      userName: process.env.AZURE_SQL_USERNAME || '',
+      password: process.env.AZURE_SQL_PASSWORD || ''
+    }
+  },
+  options: {
+    encrypt: true,
+    trustServerCertificate: false,
+    enableArithAbort: true
+  },
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000
+  }
+};
 
-/** @deprecated Legacy name retained for compatibility; returns the shared PostgreSQL pool. */
-export async function getAzureSqlConnection(): Promise<Pool> {
-  return getPool();
+let pool: sql.ConnectionPool | null = null;
+
+export async function getAzureSqlConnection(): Promise<sql.ConnectionPool> {
+  if (!pool) {
+    pool = await sql.connect(config);
+  }
+  return pool;
 }
 
 export async function closeConnection(): Promise<void> {
-  return closePool();
+  if (pool) {
+    await pool.close();
+    pool = null;
+  }
 }
