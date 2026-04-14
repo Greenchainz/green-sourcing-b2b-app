@@ -82,7 +82,7 @@ export async function reportUsageEvent(event: UsageEvent): Promise<UsageEventRes
       return null;
     }
 
-    const result: UsageEventResult = await response.json();
+    const result = await response.json() as UsageEventResult;
     
     console.log("[Metering API] Usage event reported successfully:", {
       usageEventId: result.usageEventId,
@@ -140,7 +140,7 @@ export async function reportBatchUsageEvents(events: UsageEvent[]): Promise<Usag
       return [];
     }
 
-    const result = await response.json();
+    const result = await response.json() as { result?: UsageEventResult[] };
     const results: UsageEventResult[] = result.result || [];
 
     console.log("[Metering API] Batch usage events reported:", {

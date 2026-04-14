@@ -65,6 +65,14 @@ export interface SwapValidationResult {
   };
   warnings: string[];
   leedCredits: LeedCredits;
+  // Derived fields used when persisting to swapValidations table
+  validationStatus: 'APPROVED' | 'EXPERIMENTAL' | 'REJECTED';
+  overallScore: number;
+  showstopperResults: Record<string, PassFail>;
+  failedChecks: string[];
+  passedChecks: string[];
+  skippedChecks: string[];
+  recommendation: string;
 }
 
 export interface LeedCredits {
@@ -187,15 +195,36 @@ export function validateSwap(
 
   const leedCredits = calculateLeedCredits(original, substitute);
 
+  const checksObj = {
+    compressiveStrength: compressiveStrengthCheck,
+    fireRating: fireRatingCheck,
+    density: densityCheck,
+  };
+
+  const passedChecks = (Object.entries(checksObj) as [string, PassFail][])
+    .filter(([, v]) => v === 'PASS').map(([k]) => k);
+  const failedChecks = (Object.entries(checksObj) as [string, PassFail][])
+    .filter(([, v]) => v === 'FAIL').map(([k]) => k);
+  const totalChecks = Object.keys(checksObj).length;
+  const overallScore = totalChecks > 0 ? Math.round((passedChecks.length / totalChecks) * 100) : 0;
+  const validationStatus: 'APPROVED' | 'EXPERIMENTAL' | 'REJECTED' =
+    valid ? 'APPROVED' : failedChecks.length === 1 ? 'EXPERIMENTAL' : 'REJECTED';
+  const recommendation = valid
+    ? `Swap approved. ${original.materialName} can be substituted with ${substitute.materialName}.`
+    : `Swap not recommended. ${substitute.materialName} fails ${failedChecks.join(', ')} checks vs ${original.materialName}.`;
+
   return {
     valid,
-    checks: {
-      compressiveStrength: compressiveStrengthCheck,
-      fireRating: fireRatingCheck,
-      density: densityCheck,
-    },
+    checks: checksObj,
     warnings,
     leedCredits,
+    validationStatus,
+    overallScore,
+    showstopperResults: checksObj,
+    failedChecks,
+    passedChecks,
+    skippedChecks: [],
+    recommendation,
   };
 }
 

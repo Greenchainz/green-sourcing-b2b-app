@@ -57,7 +57,7 @@ export async function getApsAccessToken(): Promise<string> {
       throw new Error(`APS OAuth failed: ${response.status} - ${errorText}`);
     }
 
-    const data: TokenResponse = await response.json();
+    const data = await response.json() as TokenResponse;
 
     // Cache token with 5-minute buffer before expiration
     cachedToken = {

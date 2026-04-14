@@ -60,7 +60,7 @@ async function findOrCreateUserByEmail(email: string, microsoftObjectId: string)
   }
 
   // Create new user
-  const result = await db
+  const [inserted] = await db
     .insert(users)
     .values({
       openId: microsoftObjectId,
@@ -68,9 +68,10 @@ async function findOrCreateUserByEmail(email: string, microsoftObjectId: string)
       name: email.split("@")[0], // Use email prefix as name
       loginMethod: "microsoft",
       role: "user",
-    });
+    })
+    .returning({ id: users.id });
 
-  return Number(result[0].insertId);
+  return inserted.id;
 }
 
 /**

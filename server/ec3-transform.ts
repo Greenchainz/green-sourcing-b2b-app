@@ -42,9 +42,9 @@ export function transformEC3ToMaterial(epd: EC3EPD): Partial<Material> {
     gwpUnit: "kgCO2e",
     declaredUnit: epd.declared_unit || epd.category.declared_unit,
     embodiedCarbonPer1000sf: embodiedCarbonPer1000sf.toString(),
-    hasEpd: 1,
+    hasEpd: true,
     dataSource: "EC3",
-    verified: epd.externally_verified ? 1 : 0,
+    verified: epd.externally_verified ? true : false,
     // EC3-specific tracking fields
     ec3Id: epd.id,
     ec3SyncedAt: new Date(),

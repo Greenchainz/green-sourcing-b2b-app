@@ -264,6 +264,6 @@ async function getMarketplaceAccessToken(): Promise<string> {
     throw new Error(`Failed to get access token: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { access_token: string };
   return data.access_token;
 }

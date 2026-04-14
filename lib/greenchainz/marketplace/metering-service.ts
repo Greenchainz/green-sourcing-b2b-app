@@ -92,7 +92,7 @@ async function getMarketplaceAccessToken(): Promise<string | null> {
       }
     );
 
-    const data = await response.json();
+    const data = await response.json() as { access_token?: string };
     return data.access_token || null;
   } catch (error) {
     console.error("[Metering] Failed to get access token:", error);

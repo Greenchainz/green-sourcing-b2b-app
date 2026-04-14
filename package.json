@@ -7,7 +7,7 @@
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "cross-env NODE_ENV=production node dist/index.js",
-    "check": "tsc --noEmit",
+    "check": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "drizzle-kit push",
@@ -80,6 +80,7 @@
     "input-otp": "^1.4.2",
     "jose": "6.1.0",
     "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.453.0",
     "mssql": "^11.0.0",
     "multer": "^2.1.1",
@@ -109,8 +110,7 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
-    "zod": "^4.3.6",
-    "jspdf": "^4.2.1"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
@@ -125,6 +125,7 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
+    "@types/uuid": "^11.0.0",
     "@vitejs/plugin-react": "^5.0.4",
     "add": "^2.0.6",
     "autoprefixer": "^10.4.20",

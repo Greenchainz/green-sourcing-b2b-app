@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "plugins": [],
+    "lib": ["esnext"],
+    "paths": {
+      "@shared/*": ["./shared/*"]
+    }
+  },
+  "include": [
+    "server/**/*.ts",
+    "lib/**/*.ts",
+    "shared/**/*.ts",
+    "drizzle/**/*.ts",
+    "scripts/**/*.ts",
+    "types/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}
