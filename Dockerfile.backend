@@ -1,0 +1,45 @@
+# Backend container image for GreenChainz on Azure Container Apps
+# Builds and runs the backend API server.
+
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+COPY package.json pnpm-lock.yaml ./
+COPY patches/ ./patches/
+RUN pnpm install --frozen-lockfile
+
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ENV NODE_ENV=production
+RUN SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
+    SENTRY_ORG=$SENTRY_ORG \
+    SENTRY_PROJECT=$SENTRY_PROJECT \
+    pnpm run build
+
+# Stage 3: Runtime
+FROM node:20-alpine AS runtime
+WORKDIR /app
+RUN apk add --no-cache dumb-init
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S appuser -u 1001
+COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:nodejs /app/public ./public
+COPY --from=builder --chown=appuser:nodejs /app/package.json ./package.json
+USER appuser
+ENV NODE_ENV=production \
+    PORT=3000 \
+    NODE_PG_FORCE_NATIVE=""
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/healthz', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+EXPOSE 3000
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["node", "dist/index.js"]
