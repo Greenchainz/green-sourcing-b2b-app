@@ -424,11 +424,15 @@ jobs:
           fi
 
           # Retry up to 24 attempts (4 min) — new revision may still be rolling out.
+          # Use "|| echo 000" inside the substitution so bash -e never sees a
+          # non-zero exit: curl timeouts / connection resets return "000" instead
+          # of killing the loop with exit code 28 or 7.
           ATTEMPTS=24
           SLEEP=10
           STATUS=""
           for i in $(seq 1 "$ATTEMPTS"); do
-            STATUS=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 "https://${FRONTEND_FQDN}/")
+            STATUS=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 \
+              "https://${FRONTEND_FQDN}/" 2>/dev/null || echo "000")
             if [ "$STATUS" = "200" ]; then
               echo "✅ Frontend root /: 200"
               break
