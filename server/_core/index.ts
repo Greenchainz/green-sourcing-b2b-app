@@ -250,7 +250,8 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
   });
 
-  await startSchedulers();
+  // Fire-and-forget — scheduler failures must not kill the server process.
+  startSchedulers().catch(err => console.error('[Schedulers] Failed to start:', err));
 }
 
 startServer().catch((err) => {
