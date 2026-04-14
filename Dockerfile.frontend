@@ -1,5 +1,5 @@
 # Frontend container image for GreenChainz on Azure Container Apps
-# Stack: Vite (client) + Express (server) — output goes to dist/
+# Builds frontend assets and runs the app server for frontend traffic.
 
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
@@ -49,7 +49,7 @@ ENV NODE_ENV=production \
     PORT=3000 \
     NODE_PG_FORCE_NATIVE=""
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+    CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/healthz', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 EXPOSE 3000
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["node", "dist/index.js"]
