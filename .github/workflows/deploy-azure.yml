@@ -103,11 +103,6 @@ jobs:
           cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache,mode=max
           build-args: |
-            NEXT_PUBLIC_SITE_URL=https://greenchainz.com
-            NEXT_PUBLIC_AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}
-            NEXT_PUBLIC_AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}
-            # Same-origin auth model: keep backend URL vars empty in production.
-            NEXT_PUBLIC_BACKEND_URL=
             VITE_BACKEND_URL=
             VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
             VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
@@ -428,10 +423,22 @@ jobs:
             exit 1
           fi
 
-          # Frontend root should respond successfully.
-          FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${FRONTEND_FQDN}/")
-          if [ "$FRONTEND_STATUS" != "200" ]; then
-            echo "❌ Expected 200 from frontend root '/', got ${FRONTEND_STATUS}"
+          # Retry up to 24 attempts (4 min) — new revision may still be rolling out.
+          ATTEMPTS=24
+          SLEEP=10
+          STATUS=""
+          for i in $(seq 1 "$ATTEMPTS"); do
+            STATUS=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 "https://${FRONTEND_FQDN}/")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Frontend root /: 200"
+              break
+            fi
+            echo "⏳ Frontend root /: expected 200, got ${STATUS} (attempt ${i}/${ATTEMPTS})"
+            if [ "$i" -lt "$ATTEMPTS" ]; then sleep "$SLEEP"; fi
+          done
+
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Expected 200 from frontend root '/', got ${STATUS} after ${ATTEMPTS} attempts"
             exit 1
           fi
 
