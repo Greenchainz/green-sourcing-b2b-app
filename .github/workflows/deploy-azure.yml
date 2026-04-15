@@ -48,6 +48,11 @@ jobs:
       - name: TypeScript type-check
         run: pnpm check
 
+      - name: Setup Testcontainers Cloud Client
+        uses: atomicjar/testcontainers-cloud-setup-action@v1
+        with:
+          token: ${{ secrets.TC_CLOUD_TOKEN }}
+
       - name: Run unit tests
         run: pnpm test
 
