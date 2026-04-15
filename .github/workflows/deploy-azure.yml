@@ -407,7 +407,6 @@ jobs:
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --remove-env-vars AZURE_MI_CLIENT_ID \
             --set-env-vars "${ENV_VARS[@]}" \
             --min-replicas 1 \
             --max-replicas 3
