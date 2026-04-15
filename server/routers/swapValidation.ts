@@ -259,10 +259,7 @@ export const swapValidationRouter = router({
         .orderBy(desc(swapValidations.validatedAt))
         .limit(input.limit);
 
-      return results.map(r => ({
-        ...r,
-        showstopperResults: JSON.parse(r.showstopperResults as string),
-      }));
+      return results;
     }),
 
   /**
@@ -287,7 +284,6 @@ export const swapValidationRouter = router({
 
       return {
         ...validation,
-        showstopperResults: JSON.parse(validation.showstopperResults as string),
         incumbentMaterial: incumbent[0] || null,
         sustainableMaterial: sustainable[0] || null,
       };
@@ -308,9 +304,11 @@ export const swapValidationRouter = router({
 
       if (!existingValidation) throw new Error(`Validation ID ${input.validationId} not found`);
 
-      const [incumbentSpecs, sustainableSpecs] = await Promise.all([
+      const [incumbentSpecs, sustainableSpecs, incumbentMaterials, sustainableMaterials] = await Promise.all([
         db.select().from(materialTechnicalSpecs).where(eq(materialTechnicalSpecs.materialId, existingValidation.incumbentMaterialId)).limit(1),
         db.select().from(materialTechnicalSpecs).where(eq(materialTechnicalSpecs.materialId, existingValidation.sustainableMaterialId)).limit(1),
+        db.select({ name: materials.name, category: materials.category }).from(materials).where(eq(materials.id, existingValidation.incumbentMaterialId)).limit(1),
+        db.select({ name: materials.name, category: materials.category }).from(materials).where(eq(materials.id, existingValidation.sustainableMaterialId)).limit(1),
       ]);
 
       if (incumbentSpecs.length === 0 || sustainableSpecs.length === 0) {
@@ -319,13 +317,13 @@ export const swapValidationRouter = router({
 
       const incumbentSpec = toMaterialSpec(
         incumbentSpecs[0],
-        `Material ${existingValidation.incumbentMaterialId}`,
-        'Unknown',
+        incumbentMaterials[0]?.name ?? `Material ${existingValidation.incumbentMaterialId}`,
+        incumbentMaterials[0]?.category ?? 'Unknown',
       );
       const sustainableSpec = toMaterialSpec(
         sustainableSpecs[0],
-        `Material ${existingValidation.sustainableMaterialId}`,
-        'Unknown',
+        sustainableMaterials[0]?.name ?? `Material ${existingValidation.sustainableMaterialId}`,
+        sustainableMaterials[0]?.category ?? 'Unknown',
       );
       const validationResult = validateSwap(incumbentSpec, sustainableSpec);
 
