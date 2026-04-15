@@ -287,9 +287,12 @@ export default function ArchitectSpecDetail() {
                         <div>
                           <p className="text-xs font-medium text-gray-600">Total GWP</p>
                           <p className="text-sm text-gray-900">
-                            {assembly.gwpPer1000sf || assembly.gwp
-                              ? `${parseFloat((assembly.gwpPer1000sf || assembly.gwp).toString()).toFixed(2)} kgCO₂e/unit`
-                              : "Not specified"}
+                            {(() => {
+                              const gwp = assembly.gwpPer1000sf ?? assembly.gwp;
+                              return gwp
+                                ? `${parseFloat(gwp.toString()).toFixed(2)} kgCO₂e/unit`
+                                : "Not specified";
+                            })()}
                           </p>
                         </div>
                         <div>
