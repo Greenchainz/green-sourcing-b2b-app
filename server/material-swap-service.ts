@@ -32,9 +32,15 @@ export async function calculateSwapScore(
   const db = await getDb();
   if (!db) return { score: 0, reason: "Database unavailable", confidence: 0 };
 
+  const cols = {
+    id: materials.id,
+    category: materials.category,
+    embodiedCarbonPer1000sf: materials.embodiedCarbonPer1000sf,
+    pricePerUnit: materials.pricePerUnit,
+  };
   const [original, candidate] = await Promise.all([
-    db.select().from(materials).where(eq(materials.id, originalMaterialId)).then((r: any) => r[0]),
-    db.select().from(materials).where(eq(materials.id, candidateMaterialId)).then((r: any) => r[0]),
+    db.select(cols).from(materials).where(eq(materials.id, originalMaterialId)).then((r) => r[0]),
+    db.select(cols).from(materials).where(eq(materials.id, candidateMaterialId)).then((r) => r[0]),
   ]);
 
   if (!original || !candidate) {
@@ -128,7 +134,15 @@ export async function findSwapCandidates(
   const db = await getDb();
   if (!db) return [];
 
-  const original = await db.select().from(materials).where(eq(materials.id, materialId)).then((r: any) => r[0]);
+  const swapCols = {
+    id: materials.id,
+    name: materials.name,
+    category: materials.category,
+    manufacturerId: materials.manufacturerId,
+    embodiedCarbonPer1000sf: materials.embodiedCarbonPer1000sf,
+    pricePerUnit: materials.pricePerUnit,
+  };
+  const original = await db.select(swapCols).from(materials).where(eq(materials.id, materialId)).then((r) => r[0]);
 
   if (!original) {
     return [];
@@ -136,7 +150,7 @@ export async function findSwapCandidates(
 
   // Find materials in the same category
   const candidates = await db
-    .select()
+    .select(swapCols)
     .from(materials)
     .where(and(eq(materials.category, original.category), sql`${materials.id} != ${materialId}`))
     .limit(20); // Get more candidates to filter

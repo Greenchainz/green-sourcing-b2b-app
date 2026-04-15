@@ -1,5 +1,9 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
+import dotenv from "dotenv";
+
+// Load .env.local so DATABASE_URL and other secrets are available to tests
+dotenv.config({ path: ".env.local", override: true });
 
 const templateRoot = path.resolve(import.meta.dirname);
 
