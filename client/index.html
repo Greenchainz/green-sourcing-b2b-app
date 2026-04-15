@@ -26,6 +26,11 @@
       defer
       src="%VITE_ANALYTICS_ENDPOINT%/umami"
       data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <!-- Intercom Messenger -->
+    <script>
+      window.intercomSettings = { api_base: "https://api-iam.intercom.io" };
+    </script>
+    <script async src="https://js.intercomcdn.com/messenger.v4.js"></script>
   </body>
 
 </html>

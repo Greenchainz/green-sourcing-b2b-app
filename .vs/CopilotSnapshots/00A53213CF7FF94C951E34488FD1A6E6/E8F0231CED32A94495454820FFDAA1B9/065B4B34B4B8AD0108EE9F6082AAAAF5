@@ -1,0 +1,341 @@
+﻿import { useRoute, useLocation } from "wouter";
+import { api } from "../lib/api-client";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Download, Loader, Loader2, Search, ArrowLeft } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
+export default function ArchitectSpecDetail() {
+  const [match] = useRoute("/architect/specs/:specId");
+  const specId = match ? parseInt(match.specId) : null;
+  const [, navigate] = useLocation();
+
+  const [selectedFormat, setSelectedFormat] = useState<"pdf" | "excel" | "revit">("pdf");
+  const [downloadLoading, setDownloadLoading] = useState(false);
+
+  // Load spec data
+  const { data, isLoading, error } = api.architectSpec.getSpec.useQuery(
+    { specId: specId || 0 },
+    { enabled: !!specId }
+  );
+
+  // Match alternatives mutation
+  const matchMutation = api.architectSpec.matchAlternatives.useMutation();
+
+  // Generate RFQ mutation
+  const rfqMutation = api.architectSpec.generateRfq.useMutation();
+
+  if (!specId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-red-900">Invalid Spec ID</h3>
+              <p className="text-red-700 text-sm">Could not load specification.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleMatchAlternatives = async () => {
+    try {
+      await matchMutation.mutateAsync({
+        specId: spec.id,
+        topN: 5,
+        persona: "aor",
+      });
+      // Optionally refetch data here so the view updates
+    } catch (err) {
+      console.error("Match failed:", err);
+    }
+  };
+
+  const handleDownloadRfq = async () => {
+    if (!spec.id) return;
+    setDownloadLoading(true);
+    try {
+      const result = await rfqMutation.mutateAsync({
+        specId: spec.id,
+        format: selectedFormat,
+      });
+
+      // Decode base64 and trigger download
+      const binaryString = atob(result.buffer);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: result.mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col p-8">
+        <div className="max-w-4xl mx-auto space-y-4 w-full">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-4xl mx-auto">
+          <Button variant="outline" onClick={() => navigate("/dashboard")} className="mb-6">
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          </Button>
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6 flex items-center justify-center flex-col text-center">
+              <AlertCircle className="w-12 h-12 text-red-600 mb-4" />
+              <h3 className="text-lg font-semibold text-red-900 mb-2">Failed to load spec</h3>
+              <p className="text-red-700 text-sm max-w-sm mb-6">
+                {error instanceof Error ? error.message : "The specification you're looking for doesn't exist or you don't have access to it."}
+              </p>
+              <Button onClick={() => navigate("/dashboard")} className="bg-red-600 hover:bg-red-700 min-h-[44px]">
+                Back to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const { spec, assemblies, alternatives } = data; // Assuming alternatives are returned in data
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div>
+          <Button variant="outline" onClick={() => navigate("/dashboard")} className="mb-4 min-h-[44px]">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-900">{spec.originalFilename || spec.projectName || "Specification"}</h1>
+          <p className="text-gray-600 mt-2">
+            Uploaded {new Date(spec.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+
+        {/* Spec Overview Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {spec.projectName && (
+              <div>
+                <p className="text-sm font-medium text-gray-700">Project Name</p>
+                <p className="text-gray-900">{spec.projectName}</p>
+              </div>
+            )}
+            {spec.projectLocation && (
+              <div>
+                <p className="text-sm font-medium text-gray-700">Location</p>
+                <p className="text-gray-900">{spec.projectLocation}</p>
+              </div>
+            )}
+            {spec.estimatedValue && (
+              <div>
+                <p className="text-sm font-medium text-gray-700">Estimated Material Value</p>
+                <p className="text-gray-900">${spec.estimatedValue.toLocaleString()}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-medium text-gray-700">Parse Status</p>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge className={
+                  spec.parseStatus === "ready" ? "bg-green-100 text-green-800" :
+                  spec.parseStatus === "processing" ? "bg-blue-100 text-blue-800" :
+                  spec.parseStatus === "failed" ? "bg-red-100 text-red-800" :
+                  "bg-gray-100 text-gray-800"
+                }>
+                  {spec.parseStatus?.toUpperCase() || "PENDING"}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        {spec.parseStatus === "ready" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Find Sustainable Alternatives</CardTitle>
+              <CardDescription>Configure the material matching algorithm</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Material AI Matcher</h4>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Run our AI to find greener material alternatives for your assemblies.
+                  </p>
+                  <Button
+                    onClick={handleMatchAlternatives}
+                    disabled={matchMutation.isPending}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 min-h-[44px]"
+                  >
+                    {matchMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching...</>
+                    ) : "Run Material Matcher"}
+                  </Button>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Download RFQ</h4>
+                  <div className="mb-4">
+                    <label className="block text-sm text-gray-600 mb-2">Format</label>
+                    <select
+                      value={selectedFormat}
+                      onChange={(e) => setSelectedFormat(e.target.value as "pdf" | "excel" | "revit")}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white min-h-[44px]"
+                    >
+                      <option value="pdf">PDF Report</option>
+                      <option value="excel">Excel Workbook</option>
+                      <option value="revit">Revit CSV</option>
+                    </select>
+                  </div>
+                  <Button
+                    onClick={handleDownloadRfq}
+                    disabled={downloadLoading || rfqMutation.isPending}
+                    className="w-full bg-blue-600 hover:bg-blue-700 min-h-[44px] flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    {downloadLoading || rfqMutation.isPending ? "Generating..." : "Download RFQ"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Parsed Assemblies Section */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            Parsed Assemblies {spec.parseStatus !== "failed" && `(${assemblies.length})`}
+          </h2>
+          
+          {spec.parseStatus === "failed" ? (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="pt-8 pb-8 text-center flex flex-col items-center justify-center">
+                <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+                <h3 className="text-lg font-semibold text-red-900 mb-2">Failed to parse spec</h3>
+                <p className="text-red-700 mb-6 max-w-sm">
+                  We couldn't extract materials from your file. Try uploading a different file or check the format.
+                </p>
+                <Button 
+                  onClick={() => navigate("/architect/specs/upload")}
+                  className="bg-red-600 hover:bg-red-700 min-h-[44px]"
+                >
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
+          ) : matchMutation.isPending ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {assemblies.map((assembly) => {
+                const hasRunMatcher = matchMutation.isSuccess;
+                const hasNoMatch = hasRunMatcher && !assembly.matchedEpdMaterialId; // Or evaluate alternatives.length === 0
+                return (
+                  <Card key={assembly.id} className="flex flex-col">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-lg">
+                            {assembly.assemblyCode || assembly.assemblyName || "Unclassified"}
+                          </CardTitle>
+                          <CardDescription>{assembly.assemblyType}</CardDescription>
+                        </div>
+                        {assembly.matchedEpdMaterialId && (
+                          <Badge className="bg-green-100 text-green-800">
+                            ✓ Matched
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3 flex-1 flex flex-col">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Total GWP</p>
+                          <p className="text-sm text-gray-900">
+                            {assembly.gwpPer1000sf || assembly.gwp
+                              ? `${parseFloat((assembly.gwpPer1000sf || assembly.gwp).toString()).toFixed(2)} kgCO₂e/unit`
+                              : "Not specified"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Quantity</p>
+                          <p className="text-sm text-gray-900">{assembly.quantity || "Default"}</p>
+                        </div>
+                      </div>
+
+                      {assembly.matchConfidence && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-600 mb-2">Match Confidence</p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-green-500 h-2 rounded-full"
+                                style={{
+                                  width: `${Math.min(
+                                    parseFloat(assembly.matchConfidence.toString()) * 100,
+                                    100
+                                  )}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-gray-700">
+                              {(parseFloat(assembly.matchConfidence.toString()) * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {hasNoMatch && (
+                        <div className="mt-auto pt-4 border-t border-gray-100 flex flex-col items-center text-center">
+                          <Search className="h-6 w-6 text-gray-400 mb-2" />
+                          <p className="text-sm font-semibold text-gray-900 mb-1">No alternatives found</p>
+                          <p className="text-xs text-gray-500">
+                            We couldn't find materials matching your constraints for this assembly.<br/>
+                            Try adjusting your persona or filters.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

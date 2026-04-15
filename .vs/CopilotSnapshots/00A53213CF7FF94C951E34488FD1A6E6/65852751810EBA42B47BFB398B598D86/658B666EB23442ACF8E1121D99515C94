@@ -1,0 +1,218 @@
+﻿import { useRoute, useLocation } from "wouter";
+import { api } from "../lib/api-client";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Download, Loader } from "lucide-react";
+
+export default function ArchitectSpecDetail() {
+  const [match] = useRoute("/architect/specs/:specId");
+  const specId = match ? parseInt(match.specId) : null;
+  const [, navigate] = useLocation();
+
+  const [selectedFormat, setSelectedFormat] = useState<"pdf" | "excel" | "revit">("pdf");
+  const [downloadLoading, setDownloadLoading] = useState(false);
+
+  // Load spec data
+  const { data, isLoading, error } = api.architectSpec.getSpec.useQuery(
+    { specId: specId || 0 },
+    { enabled: !!specId }
+  );
+
+  // Match alternatives mutation
+  const matchMutation = api.architectSpec.matchAlternatives.useMutation();
+
+  // Generate RFQ mutation
+  const rfqMutation = api.architectSpec.generateRfq.useMutation();
+
+  if (!specId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-red-900">Invalid Spec ID</h3>
+              <p className="text-red-700 text-sm">Could not load specification.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8 flex items-center justify-center">
+        <div className="flex gap-3 items-center">
+          <Loader className="w-5 h-5 animate-spin text-blue-500" />
+          <p className="text-gray-300">Loading specification...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-red-900">Failed to load spec</h3>
+              <p className="text-red-700 text-sm">{error instanceof Error ? error.message : "Unknown error"}</p>
+              <Button onClick={() => navigate("/dashboard")} className="mt-3">
+                Back to Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { spec, assemblies } = data;
+
+  const handleMatchAlternatives = async () => {
+    try {
+      await matchMutation.mutateAsync({
+        specId: spec.id,
+        topN: 5,
+        persona: "aor",
+      });
+    } catch (err) {
+      console.error("Match failed:", err);
+    }
+  };
+
+  const handleDownloadRfq = async () => {
+    if (!spec.id) return;
+    setDownloadLoading(true);
+    try {
+      const result = await rfqMutation.mutateAsync({
+        specId: spec.id,
+        format: selectedFormat,
+      });
+
+      // Decode base64 and trigger download
+      const binaryString = atob(result.buffer);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: result.mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{spec.projectName || "Specification"}</h1>
+          <p className="text-gray-600 mb-4">{spec.projectLocation}</p>
+          <div className="flex gap-4 text-sm text-gray-600">
+            <span>Uploaded: {new Date(spec.createdAt).toLocaleDateString()}</span>
+            {spec.estimatedValue && <span>Est. Value: ${spec.estimatedValue.toLocaleString()}</span>}
+          </div>
+        </div>
+
+        {/* Parsed Assemblies */}
+        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Parsed Materials ({assemblies.length})</h2>
+          {assemblies.length === 0 ? (
+            <p className="text-gray-600">No materials parsed yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Assembly Name</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Type</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">GWP (kg CO₂e)</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Quantity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assemblies.map((assembly) => (
+                    <tr key={assembly.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">{assembly.assemblyName}</td>
+                      <td className="py-3 px-4">{assembly.assemblyType}</td>
+                      <td className="py-3 px-4">{assembly.gwp?.toFixed(2) || "—"}</td>
+                      <td className="py-3 px-4">{assembly.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <h3 className="text-lg font-bold text-gray-900 mb-6">Next Steps</h3>
+          <div className="grid grid-cols-2 gap-6">
+            {/* Match Alternatives */}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">Find Sustainable Alternatives</h4>
+              <p className="text-gray-600 text-sm mb-4">
+                Run AI matching to find greener material alternatives for each assembly.
+              </p>
+              <Button
+                onClick={handleMatchAlternatives}
+                disabled={matchMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {matchMutation.isPending ? "Matching..." : "Match Alternatives"}
+              </Button>
+            </div>
+
+            {/* Download RFQ */}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">Download RFQ</h4>
+              <div className="mb-4">
+                <label className="block text-sm text-gray-600 mb-2">Format</label>
+                <select
+                  value={selectedFormat}
+                  onChange={(e) => setSelectedFormat(e.target.value as "pdf" | "excel" | "revit")}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  <option value="pdf">PDF Report</option>
+                  <option value="excel">Excel Workbook</option>
+                  <option value="revit">Revit CSV</option>
+                </select>
+              </div>
+              <Button
+                onClick={handleDownloadRfq}
+                disabled={downloadLoading || rfqMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 w-full flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                {downloadLoading || rfqMutation.isPending ? "Generating..." : "Download RFQ"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Back Link */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="text-emerald-400 hover:text-emerald-300 text-sm"
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

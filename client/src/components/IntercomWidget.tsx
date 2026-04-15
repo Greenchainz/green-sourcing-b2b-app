@@ -1,8 +1,14 @@
 import { useEffect, useRef } from "react";
-import Intercom from "@intercom/messenger-js-sdk";
 import { useAuth } from "@/contexts/AuthContext";
 
 const APP_ID = "cqtm1euj";
+
+// Intercom is loaded via script tag, declare as window global
+declare global {
+  interface Window {
+    Intercom?: (action: string | Record<string, any>) => void;
+  }
+}
 
 /**
  * Intercom Messenger with JWT identity verification.
@@ -14,12 +20,17 @@ export default function IntercomWidget() {
   const bootedUserId = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!window.Intercom) {
+      console.warn("Intercom not loaded yet");
+      return;
+    }
+
     if (user && bootedUserId.current !== user.id) {
       // Logged in — get JWT and boot with verified identity
       fetch("/api/intercom/token", { credentials: "include" })
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
-          Intercom({
+          window.Intercom?.({
             app_id: APP_ID,
             user_id: user.id,
             name: user.name,
@@ -30,7 +41,7 @@ export default function IntercomWidget() {
         })
         .catch(() => {
           // JWT fetch failed — boot without identity verification
-          Intercom({
+          window.Intercom?.({
             app_id: APP_ID,
             user_id: user.id,
             name: user.name,
@@ -40,11 +51,11 @@ export default function IntercomWidget() {
         });
     } else if (!user && bootedUserId.current) {
       // Logged out — reset to anonymous
-      Intercom({ app_id: APP_ID });
+      window.Intercom?.({ app_id: APP_ID });
       bootedUserId.current = null;
     } else if (!user && !bootedUserId.current) {
       // Anonymous visitor
-      Intercom({ app_id: APP_ID });
+      window.Intercom?.({ app_id: APP_ID });
     }
   }, [user]);
 
