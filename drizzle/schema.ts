@@ -8,6 +8,8 @@ import {
   decimal,
   boolean,
   integer,
+  real,
+  date,
   json,
   index,
   uniqueIndex,
@@ -69,7 +71,7 @@ export const callStatusEnum = pgEnum("call_status", ["completed", "missed", "rej
 export const videoCallStatusEnum = pgEnum("video_call_status", ["initiated", "ringing", "connected", "ended", "failed"]);
 export const subscriptionTierEnum = pgEnum("subscription_tier", ["free", "standard", "premium"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "suspended", "cancelled", "expired"]);
-export const supplierTierEnum = pgEnum("supplier_tier", ["free", "premium"]);
+export const supplierTierEnum = pgEnum("supplier_tier", ["free", "standard", "premium"]);
 export const supplierStatusEnum = pgEnum("supplier_status", ["active", "canceled", "past_due", "suspended", "pending"]);
 export const buyerStatusEnum = pgEnum("buyer_status", ["active", "canceled", "past_due", "suspended", "pending", "trial"]);
 export const verificationStatusEnum = pgEnum("verification_status", ["pending", "approved", "rejected"]);
@@ -483,6 +485,13 @@ export const suppliers = pgTable("suppliers", {
   currentCapacity: integer("currentCapacity").default(100),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  // ── Tier & monetisation ──────────────────────────────────────────────────
+  tier: supplierTierEnum("tier").default("free").notNull(),
+  leadCredits: integer("leadCredits").default(3).notNull(),
+  weightedRankScore: real("weightedRankScore"),
+  microsoftSubscriptionId: text("microsoftSubscriptionId"),
+  microsoftPlanId: text("microsoftPlanId"),
+  tierUpdatedAt: timestamp("tierUpdatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -599,6 +608,50 @@ export const supplierSubscriptions = pgTable("supplier_subscriptions", {
 });
 
 export type SupplierSubscription = typeof supplierSubscriptions.$inferSelect;
+
+// ─── Supplier Buyer-Fit Inputs ──────────────────────────────────────────────
+// Stores per-(supplier, project-zip) inputs used to compute the buyer-fit score.
+// Recomputed on RFQ events; queryable for ranking in supplier search.
+
+export const supplierBuyerFitInputs = pgTable(
+  "supplier_buyer_fit_inputs",
+  {
+    id: serial("id").primaryKey(),
+    supplierId: integer("supplierId").notNull(),
+    projectZip: text("projectZip").notNull(),
+    distanceMiles: real("distanceMiles"),
+    leadTimeDays: integer("leadTimeDays"),
+    avgRfqResponseHours: real("avgRfqResponseHours"),
+    priceIndexVsMedian: real("priceIndexVsMedian"),
+    completedRfqCount: integer("completedRfqCount").default(0).notNull(),
+    noShowCount: integer("noShowCount").default(0).notNull(),
+    buyerFitScore: real("buyerFitScore"),
+    computedAt: timestamp("computedAt").defaultNow().notNull(),
+  },
+  (t) => ({
+    supplierIdx: index("idx_sbfi_supplier").on(t.supplierId),
+    zipIdx: index("idx_sbfi_zip").on(t.projectZip),
+  })
+);
+
+export type SupplierBuyerFitInput = typeof supplierBuyerFitInputs.$inferSelect;
+export type InsertSupplierBuyerFitInput = typeof supplierBuyerFitInputs.$inferInsert;
+
+// ─── Company of the Week Slots ──────────────────────────────────────────────
+// One slot per calendar week; premium suppliers can claim a featured slot.
+
+export const companyOfWeekSlots = pgTable("company_of_week_slots", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplierId").notNull(),
+  weekStartDate: date("weekStartDate").notNull(),
+  isPremiumSlot: boolean("isPremiumSlot").default(false).notNull(),
+  showcasePageSlug: text("showcasePageSlug").notNull().unique(),
+  emailSentAt: timestamp("emailSentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CompanyOfWeekSlot = typeof companyOfWeekSlots.$inferSelect;
+export type InsertCompanyOfWeekSlot = typeof companyOfWeekSlots.$inferInsert;
 
 // ─── Buyer Subscriptions ───────────────────────────────────────────────────
 

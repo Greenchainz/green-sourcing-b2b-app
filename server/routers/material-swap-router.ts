@@ -482,7 +482,7 @@ export const materialSwapRouter = router({
             const priceDeltaPct = ((cPrice - origPrice) / origPrice) * 100;
             if (priceDeltaPct > input.maxPriceIncrease) return false;
           }
-          if (origGwp !== null) {
+          if (fireRank(originalRow.fireRating) > 0) {
             return fireRank(c.fireRating) >= fireRank(originalRow.fireRating);
           }
           return true;

@@ -19,7 +19,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Material Swap Intelligence", () => {
 
     // Find two materials in the same category for testing
     const testMaterials = await db
-      .select()
+      .select({ id: materials.id })
       .from(materials)
       .where(eq(materials.category, "Insulation"))
       .limit(2);
@@ -57,9 +57,10 @@ describe.skipIf(!process.env.DATABASE_URL)("Material Swap Intelligence", () => {
       if (!db) throw new Error("Database not available");
 
       // Find materials in different categories
+      const idOnly = { id: materials.id };
       const [mat1, mat2] = await Promise.all([
-        db.select().from(materials).where(eq(materials.category, "Insulation")).limit(1).then((r) => r[0]),
-        db.select().from(materials).where(eq(materials.category, "Concrete")).limit(1).then((r) => r[0]),
+        db.select(idOnly).from(materials).where(eq(materials.category, "Insulation")).limit(1).then((r) => r[0]),
+        db.select(idOnly).from(materials).where(eq(materials.category, "Concrete")).limit(1).then((r) => r[0]),
       ]);
 
       if (!mat1 || !mat2) {
@@ -252,8 +253,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Material Swap Intelligence", () => {
       if (!db) throw new Error("Database not available");
 
       // Find a material that likely has no swaps
-      const materialsTable = materials;
-      const materialsList = await db.select().from(materialsTable).limit(1);
+      const materialsList = await db.select({ id: materials.id }).from(materials).limit(1);
       if (materialsList.length === 0) return;
 
       const unusedMaterialId = materialsList[0].id + 10000; // Use a high ID that likely doesn't exist
