@@ -48,6 +48,13 @@ jobs:
       - name: TypeScript type-check
         run: pnpm check
 
+      - name: Validate Testcontainers Cloud token
+        run: |
+          if [ -z "${{ secrets.TC_CLOUD_TOKEN }}" ]; then
+            echo "TC_CLOUD_TOKEN secret is required for Testcontainers Cloud setup."
+            exit 1
+          fi
+
       - name: Setup Testcontainers Cloud Client
         uses: atomicjar/testcontainers-cloud-setup-action@v1
         with:
