@@ -1,5 +1,5 @@
 import { useRoute, useLocation } from "wouter";
-import { api } from "../lib/api-client";
+import { trpc } from "../lib/trpc";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Download, Loader, Loader2, Search, ArrowLeft } from "lucide-react";
@@ -8,24 +8,24 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default function ArchitectSpecDetail() {
-  const [match] = useRoute("/architect/specs/:specId");
-  const specId = match ? parseInt(match.specId) : null;
+  const [, params] = useRoute("/architect/specs/:specId");
+  const specId = params ? parseInt(params.specId) : null;
   const [, navigate] = useLocation();
 
   const [selectedFormat, setSelectedFormat] = useState<"pdf" | "excel" | "revit">("pdf");
   const [downloadLoading, setDownloadLoading] = useState(false);
 
   // Load spec data
-  const { data, isLoading, error } = api.architectSpec.getSpec.useQuery(
+  const { data, isLoading, error } = trpc.architectSpec.getSpec.useQuery(
     { specId: specId || 0 },
     { enabled: !!specId }
   );
 
   // Match alternatives mutation
-  const matchMutation = api.architectSpec.matchAlternatives.useMutation();
+  const matchMutation = trpc.architectSpec.matchAlternatives.useMutation();
 
   // Generate RFQ mutation
-  const rfqMutation = api.architectSpec.generateRfq.useMutation();
+  const rfqMutation = trpc.architectSpec.generateRfq.useMutation();
 
   if (!specId) {
     return (
@@ -62,6 +62,8 @@ export default function ArchitectSpecDetail() {
     try {
       const result = await rfqMutation.mutateAsync({
         specId: spec.id,
+        specAssemblyId: assemblies[0]?.id ?? 1,
+        selectedAlternativeId: 1,
         format: selectedFormat,
       });
 
@@ -121,7 +123,7 @@ export default function ArchitectSpecDetail() {
     );
   }
 
-  const { spec, assemblies, alternatives } = data; // Assuming alternatives are returned in data
+  const { spec, assemblies } = data;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
