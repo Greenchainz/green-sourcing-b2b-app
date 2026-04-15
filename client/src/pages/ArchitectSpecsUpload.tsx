@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "wouter";
-import { api } from "../lib/api-client";
+import { useLocation } from "wouter";
+import { trpc } from "../lib/trpc";
 
 export default function ArchitectSpecsUpload() {
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const [file, setFile] = useState<File | null>(null);
   const [projectName, setProjectName] = useState("");
   const [projectLocation, setProjectLocation] = useState("");
@@ -11,6 +11,9 @@ export default function ArchitectSpecsUpload() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
+
+  const uploadFile = trpc.architectSpec.uploadFile.useMutation();
+  const uploadAndParse = trpc.architectSpec.uploadAndParse.useMutation();
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +33,7 @@ export default function ArchitectSpecsUpload() {
       setProgress(50);
 
       // Upload file to Azure Blob Storage
-      const uploadResult = await api.architectSpec.uploadFile.mutate({
+      const uploadResult = await uploadFile.mutateAsync({
         fileBufferBase64: base64,
         originalFilename: file.name,
         mimeType: file.type,
@@ -39,7 +42,7 @@ export default function ArchitectSpecsUpload() {
       setProgress(75);
 
       // Parse the spec
-      const parseResult = await api.architectSpec.uploadAndParse.mutate({
+      const parseResult = await uploadAndParse.mutateAsync({
         originalFilename: file.name,
         blobUrl: uploadResult.blobUrl,
         mimeType: file.type,
@@ -53,7 +56,7 @@ export default function ArchitectSpecsUpload() {
 
       // Redirect to results page
       setTimeout(() => {
-        navigate(`/architect/specs/${parseResult.id}`);
+        navigate(`/architect/specs/${parseResult.specId}`);
       }, 500);
     } catch (err) {
       setError(
