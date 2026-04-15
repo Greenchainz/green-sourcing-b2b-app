@@ -1,0 +1,10 @@
+{
+  "properties": {
+    "globalValidation": {
+      "excludedPaths": [
+        "/healthz",
+        "/.auth/*"
+      ]
+    }
+  }
+}

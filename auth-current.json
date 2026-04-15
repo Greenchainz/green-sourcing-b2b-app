@@ -1,0 +1,9 @@
+{
+  "encryptionSettings": {},
+  "globalValidation": {
+    "excludedPaths": [
+      "\"/healthz\"",
+      "\"/.auth/*\""
+    ]
+  }
+}

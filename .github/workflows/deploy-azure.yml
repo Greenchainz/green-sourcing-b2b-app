@@ -401,7 +401,6 @@ jobs:
             "PORT=3000"
             "DATABASE_URL=secretref:database-url"
             "AZURE_MI_CLIENT_ID=$AZURE_MI_CLIENT_ID"
-            "AZURE_MI_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
@@ -556,3 +555,4 @@ jobs:
       - name: Azure logout
         run: az logout || true
         if: always()
+                                                        

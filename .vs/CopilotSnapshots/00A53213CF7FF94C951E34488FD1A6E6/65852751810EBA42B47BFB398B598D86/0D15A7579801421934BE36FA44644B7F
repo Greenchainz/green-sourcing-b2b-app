@@ -1,0 +1,297 @@
+﻿"use client";
+
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Upload, File, AlertCircle, CheckCircle2 } from "lucide-react";
+
+interface FormState {
+  projectName?: string;
+  projectLocation?: string;
+  estimatedValue?: number;
+}
+
+export default function ArchitectSpecUploadPage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [formState, setFormState] = useState<FormState>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const uploadFileMutation = trpc.architectSpec.uploadFile.useMutation();
+  const uploadAndParseMutation = trpc.architectSpec.uploadAndParse.useMutation();
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.dataTransfer.files;
+    if (files?.length) {
+      const file = files[0];
+      if (!validateFile(file)) return;
+      setSelectedFile(file);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (files?.length) {
+      const file = files[0];
+      if (!validateFile(file)) return;
+      setSelectedFile(file);
+    }
+  };
+
+  const validateFile = (file: File): boolean => {
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+    ];
+
+    if (file.size > maxSize) {
+      toast.error("File is too large (max 50MB)");
+      return false;
+    }
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only PDF and Excel files are supported");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFile) {
+      toast.error("Please select a file");
+      return;
+    }
+
+    setIsLoading(true);
+    setUploadProgress(0);
+
+    try {
+      // Step 1: Read file as base64
+      setUploadProgress(25);
+      const fileBuffer = await selectedFile.arrayBuffer();
+      const base64 = Buffer.from(fileBuffer).toString("base64");
+
+      // Step 2: Upload to blob storage
+      setUploadProgress(50);
+      const uploadResult = await uploadFileMutation.mutateAsync({
+        fileBufferBase64: base64,
+        originalFilename: selectedFile.name,
+        mimeType: selectedFile.type || undefined,
+      });
+
+      if (!uploadResult.success) {
+        throw new Error("Failed to upload file to storage");
+      }
+
+      // Step 3: Parse the spec
+      setUploadProgress(75);
+      const parseResult = await uploadAndParseMutation.mutateAsync({
+        fileBufferBase64: base64,
+        blobUrl: uploadResult.blobUrl,
+        originalFilename: selectedFile.name,
+        mimeType: selectedFile.type || undefined,
+        projectName: formState.projectName?.trim() || undefined,
+        projectLocation: formState.projectLocation?.trim() || undefined,
+        estimatedValue: formState.estimatedValue ? Number(formState.estimatedValue) : undefined,
+      });
+
+      setUploadProgress(100);
+      toast.success("Spec uploaded and parsed successfully!");
+
+      // Redirect to spec results page
+      setTimeout(() => {
+        router.push(`/architect/specs/${parseResult.id}`);
+      }, 1000);
+    } catch (error) {
+      console.error("Upload error:", error);
+      const message = error instanceof Error ? error.message : "Failed to upload spec";
+      toast.error(message);
+      setIsLoading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12 px-4">
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload Embodied Carbon Spec</CardTitle>
+            <CardDescription>
+              Upload your architectural embodied carbon tables (PDF or Excel) to find sustainable material alternatives
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* File Drop Zone */}
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleFileDrop}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-green-400 transition cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.xlsx,.xls"
+                  onChange={handleFileSelect}
+                  disabled={isLoading}
+                  className="hidden"
+                />
+
+                {selectedFile ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-center">
+                      <CheckCircle2 className="h-12 w-12 text-green-500" />
+                    </div>
+                    <p className="font-medium text-gray-900">{selectedFile.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedFile(null);
+                      }}
+                      disabled={isLoading}
+                    >
+                      Choose Different File
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-center">
+                      <Upload className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <p className="font-medium text-gray-900">Drop your file here</p>
+                    <p className="text-sm text-gray-500">or click to select PDF or Excel</p>
+                    <p className="text-xs text-gray-400 mt-2">Max 50MB</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Project Details */}
+              <div className="space-y-4 border-t pt-6">
+                <h3 className="font-semibold text-gray-900">Project Details (optional)</h3>
+
+                <div>
+                  <label htmlFor="projectName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Project Name
+                  </label>
+                  <Input
+                    id="projectName"
+                    type="text"
+                    placeholder="e.g., Office Tower 2026"
+                    value={formState.projectName || ""}
+                    onChange={(e) => setFormState({ ...formState, projectName: e.target.value })}
+                    disabled={isLoading}
+                    className="min-h-[44px]"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="projectLocation" className="block text-sm font-medium text-gray-700 mb-1">
+                    Location
+                  </label>
+                  <Input
+                    id="projectLocation"
+                    type="text"
+                    placeholder="e.g., San Francisco, CA"
+                    value={formState.projectLocation || ""}
+                    onChange={(e) => setFormState({ ...formState, projectLocation: e.target.value })}
+                    disabled={isLoading}
+                    className="min-h-[44px]"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="estimatedValue" className="block text-sm font-medium text-gray-700 mb-1">
+                    Estimated Material Value ($)
+                  </label>
+                  <Input
+                    id="estimatedValue"
+                    type="number"
+                    placeholder="e.g., 500000"
+                    value={formState.estimatedValue || ""}
+                    onChange={(e) =>
+                      setFormState({
+                        ...formState,
+                        estimatedValue: e.target.value ? parseInt(e.target.value) : undefined,
+                      })
+                    }
+                    disabled={isLoading}
+                    step="1"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              {/* Upload Progress */}
+              {isLoading && uploadProgress > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-700">Uploading...</p>
+                    <p className="text-sm text-gray-500">{uploadProgress}%</p>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Submit */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  type="submit"
+                  disabled={!selectedFile || isLoading}
+                  className="flex-1 bg-green-600 hover:bg-green-700 min-h-[44px]"
+                >
+                  {isLoading ? "Processing..." : "Upload & Analyze"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  disabled={isLoading}
+                  className="min-h-[44px]"
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              {/* Info Box */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
+                <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-900">
+                  <p className="font-medium mb-1">How it works</p>
+                  <p>
+                    Upload your Embodied Carbon Tables. We'll parse the materials, classify them, and suggest verified
+                    sustainable alternatives from our supplier network.
+                  </p>
+                </div>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
