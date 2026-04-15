@@ -1,0 +1,20 @@
+# Project Architecture & Stack Rules
+This is a **Vite + Express + React** application. 
+
+**STRICT PROHIBITION**:
+- DO NOT USE NEXT.JS. 
+- DO NOT create any files inside an `app/` or `pages/` directory expecting Next.js App/Pages Router.
+- DO NOT import from `next/navigation`, `next/link`, `next/image`, or any `next/*` packages.
+- DO NOT use React Server Components (RSC). `use client` or `use server` directives are unnecessary and prohibited.
+- DO NOT use Next.js specific functions like `getServerSideProps` or `getStaticProps`.
+
+**Architecture Details**:
+- **Frontend**: React, built with Vite (`/client`). Routing is handled by `wouter` or `react-router` (check `client/src/App.tsx`). Note: The UI uses `shadcn/ui`.
+- **Backend**: Express server (`/server`), connected to a PostgreSQL database using `drizzle-orm` (`/drizzle`).
+- **Communication**: Backend routes are exposed via tRPC (`@trpc/server`, `@trpc/client`).
+- **Styling**: Tailwind CSS.
+
+**When Adding New Pages**:
+1. Add React components in `client/src/pages/`.
+2. Add route definitions in `client/src/App.tsx`.
+3. Add backend endpoints in `server/routers/` using tRPC.
