@@ -330,12 +330,15 @@ jobs:
           sleep 30
 
       - name: Deploy backend
+        env:
+          AZURE_MI_CLIENT_ID: ${{ secrets.AZURE_MI_CLIENT_ID }}
         run: |
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
             "FRONTEND_URL=https://greenchainz.com"
             "FRED_API_KEY=secretref:fred-api-key"
             "RESEND_API_KEY=secretref:resend-api-key"
+            "AZURE_MI_CLIENT_ID=$AZURE_MI_CLIENT_ID"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
@@ -352,6 +355,7 @@ jobs:
       - name: Deploy frontend
         env:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+          AZURE_MI_CLIENT_ID: ${{ secrets.AZURE_MI_CLIENT_ID }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
@@ -396,6 +400,7 @@ jobs:
             "NODE_ENV=production"
             "PORT=3000"
             "DATABASE_URL=secretref:database-url"
+            "AZURE_MI_CLIENT_ID=$AZURE_MI_CLIENT_ID"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
@@ -407,7 +412,6 @@ jobs:
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            --remove-env-vars AZURE_MI_CLIENT_ID \
             --set-env-vars "${ENV_VARS[@]}" \
             --min-replicas 1 \
             --max-replicas 3
