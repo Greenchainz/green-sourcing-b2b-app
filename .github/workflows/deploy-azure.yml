@@ -49,8 +49,10 @@ jobs:
         run: pnpm check
 
       - name: Validate Testcontainers Cloud token
+        env:
+          TC_CLOUD_TOKEN: ${{ secrets.TC_CLOUD_TOKEN }}
         run: |
-          if [ -z "${{ secrets.TC_CLOUD_TOKEN }}" ]; then
+          if [ -z "$TC_CLOUD_TOKEN" ]; then
             echo "TC_CLOUD_TOKEN secret is required for Testcontainers Cloud setup."
             exit 1
           fi
