@@ -53,7 +53,11 @@
       "WebFetch(domain:developer.api.autodesk.com)",
       "Bash(node -e \"console.log\\(require\\(''./node_modules/@azure/functions/package.json''\\).version\\)\")",
       "mcp__Desktop_Commander__read_file",
-      "mcp__Desktop_Commander__list_directory"
+      "mcp__Desktop_Commander__list_directory",
+      "Bash(python3 -c ':*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(python -c ':*)"
     ]
   }
 }

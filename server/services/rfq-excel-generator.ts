@@ -15,8 +15,8 @@
 
 import ExcelJS from "exceljs";
 import { getDb } from "../db";
-import { epdMaterials, architectUploadedSpecs } from "../../drizzle/schema";
-import { architectSpecAssemblies } from "../../drizzle/schema-additions-mcs";
+import { epdMaterials } from "../../drizzle/schema";
+import { architectSpecAssemblies, architectUploadedSpecs } from "../../drizzle/schema-additions-mcs";
 import { eq } from "drizzle-orm";
 
 export interface RFQExcelInput {
@@ -358,7 +358,7 @@ export async function generateRfqExcel(
   const buffer = await workbook.xlsx.writeBuffer();
 
   return {
-    buffer: buffer as Buffer,
+    buffer: Buffer.from(buffer),
     filename: `RFQ_${rfqNumber}_${Date.now()}.xlsx`,
   };
 }

@@ -102,9 +102,11 @@ export async function matchSpecAlternatives(specId: number, opts: {
       );
 
     // Get category baseline for CCPS normalization
-    const categoryBaseline = row.assemblyType
+    // getCategoryBaseline returns number (median GWP); price fallback is 100.
+    const baselineGwp = row.assemblyType
       ? await getCategoryBaseline(row.assemblyType)
-      : { gwp: 10000, price: 100 }; // Fallback if no assembly type
+      : 10000;
+    const categoryBaseline = { gwp: baselineGwp, price: 100 };
 
     // ── Step 4: Rank by CCPS ──────────────────────────────────────────────
     const scored = await Promise.all(

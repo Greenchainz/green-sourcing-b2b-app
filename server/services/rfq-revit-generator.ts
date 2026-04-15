@@ -21,8 +21,8 @@
  */
 
 import { getDb } from "../db";
-import { epdMaterials, architectUploadedSpecs } from "../../drizzle/schema";
-import { architectSpecAssemblies } from "../../drizzle/schema-additions-mcs";
+import { epdMaterials } from "../../drizzle/schema";
+import { architectSpecAssemblies, architectUploadedSpecs } from "../../drizzle/schema-additions-mcs";
 import { eq, inArray } from "drizzle-orm";
 
 export interface RFQRevitInput {

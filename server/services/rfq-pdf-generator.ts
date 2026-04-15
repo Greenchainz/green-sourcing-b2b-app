@@ -16,8 +16,8 @@
 import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 import { getDb } from "../db";
-import { epdMaterials, architectUploadedSpecs } from "../../drizzle/schema";
-import { architectSpecAssemblies } from "../../drizzle/schema-additions-mcs";
+import { epdMaterials } from "../../drizzle/schema";
+import { architectSpecAssemblies, architectUploadedSpecs } from "../../drizzle/schema-additions-mcs";
 import { eq, and } from "drizzle-orm";
 
 export interface RFQGeneratorInput {
@@ -172,7 +172,9 @@ export async function generateRfqPdf(
         carbonDelta < 0
           ? `${Math.abs(carbonDelta).toFixed(1)}% reduction`
           : `${carbonDelta.toFixed(1)}% increase`;
-      doc.text(`Carbon Delta: ${deltaText}`, { color: carbonDelta < 0 ? "00AA00" : "CC0000" });
+      doc.fillColor(carbonDelta < 0 ? "#00AA00" : "#CC0000")
+         .text(`Carbon Delta: ${deltaText}`);
+      doc.fillColor("#000000");
     }
 
     // LEED credits
@@ -403,5 +405,5 @@ export async function streamRfqPdf(input: RFQGeneratorInput): Promise<Readable> 
     doc.end();
   })();
 
-  return doc;
+  return doc as unknown as Readable;
 }
