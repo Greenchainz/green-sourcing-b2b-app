@@ -225,6 +225,7 @@ export const architectSpecAssemblies = pgTable(
     id: serial("id").primaryKey(),
     specId: integer("spec_id").notNull(),
     assemblyCode: varchar("assembly_code", { length: 20 }),
+    description: text("description"),
     assemblyType: varchar("assembly_type", { length: 120 }),
     structuralOption: integer("structural_option"),
     declaredUnit: varchar("declared_unit", { length: 100 }),
