@@ -4,7 +4,6 @@ import { existsSync } from "fs";
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import { createServer } from "http";
-import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { registerEmailAuthRoutes } from "./email-auth";
@@ -79,24 +78,9 @@ if (process.env.NODE_ENV !== "production") {
   }
 }
 
-function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise(resolve => {
-    const server = net.createServer();
-    server.listen(port, () => {
-      server.close(() => resolve(true));
-    });
-    server.on("error", () => resolve(false));
-  });
-}
-
-async function findAvailablePort(startPort: number = 3000): Promise<number> {
-  for (let port = startPort; port < startPort + 20; port++) {
-    if (await isPortAvailable(port)) {
-      return port;
-    }
-  }
-  throw new Error(`No available port found starting from ${startPort}`);
-}
+// Port-probe dance removed: Azure Container Apps health probes bind to the
+// same port we target, so racing to "find an available port" fails the probe.
+// We now bind directly to process.env.PORT.
 
 async function startServer() {
   const { loadSecrets } = await import("../../lib/secrets");
@@ -242,15 +226,11 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const port = parseInt(process.env.PORT || "3000", 10);
+  const host = "0.0.0.0";
 
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
-  }
-
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  server.listen(port, host, () => {
+    console.log(`[startup] Server listening on ${host}:${port}`);
   });
 
   // Fire-and-forget — scheduler failures must not kill the server process.
