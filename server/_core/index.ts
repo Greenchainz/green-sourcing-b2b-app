@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import { createServer } from "http";
+import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { registerEmailAuthRoutes } from "./email-auth";
@@ -78,9 +79,24 @@ if (process.env.NODE_ENV !== "production") {
   }
 }
 
-// Port-probe dance removed: Azure Container Apps health probes bind to the
-// same port we target, so racing to "find an available port" fails the probe.
-// We now bind directly to process.env.PORT.
+function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const server = net.createServer();
+    server.listen(port, () => {
+      server.close(() => resolve(true));
+    });
+    server.on("error", () => resolve(false));
+  });
+}
+
+async function findAvailablePort(startPort: number = 3000): Promise<number> {
+  for (let port = startPort; port < startPort + 20; port++) {
+    if (await isPortAvailable(port)) {
+      return port;
+    }
+  }
+  throw new Error(`No available port found starting from ${startPort}`);
+}
 
 async function startServer() {
   const { loadSecrets } = await import("../../lib/secrets");
@@ -126,6 +142,10 @@ async function startServer() {
 
   app.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok" });
+  });
+
+  app.get("/healthz", (_req, res) => {
+    res.status(200).send("ok");
   });
 
   app.get("/ready", async (_req, res) => {
@@ -226,11 +246,17 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || "3000", 10);
-  const host = "0.0.0.0";
+  const preferredPort = parseInt(process.env.PORT || "3000");
+  const port = process.env.NODE_ENV === "production"
+    ? preferredPort
+    : await findAvailablePort(preferredPort);
 
-  server.listen(port, host, () => {
-    console.log(`[startup] Server listening on ${host}:${port}`);
+  if (process.env.NODE_ENV !== "production" && port !== preferredPort) {
+    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  }
+
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 
   // Fire-and-forget — scheduler failures must not kill the server process.
