@@ -36,6 +36,9 @@ import GetStarted from "./pages/GetStarted";
 import SupplierOnboarding from "./pages/SupplierOnboarding";
 import ArchitectOnboarding from "./pages/ArchitectOnboarding";
 import ArchitectDashboard from "./pages/ArchitectDashboard";
+import ArchitectSpecsUpload from "./pages/ArchitectSpecsUpload";
+import ArchitectSpecDetail from "./pages/ArchitectSpecDetail";
+import ArchitectSpecsList from "./pages/ArchitectSpecsList";
 import MaterialSearchPage from "./pages/MaterialSearchPage";
 import RFQNewPage from "./pages/RFQNewPage";
 import RFQDetailPage from "./pages/rfq/RFQDetailPage";
@@ -105,6 +108,9 @@ function Router() {
       <Route path="/rfq-status" component={RfqDashboard} />
       <Route path="/supplier/onboarding" component={SupplierOnboarding} />
       <Route path="/architect/onboarding" component={ArchitectOnboarding} />
+      <Route path="/architect/specs" component={ArchitectSpecsList} />
+      <Route path="/architect/specs/upload" component={ArchitectSpecsUpload} />
+      <Route path="/architect/specs/:specId" component={ArchitectSpecDetail} />
       <Route path="/search" component={MaterialSearchPage} />
       <Route path="/supplier/register" component={SupplierRegistration} />
       <Route path="/supplier/dashboard">{() => <SupplierLayout><SupplierProfileDashboard /></SupplierLayout>}</Route>
@@ -145,6 +151,7 @@ function Router() {
 // Redirect unauthenticated users away from protected routes
 const PROTECTED_PREFIXES = [
   "/supplier/",
+  "/architect/specs/",
   "/rfq-dashboard",
   "/rfq-status",
   "/rfq-form",
