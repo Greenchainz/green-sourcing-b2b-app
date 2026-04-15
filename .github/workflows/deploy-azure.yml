@@ -48,6 +48,20 @@ jobs:
       - name: TypeScript type-check
         run: pnpm check
 
+      - name: Validate Testcontainers Cloud token
+        env:
+          TC_CLOUD_TOKEN: ${{ secrets.TC_CLOUD_TOKEN }}
+        run: |
+          if [ -z "$TC_CLOUD_TOKEN" ]; then
+            echo "TC_CLOUD_TOKEN secret is required for Testcontainers Cloud setup."
+            exit 1
+          fi
+
+      - name: Setup Testcontainers Cloud Client
+        uses: atomicjar/testcontainers-cloud-setup-action@v1.4.0
+        with:
+          token: ${{ secrets.TC_CLOUD_TOKEN }}
+
       - name: Run unit tests
         run: pnpm test
 
@@ -95,7 +109,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.frontend
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
@@ -112,7 +126,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.backend
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
@@ -523,7 +537,7 @@ jobs:
             return 1
           }
 
-          wait_for_expected_status "https://${FRONTEND_FQDN}/" "200" "Frontend root /" || exit 1
+          wait_for_expected_status "https://${FRONTEND_FQDN}/healthz" "200" "Frontend /healthz" || exit 1
 
       - name: Dump frontend container logs on failure
         if: failure()
