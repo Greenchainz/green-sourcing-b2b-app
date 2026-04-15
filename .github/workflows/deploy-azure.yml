@@ -555,4 +555,3 @@ jobs:
       - name: Azure logout
         run: az logout || true
         if: always()
-                                                        
