@@ -58,7 +58,7 @@ jobs:
           fi
 
       - name: Setup Testcontainers Cloud Client
-        uses: atomicjar/testcontainers-cloud-setup-action@v1
+        uses: atomicjar/testcontainers-cloud-setup-action@v1.4.0
         with:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
