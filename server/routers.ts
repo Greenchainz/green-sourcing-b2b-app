@@ -23,7 +23,9 @@ import { manufacturerRouter } from './manufacturer-router';
 import { engagementRouter } from './engagement-router';
 import { materialCreditScoreRouter } from './routers/material-credit-score';
 import { crmRouter } from './routers/crm-router';
-import { materialsRouter, assembliesRouter, assemblySpecsRouter, personasRouter } from './routers/materials-router';
+import { assemblySpecsRouter, assembliesRouter } from './routers/assemblies-router';
+import { materialsRouter } from './routers/materials-router';
+import { personasRouter } from './routers/personas-router';
 import { messagingRouter } from './routers/messaging-router';
 import { videoCallingRouter } from './routers/video-calling-router';
 import { microsoftSubscriptionRouter } from './routers/microsoft-subscription-router';
@@ -56,7 +58,6 @@ export const appRouter = router({
   materialCreditScore: materialCreditScoreRouter,
   crm: crmRouter,
 
-  // Extracted from inline definitions
   assemblySpecs: assemblySpecsRouter,
   assemblies: assembliesRouter,
   personas: personasRouter,
