@@ -34,6 +34,7 @@ properties:
         identity: system
     
     # Required secrets from Key Vault
+    # Secret names must exactly match what is stored in greenchainz-vault (case-insensitive but hyphen-sensitive)
     secrets:
       - name: jwt-secret
         keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/jwt-secret
@@ -44,22 +45,15 @@ properties:
       - name: session-secret
         keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/session-secret
         identity: system
-      # Stripe payment integration
-      - name: stripe-secret-key
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/stripe-secret-key
-        identity: system
-      - name: stripe-webhook-secret
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/stripe-webhook-secret
-        identity: system
-      # Azure AD Authentication
+      # Azure AD Authentication (vault names: AZURE-AD-CLIENT-ID, AZURE-AD-CLIENT-SECRET, azure-ad-tenant-id)
       - name: azure-client-id
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AzureAD-ClientId
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AZURE-AD-CLIENT-ID
         identity: system
       - name: azure-client-secret
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AzureAD-ClientSecret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AZURE-AD-CLIENT-SECRET
         identity: system
       - name: azure-tenant-id
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AzureAD-TenantId
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-tenant-id
         identity: system
       # Database and Redis URLs (full connection strings)
       - name: database-url
@@ -68,19 +62,26 @@ properties:
       - name: redis-connection-string
         keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/Redis-ConnectionString
         identity: system
-      # Intercom & Internal API
-      - name: intercom-token
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/intercom-token
+      # Intercom (vault has INTERCOM-APPID and INTERCOM-SECRET)
+      - name: intercom-app-id
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/INTERCOM-APPID
+        identity: system
+      - name: intercom-secret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/INTERCOM-SECRET
         identity: system
       - name: internal-api-key
         keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/internal-api-key
         identity: system
-      # Zoho Mail (for contact form)
+      # Zoho Mail (vault names: ZOHO-EMAIL-USER, ZOHO-EMAIL-PASSWORD)
       - name: zoho-email
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/zoho-email
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/ZOHO-EMAIL-USER
         identity: system
       - name: zoho-password
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/zoho-password
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/ZOHO-EMAIL-PASSWORD
+        identity: system
+      # Resend (transactional email)
+      - name: resend-api-key
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/RESEND-API-KEY
         identity: system
 
   template:
@@ -166,13 +167,6 @@ properties:
           - name: NOTIFICATIONS_ENABLED
             value: "false"
           
-          # ─────────────────────────────────────────────────────────────
-          # Stripe Payment Integration
-          # ─────────────────────────────────────────────────────────────
-          - name: STRIPE_SECRET_KEY
-            secretRef: stripe-secret-key
-          - name: STRIPE_WEBHOOK_SECRET
-            secretRef: stripe-webhook-secret
           
           # ─────────────────────────────────────────────────────────────
           # Azure AD Authentication (Entra app registration — user sign-in only)
@@ -203,10 +197,14 @@ properties:
           # ─────────────────────────────────────────────────────────────
           # Intercom & Internal API
           # ─────────────────────────────────────────────────────────────
-          - name: INTERCOM_ACCESS_TOKEN
-            secretRef: intercom-token
+          - name: INTERCOM_APP_ID
+            secretRef: intercom-app-id
+          - name: INTERCOM_SECRET
+            secretRef: intercom-secret
           - name: INTERNAL_API_KEY
             secretRef: internal-api-key
+          - name: RESEND_API_KEY
+            secretRef: resend-api-key
           
           # ─────────────────────────────────────────────────────────────
           # Zoho Mail (Contact Form)
