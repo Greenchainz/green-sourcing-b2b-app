@@ -85,15 +85,14 @@ class SDKServer {
       });
       const { openId, appId, name } = payload as Record<string, unknown>;
 
-      if (
-        !isNonEmptyString(openId) ||
-        !isNonEmptyString(appId)
-      ) {
+      // Only openId is required — appId (VITE_APP_ID) is a build-time var that
+      // is empty at runtime in Container Apps, so we cannot require it here.
+      if (!isNonEmptyString(openId)) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
       }
 
-      return { openId, appId, name: typeof name === "string" ? name : "" };
+      return { openId, appId: typeof appId === "string" ? appId : "", name: typeof name === "string" ? name : "" };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
       return null;
