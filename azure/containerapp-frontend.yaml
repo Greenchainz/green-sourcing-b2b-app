@@ -7,15 +7,15 @@ properties:
   configuration:
     activeRevisionsMode: Single
     secrets:
-      # Azure AD secrets (match names in Greenchainz-vault-2026)
+      # Azure AD secrets (match names in greenchainz-vault)
       - name: azure-ad-client-id
-        keyVaultUrl: https://greenchainz-vault-2026.vault.azure.net/secrets/azure-ad-client-id
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-client-id
         identity: system
       - name: azure-ad-client-secret
-        keyVaultUrl: https://greenchainz-vault-2026.vault.azure.net/secrets/azure-ad-client-secret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-client-secret
         identity: system
       - name: azure-ad-tenant-id
-        keyVaultUrl: https://greenchainz-vault-2026.vault.azure.net/secrets/azure-ad-tenant-id
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-tenant-id
         identity: system
     ingress:
       external: true

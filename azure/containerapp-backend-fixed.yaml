@@ -32,34 +32,34 @@ properties:
     
     secrets:
       - name: jwt-secret
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/jwt-secret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/jwt-secret
         identity: system
       - name: cookie-secret
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/cookie-secret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/cookie-secret
         identity: system
       - name: session-secret
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/session-secret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/session-secret
         identity: system
       - name: stripe-secret-key
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/stripe-secret-key
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/stripe-secret-key
         identity: system
       - name: stripe-webhook-secret
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/stripe-webhook-secret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/stripe-webhook-secret
         identity: system
       - name: azure-client-id
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientId
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AzureAD-ClientId
         identity: system
       - name: azure-client-secret
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-ClientSecret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AzureAD-ClientSecret
         identity: system
       - name: azure-tenant-id
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/AzureAD-TenantId
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AzureAD-TenantId
         identity: system
       - name: database-url
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/Database-URL
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/Database-URL
         identity: system
       - name: redis-connection-string
-        keyVaultUrl: https://Greenchainz-vault-2026.vault.azure.net/secrets/Redis-ConnectionString
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/Redis-ConnectionString
         identity: system
 
   template:
