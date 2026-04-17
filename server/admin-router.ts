@@ -617,4 +617,216 @@ export const adminRouter = router({
 
     return { total: payloads.length, sent, failed };
   }),
+
+  // ─── Test User: create or return ─────────────────────────────────────────
+  // Creates a synthetic test user if one doesn't exist, then returns a signed
+  // session JWT. The frontend sets it as the cookie and redirects.
+  createTestSession: adminProcedure
+    .input(z.object({ role: z.enum(["supplier", "buyer", "architect", "admin"]) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const openId = `test-${input.role}-gcz-internal`;
+      const nameMap: Record<string, string> = {
+        supplier: "Test Supplier Co.",
+        buyer: "Test Buyer User",
+        architect: "Test Architect",
+        admin: "Test Admin",
+      };
+      const emailMap: Record<string, string> = {
+        supplier: "test-supplier@greenchainz-test.internal",
+        buyer: "test-buyer@greenchainz-test.internal",
+        architect: "test-architect@greenchainz-test.internal",
+        admin: "test-admin@greenchainz-test.internal",
+      };
+
+      const roleMap: Record<string, "user" | "admin" | "buyer" | "supplier"> = {
+        supplier: "supplier",
+        buyer: "buyer",
+        architect: "buyer",
+        admin: "admin",
+      };
+
+      // Upsert the test user
+      const { users } = await import("../drizzle/schema");
+      const existing = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.openId, openId))
+        .limit(1);
+
+      if (existing.length === 0) {
+        await db.insert(users).values({
+          openId,
+          name: nameMap[input.role],
+          email: emailMap[input.role],
+          role: roleMap[input.role],
+          loginMethod: "test-admin-created",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any);
+      } else {
+        // Reset to clean state — no tier upgrades, no subscriptions artefacts
+        await db
+          .update(users)
+          .set({ role: roleMap[input.role], updatedAt: new Date() } as any)
+          .where(eq(users.openId, openId));
+      }
+
+      // Mint a session JWT
+      const { sdk } = await import("./_core/sdk");
+      const token = await sdk.createSessionToken(openId, {
+        name: nameMap[input.role],
+        expiresInMs: 8 * 60 * 60 * 1000, // 8 hours
+      });
+
+      // Set the cookie directly on the response so the client just needs to reload
+      const { COOKIE_NAME } = await import("@shared/const");
+      const { getSessionCookieOptions } = await import("./_core/cookies");
+      ctx.res.cookie(COOKIE_NAME, token, {
+        ...getSessionCookieOptions(ctx.req),
+        maxAge: 8 * 60 * 60 * 1000,
+      });
+
+      return {
+        openId,
+        name: nameMap[input.role],
+        role: roleMap[input.role],
+        redirectTo: input.role === "supplier" ? "/supplier/dashboard" : "/",
+      };
+    }),
+
+  // ─── Delete test users ────────────────────────────────────────────────────
+  clearTestUsers: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const { users } = await import("../drizzle/schema");
+    const { like } = await import("drizzle-orm");
+    await db.delete(users).where(like(users.openId, "test-%-gcz-internal"));
+    return { cleared: true };
+  }),
+
+  // ─── Catalog Stats ───────────────────────────────────────────────────────
+  getCatalogStats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const [totalMaterials] = await db.select({ count: count() }).from(materials);
+    const [withEpd] = await db
+      .select({ count: count() })
+      .from(materials)
+      .where(eq(materials.hasEpd, true));
+    const [withGwp] = await db
+      .select({ count: count() })
+      .from(materials)
+      .where(sql`${materials.gwpValue} IS NOT NULL`);
+    const [verified] = await db
+      .select({ count: count() })
+      .from(materials)
+      .where(eq(materials.verified, true));
+
+    const categoryRows = await db
+      .select({
+        category: materials.category,
+        total: count(),
+        epd: sql<number>`COUNT(*) FILTER (WHERE ${materials.hasEpd} = true)`,
+      })
+      .from(materials)
+      .groupBy(materials.category)
+      .orderBy(desc(count()));
+
+    return {
+      total: Number(totalMaterials.count),
+      withEpd: Number(withEpd.count),
+      withGwp: Number(withGwp.count),
+      verified: Number(verified.count),
+      byCategory: categoryRows.map((r) => ({
+        category: r.category,
+        total: Number(r.total),
+        epd: Number(r.epd),
+      })),
+    };
+  }),
+
+  // ─── EC3 Bulk Import ──────────────────────────────────────────────────────
+  triggerEC3Import: adminProcedure
+    .input(z.object({ category: z.string(), limit: z.number().min(10).max(500).default(100) }))
+    .mutation(async ({ input }) => {
+      const { importEC3Materials } = await import("./services/ec3-service");
+      const created = await importEC3Materials(input.category, input.limit);
+      return { created, category: input.category };
+    }),
+
+  // ─── Delete material ──────────────────────────────────────────────────────
+  deleteMaterial: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.delete(materials).where(eq(materials.id, input.id));
+      return { success: true };
+    }),
+
+  // ─── Toggle material verified flag ────────────────────────────────────────
+  setMaterialVerified: adminProcedure
+    .input(z.object({ id: z.number(), verified: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db
+        .update(materials)
+        .set({ verified: input.verified, updatedAt: new Date() })
+        .where(eq(materials.id, input.id));
+      return { success: true };
+    }),
+
+  // ─── Search materials (admin) ─────────────────────────────────────────────
+  searchMaterials: adminProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      category: z.string().optional(),
+      limit: z.number().min(1).max(200).default(50),
+      offset: z.number().default(0),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { items: [], total: 0 };
+
+      const { like, or } = await import("drizzle-orm");
+      const conditions: any[] = [];
+      if (input.search) {
+        conditions.push(
+          or(
+            like(materials.name, `%${input.search}%`),
+            like(materials.category, `%${input.search}%`),
+          )
+        );
+      }
+      if (input.category) conditions.push(eq(materials.category, input.category));
+
+      const { and: drizzleAnd } = await import("drizzle-orm");
+      const where = conditions.length ? drizzleAnd(...conditions) : undefined;
+
+      const rows = await db
+        .select({
+          id: materials.id,
+          name: materials.name,
+          category: materials.category,
+          hasEpd: materials.hasEpd,
+          gwpValue: materials.gwpValue,
+          verified: materials.verified,
+          createdAt: materials.createdAt,
+          dataSource: materials.dataSource,
+        })
+        .from(materials)
+        .where(where)
+        .orderBy(desc(materials.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const [total] = await db.select({ count: count() }).from(materials).where(where);
+
+      return { items: rows, total: Number(total.count) };
+    }),
 });

@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Layers, Leaf, ArrowRight, Building2, ArrowLeft, Plus, Save, Trash2, Calculator, Flame, Package, LogIn, FileSpreadsheet, Search, SlidersHorizontal, X } from "lucide-react";
+import { Layers, Leaf, ArrowRight, Building2, ArrowLeft, Plus, Save, Trash2, Calculator, Flame, Package, LogIn, FileSpreadsheet, Search, SlidersHorizontal, X, Volume2, Wind, ShieldCheck, Zap, Ruler } from "lucide-react";
 import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -751,6 +751,126 @@ function AssemblyDetailPage() {
                   <span className="text-muted-foreground">Worksheet state</span>
                   <span className="font-medium text-right">Editable in detail view</span>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* ── Performance Metrics ─────────────────────────────────── */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="w-4 h-4" />Performance Metrics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0 divide-y divide-border text-sm">
+                {/* Acoustics */}
+                {(assembly.stcRating || assembly.iicRating) && (
+                  <div className="py-2">
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1"><Volume2 className="w-3 h-3" />Acoustics</p>
+                    <div className="space-y-1">
+                      {assembly.stcRating && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground text-xs">STC Rating</span>
+                          <span className="font-semibold text-xs">{assembly.stcRating}</span>
+                        </div>
+                      )}
+                      {assembly.iicRating && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground text-xs">IIC Rating</span>
+                          <span className="font-semibold text-xs">{assembly.iicRating}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* Fire & Flame */}
+                {(assembly.flameSpreadIndex !== null || assembly.smokeDevelopmentIndex !== null || assembly.ulDesignNumber) && (
+                  <div className="py-2">
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1"><Flame className="w-3 h-3" />Fire / ASTM E84</p>
+                    <div className="space-y-1">
+                      {assembly.flameSpreadIndex !== null && assembly.flameSpreadIndex !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground text-xs">Flame Spread (FSI)</span>
+                          <span className={`font-semibold text-xs ${Number(assembly.flameSpreadIndex) <= 25 ? "text-green-700" : Number(assembly.flameSpreadIndex) <= 75 ? "text-amber-700" : "text-red-700"}`}>
+                            {assembly.flameSpreadIndex} {Number(assembly.flameSpreadIndex) <= 25 ? "Class A" : Number(assembly.flameSpreadIndex) <= 75 ? "Class B" : "Class C"}
+                          </span>
+                        </div>
+                      )}
+                      {assembly.smokeDevelopmentIndex !== null && assembly.smokeDevelopmentIndex !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground text-xs">Smoke Dev. (SDI)</span>
+                          <span className="font-semibold text-xs">{assembly.smokeDevelopmentIndex}</span>
+                        </div>
+                      )}
+                      {assembly.ulDesignNumber && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground text-xs shrink-0">UL Design</span>
+                          <span className="font-semibold text-xs text-right">{assembly.ulDesignNumber}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* Air & Vapor */}
+                {(assembly.airPermeance || assembly.vaporPermeance) && (
+                  <div className="py-2">
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1"><Wind className="w-3 h-3" />Air & Vapor</p>
+                    <div className="space-y-1">
+                      {assembly.airPermeance && assembly.airPermeance !== "N/A" && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground text-xs">Air Permeance</span>
+                          <span className="font-semibold text-xs">{assembly.airPermeance}</span>
+                        </div>
+                      )}
+                      {assembly.vaporPermeance && assembly.vaporPermeance !== "N/A" && (
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          <span className="text-muted-foreground text-xs">Vapor Permeance</span>
+                          <span className="font-semibold text-xs">{assembly.vaporPermeance}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* Wind & Impact */}
+                {(assembly.windUpliftRating || assembly.impactResistance) && (
+                  <div className="py-2">
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1"><Zap className="w-3 h-3" />Wind & Impact</p>
+                    <div className="space-y-1">
+                      {assembly.windUpliftRating && assembly.windUpliftRating !== "N/A" && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground text-xs">Wind Uplift</span>
+                          <span className="font-semibold text-xs">{assembly.windUpliftRating}</span>
+                        </div>
+                      )}
+                      {assembly.impactResistance && (
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          <span className="text-muted-foreground text-xs">Impact Resistance</span>
+                          <span className="font-semibold text-xs">{assembly.impactResistance}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* Load & Structural */}
+                {assembly.loadCapacityPsf && (
+                  <div className="py-2">
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1"><Ruler className="w-3 h-3" />Structural</p>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-xs">Load Capacity</span>
+                      <span className="font-semibold text-xs">{assembly.loadCapacityPsf} psf</span>
+                    </div>
+                  </div>
+                )}
+                {/* LEED Credits */}
+                {assembly.leedCredits && (
+                  <div className="py-2">
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1"><Leaf className="w-3 h-3 text-green-600" />LEED v4.1 Credits</p>
+                    <div className="flex flex-wrap gap-1">
+                      {assembly.leedCredits.split(",").map((credit) => (
+                        <span key={credit.trim()} className="text-[10px] bg-green-50 border border-green-200 text-green-800 rounded px-1.5 py-0.5">
+                          {credit.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
