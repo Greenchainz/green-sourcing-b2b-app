@@ -390,15 +390,16 @@ export const rfqRouter = router({
     }),
 
   // ── Scheduler: auto-expire overdue RFQs (no auth) ────────────────────────
+  // rfq_status enum: draft | submitted | responded | awarded | closed
   expire: publicProcedure.mutation(async () => {
     const result = await query(
-      `UPDATE rfqs SET status = 'expired', updated_at = NOW()
-       WHERE status = 'open' AND deadline < NOW()`,
+      `UPDATE rfqs SET status = 'closed', updated_at = NOW()
+       WHERE status IN ('submitted', 'responded') AND deadline < NOW()`,
     );
 
     const count = result.rowCount ?? 0;
     if (count > 0) {
-      console.log(`[rfq.expire] Expired ${count} overdue RFQ(s)`);
+      console.log(`[rfq.expire] Closed ${count} overdue RFQ(s)`);
     }
 
     return { expired_count: count };
