@@ -28,7 +28,7 @@ import {
 import { Link, useLocation } from "wouter";
 import { ScoreBadge } from "@/components/MaterialCreditScore/ScoreBadge";
 import { PriceTrendBadge } from "@/components/PriceTrendBadge";
-import { getMaterialImage } from "@/lib/material-images";
+
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -64,8 +64,39 @@ export interface MaterialCardProps {
     healthScore: number;
     sourcingDifficulty: number;
   };
+  imageUrl?: string | null;
   /** "grid" (default) = vertical card; "list" = compact horizontal row */
   variant?: "grid" | "list";
+}
+
+// ── Material avatar (initials + hash-based color when no photo exists) ───────
+
+const AVATAR_PALETTES = [
+  { bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-200" },
+  { bg: "bg-teal-100",    text: "text-teal-800",    border: "border-teal-200"    },
+  { bg: "bg-sky-100",     text: "text-sky-800",     border: "border-sky-200"     },
+  { bg: "bg-violet-100",  text: "text-violet-800",  border: "border-violet-200"  },
+  { bg: "bg-amber-100",   text: "text-amber-800",   border: "border-amber-200"   },
+  { bg: "bg-rose-100",    text: "text-rose-800",    border: "border-rose-200"    },
+  { bg: "bg-lime-100",    text: "text-lime-800",    border: "border-lime-200"    },
+  { bg: "bg-cyan-100",    text: "text-cyan-800",    border: "border-cyan-200"    },
+  { bg: "bg-orange-100",  text: "text-orange-800",  border: "border-orange-200"  },
+  { bg: "bg-indigo-100",  text: "text-indigo-800",  border: "border-indigo-200"  },
+];
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function materialAvatar(name: string, category: string) {
+  const palette = AVATAR_PALETTES[hashStr(name + category) % AVATAR_PALETTES.length];
+  const words = name.trim().split(/\s+/);
+  const initials = words.length >= 2
+    ? (words[0][0] + words[1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+  return { ...palette, initials };
 }
 
 // ── Carbon context helper (plain-language GWP summary) ────────────────────────
@@ -120,7 +151,7 @@ export default function MaterialCard(props: MaterialCardProps) {
     );
   };
 
-  const materialImage = getMaterialImage(category);
+  const avatar = materialAvatar(name, category);
 
   // ── List variant ────────────────────────────────────────────────────────────
   if (variant === "list") {
@@ -128,13 +159,12 @@ export default function MaterialCard(props: MaterialCardProps) {
       <div className="group flex items-center gap-3 px-4 py-3 bg-card border border-border/60 rounded-lg hover:border-border hover:shadow-sm transition-all duration-150">
 
         {/* Thumbnail */}
-        <div className="shrink-0 w-10 h-10 rounded overflow-hidden bg-muted">
-          <img
-            src={materialImage}
-            alt={category}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
+        <div className={`shrink-0 w-10 h-10 rounded overflow-hidden border ${avatar.border} ${avatar.bg} flex items-center justify-center`}>
+          {props.imageUrl ? (
+            <img src={props.imageUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
+          ) : (
+            <span className={`text-xs font-bold ${avatar.text}`}>{avatar.initials}</span>
+          )}
         </div>
 
         {/* GreenScore badge */}
@@ -246,15 +276,28 @@ export default function MaterialCard(props: MaterialCardProps) {
     <Card className="group hover:shadow-md transition-all duration-150 border-border/60 overflow-hidden flex flex-col">
       <CardContent className="p-0 flex flex-col flex-1">
 
-        {/* ── Hero image ──────────────────────────────────────────────── */}
-        <div className="relative w-full h-32 bg-muted overflow-hidden">
-          <img
-            src={materialImage}
-            alt={category}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        {/* ── Hero image / avatar ─────────────────────────────────────── */}
+        <div className={`relative w-full h-32 overflow-hidden ${props.imageUrl ? "bg-muted" : `${avatar.bg} border-b ${avatar.border}`}`}>
+          {props.imageUrl ? (
+            <>
+              <img
+                src={props.imageUrl}
+                alt={name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            </>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+              <span className={`text-4xl font-black tracking-tighter ${avatar.text} opacity-90`}>
+                {avatar.initials}
+              </span>
+              <span className={`text-[10px] font-medium uppercase tracking-widest ${avatar.text} opacity-50`}>
+                {category.replace(/([A-Z])/g, " $1").trim().slice(0, 22)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* ── Zone 1: Header ────────────────────────────────────────────── */}
