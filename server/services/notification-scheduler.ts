@@ -269,19 +269,20 @@ const remindedRfqIds = new Set<string>();
 /** Check for RFQs expiring within 24 hours and log reminders */
 async function checkExpiringRfqs(): Promise<void> {
   try {
-    // The rfqs table uses status = 'open' for active RFQs and has a 'deadline' column
-    const rows = await queryMany<{ id: string; deadline: Date; buyer_id: number }>(
-      `SELECT id, deadline, buyer_id
+    // rfq_status enum: draft | submitted | responded | awarded | closed
+    // Column names are camelCase in prod DB (from original Prisma migration)
+    const rows = await queryMany<{ id: string; dueDate: Date; userId: number }>(
+      `SELECT id, "dueDate", "userId"
        FROM rfqs
-       WHERE status = 'open'
-         AND deadline BETWEEN NOW() AND NOW() + INTERVAL '24 hours'`
+       WHERE status IN ('submitted', 'responded')
+         AND "dueDate" BETWEEN NOW() AND NOW() + INTERVAL '24 hours'`
     );
 
     for (const rfq of rows) {
       if (remindedRfqIds.has(rfq.id)) continue;
 
       console.log(
-        `[rfq-scheduler] RFQ ${rfq.id} expires at ${rfq.deadline.toISOString()} — reminder pending`
+        `[rfq-scheduler] RFQ ${rfq.id} expires at ${rfq.dueDate.toISOString()} — reminder pending`
       );
       remindedRfqIds.add(rfq.id);
     }
@@ -294,13 +295,14 @@ async function checkExpiringRfqs(): Promise<void> {
   }
 }
 
-/** Auto-expire overdue RFQs: mark open RFQs past their deadline as expired */
+/** Auto-expire overdue RFQs: close submitted/responded RFQs past their dueDate */
 async function expireOverdueRfqs(): Promise<void> {
   try {
-    // The rfqs table uses status = 'open' for active and 'expired' for past-deadline
+    // rfq_status enum: draft | submitted | responded | awarded | closed
+    // Column names are camelCase in prod DB (from original Prisma migration)
     const result = await query(
-      `UPDATE rfqs SET status = 'expired', updated_at = NOW()
-       WHERE status = 'open' AND deadline < NOW()`
+      `UPDATE rfqs SET status = 'closed', "updatedAt" = NOW()
+       WHERE status IN ('submitted', 'responded') AND "dueDate" < NOW()`
     );
 
     const count = result.rowCount ?? 0;

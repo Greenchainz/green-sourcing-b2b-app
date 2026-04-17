@@ -117,9 +117,9 @@ export const rfqRouter = router({
           `SELECT r.*, COUNT(q.id) AS quote_count
            FROM rfqs r
            LEFT JOIN rfq_quotes q ON q.rfq_id = r.id
-           WHERE r.buyer_id = $1${where}
+           WHERE r."userId" = $1${where}
            GROUP BY r.id
-           ORDER BY r.created_at DESC
+           ORDER BY r."createdAt" DESC
            LIMIT $2 OFFSET $3`,
           params
         );
@@ -302,7 +302,7 @@ export const rfqRouter = router({
       if (!rfq) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rfq.status !== "open") {
+      if (!["submitted", "responded"].includes(rfq.status)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "RFQ is no longer open for quotes" });
       }
 
@@ -352,18 +352,18 @@ export const rfqRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.user.id;
 
-      const rfq = await queryOne<{ id: string; buyer_id: number; status: string }>(
-        `SELECT id, buyer_id, status FROM rfqs WHERE id = $1`,
+      const rfq = await queryOne<{ id: string; userId: number; status: string }>(
+        `SELECT id, "userId", status FROM rfqs WHERE id = $1`,
         [input.rfq_id]
       );
 
       if (!rfq) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rfq.buyer_id !== userId && ctx.user.role !== "admin") {
+      if (rfq.userId !== userId && ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the RFQ buyer can accept quotes" });
       }
-      if (rfq.status !== "open") {
+      if (!["submitted", "responded"].includes(rfq.status)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "RFQ is no longer open" });
       }
 
@@ -381,7 +381,7 @@ export const rfqRouter = router({
           [input.quote_id]
         );
         await client.query(
-          `UPDATE rfqs SET status = 'awarded', updated_at = NOW() WHERE id = $1`,
+          `UPDATE rfqs SET status = 'awarded', "updatedAt" = NOW() WHERE id = $1`,
           [input.rfq_id]
         );
       });
@@ -390,11 +390,11 @@ export const rfqRouter = router({
     }),
 
   // ── Scheduler: auto-expire overdue RFQs (no auth) ────────────────────────
-  // The rfqs table uses status = 'open' for active RFQs; expired = past deadline
+  // rfq_status enum: draft | submitted | responded | awarded | closed
   expire: publicProcedure.mutation(async () => {
     const result = await query(
-      `UPDATE rfqs SET status = 'expired', updated_at = NOW()
-       WHERE status = 'open' AND deadline < NOW()`,
+      `UPDATE rfqs SET status = 'closed', "updatedAt" = NOW()
+       WHERE status IN ('submitted', 'responded') AND "dueDate" < NOW()`,
     );
 
     const count = result.rowCount ?? 0;
