@@ -7,12 +7,12 @@ properties:
   configuration:
     activeRevisionsMode: Single
     secrets:
-      # Azure AD secrets (match names in greenchainz-vault)
+      # Azure AD secrets — names match exactly what is stored in greenchainz-vault
       - name: azure-ad-client-id
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-client-id
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AZURE-AD-CLIENT-ID
         identity: system
       - name: azure-ad-client-secret
-        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-client-secret
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/AZURE-AD-CLIENT-SECRET
         identity: system
       - name: azure-ad-tenant-id
         keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/azure-ad-tenant-id
@@ -61,8 +61,9 @@ properties:
           - name: MANAGED_IDENTITY_CLIENT_ID
             value: "ec248abf-f6ce-4d7c-8888-740317709f1b"
           # Public runtime config (also baked in at build time via Docker build args)
+          # VITE_BACKEND_URL is intentionally empty — frontend uses relative URLs to hit the same origin
           - name: NEXT_PUBLIC_BACKEND_URL
-            value: https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
+            value: ""
           - name: NEXT_PUBLIC_AZURE_TENANT
             value: greenchainz2025.onmicrosoft.com
           - name: NEXT_PUBLIC_AZURE_CLIENT_ID
