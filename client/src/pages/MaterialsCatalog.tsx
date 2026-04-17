@@ -466,11 +466,26 @@ export default function MaterialsCatalog() {
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       <SEOHead
-        title="Verified Sustainable Building Materials Database — Search 50,000+ EPDs | GreenChainz"
-        description="Browse and compare 50,000+ verified Environmental Product Declarations. Filter by carbon footprint, LEED credits, Buy Clean compliance, and certifications."
+        title="Verified Sustainable Building Materials — Architect-Grade EPD Database | GreenChainz"
+        description="The database architects actually use to specify sustainable materials. Verified EPDs, LEED credits, embodied carbon scores, and direct RFQ to suppliers."
         canonicalPath="/materials"
       />
       <Header />
+
+      {/* ── Supplier acquisition strip ─────────────────────────────────── */}
+      <div className="shrink-0 bg-green-950 text-green-100 px-4 py-1.5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 text-[11px]">
+          <span className="font-semibold text-green-300">{totalMatches > 0 ? totalMatches : "480"}+ verified materials</span>
+          <span className="hidden sm:inline text-green-400/70">·</span>
+          <span className="hidden sm:inline text-green-300/80">Architects search this database daily to specify products</span>
+        </div>
+        <a
+          href="/supplier/register"
+          className="shrink-0 text-[11px] font-semibold bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded transition-colors whitespace-nowrap"
+        >
+          List Your Product Free →
+        </a>
+      </div>
 
       {/* ── Hero / search bar ──────────────────────────────────────────── */}
       <div className="shrink-0 bg-background border-b shadow-sm px-4 md:px-6 py-3 flex items-center gap-3 z-10">
@@ -479,7 +494,7 @@ export default function MaterialsCatalog() {
         <div className="hidden lg:block shrink-0 pr-3 border-r border-border">
           <h1 className="text-sm font-bold leading-tight">Materials</h1>
           <p className="text-[10px] text-muted-foreground whitespace-nowrap">
-            Verified EPDs · Credit Scores
+            Verified EPDs · GreenScore™
           </p>
         </div>
 
@@ -703,9 +718,16 @@ export default function MaterialsCatalog() {
                 <p className="text-xs text-muted-foreground mb-4">
                   Try broader filters or a different search term.
                 </p>
-                <Button variant="outline" size="sm" onClick={resetFilters}>
-                  Clear all filters
-                </Button>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Button variant="outline" size="sm" onClick={resetFilters}>
+                    Clear all filters
+                  </Button>
+                  <a href="/supplier/register">
+                    <Button size="sm" className="bg-green-700 hover:bg-green-800 text-white gap-1.5">
+                      Supplier? Get your product listed
+                    </Button>
+                  </a>
+                </div>
               </div>
               );
             })()}
