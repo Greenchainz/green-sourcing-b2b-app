@@ -2,11 +2,15 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const APP_ID = "cqtm1euj";
+const LAUNCHER_POSITION = {
+  horizontal_padding: 20,
+  vertical_padding: 92,
+} as const;
 
 // Intercom is loaded via script tag, declare as window global
 declare global {
   interface Window {
-    Intercom?: (action: string | Record<string, any>) => void;
+    Intercom?: (command: string, props?: Record<string, unknown>) => void;
   }
 }
 
@@ -20,43 +24,83 @@ export default function IntercomWidget() {
   const bootedUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!window.Intercom) {
-      console.warn("Intercom not loaded yet");
-      return;
-    }
+    let cancelled = false;
 
-    if (user && bootedUserId.current !== user.id) {
-      // Logged in — get JWT and boot with verified identity
-      fetch("/api/intercom/token", { credentials: "include" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          window.Intercom?.({
+    const waitForIntercom = () =>
+      new Promise<boolean>((resolve) => {
+        if (window.Intercom) {
+          resolve(true);
+          return;
+        }
+
+        let attempts = 0;
+        const timer = window.setInterval(() => {
+          if (window.Intercom) {
+            window.clearInterval(timer);
+            resolve(true);
+            return;
+          }
+
+          attempts += 1;
+          if (attempts >= 50) {
+            window.clearInterval(timer);
+            resolve(false);
+          }
+        }, 100);
+      });
+
+    const bootIntercom = async () => {
+      const loaded = await waitForIntercom();
+      if (!loaded || cancelled) return;
+
+      if (user && bootedUserId.current !== user.id) {
+        if (bootedUserId.current) {
+          window.Intercom?.("shutdown");
+        }
+
+        try {
+          const response = await fetch("/api/intercom/token", { credentials: "include" });
+          const data = response.ok ? await response.json() : null;
+
+          window.Intercom?.("boot", {
             app_id: APP_ID,
+            ...LAUNCHER_POSITION,
             user_id: user.id,
             name: user.name,
             email: user.email,
             intercom_user_jwt: data?.token,
           });
-          bootedUserId.current = user.id;
-        })
-        .catch(() => {
-          // JWT fetch failed — boot without identity verification
-          window.Intercom?.({
+        } catch {
+          window.Intercom?.("boot", {
             app_id: APP_ID,
+            ...LAUNCHER_POSITION,
             user_id: user.id,
             name: user.name,
             email: user.email,
           });
-          bootedUserId.current = user.id;
-        });
-    } else if (!user && bootedUserId.current) {
-      // Logged out — reset to anonymous
-      window.Intercom?.({ app_id: APP_ID });
-      bootedUserId.current = null;
-    } else if (!user && !bootedUserId.current) {
-      // Anonymous visitor
-      window.Intercom?.({ app_id: APP_ID });
-    }
+        }
+
+        bootedUserId.current = user.id;
+        return;
+      }
+
+      if (!user && bootedUserId.current) {
+        window.Intercom?.("shutdown");
+        window.Intercom?.("boot", { app_id: APP_ID, ...LAUNCHER_POSITION });
+        bootedUserId.current = null;
+        return;
+      }
+
+      if (!user && !bootedUserId.current) {
+        window.Intercom?.("boot", { app_id: APP_ID, ...LAUNCHER_POSITION });
+      }
+    };
+
+    void bootIntercom();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   return null;
