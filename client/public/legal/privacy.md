@@ -262,7 +262,7 @@ If you have questions about this Privacy Policy, wish to exercise your privacy r
 **GreenChainz Inc.**  
 Email: privacy@greenchainz.com  
 Data Protection Officer: dpo@greenchainz.com  
-Address: Danville, Virginia, United States  
+Address: 1842 Ferry Rd, Danville, Virginia 24540, United States  
 Web: greenchainz.com
 
 **Response Time:** We will respond to privacy inquiries within 30 days.

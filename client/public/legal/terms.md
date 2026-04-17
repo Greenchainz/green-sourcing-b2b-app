@@ -247,6 +247,6 @@ For questions about these Terms, please contact:
 
 **GreenChainz Inc.**  
 Email: legal@greenchainz.com  
-Address: Danville, Virginia, United States  
+Address: 1842 Ferry Rd, Danville, Virginia 24540, United States  
 Web: greenchainz.com
 
