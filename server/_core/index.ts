@@ -150,14 +150,13 @@ async function startServer() {
 
   app.get("/ready", async (_req, res) => {
     try {
-      const { getDb } = await import("../db");
-      const db = await getDb();
-      if (!db) {
-        return res.status(503).json({ status: "not_ready", reason: "database_unavailable" });
-      }
+      const { query } = await import("../../lib/pg-pool");
+      await query("SELECT 1");
       res.status(200).json({ status: "ready" });
-    } catch {
-      res.status(503).json({ status: "not_ready", reason: "startup_dependency_failure" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[readiness] DB check failed:", message);
+      res.status(503).json({ status: "not_ready", reason: "database_unavailable", detail: message });
     }
   });
 

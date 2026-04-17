@@ -86,7 +86,7 @@ export async function runScraperOutreachPipeline(): Promise<{
   const scraped: ScrapedSupplierRow[] = suppliersResult.rows as unknown as ScrapedSupplierRow[];
   console.log(`[outreach] Found ${scraped.length} candidate suppliers`);
 
-  // 2. Get all open RFQs (status = 'open' or 'active', not expired)
+  // 2. Get all active RFQs (rfq_status: draft | submitted | responded | awarded | closed)
   const rfqResult = await db.execute(sql`
     SELECT
       r.id,
@@ -96,7 +96,7 @@ export async function runScraperOutreachPipeline(): Promise<{
       COUNT(ri.id) as material_count
     FROM rfqs r
     LEFT JOIN rfq_items ri ON ri.rfq_id = r.id
-    WHERE r.status IN ('open', 'active', 'published')
+    WHERE r.status IN ('submitted', 'responded')
       AND (r.due_date IS NULL OR r.due_date > NOW())
     GROUP BY r.id, r.project_name, r.project_location, r.due_date
     ORDER BY r.created_at DESC

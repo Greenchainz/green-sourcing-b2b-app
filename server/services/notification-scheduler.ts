@@ -269,10 +269,12 @@ const remindedRfqIds = new Set<string>();
 /** Check for RFQs expiring within 24 hours and log reminders */
 async function checkExpiringRfqs(): Promise<void> {
   try {
+    // rfq_status enum: draft | submitted | responded | awarded | closed
+    // 'submitted' = active RFQs awaiting supplier responses
     const rows = await queryMany<{ id: string; title: string; deadline: Date; buyer_id: number }>(
       `SELECT id, title, deadline, buyer_id
        FROM rfqs
-       WHERE status = 'open'
+       WHERE status IN ('submitted', 'responded')
          AND deadline BETWEEN NOW() AND NOW() + INTERVAL '24 hours'`
     );
 
@@ -293,17 +295,19 @@ async function checkExpiringRfqs(): Promise<void> {
   }
 }
 
-/** Auto-expire overdue RFQs (status = 'open' and deadline < NOW()) */
+/** Auto-expire overdue RFQs: close submitted/responded RFQs past their deadline */
 async function expireOverdueRfqs(): Promise<void> {
   try {
+    // rfq_status enum: draft | submitted | responded | awarded | closed
+    // We close submitted/responded RFQs whose deadline has passed.
     const result = await query(
-      `UPDATE rfqs SET status = 'expired', updated_at = NOW()
-       WHERE status = 'open' AND deadline < NOW()`
+      `UPDATE rfqs SET status = 'closed', updated_at = NOW()
+       WHERE status IN ('submitted', 'responded') AND deadline < NOW()`
     );
 
     const count = result.rowCount ?? 0;
     if (count > 0) {
-      console.log(`[rfq-scheduler] Expired ${count} overdue RFQ(s)`);
+      console.log(`[rfq-scheduler] Closed ${count} overdue RFQ(s)`);
     }
   } catch (err) {
     console.error("[rfq-scheduler] Error expiring overdue RFQs:", err);
