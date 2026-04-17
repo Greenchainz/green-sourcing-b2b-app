@@ -200,6 +200,25 @@ export const materials = pgTable("materials", {
   ec3BestPractice: varchar("ec3BestPractice", { length: 50 }),
   ec3IndustryMedian: varchar("ec3IndustryMedian", { length: 50 }),
   complianceGrade: complianceGradeEnum("complianceGrade").default("C"),
+  // ─── 7-Layer Procurement Fields ──────────────────────────────────────────
+  // Layer 1: Design Authorities — liability, code, toxic tort
+  cdphCompliant: boolean("cdphCompliant").default(false),
+  weightPerSf: decimal("weightPerSf", { precision: 8, scale: 3 }),
+  // Layer 2: Financial Gatekeepers — WLC, ROI, whole-life cost
+  wlcPaybackYears: smallint("wlcPaybackYears"),
+  annualEnergySavingsPct: decimal("annualEnergySavingsPct", { precision: 5, scale: 2 }),
+  maintenanceCostPerSfPerYear: decimal("maintenanceCostPerSfPerYear", { precision: 8, scale: 2 }),
+  // Layer 4: Operational Stewards — FM, cleaning, TCO
+  isSeamless: boolean("isSeamless").default(false),
+  bleachResistant: boolean("bleachResistant").default(false),
+  cleaningProtocol: varchar("cleaningProtocol", { length: 120 }),
+  // Layer 5: C-Suite — Scope 3, ESG reporting
+  scope3EmissionsKgCo2e: decimal("scope3EmissionsKgCo2e", { precision: 10, scale: 3 }),
+  // Layer 6: Sector Verticals — healthcare, K-12, retail, etc.
+  sectorTags: text("sectorTags").array(),
+  // Layer 7: Supply Chain — cooperative purchasing, LEED doc readiness
+  sourcewellListed: boolean("sourcewellListed").default(false),
+  leedDocReady: boolean("leedDocReady").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   // Semantic search: pgvector embedding (text-embedding-3-small, 1536 dim)
