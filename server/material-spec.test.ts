@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { db } from "./db";
+import { getDb } from "./db";
 import { materials, materialSpecs, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
+// E2E tests — require a real PostgreSQL connection. Skip in CI unless DATABASE_URL is set.
+describe.skipIf(!process.env.DATABASE_URL)("Material Spec Submission E2E Tests", () => {
   let testUserId: number;
   let testMaterialId: number;
 
   beforeEach(async () => {
+    const db = await getDb();
     if (!db) throw new Error("Database not initialized");
 
     // Clean up test data
@@ -47,12 +49,12 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
 
   describe("Material Spec Submission", () => {
     it("should submit a complete material spec with all fields", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       const specData = {
         materialId: testMaterialId,
         submittedBy: testUserId,
-        // Compliance fields
         fireRating: "Class A",
         fireRatingStandard: "ASTM E84",
         rValue: "R-30",
@@ -61,30 +63,25 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
         astmStandards: JSON.stringify(["ASTM C150", "ASTM C33"]),
         meetsTitle24: true,
         meetsIecc: true,
-        // Cost fields
         pricePerUnit: "125.50",
         priceUnit: "m3",
         leadTimeDays: 14,
         moq: "10 m3",
         bulkPricing: JSON.stringify({ "100+": "115.00", "500+": "110.00" }),
-        // Supply chain fields
         usManufactured: true,
         regionalAvailabilityMiles: 250,
         availability: "In Stock",
         localSourcing: true,
-        // Health fields
         vocLevel: "Low",
         vocCertification: "SCAQMD Rule 1113",
         toxicity: "Non-toxic",
         indoorAirQuality: "Excellent",
-        // Certifications
         hasLeed: true,
         hasDeclare: false,
         hasHpd: true,
         hasFsc: false,
         hasC2c: false,
         hasGreenguard: true,
-        // Metadata
         datasheetUrl: "https://example.com/datasheet.pdf",
         notes: "Test submission for E2E testing",
         status: "pending",
@@ -107,15 +104,13 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should submit a minimal spec with only required fields", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
-      const minimalSpec = {
-        materialId: testMaterialId,
-        submittedBy: testUserId,
-        status: "pending",
-      };
-
-      const [spec] = await db.insert(materialSpecs).values(minimalSpec).returning();
+      const [spec] = await db
+        .insert(materialSpecs)
+        .values({ materialId: testMaterialId, submittedBy: testUserId, status: "pending" })
+        .returning();
 
       expect(spec).toBeDefined();
       expect(spec.materialId).toBe(testMaterialId);
@@ -124,29 +119,27 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should store JSON fields correctly", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       const astmStandards = ["ASTM C150", "ASTM C33", "ASTM C494"];
       const bulkPricing = { "100+": "115.00", "500+": "110.00", "1000+": "105.00" };
 
-      const specData = {
-        materialId: testMaterialId,
-        submittedBy: testUserId,
-        astmStandards: JSON.stringify(astmStandards),
-        bulkPricing: JSON.stringify(bulkPricing),
-        status: "pending",
-      };
-
-      const [spec] = await db.insert(materialSpecs).values(specData).returning();
+      const [spec] = await db
+        .insert(materialSpecs)
+        .values({
+          materialId: testMaterialId,
+          submittedBy: testUserId,
+          astmStandards: JSON.stringify(astmStandards),
+          bulkPricing: JSON.stringify(bulkPricing),
+          status: "pending",
+        })
+        .returning();
 
       expect(spec.astmStandards).toBe(JSON.stringify(astmStandards));
       expect(spec.bulkPricing).toBe(JSON.stringify(bulkPricing));
-
-      // Verify JSON can be parsed back
-      const parsedStandards = JSON.parse(spec.astmStandards!);
-      const parsedPricing = JSON.parse(spec.bulkPricing!);
-      expect(parsedStandards).toEqual(astmStandards);
-      expect(parsedPricing).toEqual(bulkPricing);
+      expect(JSON.parse(spec.astmStandards!)).toEqual(astmStandards);
+      expect(JSON.parse(spec.bulkPricing!)).toEqual(bulkPricing);
     });
   });
 
@@ -154,6 +147,7 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     let testSpecId: number;
 
     beforeEach(async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       const [spec] = await db
@@ -170,6 +164,7 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should get specs by material ID", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       const specs = await db
@@ -183,6 +178,7 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should get specs by supplier ID", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       const specs = await db
@@ -195,6 +191,7 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should get pending specs for admin review", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       const pendingSpecs = await db
@@ -211,6 +208,7 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     let testSpecId: number;
 
     beforeEach(async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       const [spec] = await db
@@ -227,15 +225,12 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should update spec fields", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       await db
         .update(materialSpecs)
-        .set({
-          fireRating: "Class B",
-          pricePerUnit: "130.00",
-          leadTimeDays: 21,
-        })
+        .set({ fireRating: "Class B", pricePerUnit: "130.00", leadTimeDays: 21 })
         .where(eq(materialSpecs.id, testSpecId));
 
       const [updated] = await db
@@ -249,6 +244,7 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should update spec status", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       await db
@@ -269,6 +265,7 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     let testSpecId: number;
 
     beforeEach(async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       const [spec] = await db
@@ -285,15 +282,12 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should approve a spec", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       await db
         .update(materialSpecs)
-        .set({
-          status: "approved",
-          reviewedBy: 1, // Admin user ID
-          reviewedAt: new Date(),
-        })
+        .set({ status: "approved", reviewedBy: 1, reviewedAt: new Date() })
         .where(eq(materialSpecs.id, testSpecId));
 
       const [reviewed] = await db
@@ -307,6 +301,7 @@ describe.skipIf(!db)("Material Spec Submission E2E Tests", () => {
     });
 
     it("should reject a spec with feedback", async () => {
+      const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
       await db
