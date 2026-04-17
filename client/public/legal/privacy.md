@@ -1,7 +1,7 @@
 # GreenChainz Privacy Policy
 
 **Effective Date:** February 15, 2026  
-**Last Updated:** February 15, 2026
+**Last Updated:** April 17, 2026
 
 ---
 
@@ -23,7 +23,7 @@ Please read this Privacy Policy carefully. If you do not agree with our policies
 
 **RFQ and Messaging Data:** When you submit a Request for Quotation (RFQ) or send messages through the Service, we collect the content of those communications, including material specifications, pricing inquiries, and negotiation details.
 
-**Payment Information:** When you subscribe to a paid plan, we collect billing address, payment method details (processed securely through Stripe), and transaction history. We do not store full credit card numbers on our servers.
+**Payment Information:** When you subscribe to a paid plan, we collect billing address and transaction history. Payment method details are processed securely through Microsoft's commercial marketplace. We do not store full credit card numbers on our servers.
 
 **Support Communications:** When you contact our support team, we collect your inquiry, attachments, and correspondence history.
 
@@ -45,7 +45,7 @@ Please read this Privacy Policy carefully. If you do not agree with our policies
 
 **Authentication Providers:** If you use single sign-on (SSO) through Microsoft Entra ID or other providers, we receive authentication data from those providers.
 
-**Payment Processors:** We receive transaction confirmation and payment status from Stripe and other payment processors.
+**Payment Processors:** We receive transaction confirmation and payment status from Microsoft's commercial marketplace.
 
 **Analytics Services:** We use third-party analytics services that collect and report on your usage patterns.
 
@@ -86,12 +86,13 @@ We use the information we collect for the following purposes:
 We share your information with third-party service providers who assist us in operating the Service:
 
 - **Cloud Infrastructure:** Microsoft Azure (data storage and processing in East US region)
-- **Payment Processing:** Stripe (payment processing and billing)
-- **Email Services:** Zoho Mail (transactional and marketing emails)
-- **Analytics:** Google Analytics, Mixpanel (usage analytics)
+- **Payment Processing:** Microsoft commercial marketplace (subscription billing)
+- **Email Services:** Resend, Zeptomail (transactional emails)
 - **Authentication:** Microsoft Entra ID (SSO and identity management)
 - **Communication APIs:** Azure Web PubSub (real-time messaging)
 - **Maps Services:** Azure Maps (location-based features)
+- **Error Monitoring:** Sentry (application performance and error tracking)
+- **EPD Data:** Building Transparency EC3, EPD International (environmental product data)
 
 All service providers are contractually obligated to use your information only for the purposes of providing services to us and to maintain the confidentiality and security of your data.
 
@@ -261,42 +262,13 @@ If you have questions about this Privacy Policy, wish to exercise your privacy r
 **GreenChainz Inc.**  
 Email: privacy@greenchainz.com  
 Data Protection Officer: dpo@greenchainz.com  
-Address: [Your Business Address]  
-Phone: [Your Phone Number]
+Address: Danville, Virginia, United States  
+Web: greenchainz.com
 
 **Response Time:** We will respond to privacy inquiries within 30 days.
 
 ---
 
-## 14. Legal Review Checklist
-
-**⚠️ IMPORTANT: This document requires legal counsel review before submission to Microsoft AppSource or Autodesk APS Marketplace.**
-
-Before finalizing, have your legal counsel verify:
-
-- [ ] Compliance with GDPR requirements for EU users (lawful basis, data subject rights, DPA)
-- [ ] Compliance with CCPA requirements for California residents
-- [ ] Compliance with other state privacy laws (Virginia VCDPA, Colorado CPA, etc.)
-- [ ] Adequacy of data transfer mechanisms (SCCs, adequacy decisions)
-- [ ] Compliance with ePrivacy Directive (cookie consent requirements)
-- [ ] Compliance with CASL (Canada's Anti-Spam Legislation)
-- [ ] Compliance with PIPEDA (Canada's Personal Information Protection and Electronic Documents Act)
-- [ ] Compliance with Microsoft AppSource and Autodesk APS Marketplace requirements
-- [ ] Adequacy of security and breach notification procedures
-- [ ] Compliance with industry-specific regulations (HIPAA if applicable, etc.)
-- [ ] Verification of third-party processor agreements and DPAs
-- [ ] Confirmation of Data Protection Officer requirements
-- [ ] Review of cookie consent and tracking technology disclosures
-- [ ] Addition of any jurisdiction-specific requirements
-
----
-
-## 15. Data Processing Agreement (DPA)
+## 14. Data Processing Agreement (DPA)
 
 A separate Data Processing Agreement is available for organizations subject to GDPR or similar regulations. The DPA outlines the roles of Company as data controller/processor, data subject rights, and security obligations. Contact privacy@greenchainz.com to request a copy.
-
----
-
-**Document prepared by:** Manus AI  
-**Status:** Draft for Legal Review  
-**Version:** 1.0

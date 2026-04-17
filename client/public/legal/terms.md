@@ -1,7 +1,7 @@
 # GreenChainz Terms of Service
 
 **Effective Date:** February 15, 2026  
-**Last Updated:** February 15, 2026
+**Last Updated:** April 17, 2026
 
 ---
 
@@ -148,17 +148,11 @@ All data is processed and stored on Microsoft Azure servers located in the Unite
 
 ### 9.1 Subscription Tiers
 
-The Service offers three subscription tiers:
-
-| Tier | Price | Features |
-|------|-------|----------|
-| **Free** | $0/month | Material search, basic RFQ submission (5/month), messaging |
-| **Standard** | $99/month | Unlimited RFQs, advanced analytics, supplier filtering |
-| **Premium** | $299/month | AI-powered recommendations, custom agent configuration, priority support, video calling |
+The Service offers tiered subscription plans. Current pricing and included features are published at **greenchainz.com/pricing**. Plans range from a free Starter tier to Professional and Enterprise tiers for teams and organizations running active procurement workflows.
 
 ### 9.2 Billing
 
-Subscriptions renew automatically on the anniversary of your subscription date. You authorize Company to charge your payment method for all fees and charges. Failure to pay may result in suspension or termination of your account.
+Subscriptions are billed through Microsoft's commercial marketplace. Subscriptions renew automatically on the anniversary of your subscription date. You authorize Company to charge your payment method for all fees and charges. Failure to pay may result in suspension or termination of your account.
 
 ### 9.3 Refunds
 
@@ -182,7 +176,7 @@ Commission is calculated on the final invoice amount and is due within 30 days o
 
 ### 10.2 Payment Processing
 
-Payments are processed through Stripe or other authorized payment processors. Suppliers authorize Company to charge their payment method for all commissions and fees.
+Payments are processed through Microsoft's commercial marketplace. Suppliers authorize Company to charge their payment method for all commissions and fees.
 
 ### 10.3 Tax Responsibility
 
@@ -198,7 +192,7 @@ In the event of a dispute, the parties agree to attempt informal resolution thro
 
 ### 11.2 Arbitration
 
-Any dispute arising out of or related to these Terms or the Service shall be resolved by binding arbitration administered by JAMS (Judicial Arbitration and Mediation Services) in accordance with its Comprehensive Arbitration Rules & Procedures. The arbitration shall be conducted in New York, New York, and judgment on the award may be entered in any court of competent jurisdiction.
+Any dispute arising out of or related to these Terms or the Service shall be resolved by binding arbitration administered by JAMS (Judicial Arbitration and Mediation Services) in accordance with its Comprehensive Arbitration Rules & Procedures. The arbitration shall be conducted in Danville, Virginia, and judgment on the award may be entered in any court of competent jurisdiction.
 
 ### 11.3 Class Action Waiver
 
@@ -231,7 +225,7 @@ Company reserves the right to modify, suspend, or discontinue the Service or any
 
 ## 14. Governing Law and Jurisdiction
 
-These Terms shall be governed by and construed in accordance with the laws of the State of New York, without regard to its conflict of law principles. Any legal action or proceeding shall be subject to the arbitration provision in Section 11.
+These Terms shall be governed by and construed in accordance with the laws of the Commonwealth of Virginia, without regard to its conflict of law principles. Any legal action or proceeding shall be subject to the arbitration provision in Section 11.
 
 ---
 
@@ -253,31 +247,6 @@ For questions about these Terms, please contact:
 
 **GreenChainz Inc.**  
 Email: legal@greenchainz.com  
-Address: [Your Business Address]  
-Phone: [Your Phone Number]
+Address: Danville, Virginia, United States  
+Web: greenchainz.com
 
----
-
-## 18. Legal Review Checklist
-
-**⚠️ IMPORTANT: This document requires legal counsel review before submission to Microsoft AppSource or Autodesk APS Marketplace.**
-
-Before finalizing, have your legal counsel verify:
-
-- [ ] Compliance with New York state law and applicable federal regulations
-- [ ] Adequacy of liability disclaimers and limitations for your jurisdiction
-- [ ] Compliance with FTC regulations on endorsements and material claims
-- [ ] Compliance with state consumer protection laws
-- [ ] Adequacy of dispute resolution and arbitration clauses
-- [ ] Compliance with accessibility requirements (ADA, WCAG)
-- [ ] Compliance with export control regulations (ITAR, EAR)
-- [ ] Compliance with Microsoft AppSource and Autodesk APS Marketplace requirements
-- [ ] Addition of any jurisdiction-specific requirements (EU, California, etc.)
-- [ ] Review of indemnification and limitation of liability provisions
-- [ ] Confirmation that commission structure complies with state regulations
-
----
-
-**Document prepared by:** Manus AI  
-**Status:** Draft for Legal Review  
-**Version:** 1.0
