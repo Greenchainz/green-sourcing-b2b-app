@@ -11,7 +11,7 @@
  * Filter state lives in React; URL params are serialized on every change so
  * views are shareable by copying the browser address bar.
  */
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, type ElementType } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
@@ -49,9 +49,121 @@ import {
   Link2,
   LayoutGrid,
   List,
+  Pen,
+  DollarSign,
+  HardHat,
+  Building2,
+  TrendingUp,
+  Stethoscope,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+
+// ── 7-Layer Procurement Personas ──────────────────────────────────────────────
+// Source: The Anatomy of Strategic Procurement — Sustainable Built Environment
+
+type PersonaId = "L1_architect" | "L2_qs" | "L3_gc" | "L4_fm" | "L5_csuite" | "L6_sector" | "L7_supply";
+
+interface ProcurementPersona {
+  id: PersonaId;
+  layer: string;
+  label: string;
+  role: string;
+  driver: string;
+  filterPatch: Partial<FilterState>;
+  sortBy: SortBy;
+  icon: ElementType;
+  color: string;
+  badgeHints: string[];
+}
+
+const PROCUREMENT_PERSONAS: ProcurementPersona[] = [
+  {
+    id: "L1_architect",
+    layer: "L1",
+    label: "Design Authority",
+    role: "Architect / Engineer",
+    driver: "Liability & Code Compliance",
+    filterPatch: { hasEpd: true, certifications: ["EPD"] },
+    sortBy: "ccps",
+    icon: Pen,
+    color: "text-violet-700 bg-violet-50 border-violet-200",
+    badgeHints: ["EPD", "CDPH", "Fire Rating", "VOC"],
+  },
+  {
+    id: "L2_qs",
+    layer: "L2",
+    role: "QS / Insurer / Appraiser",
+    label: "Financial Gatekeeper",
+    driver: "ROI & Whole Life Cost",
+    filterPatch: {},
+    sortBy: "price",
+    icon: DollarSign,
+    color: "text-blue-700 bg-blue-50 border-blue-200",
+    badgeHints: ["WLC Payback", "Energy Savings", "Lifecycle"],
+  },
+  {
+    id: "L3_gc",
+    layer: "L3",
+    role: "GC / Superintendent / Sub",
+    label: "Execution Tier",
+    driver: "Speed, Safety & Logistics",
+    filterPatch: { usManufactured: true },
+    sortBy: "leadTime",
+    icon: HardHat,
+    color: "text-orange-700 bg-orange-50 border-orange-200",
+    badgeHints: ["Lead Time", "Take-Back", "Weight/SF", "Low VOC"],
+  },
+  {
+    id: "L4_fm",
+    layer: "L4",
+    role: "Facility Manager / Energy Mgr",
+    label: "Operational Steward",
+    driver: "Total Cost of Ownership",
+    filterPatch: {},
+    sortBy: "ccps",
+    icon: Building2,
+    color: "text-teal-700 bg-teal-50 border-teal-200",
+    badgeHints: ["Seamless", "Bleach-Resistant", "Maintenance Cost", "TCO"],
+  },
+  {
+    id: "L5_csuite",
+    layer: "L5",
+    role: "CSO / CPO / CMO",
+    label: "Strategic Leadership",
+    driver: "ESG & Scope 3 Reporting",
+    filterPatch: { certifications: ["EPD", "C2C"] },
+    sortBy: "carbon",
+    icon: TrendingUp,
+    color: "text-green-700 bg-green-50 border-green-200",
+    badgeHints: ["Scope 3", "Recycled Content", "Carbon", "ESG"],
+  },
+  {
+    id: "L6_sector",
+    layer: "L6",
+    role: "Healthcare / Higher Ed / Retail",
+    label: "Sector Vertical",
+    driver: "Infection Control & Durability",
+    filterPatch: { certifications: ["GREENGUARD"] },
+    sortBy: "ccps",
+    icon: Stethoscope,
+    color: "text-rose-700 bg-rose-50 border-rose-200",
+    badgeHints: ["Seamless", "Bleach-Resistant", "Durability", "GREENGUARD"],
+  },
+  {
+    id: "L7_supply",
+    layer: "L7",
+    role: "Distributor / Procurement",
+    label: "Supply Chain",
+    driver: "Availability & LEED Docs",
+    filterPatch: { hasEpd: true },
+    sortBy: "leadTime",
+    icon: Truck,
+    color: "text-amber-700 bg-amber-50 border-amber-200",
+    badgeHints: ["LEED Doc Ready", "Sourcewell", "Lead Time", "EPD"],
+  },
+];
 
 // ── CSI division quick-filter definitions ─────────────────────────────────────
 // `keyword` is sent as `categorySearch` → ILIKE match on the category field.
@@ -359,6 +471,22 @@ export default function MaterialsCatalog() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [activePersona, setActivePersona] = useState<PersonaId | null>(null);
+
+  const applyPersona = (persona: ProcurementPersona) => {
+    if (activePersona === persona.id) {
+      // toggle off
+      setActivePersona(null);
+      resetFilters();
+    } else {
+      setActivePersona(persona.id);
+      setFilters((prev) => ({
+        ...DEFAULT_FILTERS,
+        ...persona.filterPatch,
+        sortBy: persona.sortBy,
+      }));
+    }
+  };
 
   // Initialise from URL on mount
   const [filters, setFilters] = useState<FilterState>(() =>
@@ -485,6 +613,54 @@ export default function MaterialsCatalog() {
         >
           List Your Product Free →
         </a>
+      </div>
+
+      {/* ── 7-Layer Procurement Persona Strip ─────────────────────────── */}
+      <div className="shrink-0 border-b bg-muted/30 overflow-x-auto">
+        <div className="flex items-stretch gap-0 min-w-max px-3 py-2">
+          <span className="hidden lg:flex items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider pr-3 mr-1 border-r border-border whitespace-nowrap self-center">
+            I am a…
+          </span>
+          {PROCUREMENT_PERSONAS.map((persona) => {
+            const Icon = persona.icon;
+            const isActive = activePersona === persona.id;
+            return (
+              <button
+                key={persona.id}
+                onClick={() => applyPersona(persona)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 mx-0.5 rounded-md border text-[11px] font-medium transition-all whitespace-nowrap ${
+                  isActive
+                    ? `${persona.color} shadow-sm`
+                    : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Icon className="w-3 h-3 shrink-0" />
+                <span className="font-semibold">{persona.label}</span>
+                <span className="hidden xl:inline text-[10px] opacity-70">· {persona.driver}</span>
+              </button>
+            );
+          })}
+          {activePersona && (
+            <button
+              onClick={() => { setActivePersona(null); resetFilters(); }}
+              className="flex items-center gap-1 px-2 py-1 ml-1 rounded text-[11px] text-muted-foreground hover:text-foreground border border-dashed border-border"
+            >
+              <X className="w-3 h-3" /> Clear persona
+            </button>
+          )}
+        </div>
+        {activePersona && (() => {
+          const p = PROCUREMENT_PERSONAS.find((x) => x.id === activePersona)!;
+          return (
+            <div className={`px-4 py-1.5 text-[11px] border-t ${p.color} flex items-center gap-3`}>
+              <span className="font-semibold">{p.role}</span>
+              <span className="opacity-60">·</span>
+              <span>Decision driver: <span className="font-medium">{p.driver}</span></span>
+              <span className="opacity-60">·</span>
+              <span className="opacity-70">Catalog sorted and filtered for your procurement priorities. Badges highlighted: {p.badgeHints.join(" · ")}</span>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Hero / search bar ──────────────────────────────────────────── */}

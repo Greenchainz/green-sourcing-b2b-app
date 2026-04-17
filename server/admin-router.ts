@@ -829,4 +829,50 @@ export const adminRouter = router({
 
       return { items: rows, total: Number(total.count) };
     }),
+
+  /**
+   * Preview a layer-specific outreach email before it fires.
+   * Returns subject + HTML for admin review.
+   */
+  previewOutreachEmail: adminProcedure
+    .input(
+      z.object({
+        step: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+        layer: z.enum(["L1", "L2", "L3", "L4", "L5", "L6", "L7"]),
+        companyName: z.string().min(1),
+        category: z.string().min(1),
+        keyProduct: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { previewLayerEmail } = await import("./services/outreach-email-service");
+      return previewLayerEmail(input.step, input.layer, {
+        companyName: input.companyName,
+        category: input.category,
+        keyProduct: input.keyProduct,
+      });
+    }),
+
+  /**
+   * Re-detect procurement layer for all CRM contacts that don't have one set.
+   */
+  backfillOutreachLayers: adminProcedure.mutation(async () => {
+    const { detectLayer } = await import("./services/outreach-email-service");
+    const { crmContacts } = await import("../drizzle/schema");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const contacts = await db.select().from(crmContacts);
+    let updated = 0;
+    for (const c of contacts) {
+      if (c.pitchAngle) continue; // already set
+      const layer = detectLayer(c.category ?? "", c.subcategory, c.keyProduct);
+      await db
+        .update(crmContacts)
+        .set({ pitchAngle: `Layer ${layer}: ${layer === "L1" ? "Liability & Code Compliance" : layer === "L2" ? "ROI & Whole Life Cost" : layer === "L3" ? "Schedule & Labor Productivity" : layer === "L4" ? "Total Cost of Ownership" : layer === "L5" ? "Scope 3 & ESG Reporting" : layer === "L6" ? "Infection Control & Durability" : "LEED Docs & Cooperative Purchasing"}`, updatedAt: new Date() })
+        .where(eq(crmContacts.id, c.id));
+      updated++;
+    }
+    return { updated, total: contacts.length };
+  }),
 });
