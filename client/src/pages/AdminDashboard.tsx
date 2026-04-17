@@ -49,13 +49,18 @@ import {
   ShieldAlert,
   RefreshCcw,
   ChevronDown,
-  ChevronRight,
   Server,
   Zap,
   ExternalLink,
   User,
   LayoutDashboard,
   ListFilter,
+  Package,
+  Leaf,
+  Download,
+  Trash2,
+  ShieldCheck,
+  BarChart3,
 } from 'lucide-react';
 
 // ─── Type definitions ────────────────────────────────────────────────────────
@@ -1072,55 +1077,452 @@ function SuppliersTab() {
   );
 }
 
+// ─── Catalog Tab ─────────────────────────────────────────────────────────────
+
+const EC3_CATEGORIES = [
+  "Concrete", "Steel", "RebarSteel", "Aluminium", "Insulation", "BoardInsulation",
+  "Gypsum", "Masonry", "Glass", "CurtainWalls", "Windows", "MembraneRoofing",
+  "PrecastConcrete", "MassTimber", "NonStructuralWood", "Flooring", "Carpet",
+  "WoodFlooring", "CeramicTile", "Cladding", "PaintByArea", "UtilityPiping",
+  "DuctsAndDuctwork", "ColdFormedSteelFraming", "SprayAppliedInsulation",
+  "DampproofingAndWaterproofing", "CeilingPanel", "Cement",
+] as const;
+
+function CatalogTab() {
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } =
+    trpc.admin.getCatalogStats.useQuery();
+
+  const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('');
+  const [matOffset, setMatOffset] = useState(0);
+  const MAT_PAGE = 50;
+
+  const { data: matData, isLoading: matLoading, refetch: refetchMats } =
+    trpc.admin.searchMaterials.useQuery(
+      { search: search || undefined, category: catFilter || undefined, limit: MAT_PAGE, offset: matOffset },
+      { placeholderData: (p) => p }
+    );
+
+  const [ec3Category, setEc3Category] = useState<string>('Concrete');
+  const [ec3Limit, setEc3Limit] = useState(100);
+  const ec3Import = trpc.admin.triggerEC3Import.useMutation({
+    onSuccess: (data) => {
+      toast.success(`EC3 import done — ${data.created} new ${data.category} materials added`);
+      void refetchStats();
+      void refetchMats();
+    },
+    onError: (err) => toast.error(`EC3 import failed: ${err.message}`),
+  });
+
+  const deleteMat = trpc.admin.deleteMaterial.useMutation({
+    onSuccess: () => { toast.success('Material deleted'); void refetchMats(); void refetchStats(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const verifyMat = trpc.admin.setMaterialVerified.useMutation({
+    onSuccess: () => { toast.success('Updated'); void refetchMats(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[
+          { label: 'Total Materials', value: stats?.total ?? 0, color: 'text-white', icon: <Package className="h-5 w-5 text-emerald-400" />, accent: 'bg-emerald-500/10' },
+          { label: 'With EPD', value: stats?.withEpd ?? 0, color: 'text-emerald-400', icon: <ShieldCheck className="h-5 w-5 text-emerald-400" />, accent: 'bg-emerald-500/10' },
+          { label: 'With GWP Data', value: stats?.withGwp ?? 0, color: 'text-blue-400', icon: <Leaf className="h-5 w-5 text-blue-400" />, accent: 'bg-blue-500/10' },
+          { label: 'Admin-Verified', value: stats?.verified ?? 0, color: 'text-amber-400', icon: <BarChart3 className="h-5 w-5 text-amber-400" />, accent: 'bg-amber-500/10' },
+        ].map(({ label, value, color, icon, accent }) => (
+          <Card key={label} className="border-gray-800 bg-gray-900">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-gray-400">{label}</p>
+                  {statsLoading ? (
+                    <Skeleton className="mt-1 h-8 w-16" />
+                  ) : (
+                    <p className={`text-2xl font-bold ${color}`}>{value.toLocaleString()}</p>
+                  )}
+                </div>
+                <div className={`rounded-lg p-2.5 ${accent}`}>{icon}</div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Category breakdown */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-gray-400" />
+            Category Breakdown
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white h-7 w-7 p-0"
+            onClick={() => void refetchStats()}>
+            <RefreshCcw className="h-3.5 w-3.5" />
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="max-h-64 overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800 hover:bg-transparent">
+                  <TableHead className="text-gray-400 text-xs">Category</TableHead>
+                  <TableHead className="text-gray-400 text-xs text-right">Materials</TableHead>
+                  <TableHead className="text-gray-400 text-xs text-right">EPD</TableHead>
+                  <TableHead className="text-gray-400 text-xs text-right">EPD%</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {statsLoading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (stats?.byCategory ?? []).map((row) => (
+                  <TableRow key={row.category} className="border-gray-800 hover:bg-gray-800/40 cursor-pointer"
+                    onClick={() => { setCatFilter(row.category); setMatOffset(0); }}>
+                    <TableCell className="text-gray-200 text-xs py-2">{row.category}</TableCell>
+                    <TableCell className="text-right text-xs py-2 text-gray-300">{row.total}</TableCell>
+                    <TableCell className="text-right text-xs py-2 text-emerald-400">{row.epd}</TableCell>
+                    <TableCell className="text-right text-xs py-2 text-gray-500">
+                      {row.total > 0 ? `${Math.round((row.epd / row.total) * 100)}%` : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* EC3 Import */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+            <Download className="h-4 w-4 text-blue-400" />
+            EC3 Live Import
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-gray-400">
+            Pull verified EPD data directly from Building Transparency (EC3). Only imports new materials — existing records are updated in place.
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Category</p>
+              <Select value={ec3Category} onValueChange={setEc3Category}>
+                <SelectTrigger className="w-56 border-gray-700 bg-gray-800 text-white text-xs h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-gray-700 bg-gray-900 text-white max-h-72">
+                  {EC3_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Limit</p>
+              <Select value={String(ec3Limit)} onValueChange={(v) => setEc3Limit(Number(v))}>
+                <SelectTrigger className="w-24 border-gray-700 bg-gray-800 text-white text-xs h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-gray-700 bg-gray-900 text-white">
+                  {[50, 100, 200, 500].map((n) => (
+                    <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              size="sm"
+              className="bg-blue-700 hover:bg-blue-600 text-white h-8 text-xs"
+              disabled={ec3Import.isPending}
+              onClick={() => ec3Import.mutate({ category: ec3Category, limit: ec3Limit })}
+            >
+              {ec3Import.isPending ? (
+                <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Importing…</>
+              ) : (
+                <><Download className="mr-1.5 h-3.5 w-3.5" />Import from EC3</>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Materials browser */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between flex-wrap gap-3">
+          <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+            <Package className="h-4 w-4 text-gray-400" />
+            Materials Browser
+            {matData && <span className="text-xs font-normal text-gray-500 ml-1">({matData.total.toLocaleString()} results)</span>}
+          </CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500" />
+              <Input
+                placeholder="Search materials…"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setMatOffset(0); }}
+                className="border-gray-700 bg-gray-800 pl-8 text-white placeholder:text-gray-600 h-8 text-xs w-44"
+              />
+            </div>
+            <Select value={catFilter || 'all'} onValueChange={(v) => { setCatFilter(v === 'all' ? '' : v); setMatOffset(0); }}>
+              <SelectTrigger className="w-40 border-gray-700 bg-gray-800 text-white h-8 text-xs">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent className="border-gray-700 bg-gray-900 text-white max-h-72">
+                <SelectItem value="all" className="text-xs">All categories</SelectItem>
+                {EC3_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(search || catFilter) && (
+              <Button variant="ghost" size="sm" className="h-8 text-gray-400 hover:text-white text-xs px-2"
+                onClick={() => { setSearch(''); setCatFilter(''); setMatOffset(0); }}>
+                <XCircle className="h-3.5 w-3.5 mr-1" />Clear
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {matLoading ? (
+            <div className="p-6 space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    <TableHead className="text-gray-400 text-xs">ID</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Name</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Category</TableHead>
+                    <TableHead className="text-gray-400 text-xs">EPD</TableHead>
+                    <TableHead className="text-gray-400 text-xs">GWP</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Source</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(matData?.items ?? []).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-gray-500 text-sm">
+                        No materials found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (matData?.items ?? []).map((m) => (
+                    <TableRow key={m.id} className="border-gray-800 hover:bg-gray-800/40">
+                      <TableCell className="text-gray-500 text-xs font-mono py-2">#{m.id}</TableCell>
+                      <TableCell className="text-gray-200 text-xs py-2 max-w-[200px] truncate">{m.name}</TableCell>
+                      <TableCell className="py-2">
+                        <Badge variant="secondary" className="text-[10px] px-1.5">{m.category}</Badge>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        {m.hasEpd ? (
+                          <span className="text-emerald-400 text-[10px] font-medium">✓ EPD</span>
+                        ) : (
+                          <span className="text-gray-600 text-[10px]">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-gray-400 text-xs py-2 font-mono">
+                        {m.gwpValue ? Number(m.gwpValue).toFixed(1) : '—'}
+                      </TableCell>
+                      <TableCell className="text-gray-500 text-[10px] py-2">{m.dataSource ?? '—'}</TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title={m.verified ? 'Unverify' : 'Mark verified'}
+                            className={`h-6 w-6 p-0 ${m.verified ? 'text-emerald-400 hover:text-gray-400' : 'text-gray-600 hover:text-emerald-400'}`}
+                            onClick={() => verifyMat.mutate({ id: m.id, verified: !m.verified })}
+                          >
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                          </Button>
+                          <a href={`/materials/${m.id}`} target="_blank" rel="noreferrer">
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-gray-600 hover:text-white">
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </a>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-gray-600 hover:text-red-400"
+                            onClick={() => {
+                              if (window.confirm(`Delete "${m.name}"? This cannot be undone.`)) {
+                                deleteMat.mutate({ id: m.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {/* Pagination */}
+              {(matData?.total ?? 0) > MAT_PAGE && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-800">
+                  <span className="text-xs text-gray-500">
+                    {matOffset + 1}–{Math.min(matOffset + MAT_PAGE, matData?.total ?? 0)} of {matData?.total?.toLocaleString()}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled={matOffset === 0}
+                      className="h-7 text-xs border-gray-700 bg-gray-800 text-gray-300"
+                      onClick={() => setMatOffset(Math.max(0, matOffset - MAT_PAGE))}>
+                      Previous
+                    </Button>
+                    <Button size="sm" variant="outline"
+                      disabled={matOffset + MAT_PAGE >= (matData?.total ?? 0)}
+                      className="h-7 text-xs border-gray-700 bg-gray-800 text-gray-300"
+                      onClick={() => setMatOffset(matOffset + MAT_PAGE)}>
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
-function SystemTab() {
-  const [seedMaterialsStatus, setSeedMaterialsStatus] = useState<
-    'idle' | 'loading' | 'success' | 'error'
-  >('idle');
-  const [seedAssembliesStatus, setSeedAssembliesStatus] = useState<
-    'idle' | 'loading' | 'success' | 'error'
-  >('idle');
-  const [seedMessage, setSeedMessage] = useState('');
+const TEST_USER_ROLES = [
+  {
+    role: 'supplier' as const,
+    label: 'Supplier',
+    desc: 'Brand-new supplier — sees onboarding, empty dashboard, no RFQs',
+    color: 'border-blue-700/40 bg-blue-900/20 text-blue-400 hover:bg-blue-900/40',
+    icon: <Building2 className="h-4 w-4" />,
+    redirect: '/supplier/dashboard',
+  },
+  {
+    role: 'buyer' as const,
+    label: 'Buyer / Architect',
+    desc: 'Fresh architect account — sees empty RFQ list, can browse catalog',
+    color: 'border-purple-700/40 bg-purple-900/20 text-purple-400 hover:bg-purple-900/40',
+    icon: <User className="h-4 w-4" />,
+    redirect: '/',
+  },
+  {
+    role: 'architect' as const,
+    label: 'Architect (Tools)',
+    desc: 'Architect with tools access — Spec Lookup, Carbon Compare, etc.',
+    color: 'border-emerald-700/40 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40',
+    icon: <Zap className="h-4 w-4" />,
+    redirect: '/architect/specs/upload',
+  },
+] as const;
 
-  // Probe tRPC health by running a quick admin query
+function SystemTab() {
   const { data: statsData, isLoading: statsLoading, isError: statsError } =
     trpc.admin.getSupplierStats.useQuery();
 
-  const triggerSeed = async (endpoint: string, type: 'materials' | 'assemblies') => {
-    const setStatus =
-      type === 'materials' ? setSeedMaterialsStatus : setSeedAssembliesStatus;
-    setStatus('loading');
-    setSeedMessage('');
-    try {
-      const res = await fetch(endpoint, { method: 'POST' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as { message?: string };
-      setStatus('success');
-      setSeedMessage(json.message ?? 'Seed completed.');
-      toast.success(`${type === 'materials' ? 'Materials' : 'Assemblies'} seeded successfully`);
-    } catch (err) {
-      setStatus('error');
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setSeedMessage(msg);
-      toast.error(`Seed failed: ${msg}`);
-    }
-  };
+  const [activeRole, setActiveRole] = useState<string | null>(null);
+
+  const createTestSession = trpc.admin.createTestSession.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Logged in as ${data.name} — redirecting…`);
+      // Small delay so the cookie is set before navigation
+      setTimeout(() => {
+        window.location.href = data.redirectTo;
+      }, 400);
+    },
+    onError: (err) => {
+      toast.error(`Failed: ${err.message}`);
+      setActiveRole(null);
+    },
+  });
+
+  const clearTestUsers = trpc.admin.clearTestUsers.useMutation({
+    onSuccess: () => toast.success('Test users cleared from DB'),
+    onError: (err) => toast.error(err.message),
+  });
 
   const dbStatus = statsLoading
     ? 'Checking…'
     : statsError
     ? 'Unavailable'
     : `OK — ${statsData?.total ?? 0} suppliers`;
-  const dbColor = statsLoading
-    ? 'text-gray-400'
-    : statsError
-    ? 'text-red-400'
-    : 'text-emerald-400';
+  const dbColor = statsLoading ? 'text-gray-400' : statsError ? 'text-red-400' : 'text-emerald-400';
 
   return (
     <div className="space-y-6">
-      {/* Environment Info */}
+      {/* Test Users */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <User className="h-4 w-4 text-gray-400" />
+            Test as a Brand-New User
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-gray-400">
+            Creates a synthetic test account and logs you in as them — full cold-start experience with no prior data. Your admin session is replaced for 8 hours; come back to <code className="text-gray-300">/admin</code> to switch back.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {TEST_USER_ROLES.map(({ role, label, desc, color, icon, redirect }) => (
+              <div key={role} className="rounded-lg border border-gray-800 bg-gray-800/40 p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-md p-1.5 bg-gray-700/50">{icon}</div>
+                  <p className="font-semibold text-sm text-white">{label}</p>
+                </div>
+                <p className="text-xs text-gray-500 flex-1">{desc}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className={`w-full text-xs h-8 font-medium ${color}`}
+                  disabled={createTestSession.isPending && activeRole === role}
+                  onClick={() => {
+                    if (!window.confirm(`Log in as a test ${label}? This replaces your current session.`)) return;
+                    setActiveRole(role);
+                    createTestSession.mutate({ role, redirect } as any);
+                  }}
+                >
+                  {createTestSession.isPending && activeRole === role ? (
+                    <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Switching…</>
+                  ) : (
+                    <>Login as {label}</>
+                  )}
+                </Button>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-1 border-t border-gray-800">
+            <p className="text-[11px] text-gray-600">
+              Test accounts use openId <code className="text-gray-500">test-[role]-gcz-internal</code>
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-gray-500 hover:text-red-400 h-7 px-2"
+              disabled={clearTestUsers.isPending}
+              onClick={() => {
+                if (window.confirm('Delete all test-* users from DB?'))
+                  clearTestUsers.mutate();
+              }}
+            >
+              <Trash2 className="mr-1 h-3 w-3" />
+              Clear test users
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Environment */}
       <Card className="border-gray-800 bg-gray-900">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
@@ -1132,9 +1534,7 @@ function SystemTab() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-md border border-gray-800 bg-gray-800/50 p-4">
               <p className="text-xs text-gray-500">NODE_ENV</p>
-              <p className="mt-1 font-mono text-sm text-emerald-400">
-                {import.meta.env.MODE ?? 'unknown'}
-              </p>
+              <p className="mt-1 font-mono text-sm text-emerald-400">{import.meta.env.MODE ?? 'unknown'}</p>
             </div>
             <div className="rounded-md border border-gray-800 bg-gray-800/50 p-4">
               <p className="text-xs text-gray-500">Database (via tRPC)</p>
@@ -1142,15 +1542,11 @@ function SystemTab() {
             </div>
             <div className="rounded-md border border-gray-800 bg-gray-800/50 p-4">
               <p className="text-xs text-gray-500">App Version</p>
-              <p className="mt-1 font-mono text-sm text-gray-300">
-                {import.meta.env.VITE_APP_VERSION ?? '—'}
-              </p>
+              <p className="mt-1 font-mono text-sm text-gray-300">{import.meta.env.VITE_APP_VERSION ?? '—'}</p>
             </div>
             <div className="rounded-md border border-gray-800 bg-gray-800/50 p-4">
               <p className="text-xs text-gray-500">API Base URL</p>
-              <p className="mt-1 font-mono text-sm text-gray-300">
-                {import.meta.env.VITE_API_URL ?? '/api'}
-              </p>
+              <p className="mt-1 font-mono text-sm text-gray-300">{import.meta.env.VITE_API_URL ?? '/api'}</p>
             </div>
           </div>
         </CardContent>
@@ -1161,121 +1557,35 @@ function SystemTab() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
             <Zap className="h-4 w-4 text-gray-400" />
-            Admin Actions
+            Platform Links
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <div className="flex flex-wrap gap-3">
             <Link href="/admin/suppliers">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
-              >
-                <Building2 className="mr-2 h-4 w-4" />
-                Supplier Dashboard
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <Building2 className="mr-2 h-4 w-4" />Supplier Dashboard
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
             <Link href="/admin/verification-queue">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
-              >
-                <Clock className="mr-2 h-4 w-4" />
-                Verification Queue
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <Clock className="mr-2 h-4 w-4" />Verification Queue
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
-          </div>
-
-          {seedMessage && (
-            <div className="rounded-md border border-gray-700 bg-gray-800 p-3">
-              <p className="font-mono text-xs text-gray-300">{seedMessage}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Danger Zone */}
-      <Card className="border-red-900/50 bg-gray-900">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold text-red-400">
-            <AlertTriangle className="h-4 w-4" />
-            Danger Zone
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-gray-400">
-            These actions modify or populate database data. Use with caution — they cannot be undone
-            without a database restore.
-          </p>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {/* Seed Materials */}
-            <div className="rounded-md border border-gray-800 bg-gray-800/50 p-4">
-              <p className="font-medium text-white text-sm">Seed Materials</p>
-              <p className="mt-1 text-xs text-gray-500 mb-3">
-                POST /api/admin/seed-materials — populates the materials catalog with sample data.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-700/40 bg-amber-900/20 text-amber-400 hover:bg-amber-900/40"
-                disabled={seedMaterialsStatus === 'loading'}
-                onClick={() => void triggerSeed('/api/admin/seed-materials', 'materials')}
-              >
-                {seedMaterialsStatus === 'loading' ? (
-                  <>
-                    <RefreshCcw className="mr-2 h-3.5 w-3.5 animate-spin" />
-                    Seeding…
-                  </>
-                ) : seedMaterialsStatus === 'success' ? (
-                  <>
-                    <CheckCircle className="mr-2 h-3.5 w-3.5 text-emerald-400" />
-                    Done
-                  </>
-                ) : (
-                  <>
-                    <Zap className="mr-2 h-3.5 w-3.5" />
-                    Seed Materials
-                  </>
-                )}
+            <Link href="/materials">
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <Package className="mr-2 h-4 w-4" />Materials Catalog
+                <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
-            </div>
-
-            {/* Seed Assemblies */}
-            <div className="rounded-md border border-gray-800 bg-gray-800/50 p-4">
-              <p className="font-medium text-white text-sm">Seed Assemblies</p>
-              <p className="mt-1 text-xs text-gray-500 mb-3">
-                POST /api/admin/seed-assemblies — populates the assemblies catalog with sample data.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-700/40 bg-amber-900/20 text-amber-400 hover:bg-amber-900/40"
-                disabled={seedAssembliesStatus === 'loading'}
-                onClick={() => void triggerSeed('/api/admin/seed-assemblies', 'assemblies')}
-              >
-                {seedAssembliesStatus === 'loading' ? (
-                  <>
-                    <RefreshCcw className="mr-2 h-3.5 w-3.5 animate-spin" />
-                    Seeding…
-                  </>
-                ) : seedAssembliesStatus === 'success' ? (
-                  <>
-                    <CheckCircle className="mr-2 h-3.5 w-3.5 text-emerald-400" />
-                    Done
-                  </>
-                ) : (
-                  <>
-                    <Zap className="mr-2 h-3.5 w-3.5" />
-                    Seed Assemblies
-                  </>
-                )}
+            </Link>
+            <Link href="/manufacturers">
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <Building2 className="mr-2 h-4 w-4" />Suppliers Directory
+                <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
-            </div>
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -1397,6 +1707,13 @@ export default function AdminDashboard() {
               Suppliers
             </TabsTrigger>
             <TabsTrigger
+              value="catalog"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Package className="mr-1.5 h-4 w-4" />
+              Catalog
+            </TabsTrigger>
+            <TabsTrigger
               value="system"
               className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
             >
@@ -1415,6 +1732,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="suppliers">
             <SuppliersTab />
+          </TabsContent>
+
+          <TabsContent value="catalog">
+            <CatalogTab />
           </TabsContent>
 
           <TabsContent value="system">

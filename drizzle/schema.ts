@@ -222,6 +222,18 @@ export const assemblies = pgTable("assemblies", {
   totalRValue: decimal("totalRValue", { precision: 8, scale: 2 }),
   estimatedCostPer1000Sqft: decimal("estimatedCostPer1000Sqft", { precision: 10, scale: 2 }),
   fireRating: varchar("fireRating", { length: 50 }),
+  // ─── Performance metrics ─────────────────────────────────────────────────
+  stcRating: smallint("stcRating"),
+  iicRating: smallint("iicRating"),
+  airPermeance: varchar("airPermeance", { length: 120 }),
+  vaporPermeance: varchar("vaporPermeance", { length: 120 }),
+  windUpliftRating: varchar("windUpliftRating", { length: 120 }),
+  flameSpreadIndex: smallint("flameSpreadIndex"),
+  smokeDevelopmentIndex: smallint("smokeDevelopmentIndex"),
+  ulDesignNumber: varchar("ulDesignNumber", { length: 80 }),
+  loadCapacityPsf: smallint("loadCapacityPsf"),
+  impactResistance: varchar("impactResistance", { length: 200 }),
+  leedCredits: text("leedCredits"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
