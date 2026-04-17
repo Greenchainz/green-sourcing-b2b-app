@@ -1,12 +1,67 @@
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { getLoginUrl } from '../const';
 import { NotificationCenter } from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
 import { trpc } from '../lib/trpc';
-import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X, ChevronDown, Zap, FileUp, Layers, BarChart2, FileText, GitCompare, FileSearch } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+
+const ARCHITECT_TOOLS = [
+  { href: "/architect/specs/upload", icon: Zap,        label: "Spec Lookup",          desc: "Find green alternatives for one assembly or a full project" },
+  { href: "/architect/specs",        icon: FileSearch,  label: "My Specs",             desc: "View past lookups and uploaded specs" },
+  { href: "/assemblies",             icon: Layers,      label: "Assemblies",           desc: "Build and compare wall assembly systems" },
+  { href: "/carbon-compare",         icon: GitCompare,  label: "Carbon Compare",       desc: "Side-by-side embodied carbon comparison" },
+  { href: "/carbon-dashboard",       icon: BarChart2,   label: "Carbon Dashboard",     desc: "Track carbon across your projects" },
+  { href: "/tools/submittal",        icon: FileText,    label: "Submittal Generator",  desc: "Generate CSI-compliant product submittals" },
+];
+
+function ToolsDropdown() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 text-sm font-medium text-foreground hover:text-primary transition-colors"
+      >
+        Tools <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-72 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 overflow-hidden">
+          {ARCHITECT_TOOLS.map(({ href, icon: Icon, label, desc }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setOpen(false)}
+              className="flex items-start gap-3 px-4 py-3 hover:bg-accent transition-colors"
+            >
+              <div className="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
+                <Icon className="w-3.5 h-3.5 text-green-700" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">{label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Header() {
   const { user, isLoading } = useAuth();
@@ -56,12 +111,8 @@ export default function Header() {
           <Link href="/manufacturers" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Suppliers
           </Link>
-          {/* Architect-only nav items — hidden for supplier accounts */}
-          {user?.role !== 'supplier' && (
-            <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Assemblies
-            </Link>
-          )}
+          {/* Architect tools dropdown — hidden for suppliers */}
+          {user?.role !== 'supplier' && <ToolsDropdown />}
           {user?.role !== 'supplier' && (
             <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               RFQ Cart
@@ -74,12 +125,6 @@ export default function Header() {
           )}
           <Link href="/insider" className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors">
             Insider
-          </Link>
-          <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            Compare
-          </Link>
-          <Link href="/carbon-compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            Carbon Compare
           </Link>
           {user?.role === 'admin' && (
             <Link href="/admin" className="text-sm font-medium text-red-400 hover:text-red-300 transition-colors">
@@ -170,10 +215,16 @@ export default function Header() {
               Suppliers
             </Link>
             {user?.role !== 'supplier' && (
-              <Link href="/assemblies" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                Assemblies
-              </Link>
+              <>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-4 pt-2">Tools</p>
+                {ARCHITECT_TOOLS.map(({ href, label }) => (
+                  <Link key={href} href={href}
+                    className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                    onClick={() => setMobileMenuOpen(false)}>
+                    {label}
+                  </Link>
+                ))}
+              </>
             )}
             {user?.role !== 'supplier' && (
               <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
@@ -190,14 +241,6 @@ export default function Header() {
             <Link href="/insider" className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
               Insider
-            </Link>
-            <Link href="/compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
-              Compare
-            </Link>
-            <Link href="/carbon-compare" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
-              Carbon Compare
             </Link>
             {user?.role === 'admin' && (
               <Link href="/admin" className="text-sm font-medium text-red-400 hover:text-red-300 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
