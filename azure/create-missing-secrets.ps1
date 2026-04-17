@@ -1,7 +1,7 @@
 # Create Missing Key Vault Secrets for Backend
 # Run this script to create all required secrets for the backend to start
 
-$vaultName = "Greenchainz-vault-2026"
+$vaultName = "greenchainz-vault"
 $resourceGroup = "greenchainz-production"
 
 Write-Host "Creating missing secrets in Key Vault: $vaultName" -ForegroundColor Cyan

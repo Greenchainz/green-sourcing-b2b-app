@@ -10,7 +10,7 @@ ACR_NAME="acrgreenchainzprod916"
 ACR_LOGIN_SERVER="${ACR_NAME}.azurecr.io"
 CONTAINER_ENV="cae-greenchainz-env"
 LOCATION="eastus"
-KEY_VAULT="Greenchainz-vault-2026"
+KEY_VAULT="greenchainz-vault"
 
 # Image tags
 BACKEND_IMAGE="${ACR_LOGIN_SERVER}/greenchainz-backend"
