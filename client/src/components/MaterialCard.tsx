@@ -65,6 +65,7 @@ export interface MaterialCardProps {
     sourcingDifficulty: number;
   };
   imageUrl?: string | null;
+  manufacturerId?: number | null;
   /** "grid" (default) = vertical card; "list" = compact horizontal row */
   variant?: "grid" | "list";
 }
@@ -131,7 +132,7 @@ const CERT_DEFS = [
 export default function MaterialCard(props: MaterialCardProps) {
   const {
     id, name, productName, category, subcategory,
-    manufacturerName, gwpValue, gwpUnit, declaredUnit,
+    manufacturerName, manufacturerId, gwpValue, gwpUnit, declaredUnit,
     ec3IndustryMedian, pricePerUnit, priceUnit,
     leadTimeDays, usManufactured, recycledContentPct,
     ccps, variant = "grid",
@@ -195,7 +196,15 @@ export default function MaterialCard(props: MaterialCardProps) {
               <span className="text-[10px] text-muted-foreground">{subcategory}</span>
             )}
             {manufacturerName && (
-              <span className="text-[10px] text-muted-foreground/70">{manufacturerName}</span>
+              manufacturerId ? (
+                <Link href={`/manufacturers/${manufacturerId}`}>
+                  <span className="text-[10px] text-muted-foreground/70 hover:text-primary transition-colors cursor-pointer">
+                    {manufacturerName}
+                  </span>
+                </Link>
+              ) : (
+                <span className="text-[10px] text-muted-foreground/70">{manufacturerName}</span>
+              )
             )}
             {usManufactured && (
               <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50 shrink-0">
@@ -350,7 +359,15 @@ export default function MaterialCard(props: MaterialCardProps) {
             <p className="text-[11px] text-muted-foreground line-clamp-1">{productName}</p>
           )}
           {manufacturerName && (
-            <p className="text-[11px] text-muted-foreground/70 mt-0.5">{manufacturerName}</p>
+            manufacturerId ? (
+              <Link href={`/manufacturers/${manufacturerId}`}>
+                <p className="text-[11px] text-muted-foreground/70 mt-0.5 hover:text-primary transition-colors cursor-pointer">
+                  {manufacturerName}
+                </p>
+              </Link>
+            ) : (
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5">{manufacturerName}</p>
+            )
           )}
 
           {/* Price + lead time — the primary spec data architects need */}
