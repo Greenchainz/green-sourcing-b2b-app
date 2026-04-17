@@ -90,16 +90,16 @@ export async function runScraperOutreachPipeline(): Promise<{
   const rfqResult = await db.execute(sql`
     SELECT
       r.id,
-      r.project_name,
-      r.project_location,
-      r.due_date,
+      r."projectName" as project_name,
+      r."projectLocation" as project_location,
+      r."dueDate" as due_date,
       COUNT(ri.id) as material_count
     FROM rfqs r
     LEFT JOIN rfq_items ri ON ri.rfq_id = r.id
-    WHERE r.status = 'open'
-      AND (r.deadline IS NULL OR r.deadline > NOW())
-    GROUP BY r.id, r.project_name, r.project_location, r.due_date
-    ORDER BY r.created_at DESC
+    WHERE r.status IN ('submitted', 'responded')
+      AND (r."dueDate" IS NULL OR r."dueDate" > NOW())
+    GROUP BY r.id, r."projectName", r."projectLocation", r."dueDate"
+    ORDER BY r."createdAt" DESC
     LIMIT 10
   `);
 
