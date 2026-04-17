@@ -1,34 +1,140 @@
 /**
  * Architect Spec Matcher (the "Interceptor")
  *
- * Given a set of parsed assembly rows from an architect's uploaded spec,
- * find sustainable alternatives in the GreenChainz EPD database that meet
- * the same functional requirements. Implements the Near-Match Algorithm
- * (Material Matching Spec §4.1) and ranks results by CCPS (Composite Compliance-Performance Score).
+ * Finds sustainable alternatives from the `materials` catalog for every
+ * parsed assembly row in an architect's uploaded spec.
  *
- *   Step 1: Parse input         (handled by architect-spec-parser)
- *   Step 2: Classify category   (assembly_code → assembly_type)
- *   Step 3: Hard filters        (structural / fire / dimensional / code / EPD validity)
- *   Step 4: Rank by CCPS        (persona-weighted: carbon, compliance, cost, health)
- *   Step 5: Carbon delta        (savings vs original spec)
+ * Pipeline:
+ *   Step 1: Load spec assembly rows
+ *   Step 2: Map assembly type → material categories
+ *   Step 3: Hard filter (lower embodied carbon than original)
+ *   Step 4: Score each candidate with inline CCPS
+ *   Step 5: Compute carbon delta % vs original spec
  */
 
 import { getDb } from "../db";
 import { architectSpecAssemblies } from "../../drizzle/schema-additions-mcs";
-import { epdMaterials } from "../../drizzle/schema";
-import { computeCCPS } from "./ccps-v2-scorer";
-import { getCategoryBaseline } from "./category-baseline";
-import { eq, and, sql } from "drizzle-orm";
+import { materials, manufacturers } from "../../drizzle/schema";
+import { eq, and, or, sql, inArray } from "drizzle-orm";
+
+// ── Assembly type → material category mapping ────────────────────────────────
+// Maps EWS assembly type labels to the categories used in the materials table.
+
+const ASSEMBLY_TYPE_CATEGORIES: Record<string, string[]> = {
+  "Unitized Curtain Wall (Vision/Shadow/Spandrel)": [
+    "CurtainWalls", "Glass", "Aluminum", "Aluminium",
+    "FenestrationFraming", "Windows", "ProcessedNonInsulatingGlassPanes",
+  ],
+  "Unitized Vision Fitted": [
+    "CurtainWalls", "Windows", "Glass",
+    "FenestrationFraming", "ProcessedNonInsulatingGlassPanes",
+  ],
+  "Granite Panel": ["StoneCladding", "Cladding", "Masonry"],
+  "Natural Stone (Limestone/Sandstone)": ["StoneCladding", "Masonry", "Cladding"],
+  "Terracotta": ["Masonry", "CeramicTile", "Cladding", "StoneCladding"],
+  "UHPC": ["Concrete", "PrecastConcrete", "ArchitecturalPrecast", "StructuralPrecast"],
+  "GFRC": ["Concrete", "ArchitecturalPrecast", "PrecastConcrete", "AutoclavedAeratedConcrete"],
+  "Aluminum Metal Panel": [
+    "Aluminum", "Aluminium", "AluminiumSheetGoods",
+    "AluminiumBillets", "Cladding", "MiscMetalFabrication",
+  ],
+};
+
+// ── CCPS inline scorer ───────────────────────────────────────────────────────
+
+type Persona = "aor" | "leed_ap" | "gc_pm" | "spec_writer";
+
+const PERSONA_WEIGHTS: Record<Persona, { carbon: number; compliance: number; cost: number; health: number }> = {
+  aor:         { carbon: 0.35, compliance: 0.30, cost: 0.15, health: 0.20 },
+  leed_ap:     { carbon: 0.40, compliance: 0.20, cost: 0.05, health: 0.35 },
+  gc_pm:       { carbon: 0.15, compliance: 0.25, cost: 0.50, health: 0.10 },
+  spec_writer: { carbon: 0.30, compliance: 0.35, cost: 0.10, health: 0.25 },
+};
+
+interface MaterialRow {
+  id: number;
+  name: string;
+  productName: string | null;
+  manufacturerName: string | null;
+  category: string;
+  embodiedCarbonPer1000sf: string | null;
+  gwpValue: string | null;
+  pricePerUnit: string | null;
+  hasEpd: boolean | null;
+  hasHpd: boolean | null;
+  hasGreenguard: boolean | null;
+  hasC2c: boolean | null;
+  hasDeclare: boolean | null;
+  meetsTitle24: boolean | null;
+  meetsIecc: boolean | null;
+  fireRating: string | null;
+  astmStandards: string | null;
+  onRedList: boolean | null;
+  epdExpiry: Date | null;
+}
+
+function scoreMaterial(
+  m: MaterialRow,
+  baselineGwp: number,
+  avgPrice: number,
+  persona: Persona,
+): { total: number; breakdown: { carbon: number; compliance: number; cost: number; health: number } } {
+  const w = PERSONA_WEIGHTS[persona];
+
+  // Carbon score (0-100): lower GWP vs baseline = higher score
+  const gwp = m.embodiedCarbonPer1000sf != null
+    ? parseFloat(m.embodiedCarbonPer1000sf)
+    : (m.gwpValue != null ? parseFloat(m.gwpValue) : null);
+  const carbon = gwp != null && baselineGwp > 0
+    ? Math.max(0, Math.min(100, 50 + ((baselineGwp - gwp) / baselineGwp) * 50))
+    : 50;
+
+  // Compliance score (0-100): additive binary flags
+  let compliance = 0;
+  if (m.hasEpd && (!m.epdExpiry || m.epdExpiry > new Date())) compliance += 25;
+  if (m.astmStandards && m.astmStandards.length > 0)            compliance += 25;
+  if (m.meetsTitle24)                                            compliance += 15;
+  if (m.meetsIecc)                                               compliance += 15;
+  if (m.fireRating && m.fireRating.length > 0)                   compliance += 10;
+  if (m.hasGreenguard)                                           compliance += 10;
+  compliance = Math.min(100, compliance);
+
+  // Cost score (0-100): lower price = higher score
+  const price = m.pricePerUnit != null ? parseFloat(m.pricePerUnit) : null;
+  const cost = price != null && avgPrice > 0
+    ? Math.max(0, Math.min(100, 50 + ((avgPrice - price) / avgPrice) * 50))
+    : 50;
+
+  // Health score (0-100): additive material health flags
+  let health = 0;
+  if (m.hasGreenguard)            health += 30;
+  if (!m.onRedList)               health += 25;
+  if (m.hasHpd)                   health += 20;
+  if (m.hasC2c)                   health += 15;
+  if (m.hasDeclare)               health += 10;
+  health = Math.min(100, health);
+
+  const total = Math.round(
+    w.carbon * carbon +
+    w.compliance * compliance +
+    w.cost * cost +
+    w.health * health,
+  );
+
+  return { total, breakdown: { carbon, compliance, cost, health } };
+}
+
+// ── Public types ─────────────────────────────────────────────────────────────
 
 export interface MatchedAlternative {
   rank: number;
-  epdMaterialId: number;
+  epdMaterialId: number;         // maps to materials.id
   productName: string;
   manufacturerName: string | null;
-  assemblyType: string | null;
+  assemblyType: string | null;   // material category
   structuralOption: number | null;
   gwpPer1000sf: number | null;
-  carbonDeltaPct: number | null;     // negative = savings
+  carbonDeltaPct: number | null; // negative = savings vs original
   gcs: number;
   sustainabilityScore: number;
   performanceScore: number;
@@ -41,29 +147,21 @@ export interface MatchResultForRow {
   alternatives: MatchedAlternative[];
 }
 
-/**
- * Find sustainable alternatives for every parsed row in an uploaded spec.
- * Persists the top match's epdMaterialId back to architect_spec_assemblies
- * so the architect's UI can render "matched" status without re-querying.
- *
- * @param specId ID of the uploaded spec
- * @param opts.topN Number of alternatives to return per assembly (default 5, max 20)
- * @param opts.persona Architect persona for CCPS weighting (AOR, LEED AP, GC PM, Spec Writer)
- *                     Note: "interior_designer" from UI is mapped to "spec_writer"
- */
-export async function matchSpecAlternatives(specId: number, opts: {
-  topN?: number;
-  persona?: "aor" | "leed_ap" | "gc_pm" | "spec_writer" | "interior_designer";
-} = {}): Promise<MatchResultForRow[]> {
+// ── Main function ─────────────────────────────────────────────────────────────
+
+export async function matchSpecAlternatives(
+  specId: number,
+  opts: {
+    topN?: number;
+    persona?: "aor" | "leed_ap" | "gc_pm" | "spec_writer" | "interior_designer";
+  } = {},
+): Promise<MatchResultForRow[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not initialized");
 
   const topN = opts.topN ?? 5;
-
-  // Map interior_designer to spec_writer (CCPS doesn't have interior_designer persona)
-  let ccpsPersona: "aor" | "leed_ap" | "gc_pm" | "spec_writer" = opts.persona === "interior_designer"
-    ? "spec_writer"
-    : (opts.persona as any) ?? "aor";
+  const persona: Persona = opts.persona === "interior_designer" ? "spec_writer"
+    : (opts.persona ?? "aor") as Persona;
 
   const rows = await db
     .select()
@@ -75,84 +173,97 @@ export async function matchSpecAlternatives(specId: number, opts: {
   for (const row of rows) {
     const original = row.gwpPer1000sf == null ? null : parseFloat(row.gwpPer1000sf);
 
-    // ── Step 3: Hard filters ──────────────────────────────────────────────
-    // Pull all candidate EPDs in the same assembly category. Structural and
-    // fire-rating equivalence is enforced here. EPD validity (not expired)
-    // checked via epd_expiry > now() OR epd_expiry IS NULL (legacy rows).
+    // Map assembly type to material categories
+    const targetCategories: string[] = row.assemblyType
+      ? (ASSEMBLY_TYPE_CATEGORIES[row.assemblyType] ?? [])
+      : [];
+
+    // Build category filter
+    const categoryFilter = targetCategories.length > 0
+      ? inArray(materials.category, targetCategories)
+      : sql`true`;
+
+    // Hard filter: only pull materials with lower carbon (or no carbon data)
+    const carbonFilter = original != null
+      ? sql`(${materials.embodiedCarbonPer1000sf} IS NULL OR CAST(${materials.embodiedCarbonPer1000sf} AS NUMERIC) < ${original})`
+      : sql`true`;
+
     const candidates = await db
       .select({
-        id: epdMaterials.id,
-        productName: epdMaterials.productName,
-        manufacturerName: epdMaterials.manufacturerName,
-        assemblyType: epdMaterials.assemblyType,
-        coreOption: epdMaterials.coreOption,
-        gwpPer1000sf: epdMaterials.gwpPer1000sf,
+        id: materials.id,
+        name: materials.name,
+        productName: materials.productName,
+        manufacturerName: manufacturers.name,
+        category: materials.category,
+        embodiedCarbonPer1000sf: materials.embodiedCarbonPer1000sf,
+        gwpValue: materials.gwpValue,
+        pricePerUnit: materials.pricePerUnit,
+        hasEpd: materials.hasEpd,
+        hasHpd: materials.hasHpd,
+        hasGreenguard: materials.hasGreenguard,
+        hasC2c: materials.hasC2c,
+        hasDeclare: materials.hasDeclare,
+        meetsTitle24: materials.meetsTitle24,
+        meetsIecc: materials.meetsIecc,
+        fireRating: materials.fireRating,
+        astmStandards: materials.astmStandards,
+        onRedList: materials.onRedList,
+        epdExpiry: materials.epdExpiry,
       })
-      .from(epdMaterials)
-      .where(
-        and(
-          row.assemblyType
-            ? eq(epdMaterials.assemblyType, row.assemblyType)
-            : sql`true`,
-          // Drop only materials that are unequivocally worse on carbon.
-          original != null
-            ? sql`${epdMaterials.gwpPer1000sf} IS NULL OR CAST(${epdMaterials.gwpPer1000sf} AS NUMERIC) < ${original}`
-            : sql`true`,
-        ),
-      );
+      .from(materials)
+      .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+      .where(and(categoryFilter, carbonFilter))
+      .limit(200); // cap for performance
 
-    // Get category baseline for CCPS normalization
-    // getCategoryBaseline returns number (median GWP); price fallback is 100.
-    const baselineGwp = row.assemblyType
-      ? await getCategoryBaseline(row.assemblyType)
-      : 10000;
-    const categoryBaseline = { gwp: baselineGwp, price: 100 };
+    // Compute category baseline GWP (median of candidates with carbon data)
+    const gwpValues = candidates
+      .map((c) => c.embodiedCarbonPer1000sf != null ? parseFloat(c.embodiedCarbonPer1000sf) : null)
+      .filter((v): v is number => v != null);
+    const baselineGwp = gwpValues.length > 0
+      ? gwpValues.sort((a, b) => a - b)[Math.floor(gwpValues.length / 2)]
+      : (original ?? 10000);
 
-    // ── Step 4: Rank by CCPS ──────────────────────────────────────────────
-    const scored = await Promise.all(
-      candidates.map(async (c) => {
-        const score = await computeCCPS(
-          c.id,
-          categoryBaseline.gwp,
-          categoryBaseline.price,
-          ccpsPersona,
-        );
-        return { candidate: c, score };
-      }),
-    );
+    // Average price for cost scoring
+    const prices = candidates
+      .map((c) => c.pricePerUnit != null ? parseFloat(c.pricePerUnit) : null)
+      .filter((v): v is number => v != null);
+    const avgPrice = prices.length > 0
+      ? prices.reduce((a, b) => a + b, 0) / prices.length
+      : 100;
 
-    scored.sort((a, b) => b.score.total - a.score.total);
+    // Score + rank
+    const scored = candidates
+      .map((c) => ({ candidate: c, score: scoreMaterial(c as MaterialRow, baselineGwp, avgPrice, persona) }))
+      .sort((a, b) => b.score.total - a.score.total);
 
-    // ── Step 5: Carbon delta ──────────────────────────────────────────────
     const alternatives: MatchedAlternative[] = scored.slice(0, topN).map((s, idx) => {
-      const altGwp = s.candidate.gwpPer1000sf == null ? null : parseFloat(s.candidate.gwpPer1000sf);
+      const altGwp = s.candidate.embodiedCarbonPer1000sf != null
+        ? parseFloat(s.candidate.embodiedCarbonPer1000sf)
+        : (s.candidate.gwpValue != null ? parseFloat(s.candidate.gwpValue) : null);
+
       const carbonDeltaPct =
         original != null && altGwp != null && original > 0
           ? ((altGwp - original) / original) * 100
           : null;
 
-      // CCPS breakdown: carbon, compliance, cost, health
       const { carbon, compliance, cost, health } = s.score.breakdown;
 
       return {
         rank: idx + 1,
         epdMaterialId: s.candidate.id,
-        productName: s.candidate.productName,
+        productName: s.candidate.productName ?? s.candidate.name,
         manufacturerName: s.candidate.manufacturerName ?? null,
-        assemblyType: s.candidate.assemblyType ?? null,
-        structuralOption: s.candidate.coreOption ?? null,
+        assemblyType: s.candidate.category,
+        structuralOption: null,
         gwpPer1000sf: altGwp,
         carbonDeltaPct,
-        // CCPS total score (0-100, persona-weighted)
         gcs: s.score.total,
-        // Sustainability proxy: carbon + compliance factors
-        sustainabilityScore: carbon + compliance,
-        // Performance proxy: cost + health factors
-        performanceScore: cost + health,
+        sustainabilityScore: Math.round(carbon + compliance),
+        performanceScore: Math.round(cost + health),
       };
     });
 
-    // Persist the top alternative back onto the spec row (for fast UI render).
+    // Persist top match back to the spec row
     if (alternatives.length > 0) {
       await db
         .update(architectSpecAssemblies)
