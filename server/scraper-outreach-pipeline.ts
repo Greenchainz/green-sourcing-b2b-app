@@ -96,8 +96,8 @@ export async function runScraperOutreachPipeline(): Promise<{
       COUNT(ri.id) as material_count
     FROM rfqs r
     LEFT JOIN rfq_items ri ON ri.rfq_id = r.id
-    WHERE r.status IN ('submitted', 'responded')
-      AND (r.due_date IS NULL OR r.due_date > NOW())
+    WHERE r.status = 'open'
+      AND (r.deadline IS NULL OR r.deadline > NOW())
     GROUP BY r.id, r.project_name, r.project_location, r.due_date
     ORDER BY r.created_at DESC
     LIMIT 10
