@@ -114,3 +114,6 @@ Commercial-Marketplace-SaaS-Accelerator/
 
 # npm lock file (pnpm is the declared package manager)
 package-lock.json
+
+# Visual Studio local files
+.vs/

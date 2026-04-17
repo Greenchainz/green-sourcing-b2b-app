@@ -80,6 +80,7 @@ import { useState, useEffect } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 import { useAuth } from "./contexts/AuthContext";
 import { trpc } from "./lib/trpc";
+import { initGoogleAnalytics, trackGooglePageView } from "./lib/analytics";
 
 function Router() {
   return (
@@ -181,6 +182,17 @@ function AuthGuard() {
   return null;
 }
 
+function AnalyticsTracker() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    initGoogleAnalytics();
+    trackGooglePageView(location);
+  }, [location]);
+
+  return null;
+}
+
 // Redirect supplier users who haven't completed onboarding
 function SupplierOnboardingGuard() {
   const { user } = useAuth();
@@ -257,6 +269,7 @@ function AppInner() {
         <AuthGuard />
         <SupplierOnboardingGuard />
         <ArchitectOnboardingGuard />
+        <AnalyticsTracker />
         <Router />
         {/* Intercom support widget */}
         <IntercomWidget />
