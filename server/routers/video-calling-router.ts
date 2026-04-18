@@ -11,9 +11,16 @@ export const videoCallingRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { checkVideoLimit } = await import('../messaging-paywall');
-      const limitCheck = await checkVideoLimit(ctx.user.id);
+      const { checkVideoLimit, checkOutboundCallPermission } = await import('../messaging-paywall');
 
+      // Suppliers on free plan cannot initiate — inbound only
+      const outboundCheck = await checkOutboundCallPermission(ctx.user.id);
+      if (!outboundCheck.canCall) {
+        throw new Error(outboundCheck.reason || 'Outbound calls require Professional plan');
+      }
+
+      // Check monthly minute limit
+      const limitCheck = await checkVideoLimit(ctx.user.id);
       if (!limitCheck.canCall) {
         throw new Error(limitCheck.reason || 'Video calling limit reached');
       }
