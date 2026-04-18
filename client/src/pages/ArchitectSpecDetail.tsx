@@ -135,7 +135,7 @@ export default function ArchitectSpecDetail() {
           </Button>
           <h1 className="text-3xl font-bold text-gray-900">{spec.originalFilename || spec.projectName || "Specification"}</h1>
           <p className="text-gray-600 mt-2">
-            Uploaded {new Date(spec.createdAt).toLocaleDateString()}
+            Uploaded {spec.createdAt ? new Date(spec.createdAt).toLocaleDateString() : "Unknown"}
           </p>
         </div>
 

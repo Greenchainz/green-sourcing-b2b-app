@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Info, Search } from "lucide-react";
 import { isCalgreenCompliant } from "@/lib/calgreen";
 
 const PAGE_SIZE = 24;
@@ -491,14 +491,4 @@ export default function MaterialSearchPage() {
                   onClick={() => setPage((p) => p + 1)}
                 >
                   <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <Footer />
-    </div>
-  );
-}
+    
