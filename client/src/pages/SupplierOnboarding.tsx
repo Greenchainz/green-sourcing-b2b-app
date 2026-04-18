@@ -64,9 +64,17 @@ const schema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   website: z
     .string()
-    .url("Enter a valid URL (include https://)")
     .optional()
-    .or(z.literal("")),
+    .transform((val) => {
+      if (!val || val.trim() === "") return "";
+      const v = val.trim();
+      if (v.startsWith("http://") || v.startsWith("https://")) return v;
+      return `https://${v}`;
+    })
+    .refine(
+      (val) => val === "" || (() => { try { new URL(val); return true; } catch { return false; } })(),
+      { message: "Enter a valid website (e.g. greenchainz.com)" }
+    ),
   description: z.string().optional(),
   contactName: z.string().min(1, "Contact name is required"),
   email: z.string().email("Valid email is required"),
@@ -91,7 +99,7 @@ const STEPS = [
 
 // Fields to validate per step
 const STEP_FIELDS: (keyof FormData)[][] = [
-  ["companyName", "website", "description"],
+  ["companyName"], // website is optional, don't block on it
   ["contactName", "email", "phone"],
   ["materialCategories"],
   ["certifications"],
@@ -678,7 +686,7 @@ export default function SupplierOnboarding() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 border-2 border-[#2D6A4F] text-[#2D6A4F] hover:bg-[#2D6A4F]/10 font-semibold"
                   onClick={prevStep}
                 >
                   <ChevronLeft className="w-4 h-4 mr-1" />
