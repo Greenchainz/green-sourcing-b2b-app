@@ -1,35 +1,48 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
+const MAX_RETRIES = 5;
+const BASE_DELAY_MS = 5_000;
+const MAX_DELAY_MS = 60_000;
+
 /**
- * Hook to listen for WebPubSub notifications
- * Handles incoming video calls and other real-time events
+ * Hook to listen for WebPubSub notifications.
+ * Handles incoming video calls and other real-time events.
+ * Degrades gracefully when Azure WebPubSub is not configured:
+ * - Skips silently if endpoint env var is missing or invalid
+ * - Exponential backoff with hard cap of 5 retries to prevent console spam
  */
 export function useWebPubSub() {
   const { user } = useAuth();
+  const retryCount = useRef(0);
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!user) return;
 
-    // WebPubSub endpoint from environment
     const endpoint = import.meta.env.VITE_FRONTEND_WEBPUBSUB_ENDPOINT;
     const hub = import.meta.env.VITE_FRONTEND_WEBPUBSUB_HUB;
 
-    if (!endpoint || !hub) {
-      console.warn("[WebPubSub] Missing configuration");
+    // Silently skip if not configured
+    if (!endpoint || !hub) return;
+    if (!endpoint.startsWith("wss://") && !endpoint.startsWith("ws://")) {
+      console.warn("[WebPubSub] Invalid endpoint URL — skipping");
       return;
     }
 
-    let ws: WebSocket | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
-
     const connect = () => {
+      if (retryCount.current >= MAX_RETRIES) {
+        console.warn(`[WebPubSub] Giving up after ${MAX_RETRIES} attempts. Real-time notifications disabled.`);
+        return;
+      }
       try {
-        // Connect to WebPubSub
         const wsUrl = `${endpoint}/client/hubs/${hub}?userId=${user.id}`;
-        ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
 
         ws.onopen = () => {
+          retryCount.current = 0;
           console.log("[WebPubSub] Connected");
         };
 
@@ -88,38 +101,38 @@ export function useWebPubSub() {
               });
               window.dispatchEvent(signalEvent);
             }
-          } catch (error) {
-            console.error("[WebPubSub] Failed to parse message:", error);
+          } catch {
+            // Malformed message — ignore silently
           }
         };
 
-        ws.onerror = (error) => {
-          console.error("[WebPubSub] Error:", error);
+        ws.onerror = () => {
+          // onerror always fires before onclose — handled there
         };
 
         ws.onclose = () => {
-          console.log("[WebPubSub] Disconnected");
-          
-          // Attempt to reconnect after 5 seconds
-          reconnectTimeout = setTimeout(() => {
-            console.log("[WebPubSub] Reconnecting...");
-            connect();
-          }, 5000);
+          retryCount.current += 1;
+          if (retryCount.current >= MAX_RETRIES) {
+            console.warn(`[WebPubSub] Connection closed (${retryCount.current}/${MAX_RETRIES}). Real-time notifications disabled.`);
+            return;
+          }
+          const delay = Math.min(BASE_DELAY_MS * 2 ** (retryCount.current - 1), MAX_DELAY_MS);
+          reconnectTimeout.current = setTimeout(connect, delay);
         };
       } catch (error) {
-        console.error("[WebPubSub] Connection failed:", error);
+        console.error("[WebPubSub] Failed to create WebSocket:", error);
       }
     };
 
     connect();
 
     return () => {
-      if (ws) {
-        ws.close();
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+      if (wsRef.current) {
+        wsRef.current.onclose = null; // prevent retry on intentional unmount
+        wsRef.current.close();
       }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
+      retryCount.current = 0;
     };
   }, [user]);
 }
