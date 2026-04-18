@@ -5,6 +5,7 @@ interface User {
   id: string;
   email: string;
   name: string;
+  avatarUrl: string | null;
   // 'architect' is the client-side name for what the DB stores as 'buyer'.
   // All non-supplier, non-admin users default to architect.
   role: 'architect' | 'supplier' | 'admin';
