@@ -501,5 +501,3 @@ export default function MaterialSearchPage() {
     </div>
   );
 }
-
-export default MaterialSearchPage;
