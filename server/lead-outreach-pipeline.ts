@@ -19,6 +19,7 @@ import { getDb } from "../lib/db";
 import { sql } from "drizzle-orm";
 import { sendEmail } from "./email-service";
 import { isEmailSuppressed } from "./zeptomail-webhook";
+import { generateBuyerEmail } from "./personas";
 
 const OUTREACH_RATE_LIMIT = 50;
 const MIN_HOURS_BETWEEN_OUTREACH = 72;
@@ -90,20 +91,25 @@ export async function runLeadOutreachPipeline(): Promise<{
       `?utm_source=lead_scraper&utm_medium=email&utm_campaign=buyer_outreach` +
       `&role=${encodeURIComponent(lead.role)}`;
 
-    const html = generateBuyerOutreachEmail({
-      role: lead.role,
-      company: lead.company,
-      name: lead.full_name ?? lead.title ?? null,
-      getStartedUrl,
-    });
-
-    const subject = subjectLineForRole(lead.role, lead.company);
+    // 7-layer persona-aware email generation
+    const personaEmail = await generateBuyerEmail(
+      {
+        full_name: lead.full_name,
+        title: lead.title,
+        company: lead.company,
+        role: lead.role,
+        city: lead.city,
+        state: lead.state,
+      },
+      getStartedUrl
+    );
+    console.log(`[lead-outreach] persona=${personaEmail.personaDetected} driver=${personaEmail.driver} conf=${personaEmail.confidence.toFixed(2)} llm=${personaEmail.usedLLM}`);
 
     const success = await sendEmail({
       to: lead.email,
-      subject,
-      html,
-      text: plaintextForRole(lead.role, lead.company, getStartedUrl),
+      subject: personaEmail.subject,
+      html: personaEmail.html,
+      text: personaEmail.text,
     });
 
     if (success) {
