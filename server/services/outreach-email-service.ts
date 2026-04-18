@@ -454,9 +454,9 @@ export async function enrollInClaimSequence(contactId: number): Promise<void> {
   }
 
   await db.insert(crmEmailSequences).values([
-    { contactId, step: 1, scheduledAt: scheduleStep(0), sentAt: null },
-    { contactId, step: 2, scheduledAt: scheduleStep(4), sentAt: null },
-    { contactId, step: 3, scheduledAt: scheduleStep(10), sentAt: null },
+    { contactId, sequenceName: "default", step: 1, scheduledAt: scheduleStep(0), sentAt: null },
+    { contactId, sequenceName: "default", step: 2, scheduledAt: scheduleStep(4), sentAt: null },
+    { contactId, sequenceName: "default", step: 3, scheduledAt: scheduleStep(10), sentAt: null },
   ]);
 }
 
