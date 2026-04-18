@@ -491,4 +491,15 @@ export default function MaterialSearchPage() {
                   onClick={() => setPage((p) => p + 1)}
                 >
                   <ChevronRight className="w-4 h-4" />
-    
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
+export default MaterialSearchPage;
