@@ -8,7 +8,7 @@ import {
   ccpsBaselines,
   decisionMakerPersonas,
 } from '../../drizzle/schema';
-import { eq, like, and, lte, asc, sql, or } from 'drizzle-orm';
+import { eq, like, and, lte, asc, sql, or, getTableColumns } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
 import { getAllPriceTrends, getPriceTrend } from '../services/price-trends';
@@ -61,9 +61,13 @@ export const materialsRouter = router({
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+      // Exclude heavy vector/search columns from the list query — they're only
+      // needed for semantic search and cause query failures on some DB configs.
+      const { embedding, searchText, ...listColumns } = getTableColumns(materials);
+
       const rows = await db
         .select({
-          material: materials,
+          material: listColumns,
           manufacturerName: manufacturers.name,
           manufacturerWebsite: manufacturers.website,
           manufacturerLogoUrl: manufacturers.logoUrl,
@@ -149,9 +153,11 @@ export const materialsRouter = router({
     const db = await getDb();
     if (!db) return null;
 
+    const { embedding: _emb, searchText: _st, ...detailColumns } = getTableColumns(materials);
+
     const rows = await db
       .select({
-        material: materials,
+        material: detailColumns,
         manufacturerName: manufacturers.name,
         manufacturerWebsite: manufacturers.website,
         manufacturerLogoUrl: manufacturers.logoUrl,
@@ -183,9 +189,11 @@ export const materialsRouter = router({
       ccpsByPersona[p.personaKey] = calculateCcps(rows[0].material, baseline, personaToWeights(p));
     }
 
+    const { embedding: _e2, searchText: _s2, ...altColumns } = getTableColumns(materials);
+
     const altRows = await db
       .select({
-        material: materials,
+        material: altColumns,
         manufacturerName: manufacturers.name,
       })
       .from(materials)
@@ -244,8 +252,10 @@ export const materialsRouter = router({
       const db = await getDb();
       if (!db) return null;
 
+      const { embedding: _scoreEmb, searchText: _scoreSt, ...scoreColumns } = getTableColumns(materials);
+
       const rows = await db
-        .select({ material: materials, manufacturerName: manufacturers.name })
+        .select({ material: scoreColumns, manufacturerName: manufacturers.name })
         .from(materials)
         .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
         .where(eq(materials.id, input.materialId))
