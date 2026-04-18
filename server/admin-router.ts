@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import {
   suppliers, users, materials, materialCertifications, buyerSubscriptions,
   rfqs, rfqBids, rfqItems, leads, conversations, messages, notifications,
+  subscriptions,
 } from "../drizzle/schema";
 import { eq, and, inArray, desc, count, sql, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -874,5 +875,120 @@ export const adminRouter = router({
       updated++;
     }
     return { updated, total: contacts.length };
+  }),
+
+  // ── Promo Grants ──────────────────────────────────────────────────────────
+
+  /**
+   * Grant a user a free premium (or standard) subscription.
+   * Looks up by email, inserts a synthetic subscription row.
+   * No Microsoft billing — purely internal override.
+   */
+  grantPromo: adminProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        tier: z.enum(["standard", "premium"]).default("premium"),
+        note: z.string().optional(),
+        expiresAt: z.string().datetime().optional(), // ISO string; omit = never expires
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [user] = await db
+        .select({ id: users.id, email: users.email })
+        .from(users)
+        .where(eq(users.email, input.email))
+        .limit(1);
+
+      if (!user) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `No user found with email ${input.email}` });
+      }
+
+      // Cancel any existing promo for this user so tier upgrades are clean
+      await db
+        .update(subscriptions)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(
+          and(
+            eq(subscriptions.userId, user.id),
+            sql`${subscriptions.microsoftSubscriptionId} LIKE 'promo-%'`
+          )
+        );
+
+      const promoId = `promo-${user.id}-${Date.now()}`;
+      const now = new Date();
+      const endDate = input.expiresAt ? new Date(input.expiresAt) : null;
+
+      await db.insert(subscriptions).values({
+        userId: user.id,
+        microsoftSubscriptionId: promoId,
+        tier: input.tier,
+        status: "active",
+        startDate: now,
+        endDate,
+        lastRenewalDate: now,
+      });
+
+      return { ok: true, promoId, userId: user.id, tier: input.tier };
+    }),
+
+  /**
+   * Revoke a promo grant by email.
+   */
+  revokePromo: adminProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [user] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, input.email))
+        .limit(1);
+
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: `No user found with email ${input.email}` });
+
+      const result = await db
+        .update(subscriptions)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(
+          and(
+            eq(subscriptions.userId, user.id),
+            sql`${subscriptions.microsoftSubscriptionId} LIKE 'promo-%'`
+          )
+        );
+
+      return { ok: true };
+    }),
+
+  /**
+   * List all active promo grants.
+   */
+  listPromos: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const rows = await db
+      .select({
+        id: subscriptions.id,
+        userId: subscriptions.userId,
+        email: users.email,
+        name: users.name,
+        tier: subscriptions.tier,
+        status: subscriptions.status,
+        startDate: subscriptions.startDate,
+        endDate: subscriptions.endDate,
+        promoId: subscriptions.microsoftSubscriptionId,
+      })
+      .from(subscriptions)
+      .innerJoin(users, eq(subscriptions.userId, users.id))
+      .where(sql`${subscriptions.microsoftSubscriptionId} LIKE 'promo-%'`)
+      .orderBy(desc(subscriptions.startDate));
+
+    return rows;
   }),
 });
