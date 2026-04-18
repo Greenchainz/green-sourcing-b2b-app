@@ -270,4 +270,15 @@ export const suggestionsRouter = router({
             seen.add(s.name.toLowerCase());
             results.push({
               label: s.name,
-              sublabel: [s.city, s.state].filter(Boolean).join(", ") || u
+              sublabel: [s.city, s.state].filter(Boolean).join(", ") || undefined,
+              badge: "supplier",
+            });
+          }
+        }
+
+        return results.slice(0, 8);
+      } catch {
+        return [];
+      }
+    }),
+});
