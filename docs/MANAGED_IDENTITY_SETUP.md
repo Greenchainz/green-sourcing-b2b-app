@@ -143,9 +143,6 @@ AZURE_CLIENT_SECRET=<from Key Vault>
 AZURE_AD_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
 AZURE_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
 
-# ── OAuth Server (Manus OAuth service) ──────────────────────────────────────
-# Must be in .env — do NOT set this only in .env.local.
-OAUTH_SERVER_URL=https://your-oauth-server-url-here
 ```
 
 ### Local Development
