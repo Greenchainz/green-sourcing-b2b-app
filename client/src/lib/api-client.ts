@@ -135,6 +135,7 @@ export async function getCurrentUser() {
       roles: string[];
       isAdmin: boolean;
       isSupplier: boolean;
+      avatarUrl: string | null;
     };
   }>('/api/auth/me');
 
@@ -143,6 +144,7 @@ export async function getCurrentUser() {
     id: user.id,
     email: user.email,
     name: user.name,
+    avatarUrl: user.avatarUrl ?? null,
     // DB stores 'buyer'; we expose it as 'architect' — the canonical term for
     // non-supplier users. 'buyer' is kept as a fallback for stale cached values.
     role: (user.isAdmin ? 'admin' : user.isSupplier ? 'supplier' : 'architect') as 'architect' | 'supplier' | 'admin',

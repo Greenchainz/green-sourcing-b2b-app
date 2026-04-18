@@ -5,8 +5,9 @@ import { getLoginUrl } from '../const';
 import { NotificationCenter } from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
 import { trpc } from '../lib/trpc';
-import { Menu, X, ChevronDown, Zap, FileUp, Layers, BarChart2, FileText, GitCompare, FileSearch } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { Menu, X, ChevronDown, Zap, FileUp, Layers, BarChart2, FileText, GitCompare, FileSearch, Camera } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 
 const ARCHITECT_TOOLS = [
   { href: "/architect/specs/upload", icon: Zap,        label: "Spec Lookup",          desc: "Find green alternatives for one assembly or a full project" },
@@ -59,6 +60,70 @@ function ToolsDropdown() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Clickable avatar with photo upload ────────────────────────────────────────
+function UserAvatar() {
+  const { user, refetch } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(user?.avatarUrl ?? null);
+
+  // Sync preview when user data changes
+  useEffect(() => {
+    setPreview(user?.avatarUrl ?? null);
+  }, [user?.avatarUrl]);
+
+  const handleFile = useCallback(async (file: File) => {
+    setUploading(true);
+    const localUrl = URL.createObjectURL(file);
+    setPreview(localUrl); // optimistic preview
+
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+      const res = await fetch("/api/user/avatar", { method: "POST", body: formData });
+      if (!res.ok) throw new Error(await res.text());
+      const { url } = await res.json() as { url: string };
+      setPreview(url);
+      toast.success("Profile photo updated");
+      void refetch();
+    } catch (err) {
+      setPreview(user?.avatarUrl ?? null); // revert
+      toast.error("Upload failed — try again");
+      console.error("[avatar upload]", err);
+    } finally {
+      setUploading(false);
+    }
+  }, [user, refetch]);
+
+  const initials = user?.name?.[0]?.toUpperCase() ?? "U";
+
+  return (
+    <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden">
+        {preview ? (
+          <img src={preview} alt="Profile" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-sm font-medium text-primary-foreground">{initials}</span>
+        )}
+      </div>
+      {/* Camera overlay on hover */}
+      <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        {uploading
+          ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          : <Camera className="w-3 h-3 text-white" />
+        }
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) void handleFile(f); }}
+      />
     </div>
   );
 }
@@ -173,13 +238,7 @@ export default function Header() {
                   </Button>
                 </Link>
               )}
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                  <span className="text-sm font-medium text-primary-foreground">
-                    {user.name?.[0]?.toUpperCase() || 'U'}
-                  </span>
-                </div>
-              </div>
+              <UserAvatar />
             </>
           ) : (
             <>

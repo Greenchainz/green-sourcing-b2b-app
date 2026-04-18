@@ -210,6 +210,7 @@ export function registerOAuthProviderRoutes(app: Express) {
           roles: [user.role],
           isAdmin: user.role === "admin",
           isSupplier: user.role === "supplier",
+          avatarUrl: (user as Record<string, unknown>).avatarUrl as string | null ?? null,
         },
       });
     } catch {
