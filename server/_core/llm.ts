@@ -214,15 +214,8 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const useForge = () => !!ENV.forgeApiKey;
-
 const resolveApiUrl = () => {
-  if (useForge()) {
-    return ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-      ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-      : "https://forge.manus.im/v1/chat/completions";
-  }
-  // Azure OpenAI fallback
+  // Azure OpenAI — sole LLM provider
   const endpoint = ENV.azureOpenAiEndpoint.replace(/\/$/, "");
   const deployment = ENV.azureOpenAiDeployment;
   const version = ENV.azureOpenAiVersion;
@@ -230,15 +223,13 @@ const resolveApiUrl = () => {
 };
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey && !ENV.azureOpenAiKey) {
+  if (!ENV.azureOpenAiKey) {
     throw new Error(
-      "No LLM API key configured. Set BUILT_IN_FORGE_API_KEY or AZURE_OPENAI_API_KEY in your .env.local"
+      "No LLM API key configured. Set AZURE_OPENAI_API_KEY in your environment or Azure Key Vault."
     );
   }
-  if (!useForge() && !ENV.azureOpenAiEndpoint) {
-    throw new Error(
-      "AZURE_OPENAI_ENDPOINT is required when BUILT_IN_FORGE_API_KEY is not set"
-    );
+  if (!ENV.azureOpenAiEndpoint) {
+    throw new Error("AZURE_OPENAI_ENDPOINT is required.");
   }
 };
 
@@ -302,7 +293,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: useForge() ? "gemini-2.5-flash" : ENV.azureOpenAiDeployment,
+    model: ENV.azureOpenAiDeployment,
     messages: messages.map(normalizeMessage),
   };
 
@@ -318,13 +309,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  if (useForge()) {
-    payload.max_tokens = 32768;
-    payload.thinking = { budget_tokens: 128 };
-  } else {
-    // Azure OpenAI: standard token limit, no thinking param
-    payload.max_tokens = 4096;
-  }
+  // Azure OpenAI: standard token limit
+  payload.max_tokens = 4096;
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
@@ -338,12 +324,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   const headers: Record<string, string> = { "content-type": "application/json" };
-  if (useForge()) {
-    headers["authorization"] = `Bearer ${ENV.forgeApiKey}`;
-  } else {
-    // Azure OpenAI uses api-key header, not Bearer
-    headers["api-key"] = ENV.azureOpenAiKey;
-  }
+  // Azure OpenAI uses api-key header
+  headers["api-key"] = ENV.azureOpenAiKey;
 
   const response = await fetch(resolveApiUrl(), {
     method: "POST",

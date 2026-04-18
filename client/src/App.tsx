@@ -8,7 +8,6 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatWidgetProvider } from "./contexts/ChatWidgetContext";
 import Home from "./pages/Home";
-import ApiTest from "./pages/ApiTest";
 import ExcelAudit from "./pages/ExcelAudit";
 import ExcelAuditWorkingTool from "./pages/ExcelAuditWorkingTool";
 import About from "./pages/About";
@@ -51,7 +50,6 @@ import { CookieConsentBanner } from "./components/CookieConsentBanner";
 // VIDEO CALLING — cut for launch, restore when ACS is implemented
 // import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 // import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
-import { UnifiedChatWidget } from "./components/UnifiedChatWidget";
 import { ChatWidget } from "./components/ChatWidget";
 import AdminVerificationQueue from "./pages/AdminVerificationQueue";
 import { AdminSupplierDashboard } from "./pages/AdminSupplierDashboard";
@@ -129,8 +127,9 @@ function Router() {
       <Route path="/admin/verification" component={AdminVerificationQueue} />
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
       <Route path="/admin/crm" component={CrmDashboard} />
-      <Route path={"/api-test"} component={ApiTest} />          <Route path="/excel-audit" component={ExcelAudit} />
-          <Route path="/excel-audit-tool" component={ExcelAuditWorkingTool} />      <Route path={"/about"} component={About} />
+      <Route path="/excel-audit" component={ExcelAudit} />
+      <Route path="/excel-audit-tool" component={ExcelAuditWorkingTool} />
+      <Route path={"/about"} component={About} />
       <Route path={"/tools"} component={Tools} />
       <Route path={"/tools/extension"} component={BrowserExtension} />
       <Route path={"/tools/revit"} component={RevitPlugin} />
