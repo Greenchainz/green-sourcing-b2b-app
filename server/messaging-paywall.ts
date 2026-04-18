@@ -38,10 +38,8 @@ async function getUserTier(userId: number): Promise<SubscriptionTier> {
     .where(eq(users.id, userId))
     .limit(1);
 
-  // Buyers always have unlimited access
-  if (user[0]?.role === "buyer") {
-    return "premium"; // Treat buyers as premium for unlimited access
-  }
+  // Architects: free tier by default — messaging/video unlocked only on Pro ($29.99)
+  // Falls through to subscription check below so Pro architects get standard tier
 
   // Check Microsoft subscription
   const { getUserTier: getMicrosoftTier } = await import("./microsoft-subscription-service");
@@ -68,34 +66,40 @@ export async function checkMessageLimit(
     return { canSend: true, tier };
   }
 
-  // Free tier: 1 message per conversation
+  // Free tier (supplier basic): 10 messages per month
   if (tier === "free") {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
     const messageCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(messages)
       .where(
         and(
-          eq(messages.conversationId, conversationId),
-          eq(messages.senderId, userId)
+          eq(messages.senderId, userId),
+          gte(messages.createdAt, startOfMonth)
         )
       );
 
     const used = Number(messageCount[0]?.count) || 0;
+    const limit = 10;
 
-    if (used >= 1) {
+    if (used >= limit) {
       return {
         canSend: false,
-        reason: "Free tier allows 1 message per conversation. Upgrade to Standard for 50 messages/month.",
+        reason: `Free suppliers can send ${limit} messages/month. Upgrade to Verified Pro for 300 messages/month.`,
         messagesUsed: used,
-        messagesLimit: 1,
+        messagesLimit: limit,
         tier,
       };
     }
 
-    return { canSend: true, messagesUsed: used, messagesLimit: 1, tier };
+    return { canSend: true, messagesUsed: used, messagesLimit: limit, tier };
   }
 
-  // Standard tier: 50 messages per month
+  // Standard tier: architects get 50/mo, Verified Pro suppliers get 300/mo
+  // Role-based differentiation handled upstream — standard covers both
   if (tier === "standard") {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
@@ -112,12 +116,12 @@ export async function checkMessageLimit(
       );
 
     const used = Number(messageCount[0]?.count) || 0;
-    const limit = 50;
+    const limit = 300; // covers both architects (50 real usage) and Verified Pro suppliers
 
     if (used >= limit) {
       return {
         canSend: false,
-        reason: `Standard tier limit reached (${limit} messages/month). Upgrade to Premium for unlimited messaging.`,
+        reason: `Monthly messaging limit reached (${limit} messages). Contact support to increase your limit.`,
         messagesUsed: used,
         messagesLimit: limit,
         tier,
@@ -142,19 +146,19 @@ export async function checkVideoLimit(userId: number): Promise<VideoLimitResult>
 
   const tier = await getUserTier(userId);
 
-  // Free tier: no video calling
+  // Free tier (supplier basic): no video calling
   if (tier === "free") {
     return {
       canCall: false,
-      reason: "Video calling not available on Free tier. Upgrade to Standard for 10 hours/month.",
+      reason: "Video calling is available on Verified Pro ($29.99/month). Upgrade to connect face-to-face with architects.",
       minutesUsed: 0,
       minutesLimit: 0,
       tier,
     };
   }
 
-  // Premium tier: 50 hours per month
-  const limit = tier === "premium" ? 3000 : 600; // 3000 min = 50hr, 600 min = 10hr
+  // Standard = Verified Pro suppliers: 15 hrs/month. Premium = unlimited (promo grants).
+  const limit = tier === "premium" ? 3000 : 900; // 900 min = 15hr, 3000 min = 50hr
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -183,6 +187,38 @@ export async function checkVideoLimit(userId: number): Promise<VideoLimitResult>
   }
 
   return { canCall: true, minutesUsed: used, minutesLimit: limit, tier };
+}
+
+/**
+ * Check if a user can INITIATE (outbound) a video call.
+ * Architects: always yes (they're buyers, free to reach out).
+ * Suppliers: only on Professional ($99) or higher — free suppliers inbound only.
+ */
+export async function checkOutboundCallPermission(userId: number): Promise<{ canCall: boolean; reason?: string }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const user = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const role = user[0]?.role;
+
+  // Architects can always initiate calls
+  if (role !== "supplier") return { canCall: true };
+
+  // Suppliers need Professional tier or above
+  const tier = await getUserTier(userId);
+  if (tier === "free") {
+    return {
+      canCall: false,
+      reason: "Outbound video calls are available on the Professional plan ($99/month). Architects can still call you on your free listing.",
+    };
+  }
+
+  return { canCall: true };
 }
 
 /**
