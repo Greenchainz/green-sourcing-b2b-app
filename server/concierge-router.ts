@@ -90,7 +90,8 @@ export const conciergeRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const rows = await db
         .select({
           id: rfqs.id,
@@ -122,7 +123,8 @@ export const conciergeRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const keywords = materialKeywords(input.materialType);
 
       // Pull all scraped suppliers that have an email (needed to send intro)
@@ -161,7 +163,8 @@ export const conciergeRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const conditions = [
         isNotNull(scrapedLeads.email),
         or(
@@ -218,7 +221,8 @@ export const conciergeRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
       const firstName = input.architectName?.split(" ")[0] ?? "there";
       const locationLine = input.projectLocation
@@ -322,7 +326,8 @@ https://greenchainz.com/rfq/new?material=${encodeURIComponent(input.materialType
       })
     )
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const routes = await db
         .select()
         .from(conciergeRoutes)
@@ -339,7 +344,8 @@ https://greenchainz.com/rfq/new?material=${encodeURIComponent(input.materialType
   markReplied: adminProcedure
     .input(z.object({ routeId: z.number() }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db
         .update(conciergeRoutes)
         .set({ architectReplied: true, architectRepliedAt: new Date() })
@@ -351,7 +357,8 @@ https://greenchainz.com/rfq/new?material=${encodeURIComponent(input.materialType
    * Summary stats for the concierge panel header.
    */
   stats: adminProcedure.query(async () => {
-    const db = getDb();
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
     const [total] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(conciergeRoutes);
@@ -377,3 +384,4 @@ https://greenchainz.com/rfq/new?material=${encodeURIComponent(input.materialType
     };
   }),
 });
+                                                                                                                                                                                                                                                                                                                                                              
