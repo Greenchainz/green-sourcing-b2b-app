@@ -61,6 +61,7 @@ import {
   Trash2,
   ShieldCheck,
   BarChart3,
+  TrendingUp,
 } from 'lucide-react';
 
 // ─── Type definitions ────────────────────────────────────────────────────────
@@ -1571,6 +1572,18 @@ function SystemTab() {
             <Link href="/admin/verification-queue">
               <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
                 <Clock className="mr-2 h-4 w-4" />Verification Queue
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/concierge">
+              <Button variant="outline" size="sm" className="border-green-800 bg-green-950 text-green-300 hover:bg-green-900 hover:text-white">
+                <Zap className="mr-2 h-4 w-4" />Concierge Routing
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/crm">
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <TrendingUp className="mr-2 h-4 w-4" />CRM Pipeline
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
