@@ -1784,3 +1784,38 @@ export const scraperRuns = pgTable(
 
 export type ScraperRun = typeof scraperRuns.$inferSelect;
 export type InsertScraperRun = typeof scraperRuns.$inferInsert;
+
+// ─── Concierge Routes ─────────────────────────────────────────────────────────
+// Tracks every warm intro sent by Jerit via the concierge routing panel.
+// One row = one email sent to one architect about one project + supplier match.
+export const conciergeRoutes = pgTable(
+  "concierge_routes",
+  {
+    id: serial("id").primaryKey(),
+    rfqId: integer("rfq_id"),
+    projectName: varchar("project_name", { length: 255 }).notNull(),
+    projectLocation: varchar("project_location", { length: 255 }),
+    materialTypes: json("material_types").$type<string[]>().default([]),
+    architectEmail: varchar("architect_email", { length: 320 }).notNull(),
+    architectName: varchar("architect_name", { length: 255 }),
+    architectCompany: varchar("architect_company", { length: 255 }),
+    supplierId: integer("supplier_id").notNull(),
+    supplierName: varchar("supplier_name", { length: 255 }).notNull(),
+    supplierEmail: varchar("supplier_email", { length: 320 }),
+    sentAt: timestamp("sent_at").defaultNow().notNull(),
+    emailOpened: boolean("email_opened").default(false),
+    emailOpenedAt: timestamp("email_opened_at"),
+    architectReplied: boolean("architect_replied").default(false),
+    architectRepliedAt: timestamp("architect_replied_at"),
+    notes: text("notes"),
+    sentBy: varchar("sent_by", { length: 100 }).default("jerit"),
+  },
+  (t) => ({
+    rfqIdx: index("idx_concierge_rfq").on(t.rfqId),
+    archEmailIdx: index("idx_concierge_arch_email").on(t.architectEmail),
+    supplierIdx: index("idx_concierge_supplier").on(t.supplierId),
+    sentAtIdx: index("idx_concierge_sent_at").on(t.sentAt),
+  })
+);
+export type ConciergeRoute = typeof conciergeRoutes.$inferSelect;
+export type InsertConciergeRoute = typeof conciergeRoutes.$inferInsert;
