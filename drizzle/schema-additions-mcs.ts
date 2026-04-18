@@ -47,3 +47,5 @@ export const architectSpecAssemblies = pgTable("architect_spec_assemblies", {
   description:          text("description"),
   createdAt:            timestamp("created_at").defaultNow(),
 });
+
+export type InsertArchitectSpecAssembly = InferInsertModel<typeof architectSpecAssemblies>;
