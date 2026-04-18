@@ -124,7 +124,7 @@ export default function ArchitectSpecsList() {
                       <div className="flex items-center gap-1 text-gray-600">
                         <Calendar className="h-4 w-4" />
                         <span className="text-sm">
-                          {new Date(spec.createdAt).toLocaleDateString()}
+                          {spec.createdAt ? new Date(spec.createdAt).toLocaleDateString() : "Unknown"}
                         </span>
                       </div>
                     </div>
