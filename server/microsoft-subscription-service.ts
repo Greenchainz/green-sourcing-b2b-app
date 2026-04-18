@@ -52,8 +52,11 @@ export interface SubscriptionWebhookPayload {
 function mapPlanIdToTier(planId: string): SubscriptionTier {
   const planMap: Record<string, SubscriptionTier> = {
     "greenchainz-free": "free",
+    "planid123": "free",          // Partner Center Free plan ID
     "greenchainz-standard": "standard",
+    "professional": "standard",   // alias guard
     "greenchainz-premium": "premium",
+    "business": "premium",        // alias guard
   };
   return planMap[planId] || "free";
 }

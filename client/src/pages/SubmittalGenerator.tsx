@@ -1,261 +1,400 @@
-import { Link } from 'wouter';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import VideoPlaceholder from '../components/VideoPlaceholder';
-import LeadCaptureForm from '../components/LeadCaptureForm';
-import { Card } from '../components/ui/card';
+/**
+ * SubmittalGenerator — /tools/submittal
+ *
+ * Search materials from the GreenChainz catalog, build a submittal queue,
+ * add project context, then download CSI 3-part spec sheet PDFs for each
+ * selected material via GET /api/materials/:id/spec-sheet
+ */
+
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import {
+  Search,
+  Plus,
+  X,
+  Download,
+  FileText,
+  Leaf,
+  CheckCircle2,
+  AlertCircle,
+  Package,
+  Loader2,
+  ChevronRight,
+} from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface MaterialResult {
+  id: number;
+  name: string;
+  category: string;
+  subcategory?: string | null;
+  gwpValue?: string | null;
+  hasEpd?: boolean | null;
+  manufacturerName?: string | null;
+}
+
+interface ProjectInfo {
+  projectName: string;
+  projectNumber: string;
+  specSection: string;
+  architectName: string;
+  contractorName: string;
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function SubmittalGenerator() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [queue, setQueue] = useState<MaterialResult[]>([]);
+  const [downloading, setDownloading] = useState<Set<number>>(new Set());
+  const [projectInfo, setProjectInfo] = useState<ProjectInfo>({
+    projectName: "",
+    projectNumber: "",
+    specSection: "",
+    architectName: "",
+    contractorName: "",
+  });
+
+  const debouncedQuery = useDebounce(searchQuery, 300);
+
+  const { data: searchData, isFetching } = trpc.materials.semanticSearch.useQuery(
+    { query: debouncedQuery, limit: 8 },
+    { enabled: debouncedQuery.trim().length >= 2 }
+  );
+
+  const results: MaterialResult[] = (searchData?.items ?? []).map((m: any) => ({
+    id: m.id,
+    name: m.name ?? m.productName ?? "Unknown",
+    category: m.category ?? "",
+    subcategory: m.subcategory,
+    gwpValue: m.gwpValue,
+    hasEpd: m.hasEpd,
+    manufacturerName: m.manufacturerName,
+  }));
+
+  const addToQueue = (mat: MaterialResult) => {
+    if (queue.find((q) => q.id === mat.id)) {
+      toast.info(`${mat.name} is already in your submittal queue.`);
+      return;
+    }
+    if (queue.length >= 20) {
+      toast.error("Max 20 materials per submittal package.");
+      return;
+    }
+    setQueue((prev) => [...prev, mat]);
+    setSearchQuery("");
+    toast.success(`Added ${mat.name}`);
+  };
+
+  const removeFromQueue = (id: number) => {
+    setQueue((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const downloadSpec = async (mat: MaterialResult) => {
+    setDownloading((prev) => new Set(prev).add(mat.id));
+    try {
+      const params = new URLSearchParams();
+      if (projectInfo.projectName) params.set("projectName", projectInfo.projectName);
+      if (projectInfo.projectNumber) params.set("projectNumber", projectInfo.projectNumber);
+      if (projectInfo.specSection) params.set("specSection", projectInfo.specSection);
+
+      const url = `/api/materials/${mat.id}/spec-sheet?${params.toString()}`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `SpecSheet-${mat.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toast.success(`Downloaded spec sheet for ${mat.name}`);
+    } catch {
+      toast.error(`Failed to download spec sheet for ${mat.name}`);
+    } finally {
+      setDownloading((prev) => {
+        const next = new Set(prev);
+        next.delete(mat.id);
+        return next;
+      });
+    }
+  };
+
+  const downloadAll = async () => {
+    if (queue.length === 0) return;
+    toast.info(`Generating ${queue.length} spec sheet${queue.length > 1 ? "s" : ""}…`);
+    for (const mat of queue) {
+      await downloadSpec(mat);
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      {/* Hero Section with Gradient */}
-      <section className="relative py-20 md:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[oklch(0.85_0.15_145)] via-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] opacity-10 animate-gradient"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,oklch(0.80_0.20_145_/_0.3),transparent_50%)]"></div>
-        
-        <div className="container relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <div className="inline-block px-4 py-2 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-sm mb-4">
-              <span className="text-sm font-semibold text-primary">AI-Powered Tool</span>
-            </div>
-            
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              Generate LEED Submittals{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[oklch(0.85_0.15_145)] to-[oklch(0.65_0.14_145)]">
-                in Minutes, Not Days
-              </span>
-            </h1>
-            
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Upload your material list. Our AI generates complete MR credit submittals with EPDs, calculations, and compliance narratives—ready to submit.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <a href="#signup" className="w-full sm:w-auto">
-                <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg bg-gradient-to-r from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] text-white hover:shadow-lg hover:scale-105 transition-all duration-300">
-                  Get Early Access
-                </button>
-              </a>
-              <a href="#demo" className="w-full sm:w-auto">
-                <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg border-2 border-primary/30 bg-background/50 backdrop-blur-sm hover:bg-primary/5 hover:border-primary/50 transition-all duration-300">
-                  Watch Demo
-                </button>
-              </a>
-            </div>
+      {/* Hero */}
+      <section className="py-16 border-b border-border bg-gradient-to-b from-background to-secondary/20">
+        <div className="container max-w-4xl mx-auto text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-sm font-semibold text-primary">
+            <FileText className="w-4 h-4" />
+            Submittal Generator
           </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+            CSI 3-Part Spec Sheets,{" "}
+            <span className="text-primary">Instant Download</span>
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Search the GreenChainz catalog, build your submittal queue, and download
+            formatted CSI spec sheets ready for your project package.
+          </p>
         </div>
       </section>
 
-      {/* Video Demo Section */}
-      <section id="demo" className="py-20 bg-secondary/30">
-        <div className="container">
-          <div className="max-w-5xl mx-auto">
-            <VideoPlaceholder
-              title="See Submittal Generator in Action"
-              description="Watch how we turn a material list into a complete LEED submittal package"
-              aspectRatio="16/9"
-            />
-          </div>
-        </div>
-      </section>
+      {/* Main */}
+      <main className="flex-1 container max-w-6xl mx-auto py-10">
+        <div className="grid lg:grid-cols-5 gap-8">
 
-      {/* Features Grid */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20"></div>
-        
-        <div className="container relative z-10">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Stop Drowning in Paperwork
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Automate the busywork. Focus on design.
-            </p>
-          </div>
+          {/* Left: Search + Queue */}
+          <div className="lg:col-span-3 space-y-6">
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {[
-              {
-                icon: '📝',
-                title: 'Auto-Fill Templates',
-                description: 'We populate LEED forms with material data, calculations, and compliance narratives.',
-                color: 'from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)]'
-              },
-              {
-                icon: '📎',
-                title: 'Attach EPDs',
-                description: 'Automatically bundle all required EPD PDFs and third-party certifications.',
-                color: 'from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)]'
-              },
-              {
-                icon: '🧮',
-                title: 'Show Your Work',
-                description: 'Detailed calculation sheets for MR credits—reviewers love transparency.',
-                color: 'from-[oklch(0.65_0.14_145)] to-[oklch(0.55_0.16_145)]'
-              },
-              {
-                icon: '✅',
-                title: 'Pre-Submission Check',
-                description: 'AI reviews your submittal for common errors before you upload to LEED Online.',
-                color: 'from-[oklch(0.80_0.20_145)] to-[oklch(0.70_0.12_145)]'
-              },
-              {
-                icon: '🔄',
-                title: 'Version Control',
-                description: 'Track changes across submittal revisions. Never lose an old version.',
-                color: 'from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)]'
-              },
-              {
-                icon: '📤',
-                title: 'Export to PDF',
-                description: 'One-click export to a single, bookmarked PDF ready for GBCI upload.',
-                color: 'from-[oklch(0.70_0.12_145)] to-[oklch(0.60_0.14_145)]'
-              }
-            ].map((feature, index) => (
-              <Card
-                key={index}
-                className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-xl hover:scale-105 transition-all duration-300 group"
-              >
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                  {feature.icon}
+            {/* Search */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Search Materials</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, category, or description…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                  {isFetching && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                  )}
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* How It Works */}
-      <section className="py-20 bg-secondary/30">
-        <div className="container">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center text-foreground mb-12">
-              Three Steps to Submittal Success
-            </h2>
-
-            <div className="space-y-8">
-              {[
-                {
-                  step: '01',
-                  title: 'Upload Your Data',
-                  description: 'Drop in your material list, BOM, or Revit export. We handle any format.',
-                  color: 'oklch(0.85_0.15_145)'
-                },
-                {
-                  step: '02',
-                  title: 'AI Does the Heavy Lifting',
-                  description: 'Our engine matches materials to EPDs, calculates credits, and writes narratives.',
-                  color: 'oklch(0.75_0.12_145)'
-                },
-                {
-                  step: '03',
-                  title: 'Review & Submit',
-                  description: 'Get a complete submittal package in minutes. Make edits if needed, then export.',
-                  color: 'oklch(0.65_0.14_145)'
-                }
-              ].map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-6 p-6 rounded-xl bg-card/60 backdrop-blur-md border border-border/50 hover:shadow-lg transition-all duration-300"
-                >
-                  <div
-                    className="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white"
-                    style={{ background: `linear-gradient(135deg, ${item.color}, oklch(0.55_0.16_145))` }}
-                  >
-                    {item.step}
+                {debouncedQuery.trim().length >= 2 && (
+                  <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
+                    {isFetching && results.length === 0 ? (
+                      Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="p-3 flex items-center gap-3">
+                          <Skeleton className="w-8 h-8 rounded" />
+                          <div className="flex-1 space-y-1">
+                            <Skeleton className="h-4 w-40" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
+                        </div>
+                      ))
+                    ) : results.length === 0 ? (
+                      <div className="p-4 text-sm text-muted-foreground text-center">
+                        No materials found for "{debouncedQuery}"
+                      </div>
+                    ) : (
+                      results.map((mat) => {
+                        const inQueue = queue.some((q) => q.id === mat.id);
+                        return (
+                          <button
+                            key={mat.id}
+                            onClick={() => addToQueue(mat)}
+                            disabled={inQueue}
+                            className="w-full text-left p-3 flex items-center gap-3 hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <Package className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{mat.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {mat.category}
+                                {mat.subcategory ? ` › ${mat.subcategory}` : ""}
+                                {mat.manufacturerName ? ` · ${mat.manufacturerName}` : ""}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {mat.hasEpd && (
+                                <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                                  EPD
+                                </Badge>
+                              )}
+                              {inQueue ? (
+                                <CheckCircle2 className="w-4 h-4 text-primary" />
+                              ) : (
+                                <Plus className="w-4 h-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-foreground mb-2">{item.title}</h3>
-                    <p className="text-muted-foreground">{item.description}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Queue */}
+            <Card>
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  Submittal Queue
+                  {queue.length > 0 && (
+                    <Badge className="bg-primary/10 text-primary border-primary/20">
+                      {queue.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+                {queue.length > 1 && (
+                  <Button size="sm" onClick={downloadAll} className="gap-1.5">
+                    <Download className="w-4 h-4" />
+                    Download All
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {queue.length === 0 ? (
+                  <div className="py-10 text-center space-y-2">
+                    <FileText className="w-10 h-10 text-muted-foreground/40 mx-auto" />
+                    <p className="text-sm text-muted-foreground">
+                      Search for materials above to add them to your submittal queue.
+                    </p>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Supported Credits */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20"></div>
-        
-        <div className="container relative z-10">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                Supported LEED Credits
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                We generate submittals for the credits that matter most.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                'MR Credit: Building Product Disclosure and Optimization - EPDs',
-                'MR Credit: Building Product Disclosure and Optimization - Sourcing',
-                'MR Credit: Building Product Disclosure and Optimization - Material Ingredients',
-                'MR Credit: Construction and Demolition Waste Management',
-                'MR Prerequisite: Storage and Collection of Recyclables',
-                'EQ Credit: Low-Emitting Materials'
-              ].map((credit, index) => (
-                <Card
-                  key={index}
-                  className="p-4 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-sm text-foreground">{credit}</span>
+                ) : (
+                  <div className="space-y-2">
+                    {queue.map((mat) => (
+                      <div
+                        key={mat.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50"
+                      >
+                        <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Leaf className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{mat.name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-xs text-muted-foreground">{mat.category}</span>
+                            {mat.hasEpd && (
+                              <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                                EPD
+                              </Badge>
+                            )}
+                            {mat.gwpValue && (
+                              <span className="text-xs text-muted-foreground">
+                                {mat.gwpValue} GWP
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => downloadSpec(mat)}
+                            disabled={downloading.has(mat.id)}
+                            className="gap-1.5 h-8 text-xs"
+                          >
+                            {downloading.has(mat.id) ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Download className="w-3 h-3" />
+                            )}
+                            PDF
+                          </Button>
+                          <button
+                            onClick={() => removeFromQueue(mat.id)}
+                            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Signup Section */}
-      <section id="signup" className="py-20 bg-secondary/30">
-        <div className="container">
-          <div className="max-w-2xl mx-auto">
-            <Card className="p-8 md:p-12 bg-card/80 backdrop-blur-lg border-border/50 shadow-2xl">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                  Join the Waitlist
-                </h2>
-                <p className="text-lg text-muted-foreground">
-                  Be among the first to get Submittal Generator when we launch. No credit card required.
-                </p>
-              </div>
-
-              <LeadCaptureForm toolName="Submittal Generator" />
-
-              <div className="mt-8 pt-8 border-t border-border/30">
-                <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    LEED v4.1 ready
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    Unlimited revisions
-                  </div>
-                </div>
-              </div>
+                )}
+              </CardContent>
             </Card>
           </div>
+
+          {/* Right: Project Info */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Project Information</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Optional — included in the generated PDF header.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { key: "projectName",    label: "Project Name",         placeholder: "123 Main St Office Tower" },
+                  { key: "projectNumber",  label: "Project Number",       placeholder: "2025-0042" },
+                  { key: "specSection",    label: "CSI Section",          placeholder: "03 30 00" },
+                  { key: "architectName",  label: "Architect of Record",  placeholder: "Smith & Associates AIA" },
+                  { key: "contractorName", label: "General Contractor",   placeholder: "BuildCo Inc." },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs">{label}</Label>
+                    <Input
+                      placeholder={placeholder}
+                      value={projectInfo[key as keyof ProjectInfo]}
+                      onChange={(e) =>
+                        setProjectInfo((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-foreground">
+                    Each PDF includes Part 1 (General), Part 2 (Products), and Part 3
+                    (Execution) in CSI MasterFormat structure.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-foreground">
+                    EPD data, GWP values, certifications, and manufacturer info are
+                    pre-populated from the verified catalog.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    Always review generated specs before including in contract documents.
+                    Licensed architect signature required for official submittals.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {queue.length > 0 && (
+              <Button className="w-full gap-2" size="lg" onClick={downloadAll}>
+                <Download className="w-4 h-4" />
+                Download {queue.length} Spec Sheet{queue.length > 1 ? "s" : ""}
+                <ChevronRight className="w-4 h-4 ml-auto" />
+              </Button>
+            )}
+          </div>
         </div>
-      </section>
+      </main>
 
       <Footer />
     </div>

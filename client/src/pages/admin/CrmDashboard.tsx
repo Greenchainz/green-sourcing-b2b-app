@@ -28,6 +28,13 @@ import {
   AlertCircle,
   ChevronRight,
   Zap,
+  Layers,
+  Eye,
+  Rocket,
+  Tag,
+  Gift,
+  Trash2,
+  Crown,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -484,6 +491,498 @@ function ScraperHealth() {
   );
 }
 
+// ─── Outreach Command Center ──────────────────────────────────────────────────
+
+const LAYERS = [
+  { id: "L1", label: "L1 · Liability & Code Compliance",    category: "concrete",    color: "bg-rose-500"    },
+  { id: "L2", label: "L2 · ROI & Whole Life Cost",          category: "insulation",  color: "bg-orange-500"  },
+  { id: "L3", label: "L3 · Schedule & Labor Productivity",  category: "framing",     color: "bg-amber-500"   },
+  { id: "L4", label: "L4 · Total Cost of Ownership",        category: "flooring",    color: "bg-yellow-500"  },
+  { id: "L5", label: "L5 · Scope 3 & ESG Reporting",        category: "steel",       color: "bg-green-500"   },
+  { id: "L6", label: "L6 · Infection Control & Durability", category: "glass",       color: "bg-teal-500"    },
+  { id: "L7", label: "L7 · LEED Docs & Cooperative",        category: "timber",      color: "bg-blue-500"    },
+] as const;
+
+type LayerId = typeof LAYERS[number]["id"];
+
+function OutreachCommandCenter() {
+  // ── Backfill ──────────────────────────────────────────────────────────────
+  const backfill = trpc.admin.backfillOutreachLayers.useMutation({
+    onSuccess: (r) => toast.success(`Tagged ${r.updated} / ${r.total} contacts with procurement layers`),
+    onError: (e) => toast.error(e.message),
+  });
+
+  // ── Batch enroll ──────────────────────────────────────────────────────────
+  const [batchStage, setBatchStage] = useState<string>("prospect");
+  const [batchReadiness, setBatchReadiness] = useState<string>("all");
+  const [batchCategory, setBatchCategory] = useState<string>("");
+
+  const enrollBatch = trpc.crm.outreach.enrollBatch.useMutation({
+    onSuccess: (r) => toast.success(`Enrolled ${r.enrolled} contacts`),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleBatchEnroll = () => {
+    enrollBatch.mutate({
+      filters: {
+        stage: batchStage !== "all" ? (batchStage as any) : undefined,
+        readinessLevel: batchReadiness !== "all" ? (batchReadiness as any) : undefined,
+        category: batchCategory || undefined,
+      },
+    });
+  };
+
+  // ── Email preview ─────────────────────────────────────────────────────────
+  const [previewLayer, setPreviewLayer] = useState<LayerId>("L1");
+  const [previewStep, setPreviewStep] = useState<1 | 2 | 3>(1);
+  const [previewCompany, setPreviewCompany] = useState("Acme Concrete");
+  const [previewCategory, setPreviewCategory] = useState("concrete");
+  const [showPreview, setShowPreview] = useState(false);
+
+  const preview = trpc.admin.previewOutreachEmail.useQuery(
+    { layer: previewLayer, step: previewStep, companyName: previewCompany, category: previewCategory },
+    { enabled: showPreview && !!previewCompany && !!previewCategory }
+  );
+
+  return (
+    <div className="space-y-6">
+
+      {/* 1 — Setup */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Tag className="w-4 h-4 text-primary" />
+            Step 1 — Tag Procurement Layers
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Auto-detect L1–L7 for every contact that hasn't been tagged yet. Run once after importing contacts.
+          </p>
+        </CardHeader>
+        <CardContent className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => backfill.mutate()}
+            disabled={backfill.isPending}
+          >
+            <Layers className={cn("w-4 h-4", backfill.isPending && "animate-spin")} />
+            {backfill.isPending ? "Tagging…" : "Backfill Layers"}
+          </Button>
+          {backfill.data && (
+            <span className="text-sm text-muted-foreground">
+              Last run: tagged <strong>{backfill.data.updated}</strong> of {backfill.data.total} contacts
+            </span>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 2 — Layer reference */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Rocket className="w-4 h-4 text-primary" />
+            Step 2 — Enroll by Segment
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Filter contacts and enroll them in the claim-profile drip sequence. Only contacts with an email are enrolled.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            {/* Stage filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Stage</label>
+              <Select value={batchStage} onValueChange={setBatchStage}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All stages</SelectItem>
+                  {STAGES.map((s) => (
+                    <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Readiness filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Readiness</label>
+              <Select value={batchReadiness} onValueChange={setBatchReadiness}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any readiness</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Category filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Category (keyword)</label>
+              <Input
+                placeholder="e.g. concrete, steel, timber"
+                value={batchCategory}
+                onChange={(e) => setBatchCategory(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+          </div>
+
+          <Button
+            className="gap-1.5"
+            onClick={handleBatchEnroll}
+            disabled={enrollBatch.isPending}
+          >
+            <Send className={cn("w-4 h-4", enrollBatch.isPending && "animate-spin")} />
+            {enrollBatch.isPending ? "Enrolling…" : "Enroll Matching Contacts"}
+          </Button>
+
+          {enrollBatch.data && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Enrolled {enrollBatch.data.enrolled} contacts in the claim-profile sequence
+            </div>
+          )}
+
+          {/* Quick layer tiles */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+            {LAYERS.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => {
+                  setBatchCategory(l.category);
+                  setBatchStage("prospect");
+                  setBatchReadiness("all");
+                }}
+                className="text-left p-2 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+              >
+                <div className={cn("w-2 h-2 rounded-full mb-1 inline-block", l.color)} />
+                <p className="text-xs font-medium leading-tight">{l.label}</p>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3 — Email preview */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Eye className="w-4 h-4 text-primary" />
+            Step 3 — Preview Layer Email
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Generate a preview of any layer × step combination before enrolling.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Layer</label>
+              <Select value={previewLayer} onValueChange={(v) => { setPreviewLayer(v as LayerId); setShowPreview(false); }}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LAYERS.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.id}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Step</label>
+              <Select value={String(previewStep)} onValueChange={(v) => { setPreviewStep(Number(v) as 1|2|3); setShowPreview(false); }}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Step 1 — Intro</SelectItem>
+                  <SelectItem value="2">Step 2 — Follow-up</SelectItem>
+                  <SelectItem value="3">Step 3 — Last call</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Sample Company</label>
+              <Input
+                value={previewCompany}
+                onChange={(e) => { setPreviewCompany(e.target.value); setShowPreview(false); }}
+                className="h-8 text-xs"
+                placeholder="Acme Concrete"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Category</label>
+              <Input
+                value={previewCategory}
+                onChange={(e) => { setPreviewCategory(e.target.value); setShowPreview(false); }}
+                className="h-8 text-xs"
+                placeholder="concrete"
+              />
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => setShowPreview(true)}
+            disabled={!previewCompany || !previewCategory}
+          >
+            <Eye className="w-4 h-4" />
+            Preview Email
+          </Button>
+
+          {showPreview && (
+            <div className="border border-border rounded-lg overflow-hidden">
+              {preview.isLoading && (
+                <div className="p-6 space-y-2">
+                  <Skeleton className="h-5 w-64" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-4/6" />
+                </div>
+              )}
+              {preview.error && (
+                <div className="p-4 flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="w-4 h-4" />
+                  {preview.error.message}
+                </div>
+              )}
+              {preview.data && (
+                <>
+                  <div className="px-4 py-2 bg-muted/50 border-b flex items-center justify-between">
+                    <div className="text-xs">
+                      <span className="font-medium">Subject: </span>
+                      <span className="text-muted-foreground">{preview.data.subject}</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {previewLayer} · Step {previewStep}
+                    </Badge>
+                  </div>
+                  <div
+                    className="p-4 text-sm max-h-96 overflow-y-auto prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: preview.data.html }}
+                  />
+                </>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Promo Grants ─────────────────────────────────────────────────────────────
+
+function PromoGrants() {
+  const [email, setEmail] = useState("");
+  const [tier, setTier] = useState<"premium" | "standard">("premium");
+  const [note, setNote] = useState("");
+  const [expiresAt, setExpiresAt] = useState(""); // YYYY-MM-DD
+
+  const { data: promos, isLoading, refetch } = trpc.admin.listPromos.useQuery();
+
+  const grant = trpc.admin.grantPromo.useMutation({
+    onSuccess: (r) => {
+      toast.success(`${r.tier} granted to ${email}`);
+      setEmail("");
+      setNote("");
+      setExpiresAt("");
+      void refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const revoke = trpc.admin.revokePromo.useMutation({
+    onSuccess: () => { toast.success("Promo revoked"); void refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleGrant = () => {
+    if (!email) return;
+    grant.mutate({
+      email,
+      tier,
+      note: note || undefined,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Grant form */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Gift className="w-4 h-4 text-primary" />
+            Grant Promo Access
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Give anyone premium (or standard) access for free. No billing required.
+            The user must already have a GreenChainz account.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1 md:col-span-1">
+              <label className="text-xs font-medium">User Email</label>
+              <Input
+                placeholder="architect@firm.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-8 text-sm"
+                type="email"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Tier</label>
+              <Select value={tier} onValueChange={(v) => setTier(v as "premium" | "standard")}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="premium">Premium — Unlimited everything</SelectItem>
+                  <SelectItem value="standard">Standard — 50 msg/mo, 10hr video</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Expires (optional)</label>
+              <Input
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                className="h-8 text-sm"
+                min={new Date().toISOString().split("T")[0]}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Internal Note (optional)</label>
+            <Input
+              placeholder="e.g. Early adopter — Smith & Associates"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+
+          <Button
+            onClick={handleGrant}
+            disabled={!email || grant.isPending}
+            className="gap-1.5"
+          >
+            <Crown className={cn("w-4 h-4", grant.isPending && "animate-spin")} />
+            {grant.isPending ? "Granting…" : `Grant ${tier === "premium" ? "Premium" : "Standard"}`}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Active promos table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            Active Promo Grants
+            {promos && promos.filter(p => p.status === "active").length > 0 && (
+              <Badge className="bg-primary/10 text-primary border-primary/20">
+                {promos.filter(p => p.status === "active").length}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
+          ) : !promos?.length ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              No promo grants yet. Use the form above to give someone free premium access.
+            </p>
+          ) : (
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">User</th>
+                    <th className="text-left px-3 py-2 font-medium">Tier</th>
+                    <th className="text-left px-3 py-2 font-medium">Status</th>
+                    <th className="text-left px-3 py-2 font-medium">Granted</th>
+                    <th className="text-left px-3 py-2 font-medium">Expires</th>
+                    <th className="px-3 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {promos.map((p) => (
+                    <tr key={p.id} className="border-t hover:bg-muted/30 transition-colors">
+                      <td className="px-3 py-2">
+                        <div className="font-medium">{p.name ?? "—"}</div>
+                        <div className="text-xs text-muted-foreground">{p.email}</div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge className={cn(
+                          "text-xs",
+                          p.tier === "premium" && "bg-purple-100 text-purple-800 border-purple-200",
+                          p.tier === "standard" && "bg-blue-100 text-blue-800 border-blue-200",
+                        )}>
+                          <Crown className="w-3 h-3 mr-1" />
+                          {p.tier}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full",
+                          p.status === "active" ? "bg-green-50 text-green-700" : "bg-zinc-100 text-zinc-500"
+                        )}>
+                          {p.status === "active"
+                            ? <CheckCircle2 className="w-3 h-3" />
+                            : <XCircle className="w-3 h-3" />}
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {new Date(p.startDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {p.endDate ? new Date(p.endDate).toLocaleDateString() : "Never"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {p.status === "active" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                            disabled={revoke.isPending}
+                            onClick={() => p.email && revoke.mutate({ email: p.email })}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Revoke
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CrmDashboard() {
@@ -512,6 +1011,12 @@ export default function CrmDashboard() {
           </TabsTrigger>
           <TabsTrigger value="scrapers" className="gap-1.5">
             <RefreshCw className="w-4 h-4" /> Scrapers
+          </TabsTrigger>
+          <TabsTrigger value="outreach" className="gap-1.5">
+            <Rocket className="w-4 h-4" /> Outreach
+          </TabsTrigger>
+          <TabsTrigger value="promos" className="gap-1.5">
+            <Gift className="w-4 h-4" /> Promos
           </TabsTrigger>
         </TabsList>
 
@@ -547,6 +1052,14 @@ export default function CrmDashboard() {
               <ScraperHealth />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="outreach" className="mt-4">
+          <OutreachCommandCenter />
+        </TabsContent>
+
+        <TabsContent value="promos" className="mt-4">
+          <PromoGrants />
         </TabsContent>
       </Tabs>
     </div>
