@@ -157,8 +157,8 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
       { role: "user" as const, content: userPrompt },
     ],
   });
-  const content = result.content;
-  return typeof content === "string" ? content : JSON.stringify(content);
+  const message = result.choices[0]?.message?.content;
+  return typeof message === "string" ? message : JSON.stringify(message ?? "");
 }
 
 // ---------------------------------------------------------------------------
