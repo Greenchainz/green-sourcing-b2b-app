@@ -114,7 +114,7 @@ export const suggestionsRouter = router({
     .input(z.object({ q: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
       const q = input.q.trim();
-      const db = getDb();
+      const db = await getDb();
 
       // 1. Static taxonomy match (instant, no DB hit)
       const staticMatches = MATERIAL_TYPES
@@ -125,6 +125,7 @@ export const suggestionsRouter = router({
       // 2. DB materials match
       let dbMatches: { label: string; sublabel?: string; badge?: string }[] = [];
       try {
+        if (!db) throw new Error("DB unavailable");
         const rows = await db
           .select({
             name: materials.name,
@@ -172,9 +173,10 @@ export const suggestionsRouter = router({
     .input(z.object({ q: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
       const q = input.q.trim();
-      const db = getDb();
+      const db = await getDb();
 
       try {
+        if (!db) throw new Error("DB unavailable");
         const rows = await db
           .selectDistinct({ category: materials.category })
           .from(materials)
@@ -235,9 +237,10 @@ export const suggestionsRouter = router({
     .input(z.object({ q: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
       const q = input.q.trim();
-      const db = getDb();
+      const db = await getDb();
 
       try {
+        if (!db) throw new Error("DB unavailable");
         const [mfrs, scraped] = await Promise.all([
           db
             .select({ name: manufacturers.name, category: manufacturers.category })
@@ -267,14 +270,4 @@ export const suggestionsRouter = router({
             seen.add(s.name.toLowerCase());
             results.push({
               label: s.name,
-              sublabel: [s.city, s.state].filter(Boolean).join(", ") || undefined,
-              badge: "supplier",
-            });
-          }
-        }
-        return results.slice(0, 8);
-      } catch {
-        return [];
-      }
-    }),
-});
+              sublabel: [s.city, s.state].filter(Boolean).join(", ") || u
