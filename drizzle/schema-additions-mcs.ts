@@ -44,6 +44,6 @@ export const architectSpecAssemblies = pgTable("architect_spec_assemblies", {
   rawRow:               json("raw_row"),
   matchedEpdMaterialId: integer("matched_epd_material_id"),
   matchConfidence:      decimal("match_confidence", { precision: 4, scale: 3 }),
+  description:          text("description"),
   createdAt:            timestamp("created_at").defaultNow(),
 });
-export type InsertArchitectSpecAssembly = InferInsertModel<typeof architectSpecAssemblies>;
