@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MaterialCard from "@/components/MaterialCard";
 import { Input } from "@/components/ui/input";
+import { MaterialTypeahead } from "@/components/ui/typeahead-variants";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { isCalgreenCompliant } from "@/lib/calgreen";
 
 const PAGE_SIZE = 24;
@@ -342,13 +343,16 @@ export default function MaterialSearchPage() {
       <div className="border-b bg-card/50 sticky top-0 z-10 backdrop-blur">
         <div className="container max-w-7xl py-3 flex gap-3 items-center">
           <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search materials, products, specs…"
-                className="pl-9"
+            <div className="flex-1">
+              <MaterialTypeahead
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={setInputValue}
+                onSelect={(item) => {
+                  setInputValue(item.label);
+                  patchFilters({ search: item.label });
+                }}
+                onClear={() => { setInputValue(""); patchFilters({ search: "" }); }}
+                placeholder="Search materials, products, specs…"
               />
             </div>
             <Button type="submit" className="bg-green-600 hover:bg-green-700 shrink-0">Search</Button>

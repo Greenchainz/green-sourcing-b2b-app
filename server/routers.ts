@@ -6,6 +6,7 @@ import { supplierRfqRouter } from './supplier-rfq-router';
 import { subscriptionRouter } from './subscription-router';
 import { adminRouter } from './admin-router';
 import { conciergeRouter } from './concierge-router';
+import { suggestionsRouter } from './routers/suggestions-router';
 import { ec3Router } from './routers/ec3-router';
 import { materialSpecRouter } from './routers/material-spec-router';
 import { materialSwapRouter } from './routers/material-swap-router';
@@ -73,6 +74,7 @@ export const appRouter = router({
   microsoftSubscription: microsoftSubscriptionRouter,
   notifications: notificationsRouter,
   concierge: conciergeRouter,
+  suggestions: suggestionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

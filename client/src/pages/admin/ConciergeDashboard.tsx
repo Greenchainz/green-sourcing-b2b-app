@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaterialTypeahead } from "@/components/ui/typeahead-variants";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -691,13 +692,12 @@ export default function ConciergeDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Input
+                <MaterialTypeahead
                   placeholder="e.g. cast-in-place concrete, TPO roofing…"
                   value={materialType}
-                  onChange={(e) => {
-                    setMaterialType(e.target.value);
-                    setSelectedSupplier(null);
-                  }}
+                  onChange={(v) => { setMaterialType(v); setSelectedSupplier(null); }}
+                  onSelect={(item) => { setMaterialType(item.label); setSelectedSupplier(null); }}
+                  clearable
                   className="mb-4"
                 />
                 <SupplierMatchCards
