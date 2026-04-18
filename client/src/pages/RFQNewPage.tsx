@@ -13,6 +13,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LocationTypeahead, CompanyTypeahead } from "@/components/ui/typeahead-variants";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -354,11 +355,17 @@ export default function RFQNewPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="projectCity">City *</Label>
-                    <Input
+                    <LocationTypeahead
                       id="projectCity"
                       placeholder="San Francisco"
-                      {...register("projectCity")}
-                      className={errors.projectCity ? "border-red-500" : ""}
+                      value={formValues.projectCity ?? ""}
+                      onChange={(v) => setValue("projectCity", v, { shouldValidate: true })}
+                      onSelect={(item) => {
+                        // Extract city name before the comma
+                        const city = item.label.split(",")[0].trim();
+                        setValue("projectCity", city, { shouldValidate: true });
+                      }}
+                      inputClassName={errors.projectCity ? "border-red-500" : ""}
                     />
                     {errors.projectCity && <p className="text-xs text-red-500">{errors.projectCity.message}</p>}
                   </div>
@@ -536,10 +543,12 @@ export default function RFQNewPage() {
                   )}
 
                   {/* Search */}
-                  <Input
+                  <CompanyTypeahead
                     placeholder="Search suppliers…"
                     value={supplierSearch}
-                    onChange={(e) => setSupplierSearch(e.target.value)}
+                    onChange={setSupplierSearch}
+                    onSelect={(item) => setSupplierSearch(item.label)}
+                    clearable
                   />
 
                   {/* Selected chips */}

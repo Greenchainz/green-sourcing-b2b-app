@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LocationTypeahead } from "@/components/ui/typeahead-variants";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -89,7 +90,7 @@ export default function RfqCart() {
             <Card><CardHeader><CardTitle className="text-sm">Project Details</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div><Label className="text-xs">Project Name *</Label><Input value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g., Downtown Office Tower" className="mt-1" /></div>
-                <div><Label className="text-xs">Location</Label><Input value={projectLocation} onChange={(e) => setProjectLocation(e.target.value)} placeholder="e.g., Austin, TX" className="mt-1" /></div>
+                <div><Label className="text-xs">Location</Label><LocationTypeahead value={projectLocation} onChange={setProjectLocation} onSelect={(item) => setProjectLocation(item.label)} placeholder="e.g., Austin, TX" className="mt-1" /></div>
                 <div><Label className="text-xs">Project Type</Label><Input value={projectType} onChange={(e) => setProjectType(e.target.value)} placeholder="e.g., Commercial, Residential" className="mt-1" /></div>
                 <div><Label className="text-xs">Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Special requirements, timeline, etc." className="mt-1" rows={3} /></div>
               </CardContent>
