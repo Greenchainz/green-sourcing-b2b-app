@@ -22,6 +22,7 @@ import { getDb } from "../lib/db";
 import { sql } from "drizzle-orm";
 import { sendEmail } from "./email-service";
 import { isEmailSuppressed } from "./zeptomail-webhook";
+import { generateSupplierEmail } from "./personas";
 
 const OUTREACH_RATE_LIMIT = 50; // max emails per pipeline run
 const MIN_HOURS_BETWEEN_OUTREACH = 72; // don't re-email same supplier within 3 days
@@ -141,21 +142,24 @@ export async function runScraperOutreachPipeline(): Promise<{
     const signupUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/supplier/register?utm_source=scraper&utm_medium=email&utm_campaign=outreach&rfq=${bestRfq.id}`;
     const rfqUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/rfqs/${bestRfq.id}?utm_source=scraper&utm_medium=email`;
 
-    const html = generateOutreachEmail({
-      companyName: supplier.company_name,
-      projectName: bestRfq.project_name,
-      projectLocation: bestRfq.project_location,
-      materialCount: Number(bestRfq.material_count),
-      dueDate: bestRfq.due_date,
-      rfqUrl,
-      signupUrl,
-    });
+    // 7-layer persona-aware supplier email generation
+    const personaEmail = await generateSupplierEmail(
+      {
+        company_name: supplier.company_name,
+        email: supplier.email,
+        city: supplier.city,
+        state: supplier.state,
+        source: supplier.source,
+      },
+      signupUrl
+    );
+    console.log(`[outreach] persona=${personaEmail.personaDetected} driver=${personaEmail.driver} conf=${personaEmail.confidence.toFixed(2)} llm=${personaEmail.usedLLM}`);
 
     const success = await sendEmail({
       to: supplier.email,
-      subject: `New RFQ opportunity: ${bestRfq.project_name} — GreenChainz`,
-      html,
-      text: `Hi ${supplier.company_name},\n\nA buyer on GreenChainz is looking for sustainable building materials for their project: ${bestRfq.project_name} (${bestRfq.project_location}).\n\nView the RFQ and submit your bid: ${rfqUrl}\n\nNot on GreenChainz yet? Sign up free: ${signupUrl}\n\n— The GreenChainz Team\n\nUnsubscribe: https://greenchainz.com/unsubscribe?email=${encodeURIComponent(supplier.email)}`,
+      subject: personaEmail.subject,
+      html: personaEmail.html,
+      text: personaEmail.text,
     });
 
     if (success) {
