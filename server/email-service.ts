@@ -1,10 +1,14 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 /**
- * Email Service — Resend.com transactional email
- * Env var: RESEND_API_KEY
- * From:    noreply@greenchainz.com (domain must be verified in Resend dashboard)
+ * Email Service
+ * Primary:  Resend (RESEND_API_KEY)
+ * Fallback: Zeptomail SMTP (ZEPTOMAIL_SMTP_USER / ZEPTOMAIL_SMTP_PASSWORD)
+ * From:     noreply@updates.greenchainz.com (must be verified in both providers)
  */
+
+const FROM_ADDRESS = "GreenChainz <noreply@updates.greenchainz.com>";
 
 interface EmailOptions {
   to: string;
@@ -13,33 +17,68 @@ interface EmailOptions {
   text?: string;
 }
 
-export async function sendEmail(options: EmailOptions): Promise<boolean> {
+/** Send via Zeptomail SMTP. Returns true on success. */
+async function sendViaZeptomail(options: EmailOptions): Promise<boolean> {
+  const user = process.env.ZEPTOMAIL_SMTP_USER;
+  const pass = process.env.ZEPTOMAIL_SMTP_PASSWORD;
+  if (!user || !pass) {
+    console.warn("[email/zeptomail] ZEPTOMAIL_SMTP_USER or ZEPTOMAIL_SMTP_PASSWORD not set");
+    return false;
+  }
+
+  const transport = nodemailer.createTransport({
+    host: "smtp.zeptomail.com",
+    port: 587,
+    secure: false,
+    auth: { user, pass },
+  });
+
   try {
-    const key = process.env.RESEND_API_KEY;
-    if (!key) {
-      console.warn("[email] RESEND_API_KEY not set — skipping send");
-      return false;
-    }
-    const resend = new Resend(key);
-    const { error } = await resend.emails.send({
-      from: "GreenChainz <noreply@updates.greenchainz.com>",
+    await transport.sendMail({
+      from: FROM_ADDRESS,
       to: options.to,
       subject: options.subject,
       html: options.html,
       text: options.text,
     });
-
-    if (error) {
-      console.error("[email] Resend error:", error);
-      return false;
-    }
-
-    console.log(`[email] Sent to ${options.to}: ${options.subject}`);
+    console.log(`[email/zeptomail] Sent to ${options.to}: ${options.subject}`);
     return true;
-  } catch (error) {
-    console.error("[email] Failed to send:", error);
+  } catch (err) {
+    console.error("[email/zeptomail] Failed:", err);
     return false;
   }
+}
+
+export async function sendEmail(options: EmailOptions): Promise<boolean> {
+  // ── Primary: Resend ──────────────────────────────────────────────────────
+  const key = process.env.RESEND_API_KEY;
+  if (key) {
+    try {
+      const resend = new Resend(key);
+      const { error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+      });
+
+      if (!error) {
+        console.log(`[email/resend] Sent to ${options.to}: ${options.subject}`);
+        return true;
+      }
+      console.error("[email/resend] Error:", error);
+    } catch (err) {
+      console.error("[email/resend] Exception:", err);
+    }
+    // Fall through to Zeptomail
+    console.warn("[email] Resend failed — trying Zeptomail fallback");
+  } else {
+    console.warn("[email] RESEND_API_KEY not set — trying Zeptomail fallback");
+  }
+
+  // ── Fallback: Zeptomail SMTP ─────────────────────────────────────────────
+  return sendViaZeptomail(options);
 }
 
 /**

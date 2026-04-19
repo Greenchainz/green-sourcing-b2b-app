@@ -58,8 +58,17 @@ export async function notifyOwner(
 ): Promise<boolean> {
   const { title, content } = validatePayload(payload);
 
-  // Stub: log to console until Azure notification channel is wired in
-  console.log(`[notifyOwner] STUB — title: "${title}" | content: "${content}"`);
-
-  return true;
+  try {
+    const { sendEmail } = await import("../email-service");
+    const ok = await sendEmail({
+      to: "founder@greenchainz.com",
+      subject: title,
+      html: `<p>${content.replace(/\n/g, "<br>")}</p>`,
+    });
+    if (!ok) console.warn(`[notifyOwner] Email delivery failed — title: "${title}"`);
+    return ok;
+  } catch (err) {
+    console.error("[notifyOwner] Failed to send owner email:", err);
+    return false;
+  }
 }

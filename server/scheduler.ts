@@ -24,14 +24,25 @@ export async function startSchedulers(): Promise<void> {
     const { transformEC3Batch } = await import('./ec3-transform');
     const { getDb } = await import('./db');
     const { materials } = await import('../drizzle/schema');
-    const { inArray, eq } = await import('drizzle-orm');
+    const { inArray, eq, isNotNull } = await import('drizzle-orm');
 
-    const EC3_SYNC_CATEGORIES = ['Concrete', 'Steel', 'Wood', 'Insulation', 'Glass', 'Aluminum', 'Masonry', 'Roofing'];
+    const FALLBACK_EC3_CATEGORIES = ['Concrete', 'Steel', 'Wood', 'Insulation', 'Glass', 'Aluminum', 'Masonry', 'Roofing'];
 
     const runEC3Sync = async () => {
       console.log('[EC3 Sync] Starting scheduled sync...');
       const db = await getDb();
       if (!db) { console.error('[EC3 Sync] No DB connection'); return; }
+
+      // Derive categories from existing materials; fall back to hardcoded seed list on a fresh DB.
+      const categoryRows = await db
+        .selectDistinct({ category: materials.category })
+        .from(materials)
+        .where(isNotNull(materials.category));
+      const dynamicCategories = categoryRows
+        .map((r: { category: string | null }) => r.category)
+        .filter((c: string | null): c is string => Boolean(c));
+      const EC3_SYNC_CATEGORIES = dynamicCategories.length > 0 ? dynamicCategories : FALLBACK_EC3_CATEGORIES;
+      console.log(`[EC3 Sync] Syncing ${EC3_SYNC_CATEGORIES.length} categories: ${EC3_SYNC_CATEGORIES.join(', ')}`);
 
       let totalCreated = 0;
       let totalUpdated = 0;

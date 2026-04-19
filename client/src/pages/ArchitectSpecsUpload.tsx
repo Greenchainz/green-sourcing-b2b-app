@@ -82,8 +82,13 @@ export default function ArchitectSpecsUpload() {
         [chosenCode, chosenLabel, structuralOption, gwp ?? "", manufacturer, product],
       ];
       const csv = rows.map(r => r.map(String).join(",")).join("\n");
-      const buffer = new TextEncoder().encode(csv);
-      const base64  = btoa(String.fromCharCode(...buffer));
+      const bytes = new TextEncoder().encode(csv);
+      let binary = "";
+      const chunk = 8192;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const base64 = btoa(binary);
 
       // Use a placeholder blob URL — parser will use the buffer directly
       const blobUrl = `data:text/csv;base64,${base64}`;
@@ -115,7 +120,13 @@ export default function ArchitectSpecsUpload() {
     setProgress(25);
     try {
       const buffer = await file.arrayBuffer();
-      const base64  = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      const chunk = 8192;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const base64 = btoa(binary);
       setProgress(50);
 
       const uploadResult = await uploadFile.mutateAsync({

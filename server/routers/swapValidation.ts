@@ -5,11 +5,11 @@
  */
 
 import { z } from 'zod';
-import { publicProcedure, router } from '../_core/trpc';
+import { publicProcedure, protectedProcedure, router } from '../_core/trpc';
 import { validateSwap, type MaterialSpec } from '../services/swapValidationService';
 import { getDb } from '../db';
 import { materialTechnicalSpecs, swapValidations, materials } from '../../drizzle/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 
 type TechSpecRow = typeof materialTechnicalSpecs.$inferSelect;
 
@@ -421,5 +421,103 @@ export const swapValidationRouter = router({
         validationStatus: validation.validationStatus,
         overallScore: parseFloat(validation.overallScore as string),
       };
+    }),
+
+  /**
+   * List all EXPERIMENTAL swaps pending human review, joined with material names.
+   * Admin-only in practice — caller should check role before exposing in UI.
+   */
+  listExperimental: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database unavailable');
+
+    const rows = await db
+      .select()
+      .from(swapValidations)
+      .where(eq(swapValidations.validationStatus, 'EXPERIMENTAL'))
+      .orderBy(desc(swapValidations.validatedAt));
+
+    if (rows.length === 0) return [];
+
+    // Collect all unique material IDs and fetch names in one query
+    const allMatIds = [...new Set([
+      ...rows.map(r => r.incumbentMaterialId),
+      ...rows.map(r => r.sustainableMaterialId),
+    ])];
+
+    const matNames = await db
+      .select({ id: materials.id, name: materials.name, category: materials.category })
+      .from(materials)
+      .where(inArray(materials.id, allMatIds));
+
+    const nameById = Object.fromEntries(matNames.map(m => [m.id, m]));
+
+    return rows.map(r => ({
+      id: r.id,
+      validationStatus: r.validationStatus,
+      overallScore: parseFloat(r.overallScore as string),
+      recommendation: r.recommendation,
+      carbonReductionPercentage: r.carbonReductionPercentage
+        ? parseFloat(r.carbonReductionPercentage as string)
+        : null,
+      costDeltaPercentage: r.costDeltaPercentage
+        ? parseFloat(r.costDeltaPercentage as string)
+        : null,
+      validatedAt: r.validatedAt,
+      expiresAt: r.expiresAt,
+      incumbentMaterialId: r.incumbentMaterialId,
+      sustainableMaterialId: r.sustainableMaterialId,
+      incumbentName: nameById[r.incumbentMaterialId]?.name ?? `Material ${r.incumbentMaterialId}`,
+      incumbentCategory: nameById[r.incumbentMaterialId]?.category ?? null,
+      sustainableName: nameById[r.sustainableMaterialId]?.name ?? `Material ${r.sustainableMaterialId}`,
+      sustainableCategory: nameById[r.sustainableMaterialId]?.category ?? null,
+    }));
+  }),
+
+  /**
+   * Move an EXPERIMENTAL swap to APPROVED or REJECTED.
+   * Prepends the reviewer note + decision stamp to the existing recommendation.
+   */
+  reviewSwap: protectedProcedure
+    .input(
+      z.object({
+        validationId: z.number().int().positive(),
+        decision: z.enum(['APPROVED', 'REJECTED']),
+        note: z.string().max(1000).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database unavailable');
+
+      const [existing] = await db
+        .select({ validationStatus: swapValidations.validationStatus, recommendation: swapValidations.recommendation })
+        .from(swapValidations)
+        .where(eq(swapValidations.id, input.validationId))
+        .limit(1);
+
+      if (!existing) throw new Error(`Validation ID ${input.validationId} not found`);
+      if (existing.validationStatus !== 'EXPERIMENTAL') {
+        throw new Error(`Swap ${input.validationId} is ${existing.validationStatus}, not EXPERIMENTAL — cannot review`);
+      }
+
+      const stamp = [
+        `[${input.decision} by user ${ctx.user.id} on ${new Date().toISOString()}]`,
+        input.note ? `Reviewer note: ${input.note}` : null,
+        '---',
+      ].filter(Boolean).join('\n');
+
+      const updatedRecommendation = `${stamp}\n${existing.recommendation}`;
+
+      await db
+        .update(swapValidations)
+        .set({
+          validationStatus: input.decision,
+          recommendation: updatedRecommendation,
+          updatedAt: new Date(),
+        })
+        .where(eq(swapValidations.id, input.validationId));
+
+      return { success: true, validationId: input.validationId, decision: input.decision };
     }),
 });

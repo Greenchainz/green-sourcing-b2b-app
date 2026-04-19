@@ -1,5 +1,5 @@
 import { getDb } from "./db";
-import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, notifications, rfqAnalytics, materials } from "../drizzle/schema";
+import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, notifications, rfqAnalytics, materials, users } from "../drizzle/schema";
 import { eq, and, or, gte, lte, desc, sql } from "drizzle-orm";
 import { calculateCcps, personaToWeights } from "./ccps-engine";
 import type { PersonaWeights } from "./ccps-engine";
@@ -386,8 +386,68 @@ export async function sendMessage(threadId: number, senderId: number, senderType
   // Update thread's lastMessageAt
   await db.update(rfqThreads).set({ lastMessageAt: new Date() }).where(eq(rfqThreads.id, threadId)).execute();
 
-  // Notify the other party (skip for now - userId mapping needed)
-  // TODO: Send notification when message is received
+  // Notify the other party via email (fire-and-forget)
+  void (async () => {
+    try {
+      const [thread] = await db
+        .select()
+        .from(rfqThreads)
+        .where(eq(rfqThreads.id, threadId))
+        .execute();
+
+      if (!thread) return;
+
+      const { sendNewMessageEmail } = await import("./email-service");
+
+      if (senderType === "buyer") {
+        const [buyer] = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, thread.buyerId))
+          .execute();
+
+        const [supplier] = await db
+          .select({ email: suppliers.email, companyName: suppliers.companyName })
+          .from(suppliers)
+          .where(eq(suppliers.id, thread.supplierId))
+          .execute();
+
+        if (buyer && supplier?.email) {
+          await sendNewMessageEmail({
+            recipientEmail: supplier.email,
+            recipientName: supplier.companyName,
+            senderName: buyer.name || "Buyer",
+            messagePreview: content.slice(0, 200),
+            conversationId: threadId,
+          });
+        }
+      } else {
+        const [supplier] = await db
+          .select({ companyName: suppliers.companyName })
+          .from(suppliers)
+          .where(eq(suppliers.id, thread.supplierId))
+          .execute();
+
+        const [buyer] = await db
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.id, thread.buyerId))
+          .execute();
+
+        if (supplier && buyer?.email) {
+          await sendNewMessageEmail({
+            recipientEmail: buyer.email,
+            recipientName: buyer.name || "Buyer",
+            senderName: supplier.companyName,
+            messagePreview: content.slice(0, 200),
+            conversationId: threadId,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[rfq] Failed to send message notification:", err);
+    }
+  })();
 
   return { messageId };
 }
