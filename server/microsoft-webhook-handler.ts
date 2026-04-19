@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { createHmac, timingSafeEqual } from "crypto";
 import {
   activateSubscription,
   renewSubscription,
@@ -78,6 +79,11 @@ async function findOrCreateUserByEmail(email: string, microsoftObjectId: string)
  * Handle Microsoft Marketplace webhook events
  */
 export async function handleMicrosoftWebhook(req: Request, res: Response): Promise<void> {
+  if (!verifyMicrosoftWebhookSignature(req)) {
+    res.status(401).json({ error: "Invalid webhook signature" });
+    return;
+  }
+
   try {
     const payload = req.body as SubscriptionWebhookPayload;
 
@@ -152,17 +158,39 @@ export async function handleMicrosoftWebhook(req: Request, res: Response): Promi
 }
 
 /**
- * Verify Microsoft webhook signature (optional, for production)
- * 
- * Microsoft signs webhook requests with a shared secret.
- * You can verify the signature to ensure the request is authentic.
- * 
- * For now, this is a placeholder. Implement when you have credentials.
+ * Verify Microsoft Marketplace webhook signature.
+ *
+ * Microsoft signs webhook payloads with HMAC-SHA256 using the shared secret
+ * configured in Partner Center → Technical Configuration → Webhook.
+ * The signature is base64-encoded and sent in the `x-ms-signature` header.
+ *
+ * If MICROSOFT_WEBHOOK_SECRET is not set the check is skipped (dev mode).
  */
 export function verifyMicrosoftWebhookSignature(req: Request): boolean {
-  // TODO: Implement signature verification when Microsoft credentials are available
-  // const signature = req.headers['x-ms-signature'];
-  // const secret = process.env.MICROSOFT_WEBHOOK_SECRET;
-  // Verify signature using HMAC-SHA256
-  return true; // For now, accept all requests
+  const secret = process.env.MICROSOFT_WEBHOOK_SECRET;
+  if (!secret) {
+    console.warn("[MS Webhook] MICROSOFT_WEBHOOK_SECRET not set — skipping signature check");
+    return true;
+  }
+
+  const signature = req.headers["x-ms-signature"] as string | undefined;
+  if (!signature) {
+    console.error("[MS Webhook] Missing x-ms-signature header");
+    return false;
+  }
+
+  const rawBody: Buffer | undefined = (req as any).rawBody;
+  if (!rawBody) {
+    console.error("[MS Webhook] Raw body unavailable — cannot verify signature");
+    return false;
+  }
+
+  const expected = createHmac("sha256", secret).update(rawBody).digest("base64");
+
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch {
+    // Buffers differ in length — definitely not equal
+    return false;
+  }
 }

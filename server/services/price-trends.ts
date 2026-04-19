@@ -360,3 +360,77 @@ export function getLegacyPriceTrend(category: string): LegacyPriceTrend | null {
 export function getAllPriceTrends(): Record<string, LegacyPriceTrend> {
   return { ...PRICE_TRENDS };
 }
+
+// ─── DB-backed category trend queries ────────────────────────────────────────
+
+/**
+ * Compute YoY price change per category from price_history + materials.
+ * Falls back to seed data for categories with insufficient DB history.
+ */
+export async function getAllPriceTrendsFromDb(): Promise<Record<string, LegacyPriceTrend>> {
+  type Row = { category: string; first_price: string; last_price: string; last_date: string };
+  const rows = await queryMany<Row>(
+    `SELECT m.category,
+            MIN(ph."avgPrice")::TEXT AS first_price,
+            MAX(ph."avgPrice")::TEXT AS last_price,
+            MAX(ph."recordDate")::TEXT AS last_date
+       FROM price_history ph
+       JOIN materials m ON m.id = ph."materialId"
+      WHERE ph."recordDate" >= CURRENT_DATE - INTERVAL '1 year'
+        AND m.category IS NOT NULL
+      GROUP BY m.category
+     HAVING COUNT(*) >= 2`,
+    []
+  );
+
+  // If DB has no data yet, return seed
+  if (rows.length === 0) return getAllPriceTrends();
+
+  const result: Record<string, LegacyPriceTrend> = {};
+  for (const row of rows) {
+    const first = parseFloat(row.first_price);
+    const last = parseFloat(row.last_price);
+    const yoyChange = first > 0 ? parseFloat((((last - first) / first) * 100).toFixed(1)) : 0;
+    const direction: 'up' | 'down' | 'flat' = yoyChange > 1 ? 'up' : yoyChange < -1 ? 'down' : 'flat';
+    const lastUpdated = row.last_date.slice(0, 7);
+    const seed = getLegacyPriceTrend(row.category);
+    result[row.category] = { yoyChange, direction, lastUpdated, seriesId: seed?.seriesId ?? '' };
+  }
+
+  // Merge seed data for categories not represented in DB
+  for (const [cat, trend] of Object.entries(PRICE_TRENDS)) {
+    if (!result[cat]) result[cat] = trend;
+  }
+
+  return result;
+}
+
+/**
+ * Compute YoY price change for a single category from price_history.
+ * Falls back to seed data when DB has no history for that category.
+ */
+export async function getPriceTrendByCategory(category: string): Promise<LegacyPriceTrend | null> {
+  type Row = { first_price: string; last_price: string; last_date: string };
+  const rows = await queryMany<Row>(
+    `SELECT MIN(ph."avgPrice")::TEXT AS first_price,
+            MAX(ph."avgPrice")::TEXT AS last_price,
+            MAX(ph."recordDate")::TEXT AS last_date
+       FROM price_history ph
+       JOIN materials m ON m.id = ph."materialId"
+      WHERE ph."recordDate" >= CURRENT_DATE - INTERVAL '1 year'
+        AND LOWER(m.category) = LOWER($1)
+     HAVING COUNT(*) >= 2`,
+    [category]
+  );
+
+  if (rows.length === 0) return getLegacyPriceTrend(category);
+
+  const row = rows[0];
+  const first = parseFloat(row.first_price);
+  const last = parseFloat(row.last_price);
+  const yoyChange = first > 0 ? parseFloat((((last - first) / first) * 100).toFixed(1)) : 0;
+  const direction: 'up' | 'down' | 'flat' = yoyChange > 1 ? 'up' : yoyChange < -1 ? 'down' : 'flat';
+  const lastUpdated = row.last_date.slice(0, 7);
+  const seed = getLegacyPriceTrend(category);
+  return { yoyChange, direction, lastUpdated, seriesId: seed?.seriesId ?? '' };
+}

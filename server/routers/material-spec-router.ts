@@ -36,6 +36,9 @@ import { publicProcedure, protectedProcedure, router } from '../_core/trpc';
 import { TRPCError } from '@trpc/server';
 import { queryMany, queryOne } from '../../lib/pg-pool';
 import { enforceAndTrack } from '../usage-tracking-service';
+import { getDb } from '../db';
+import { materialSpecs } from '../../drizzle/schema';
+import { storagePut } from '../storage';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -331,55 +334,149 @@ export const materialSpecRouter = router({
     }),
 
   /**
-   * Submit a new material spec entry (supplier submitting a material for review).
-   * Creates or updates a material record associated with a supplier.
+   * Upload a supporting document (datasheet, spec sheet) to blob storage.
+   * Returns the public URL to store on the spec record.
+   */
+  uploadFile: protectedProcedure
+    .input(
+      z.object({
+        fileBufferBase64: z.string().min(1),
+        originalFilename: z.string().min(1),
+        mimeType: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const buffer = Buffer.from(input.fileBufferBase64, "base64");
+      const path = `supplier-specs/${ctx.user.id}/${Date.now()}-${input.originalFilename}`;
+      const mimeType = input.mimeType ?? "application/octet-stream";
+
+      try {
+        const { url } = await storagePut(path, buffer, mimeType);
+        return { success: true, url };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `File upload failed: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    }),
+
+  /**
+   * Submit a new material spec for admin review. Inserts a row into
+   * material_specs with status "pending" — does NOT touch the materials table.
    */
   submit: protectedProcedure
     .input(
       z.object({
         materialId: z.number().int(),
         supplierId: z.number().int(),
+        // Compliance
+        fireRating: z.string().optional(),
+        fireRatingStandard: z.string().optional(),
+        rValue: z.number().optional(),
+        thermalUValue: z.number().optional(),
+        compressiveStrength: z.string().optional(),
+        tensileStrength: z.string().optional(),
+        astmStandards: z.array(z.string()).optional(),
+        meetsTitle24: z.boolean().optional(),
+        meetsIecc: z.boolean().optional(),
+        buildingCodes: z.array(z.string()).optional(),
+        // Cost
         pricePerUnit: z.number().optional(),
         priceUnit: z.string().optional(),
+        minimumOrderQuantity: z.number().int().optional(),
+        moqUnit: z.string().optional(),
+        bulkDiscountAvailable: z.boolean().optional(),
+        // Supply chain
         leadTimeDays: z.number().int().optional(),
-        recycledContentPct: z.number().optional(),
+        manufacturingLocation: z.string().optional(),
+        usManufactured: z.boolean().optional(),
+        regionalAvailabilityMiles: z.number().int().optional(),
+        shippingRegions: z.array(z.string()).optional(),
+        inStock: z.boolean().optional(),
+        stockQuantity: z.number().int().optional(),
+        // Health
+        vocLevel: z.string().optional(),
+        vocCertification: z.string().optional(),
+        onRedList: z.boolean().optional(),
+        toxicityRating: z.string().optional(),
+        indoorAirQualityRating: z.string().optional(),
+        // Certifications
         hasEpd: z.boolean().optional(),
         hasHpd: z.boolean().optional(),
         hasFsc: z.boolean().optional(),
         hasC2c: z.boolean().optional(),
         hasGreenguard: z.boolean().optional(),
         hasDeclare: z.boolean().optional(),
+        certificationUrls: z.record(z.string()).optional(),
+        // Documents
+        datasheetUrl: z.string().url().optional(),
+        specSheetUrl: z.string().url().optional(),
+        testReportUrls: z.array(z.string().url()).optional(),
+        // Additional
         notes: z.string().optional(),
+        recycledContentPct: z.number().optional(),
+        warrantyYears: z.number().int().optional(),
+        expectedLifecycleYears: z.number().int().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       await enforceAndTrack(input.supplierId, "rfq_submission");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      const updates: string[] = ['"updatedAt" = NOW()'];
-      const params: unknown[] = [];
-      let idx = 1;
+      const [row] = await db
+        .insert(materialSpecs)
+        .values({
+          materialId: input.materialId,
+          supplierId: input.supplierId,
+          submittedBy: ctx.user.id,
+          status: "pending",
+          fireRating: input.fireRating,
+          fireRatingStandard: input.fireRatingStandard,
+          rValue: input.rValue?.toString(),
+          thermalUValue: input.thermalUValue?.toString(),
+          compressiveStrength: input.compressiveStrength,
+          tensileStrength: input.tensileStrength,
+          astmStandards: input.astmStandards ? input.astmStandards.join(",") : undefined,
+          meetsTitle24: input.meetsTitle24,
+          meetsIecc: input.meetsIecc,
+          buildingCodes: input.buildingCodes ? input.buildingCodes.join(",") : undefined,
+          pricePerUnit: input.pricePerUnit?.toString(),
+          priceUnit: input.priceUnit,
+          minimumOrderQuantity: input.minimumOrderQuantity,
+          moqUnit: input.moqUnit,
+          bulkDiscountAvailable: input.bulkDiscountAvailable,
+          leadTimeDays: input.leadTimeDays,
+          manufacturingLocation: input.manufacturingLocation,
+          usManufactured: input.usManufactured,
+          regionalAvailabilityMiles: input.regionalAvailabilityMiles,
+          shippingRegions: input.shippingRegions ? input.shippingRegions.join(",") : undefined,
+          inStock: input.inStock,
+          stockQuantity: input.stockQuantity,
+          vocLevel: input.vocLevel,
+          vocCertification: input.vocCertification,
+          onRedList: input.onRedList,
+          toxicityRating: input.toxicityRating,
+          indoorAirQualityRating: input.indoorAirQualityRating,
+          hasEpd: input.hasEpd,
+          hasHpd: input.hasHpd,
+          hasFsc: input.hasFsc,
+          hasC2c: input.hasC2c,
+          hasGreenguard: input.hasGreenguard,
+          hasDeclare: input.hasDeclare,
+          certificationUrls: input.certificationUrls ? JSON.stringify(input.certificationUrls) : undefined,
+          datasheetUrl: input.datasheetUrl,
+          specSheetUrl: input.specSheetUrl,
+          testReportUrls: input.testReportUrls ? JSON.stringify(input.testReportUrls) : undefined,
+          notes: input.notes,
+          recycledContentPct: input.recycledContentPct?.toString(),
+          warrantyYears: input.warrantyYears,
+          expectedLifecycleYears: input.expectedLifecycleYears,
+        })
+        .returning({ id: materialSpecs.id });
 
-      if (input.pricePerUnit !== undefined) { updates.push(`"pricePerUnit" = $${idx++}`); params.push(input.pricePerUnit); }
-      if (input.priceUnit !== undefined) { updates.push(`"priceUnit" = $${idx++}`); params.push(input.priceUnit); }
-      if (input.leadTimeDays !== undefined) { updates.push(`"leadTimeDays" = $${idx++}`); params.push(input.leadTimeDays); }
-      if (input.recycledContentPct !== undefined) { updates.push(`"recycledContentPct" = $${idx++}`); params.push(input.recycledContentPct); }
-      if (input.hasEpd !== undefined) { updates.push(`"hasEpd" = $${idx++}`); params.push(input.hasEpd); }
-      if (input.hasHpd !== undefined) { updates.push(`"hasHpd" = $${idx++}`); params.push(input.hasHpd); }
-      if (input.hasFsc !== undefined) { updates.push(`"hasFsc" = $${idx++}`); params.push(input.hasFsc); }
-      if (input.hasC2c !== undefined) { updates.push(`"hasC2c" = $${idx++}`); params.push(input.hasC2c); }
-      if (input.hasGreenguard !== undefined) { updates.push(`"hasGreenguard" = $${idx++}`); params.push(input.hasGreenguard); }
-      if (input.hasDeclare !== undefined) { updates.push(`"hasDeclare" = $${idx++}`); params.push(input.hasDeclare); }
-      if (input.notes !== undefined) { updates.push(`"description" = $${idx++}`); params.push(input.notes); }
-
-      if (updates.length > 1) {
-        params.push(input.materialId);
-        await queryOne(
-          `UPDATE materials SET ${updates.join(', ')} WHERE id = $${idx}`,
-          params
-        );
-      }
-
-      return { success: true, materialId: input.materialId };
+      return { success: true, specId: row.id };
     }),
 
   /**

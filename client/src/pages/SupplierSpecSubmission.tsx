@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// Storage helper will be implemented
 
 export default function SupplierSpecSubmission() {
   const [, setLocation] = useLocation();
@@ -86,19 +85,31 @@ export default function SupplierSpecSubmission() {
     },
   });
 
+  const uploadFile = trpc.materialSpec.uploadFile.useMutation();
+
   const handleFileUpload = async (file: File, field: "datasheetUrl" | "specSheetUrl") => {
     if (!file) return;
-    
     setUploading(true);
     try {
       const buffer = await file.arrayBuffer();
-      // TODO: Implement S3 upload via tRPC endpoint
-      const url = `https://placeholder.com/${file.name}`;
-      
-      setFormData(prev => ({ ...prev, [field]: url }));
-      toast.success(`${field === "datasheetUrl" ? "Datasheet" : "Spec sheet"} uploaded successfully`);
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      const chunk = 8192;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const base64 = btoa(binary);
+
+      const result = await uploadFile.mutateAsync({
+        fileBufferBase64: base64,
+        originalFilename: file.name,
+        mimeType: file.type || "application/octet-stream",
+      });
+
+      setFormData(prev => ({ ...prev, [field]: result.url }));
+      toast.success(`${field === "datasheetUrl" ? "Datasheet" : "Spec sheet"} uploaded`);
     } catch (error) {
-      toast.error(`Failed to upload file: ${(error as Error).message}`);
+      toast.error(`Upload failed: ${(error as Error).message}`);
     } finally {
       setUploading(false);
     }

@@ -29,6 +29,86 @@ import {
 import { getDocumentTablesFromAzure, type NormalizedTable } from "../../lib/azure/document-intelligence";
 import { eq } from "drizzle-orm";
 
+// ─── Format-specific parsers ─────────────────────────────────────────────────
+
+/**
+ * Parse a flat CSV buffer into the normalized table format.
+ * Row 0 = headers, rows 1-N = data.
+ */
+function parseCsvToTables(fileBuffer: Buffer): NormalizedTable[] {
+  const lines = fileBuffer.toString("utf-8").split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split(",").map((h) => h.trim());
+  const rows: { cells: { header: string; text: string }[] }[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(",").map((v) => v.trim());
+    const cells = headers.map((header, idx) => ({ header, text: values[idx] ?? "" }));
+    if (cells.some((c) => c.text !== "")) rows.push({ cells });
+  }
+
+  return rows.length > 0 ? [{ rows }] : [];
+}
+
+/**
+ * Parse an .xlsx / .xls buffer using ExcelJS and return the same normalized
+ * table structure that Azure Document Intelligence produces.
+ */
+async function parseExcelToTables(fileBuffer: Buffer): Promise<NormalizedTable[]> {
+  const ExcelJS = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(fileBuffer);
+
+  const tables: NormalizedTable[] = [];
+
+  workbook.eachSheet((sheet) => {
+    const headers: string[] = [];
+    const rows: { cells: { header: string; text: string }[] }[] = [];
+
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          headers[colNumber - 1] = String(cell.value ?? `col_${colNumber}`).trim();
+        });
+        return;
+      }
+      const cells: { header: string; text: string }[] = [];
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const header = headers[colNumber - 1] ?? `col_${colNumber}`;
+        const raw = cell.value;
+        const text =
+          raw instanceof Date
+            ? raw.toISOString().split("T")[0]
+            : String(raw ?? "").trim();
+        cells.push({ header, text });
+      });
+      if (cells.some((c) => c.text !== "")) rows.push({ cells });
+    });
+
+    if (rows.length > 0) tables.push({ rows });
+  });
+
+  return tables;
+}
+
+function resolveParser(
+  mimeType: string | undefined,
+  filename: string,
+): "csv" | "excel" | "azure" {
+  const mime = (mimeType ?? "").toLowerCase();
+  const ext  = filename.split(".").pop()?.toLowerCase() ?? "";
+
+  if (mime === "text/csv" || ext === "csv") return "csv";
+  if (
+    mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    mime === "application/vnd.ms-excel" ||
+    ext === "xlsx" ||
+    ext === "xls"
+  ) return "excel";
+  return "azure"; // PDF and everything else → Azure Document Intelligence
+}
+
 // ─── Constants from the architect's actual spec ──────────────────────────────
 
 /** Assembly codes recognized in the Embodied Carbon Tables. */
@@ -113,10 +193,26 @@ export async function parseArchitectSpec(opts: {
   const warnings: string[] = [];
 
   try {
-    // 2. Pull tables out of the PDF via Azure Document Intelligence.
-    const tables = await getDocumentTablesFromAzure(opts.fileBuffer);
+    // 2. Extract tables using the right parser for this file type.
+    const parserType = resolveParser(opts.mimeType, opts.originalFilename);
+    let tables: NormalizedTable[];
+
+    if (parserType === "csv") {
+      tables = parseCsvToTables(opts.fileBuffer);
+    } else if (parserType === "excel") {
+      tables = await parseExcelToTables(opts.fileBuffer);
+    } else {
+      tables = await getDocumentTablesFromAzure(opts.fileBuffer);
+    }
+
     if (tables.length === 0) {
-      warnings.push("Azure Document Intelligence returned no tables.");
+      const hint =
+        parserType === "excel"
+          ? "No data rows found in the Excel workbook — ensure the first row contains column headers."
+          : parserType === "csv"
+          ? "No data rows found in the CSV."
+          : "Azure Document Intelligence returned no tables.";
+      warnings.push(hint);
     }
 
     // 3. Classify + normalize every row.

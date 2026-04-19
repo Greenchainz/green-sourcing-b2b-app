@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { publicProcedure, router } from '../_core/trpc';
+import { publicProcedure, protectedProcedure, router } from '../_core/trpc';
 import { getDb } from '../db';
 import {
   materials,
@@ -11,11 +11,11 @@ import {
 import { eq, like, and, lte, asc, sql, or, getTableColumns } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
-import { getAllPriceTrends, getPriceTrend } from '../services/price-trends';
+import { getAllPriceTrendsFromDb, getPriceTrendByCategory } from '../services/price-trends';
 import { generateEmbedding } from '../services/embedding-service';
 
 export const materialsRouter = router({
-  list: publicProcedure
+  list: protectedProcedure
     .input(
       z.object({
         search: z.string().optional(),
@@ -246,7 +246,7 @@ export const materialsRouter = router({
     return rows;
   }),
 
-  getScore: publicProcedure
+  getScore: protectedProcedure
     .input(z.object({ materialId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -351,7 +351,7 @@ export const materialsRouter = router({
       };
     }),
 
-  semanticSearch: publicProcedure
+  semanticSearch: protectedProcedure
     .input(
       z.object({
         query: z.string().min(1),
@@ -413,16 +413,16 @@ export const materialsRouter = router({
     }),
 
   getPriceTrends: publicProcedure.query(() => {
-    return getAllPriceTrends();
+    return getAllPriceTrendsFromDb();
   }),
 
   getPriceTrend: publicProcedure
     .input(z.object({ category: z.string() }))
     .query(({ input }) => {
-      return getPriceTrend(input.category);
+      return getPriceTrendByCategory(input.category);
     }),
 
-  searchEC3: publicProcedure
+  searchEC3: protectedProcedure
     .input(z.object({ query: z.string(), category: z.string().optional() }))
     .query(async ({ input }) => {
       const { searchEC3Materials } = await import('../services/ec3-service');
