@@ -525,6 +525,7 @@ export const suppliers = pgTable("suppliers", {
   microsoftSubscriptionId: text("microsoftSubscriptionId"),
   microsoftPlanId: text("microsoftPlanId"),
   tierUpdatedAt: timestamp("tierUpdatedAt"),
+  specSheetUrl: text("specSheetUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -1785,4 +1786,40 @@ export const scraperRuns = pgTable(
 );
 
 export type ScraperRun = typeof scraperRuns.$inferSelect;
-export type InsertScraperRun = typeof scraperRuns.$i
+export type InsertScraperRun = typeof scraperRuns.$inferInsert;
+
+// ─── Concierge Routes ─────────────────────────────────────────────────────────
+
+/**
+ * Tracks every warm-intro email Jerit sends via the admin concierge panel.
+ * One row per send: architect × supplier × project.
+ */
+export const conciergeRoutes = pgTable(
+  "concierge_routes",
+  {
+    id: serial("id").primaryKey(),
+    rfqId: integer("rfq_id").references(() => rfqs.id, { onDelete: "set null" }),
+    projectName: text("project_name").notNull(),
+    projectLocation: text("project_location"),
+    materialTypes: json("material_types").$type<string[]>().notNull().default([]),
+    architectEmail: text("architect_email").notNull(),
+    architectName: text("architect_name"),
+    architectCompany: text("architect_company"),
+    supplierId: integer("supplier_id").notNull(),
+    supplierName: text("supplier_name").notNull(),
+    supplierEmail: text("supplier_email"),
+    notes: text("notes"),
+    sentBy: text("sent_by").notNull().default("jerit"),
+    sentAt: timestamp("sent_at").defaultNow().notNull(),
+    architectReplied: boolean("architect_replied").notNull().default(false),
+    architectRepliedAt: timestamp("architect_replied_at"),
+  },
+  (t) => ({
+    architectEmailIdx: index("idx_concierge_routes_architect_email").on(t.architectEmail),
+    sentAtIdx: index("idx_concierge_routes_sent_at").on(t.sentAt),
+    repliedIdx: index("idx_concierge_routes_replied").on(t.architectReplied),
+  })
+);
+
+export type ConciergeRoute = typeof conciergeRoutes.$inferSelect;
+export type InsertConciergeRoute = typeof conciergeRoutes.$inferInsert;
