@@ -1,5 +1,9 @@
 # Authentication Architecture
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 > **DO NOT CHANGE THE AUTH SYSTEM without reading this document first.**
 > This has been a source of repeated bugs. The current system works. Leave it alone.
 

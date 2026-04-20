@@ -1,5 +1,9 @@
 # GreenChainz Excel Add-in: Deployment & Setup Guide
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 ## Overview
 
 The **GreenChainz Carbon Audit Add-in** is an Office.js application that brings real-time sustainability data into Microsoft Excel. Users can audit Bills of Materials (BOMs) for embodied carbon, health hazards, and building material certifications without leaving Excel.

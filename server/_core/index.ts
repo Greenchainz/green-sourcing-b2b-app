@@ -12,6 +12,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handleLandingPage } from "../marketplace-landing";
+import { handleRevitLanding } from "../revit-landing";
 import { handleWebhook } from "../marketplace-webhook";
 import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 import { uploadRouter } from "../upload-route";
@@ -111,10 +112,17 @@ async function startServer() {
       .filter(([, v]) => !v)
       .map(([k]) => k);
     if (missing.length > 0) {
-      // Warn but don't crash — the frontend container app serves static files
-      // and does not need these secrets. API calls will fail gracefully if
-      // DATABASE_URL is absent; the SPA itself will still load.
-      console.warn(`[startup] Missing env vars (API features degraded): ${missing.join(", ")}`);
+      if (process.env.SKIP_DB_SECRETS_CHECK === "true") {
+        // Static-only containers (no API surface) may set SKIP_DB_SECRETS_CHECK=true
+        // to bypass this check. API containers must never set this flag.
+        console.warn(`[startup] Missing env vars (API features degraded): ${missing.join(", ")}`);
+      } else {
+        console.error(
+          `[startup] FATAL: Required env vars missing: ${missing.join(", ")}. ` +
+          `Set SKIP_DB_SECRETS_CHECK=true only if this is a static-file-only container.`
+        );
+        process.exit(1);
+      }
     }
   }
 
@@ -210,6 +218,7 @@ async function startServer() {
     }
   });
 
+  app.get("/revit", handleRevitLanding);
   app.get("/api/marketplace/landing", handleLandingPage);
   app.post("/api/marketplace/webhook", handleWebhook);
   app.post("/api/microsoft/subscription-webhook", handleMicrosoftWebhook);

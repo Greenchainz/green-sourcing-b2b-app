@@ -1,5 +1,9 @@
 # Excel Add-in ↔ Scraper Agent Integration
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 This document explains how the Excel Add-in connects to your **existing scraper infrastructure** to fetch real-time EPD data.
 
 ## Current Architecture

@@ -1,5 +1,9 @@
 # Submittal Auto-Generator
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 Generate a contractor-ready submittal package from a spec PDF: cover sheet, comparison, and appended EPD PDFs.
 
 ## Env Vars

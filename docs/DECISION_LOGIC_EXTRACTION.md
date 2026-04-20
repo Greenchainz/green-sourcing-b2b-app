@@ -1,5 +1,9 @@
 # Decision Logic Extraction Agent
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 ## Overview
 
 The Decision Logic Extraction Agent enhances the Azure Document Intelligence PDF parsing pipeline by extracting material-specific decision criteria for different stakeholder roles. This helps identify products that go beyond generic "Eco-friendly" tags and extracts **hard metrics** that specific roles need to sign off on a purchase.

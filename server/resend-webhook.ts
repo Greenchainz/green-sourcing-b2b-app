@@ -20,7 +20,7 @@
 
 import { Router } from "express";
 import { Webhook } from "svix";
-import { getDb } from "../lib/db";
+import { getDb } from "./db";
 import { sql } from "drizzle-orm";
 
 export const resendWebhookRouter = Router();
