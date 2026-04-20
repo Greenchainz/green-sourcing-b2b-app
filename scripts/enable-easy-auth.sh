@@ -26,8 +26,8 @@ CONTAINER_APP="greenchainz-frontend"
 KEY_VAULT="greenchainz-vault"
 
 # Microsoft Entra ID
-ENTRA_APP_ID="479e2a01-70ab-4df9-baa4-560d317c3423"
-ENTRA_TENANT_ID="ca4f78d4-c753-4893-9cd8-1b309922b4dc"
+ENTRA_APP_ID="8b597068-9347-4e99-8860-8c4e9a9bc112"
+ENTRA_TENANT_ID="1d04bf50-8175-40af-a9d5-f8e441460b06"
 
 # Google OAuth
 GOOGLE_CLIENT_ID="856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com"

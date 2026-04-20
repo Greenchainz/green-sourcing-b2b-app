@@ -47,7 +47,7 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 
 ```env
 # .env  ← correct
-OAUTH_SERVER_URL=https://login.microsoftonline.com/ca4f78d4-c753-4893-9cd8-1b309922b4dc/v2.0
+OAUTH_SERVER_URL=https://login.microsoftonline.com/1d04bf50-8175-40af-a9d5-f8e441460b06/v2.0
 ```
 
 ## Production (Azure)

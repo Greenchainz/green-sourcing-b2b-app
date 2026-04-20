@@ -46,7 +46,7 @@ import MaterialCreditScorePage from "./pages/MaterialCreditScorePage";
 import Messages from "./pages/Messages";
 import Subscription from "./pages/Subscription";
 import IntercomWidget from "./components/IntercomWidget";
-import { CookieConsentBanner } from "./components/CookieConsentBanner";
+// CookieConsentBanner removed — CookieYes (index.html) handles consent
 // VIDEO CALLING — cut for launch, restore when ACS is implemented
 // import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 // import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
@@ -277,7 +277,7 @@ function AppInner() {
         {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
         {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
         <ChatWidget />
-        <CookieConsentBanner />
+        {/* CookieYes in index.html handles cookie consent */}
       </TooltipProvider>
     </ChatWidgetProvider>
   );
@@ -298,3 +298,4 @@ function App() {
 }
 
 export default App;
+                             

@@ -1,5 +1,9 @@
 # Submittal Generator - Developer Quick Reference
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 ## 🎯 What is This?
 
 The **Submittal Auto-Generator** is the GreenChainz tool for contractors (General Contractors/GCs). It solves a real pain point:

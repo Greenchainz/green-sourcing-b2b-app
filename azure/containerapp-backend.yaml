@@ -170,7 +170,7 @@ properties:
           
           # ─────────────────────────────────────────────────────────────
           # Azure AD Authentication (Entra app registration — user sign-in only)
-          # App registration 479e2a01-70ab-4df9-baa4-560d317c3423
+          # App registration 8b597068-9347-4e99-8860-8c4e9a9bc112
           # Do NOT use this for Azure resource access — use MANAGED_IDENTITY_CLIENT_ID instead.
           # ─────────────────────────────────────────────────────────────
           - name: AZURE_AD_CLIENT_ID

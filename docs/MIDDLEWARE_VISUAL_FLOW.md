@@ -1,5 +1,9 @@
 # Role-Based Dashboard Redirects - Visual Flow Diagram
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. This document was written referencing Next.js patterns (`NextResponse.redirect`, App Router) that **do not exist in this codebase**. The JWT + cookie logic described is correct for Express; the Next.js-specific API calls are not. See [`STACK.md`](./STACK.md).
+
 ## Authentication & Redirect Flow
 
 ```
@@ -297,7 +301,7 @@ green-sourcing-b2b-app/
 ✅ **Functionality**: All 21 unit tests passing
 ✅ **Security**: 0 vulnerabilities detected by CodeQL
 ✅ **Code Quality**: All code review issues addressed
-✅ **Compatibility**: Works with Next.js 14/15 App Router
+✅ **Compatibility**: Works with Express middleware (not Next.js — this is a Vite/Express app)
 ✅ **Performance**: Minimal impact (~2-3ms per request)
 ✅ **Documentation**: Complete implementation guide
 ✅ **Verification**: Manual testing script confirms behavior

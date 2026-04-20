@@ -1,5 +1,9 @@
 # Revit Integration API Documentation
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 > **Version:** 1.0.0  
 > **Auth:** Azure Entra ID Only  
 > **Base URL:** `https://api.greenchainz.com/api/integrations/revit/v1`
