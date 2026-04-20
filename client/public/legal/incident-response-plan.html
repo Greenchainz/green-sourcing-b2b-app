@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Incident Response Plan – GreenChainz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8faf9; color: #1a2e22; line-height: 1.7; }
+    header { background: #2d6a4f; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header a { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    header img { height: 32px; }
+    header span { color: #fff; font-size: 1.1rem; font-weight: 600; }
+    .container { max-width: 820px; margin: 48px auto; padding: 0 24px 80px; }
+    h1 { font-size: 2rem; font-weight: 700; color: #2d6a4f; margin-bottom: 6px; }
+    .meta { font-size: 0.875rem; color: #6b7a72; margin-bottom: 40px; }
+    h2 { font-size: 1.25rem; font-weight: 700; color: #1a2e22; margin: 40px 0 12px; border-bottom: 2px solid #d1fae5; padding-bottom: 6px; }
+    h3 { font-size: 1rem; font-weight: 700; color: #2d6a4f; margin: 24px 0 8px; }
+    p { margin-bottom: 14px; color: #374840; }
+    ul, ol { margin: 0 0 14px 24px; }
+    li { margin-bottom: 6px; color: #374840; }
+    strong { color: #1a2e22; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 0.9rem; }
+    th { background: #2d6a4f; color: #fff; padding: 10px 14px; text-align: left; }
+    td { padding: 9px 14px; border-bottom: 1px solid #d1fae5; vertical-align: top; }
+    tr:nth-child(even) td { background: #f0fdf4; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; }
+    .critical { background: #fee2e2; color: #991b1b; }
+    .high { background: #fed7aa; color: #92400e; }
+    .medium { background: #fef9c3; color: #854d0e; }
+    .low { background: #d1fae5; color: #065f46; }
+    a { color: #2d6a4f; }
+    footer { text-align: center; font-size: 0.8rem; color: #9aaa9f; margin-top: 60px; padding-top: 24px; border-top: 1px solid #d1fae5; }
+  </style>
+</head>
+<body>
+<header>
+  <a href="https://greenchainz.com">
+    <img src="/greenchainz-logo-transparent.png" alt="GreenChainz" />
+    <span>GreenChainz</span>
+  </a>
+</header>
+<div class="container">
+  <h1>Security Incident Response Plan</h1>
+  <p class="meta">Version 1.0 &nbsp;·&nbsp; Effective: April 19, 2026 &nbsp;·&nbsp; Review cycle: Annual &nbsp;·&nbsp; Owner: CEO / founder@greenchainz.com</p>
+
+  <h2>1. Purpose and Scope</h2>
+  <p>This Incident Response Plan (IRP) defines how GreenChainz Inc. detects, contains, investigates, and recovers from security incidents affecting the GreenChainz platform and the data of its users. It applies to all system components: the production application hosted on Microsoft Azure Container Apps, the PostgreSQL database, all third-party integrations, and any personal data processed by GreenChainz.</p>
+
+  <h2>2. Incident Severity Classification</h2>
+  <table>
+    <thead><tr><th>Severity</th><th>Definition</th><th>Example</th><th>Max Response Time</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge critical">Critical</span></td><td>Confirmed breach of personal data or system compromise with active attacker access</td><td>Database exfiltration, account takeover at scale, ransomware</td><td>1 hour</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>Suspected breach, exposed credentials, or service outage affecting data integrity</td><td>Leaked API key, misconfigured storage, significant downtime</td><td>4 hours</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>Vulnerability identified but not yet exploited; elevated error rates</td><td>Unpatched CVE in dependency, abnormal auth failures</td><td>24 hours</td></tr>
+      <tr><td><span class="badge low">Low</span></td><td>Minor policy violation or low-risk finding requiring remediation</td><td>Outdated dependency with low CVSS score, informational finding</td><td>7 days</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Detection Sources</h2>
+  <ul>
+    <li><strong>Sentry</strong> — Real-time application error monitoring and anomaly alerting</li>
+    <li><strong>Azure Monitor / Application Insights</strong> — Infrastructure metrics, failed auth events, and anomalous traffic patterns</li>
+    <li><strong>GitHub Advanced Security</strong> — Dependency vulnerability alerts (Dependabot) and code scanning (CodeQL)</li>
+    <li><strong>Automated vulnerability scans</strong> — Scheduled quarterly scans via GitHub Actions (Snyk + Trivy)</li>
+    <li><strong>External reports</strong> — Security researchers via <a href="mailto:security@greenchainz.com">security@greenchainz.com</a></li>
+    <li><strong>User reports</strong> — Suspicious activity reported through the platform or support email</li>
+  </ul>
+
+  <h2>4. Response Procedures</h2>
+
+  <h3>Phase 1 — Identification (0–1 hour for Critical/High)</h3>
+  <ol>
+    <li>Receive alert from detection source or external report</li>
+    <li>Triage: confirm whether the event is a genuine incident or false positive</li>
+    <li>Assign severity classification using Section 2 criteria</li>
+    <li>Log the incident: date/time of detection, detection source, initial assessment, severity</li>
+    <li>Notify CEO (Jerit Norville) immediately for Critical and High severity</li>
+  </ol>
+
+  <h3>Phase 2 — Containment</h3>
+  <ol>
+    <li><strong>Isolate affected components</strong> — Disable compromised accounts, revoke exposed API keys/secrets via Azure Key Vault, scale down or redeploy affected Container Apps</li>
+    <li><strong>Preserve evidence</strong> — Export Azure Monitor logs, Sentry event data, and database query logs before making changes</li>
+    <li><strong>Implement short-term fix</strong> — Block malicious IPs at Azure network level, rotate secrets, disable affected features if necessary</li>
+    <li><strong>Assess blast radius</strong> — Determine which users and data may have been affected</li>
+  </ol>
+
+  <h3>Phase 3 — Investigation</h3>
+  <ol>
+    <li>Review application logs, auth logs, and database access logs for the incident window</li>
+    <li>Identify the root cause (vulnerability, misconfiguration, credential compromise, etc.)</li>
+    <li>Document the full timeline of the incident</li>
+    <li>Determine exact scope of data potentially accessed or exfiltrated</li>
+  </ol>
+
+  <h3>Phase 4 — Notification</h3>
+  <p><strong>Regulatory notification (GDPR / breach reporting):</strong> If the incident involves personal data of EU/UK residents and poses a risk to individuals, GreenChainz will notify the relevant supervisory authority <strong>within 72 hours of becoming aware of the breach</strong>. If notification within 72 hours is not possible, the notification will include the reasons for the delay.</p>
+  <p><strong>Affected user notification:</strong> Users whose personal data was likely compromised will be notified without undue delay, in plain language, describing what happened, what data was affected, and what steps they should take.</p>
+  <p><strong>Microsoft notification:</strong> If the incident involves Microsoft customer data processed through the Microsoft commercial marketplace, Microsoft will be notified per the Microsoft Publisher Agreement obligations.</p>
+
+  <h3>Phase 5 — Recovery</h3>
+  <ol>
+    <li>Deploy permanent fix to production via standard GitHub Actions CI/CD pipeline</li>
+    <li>Restore services from Azure-managed backups if data integrity was compromised</li>
+    <li>Verify fix effectiveness with targeted testing</li>
+    <li>Monitor for recurrence for 14 days post-incident</li>
+    <li>Remove temporary containment measures once permanent fix is confirmed</li>
+  </ol>
+
+  <h3>Phase 6 — Post-Incident Review</h3>
+  <ol>
+    <li>Conduct post-mortem within 7 days of resolution</li>
+    <li>Document: what happened, what worked, what failed, root cause, corrective actions</li>
+    <li>Update this IRP if gaps were identified</li>
+    <li>Implement long-term controls to prevent recurrence</li>
+  </ol>
+
+  <h2>5. Contact Information</h2>
+  <table>
+    <thead><tr><th>Role</th><th>Name</th><th>Contact</th></tr></thead>
+    <tbody>
+      <tr><td>Incident Lead / CEO</td><td>Jerit Norville</td><td><a href="mailto:founder@greenchainz.com">founder@greenchainz.com</a></td></tr>
+      <tr><td>Security Reports (external)</td><td>—</td><td><a href="mailto:security@greenchainz.com">security@greenchainz.com</a></td></tr>
+      <tr><td>Privacy / Data Breach</td><td>—</td><td><a href="mailto:privacy@greenchainz.com">privacy@greenchainz.com</a></td></tr>
+      <tr><td>Azure Support</td><td>Microsoft Azure</td><td>portal.azure.com → Support</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Plan Review</h2>
+  <p>This plan is reviewed annually (next review: April 2027) or following any significant incident, material change to the GreenChainz infrastructure, or update to applicable regulations. The CEO is responsible for maintaining and updating this document.</p>
+
+  <footer>&copy; 2026 GreenChainz Inc. &nbsp;·&nbsp; <a href="/security">Security Overview</a> &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a></footer>
+</div>
+</body>
+</html>

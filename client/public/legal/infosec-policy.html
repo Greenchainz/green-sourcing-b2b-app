@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Information Security Policy – GreenChainz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8faf9; color: #1a2e22; line-height: 1.7; }
+    header { background: #2d6a4f; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header a { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    header img { height: 32px; }
+    header span { color: #fff; font-size: 1.1rem; font-weight: 600; }
+    .container { max-width: 820px; margin: 48px auto; padding: 0 24px 80px; }
+    h1 { font-size: 2rem; font-weight: 700; color: #2d6a4f; margin-bottom: 6px; }
+    .meta { font-size: 0.875rem; color: #6b7a72; margin-bottom: 40px; }
+    h2 { font-size: 1.25rem; font-weight: 700; color: #1a2e22; margin: 40px 0 12px; border-bottom: 2px solid #d1fae5; padding-bottom: 6px; }
+    h3 { font-size: 1rem; font-weight: 700; color: #2d6a4f; margin: 24px 0 8px; }
+    p { margin-bottom: 14px; color: #374840; }
+    ul, ol { margin: 0 0 14px 24px; }
+    li { margin-bottom: 6px; color: #374840; }
+    strong { color: #1a2e22; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 0.9rem; }
+    th { background: #2d6a4f; color: #fff; padding: 10px 14px; text-align: left; }
+    td { padding: 9px 14px; border-bottom: 1px solid #d1fae5; vertical-align: top; }
+    tr:nth-child(even) td { background: #f0fdf4; }
+    a { color: #2d6a4f; }
+    footer { text-align: center; font-size: 0.8rem; color: #9aaa9f; margin-top: 60px; padding-top: 24px; border-top: 1px solid #d1fae5; }
+  </style>
+</head>
+<body>
+<header>
+  <a href="https://greenchainz.com">
+    <img src="/greenchainz-logo-transparent.png" alt="GreenChainz" />
+    <span>GreenChainz</span>
+  </a>
+</header>
+<div class="container">
+  <h1>Information Security &amp; Risk Management Policy</h1>
+  <p class="meta">Version 1.0 &nbsp;·&nbsp; Effective: April 19, 2026 &nbsp;·&nbsp; Review cycle: Annual &nbsp;·&nbsp; Owner: CEO / founder@greenchainz.com</p>
+
+  <h2>1. Purpose</h2>
+  <p>This policy establishes GreenChainz Inc.'s framework for identifying, assessing, treating, and monitoring information security risks. It ensures that security risks are managed systematically to protect the confidentiality, integrity, and availability of GreenChainz systems and customer data.</p>
+
+  <h2>2. Scope</h2>
+  <p>This policy applies to all GreenChainz systems, services, data, and personnel — including contractors and third-party service providers who access GreenChainz systems or customer data.</p>
+
+  <h2>3. Security Principles</h2>
+  <ul>
+    <li><strong>Least Privilege:</strong> Access to systems and data is granted only to those with a demonstrated need, scoped to the minimum required.</li>
+    <li><strong>Defense in Depth:</strong> Multiple layers of security controls are applied rather than relying on any single control.</li>
+    <li><strong>Secure by Default:</strong> New features and services are designed with security controls in place from the start, not added afterward.</li>
+    <li><strong>Zero Trust:</strong> No system or user is implicitly trusted; all access is authenticated and authorized.</li>
+    <li><strong>Transparency:</strong> Security posture, policies, and incident history are documented and available to customers upon request.</li>
+  </ul>
+
+  <h2>4. Risk Management Process</h2>
+
+  <h3>4.1 Risk Identification</h3>
+  <p>Risks are identified through the following activities, conducted at least annually and following any significant change:</p>
+  <ul>
+    <li>Review of automated vulnerability scan results (Snyk, Trivy, GitHub Dependabot)</li>
+    <li>Review of security incident and near-miss logs</li>
+    <li>Assessment of new features, integrations, and infrastructure changes</li>
+    <li>Review of third-party security advisories and CVE disclosures relevant to the GreenChainz stack</li>
+    <li>External penetration testing findings</li>
+  </ul>
+
+  <h3>4.2 Risk Assessment and Ranking</h3>
+  <p>Each identified risk is assessed using two factors: <strong>Likelihood</strong> (probability of occurrence) and <strong>Impact</strong> (consequence if it occurs). Risks are ranked as follows:</p>
+  <table>
+    <thead><tr><th>Risk Level</th><th>Criteria</th><th>Response SLA</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Critical</strong></td><td>High likelihood + High impact (e.g., RCE vulnerability, exposed DB credentials)</td><td>Remediate within 24 hours</td></tr>
+      <tr><td><strong>High</strong></td><td>High likelihood + Medium impact, or Medium likelihood + High impact</td><td>Remediate within 7 days</td></tr>
+      <tr><td><strong>Medium</strong></td><td>Medium likelihood + Medium impact, or Low likelihood + High impact</td><td>Remediate within 30 days</td></tr>
+      <tr><td><strong>Low</strong></td><td>Low likelihood + Low/Medium impact</td><td>Remediate within 90 days or accept with documented rationale</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.3 Risk Treatment</h3>
+  <p>For each identified risk, one of four treatment options is selected:</p>
+  <ul>
+    <li><strong>Mitigate:</strong> Implement controls to reduce the likelihood or impact (preferred for Critical/High risks)</li>
+    <li><strong>Accept:</strong> Formally document acceptance of the risk with rationale (only for Low risks)</li>
+    <li><strong>Transfer:</strong> Shift risk to a third party (e.g., cyber insurance, contractual liability)</li>
+    <li><strong>Avoid:</strong> Discontinue the activity that creates the risk</li>
+  </ul>
+
+  <h3>4.4 Risk Register</h3>
+  <p>All identified risks are recorded in the GreenChainz Risk Register, maintained by the CEO. The register captures: risk description, likelihood, impact, risk level, treatment decision, remediation owner, target remediation date, and current status. The register is reviewed quarterly.</p>
+
+  <h2>5. Security Controls</h2>
+
+  <h3>5.1 Access Control</h3>
+  <ul>
+    <li>All production systems require multi-factor authentication (MFA)</li>
+    <li>Access to Azure resources is governed by Azure RBAC with least-privilege role assignments</li>
+    <li>Secrets and credentials are stored exclusively in Azure Key Vault — never in code or environment files committed to version control</li>
+    <li>Employee access is reviewed upon role change and revoked within 24 hours of departure</li>
+  </ul>
+
+  <h3>5.2 Vulnerability Management</h3>
+  <ul>
+    <li>Automated dependency vulnerability scanning runs on every pull request and on a quarterly schedule via GitHub Actions</li>
+    <li>Container image scanning (Trivy) runs on every Docker build</li>
+    <li>GitHub Dependabot is enabled for all repositories with auto-PR creation for security updates</li>
+    <li>An annual penetration test is conducted using automated scanning tools against the production environment</li>
+    <li>Critical and High CVEs are patched within the SLAs defined in Section 4.2</li>
+  </ul>
+
+  <h3>5.3 Secure Development</h3>
+  <ul>
+    <li>All code changes are deployed through the GitHub Actions CI/CD pipeline with automated type-checking, linting, and security scanning gates</li>
+    <li>OWASP Top 10 vulnerability classes are addressed during development (injection, broken auth, sensitive data exposure, etc.)</li>
+    <li>TypeScript strict mode is enforced across the codebase to eliminate a class of runtime errors</li>
+    <li>Input validation is applied on all API endpoints using Zod schema validation</li>
+    <li>SQL injection is prevented by using Drizzle ORM query builder exclusively — no raw SQL strings</li>
+  </ul>
+
+  <h3>5.4 Data Protection</h3>
+  <ul>
+    <li>All data in transit is encrypted using TLS 1.2 or higher</li>
+    <li>Data at rest is encrypted using AES-256 on Azure-managed disks and databases</li>
+    <li>Customer data is stored exclusively in the United States (Azure East US region)</li>
+    <li>Data retention and disposal follows the schedule documented in the GreenChainz Privacy Policy</li>
+  </ul>
+
+  <h3>5.5 Monitoring and Logging</h3>
+  <ul>
+    <li>Application errors and performance anomalies are monitored in real time via Sentry with automatic alerting</li>
+    <li>Azure Monitor captures infrastructure-level events including authentication failures and network anomalies</li>
+    <li>Logs are retained for a minimum of 90 days</li>
+    <li>Alerts for critical security events are automatically routed to the CEO</li>
+  </ul>
+
+  <h2>6. Third-Party Risk</h2>
+  <p>All third-party service providers with access to GreenChainz systems or customer data are assessed prior to onboarding. Assessment criteria include data handling practices, security certifications, and contractual data processing obligations. Third-party risk is reviewed annually or upon significant change to the provider relationship.</p>
+
+  <h2>7. Annual Security Review</h2>
+  <p>GreenChainz conducts a formal annual security review each April. The review covers: risk register update, policy review and update, vulnerability scan results, incident log review, access control audit, and assessment of any regulatory changes. Findings are documented and tracked to resolution. The next scheduled review is April 2027.</p>
+
+  <h2>8. Policy Violations</h2>
+  <p>Violations of this policy are treated as serious matters and addressed promptly. Any employee, contractor, or partner who becomes aware of a policy violation must report it immediately to <a href="mailto:security@greenchainz.com">security@greenchainz.com</a>.</p>
+
+  <h2>9. Document Control</h2>
+  <table>
+    <thead><tr><th>Version</th><th>Date</th><th>Change Summary</th><th>Approved By</th></tr></thead>
+    <tbody>
+      <tr><td>1.0</td><td>April 19, 2026</td><td>Initial policy established</td><td>Jerit Norville, CEO</td></tr>
+    </tbody>
+  </table>
+
+  <footer>&copy; 2026 GreenChainz Inc. &nbsp;·&nbsp; <a href="/security">Security Overview</a> &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a></footer>
+</div>
+</body>
+</html>

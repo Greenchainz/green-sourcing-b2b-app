@@ -1,0 +1,128 @@
+name: Security Vulnerability Scan
+
+on:
+  # Quarterly schedule — runs on the 1st of Jan, Apr, Jul, Oct at 08:00 UTC
+  schedule:
+    - cron: "0 8 1 1,4,7,10 *"
+  # Also runs on every PR and push to main for continuous coverage
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  # Allow manual trigger from Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF results to GitHub Security tab
+
+jobs:
+  # ── Job 1: Dependency vulnerability scan (Snyk) ─────────────────────────
+  dependency-scan:
+    name: Dependency Scan (Snyk)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Snyk dependency scan
+        uses: snyk/actions/node@master
+        continue-on-error: true        # upload results even if vulnerabilities found
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --sarif-file-output=snyk-deps.sarif
+
+      - name: Upload Snyk SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-deps.sarif
+          category: snyk-dependencies
+
+  # ── Job 2: Container image scan (Trivy) ────────────────────────────────
+  container-scan:
+    name: Container Image Scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image for scanning
+        run: |
+          docker build -f Dockerfile -t greenchainz-app:scan-${{ github.sha }} .
+        continue-on-error: true
+
+      - name: Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "greenchainz-app:scan-${{ github.sha }}"
+          format: "sarif"
+          output: "trivy-container.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"             # don't fail the build — report only
+        continue-on-error: true
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-container.sarif
+          category: trivy-container
+
+  # ── Job 3: npm audit (no token needed, always runs) ──────────────────────
+  npm-audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit (high+ severity)
+        run: npm audit --audit-level=high --json > npm-audit.json || true
+
+      - name: Upload npm audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-${{ github.run_number }}
+          path: npm-audit.json
+          retention-days: 90         # keep 90 days — satisfies log retention requirement
+
+  # ── Job 4: Summary notification ─────────────────────────────────────────
+  scan-summary:
+    name: Scan Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, container-scan, npm-audit]
+    if: always()
+    steps:
+      - name: Print scan summary
+        run: |
+          echo "========================================"
+          echo "GreenChainz Security Scan Complete"
+          echo "Run: ${{ github.run_number }} | ${{ github.sha }}"
+          echo "Triggered by: ${{ github.event_name }}"
+          echo "Dependency scan: ${{ needs.dependency-scan.result }}"
+          echo "Container scan:  ${{ needs.container-scan.result }}"
+          echo "npm audit:       ${{ needs.npm-audit.result }}"
+          echo "========================================"
+          echo "Results are available in the GitHub Security tab."
+          echo "Artifact retention: 90 days."

@@ -1,3 +1,4 @@
+import "@/lib/sentry"; // must be first — initializes Sentry before React mounts
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
