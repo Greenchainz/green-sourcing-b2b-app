@@ -351,6 +351,37 @@ jobs:
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}"
 
+      - name: Fix frontend ACR registry (system identity)
+        run: |
+          # Ensure the frontend system-assigned identity exists.
+          az containerapp identity assign \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --system-assigned
+
+          FRONTEND_PRINCIPAL=$(az containerapp identity show \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "principalId" -o tsv)
+
+          ACR_ID=$(az acr show \
+            --name ${{ env.ACR }} \
+            --query id -o tsv)
+
+          # Grant AcrPull — idempotent, safe to run every deploy.
+          az role assignment create \
+            --assignee-object-id "$FRONTEND_PRINCIPAL" \
+            --assignee-principal-type ServicePrincipal \
+            --role AcrPull \
+            --scope "$ACR_ID" || true
+
+          # Point the registry config at the system identity (not the dead user-assigned one).
+          az containerapp registry set \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --server ${{ env.ACR }}.azurecr.io \
+            --identity system
+
       - name: Deploy frontend
         env:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
