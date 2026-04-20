@@ -298,10 +298,15 @@ jobs:
       - name: Ensure system identity + KV access
         run: |
           # Enable system-assigned identity for the backend app.
+          # Use || true because this command fails with BadRequest when the app still
+          # holds a stale reference to a deleted user-assigned identity resource
+          # (e.g. id-greenchainz-backend). The system identity is already present in
+          # that case (Azure emits a warning), so the failure is safe to ignore.
+          # The identity show + PRINCIPAL_ID check below validates the actual state.
           az containerapp identity assign \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --system-assigned
+            --system-assigned || true
 
           # Read back the principal ID after assignment.
           PRINCIPAL_ID=$(az containerapp identity show \
@@ -354,10 +359,12 @@ jobs:
       - name: Fix frontend ACR registry (system identity)
         run: |
           # Ensure the frontend system-assigned identity exists.
+          # Same || true guard as the backend step — a stale user-assigned identity
+          # reference causes BadRequest even when the system identity is already present.
           az containerapp identity assign \
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --system-assigned
+            --system-assigned || true
 
           FRONTEND_PRINCIPAL=$(az containerapp identity show \
             --name ${{ env.FRONTEND_APP }} \
