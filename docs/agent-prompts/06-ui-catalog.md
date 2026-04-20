@@ -1,5 +1,9 @@
 # Agent 6: UI-CATALOG
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 ## Copy-Paste Prompt
 
 ```

@@ -17,8 +17,8 @@ az keyvault secret set --vault-name $VaultName --name AZURE-DOCUMENT-INTELLIGENC
 az keyvault secret set --vault-name $VaultName --name BUILT-IN-FORGE-API-URL --value $ForgeApiUrl
 az keyvault secret set --vault-name $VaultName --name BUILT-IN-FORGE-API-KEY --value $ForgeApiKey
 az keyvault secret set --vault-name $VaultName --name DATABASE-URL --value $DbUrl
-az keyvault secret set --vault-name $VaultName --name OAUTH-SERVER-URL --value "https://login.microsoftonline.com/ca4f78d4-c753-4893-9cd8-1b309922b4dc"
-az keyvault secret set --vault-name $VaultName --name MICROSOFT-CLIENT-ID --value "479e2a01-70ab-4df9-baa4-560d317c3423"
+az keyvault secret set --vault-name $VaultName --name OAUTH-SERVER-URL --value "https://login.microsoftonline.com/1d04bf50-8175-40af-a9d5-f8e441460b06"
+az keyvault secret set --vault-name $VaultName --name MICROSOFT-CLIENT-ID --value "8b597068-9347-4e99-8860-8c4e9a9bc112"
 az keyvault secret set --vault-name $VaultName --name MICROSOFT-CLIENT-SECRET --value $ClientSecret
 
 Write-Host "`n=== Running Database Migrations ==="

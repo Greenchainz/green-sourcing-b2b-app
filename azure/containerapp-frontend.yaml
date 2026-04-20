@@ -67,7 +67,7 @@ properties:
           - name: NEXT_PUBLIC_AZURE_TENANT
             value: greenchainz2025.onmicrosoft.com
           - name: NEXT_PUBLIC_AZURE_CLIENT_ID
-            value: "479e2a01-70ab-4df9-baa4-560d317c3423"
+            value: "8b597068-9347-4e99-8860-8c4e9a9bc112"
         
         # ─────────────────────────────────────────────────────────────
         # Health Probes (use root path for Next.js)

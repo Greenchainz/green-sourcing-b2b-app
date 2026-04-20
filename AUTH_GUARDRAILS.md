@@ -1,5 +1,9 @@
 # AUTH_GUARDRAILS.md
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`docs/STACK.md`](./docs/STACK.md) or [`CLAUDE.md`](./CLAUDE.md) at repo root.
+
 > **DO NOT CHANGE AUTH WITHOUT AN ARCHITECTURE REVIEW.**
 > Any modification to auth flows, token formats, route protection rules, or
 > identity provider configuration must update this file **and**

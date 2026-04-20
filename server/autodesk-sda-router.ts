@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { publicProcedure, router } from './_core/trpc';
+import { protectedProcedure, router } from './_core/trpc';
 import { searchEpds, getEpdDetail, findBestEpd } from './autodesk-sda-service';
 
 export const autodesksDARouter = router({
   /**
    * Search for EPDs by product name, manufacturer, or category
    */
-  searchEpds: publicProcedure
+  searchEpds: protectedProcedure
     .input(
       z.object({
         query: z.string().min(1, 'Search query required'),
@@ -36,7 +36,7 @@ export const autodesksDARouter = router({
   /**
    * Get detailed EPD data by ID
    */
-  getEpdDetail: publicProcedure
+  getEpdDetail: protectedProcedure
     .input(z.object({ epdId: z.string().min(1) }))
     .query(async ({ input }) => {
       try {
@@ -58,7 +58,7 @@ export const autodesksDARouter = router({
   /**
    * Find best matching EPD for a material
    */
-  findBestEpd: publicProcedure
+  findBestEpd: protectedProcedure
     .input(
       z.object({
         query: z.string().min(1, 'Material name required'),

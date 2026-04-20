@@ -10,7 +10,7 @@ GreenChainz uses **User-Assigned Managed Identity** for Zero Trust authenticatio
 - Client ID: `ec248abf-f6ce-4d7c-8888-740317709f1b`
 - Used by: Container Apps (greenchainz-main-app, greenchainz-audit-api)
 
-> ⚠️ **IMPORTANT:** `MANAGED_IDENTITY_CLIENT_ID` and the Entra app registration `CLIENT_ID` (`479e2a01-70ab-4df9-baa4-560d317c3423`) are **completely different things**. The managed identity grants access to **Azure resources**. The Entra app registration is used for **user sign-in (OAuth2/OIDC)** only. Never mix them.
+> ⚠️ **IMPORTANT:** `MANAGED_IDENTITY_CLIENT_ID` and the Entra app registration `CLIENT_ID` (`8b597068-9347-4e99-8860-8c4e9a9bc112`) are **completely different things**. The managed identity grants access to **Azure resources**. The Entra app registration is used for **user sign-in (OAuth2/OIDC)** only. Never mix them.
 
 ## Benefits
 
@@ -136,12 +136,12 @@ AZURE_AI_FOUNDRY_ENDPOINT=https://greenchainz-foundry.cognitiveservices.azure.co
 
 # ── Entra App Registration (user sign-in only) ───────────────────────────────
 # These are for OAuth2/OIDC user authentication flows — not Azure resource access.
-AZURE_AD_CLIENT_ID=479e2a01-70ab-4df9-baa4-560d317c3423
-AZURE_CLIENT_ID=479e2a01-70ab-4df9-baa4-560d317c3423
+AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112
+AZURE_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112
 AZURE_AD_CLIENT_SECRET=<from Key Vault>
 AZURE_CLIENT_SECRET=<from Key Vault>
-AZURE_AD_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
-AZURE_TENANT_ID=ca4f78d4-c753-4893-9cd8-1b309922b4dc
+AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06
+AZURE_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06
 
 ```
 
