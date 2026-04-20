@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security – GreenChainz</title>
+  <meta name="description" content="GreenChainz security overview — how we protect your data, our infrastructure, and our development practices." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8faf9; color: #1a2e22; line-height: 1.7; }
+    header { background: #2d6a4f; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header a { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    header img { height: 32px; }
+    header span { color: #fff; font-size: 1.1rem; font-weight: 600; }
+    .hero { background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%); color: #fff; padding: 64px 24px; text-align: center; }
+    .hero h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 12px; }
+    .hero p { font-size: 1.1rem; opacity: 0.88; max-width: 560px; margin: 0 auto; }
+    .container { max-width: 960px; margin: 0 auto; padding: 64px 24px 80px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin: 48px 0; }
+    .card { background: #fff; border: 1px solid #d1fae5; border-radius: 12px; padding: 28px; }
+    .card-icon { font-size: 1.8rem; margin-bottom: 12px; }
+    .card h3 { font-size: 1rem; font-weight: 700; color: #1a2e22; margin-bottom: 10px; }
+    .card p, .card li { font-size: 0.9rem; color: #374840; margin-bottom: 6px; }
+    .card ul { margin-left: 18px; }
+    h2 { font-size: 1.5rem; font-weight: 700; color: #1a2e22; margin: 56px 0 20px; border-bottom: 2px solid #d1fae5; padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 32px; font-size: 0.9rem; }
+    th { background: #2d6a4f; color: #fff; padding: 10px 14px; text-align: left; }
+    td { padding: 9px 14px; border-bottom: 1px solid #d1fae5; vertical-align: top; }
+    tr:nth-child(even) td { background: #f0fdf4; }
+    .check { color: #2d6a4f; font-weight: 700; }
+    .disclosure-box { background: #fff; border: 2px solid #2d6a4f; border-radius: 12px; padding: 32px; margin: 32px 0; }
+    .disclosure-box h3 { color: #2d6a4f; font-size: 1.1rem; margin-bottom: 10px; }
+    .disclosure-box p { color: #374840; margin-bottom: 10px; }
+    .disclosure-box a { color: #2d6a4f; font-weight: 600; }
+    .docs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .docs-list a { display: inline-block; background: #fff; border: 1px solid #2d6a4f; color: #2d6a4f; border-radius: 8px; padding: 8px 18px; font-size: 0.9rem; font-weight: 600; text-decoration: none; }
+    .docs-list a:hover { background: #2d6a4f; color: #fff; }
+    footer { text-align: center; font-size: 0.8rem; color: #9aaa9f; margin-top: 60px; padding-top: 24px; border-top: 1px solid #d1fae5; }
+    a { color: #2d6a4f; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="https://greenchainz.com">
+    <img src="/greenchainz-logo-transparent.png" alt="GreenChainz" />
+    <span>GreenChainz</span>
+  </a>
+</header>
+
+<div class="hero">
+  <h1>Security at GreenChainz</h1>
+  <p>We build GreenChainz with security as a first principle — protecting supplier credentials, project data, and procurement information for every user on the platform.</p>
+</div>
+
+<div class="container">
+
+  <h2>Infrastructure &amp; Hosting</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">☁️</div>
+      <h3>Microsoft Azure</h3>
+      <p>GreenChainz runs entirely on Microsoft Azure (East US region) — Azure Container Apps, Azure Database for PostgreSQL, Azure Container Registry, and Azure Key Vault.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔒</div>
+      <h3>Encryption</h3>
+      <ul>
+        <li>TLS 1.2+ for all data in transit</li>
+        <li>AES-256 encryption at rest for all databases and storage</li>
+        <li>HTTPS enforced on all endpoints — no plain HTTP</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-icon">🗝️</div>
+      <h3>Secret Management</h3>
+      <p>All credentials, API keys, and secrets are stored in Azure Key Vault. No secrets are committed to source code or stored in environment files in version control.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌐</div>
+      <h3>Network Security</h3>
+      <p>Azure-managed firewall and DDoS protection at the network boundary. Container Apps ingress is restricted to HTTPS only. Internal services communicate over private Azure networking.</p>
+    </div>
+  </div>
+
+  <h2>Authentication &amp; Access Control</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">🪪</div>
+      <h3>Microsoft Entra ID SSO</h3>
+      <p>GreenChainz integrates with Microsoft Entra ID (Azure AD) for enterprise single sign-on. Users authenticate via the Microsoft identity platform with PKCE OAuth 2.0 flow.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📱</div>
+      <h3>Multi-Factor Authentication</h3>
+      <p>MFA is enforced on all code repositories (GitHub), DNS management, and credential/key stores (Azure Key Vault). All admin access requires MFA.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎯</div>
+      <h3>Least Privilege Access</h3>
+      <p>Azure RBAC restricts access to the minimum required. Role hierarchy (admin → architect → supplier → public) is enforced on every API endpoint.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔑</div>
+      <h3>Session Security</h3>
+      <p>Sessions use signed HttpOnly JWT cookies. Tokens are short-lived and validated server-side on every request. No credentials are stored in browser localStorage.</p>
+    </div>
+  </div>
+
+  <h2>Development &amp; Code Security</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">🚦</div>
+      <h3>CI/CD Security Gates</h3>
+      <p>Every pull request runs automated type-checking, linting, dependency vulnerability scanning, and container image scanning before code reaches production. Builds that fail security gates are blocked.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🛡️</div>
+      <h3>OWASP Top 10</h3>
+      <p>Secure coding practices address all OWASP Top 10 vulnerability classes. SQL injection is prevented by using Drizzle ORM exclusively. All API inputs are validated with Zod schemas.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔍</div>
+      <h3>Vulnerability Scanning</h3>
+      <p>Automated dependency scanning (Snyk) and container image scanning (Trivy) run on every build and on a quarterly schedule. GitHub Dependabot creates automatic PRs for security updates.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📋</div>
+      <h3>Change Management</h3>
+      <p>All code changes are deployed through a GitHub Actions pipeline with required status checks. No direct deployments to production — every change goes through the CI/CD gate.</p>
+    </div>
+  </div>
+
+  <h2>Monitoring &amp; Incident Response</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">👁️</div>
+      <h3>Real-Time Monitoring</h3>
+      <p>Sentry monitors application errors and anomalies in real time. Azure Monitor tracks infrastructure metrics and authentication events. Alerts are automatically routed for immediate triage.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📝</div>
+      <h3>Event Logging</h3>
+      <p>All system components emit structured logs retained for a minimum of 90 days. Logs cover authentication events, API access, data mutations, and deployment activity.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🚨</div>
+      <h3>Incident Response</h3>
+      <p>GreenChainz maintains a formal Incident Response Plan covering detection, containment, investigation, user notification, and post-incident review. Data breaches are reported to supervisory authorities within 72 hours of detection.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔄</div>
+      <h3>Disaster Recovery</h3>
+      <p>Azure-managed automated backups with point-in-time restore for the PostgreSQL database. Container images are versioned in Azure Container Registry enabling rapid rollback.</p>
+    </div>
+  </div>
+
+  <h2>Compliance Posture</h2>
+  <table>
+    <thead><tr><th>Control Area</th><th>Status</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Data encryption in transit</td><td><span class="check">✓ Implemented</span></td><td>TLS 1.2+ enforced on all endpoints</td></tr>
+      <tr><td>Data encryption at rest</td><td><span class="check">✓ Implemented</span></td><td>AES-256 via Azure managed encryption</td></tr>
+      <tr><td>MFA on privileged access</td><td><span class="check">✓ Implemented</span></td><td>GitHub, Azure Key Vault, DNS</td></tr>
+      <tr><td>Vulnerability scanning</td><td><span class="check">✓ Implemented</span></td><td>Quarterly automated scans + Dependabot</td></tr>
+      <tr><td>Incident response plan</td><td><span class="check">✓ Documented</span></td><td>Published, reviewed annually</td></tr>
+      <tr><td>Breach notification (72hr)</td><td><span class="check">✓ Committed</span></td><td>Per GDPR Article 33 and IRP Section 4</td></tr>
+      <tr><td>Data residency</td><td><span class="check">✓ US only</span></td><td>Azure East US region exclusively</td></tr>
+      <tr><td>OWASP Top 10</td><td><span class="check">✓ Implemented</span></td><td>Zod validation, ORM, secure headers</td></tr>
+      <tr><td>Annual security review</td><td><span class="check">✓ Scheduled</span></td><td>Every April, next: April 2027</td></tr>
+      <tr><td>GDPR obligations</td><td><span class="check">✓ Active</span></td><td>Privacy policy, DPA available on request</td></tr>
+      <tr><td>SOC 2</td><td>In progress</td><td>Planned for 2027</td></tr>
+      <tr><td>ISO 27001</td><td>In progress</td><td>Planned for 2027</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Security Documents</h2>
+  <ul class="docs-list">
+    <li><a href="/legal/incident-response-plan.html">Incident Response Plan</a></li>
+    <li><a href="/legal/infosec-policy.html">Information Security Policy</a></li>
+    <li><a href="/privacy">Privacy Policy</a></li>
+    <li><a href="/terms">Terms of Use</a></li>
+  </ul>
+  <p style="margin-top:16px; font-size:0.9rem; color:#6b7a72;">Data Processing Agreements (DPAs) are available to enterprise customers upon request. Contact <a href="mailto:privacy@greenchainz.com">privacy@greenchainz.com</a>.</p>
+
+  <div class="disclosure-box">
+    <h3>🔍 Responsible Disclosure</h3>
+    <p>If you discover a security vulnerability in GreenChainz, please report it to us before disclosing it publicly. We commit to acknowledging your report within 48 hours, keeping you informed as we investigate, and resolving confirmed issues promptly.</p>
+    <p>Report vulnerabilities to: <a href="mailto:security@greenchainz.com">security@greenchainz.com</a></p>
+    <p style="font-size:0.85rem; color:#6b7a72;">Please include: description of the vulnerability, steps to reproduce, potential impact, and any supporting evidence. We do not pursue legal action against researchers who follow responsible disclosure guidelines.</p>
+  </div>
+
+  <footer>
+    &copy; 2026 GreenChainz Inc. &nbsp;·&nbsp; Questions? <a href="mailto:security@greenchainz.com">security@greenchainz.com</a>
+  </footer>
+
+</div>
+</body>
+</html>

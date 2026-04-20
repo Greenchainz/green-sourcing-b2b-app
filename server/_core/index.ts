@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "../sentry"; // must be first — initializes Sentry before any other imports
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import express from "express";
@@ -219,6 +220,11 @@ async function startServer() {
   });
 
   app.get("/revit", handleRevitLanding);
+  app.get("/privacy", (_req, res) => res.redirect(301, "/privacy.html"));
+  app.get("/terms", (_req, res) => res.redirect(301, "/terms.html"));
+  app.get("/security", (_req, res) => res.redirect(301, "/security.html"));
+  app.get("/legal/incident-response-plan", (_req, res) => res.redirect(301, "/legal/incident-response-plan.html"));
+  app.get("/legal/infosec-policy", (_req, res) => res.redirect(301, "/legal/infosec-policy.html"));
   app.get("/api/marketplace/landing", handleLandingPage);
   app.post("/api/marketplace/webhook", handleWebhook);
   app.post("/api/microsoft/subscription-webhook", handleMicrosoftWebhook);
@@ -238,6 +244,10 @@ async function startServer() {
       createContext,
     })
   );
+
+  // Sentry error handler must be registered before the generic error handler
+  const { Sentry } = await import("../sentry");
+  app.use(Sentry.expressErrorHandler());
 
   app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = err instanceof Error ? err.message : "Internal server error";

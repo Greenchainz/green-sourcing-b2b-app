@@ -121,7 +121,7 @@ We retain your personal information for as long as necessary to provide the Serv
 
 | Data Type | Retention Period | Reason |
 |-----------|-----------------|--------|
-| Account Information | Duration of account + 3 years | Legal compliance, dispute resolution |
+| Account Information | Less than 30 days after account termination | Deleted upon account closure request |
 | RFQ and Messaging Data | 7 years | Legal compliance, audit trail |
 | Payment Information | 7 years | Tax and accounting requirements |
 | Usage Analytics | 13 months | Service improvement, analytics |

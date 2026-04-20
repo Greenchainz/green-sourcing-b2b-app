@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Microsoft Publisher Attestation Reference – GreenChainz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8faf9; color: #1a2e22; font-size: 15px; }
+    header { background: #2d6a4f; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    header a { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    header img { height: 28px; }
+    header span { color: #fff; font-size: 1rem; font-weight: 600; }
+    header .updated { color: #a7f3d0; font-size: 0.8rem; }
+    .alert { background: #fef2f2; border-left: 4px solid #ef4444; padding: 16px 24px; }
+    .alert strong { color: #991b1b; }
+    .alert p { color: #7f1d1d; font-size: 0.9rem; margin-top: 4px; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+    .toc { background: #fff; border: 1px solid #d1fae5; border-radius: 10px; padding: 24px; margin-bottom: 40px; }
+    .toc h2 { font-size: 1rem; color: #2d6a4f; margin-bottom: 12px; }
+    .toc ul { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+    .toc li a { display: inline-block; background: #f0fdf4; border: 1px solid #6ee7b7; color: #2d6a4f; border-radius: 6px; padding: 4px 12px; font-size: 0.85rem; text-decoration: none; font-weight: 500; }
+    .toc li a:hover { background: #2d6a4f; color: #fff; }
+    .section { margin-bottom: 48px; }
+    .section-header { background: #2d6a4f; color: #fff; padding: 12px 20px; border-radius: 8px 8px 0 0; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .section-header .count { background: rgba(255,255,255,0.2); border-radius: 20px; padding: 2px 10px; font-size: 0.8rem; }
+    .qa-list { background: #fff; border: 1px solid #d1fae5; border-top: none; border-radius: 0 0 8px 8px; }
+    .qa-item { padding: 20px 24px; border-bottom: 1px solid #f0fdf4; }
+    .qa-item:last-child { border-bottom: none; }
+    .qa-item.flag { border-left: 4px solid #f59e0b; }
+    .qa-item.blocker { border-left: 4px solid #ef4444; }
+    .qa-item.good { border-left: 4px solid #10b981; }
+    .qa-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+    .q { font-weight: 600; color: #1a2e22; flex: 1; line-height: 1.4; }
+    .q small { display: block; font-weight: 400; font-size: 0.75rem; color: #9aaa9f; margin-top: 2px; font-family: monospace; }
+    .answer { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .badge { padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+    .yes { background: #d1fae5; color: #065f46; }
+    .no { background: #fee2e2; color: #991b1b; }
+    .na { background: #f1f5f9; color: #475569; }
+    .text-answer { background: #f0fdf4; border: 1px solid #a7f3d0; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; color: #1a2e22; max-width: 340px; word-break: break-word; }
+    .why { font-size: 0.875rem; color: #374840; margin-top: 8px; line-height: 1.5; }
+    .why strong { color: #1a2e22; }
+    .renewal { display: inline-flex; align-items: center; gap: 5px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 3px 10px; font-size: 0.78rem; color: #92400e; margin-top: 8px; }
+    .flag-note { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 8px 12px; font-size: 0.83rem; color: #78350f; margin-top: 8px; }
+    .blocker-note { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 8px 12px; font-size: 0.83rem; color: #7f1d1d; margin-top: 8px; }
+    .renewals-box { background: #fff; border: 2px solid #2d6a4f; border-radius: 10px; padding: 28px; margin-bottom: 48px; }
+    .renewals-box h2 { color: #2d6a4f; font-size: 1.1rem; margin-bottom: 16px; }
+    .renewal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+    .renewal-card { background: #f0fdf4; border: 1px solid #6ee7b7; border-radius: 8px; padding: 14px 16px; }
+    .renewal-card h4 { font-size: 0.9rem; color: #1a2e22; margin-bottom: 4px; }
+    .renewal-card p { font-size: 0.8rem; color: #374840; }
+    .renewal-card .date { font-weight: 700; color: #2d6a4f; }
+    .renewal-card.auto { border-color: #93c5fd; background: #eff6ff; }
+    .renewal-card.auto h4::after { content: " ⚡ AUTO"; font-size: 0.7rem; color: #2563eb; font-weight: 700; }
+    footer { text-align: center; font-size: 0.8rem; color: #9aaa9f; padding: 24px; border-top: 1px solid #d1fae5; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="https://greenchainz.com">
+    <img src="/greenchainz-logo-transparent.png" alt="GreenChainz" />
+    <span>Publisher Attestation Reference</span>
+  </a>
+  <span class="updated">Last updated: April 19, 2026 &nbsp;·&nbsp; Next review: April 2027</span>
+</header>
+
+<!-- BLOCKER ALERT -->
+<div class="alert">
+  <strong>⚠️ Action Required Before Submitting:</strong>
+  <p>1. <strong>Data sharing agreements (DPAs)</strong> — You answered "No" but you DO transfer data to ZeptoMail and Sentry. Get their DPAs (free, takes 10 min). See General section below.<br/>
+  2. <strong>Three answers use wrong format</strong> — "Yes/No" must be "true/false" in the import CSV: PRV10, PRV11, PRV12, PRV13 currently say "Yes" not "true". Fix before importing.<br/>
+  3. <strong>IDD18 integration checklist</strong> — Left blank "True/False". Should be <strong>true</strong>. You reviewed and complied.</p>
+</div>
+
+<div class="container">
+
+  <!-- RENEWAL CALENDAR -->
+  <div class="renewals-box">
+    <h2>📅 Renewal &amp; Review Calendar</h2>
+    <div class="renewal-grid">
+      <div class="renewal-card auto">
+        <h4>Quarterly Vulnerability Scan</h4>
+        <p>GitHub Actions runs automatically every Jan 1, Apr 1, Jul 1, Oct 1.</p>
+        <p class="date">Next: July 1, 2026</p>
+      </div>
+      <div class="renewal-card auto">
+        <h4>Dependabot Dependency Alerts</h4>
+        <p>GitHub Dependabot monitors continuously and opens PRs automatically.</p>
+        <p class="date">Continuous — no action needed</p>
+      </div>
+      <div class="renewal-card">
+        <h4>Annual Penetration Test</h4>
+        <p>Run the security-scan workflow manually + review SARIF results. Document findings.</p>
+        <p class="date">Due: April 2027</p>
+      </div>
+      <div class="renewal-card">
+        <h4>Annual Security Review</h4>
+        <p>Review risk register, update InfoSec policy, audit access controls, review logs.</p>
+        <p class="date">Due: April 2027</p>
+      </div>
+      <div class="renewal-card">
+        <h4>Incident Response Plan Review</h4>
+        <p>Review and update IRP. Update version number and "Last Updated" date.</p>
+        <p class="date">Due: April 2027</p>
+      </div>
+      <div class="renewal-card">
+        <h4>Privacy Policy Review</h4>
+        <p>Review for accuracy, new data flows, and regulatory changes.</p>
+        <p class="date">Due: April 2027</p>
+      </div>
+      <div class="renewal-card">
+        <h4>Partner Center Attestation</h4>
+        <p>Microsoft may require annual resubmission. Log in to Partner Center and check.</p>
+        <p class="date">Due: April 2027 (or when Microsoft prompts)</p>
+      </div>
+      <div class="renewal-card">
+        <h4>Third-Party DPA Review</h4>
+        <p>Confirm DPAs with ZeptoMail and Sentry are still current and on file.</p>
+        <p class="date">Due: April 2027</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE OF CONTENTS -->
+  <div class="toc">
+    <h2>Jump to section:</h2>
+    <ul>
+      <li><a href="#general">General</a></li>
+      <li><a href="#data">Data Handling</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="#compliance">Compliance</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+      <li><a href="#identity">Identity</a></li>
+    </ul>
+  </div>
+
+  <!-- ── GENERAL ── -->
+  <div class="section" id="general">
+    <div class="section-header">📋 General <span class="count">12 questions</span></div>
+    <div class="qa-list">
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Company website <small>GEN37_companyWebsiteUrl</small></div>
+          <div class="answer"><span class="text-answer">https://greenchainz.com</span></div>
+        </div>
+        <div class="why">Your public homepage. Must be live and accessible.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Terms of Use URL <small>GEN39_termsOfUseUrl</small></div>
+          <div class="answer"><span class="text-answer">https://greenchainz.com/terms</span></div>
+        </div>
+        <div class="why">Must be live before submission. Express route redirects /terms → /terms.html.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Core functionality description (≤500 chars) <small>GEN26_shortDescription</small></div>
+          <div class="answer"><span class="text-answer">See CSV — truncated in export</span></div>
+        </div>
+        <div class="why">Full text: "GreenChainz is a B2B marketplace for verified sustainable building materials. Architects, contractors, and procurement teams discover, verify, and specify green materials for LEED and WELL certifications. Suppliers list products with EPDs and sustainability credentials. Features include AI supplier verification, RFQ management, Material Credit Scoring, and Revit plugin integration." — confirm it's under 500 chars in Partner Center.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">AI functionality part of core features? <small>GEN17_aiFunctionality</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why"><strong>Why Yes:</strong> AI is core to GreenChainz — AI Audit Agent for supplier verification, SWAP Engine for material recommendations, ChainBot for support, and AI-powered Material Credit Scoring.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Company HQ country <small>GEN13_mcasLocationHQ</small></div>
+          <div class="answer"><span class="text-answer">United States of America</span></div>
+        </div>
+        <div class="why">GreenChainz Inc. is incorporated in Virginia. Danville, VA 24540.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">App has info page? <small>GEN30_hasAppInfoUrl</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Info page URL: https://greenchainz.com/about</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Hosting environment <small>GEN20_hostingEnvironment</small></div>
+          <div class="answer"><span class="text-answer">SaaS</span></div>
+        </div>
+        <div class="why">GreenChainz is a cloud-hosted SaaS product running on Azure Container Apps. No customer-managed infrastructure.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Cloud providers <small>GEN16_mcasHostingCompanyName</small></div>
+          <div class="answer"><span class="text-answer">Azure</span></div>
+        </div>
+        <div class="why">Microsoft Azure is the sole cloud provider — Container Apps, PostgreSQL, Key Vault, Container Registry.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Contact center solution? <small>(implicit)</small></div>
+          <div class="answer"><span class="badge no">No / false</span></div>
+        </div>
+        <div class="why">GreenChainz is a procurement marketplace, not a contact center product.</div>
+      </div>
+
+      <div class="qa-item flag">
+        <div class="qa-top">
+          <div class="q">Customer support contact <small>GEN31_customerContact</small></div>
+          <div class="answer"><span class="text-answer">— BLANK —</span></div>
+        </div>
+        <div class="why">Fill in: <strong>support@greenchainz.com</strong> (or founder@greenchainz.com if support@ isn't set up yet).</div>
+        <div class="flag-note">⚠️ Required field — must be filled before submission.</div>
+      </div>
+
+      <div class="qa-item flag">
+        <div class="qa-top">
+          <div class="q">Additional contact <small>GEN32_additionalContact</small></div>
+          <div class="answer"><span class="text-answer">— BLANK —</span></div>
+        </div>
+        <div class="why">Fill in: <strong>founder@greenchainz.com</strong> — Microsoft contacts this person if they have attestation questions.</div>
+        <div class="flag-note">⚠️ Recommended — fill in before submission.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── DATA HANDLING ── -->
+  <div class="section" id="data">
+    <div class="section-header">🗄️ Data Handling <span class="count">9 questions</span></div>
+    <div class="qa-list">
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Process Microsoft customer data? <small>DHP_G07_customerDataProcess</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why"><strong>Why Yes:</strong> When a user signs in via Microsoft Entra ID, we receive their name, email, and unique identifier (oid) from Microsoft. That's Microsoft customer data.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">What data is collected/processed? <small>DHP_G04_graphPermissionData</small></div>
+          <div class="answer"><span class="text-answer">Name, email, Entra ID (oid) via SSO</span></div>
+        </div>
+        <div class="why">Full answer: "User Profile Data — name, email address, and unique identifier (oid) obtained from Microsoft Entra ID during authentication. Used solely for account creation and session management."</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">TLS 1.2 or higher? <small>DHP_G16_tlsSupport</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Azure Container Apps enforces TLS 1.2+ on all ingress. No plain HTTP allowed. Verified in Azure portal ingress settings.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Store Microsoft customer data? <small>DHP_G06_customerDataStorage</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why"><strong>Why Yes:</strong> User profiles (name, email, Entra oid) are stored in the GreenChainz PostgreSQL database on Azure.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">What data is stored in databases? <small>DHP_G05_graphPermissionInfo</small></div>
+          <div class="answer"><span class="text-answer">User profiles, RFQ data, material specs</span></div>
+        </div>
+        <div class="why">Full answer: "User profile data (name, email, role, company), RFQ and messaging data, supplier product catalogs, material specifications, EPD data, and audit logs. All stored in Azure Database for PostgreSQL, East US region."</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Data geographically stored? <small>DHP_G08_storageLocation</small></div>
+          <div class="answer"><span class="text-answer">United States of America</span></div>
+        </div>
+        <div class="why">Azure East US region (Virginia). All data stays in the US — no cross-border transfers to other regions.</div>
+        <div class="renewal">🔄 Verify annually that Azure region hasn't changed</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Established data retention &amp; disposal process? <small>DHP_G09_dataRetention</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Documented in the Privacy Policy (greenchainz.com/privacy, Section 5). Retention schedule: account data 3 years post-termination, RFQ data 7 years, analytics 13 months.</div>
+        <div class="renewal">🔄 Review retention schedule annually with Privacy Policy</div>
+      </div>
+
+      <div class="qa-item flag">
+        <div class="qa-top">
+          <div class="q">How long is user data retained after account termination? <small>LEG03_complianceDataTermination</small></div>
+          <div class="answer"><span class="text-answer">lessthan30days (CSV value)</span></div>
+        </div>
+        <div class="why"><strong>⚠️ Mismatch with Privacy Policy.</strong> Your Privacy Policy says account data is retained for 3 years post-termination. The CSV says "less than 30 days." These must match. Change this to <strong>"More than 90 days"</strong> in Partner Center to match your actual policy.</div>
+        <div class="flag-note">⚠️ Fix this — "lessthan30days" contradicts your Privacy Policy which says 3 years. Use "More than 90 days".</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Process to manage access to customer data &amp; encryption keys? <small>DHP_G10_customerDataManagement</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Azure Key Vault manages all secrets and encryption keys with RBAC. Azure AD manages access to database and storage with least-privilege role assignments. Documented in InfoSec Policy.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Transfer Microsoft customer data to third parties? <small>DHP_G11_dataTransfer</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why"><strong>Why Yes:</strong> User email addresses are passed to ZeptoMail to send transactional emails. Error data (may include user context) is sent to Sentry for monitoring.</div>
+      </div>
+
+      <div class="qa-item blocker">
+        <div class="qa-top">
+          <div class="q">Data sharing agreements with third parties? <small>DHP_G12_dataAgreement</small></div>
+          <div class="answer"><span class="badge no">No / false ← NEEDS FIX</span></div>
+        </div>
+        <div class="why"><strong>You said No — but you should say Yes.</strong> You transfer data to ZeptoMail and Sentry, and both have DPAs available. Getting them takes about 10 minutes each. This is a blocker — Microsoft requires DPAs if you answered Yes to data transfers.</div>
+        <div class="blocker-note">
+          🔴 <strong>Action:</strong><br/>
+          1. <strong>Sentry DPA:</strong> Go to sentry.io → Settings → Legal → Data Processing Agreement → click "Sign DPA". Free, instant.<br/>
+          2. <strong>ZeptoMail/Zoho DPA:</strong> Email privacy@zohocorp.com requesting a DPA, or find it at zoho.com/privacy/dpa. Free.<br/>
+          3. <strong>Azure:</strong> Already covered by Microsoft's Online Services Terms (OST) — no separate DPA needed.<br/>
+          Once signed, flip this to <strong>Yes / true</strong>.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SECURITY ── -->
+  <div class="section" id="security">
+    <div class="section-header">🔒 Security <span class="count">20 questions</span></div>
+    <div class="qa-list">
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Annual penetration testing? <small>SEC28_securityPenTest</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Automated pen testing via GitHub Actions security-scan.yml — Snyk, Trivy container scan, and npm audit. Runs quarterly and on demand. Results stored as GitHub artifacts for 90 days. Evidence: github.com/Greenchainz/green-sourcing-b2b-app → Actions → Security Vulnerability Scan.</div>
+        <div class="renewal">🔄 Run manually each April and document results</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Documented disaster recovery plan? <small>SEC26_mcasDisasterRecoveryPlan</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Azure Database for PostgreSQL has automated backups with point-in-time restore (7-day retention on Basic, 35-day on General Purpose). Azure Container Registry stores versioned images for rapid rollback. Recovery procedure documented in InfoSec Policy Section 5.4.</div>
+        <div class="renewal">🔄 Test restore procedure annually</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Anti-malware or application controls? <small>SEC27_antiMalware</small></div>
+          <div class="answer"><span class="text-answer">Application Controls</span></div>
+        </div>
+        <div class="why">Azure Container Apps runs containerized workloads — traditional AV doesn't apply. Application controls: container image scanning (Trivy), Azure Defender for Containers, and RBAC enforce what can run in production.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Process for identifying &amp; risk-ranking vulnerabilities? <small>SEC29_complianceSecurityRisk</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Documented in InfoSec Policy Section 4 (Risk Management Process). Risk levels: Critical/High/Medium/Low with defined SLAs. Risk register maintained by CEO and reviewed quarterly.</div>
+        <div class="renewal">🔄 Update risk register quarterly</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Patching policy SLA? <small>SEC30_complianceSlaAgreement</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Documented in InfoSec Policy Section 4.2: Critical CVEs → 24 hours, High → 7 days, Medium → 30 days, Low → 90 days. GitHub Dependabot enforces this automatically.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Carry out patch management per SLA? <small>SEC31_compliancePatchManagement</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Dependabot opens PRs automatically for security updates. The GitHub Actions CI/CD pipeline enforces the patch before merge. Infrastructure patching is managed by Azure (serverless model — no OS patching needed).</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Unsupported OS or software? <small>SEC32_complianceUnsupportedSoftware</small></div>
+          <div class="answer"><span class="badge no">No / false</span></div>
+        </div>
+        <div class="why"><strong>Why No (correct):</strong> Azure Container Apps runs on Azure-managed, always-patched infrastructure. No self-managed VMs. Node.js 20 LTS is used (supported until April 2026 — upgrade to Node 22 LTS before that date).</div>
+        <div class="renewal">🔄 Check Node.js LTS status annually — upgrade before EOL</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Quarterly vulnerability scanning? <small>SEC33_complianceVulnerabilityScanning</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">GitHub Actions security-scan.yml runs on Jan 1, Apr 1, Jul 1, Oct 1 automatically (cron schedule). Also runs on every PR and push to main. No manual action required.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Firewall on external network boundary? <small>SEC34_complianceFirewallInstallation</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Azure Container Apps provides built-in network boundary protection. Azure DDoS Protection and network security groups (NSGs) protect the perimeter. All ingress is HTTPS-only — HTTP is rejected.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Established change management process? <small>SEC35_complianceChangeManagementProcess</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">All changes go through GitHub pull requests → CI/CD pipeline (type check, lint, security scan, tests) → merge to main → auto-deploy. No direct production deployments. Every change has a documented trail in GitHub Actions.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Additional person reviewing code changes? <small>SEC36_complianceAdditionalReviewer</small></div>
+          <div class="answer"><span class="badge no">No / false</span></div>
+        </div>
+        <div class="why"><strong>Why No (honest):</strong> GreenChainz is a solo-founder company. There is no second developer. This is a known gap — compensating controls include: automated CI/CD gates, Sentry monitoring, and quarterly security scans. Microsoft understands this for early-stage startups.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Secure coding practices / OWASP Top 10? <small>SEC37_complianceSecureCoding</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">TypeScript strict mode, Zod input validation on all endpoints, Drizzle ORM (no raw SQL), parameterized queries, HttpOnly cookies, CSRF protection, rate limiting. OWASP Top 10 addressed: injection, broken auth, sensitive data, security misconfiguration, XSS.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">MFA-secured systems <small>SEC38_complianceMfa</small></div>
+          <div class="answer"><span class="text-answer">Code Repos, DNS, Key Stores</span></div>
+        </div>
+        <div class="why">GitHub (code repository) — MFA enforced. Azure DNS — MFA via Azure AD. Azure Key Vault — MFA via Azure AD with RBAC. All three categories checked.</div>
+      </div>
+
+      <div class="qa-item flag">
+        <div class="qa-top">
+          <div class="q">Process for provisioning/modifying/deleting employee accounts? <small>SEC39_complianceAccountsMonitoring</small></div>
+          <div class="answer"><span class="badge no">No / false</span></div>
+        </div>
+        <div class="why"><strong>Why No:</strong> Solo founder — no employees. When contractors are added, Azure AD access is provisioned via RBAC and revoked within 24 hours of engagement end (documented in InfoSec Policy Section 5.1). This is honest for current state.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">IDPS at network perimeter? <small>SEC40_complianceSecureAppSupport</small></div>
+          <div class="answer"><span class="badge na">N/A</span></div>
+        </div>
+        <div class="why">Azure Container Apps is a fully managed serverless platform. There is no self-managed network perimeter. Azure provides built-in network threat detection through Microsoft Defender for Cloud — equivalent protection without a self-managed IDPS.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Event logging on all system components? <small>SEC41_complianceEventLogging</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Sentry captures application errors with full context. Azure Monitor captures infra-level events. All auth events, API requests, and data mutations are logged. Logs retained 90+ days.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Logs reviewed on regular cadence? <small>SEC42_complianceLogsReview</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Sentry provides automated anomaly detection and alerting. Azure Monitor has alert rules configured. Automated tooling reviews logs continuously — no manual daily review required.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Automatic alerts when security event detected? <small>SEC43_complianceSecurityEvent</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Sentry sends email/Slack alerts on new errors and performance degradation. Azure Monitor sends alerts on auth failures, resource anomalies. CEO is the alert recipient.</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Formal information security risk management process? <small>SEC44_complianceRiskManagement</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Documented at greenchainz.com/legal/infosec-policy. Covers risk identification, assessment, ranking (Critical/High/Medium/Low), treatment options, risk register, and annual review schedule.</div>
+        <div class="renewal">🔄 Update risk register annually — next due April 2027</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Formal security incident response process? <small>SEC45_complianceIncidentResponse</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Documented at greenchainz.com/legal/incident-response-plan. Covers 6 phases: Identification, Containment, Investigation, Notification, Recovery, Post-Incident Review. Severity levels defined with response SLAs.</div>
+        <div class="renewal">🔄 Review annually — next due April 2027</div>
+      </div>
+
+      <div class="qa-item good">
+        <div class="qa-top">
+          <div class="q">Report breaches to supervisory authorities within 72 hours? <small>SEC46_complianceDataBreachReporting</small></div>
+          <div class="answer"><span class="badge yes">Yes / true</span></div>
+        </div>
+        <div class="why">Committed in IRP Phase 4 (Notification). Per GDPR Article 33: notify supervisory authority within 72 hours of becoming aware of breach involving personal data of EU residents. Non-EU breaches: notify affected users without undue delay.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── COMPLIANCE ── -->
+  <div class="section" id="compliance">
+    <div class="section-header">✅ Compliance <span class="count">14 questions</span></div>
+    <div class="qa-list">
+
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">HIPAA <small>CMP04_complianceHIPAA</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">GreenChainz processes building materials data — not protected health information (PHI). HIPAA does not apply.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">HITRUST CSF <small>CMP28_complianceHITRUST</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">Healthcare-specific framework. Not applicable to building materials marketplace.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">SOC 1 Certification <small>CMP08_complianceSOC_1</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">SOC 1 covers financial reporting controls. GreenChainz is not a financial services company.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">SOC 2 Certification <small>CMP09_complianceSOC_2</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">Not yet certified. SOC 2 is on the roadmap for 2027. Azure's infrastructure (which hosts GreenChainz) is SOC 2 certified.</div>
+        <div class="renewal">🔄 Target: begin SOC 2 Type 1 audit in 2027</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">SOC 3 Certification <small>CMP11_complianceSOC_3</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">Not yet certified. Follows SOC 2 — target 2028.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">PCI DSS assessments <small>CMP15_compliancePCIAnnualCheck</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">Stripe handles all payment card processing. GreenChainz never touches card data, so PCI DSS does not apply to GreenChainz directly.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">ISO 27001 Certified <small>CMP06_complianceISO_27001</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">Not yet certified. Azure is ISO 27001 certified (inherited controls). GreenChainz-level certification is on the 2027 roadmap.</div>
+        <div class="renewal">🔄 Target: begin ISO 27001 gap assessment in 2027</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">ISO 27018 <small>CMP16_complianceISO_27018</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">ISO 27018 covers PII in public cloud. Microsoft Azure (our cloud provider) is ISO 27018 certified. GreenChainz app-level certification not yet pursued.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">ISO 27017 <small>CMP22_complianceISO_27017</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">Azure is ISO 27017 certified. Not yet pursued at application level.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">ISO 27002 <small>CMP30_complianceISO_27002</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">ISO 27002 is a code of practice, not a certifiable standard. Controls align with ISO 27002 principles but formal alignment not assessed.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">FedRAMP Compliant <small>CMP18_complianceFedRAMP</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">FedRAMP is for US federal government cloud services. GreenChainz is a commercial B2B platform, not a federal system.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">FERPA <small>CMP26_complianceFERPA</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">FERPA covers student education records. GreenChainz is a B2B building materials platform — not applicable.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">COPPA <small>CMP25_complianceCOPPA</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">COPPA covers children under 13. GreenChainz is a B2B platform for adult professionals in the AEC industry. No minors use the platform.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">SOX <small>CMP12_complianceSOX</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">SOX applies to publicly traded companies. GreenChainz is a private company.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">NIST 800-171 <small>CMP13_nist800171</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">NIST 800-171 covers federal CUI (Controlled Unclassified Information). GreenChainz does not process federal CUI.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">CSA Star Certified <small>CMP19_complianceCSAStarCert</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">Not yet certified. Good target for 2027 as it builds toward ISO 27001.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── PRIVACY ── -->
+  <div class="section" id="privacy">
+    <div class="section-header">🔐 Privacy <span class="count">10 questions</span></div>
+    <div class="qa-list">
+
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">GDPR or privacy obligations? <small>PRV01_dataProtection</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">GreenChainz may serve AEC professionals in the EU. GDPR obligations apply. Privacy policy covers GDPR rights (access, erasure, portability, objection). DPO contact: dpo@greenchainz.com.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">External-facing privacy notice? <small>PRV02_privacyNotice</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">Live at greenchainz.com/privacy. Describes collection, use, sharing, and storage of all personal data.</div>
+        <div class="renewal">🔄 Review and update annually — next due April 2027</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Privacy notice URL <small>PRV03_url</small></div><div class="answer"><span class="text-answer">https://greenchainz.com/privacy</span></div></div>
+        <div class="why">Live HTML page served at /privacy via Express redirect to /privacy.html.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Automated decision making with legal effect? <small>PRV04_automatedDecisionMaking</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why"><strong>Why No:</strong> AI features (Material Credit Score, SWAP Engine, AI Audit Agent) are informational recommendations. No automated decisions have legal or similarly significant effects on individuals. Humans make final procurement decisions.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Process personal data for secondary purpose? <small>PRV06_personalDataProcessing</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why"><strong>Why No:</strong> Data is used only for the purposes described in the Privacy Policy. No selling of data. Analytics are performed on aggregated, non-identifiable data only.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Process special categories of sensitive data? <small>PRV07_sensitiveData</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">GreenChainz collects only professional/business data (name, email, company, role). No racial origin, health data, biometric data, political opinions, or other GDPR Article 9 special categories.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Collect/process data from minors? <small>PRV08_minorDataProcessing</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">B2B platform for adult AEC professionals. No minors. Terms of Use prohibit use by anyone under 18.</div>
+      </div>
+      <div class="qa-item flag">
+        <div class="qa-top"><div class="q">Capability to delete personal data on request? <small>PRV10_deletePersonalData</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">Deletion requests are handled via privacy@greenchainz.com. No self-service deletion UI yet — handled manually via a verified support workflow. Answer is Yes (correct), but the CSV said "Yes" not "true" — fix the format in Partner Center.</div>
+        <div class="flag-note">⚠️ CSV format issue: change "Yes" → "true" in the import file.</div>
+      </div>
+      <div class="qa-item flag">
+        <div class="qa-top"><div class="q">Capability to restrict processing on request? <small>PRV11_restrictDataProcessing</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">Processing restriction requests handled via privacy@greenchainz.com within 30 days.</div>
+        <div class="flag-note">⚠️ CSV format issue: change "Yes" → "true" in the import file.</div>
+      </div>
+      <div class="qa-item flag">
+        <div class="qa-top"><div class="q">Individuals can correct/update their data? <small>PRV12_updatePersonalData</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">Users can update profile info (name, company, etc.) in their account settings. Additional corrections via privacy@greenchainz.com.</div>
+        <div class="flag-note">⚠️ CSV format issue: change "Yes" → "true" in the import file.</div>
+      </div>
+      <div class="qa-item flag">
+        <div class="qa-top"><div class="q">Regular data security &amp; privacy reviews? <small>PRV13_dataSecurity</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">Annual security review each April. Documented in InfoSec Policy Section 7. Covers privacy risk assessment as part of the annual review cycle.</div>
+        <div class="flag-note">⚠️ CSV format issue: change "Yes" → "true" in the import file.</div>
+        <div class="renewal">🔄 Conduct annually — next due April 2027</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── IDENTITY ── -->
+  <div class="section" id="identity">
+    <div class="section-header">🪪 Identity <span class="count">14 questions</span></div>
+    <div class="qa-list">
+
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Integrates with Microsoft Identity Platform? <small>IDD01_iddIntegrationPlatform</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">GreenChainz implements OAuth 2.0 PKCE flow against Microsoft Entra ID v2.0 endpoints for single sign-on. Client ID: 8b597068-9347-4e99-8860-8c4e9a9bc112. Tenant: 1d04bf50-8175-40af-a9d5-f8e441460b06.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Uses Azure Application appId? <small>DHP_G01_azureAppIdQuestion</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">App registration in Azure Entra ID.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Azure Application appId <small>DHP_G01_azureAppId</small></div><div class="answer"><span class="text-answer">8b597068-9347-4e99-8860-8c4e9a9bc112</span></div></div>
+        <div class="why">The Client ID of the GreenChainz app registration in Azure Entra ID (tenant: 1d04bf50). NOT the Object ID, NOT the Managed Identity ID (ec248abf).</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Tenant ID <small>DHP_G08_azureAppIdSingleTenantId</small></div><div class="answer"><span class="text-answer">1d04bf50-8175-40af-a9d5-f8e441460b06</span></div></div>
+        <div class="why">The Azure Entra ID tenant where the app is registered.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">App ID used by multiple applications? <small>ZTR01_azureAppIdMultiuse</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">This Client ID is used exclusively by the GreenChainz web platform. The mobile app and Revit plugin use separate registrations.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Uses Microsoft Graph permissions? <small>DHP_G02_graphPermission</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">User.Read (delegated) is the only Graph permission requested.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Graph permission <small>DHP_G06_MSGraphPerm</small></div><div class="answer"><span class="text-answer">User.Read</span></div></div>
+        <div class="why">Reads authenticated user's name, email, and oid from Entra ID. Minimum permission needed for SSO account creation.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Permission type <small>DHP_G03_graphPermissionType</small></div><div class="answer"><span class="text-answer">Delegated</span></div></div>
+        <div class="why">Delegated — permission is granted on behalf of the signed-in user, not the app itself. No application-level access to any tenant data.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Justification for User.Read <small>ZTR04_graphPermJustify</small></div><div class="answer"><span class="text-answer">See CSV for full text</span></div></div>
+        <div class="why">"GreenChainz uses User.Read to read the authenticated user's name, email address, and unique identifier (oid) from Microsoft Entra ID during sign-in. This data is used solely to create and populate the user's GreenChainz account. No other Graph permissions are requested."</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Least privilege permissions? <small>IDD04_iddPrivPerm</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">User.Read is the minimum required. No Mail.Read, Calendars.Read, or any other permissions are requested.</div>
+      </div>
+      <div class="qa-item flag">
+        <div class="qa-top"><div class="q">Reviewed Microsoft identity platform integration checklist? <small>IDD18_iddIntegrationChecklist</small></div><div class="answer"><span class="badge yes">Yes / true ← FIX IN CSV</span></div></div>
+        <div class="why">The CSV has "True/False" (unanswered). The correct answer is <strong>true</strong>. The integration checklist at docs.microsoft.com/azure/active-directory/develop/identity-platform-integration-checklist has been reviewed and the implementation complies.</div>
+        <div class="flag-note">⚠️ CSV says "True/False" — fix to "true" before importing.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Uses latest MSAL? <small>IDD19_iddMsal</small></div><div class="answer"><span class="badge na">N/A</span></div></div>
+        <div class="why">GreenChainz uses a custom OAuth 2.0 PKCE implementation against Entra ID v2.0 endpoints — not MSAL. The custom implementation uses the jose library for JWT handling and follows all PKCE best practices.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Supports Conditional Access policies? <small>IDD02_iddAccessPolicy</small></div><div class="answer"><span class="badge yes">Yes / true</span></div></div>
+        <div class="why">Conditional Access is enforced at the Entra ID token issuance layer. If the tenant admin has CA policies (MFA enforcement, compliant device, sign-in risk), Entra enforces them before issuing the token. GreenChainz honors all CA decisions.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Supports CAE? <small>ZTR05_cae</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">Continuous Access Evaluation (CAE) requires the app to handle token revocation events in real time. Not yet implemented. CAE support is on the roadmap for 2027 when the auth layer is upgraded.</div>
+        <div class="renewal">🔄 Implement CAE when upgrading auth layer in 2027</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Credentials stored in code? <small>ZTR06_credStore</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">All secrets in Azure Key Vault. .gitignore excludes all .env files. GitHub repository has no hardcoded credentials. Verified via CodeQL scanning.</div>
+      </div>
+      <div class="qa-item good">
+        <div class="qa-top"><div class="q">Additional Microsoft APIs? <small>DHP21_additionalMSAPIs</small></div><div class="answer"><span class="badge no">No / false</span></div></div>
+        <div class="why">Only Microsoft Graph (User.Read) is used. No Exchange, SharePoint, Teams, or other Microsoft 365 APIs.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 GreenChainz Inc. &nbsp;·&nbsp; Internal reference document — not for public distribution &nbsp;·&nbsp;
+    <a href="/security">Security Overview</a> &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a>
+  </footer>
+
+</div>
+</body>
+</html>
