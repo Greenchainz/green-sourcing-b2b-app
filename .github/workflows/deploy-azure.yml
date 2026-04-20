@@ -6,12 +6,11 @@ on:
       - main
   workflow_dispatch:
 
-# ─── GitHub Variables (Settings → Variables → Actions) ──────────────────────────────────
-# Non-sensitive identifiers — NOT secrets:
-#   AZURE_CLIENT_ID       → 8b597068-9347-4e99-8860-8c4e9a9bc112
-#   AZURE_TENANT_ID       → 1d04bf50-8175-40af-a9d5-f8e441460b06
-#   AZURE_SUBSCRIPTION_ID → your Azure subscription ID
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── Azure OIDC identifiers (non-secret, safe to commit) ────────────────────
+# App registration: greenchainz (8b597068-9347-4e99-8860-8c4e9a9bc112)
+# Tenant:          greenchainz12 (1d04bf50-8175-40af-a9d5-f8e441460b06)
+# Subscription:    f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
+# ─────────────────────────────────────────────────────────────────────────────
 
 env:
   ACR: acrgreenchainzprod916
@@ -79,9 +78,9 @@ jobs:
       - name: Log in to Azure (OIDC — no stored credentials)
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: 8b597068-9347-4e99-8860-8c4e9a9bc112
+          tenant-id: 1d04bf50-8175-40af-a9d5-f8e441460b06
+          subscription-id: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
 
       - name: Pull build secrets from Key Vault
         id: kv
@@ -162,9 +161,9 @@ jobs:
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: 8b597068-9347-4e99-8860-8c4e9a9bc112
+          tenant-id: 1d04bf50-8175-40af-a9d5-f8e441460b06
+          subscription-id: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
 
       - name: Pull DATABASE_URL from Key Vault
         id: kv
@@ -254,9 +253,9 @@ jobs:
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: 8b597068-9347-4e99-8860-8c4e9a9bc112
+          tenant-id: 1d04bf50-8175-40af-a9d5-f8e441460b06
+          subscription-id: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
 
       - name: Pull build secrets from Key Vault
         id: kv
