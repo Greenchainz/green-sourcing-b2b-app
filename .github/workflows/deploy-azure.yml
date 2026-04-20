@@ -277,6 +277,38 @@ jobs:
           get_secret fred-api-key
           get_secret resend-api-key
 
+      - name: Remove stale user-assigned identities from backend
+        run: |
+          # Any write operation on a Container App that still references a deleted
+          # user-assigned identity (e.g. id-greenchainz-backend) fails with
+          # FailedIdentityOperation/BadRequest. Explicitly null out all user-assigned
+          # identity entries via ARM PATCH before making any further changes.
+          # ARM PATCH semantics: setting a user-assigned identity value to null removes
+          # the reference without validating whether the underlying resource still exists.
+          RESOURCE_ID=$(az containerapp show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query id -o tsv)
+
+          USER_IDS=$(az rest \
+            --method GET \
+            --uri "${RESOURCE_ID}?api-version=2023-05-01" \
+            --query "identity.userAssignedIdentities" -o json 2>/dev/null || echo "null")
+
+          if [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
+            echo "No user-assigned identities found — skipping cleanup."
+          else
+            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned", userAssignedIdentities: with_entries(.value = null)}}')
+            echo "Removing stale user-assigned identities..."
+            az rest \
+              --method PATCH \
+              --uri "${RESOURCE_ID}?api-version=2023-05-01" \
+              --body "$PATCH_BODY" \
+              --output none || true
+            # Allow the identity update to propagate before the next operation.
+            sleep 15
+          fi
+
       - name: Upsert backend runtime secrets in Container App
         # Ensure backend uses Container App-managed secret values (not Key Vault refs),
         # so revision provisioning does not depend on the missing system identity path.
