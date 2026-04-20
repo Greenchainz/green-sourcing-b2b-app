@@ -58,7 +58,8 @@ function parseCsvToTables(fileBuffer: Buffer): NormalizedTable[] {
 async function parseExcelToTables(fileBuffer: Buffer): Promise<NormalizedTable[]> {
   const ExcelJS = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(fileBuffer);
+  // ExcelJS accepts Buffer at runtime; this cast only bridges the current TS typing drift.
+  await workbook.xlsx.load(fileBuffer as unknown as ArrayBuffer);
 
   const tables: NormalizedTable[] = [];
 

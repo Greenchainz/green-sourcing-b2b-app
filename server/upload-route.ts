@@ -38,10 +38,10 @@ uploadRouter.post("/user/avatar", avatarUpload.single("avatar"), async (req, res
     const key = `avatars/user-${user.id}-${Date.now()}.${ext}`;
     const { url } = await storagePut(key, req.file.buffer, req.file.mimetype);
 
-    const { getDb } = await import("../db");
+    const { getDb } = await import("./db");
     const db = await getDb();
     if (db) {
-      const { users } = await import("../../drizzle/schema");
+      const { users } = await import("../drizzle/schema");
       const { eq } = await import("drizzle-orm");
       await db.update(users).set({ avatarUrl: url }).where(eq(users.id, user.id));
     }

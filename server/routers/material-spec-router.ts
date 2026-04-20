@@ -408,7 +408,7 @@ export const materialSpecRouter = router({
         hasC2c: z.boolean().optional(),
         hasGreenguard: z.boolean().optional(),
         hasDeclare: z.boolean().optional(),
-        certificationUrls: z.record(z.string()).optional(),
+        certificationUrls: z.record(z.string(), z.string()).optional(),
         // Documents
         datasheetUrl: z.string().url().optional(),
         specSheetUrl: z.string().url().optional(),
