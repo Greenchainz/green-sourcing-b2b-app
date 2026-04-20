@@ -247,7 +247,11 @@ async function startServer() {
 
   // Sentry error handler must be registered before the generic error handler
   const { Sentry } = await import("../sentry");
-  app.use(Sentry.expressErrorHandler());
+  // Sentry's middleware runtime signature matches Express, but its exported type
+  // doesn't satisfy Express 5's ErrorRequestHandler overload directly.
+  const sentryErrorHandler =
+    Sentry.expressErrorHandler() as unknown as express.ErrorRequestHandler;
+  app.use(sentryErrorHandler);
 
   app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = err instanceof Error ? err.message : "Internal server error";
