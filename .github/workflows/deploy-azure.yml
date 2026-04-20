@@ -298,7 +298,7 @@ jobs:
           if [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
             echo "No user-assigned identities found — skipping cleanup."
           else
-            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned", userAssignedIdentities: with_entries(.value = null)}}')
+        PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned, UserAssigned", userAssignedIdentities: with_entries(.value = null)}}')
             echo "Removing stale user-assigned identities..."
             az rest \
               --method PATCH \
