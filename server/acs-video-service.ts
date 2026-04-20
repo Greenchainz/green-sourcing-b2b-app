@@ -43,31 +43,42 @@ export function isACSConfigured(): boolean {
  * Get ACS user access token
  * This token is used by the client to connect to Azure Communication Services
  */
-export async function getACSUserToken(userId: number): Promise<{ token: string; userId: string }> {
+export async function getACSUserToken(userId: number): Promise<{ token: string; userId: string } | { success: false; error: string }> {
   if (!isACSConfigured()) {
-    throw new Error("Azure Communication Services is not configured. Set ACS_CONNECTION_STRING and ACS_ENDPOINT_URL environment variables.");
+    return {
+      success: false,
+      error: "Video calling is launching soon. Contact support@greenchainz.com to be notified.",
+    };
   }
 
   // ACS token generation requires @azure/communication-identity.
   // Install it and implement this before enabling video calling.
-  throw new Error(
-    `ACS video calling is not yet implemented. Install @azure/communication-identity and implement getACSUserToken. userId=${userId}`
-  );
+  return {
+    success: false,
+    error: "Video calling is launching soon. Contact support@greenchainz.com to be notified.",
+  };
 }
 
+export type ACSVideoCallResult = ACSVideoCallSession | { success: false; error: string };
+
 /**
- * Initiate an ACS video call
+ * Initiate an ACS video call.
+ * Returns a structured error instead of throwing when ACS is not yet configured,
+ * so callers always get a usable response rather than a 500.
  */
 export async function initiateACSVideoCall(params: {
   callerId: number;
   calleeId: number;
   conversationId: number;
   recordingEnabled?: boolean;
-}): Promise<ACSVideoCallSession> {
+}): Promise<ACSVideoCallResult> {
   const { callerId, calleeId, conversationId, recordingEnabled = false } = params;
 
   if (!isACSConfigured()) {
-    throw new Error("Azure Communication Services is not configured for Premium video calling.");
+    return {
+      success: false,
+      error: "Video calling is launching soon. Contact support@greenchainz.com to be notified.",
+    };
   }
 
   const callId = `acs-call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -169,22 +180,38 @@ export function getACSCallSession(callId: string): ACSVideoCallSession | null {
 /**
  * Start call recording (Premium feature)
  */
-export async function startCallRecording(callId: string): Promise<{ recordingId: string }> {
+export async function startCallRecording(callId: string): Promise<{ recordingId: string } | { success: false; error: string }> {
   const session = acsActiveCalls.get(callId);
-  if (!session) throw new Error("Call session not found");
+  if (!session) {
+    return {
+      success: false,
+      error: "Video calling is launching soon. Contact support@greenchainz.com to be notified.",
+    };
+  }
 
   // ACS call recording requires @azure/communication-call-automation.
   // Install it and implement this before enabling recording.
-  throw new Error("ACS call recording is not yet implemented.");
+  return {
+    success: false,
+    error: "Video calling is launching soon. Contact support@greenchainz.com to be notified.",
+  };
 }
 
 /**
  * Stop call recording
  */
-export async function stopCallRecording(callId: string, recordingId: string): Promise<void> {
+export async function stopCallRecording(callId: string, recordingId: string): Promise<void | { success: false; error: string }> {
   const session = acsActiveCalls.get(callId);
-  if (!session) throw new Error("Call session not found");
+  if (!session) {
+    return {
+      success: false,
+      error: "Video calling is launching soon. Contact support@greenchainz.com to be notified.",
+    };
+  }
 
   // ACS call recording stop requires @azure/communication-call-automation.
-  throw new Error("ACS call recording stop is not yet implemented.");
+  return {
+    success: false,
+    error: "Video calling is launching soon. Contact support@greenchainz.com to be notified.",
+  };
 }

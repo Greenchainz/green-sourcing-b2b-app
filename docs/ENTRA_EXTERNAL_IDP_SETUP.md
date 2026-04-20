@@ -36,7 +36,7 @@ all `/.auth/*` routes — no code changes are required.
 2. **Create credentials → OAuth client ID** → Application type: **Web application**.
 3. Add authorized redirect URI:
    ```
-   https://login.microsoftonline.com/ca4f78d4-c753-4893-9cd8-1b309922b4dc/oauth2/authresp
+   https://login.microsoftonline.com/1d04bf50-8175-40af-a9d5-f8e441460b06/oauth2/authresp
    ```
 4. Save the **Client ID** and **Client Secret**.
 
@@ -50,7 +50,7 @@ all `/.auth/*` routes — no code changes are required.
 ### 2c. Enable Google on your app registration
 
 1. Azure Portal → **Microsoft Entra ID → App registrations** → select `GreenChainz`
-   (client ID `479e2a01-70ab-4df9-baa4-560d317c3423`).
+   (client ID `8b597068-9347-4e99-8860-8c4e9a9bc112`).
 2. **Authentication → Add a platform** (if not already Web).
 3. Redirect URI: `https://<your-container-app-domain>/.auth/callback` must already be present.
 4. In **Supported account types**, ensure **"Accounts in any identity provider"** is selected

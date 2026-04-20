@@ -104,12 +104,19 @@ export const videoCallingRouter = router({
       }
 
       const { initiateACSVideoCall } = await import('../acs-video-service');
-      return await initiateACSVideoCall({
+      const result = await initiateACSVideoCall({
         callerId: ctx.user.id,
         calleeId: input.calleeId,
         conversationId: input.conversationId,
         recordingEnabled: input.recordingEnabled,
       });
+
+      // Service returns a structured error instead of throwing when ACS is not configured
+      if ('success' in result && result.success === false) {
+        throw new Error(result.error);
+      }
+
+      return result;
     }),
 
   acceptACSCall: protectedProcedure

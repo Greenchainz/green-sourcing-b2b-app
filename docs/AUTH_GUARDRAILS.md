@@ -1,5 +1,9 @@
 # GreenChainz Auth Guardrails
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 > This file exists to prevent well-intentioned developers and AI agents from breaking authentication.
 > If you are about to touch auth, read this first.
 
@@ -66,7 +70,7 @@ These are known gaps that must be fixed before go-live:
 ## Managed Identity Rules
 
 - `MANAGED_IDENTITY_CLIENT_ID` in `.env` = the user-assigned managed identity client ID
-- `CLIENT_ID` in `.env` = the Entra app registration for user sign-in (479e2a01-70ab-4df9-baa4-560d317c3423)
+- `CLIENT_ID` in `.env` = the Entra app registration for user sign-in (8b597068-9347-4e99-8860-8c4e9a9bc112)
 - These are **different things**. Never mix them.
 - `OAUTH_SERVER_URL` must be in `.env`, not `.env.local`
 - No managed identity should have Contributor or Owner at subscription scope

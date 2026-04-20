@@ -57,7 +57,8 @@
       "Bash(python3 -c ':*)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(pnpm add *)"
     ]
   }
 }

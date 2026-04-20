@@ -1,5 +1,9 @@
 # Submittal Auto-Generator Tool
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+
 **Azure-Native, Production-Ready Contractor Solution**
 
 ---

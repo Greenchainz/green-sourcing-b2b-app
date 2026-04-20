@@ -19,7 +19,7 @@
  */
 
 import { Router } from "express";
-import { getDb } from "../lib/db";
+import { getDb } from "./db";
 import { sql } from "drizzle-orm";
 
 export const zeptomailWebhookRouter = Router();

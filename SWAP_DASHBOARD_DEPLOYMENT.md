@@ -1,5 +1,9 @@
 # Swap Validation Dashboard - Azure Deployment Ready
 
+
+> [!CAUTION]
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`docs/STACK.md`](./docs/STACK.md) or [`CLAUDE.md`](./CLAUDE.md) at repo root.
+
 ## Status: ✅ Ready for Production Deployment
 
 The swap validation dashboard has been built for the **Azure Next.js app** (`app/` directory) and is ready to deploy to greenchainz.com via GitHub Actions.

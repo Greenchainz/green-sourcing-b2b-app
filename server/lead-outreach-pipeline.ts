@@ -15,7 +15,7 @@
  *   - POST /api/admin/trigger-lead-outreach (manual admin trigger)
  */
 
-import { getDb } from "../lib/db";
+import { getDb } from "./db";
 import { sql } from "drizzle-orm";
 import { sendEmail } from "./email-service";
 import { isEmailSuppressed } from "./zeptomail-webhook";

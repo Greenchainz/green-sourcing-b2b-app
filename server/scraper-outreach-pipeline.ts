@@ -18,7 +18,7 @@
  *   → check suppression → send email → update scraped_suppliers.outreach_sent_at
  */
 
-import { getDb } from "../lib/db";
+import { getDb } from "./db";
 import { sql } from "drizzle-orm";
 import { sendEmail } from "./email-service";
 import { isEmailSuppressed } from "./zeptomail-webhook";

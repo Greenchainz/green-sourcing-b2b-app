@@ -64,7 +64,6 @@ const schema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   website: z
     .string()
-    .optional()
     .transform((val) => {
       if (!val || val.trim() === "") return "";
       const v = val.trim();
