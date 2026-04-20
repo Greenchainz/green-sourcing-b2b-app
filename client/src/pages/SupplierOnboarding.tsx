@@ -84,7 +84,8 @@ const schema = z.object({
   certifications: z.array(z.string()).optional(),
 });
 
-type FormData = z.infer<typeof schema>;
+type FormValues = z.input<typeof schema>;
+type FormData = z.output<typeof schema>;
 
 // ── Steps ──────────────────────────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ const STEPS = [
 ];
 
 // Fields to validate per step
-const STEP_FIELDS: (keyof FormData)[][] = [
+const STEP_FIELDS: (keyof FormValues)[][] = [
   ["companyName"], // website is optional, don't block on it
   ["contactName", "email", "phone"],
   ["materialCategories"],
@@ -227,7 +228,7 @@ export default function SupplierOnboarding() {
     trigger,
     reset,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm<FormValues, unknown, FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       companyName: "",
