@@ -299,23 +299,13 @@ jobs:
           get_secret sentry-org
           get_secret sentry-project
           get_secret Database-URL
-<<<<<<< HEAD
-          # fred-api-key and resend-api-key are now loaded at runtime by loadSecrets()
-          # via the user-assigned managed identity — no Container App secret passthrough needed
-=======
-          # These were added via the Azure portal as KV-reference secrets, but the
-          # system identity lacks access. Pull them here and pass as plain env vars.
+          # fred-api-key and resend-api-key pulled here and passed as plain env vars
+          # (KV-reference secrets fail when system identity path is missing)
           get_secret fred-api-key
           get_secret resend-api-key
 
       - name: Remove stale user-assigned identities from backend
         run: |
-          # Any write operation on a Container App that still references a deleted
-          # user-assigned identity (e.g. id-greenchainz-backend) fails with
-          # FailedIdentityOperation/BadRequest. Explicitly null out all user-assigned
-          # identity entries via ARM PATCH before making any further changes.
-          # ARM PATCH semantics: setting a user-assigned identity value to null removes
-          # the reference without validating whether the underlying resource still exists.
           RESOURCE_ID=$(az containerapp show \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -336,19 +326,16 @@ jobs:
               --uri "${RESOURCE_ID}?api-version=2023-05-01" \
               --body "$PATCH_BODY" \
               --output none || true
-            # Allow the identity update to propagate before the next operation.
             sleep 15
           fi
 
       - name: Upsert backend runtime secrets in Container App
-        # Ensure backend uses Container App-managed secret values (not Key Vault refs),
-        # so revision provisioning does not depend on the missing system identity path.
         env:
           FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
           RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
         run: |
           if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
-            echo "❌ Required backend secrets (fred-api-key/resend-api-key) are missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "❌ Required backend secrets (fred-api-key/resend-api-key) missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
           az containerapp secret set \
@@ -357,7 +344,6 @@ jobs:
             --secrets \
               "fred-api-key=$FRED_API_KEY" \
               "resend-api-key=$RESEND_API_KEY"
->>>>>>> e4d228f15d3ae02bf993700c64dbcb97290223d8
 
       - name: Ensure system identity + KV access
         run: |
