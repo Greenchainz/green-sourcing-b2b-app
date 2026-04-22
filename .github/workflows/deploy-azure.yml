@@ -272,28 +272,8 @@ jobs:
           get_secret sentry-org
           get_secret sentry-project
           get_secret Database-URL
-          # These were added via the Azure portal as KV-reference secrets, but the
-          # system identity lacks access. Pull them here and pass as plain env vars.
-          get_secret fred-api-key
-          get_secret resend-api-key
-
-      - name: Upsert backend runtime secrets in Container App
-        # Ensure backend uses Container App-managed secret values (not Key Vault refs),
-        # so revision provisioning does not depend on the missing system identity path.
-        env:
-          FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
-          RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
-        run: |
-          if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
-            echo "❌ Required backend secrets (fred-api-key/resend-api-key) are missing from Key Vault '${{ env.KEY_VAULT }}'"
-            exit 1
-          fi
-          az containerapp secret set \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --secrets \
-              "fred-api-key=$FRED_API_KEY" \
-              "resend-api-key=$RESEND_API_KEY"
+          # fred-api-key and resend-api-key are now loaded at runtime by loadSecrets()
+          # via the user-assigned managed identity — no Container App secret passthrough needed
 
       - name: Ensure system identity + KV access
         run: |
@@ -335,10 +315,11 @@ jobs:
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
             "FRONTEND_URL=https://greenchainz.com"
-            "FRED_API_KEY=secretref:fred-api-key"
-            "RESEND_API_KEY=secretref:resend-api-key"
             "AZURE_MI_CLIENT_ID=$AZURE_MI_CLIENT_ID"
+            "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
           )
+          # FRED_API_KEY and RESEND_API_KEY are loaded at runtime from Key Vault
+          # by loadSecrets() using the user-assigned managed identity — no passthrough needed
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
               "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}"
