@@ -12,6 +12,11 @@ on:
 # Subscription:    f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Prevent concurrent deployments to the same ref (branch, tag, or PR); cancel any in-progress run.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   ACR: acrgreenchainzprod916
   RESOURCE_GROUP: rg-greenchainz-prod-container
@@ -22,12 +27,19 @@ env:
   KEY_VAULT: Greenchainz-vault
   DB_SERVER_RG: rg-greenchainz
   DB_SERVER_NAME: greenchainz-db-prod
+  # OIDC login — referenced by azure/login in the build, migrate, and deploy jobs.
+  AZURE_CLIENT_ID: 8b597068-9347-4e99-8860-8c4e9a9bc112
+  AZURE_TENANT_ID: 1d04bf50-8175-40af-a9d5-f8e441460b06
+  AZURE_SUBSCRIPTION_ID: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
 
 jobs:
   # ── Job 1: Typecheck + unit tests ───────────────────────────────────────────────
   test:
     name: Typecheck & Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -69,18 +81,20 @@ jobs:
     name: Build & Push Images
     runs-on: ubuntu-latest
     needs: test
+    timeout-minutes: 30
     permissions:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Log in to Azure (OIDC — no stored credentials)
         uses: azure/login@v2
         with:
-          client-id: 8b597068-9347-4e99-8860-8c4e9a9bc112
-          tenant-id: 1d04bf50-8175-40af-a9d5-f8e441460b06
-          subscription-id: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Pull build secrets from Key Vault
         id: kv
@@ -89,7 +103,7 @@ jobs:
             local name="$1"
             local value
             value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "$name" --query value -o tsv 2>/dev/null) || value=""
-            echo "::add-mask::$value"
+            [ -n "$value" ] && echo "::add-mask::$value"
             echo "${name}=${value}" >> $GITHUB_OUTPUT
           }
           get_secret azure-maps-key
@@ -98,11 +112,19 @@ jobs:
           get_secret sentry-org
           get_secret sentry-project
 
-      - name: Log in to ACR (token-based — no username/password)
-        run: az acr login --name ${{ env.ACR }}
+      - name: Validate required build secrets
+        run: |
+          AZURE_MAPS_KEY="${{ steps.kv.outputs.azure-maps-key }}"
+          if [ -z "$AZURE_MAPS_KEY" ]; then
+            echo "❌ azure-maps-key secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
 
       - name: Set up Docker Buildx (layer caching)
         uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ACR (token-based — no username/password)
+        run: az acr login --name ${{ env.ACR }}
 
       - name: Build & push frontend image
         uses: docker/build-push-action@v6
@@ -142,15 +164,19 @@ jobs:
     name: Migrate & Seed DB
     runs-on: ubuntu-latest
     needs: build
+    timeout-minutes: 20
     permissions:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
@@ -161,15 +187,15 @@ jobs:
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
         with:
-          client-id: 8b597068-9347-4e99-8860-8c4e9a9bc112
-          tenant-id: 1d04bf50-8175-40af-a9d5-f8e441460b06
-          subscription-id: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Pull DATABASE_URL from Key Vault
         id: kv
         run: |
           DB_URL=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "Database-URL" --query value -o tsv 2>/dev/null) || DB_URL=""
-          echo "::add-mask::$DB_URL"
+          [ -n "$DB_URL" ] && echo "::add-mask::$DB_URL"
           echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
 
       - name: Open PostgreSQL firewall for runner
@@ -189,7 +215,7 @@ jobs:
             --end-ip-address "$RUNNER_IP"
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
           # Allow firewall rule to propagate
-          sleep 8
+          sleep 15
 
       - name: Run Drizzle migrations
         env:
@@ -246,6 +272,7 @@ jobs:
     name: Deploy to Azure
     runs-on: ubuntu-latest
     needs: migrate
+    timeout-minutes: 30
     permissions:
       id-token: write
       contents: read
@@ -253,9 +280,9 @@ jobs:
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
         with:
-          client-id: 8b597068-9347-4e99-8860-8c4e9a9bc112
-          tenant-id: 1d04bf50-8175-40af-a9d5-f8e441460b06
-          subscription-id: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Pull build secrets from Key Vault
         id: kv
@@ -264,7 +291,7 @@ jobs:
             local name="$1"
             local value
             value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "$name" --query value -o tsv 2>/dev/null) || value=""
-            echo "::add-mask::$value"
+            [ -n "$value" ] && echo "::add-mask::$value"
             echo "${name}=${value}" >> $GITHUB_OUTPUT
           }
           get_secret sentry-dsn
@@ -272,16 +299,78 @@ jobs:
           get_secret sentry-org
           get_secret sentry-project
           get_secret Database-URL
+<<<<<<< HEAD
           # fred-api-key and resend-api-key are now loaded at runtime by loadSecrets()
           # via the user-assigned managed identity — no Container App secret passthrough needed
+=======
+          # These were added via the Azure portal as KV-reference secrets, but the
+          # system identity lacks access. Pull them here and pass as plain env vars.
+          get_secret fred-api-key
+          get_secret resend-api-key
+
+      - name: Remove stale user-assigned identities from backend
+        run: |
+          # Any write operation on a Container App that still references a deleted
+          # user-assigned identity (e.g. id-greenchainz-backend) fails with
+          # FailedIdentityOperation/BadRequest. Explicitly null out all user-assigned
+          # identity entries via ARM PATCH before making any further changes.
+          # ARM PATCH semantics: setting a user-assigned identity value to null removes
+          # the reference without validating whether the underlying resource still exists.
+          RESOURCE_ID=$(az containerapp show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query id -o tsv)
+
+          USER_IDS=$(az rest \
+            --method GET \
+            --uri "${RESOURCE_ID}?api-version=2023-05-01" \
+            --query "identity.userAssignedIdentities" -o json 2>/dev/null || echo "null")
+
+          if [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
+            echo "No user-assigned identities found — skipping cleanup."
+          else
+            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned, UserAssigned", userAssignedIdentities: with_entries(.value = null)}}')
+            echo "Removing stale user-assigned identities..."
+            az rest \
+              --method PATCH \
+              --uri "${RESOURCE_ID}?api-version=2023-05-01" \
+              --body "$PATCH_BODY" \
+              --output none || true
+            # Allow the identity update to propagate before the next operation.
+            sleep 15
+          fi
+
+      - name: Upsert backend runtime secrets in Container App
+        # Ensure backend uses Container App-managed secret values (not Key Vault refs),
+        # so revision provisioning does not depend on the missing system identity path.
+        env:
+          FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
+          RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
+        run: |
+          if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
+            echo "❌ Required backend secrets (fred-api-key/resend-api-key) are missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          az containerapp secret set \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --secrets \
+              "fred-api-key=$FRED_API_KEY" \
+              "resend-api-key=$RESEND_API_KEY"
+>>>>>>> e4d228f15d3ae02bf993700c64dbcb97290223d8
 
       - name: Ensure system identity + KV access
         run: |
           # Enable system-assigned identity for the backend app.
+          # Use || true because this command fails with BadRequest when the app still
+          # holds a stale reference to a deleted user-assigned identity resource
+          # (e.g. id-greenchainz-backend). The system identity is already present in
+          # that case (Azure emits a warning), so the failure is safe to ignore.
+          # The identity show + PRINCIPAL_ID check below validates the actual state.
           az containerapp identity assign \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --system-assigned
+            --system-assigned || true
 
           # Read back the principal ID after assignment.
           PRINCIPAL_ID=$(az containerapp identity show \
@@ -335,10 +424,12 @@ jobs:
       - name: Fix frontend ACR registry (system identity)
         run: |
           # Ensure the frontend system-assigned identity exists.
+          # Same || true guard as the backend step — a stale user-assigned identity
+          # reference causes BadRequest even when the system identity is already present.
           az containerapp identity assign \
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --system-assigned
+            --system-assigned || true
 
           FRONTEND_PRINCIPAL=$(az containerapp identity show \
             --name ${{ env.FRONTEND_APP }} \
@@ -435,17 +526,9 @@ jobs:
             --type external \
             --transport http
 
-      - name: Smoke test deployed backend
+      - name: Write smoke-test helper
         run: |
-          BACKEND_FQDN=$(az containerapp show \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query properties.configuration.ingress.fqdn -o tsv)
-          if [ -z "$BACKEND_FQDN" ]; then
-            echo "❌ Could not resolve backend ingress FQDN"
-            exit 1
-          fi
-
+          cat > /tmp/smoke_helpers.sh << 'EOF'
           wait_for_expected_status() {
             local url="$1"
             local expected_status="$2"
@@ -480,6 +563,21 @@ jobs:
             echo "❌ ${label}: expected ${expected_status}, got ${status} after ${attempts} attempts"
             return 1
           }
+          EOF
+
+      - name: Smoke test deployed backend
+        run: |
+          # shellcheck source=/dev/null
+          source /tmp/smoke_helpers.sh
+
+          BACKEND_FQDN=$(az containerapp show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          if [ -z "$BACKEND_FQDN" ]; then
+            echo "❌ Could not resolve backend ingress FQDN"
+            exit 1
+          fi
 
           # Public endpoint should return 200.
           wait_for_expected_status "https://${BACKEND_FQDN}/api/health" "200" "/api/health" || exit 1
@@ -507,6 +605,9 @@ jobs:
 
       - name: Smoke test deployed frontend
         run: |
+          # shellcheck source=/dev/null
+          source /tmp/smoke_helpers.sh
+
           FRONTEND_FQDN=$(az containerapp show \
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -516,47 +617,17 @@ jobs:
             exit 1
           fi
 
-          # Identical retry helper used by the backend smoke test.
-          wait_for_expected_status() {
-            local url="$1"
-            local expected_status="$2"
-            local label="$3"
-            local method="${4:-GET}"
-            local attempts="${5:-24}"
-            local sleep_seconds="${6:-10}"
-            local status=""
-            local curl_exit_code=0
-
-            for i in $(seq 1 "$attempts"); do
-              status=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
-              curl_exit_code=$?
-              if [ "$curl_exit_code" -ne 0 ]; then
-                status="CURL_EXIT_${curl_exit_code}"
-              elif [ -z "$status" ]; then
-                status="HTTP_CODE_EMPTY"
-              elif ! [[ "$status" =~ ^[0-9]{3}$ ]]; then
-                status="HTTP_CODE_PARSE_ERROR"
-              fi
-              if [ "$status" = "$expected_status" ]; then
-                echo "✅ ${label}: ${status}"
-                return 0
-              fi
-
-              echo "⏳ ${label}: expected ${expected_status}, got ${status} (attempt ${i}/${attempts})"
-              if [ "$i" -lt "$attempts" ]; then
-                sleep "$sleep_seconds"
-              fi
-            done
-
-            echo "❌ ${label}: expected ${expected_status}, got ${status} after ${attempts} attempts"
-            return 1
-          }
-
           wait_for_expected_status "https://${FRONTEND_FQDN}/healthz" "200" "Frontend /healthz" || exit 1
 
-      - name: Dump frontend container logs on failure
+      - name: Dump container logs on failure
         if: failure()
         run: |
+          echo "=== greenchainz-backend container logs (last 100 lines) ==="
+          az containerapp logs show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --tail 100 2>/dev/null || echo "(log fetch failed)"
+          echo ""
           echo "=== greenchainz-frontend container logs (last 100 lines) ==="
           az containerapp logs show \
             --name ${{ env.FRONTEND_APP }} \
