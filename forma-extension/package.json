@@ -1,7 +1,7 @@
 {
   "name": "greenchainz-forma-extension",
   "version": "0.1.0",
-  "description": "GreenChainz Autodesk Forma Extension — search verified green materials and EPD data inside Forma",
+  "description": "GreenChainz Autodesk Forma Extension — EPD-verified material sourcing and carbon analysis inside Forma Building Design",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
@@ -18,5 +18,24 @@
     "@preact/preset-vite": "^2.10.2",
     "typescript": "^5.9.3",
     "vite": "^7.2.6"
+  },
+  "forma": {
+    "extensions": [
+      {
+        "id": "greenchainz-materials",
+        "name": "GreenChainz Materials",
+        "description": "EPD-verified sustainable material sourcing, Material Credit Scores, and one-click RFQ — alongside Forma Carbon Insights.",
+        "panels": [
+          {
+            "type": "leftPanelExtension",
+            "url": "http://localhost:8081/left.html"
+          },
+          {
+            "type": "rightPanelExtension",
+            "url": "http://localhost:8081/right.html"
+          }
+        ]
+      }
+    ]
   }
 }
