@@ -56,9 +56,16 @@ function consumeState(state: string) {
 // ── Provider configs ──────────────────────────────────────────────────────────
 
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
-  const tenantId = getEnv("AZURE_AD_TENANT_ID") || getEnv("AZURE_TENANT_ID") || getEnv("TENANT_ID");
-  const clientId = getEnv("AZURE_AD_CLIENT_ID") || getEnv("MICROSOFT_CLIENT_ID") || getEnv("AZURE_CLIENT_ID_APP");
-  if (!tenantId || !clientId) throw new Error("[Auth] Microsoft OAuth not configured: set AZURE_AD_TENANT_ID and AZURE_AD_CLIENT_ID");
+  // Use AZURE_AD_CLIENT_ID as the canonical name — do NOT fall through to
+  // AZURE_CLIENT_ID_APP which may be a placeholder in .env
+  const clientId = getEnv("AZURE_AD_CLIENT_ID") || getEnv("MICROSOFT_CLIENT_ID");
+  if (!clientId) throw new Error("[Auth] Microsoft OAuth not configured: set AZURE_AD_CLIENT_ID");
+
+  // Use /common so both work+school AND personal Microsoft accounts can log in.
+  // OAUTH_SERVER_URL can override this for tenant-specific deployments.
+  const oauthBase = getEnv("OAUTH_SERVER_URL").replace(/\/$/, "") ||
+    "https://login.microsoftonline.com/common";
+
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
@@ -67,7 +74,7 @@ function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
     scope: "openid profile email offline_access User.Read",
     state,
   });
-  return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params}`;
+  return `${oauthBase}/oauth2/v2.0/authorize?${params}`;
 }
 
 function getLinkedInAuthUrl(redirectUri: string, state: string): string {
@@ -93,12 +100,15 @@ interface OAuthUserInfo {
 }
 
 async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const tenantId = getEnv("AZURE_AD_TENANT_ID") || getEnv("AZURE_TENANT_ID") || getEnv("TENANT_ID");
-  const clientId = getEnv("AZURE_AD_CLIENT_ID") || getEnv("MICROSOFT_CLIENT_ID") || getEnv("AZURE_CLIENT_ID_APP");
-  if (!tenantId || !clientId) throw new Error("[Auth] Microsoft OAuth not configured: set AZURE_AD_TENANT_ID and AZURE_AD_CLIENT_ID");
+  const clientId = getEnv("AZURE_AD_CLIENT_ID") || getEnv("MICROSOFT_CLIENT_ID");
+  if (!clientId) throw new Error("[Auth] Microsoft OAuth not configured: set AZURE_AD_CLIENT_ID");
   const clientSecret = getEnv("MICROSOFT_CLIENT_SECRET") || getEnv("AZURE_AD_CLIENT_SECRET");
 
-  const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
+  // Match the same base URL used in getMicrosoftAuthUrl
+  const oauthBase = getEnv("OAUTH_SERVER_URL").replace(/\/$/, "") ||
+    "https://login.microsoftonline.com/common";
+
+  const tokenRes = await fetch(`${oauthBase}/oauth2/v2.0/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
