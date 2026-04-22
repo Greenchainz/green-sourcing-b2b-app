@@ -113,13 +113,15 @@ async function authenticate(): Promise<string> {
  */
 export async function fetchEC3EPDs(
   category?: string,
-  limit: number = 100
+  limit: number = 100,
+  offset: number = 0
 ): Promise<EC3EPD[]> {
   const token = await authenticate();
-  
+
   const params = new URLSearchParams();
   if (category) params.append("category", category);
   params.append("page_size", limit.toString());
+  if (offset > 0) params.append("offset", offset.toString());
 
   const url = `${EC3_BASE_URL}/epds${params.toString() ? `?${params.toString()}` : ""}`;
   
@@ -239,6 +241,4 @@ export async function fetchEC3Categories(): Promise<Array<{
  */
 export function parseGWP(gwpString: string | null | undefined): number {
   if (!gwpString) return 0;
-  const match = gwpString.match(/^([\d.]+)\s*kgCO2e$/);
-  return match ? parseFloat(match[1]) : 0;
-}
+  const match = gwpS
