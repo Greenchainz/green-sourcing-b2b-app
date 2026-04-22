@@ -1,0 +1,22 @@
+{
+  "name": "greenchainz-forma-extension",
+  "version": "0.1.0",
+  "description": "GreenChainz Autodesk Forma Extension — search verified green materials and EPD data inside Forma",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 8081",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "forma-embedded-view-sdk": "^0.93.0",
+    "preact": "^10.28.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.6"
+  }
+}
