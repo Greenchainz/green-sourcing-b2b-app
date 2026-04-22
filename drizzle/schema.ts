@@ -1823,3 +1823,11 @@ export const conciergeRoutes = pgTable(
 
 export type ConciergeRoute = typeof conciergeRoutes.$inferSelect;
 export type InsertConciergeRoute = typeof conciergeRoutes.$inferInsert;
+// ── App Settings (key-value store for OAuth tokens, feature flags, etc.) ──────
+export const appSettings = pgTable("app_settings", {
+  key:       text("key").primaryKey(),
+  value:     text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;
