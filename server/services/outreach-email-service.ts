@@ -481,6 +481,7 @@ export async function processDueSequenceSteps(): Promise<{ sent: number; errors:
   const resend = new Resend(apiKey);
   let sent = 0;
   let errors = 0;
+  let noEmailSkipped = 0;
 
   for (const seq of dueSteps) {
     const [contact] = await db
@@ -490,7 +491,7 @@ export async function processDueSequenceSteps(): Promise<{ sent: number; errors:
       .limit(1);
 
     if (!contact?.email) {
-      console.warn(`[outreach] Contact ${seq.contactId} has no email — skipping step ${seq.step}`);
+      noEmailSkipped++;
       errors++;
       continue;
     }
@@ -552,6 +553,10 @@ export async function processDueSequenceSteps(): Promise<{ sent: number; errors:
     }
   }
 
+  if (noEmailSkipped > 0) {
+    console.warn(`[outreach] Skipped ${noEmailSkipped} contacts with no email (use Apollo enrichment to fix)`);
+  }
+  console.log(`[outreach] processDueSequenceSteps complete — sent: ${sent}, errors: ${errors}`);
   return { sent, errors };
 }
 

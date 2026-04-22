@@ -38,18 +38,25 @@ export async function loadSecrets(): Promise<void> {
     return;
   }
 
-  const keyVaultName = process.env.KEY_VAULT_NAME || "greenchainz-vault-2026";
+  // Resolve vault URL: prefer explicit full URL, then vault name, then canonical default
+  const vaultUrl =
+    (process.env.AZURE_KEY_VAULT_URL || "").replace(/\/$/, "") ||
+    `https://${process.env.KEY_VAULT_NAME || "Greenchainz-vault"}.vault.azure.net`;
+
   const isProduction = process.env.NODE_ENV === "production";
 
   if (isProduction) {
     try {
       // Uses User-Assigned Managed Identity: id-greenchainz-backend
-      const miClientId = process.env.AZURE_MI_CLIENT_ID;
+      // Accept either AZURE_MI_CLIENT_ID (canonical) or MANAGED_IDENTITY_CLIENT_ID (legacy alias)
+      const miClientId =
+        process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID;
       if (!miClientId) {
-        throw new Error("[Secrets] AZURE_MI_CLIENT_ID env var is required in production");
+        throw new Error(
+          "[Secrets] AZURE_MI_CLIENT_ID (or MANAGED_IDENTITY_CLIENT_ID) env var is required in production"
+        );
       }
       const credential = new ManagedIdentityCredential(miClientId);
-      const vaultUrl = `https://${keyVaultName}.vault.azure.net`;
       const client = new SecretClient(vaultUrl, credential);
 
       console.log(`[Secrets] Loading secrets from Key Vault: ${vaultUrl}`);
@@ -70,9 +77,9 @@ export async function loadSecrets(): Promise<void> {
         // if you ever need to re-create it, update this entry instead of adding
         // a second mapping — duplicate keys both writing AZURE_AD_CLIENT_SECRET
         // caused the first entry to be silently overwritten at runtime.
-        "AZURE-AD-CLIENT-ID": "AZURE_AD_CLIENT_ID",
+        // NOTE: AZURE_AD_CLIENT_ID and AZURE_AD_TENANT_ID are NOT secrets —
+        // they are public OAuth identifiers. Set them as plain Container App env vars.
         "microsoft-client-secret": "AZURE_AD_CLIENT_SECRET",
-        "AZURE-AD-TENANT-ID": "AZURE_AD_TENANT_ID",
         // LinkedIn OAuth
         "LINKEDIN-CLIENTID": "LINKEDIN_CLIENT_ID",
         "LINKEDIN-SECRET": "LINKEDIN_CLIENT_SECRET",
@@ -103,6 +110,10 @@ export async function loadSecrets(): Promise<void> {
         "AUTODESK-CLIENT-SECRET": "AUTODESK_CLIENT_SECRET",
         // Intercom (Messenger identity verification)
         "INTERCOM-SECRET": "INTERCOM_SECRET",
+        // FRED Economic Data API (market data for material pricing)
+        "fred-api-key": "FRED_API_KEY",
+        // Resend (transactional email)
+        "resend-api-key": "RESEND_API_KEY",
       };
 
       for (const [vaultKey, envKey] of Object.entries(secretMappings)) {

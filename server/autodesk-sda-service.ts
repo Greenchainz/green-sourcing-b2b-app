@@ -4,19 +4,20 @@
  * Base URL: https://developer.api.autodesk.com/sustainability/v3beta
  * Docs:     https://aps.autodesk.com/en/docs/sustainability/v3/developers_guide
  *
- * Auth: SSA (Secure Service Account) — headless 3-legged flow.
- * Grant type: urn:autodesk:params:oauth:grant-type:ssa
- * Standard 2-legged client_credentials is rejected (AUTH-001).
+ * Auth: APS 2-legged (client_credentials) via Basic Auth header.
+ * The APS auth v2 endpoint requires credentials in the Authorization header,
+ * NOT the request body. Scope must include 'data:read'.
  *
  * Prerequisites:
  *   1. Enable "Sustainability Data API" for your app at developer.autodesk.com
+ *      (Apps & Services → your app → APIs → enable Sustainability Data API)
  *   2. AUTODESK_CLIENT_ID + AUTODESK_CLIENT_SECRET in .env.local
  */
 
 const SDA_BASE  = 'https://developer.api.autodesk.com/sustainability/v3beta';
 const APS_AUTH  = 'https://developer.api.autodesk.com/authentication/v2/token';
 
-// ── SSA token (headless 3-legged) ─────────────────────────────────────────────
+// ── 2-legged token cache ──────────────────────────────────────────────────────
 
 let _ssaToken: string | null = null;
 let _ssaExpiry = 0;
@@ -31,14 +32,18 @@ async function getSSAToken(): Promise<string> {
     throw new Error('[SDA] Missing AUTODESK_CLIENT_ID or AUTODESK_CLIENT_SECRET');
   }
 
+  // APS v2 requires Basic Auth header — do NOT put credentials in the body
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
   const res = await fetch(APS_AUTH, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type':  'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${basicAuth}`,
+    },
     body: new URLSearchParams({
-      client_id:     clientId,
-      client_secret: clientSecret,
-      grant_type:    'urn:autodesk:params:oauth:grant-type:ssa',
-      scope:         'data:read',
+      grant_type: 'client_credentials',
+      scope:      'data:read',
     }),
   });
 
@@ -50,7 +55,7 @@ async function getSSAToken(): Promise<string> {
   const { access_token, expires_in } = await res.json() as { access_token: string; expires_in: number };
   _ssaToken  = access_token;
   _ssaExpiry = Date.now() + expires_in * 1000;
-  console.log('[SDA] SSA token obtained, expires in', expires_in, 's');
+  console.log('[SDA] APS token obtained, expires in', expires_in, 's');
   return access_token;
 }
 

@@ -1,5 +1,6 @@
 import "dotenv/config";
 import "../sentry"; // must be first — initializes Sentry before any other imports
+import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import express from "express";
@@ -176,7 +177,7 @@ async function startServer() {
         res.status(401).json(createErrorResponse("Not authenticated", (req as any).id));
         return;
       }
-      const secret = process.env.INTERCOM_SECRET;
+      const secret = getSecret("INTERCOM_SECRET");
       if (!secret) {
         res.status(500).json(createErrorResponse("Intercom secret not configured", (req as any).id));
         return;
