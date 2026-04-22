@@ -58,15 +58,16 @@ const features = [
   },
   {
     icon: Box,
-    title: 'Revit Plugin — Live Compliance Scanning Inside BIM',
+    title: 'Autodesk Forma Extension + Revit Plugin',
     slug: 'revit-plugin',
     description:
-      'Scan your Revit model for compliance in real time. Identify high-carbon specs before they lock in, get instant material swap recommendations, and generate LEED-ready documentation without leaving your BIM workflow.',
+      'GreenChainz lives inside Autodesk. The Forma Extension lets architects search and specify verified green materials at the earliest design stage, while the Revit Plugin scans your BIM model for compliance violations and fires instant swap suggestions — all without leaving your workflow.',
     highlights: [
+      'Autodesk Forma Extension — specify green materials in early-stage design',
+      'BIM model parsing — auto-extract material schedules via Autodesk Model Derivative API',
       'Live embodied carbon scanning of Revit materials',
-      'Instant material swap recommendations',
+      'Instant material swap recommendations with EC3 EPD comparisons',
       'LEED v5 MRp2 documentation generation',
-      'Direct EPD lookup from material properties',
     ],
   },
   {
@@ -140,8 +141,8 @@ export default function Features() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="Features — GreenChainz | EPD Lookup, RFQ Automation, Revit Plugin, Greenwashing Detection"
-        description="GreenChainz features: 50,000+ EPD lookup, automated RFQ from Excel BOMs, Chrome browser extension for greenwashing detection, Revit plugin, Carbon Compare, Material Credit Scores, LEED v5/Buy Clean compliance tracking, and AI Audit Agent."
+        title="Features — GreenChainz | EPD Lookup, RFQ Automation, Autodesk Forma Extension, Revit Plugin"
+        description="GreenChainz features: 100,000+ EPD lookup via EC3, automated RFQ from Excel BOMs, Autodesk Forma Extension, Revit Plugin, Chrome greenwashing detection, Carbon Compare, Material Credit Scores, LEED v5/Buy Clean compliance, and AI Audit Agent."
         canonicalPath="/features"
       />
       <Header />
@@ -213,15 +214,4 @@ export default function Features() {
                   Get Started Free
                 </Button>
               </Link>
-              <Link href="/pricing">
-                <Button variant="outline" size="lg">View Pricing</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </div>
-  );
-}
+              <Link href="/

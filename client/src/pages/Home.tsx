@@ -11,7 +11,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col">
       <SEOHead
         title="EPD Lookup & Sustainable Materials Procurement Software — GreenChainz"
-        description="GreenChainz is the B2B procurement platform for architects and contractors delivering instant EPD lookups, automated RFQs, and real-time LEED/Buy Clean/Title 24 compliance — inside Excel, Revit, and your browser."
+        description="GreenChainz is the B2B procurement platform for architects and contractors delivering instant EPD lookups, automated RFQs, and real-time LEED/Buy Clean/Title 24 compliance — inside Autodesk Forma, Revit, Excel, and your browser."
         canonicalPath="/"
       />
       <StructuredData data={homepageSchema} />
@@ -79,7 +79,7 @@ export default function Home() {
             <div className="flex flex-wrap items-center justify-center gap-8">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <img src="/brand/autodesk-logo-white.png" alt="Autodesk" className="h-5 w-auto opacity-60" />
-                <span className="text-xs">SDA Partner</span>
+                <span className="text-xs">Autodesk Forma Extension</span>
               </div>
               <div className="text-sm text-muted-foreground font-medium">Building Transparency / EC3</div>
               <div className="text-sm text-muted-foreground font-medium">EPD International</div>
@@ -236,32 +236,32 @@ export default function Home() {
             </Card>
 
             <Card className="p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-2xl font-semibold text-foreground mb-4">Revit Plugin</h3>
+              <h3 className="text-2xl font-semibold text-foreground mb-4">Autodesk Forma + Revit</h3>
               <p className="text-muted-foreground mb-6">
-                Intercept high-carbon specs before they lock in. Live compliance scanning and instant material swaps—inside Revit.
+                GreenChainz lives inside your Autodesk workflow. Surface verified green materials and live EPD data directly in Autodesk Forma and Revit — no tab switching, no copy-paste.
               </p>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm">
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  Live model scanning
+                  Autodesk Forma Extension — search &amp; specify inside Forma
                 </li>
                 <li className="flex items-center gap-2 text-sm">
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  LEED point tracking
+                  Revit Plugin — live compliance scanning &amp; bulk swaps
                 </li>
                 <li className="flex items-center gap-2 text-sm">
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  Bulk material swaps
+                  BIM model parsing — extract material schedules automatically
                 </li>
               </ul>
               <Link href="/tools/revit">
-                <Button className="w-full">Intercept Bad Specs</Button>
+                <Button className="w-full">Explore Autodesk Integration</Button>
               </Link>
             </Card>
 
@@ -413,15 +413,4 @@ export default function Home() {
                   <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </summary>
                 <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  EC3 and One Click LCA are carbon calculation and LCA tools — they tell you the carbon impact of a material but do not help you buy it. GreenChainz is a procurement execution platform that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, real-time greenwashing detection, and direct supplier connection. EC3 is a noted GreenChainz data partner.
-                </p>
-              </details>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </div>
-  );
-}
+                  EC3 and One Click LCA are carbon calculation tools — they tell you the carbon impact of a material but stop there. GreenChainz is the procurement execution layer that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, greenwashing detection, and direct supplier connection. EC3 
