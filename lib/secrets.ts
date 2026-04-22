@@ -77,12 +77,8 @@ export async function loadSecrets(): Promise<void> {
         // if you ever need to re-create it, update this entry instead of adding
         // a second mapping — duplicate keys both writing AZURE_AD_CLIENT_SECRET
         // caused the first entry to be silently overwritten at runtime.
-<<<<<<< HEAD
         // NOTE: AZURE_AD_CLIENT_ID and AZURE_AD_TENANT_ID are NOT secrets —
         // they are public OAuth identifiers. Set them as plain Container App env vars.
-=======
-    
->>>>>>> e4d228f15d3ae02bf993700c64dbcb97290223d8
         "microsoft-client-secret": "AZURE_AD_CLIENT_SECRET",
         // LinkedIn OAuth
         "LINKEDIN-CLIENTID": "LINKEDIN_CLIENT_ID",
