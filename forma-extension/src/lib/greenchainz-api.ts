@@ -8,7 +8,7 @@
 
 import type { GCMaterial } from "./types";
 
-const API_BASE = import.meta.env.VITE_GC_API_URL ?? "https://api.greenchainz.com";
+const API_BASE = (import.meta.env.VITE_GC_API_URL ?? "https://greenchainz.com") + "/api/public";
 
 // ── Material search ──────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ export async function searchMaterials(params: MaterialSearchParams): Promise<GCM
   if (params.minMcs)   qs.set("minMcs", String(params.minMcs));
   qs.set("limit", String(params.limit ?? 20));
 
-  const res = await fetch(`${API_BASE}/api/materials/search?${qs.toString()}`);
+  const res = await fetch(`${API_BASE}/materials/search?${qs.toString()}`);
   if (!res.ok) throw new Error(`GreenChainz API error: ${res.status}`);
   const json = await res.json() as { materials: GCMaterial[] };
   return json.materials ?? [];
@@ -37,7 +37,7 @@ export async function searchMaterials(params: MaterialSearchParams): Promise<GCM
 // ── Material detail ──────────────────────────────────────────────────────────
 
 export async function getMaterial(id: string): Promise<GCMaterial | null> {
-  const res = await fetch(`${API_BASE}/api/materials/${id}`);
+  const res = await fetch(`${API_BASE}/materials/${id}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GreenChainz API error: ${res.status}`);
   return res.json() as Promise<GCMaterial>;
@@ -46,7 +46,7 @@ export async function getMaterial(id: string): Promise<GCMaterial | null> {
 // ── Greener alternatives (SWAP Engine) ──────────────────────────────────────
 
 export async function getSwapSuggestions(materialId: string): Promise<GCMaterial[]> {
-  const res = await fetch(`${API_BASE}/api/materials/${materialId}/swaps`);
+  const res = await fetch(`${API_BASE}/materials/${materialId}/swaps`);
   if (!res.ok) return [];
   const json = await res.json() as { alternatives: GCMaterial[] };
   return json.alternatives ?? [];
@@ -60,7 +60,7 @@ export async function addToRfq(
   unit: string,
   authToken: string
 ): Promise<{ rfqId: string }> {
-  const res = await fetch(`${API_BASE}/api/rfq/add-item`, {
+  const res = await fetch(`${API_BASE}/rfq/add-item`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

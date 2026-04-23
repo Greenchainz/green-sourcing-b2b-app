@@ -5,6 +5,11 @@
  *  1. Reads the element's material properties via the Forma SDK
  *  2. Looks up matching GreenChainz materials to pull verified EPD / GWP data
  *  3. Shows embodied carbon impact and surfaces greener swap suggestions
+ *  4. Fires the "Interceptor" callout when a high-carbon material is detected
+ *     — this is GreenChainz's killer feature per docs/research/SALES_PSYCHOLOGY.md.
+ *     The InterceptorSuggestion shape here mirrors the canonical type in
+ *     lib/research/salesPsychology.ts — keep them aligned when the real
+ *     tRPC interceptor API ships.
  *
  * This is the "SWAP Engine inside Forma" story.
  */
@@ -13,6 +18,27 @@ import { useState, useEffect } from "preact/hooks";
 import { Forma } from "forma-embedded-view-sdk/auto";
 import { searchMaterials, getSwapSuggestions, formatGwp } from "../../lib/greenchainz-api";
 import type { GCMaterial } from "../../lib/types";
+
+// Carbon threshold (kgCO₂e / unit) above which we fire the Interceptor callout.
+// Concrete baseline ~300 kgCO₂e/m³, structural steel ~1500 kgCO₂e/tonne.
+// Any material above this that has a verified lower-carbon swap is fair game.
+const INTERCEPTOR_GWP_THRESHOLD = 200;
+
+/**
+ * Local mirror of lib/research/salesPsychology.ts → InterceptorSuggestion.
+ * Extension is a separate Vite deployable — does not import parent lib.
+ * If you change this shape, update the canonical type in the main repo.
+ */
+interface InterceptorSuggestion {
+  supplierId: string;
+  supplierName: string;
+  /** % carbon delta vs the current material — positive means swap is lower */
+  carbonDeltaPercent: number;
+  /** Human-readable reason (must cite code compliance when possible) */
+  reason: string;
+  /** Resolved swap material */
+  swap: GCMaterial;
+}
 
 interface ElementAnalysis {
   elementPath: string;
@@ -136,6 +162,17 @@ export function CarbonAnalysis() {
                 </div>
               </div>
 
+              {/* Interceptor callout — the killer feature.
+                  Fires when GWP is above threshold AND a verified swap exists. */}
+              {(() => {
+                const top = pickInterceptorSuggestion(
+                  analysis.detectedMaterial,
+                  analysis.swaps
+                );
+                if (!top) return null;
+                return <InterceptorCallout suggestion={top} />;
+              })()}
+
               {/* Swap suggestions */}
               {analysis.swaps.length > 0 && (
                 <div class="gc-swap-section">
@@ -228,4 +265,99 @@ function inferMaterialKeyword(
 
   // Fall back to the raw element name — might still return a result
   return elementName.length > 3 ? elementName : null;
+}
+
+// ── Interceptor logic ────────────────────────────────────────────────────────
+// Canonical strategy: docs/research/SALES_PSYCHOLOGY.md (Framework 2 — Interceptor)
+// "Interceptor must always cite ASTM / code compliance data when suggesting an
+//  alternate — never pitch on carbon alone."
+
+function pickInterceptorSuggestion(
+  current: GCMaterial,
+  swaps: GCMaterial[]
+): InterceptorSuggestion | null {
+  if (!current.gwpPerUnit || current.gwpPerUnit < INTERCEPTOR_GWP_THRESHOLD) {
+    return null;
+  }
+  if (swaps.length === 0) return null;
+
+  // Pick the swap with the biggest verified carbon delta
+  const ranked = swaps
+    .filter((s) => s.isVerified && s.gwpPerUnit && s.gwpPerUnit < current.gwpPerUnit!)
+    .map((s) => ({
+      swap: s,
+      deltaPercent: ((current.gwpPerUnit! - s.gwpPerUnit!) / current.gwpPerUnit!) * 100,
+    }))
+    .sort((a, b) => b.deltaPercent - a.deltaPercent);
+
+  if (ranked.length === 0) return null;
+
+  const top = ranked[0];
+  return {
+    supplierId: top.swap.id,
+    supplierName: top.swap.manufacturer ?? top.swap.name,
+    carbonDeltaPercent: Math.round(top.deltaPercent),
+    swap: top.swap,
+    reason: buildInterceptorReason(current, top.swap, top.deltaPercent),
+  };
+}
+
+function buildInterceptorReason(
+  current: GCMaterial,
+  swap: GCMaterial,
+  deltaPercent: number
+): string {
+  const saving = Math.round(deltaPercent);
+  // Must cite code compliance per canonical Interceptor grammar
+  const complianceHint =
+    swap.certifications && swap.certifications.length > 0
+      ? ` (${swap.certifications.slice(0, 2).join(", ")})`
+      : swap.isVerified
+      ? " (verified EPD)"
+      : "";
+  return `${saving}% less embodied carbon vs ${current.name}${complianceHint}. Code-compliant alternate available from GreenChainz-verified supplier.`;
+}
+
+interface InterceptorCalloutProps {
+  suggestion: InterceptorSuggestion;
+}
+
+function InterceptorCallout({ suggestion }: InterceptorCalloutProps) {
+  async function handleRequestRfq() {
+    await Forma.openFloatingPanel({
+      embeddedViewId: "greenchainz-interceptor-rfq",
+      url: `https://greenchainz.com/rfq/new?materialId=${suggestion.swap.id}&source=forma-interceptor`,
+      title: `RFQ — ${suggestion.swap.name}`,
+      preferredSize: { width: 480, height: 600 },
+    });
+  }
+
+  return (
+    <div
+      class="gc-interceptor"
+      style="margin:12px 0;padding:12px;border-radius:8px;background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);border:1px solid #10b981"
+    >
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:16px">⚡</span>
+        <span style="font-size:11px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:0.5px">
+          Interceptor
+        </span>
+      </div>
+      <div style="font-size:14px;font-weight:700;color:#064e3b;margin-bottom:4px">
+        Cut {suggestion.carbonDeltaPercent}% of this element's embodied carbon
+      </div>
+      <div style="font-size:12px;color:#065f46;margin-bottom:8px">
+        Switch to <strong>{suggestion.swap.name}</strong>
+        {suggestion.swap.manufacturer && (
+          <span> from {suggestion.swap.manufacturer}</span>
+        )}
+      </div>
+      <div style="font-size:11px;color:#047857;margin-bottom:10px;line-height:1.4">
+        {suggestion.reason}
+      </div>
+      <weave-button variant="solid" style="width:100%" onClick={handleRequestRfq}>
+        Request RFQ for {suggestion.swap.name}
+      </weave-button>
+    </div>
+  );
 }
