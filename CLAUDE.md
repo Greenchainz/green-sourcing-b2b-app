@@ -117,11 +117,38 @@ MANAGED_IDENTITY_CLIENT_ID  ec248abf-f6ce-4d7c-8888-740317709f1b  ← NOT the ap
 
 ---
 
+## Required Research Pre-Read (Domain Truth)
+
+Before building anything architect-facing, supplier-facing, outreach-related,
+or marketplace-matching, read:
+
+1. [`docs/research/README.md`](./docs/research/README.md) — index + how to use
+2. [`docs/research/PROCUREMENT_DECISION_MAKERS.md`](./docs/research/PROCUREMENT_DECISION_MAKERS.md) — the 8 tiers × 35+ roles who specify sustainable materials and why
+3. [`docs/research/SUPPLIER_ECOSYSTEM.md`](./docs/research/SUPPLIER_ECOSYSTEM.md) — 100+ suppliers across 7 categories with pitch angles + readiness
+4. [`docs/research/SALES_PSYCHOLOGY.md`](./docs/research/SALES_PSYCHOLOGY.md) — the 4 frameworks (Trojan Horse, Interceptor, Tiered Membership, Hard Sell Counter)
+
+Every feature should resolve to one or more of:
+- a `DecisionMakerTier` / `Role` — `import { ... } from "@/lib/research"`
+- a `SupplierCategory` / `MaterialReadiness`
+- a `GreenChainzPitchStrategy`
+- a `MaterialCreditScore` input
+
+**Do not parallel-invent these types elsewhere.** Extend `lib/research/` if
+the research says something new.
+
+**Money lane truth:** GreenChainz has one revenue-generating interaction —
+a verified supplier wins a spec they otherwise would not have won. Build
+toward that or you are building something else.
+
+---
+
 ## Before You Code
 
 1. Read this file ✅
-2. Read `docs/AUTH_ARCHITECTURE.md` if touching auth
-3. Read `docs/STACK.md` for the authoritative stack reference
-4. Run `npm run dev` and confirm the server starts before editing
-5. Scope every DB query to `ctx.user.id`
-6. Use `protectedProcedure` — never roll your own auth check
+2. Read `docs/research/README.md` if touching supplier/architect features
+3. Read `docs/AUTH_ARCHITECTURE.md` if touching auth
+4. Read `docs/STACK.md` for the authoritative stack reference
+5. Run `npm run dev` and confirm the server starts before editing
+6. Scope every DB query to `ctx.user.id`
+7. Use `protectedProcedure` — never roll your own auth check
+8. Import domain types from `@/lib/research` — do not redefine
