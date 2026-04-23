@@ -118,3 +118,4 @@ package-lock.json
 # Visual Studio local files
 .vs/
 *.pdf
+*.plugin
