@@ -22,6 +22,7 @@ import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { specSheetRouter } from "../spec-sheet-router";
 import { sdk } from "./sdk";
 import { registerAdminRoutes } from "../admin-routes/index";
+import { publicMaterialsRouter } from "../public-materials-api";
 import { registerPdfRoutes } from "../admin-routes/pdf-routes";
 import { registerMobileMessagesRoutes } from "../admin-routes/mobile-messages";
 import { startSchedulers } from "../scheduler";
@@ -232,6 +233,8 @@ async function startServer() {
   app.use("/api", uploadRouter);
   app.use(zeptomailWebhookRouter);
   app.use("/api", specSheetRouter);
+  // Public REST API for Forma Extension (unauthenticated)
+  app.use("/api/public", publicMaterialsRouter);
 
   // ── Delegated route groups ────────────────────────────────────────────────
   registerAdminRoutes(app, adminRateLimit);
