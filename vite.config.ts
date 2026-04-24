@@ -35,16 +35,16 @@ export default defineConfig({
             ) {
               return "vendor-pdf";
             }
-            // Charts
-            if (id.includes("recharts") || id.includes("d3-") || id.includes("victory")) {
+            // Charts — match recharts and d3-* packages at node_modules boundary
+            if (id.includes("recharts") || /\/node_modules\/d3-[a-z]/.test(id)) {
               return "vendor-charts";
             }
             // Animation
             if (id.includes("framer-motion")) {
               return "vendor-motion";
             }
-            // React core
-            if (id.includes("react-dom") || id.includes("react/")) {
+            // React core — match /node_modules/react/ and /node_modules/react-dom/ only
+            if (/\/node_modules\/react(-dom)?\//i.test(id)) {
               return "vendor-react";
             }
             // tRPC + TanStack Query
