@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload Snyk SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && hashFiles('snyk-deps.sarif') != ''
         with:
           sarif_file: snyk-deps.sarif
           category: snyk-dependencies
@@ -77,7 +77,7 @@ jobs:
 
       - name: Upload Trivy SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && hashFiles('trivy-container.sarif') != ''
         with:
           sarif_file: trivy-container.sarif
           category: trivy-container
