@@ -47,7 +47,7 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
       conditions.push(lte(materials.gwpValue, String(maxGwp)));
     }
     if (minMcs !== undefined && !isNaN(minMcs)) {
-      conditions.push(lte(materials.ccpsScore, String(100 - minMcs)));
+      conditions.push(lte(materials.ccpsScore, 100 - minMcs));
     }
 
     // Only return verified / EPD-backed materials to the public API
