@@ -22,14 +22,6 @@ export function registerAdminRoutes(
   app: express.Express,
   adminRateLimit: express.RequestHandler
 ): void {
-  // Autodesk SDA OAuth setup (no rate limit — these are browser redirects)
-  const { Router } = express;
-  const sdaRouter = Router();
-  void import('./autodesk-oauth').then(({ registerAutodeskOAuthRoutes }) => {
-    registerAutodeskOAuthRoutes(sdaRouter);
-  });
-  app.use('/api/admin', sdaRouter);
-
   // Trigger scraper outreach pipeline
   app.post('/api/admin/trigger-outreach', adminRateLimit, async (req, res) => {
     try {
@@ -174,14 +166,5 @@ export function registerAdminRoutes(
       console.error('[admin] TxDOT scraper error:', err);
       res.status(500).json(createErrorResponse('TxDOT scraper failed', (req as any).id, err instanceof Error ? err.message : String(err)));
     }
-  });
-}
-{ success: true, scraped: scrapedData.length, stored: storeResult });
-    } catch (err) {
-      console.error('[admin] TxDOT scraper error:', err);
-      res.status(500).json(createErrorResponse('TxDOT scraper failed', (req as any).id, err instanceof Error ? err.message : String(err)));
-    }
-  });
-}
   });
 }

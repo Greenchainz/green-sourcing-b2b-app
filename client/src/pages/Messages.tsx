@@ -11,6 +11,12 @@
  * Role-awareness:
  *   architect / buyer → threads labelled with RFQ project name
  *   supplier           → threads labelled "Buyer: <name>" to highlight inbound leads
+ *
+ * Video calling:
+ *   - useWebPubSub() at page root establishes WS for real-time call notifications
+ *   - IncomingCallNotification handles callee-side incoming call dialog
+ *   - VideoCallModal handles WebRTC peer connection + video streams
+ *   - Call initiation button lives in ThreadPanel header
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -24,17 +30,25 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useWebPubSub } from "@/hooks/useWebPubSub";
+import { IncomingCallNotification } from "@/components/messaging/IncomingCallNotification";
 import {
   ArrowLeft,
   Building2,
   Loader2,
   MessageCircle,
   MessageSquareDashed,
+  Mic,
+  MicOff,
+  Phone,
+  PhoneOff,
   Search,
   Send,
+  Video,
+  VideoOff,
 } from "lucide-react";
 
-// ── Types (inferred from server/messaging-service.ts response shapes) ──────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Conv {
   id: number;
@@ -45,7 +59,7 @@ interface Conv {
   lastMessage: string | null;
   isPinned: boolean;
   isArchived: boolean;
-  rfqTitle: string | null;       // rfqs.projectName via LEFT JOIN
+  rfqTitle: string | null;
   otherPartyId: number | null;
   otherPartyName: string | null;
   otherPartyEmail: string | null;
@@ -68,6 +82,21 @@ interface Msg {
   senderEmail: string | null;
 }
 
+interface ActiveCall {
+  callId: string;
+  remoteUserId: number;
+  remoteName: string;
+  isInitiator: boolean;
+}
+
+interface IncomingCallData {
+  callId: string;
+  callerId: number;
+  callerName: string;
+  conversationId: number;
+  timestamp: number;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function relTime(d: Date | string | null | undefined): string {
@@ -81,6 +110,273 @@ function relTime(d: Date | string | null | undefined): string {
 
 function partyName(conv: Conv): string {
   return conv.otherPartyName || conv.otherPartyEmail || "Unknown";
+}
+
+// ── VideoCallModal ─────────────────────────────────────────────────────────────
+
+const STUN_SERVERS: RTCIceServer[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+];
+
+function VideoCallModal({
+  call,
+  onEnd,
+}: {
+  call: ActiveCall;
+  onEnd: () => void;
+}) {
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+
+  const [callStatus, setCallStatus] = useState<"connecting" | "connected">("connecting");
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+
+  const sendSignalMutation = trpc.videoCalling.sendWebRTCSignal.useMutation();
+  const endCallMutation = trpc.videoCalling.endWebRTCCall.useMutation();
+
+  const sendSignal = useCallback(
+    (type: "offer" | "answer" | "ice-candidate", data: unknown) => {
+      void sendSignalMutation
+        .mutateAsync({
+          callId: call.callId,
+          recipientId: call.remoteUserId,
+          type,
+          data,
+        })
+        .catch((err: unknown) => console.error("[VideoCall] Signal error:", err));
+    },
+    [call.callId, call.remoteUserId, sendSignalMutation]
+  );
+
+  useEffect(() => {
+    const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+    pcRef.current = pc;
+
+    pc.ontrack = (event) => {
+      if (remoteVideoRef.current && event.streams[0]) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+        setCallStatus("connected");
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        sendSignal("ice-candidate", event.candidate);
+      }
+    };
+
+    const initMedia = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+        if (call.isInitiator) {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          sendSignal("offer", offer);
+        }
+      } catch (err) {
+        console.error("[VideoCall] Media error:", err);
+        toast.error("Could not access camera or microphone. Check browser permissions.");
+        onEnd();
+      }
+    };
+
+    void initMedia();
+
+    const handleWebRTCSignal = (event: Event) => {
+      const { callId, signalType, signalData } = (event as CustomEvent<{
+        callId: string;
+        senderId: number;
+        signalType: string;
+        signalData: RTCSessionDescriptionInit | RTCIceCandidateInit;
+      }>).detail;
+
+      if (callId !== call.callId) return;
+
+      if (signalType === "offer") {
+        void (async () => {
+          await pc.setRemoteDescription(new RTCSessionDescription(signalData as RTCSessionDescriptionInit));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          sendSignal("answer", answer);
+        })();
+      } else if (signalType === "answer") {
+        void pc.setRemoteDescription(new RTCSessionDescription(signalData as RTCSessionDescriptionInit));
+      } else if (signalType === "ice-candidate") {
+        void pc
+          .addIceCandidate(new RTCIceCandidate(signalData as RTCIceCandidateInit))
+          .catch((err: unknown) => console.error("[VideoCall] ICE error:", err));
+      }
+    };
+
+    window.addEventListener("webrtc-signal", handleWebRTCSignal);
+
+    return () => {
+      window.removeEventListener("webrtc-signal", handleWebRTCSignal);
+      localStreamRef.current?.getTracks().forEach((t) => t.stop());
+      pc.close();
+    };
+    // sendSignal is stable (useCallback with stable deps) — safe to include
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [call.callId, call.isInitiator, call.remoteUserId]);
+
+  const handleEnd = async () => {
+    try {
+      await endCallMutation.mutateAsync({ callId: call.callId });
+    } catch (err) {
+      console.error("[VideoCall] End call error:", err);
+    }
+    onEnd();
+  };
+
+  const toggleMute = () => {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    stream.getAudioTracks().forEach((t) => {
+      t.enabled = !t.enabled;
+    });
+    setIsMuted((prev) => !prev);
+  };
+
+  const toggleCamera = () => {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    stream.getVideoTracks().forEach((t) => {
+      t.enabled = !t.enabled;
+    });
+    setIsCameraOff((prev) => !prev);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div className="relative w-full max-w-3xl mx-4 bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 bg-zinc-800">
+          <div className="flex items-center gap-2">
+            <Video className="h-4 w-4 text-green-400" />
+            <span className="text-white text-sm font-medium">{call.remoteName}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "text-xs px-2 py-0.5 rounded-full",
+                callStatus === "connected"
+                  ? "bg-green-500/20 text-green-400"
+                  : "bg-yellow-500/20 text-yellow-400"
+              )}
+            >
+              {callStatus === "connected" ? "Connected" : "Connecting…"}
+            </span>
+          </div>
+        </div>
+
+        {/* Video area */}
+        <div className="relative bg-zinc-950 aspect-video">
+          {/* Remote video (full size) */}
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover"
+          />
+
+          {/* Remote placeholder when connecting */}
+          {callStatus === "connecting" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+              <div className="h-16 w-16 rounded-full bg-zinc-700 flex items-center justify-center text-2xl font-semibold text-white">
+                {call.remoteName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
+              </div>
+              <div className="flex gap-1">
+                <div className="h-2 w-2 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="h-2 w-2 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="h-2 w-2 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
+          )}
+
+          {/* Local video (PiP) */}
+          <div className="absolute bottom-3 right-3 w-32 aspect-video rounded-lg overflow-hidden border border-white/20 shadow-lg bg-zinc-800">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={cn("w-full h-full object-cover", isCameraOff && "invisible")}
+            />
+            {isCameraOff && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <VideoOff className="h-6 w-6 text-zinc-400" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center justify-center gap-4 py-4 bg-zinc-800">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className={cn(
+              "h-12 w-12 rounded-full",
+              isMuted
+                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                : "bg-zinc-700 text-white hover:bg-zinc-600"
+            )}
+            title={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleCamera}
+            className={cn(
+              "h-12 w-12 rounded-full",
+              isCameraOff
+                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                : "bg-zinc-700 text-white hover:bg-zinc-600"
+            )}
+            title={isCameraOff ? "Turn camera on" : "Turn camera off"}
+          >
+            {isCameraOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
+          </Button>
+
+          <Button
+            size="icon"
+            onClick={handleEnd}
+            disabled={endCallMutation.isPending}
+            className="h-14 w-14 rounded-full bg-red-600 hover:bg-red-700 text-white"
+            title="End call"
+          >
+            {endCallMutation.isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <PhoneOff className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── ConversationItem ───────────────────────────────────────────────────────────
@@ -98,7 +394,6 @@ function ConversationItem({
 }) {
   const name = partyName(conv);
 
-  // Architects see the RFQ project name; suppliers see "Buyer" to emphasise lead
   const tag =
     role === "supplier"
       ? `Buyer: ${name}`
@@ -264,12 +559,14 @@ function ThreadPanel({
   role,
   conversations,
   onBack,
+  onStartCall,
 }: {
   conversationId: number;
   userId: number;
   role: string;
   conversations: Conv[] | undefined;
   onBack: () => void;
+  onStartCall: (remoteUserId: number, remoteName: string, conversationId: number) => void;
 }) {
   const conv = conversations?.find((c) => c.id === conversationId);
   const endRef = useRef<HTMLDivElement>(null);
@@ -291,7 +588,6 @@ function ThreadPanel({
     onError: (err) => toast.error(err.message || "Failed to send message"),
   });
 
-  // Scroll to latest message whenever list changes
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
@@ -307,6 +603,14 @@ function ThreadPanel({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleVideoCall = () => {
+    if (!conv?.otherPartyId) {
+      toast.error("Cannot start call — recipient not found");
+      return;
+    }
+    onStartCall(conv.otherPartyId, partyName(conv), conversationId);
   };
 
   // Header details
@@ -344,6 +648,17 @@ function ThreadPanel({
           <p className="font-semibold text-sm truncate">{name}</p>
           <p className="text-[11px] text-muted-foreground truncate">{subtitle}</p>
         </div>
+        {/* Video call button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={handleVideoCall}
+          title={`Start video call with ${name}`}
+          disabled={!conv?.otherPartyId}
+        >
+          <Phone className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Messages area */}
@@ -421,9 +736,12 @@ function EmptyThread({ role }: { role: string }) {
 export default function Messages() {
   const { user } = useAuth();
   const [selectedId, setSelectedId] = useState<number | undefined>();
+  const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const utils = trpc.useUtils();
 
-  // Pre-fetch conversations at page level — shared by both panels via tRPC cache
+  // Establish WebSocket for real-time call notifications
+  useWebPubSub();
+
   const { data: rawConvs } = trpc.messaging.getConversations.useQuery(undefined, {
     refetchInterval: 15_000,
     enabled: !!user,
@@ -437,12 +755,61 @@ export default function Messages() {
     },
   });
 
+  const initiateCallMutation = trpc.videoCalling.initiateWebRTCCall.useMutation();
+  const acceptCallMutation = trpc.videoCalling.acceptWebRTCCall.useMutation();
+
   const handleSelect = (id: number) => {
     setSelectedId(id);
     markAsRead.mutate({ conversationId: id });
   };
 
   const handleBack = () => setSelectedId(undefined);
+
+  const handleStartCall = useCallback(
+    async (remoteUserId: number, remoteName: string, conversationId: number) => {
+      if (activeCall) {
+        toast.error("You're already in a call");
+        return;
+      }
+      try {
+        const session = await initiateCallMutation.mutateAsync({
+          calleeId: remoteUserId,
+          conversationId,
+        });
+        setActiveCall({
+          callId: session.callId,
+          remoteUserId,
+          remoteName,
+          isInitiator: true,
+        });
+        toast.success(`Calling ${remoteName}…`);
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : "Failed to start call");
+      }
+    },
+    [activeCall, initiateCallMutation]
+  );
+
+  const handleAcceptCall = useCallback(
+    async (callData: IncomingCallData) => {
+      try {
+        await acceptCallMutation.mutateAsync({ callId: callData.callId });
+        setActiveCall({
+          callId: callData.callId,
+          remoteUserId: callData.callerId,
+          remoteName: callData.callerName,
+          isInitiator: false,
+        });
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : "Failed to accept call");
+      }
+    },
+    [acceptCallMutation]
+  );
+
+  const handleEndCall = useCallback(() => {
+    setActiveCall(null);
+  }, []);
 
   const role = user?.role ?? "architect";
   const userId = user ? Number(user.id) : 0;
@@ -466,6 +833,14 @@ export default function Messages() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
+      {/* Incoming call notification — listens for window events from useWebPubSub */}
+      <IncomingCallNotification onAccept={handleAcceptCall} />
+
+      {/* Active video call modal */}
+      {activeCall && (
+        <VideoCallModal call={activeCall} onEnd={handleEndCall} />
+      )}
+
       {/* Chat layout — fills viewport below the 4rem header */}
       <div className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 4rem)" }}>
 
@@ -473,7 +848,6 @@ export default function Messages() {
         <div
           className={cn(
             "w-full md:w-80 shrink-0 border-r flex flex-col",
-            // Mobile: hide list when a thread is open
             selectedId !== undefined ? "hidden md:flex" : "flex"
           )}
         >
@@ -505,7 +879,6 @@ export default function Messages() {
         <div
           className={cn(
             "flex-1 flex flex-col overflow-hidden",
-            // Mobile: hide right panel when no thread selected
             selectedId === undefined ? "hidden md:flex" : "flex"
           )}
         >
@@ -516,6 +889,7 @@ export default function Messages() {
               role={role}
               conversations={conversations}
               onBack={handleBack}
+              onStartCall={handleStartCall}
             />
           ) : (
             <EmptyThread role={role} />

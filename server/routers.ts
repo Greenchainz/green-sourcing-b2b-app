@@ -12,7 +12,6 @@ import { materialSpecRouter } from './routers/material-spec-router';
 import { materialSwapRouter } from './routers/material-swap-router';
 import { agentConfigRouter } from './agent-config-router';
 import { legalRouter } from './legal-router';
-import { autodesksDARouter } from './autodesk-sda-router';
 import { txdotScraperRouter } from './routers/txdotScraper';
 import { swapValidationRouter } from './routers/swapValidation';
 import { rfqRouter } from './routers/rfq';
@@ -46,7 +45,6 @@ export const appRouter = router({
   materialSwap: materialSwapRouter,
   agentConfig: agentConfigRouter,
   legal: legalRouter,
-  autodesk: autodesksDARouter,
   txdotScraper: txdotScraperRouter,
   swapValidation: swapValidationRouter,
   rfqRequests: rfqRouter,

@@ -86,4 +86,136 @@ async function fetchAllEPDsForCategory(ec3Category: string): Promise<EC3EPD[]> {
   const all: EC3EPD[] = [];
 
   for (let page = 1; page <= MAX_PAGES; page++) {
-    // fetchEC3EPDs appends page_size + optional offset/page param
+    // fetchEC3EPDs appends page_size + optional offset/page param
+    // We pass limit per-page and use the offset approach: offset = (page-1) * EPDS_PER_PAGE
+    const batch = await fetchEC3EPDs(ec3Category, EPDS_PER_PAGE, (page - 1) * EPDS_PER_PAGE);
+
+    if (batch.length === 0) break;
+    all.push(...batch);
+
+    // If we got fewer than a full page, we've exhausted the category
+    if (batch.length < EPDS_PER_PAGE) break;
+
+    // Be a good API citizen
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
+  return all;
+}
+
+/**
+ * Batch upsert: check which EC3 IDs already exist, then insert new + update existing.
+ * One existence check per batch (not per material).
+ */
+async function batchUpsert(
+  db: Awaited<ReturnType<typeof getDb>>,
+  epds: EC3EPD[],
+  result: SeedResult
+): Promise<void> {
+  if (!db || epds.length === 0) return;
+
+  const transformed = transformEC3Batch(epds).filter((m) => !!m.ec3Id);
+  if (transformed.length === 0) return;
+
+  const ec3Ids = transformed.map((m) => m.ec3Id!);
+
+  const existing = await db
+    .select({ ec3Id: materials.ec3Id })
+    .from(materials)
+    .where(inArray(materials.ec3Id, ec3Ids));
+
+  const existingSet = new Set(existing.map((r) => r.ec3Id));
+
+  const toCreate = transformed.filter((m) => !existingSet.has(m.ec3Id!));
+  const toUpdate = transformed.filter((m) => existingSet.has(m.ec3Id!));
+
+  if (toCreate.length > 0) {
+    try {
+      await db.insert(materials).values(toCreate as any[]);
+      result.created += toCreate.length;
+    } catch (err) {
+      const msg = `Batch insert failed: ${err}`;
+      console.error(`[Seed] ${msg}`);
+      result.errors.push(msg);
+    }
+  }
+
+  for (const material of toUpdate) {
+    try {
+      await db
+        .update(materials)
+        .set({ ...material, updatedAt: new Date() } as any)
+        .where(eq(materials.ec3Id, material.ec3Id!));
+      result.updated++;
+    } catch (err) {
+      const msg = `Update failed for ${material.ec3Id}: ${err}`;
+      console.error(`[Seed] ${msg}`);
+      result.errors.push(msg);
+    }
+  }
+}
+
+/**
+ * Seed the materials table from EC3 data.
+ * Safe to run multiple times — uses upsert logic.
+ *
+ * @param categoryOverrides  Optional subset of SEED_CATEGORIES[].ec3Category values to run
+ * @param _limit             Ignored (kept for API compat) — pagination is now handled internally
+ */
+export async function seedMaterialsFromEC3(
+  categoryOverrides?: string[],
+  _limit?: number
+): Promise<SeedResult> {
+  const result: SeedResult = {
+    success: false,
+    totalFetched: 0,
+    created: 0,
+    updated: 0,
+    errors: [],
+    categoriesProcessed: [],
+  };
+
+  const db = await getDb();
+  if (!db) {
+    result.errors.push("Database connection failed");
+    return result;
+  }
+
+  // Resolve which categories to run
+  const targets = categoryOverrides && categoryOverrides.length > 0
+    ? SEED_CATEGORIES.filter((c) => categoryOverrides.includes(c.ec3Category))
+    : SEED_CATEGORIES;
+
+  console.log(`[Seed] Starting EC3 seed for ${targets.length} categories`);
+
+  for (const { name, ec3Category } of targets) {
+    try {
+      console.log(`[Seed] Fetching ${name} (${ec3Category})...`);
+      const epds = await fetchAllEPDsForCategory(ec3Category);
+
+      if (epds.length === 0) {
+        console.log(`[Seed] ⚠️  No EPDs found for ${name} — category key may need adjustment`);
+        continue;
+      }
+
+      result.totalFetched += epds.length;
+      await batchUpsert(db, epds, result);
+
+      result.categoriesProcessed.push(name);
+      console.log(`[Seed] ✅ ${name}: ${epds.length} fetched, +${result.created} new (running total)`);
+
+      // Polite delay between categories
+      await new Promise((r) => setTimeout(r, 500));
+    } catch (err) {
+      const msg = `Failed fetching "${name}" (${ec3Category}): ${err}`;
+      console.error(`[Seed] ❌ ${msg}`);
+      result.errors.push(msg);
+    }
+  }
+
+  result.success = result.created + result.updated > 0;
+  console.log(
+    `[Seed] ✅ Complete — fetched: ${result.totalFetched}, created: ${result.created}, updated: ${result.updated}, errors: ${result.errors.length}`
+  );
+  return result;
+}
