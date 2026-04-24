@@ -96,11 +96,13 @@ export async function syncEpdData(): Promise<SyncStatus> {
               category?: string;
               gwp?: number;
               certifications?: string[];
+              description?: string;
+              categoryIds?: string[];
             };
             const materialData = {
               name: d.name,
               category: d.category ?? d.categoryIds?.[0] ?? 'Unknown',
-              description: d.description,
+              description: d.description ?? null,
               epdNumber: d.id,
               gwpValue: d.gwp != null ? d.gwp.toString() : null,
               gwpUnit: 'kg CO2-eq',
