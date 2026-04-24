@@ -60,20 +60,31 @@ const CERTIFICATIONS = [
 
 // ── Schema ─────────────────────────────────────────────────────────────────────
 
+const normalizeWebsite = (val: string): string => {
+  if (!val || val.trim() === "") return "";
+  const v = val.trim();
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+  return `https://${v}`;
+};
+
+const isValidUrlOrEmpty = (val: string): boolean => {
+  if (val === "") return true;
+  try {
+    new URL(val);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const schema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   website: z
     .string()
-    .transform((val) => {
-      if (!val || val.trim() === "") return "";
-      const v = val.trim();
-      if (v.startsWith("http://") || v.startsWith("https://")) return v;
-      return `https://${v}`;
-    })
-    .refine(
-      (val) => val === "" || (() => { try { new URL(val); return true; } catch { return false; } })(),
-      { message: "Enter a valid website (e.g. greenchainz.com)" }
-    ),
+    .transform(normalizeWebsite)
+    .refine(isValidUrlOrEmpty, {
+      message: "Enter a valid website (e.g. greenchainz.com)",
+    }),
   description: z.string().optional(),
   contactName: z.string().min(1, "Contact name is required"),
   email: z.string().email("Valid email is required"),
@@ -87,6 +98,17 @@ const schema = z.object({
 type FormValues = z.input<typeof schema>;
 type FormData = z.output<typeof schema>;
 
+type SupplierProfile = {
+  companyName?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  description?: string;
+  materialCategories?: string[];
+  certifications?: string[];
+};
+
 // ── Steps ──────────────────────────────────────────────────────────────────────
 
 const STEPS = [
@@ -97,10 +119,10 @@ const STEPS = [
   { label: "Review", icon: ClipboardCheck, description: "Review & submit" },
 ];
 
-// Fields to validate per step
+// Fields to validate per step (only required fields; optional ones like phone are skipped)
 const STEP_FIELDS: (keyof FormValues)[][] = [
-  ["companyName"], // website is optional, don't block on it
-  ["contactName", "email", "phone"],
+  ["companyName"],
+  ["contactName", "email"],
   ["materialCategories"],
   ["certifications"],
   [],
@@ -120,9 +142,9 @@ function StepIndicator({ current }: { current: number }) {
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all text-sm font-semibold ${
                   done
-                    ? "border-[#2D6A4F] bg-[#2D6A4F] text-white"
+                    ? "border-emerald-700 bg-emerald-700 text-white"
                     : active
-                    ? "border-[#2D6A4F] bg-white text-[#2D6A4F]"
+                    ? "border-emerald-700 bg-white text-emerald-700"
                     : "border-gray-300 bg-white text-gray-400"
                 }`}
               >
@@ -131,9 +153,9 @@ function StepIndicator({ current }: { current: number }) {
               <span
                 className={`text-xs font-medium hidden sm:block ${
                   active
-                    ? "text-[#2D6A4F]"
+                    ? "text-emerald-700"
                     : done
-                    ? "text-[#2D6A4F]"
+                    ? "text-emerald-700"
                     : "text-gray-400"
                 }`}
               >
@@ -143,7 +165,7 @@ function StepIndicator({ current }: { current: number }) {
             {i < STEPS.length - 1 && (
               <div
                 className={`h-0.5 w-8 sm:w-14 mx-1 transition-all ${
-                  i < current ? "bg-[#2D6A4F]" : "bg-gray-200"
+                  i < current ? "bg-emerald-700" : "bg-gray-200"
                 }`}
               />
             )}
@@ -180,9 +202,9 @@ function CheckboxGroup({
         {options.map((opt) => (
           <label
             key={opt}
-            className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all hover:border-[#2D6A4F]/50 hover:bg-[#2D6A4F]/5 text-sm ${
+            className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all hover:border-emerald-700/50 hover:bg-emerald-700/5 text-sm ${
               value.includes(opt)
-                ? "border-[#2D6A4F] bg-[#2D6A4F]/5"
+                ? "border-emerald-700 bg-emerald-700/10"
                 : "border-gray-200"
             }`}
           >
@@ -244,19 +266,18 @@ export default function SupplierOnboarding() {
 
   // Pre-fill from existing profile
   useEffect(() => {
-    if (profileQuery.data) {
-      const p = profileQuery.data as any;
-      reset({
-        companyName: p.companyName ?? "",
-        contactName: p.contactName ?? user?.name ?? "",
-        email: p.email ?? user?.email ?? "",
-        phone: p.phone ?? "",
-        website: p.website ?? "",
-        description: p.description ?? "",
-        materialCategories: p.materialCategories ?? [],
-        certifications: p.certifications ?? [],
-      });
-    }
+    const p = profileQuery.data as SupplierProfile | undefined;
+    if (!p) return;
+    reset({
+      companyName: p.companyName ?? "",
+      contactName: p.contactName ?? user?.name ?? "",
+      email: p.email ?? user?.email ?? "",
+      phone: p.phone ?? "",
+      website: p.website ?? "",
+      description: p.description ?? "",
+      materialCategories: p.materialCategories ?? [],
+      certifications: p.certifications ?? [],
+    });
   }, [profileQuery.data, reset, user]);
 
   const materialCategories = watch("materialCategories") ?? [];
@@ -283,7 +304,7 @@ export default function SupplierOnboarding() {
         <Header />
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-[#2D6A4F]" />
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-700" />
             <p className="text-sm text-muted-foreground">
               Checking your profile…
             </p>
@@ -320,8 +341,8 @@ export default function SupplierOnboarding() {
               <Card className="shadow-sm">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-[#2D6A4F]" />
+                    <div className="w-10 h-10 rounded-lg bg-emerald-700/10 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-emerald-700" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">
@@ -383,8 +404,8 @@ export default function SupplierOnboarding() {
               <Card className="shadow-sm">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
-                      <User className="w-5 h-5 text-[#2D6A4F]" />
+                    <div className="w-10 h-10 rounded-lg bg-emerald-700/10 flex items-center justify-center">
+                      <User className="w-5 h-5 text-emerald-700" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">
@@ -447,8 +468,8 @@ export default function SupplierOnboarding() {
               <Card className="shadow-sm">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
-                      <Package className="w-5 h-5 text-[#2D6A4F]" />
+                    <div className="w-10 h-10 rounded-lg bg-emerald-700/10 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-emerald-700" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">
@@ -480,8 +501,8 @@ export default function SupplierOnboarding() {
               <Card className="shadow-sm">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
-                      <Award className="w-5 h-5 text-[#2D6A4F]" />
+                    <div className="w-10 h-10 rounded-lg bg-emerald-700/10 flex items-center justify-center">
+                      <Award className="w-5 h-5 text-emerald-700" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">Certifications</CardTitle>
@@ -509,8 +530,8 @@ export default function SupplierOnboarding() {
               <Card className="shadow-sm">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#2D6A4F]/10 flex items-center justify-center">
-                      <ClipboardCheck className="w-5 h-5 text-[#2D6A4F]" />
+                    <div className="w-10 h-10 rounded-lg bg-emerald-700/10 flex items-center justify-center">
+                      <ClipboardCheck className="w-5 h-5 text-emerald-700" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">
@@ -526,7 +547,7 @@ export default function SupplierOnboarding() {
                   {/* Company Info Summary */}
                   <div className="rounded-lg border p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-sm text-[#2D6A4F] flex items-center gap-2">
+                      <h4 className="font-semibold text-sm text-emerald-700 flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
                         Company Info
                       </h4>
@@ -534,7 +555,7 @@ export default function SupplierOnboarding() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-[#2D6A4F] h-8"
+                        className="text-emerald-700 h-8"
                         onClick={() => setStep(0)}
                       >
                         <Pencil className="w-3 h-3 mr-1" />
@@ -568,7 +589,7 @@ export default function SupplierOnboarding() {
                   {/* Contact Summary */}
                   <div className="rounded-lg border p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-sm text-[#2D6A4F] flex items-center gap-2">
+                      <h4 className="font-semibold text-sm text-emerald-700 flex items-center gap-2">
                         <User className="w-4 h-4" />
                         Contact
                       </h4>
@@ -576,7 +597,7 @@ export default function SupplierOnboarding() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-[#2D6A4F] h-8"
+                        className="text-emerald-700 h-8"
                         onClick={() => setStep(1)}
                       >
                         <Pencil className="w-3 h-3 mr-1" />
@@ -608,7 +629,7 @@ export default function SupplierOnboarding() {
                   {/* Materials Summary */}
                   <div className="rounded-lg border p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-sm text-[#2D6A4F] flex items-center gap-2">
+                      <h4 className="font-semibold text-sm text-emerald-700 flex items-center gap-2">
                         <Package className="w-4 h-4" />
                         Material Categories
                       </h4>
@@ -616,7 +637,7 @@ export default function SupplierOnboarding() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-[#2D6A4F] h-8"
+                        className="text-emerald-700 h-8"
                         onClick={() => setStep(2)}
                       >
                         <Pencil className="w-3 h-3 mr-1" />
@@ -628,7 +649,7 @@ export default function SupplierOnboarding() {
                         materialCategories.map((cat) => (
                           <span
                             key={cat}
-                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#2D6A4F]/10 text-[#2D6A4F]"
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-700/10 text-emerald-700"
                           >
                             {cat}
                           </span>
@@ -644,7 +665,7 @@ export default function SupplierOnboarding() {
                   {/* Certifications Summary */}
                   <div className="rounded-lg border p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-sm text-[#2D6A4F] flex items-center gap-2">
+                      <h4 className="font-semibold text-sm text-emerald-700 flex items-center gap-2">
                         <Award className="w-4 h-4" />
                         Certifications
                       </h4>
@@ -652,7 +673,7 @@ export default function SupplierOnboarding() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-[#2D6A4F] h-8"
+                        className="text-emerald-700 h-8"
                         onClick={() => setStep(3)}
                       >
                         <Pencil className="w-3 h-3 mr-1" />
@@ -686,7 +707,7 @@ export default function SupplierOnboarding() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1 border-2 border-[#2D6A4F] text-[#2D6A4F] hover:bg-[#2D6A4F]/10 font-semibold"
+                  className="flex-1 border-2 border-emerald-700 text-emerald-700 hover:bg-emerald-700/10 font-semibold"
                   onClick={prevStep}
                 >
                   <ChevronLeft className="w-4 h-4 mr-1" />
@@ -696,7 +717,7 @@ export default function SupplierOnboarding() {
               {step < STEPS.length - 1 && (
                 <Button
                   type="button"
-                  className={`flex-1 bg-[#2D6A4F] hover:bg-[#245a42] text-white ${
+                  className={`flex-1 bg-emerald-700 hover:bg-emerald-800 text-white ${
                     step === 0 ? "w-full" : ""
                   }`}
                   onClick={nextStep}
@@ -708,7 +729,7 @@ export default function SupplierOnboarding() {
               {step === STEPS.length - 1 && (
                 <Button
                   type="submit"
-                  className="flex-1 bg-[#2D6A4F] hover:bg-[#245a42] text-white"
+                  className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white"
                   disabled={submitOnboarding.isPending}
                 >
                   {submitOnboarding.isPending ? (
