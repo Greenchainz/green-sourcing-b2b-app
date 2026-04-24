@@ -277,7 +277,7 @@ function AppInner() {
         <SupplierOnboardingGuard />
         <ArchitectOnboardingGuard />
         <AnalyticsTracker />
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="flex h-screen items-center justify-center"><span className="text-muted-foreground text-sm">Loading…</span></div>}>
           <Router />
         </Suspense>
         {/* Intercom support widget */}
