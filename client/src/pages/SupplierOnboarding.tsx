@@ -202,9 +202,9 @@ function CheckboxGroup({
         {options.map((opt) => (
           <label
             key={opt}
-            className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all hover:border-emerald-700/50 hover:bg-emerald-50 text-sm ${
+            className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all hover:border-emerald-700/50 hover:bg-emerald-700/5 text-sm ${
               value.includes(opt)
-                ? "border-emerald-700 bg-emerald-50"
+                ? "border-emerald-700 bg-emerald-700/10"
                 : "border-gray-200"
             }`}
           >
@@ -228,7 +228,7 @@ export default function SupplierOnboarding() {
   const [, navigate] = useLocation();
   const [step, setStep] = useState(0);
 
-  const profileQuery = trpc.supplierOnboarding.getMyProfile.useQuery<SupplierProfile>(
+  const profileQuery = trpc.supplierOnboarding.getMyProfile.useQuery(
     undefined,
     { enabled: !!user }
   );
@@ -266,7 +266,7 @@ export default function SupplierOnboarding() {
 
   // Pre-fill from existing profile
   useEffect(() => {
-    const p = profileQuery.data;
+    const p = profileQuery.data as SupplierProfile | undefined;
     if (!p) return;
     reset({
       companyName: p.companyName ?? "",
