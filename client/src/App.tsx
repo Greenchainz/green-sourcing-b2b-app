@@ -1,85 +1,91 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { HelmetProvider } from "react-helmet-async";
-import { Route, Switch, useLocation } from "wouter";
+import { Route, Switch, useLocation, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatWidgetProvider } from "./contexts/ChatWidgetContext";
-import Home from "./pages/Home";
-import ExcelAudit from "./pages/ExcelAudit";
-import ExcelAuditWorkingTool from "./pages/ExcelAuditWorkingTool";
-import About from "./pages/About";
-import BrowserExtension from "./pages/BrowserExtension";
-import RevitPlugin from "./pages/RevitPlugin";
-import SubmittalGenerator from "./pages/SubmittalGenerator";
-import MaterialsCatalog from "./pages/MaterialsCatalog";
-import MaterialDetail from "./pages/MaterialDetail";
-import Assemblies from "./pages/Assemblies";
-import RfqCart from "./pages/RfqCart";
-import RFQForm from "./pages/RFQForm";
-import RfqDetail from "./pages/RfqDetail";
-import Compare from "./pages/Compare";
-import CarbonCompare from "./pages/CarbonCompare";
-import CarbonDashboard from "./pages/CarbonDashboard";
-// TODO: verify no external links to /supplier-dashboard, then remove this import and SupplierDashboard.tsx
-// import SupplierDashboard from "./pages/SupplierDashboard";
-import BuyerRfqDashboard from "./pages/BuyerRfqDashboard";
-import RfqDashboard from "./pages/RfqDashboard";
-import { SupplierRegistration } from "./pages/SupplierRegistration";
-import { SupplierProfileDashboard } from "./pages/SupplierProfileDashboard";
-import SupplierRfqDashboard from "./pages/SupplierRfqDashboard";
-import Tools from "./pages/Tools";
-import GetStarted from "./pages/GetStarted";
-import SupplierOnboarding from "./pages/SupplierOnboarding";
-import ArchitectOnboarding from "./pages/ArchitectOnboarding";
-import ArchitectDashboard from "./pages/ArchitectDashboard";
-import ArchitectSpecsUpload from "./pages/ArchitectSpecsUpload";
-import ArchitectSpecDetail from "./pages/ArchitectSpecDetail";
-import ArchitectSpecsList from "./pages/ArchitectSpecsList";
-import MaterialSearchPage from "./pages/MaterialSearchPage";
-import RFQNewPage from "./pages/RFQNewPage";
-import RFQDetailPage from "./pages/rfq/RFQDetailPage";
-import RFQListPage from "./pages/rfq/RFQListPage";
-import MaterialCreditScorePage from "./pages/MaterialCreditScorePage";
-import Messages from "./pages/Messages";
-import Subscription from "./pages/Subscription";
 import IntercomWidget from "./components/IntercomWidget";
 // CookieConsentBanner removed — CookieYes (index.html) handles consent
 // VIDEO CALLING — cut for launch, restore when ACS is implemented
 // import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 // import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
 import { ChatWidget } from "./components/ChatWidget";
-import AdminVerificationQueue from "./pages/AdminVerificationQueue";
-import { AdminSupplierDashboard } from "./pages/AdminSupplierDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import CrmDashboard from "./pages/admin/CrmDashboard";
-import ConciergeDashboard from "./pages/admin/ConciergeDashboard";
-import SupplierSpecSubmission from "./pages/SupplierSpecSubmission";
-import MaterialSwap from "./pages/MaterialSwap";
-import InsiderPage from "./pages/InsiderPage";
-import ManufacturerDirectory from "./pages/ManufacturerDirectory";
-import ManufacturerProfile from "./pages/ManufacturerProfile";
-import SupplierAgentConfig from "./pages/SupplierAgentConfig";
-import SupplierMaterials from "./pages/SupplierMaterials";
-import SupplierBulkUpload from "./pages/SupplierBulkUpload";
-import SupplierAnalytics from "./pages/SupplierAnalytics";
-import SupplierFilterSetup from "./pages/SupplierFilterSetup";
 import { SupplierLayout } from "./components/SupplierLayout";
-import { Terms } from "./pages/Terms";
-import { Privacy } from "./pages/Privacy";
-import { HowItWorks } from "./pages/HowItWorks";
-import Support from "./pages/Support";
-import Login from "./pages/Login";
-import Pricing from "./pages/Pricing";
-import Features from "./pages/Features";
-import { Redirect } from "wouter";
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 import { useAuth } from "./contexts/AuthContext";
 import { trpc } from "./lib/trpc";
 import { initGoogleAnalytics, trackGooglePageView } from "./lib/analytics";
+
+// Lazy-loaded page components — each becomes its own async chunk
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const Home = lazy(() => import("./pages/Home"));
+const ExcelAudit = lazy(() => import("./pages/ExcelAudit"));
+const ExcelAuditWorkingTool = lazy(() => import("./pages/ExcelAuditWorkingTool"));
+const About = lazy(() => import("./pages/About"));
+const BrowserExtension = lazy(() => import("./pages/BrowserExtension"));
+const RevitPlugin = lazy(() => import("./pages/RevitPlugin"));
+const SubmittalGenerator = lazy(() => import("./pages/SubmittalGenerator"));
+const MaterialsCatalog = lazy(() => import("./pages/MaterialsCatalog"));
+const MaterialDetail = lazy(() => import("./pages/MaterialDetail"));
+const Assemblies = lazy(() => import("./pages/Assemblies"));
+const RfqCart = lazy(() => import("./pages/RfqCart"));
+const RFQForm = lazy(() => import("./pages/RFQForm"));
+const RfqDetail = lazy(() => import("./pages/RfqDetail"));
+const Compare = lazy(() => import("./pages/Compare"));
+const CarbonCompare = lazy(() => import("./pages/CarbonCompare"));
+const CarbonDashboard = lazy(() => import("./pages/CarbonDashboard"));
+// TODO: verify no external links to /supplier-dashboard, then remove this import and SupplierDashboard.tsx
+const BuyerRfqDashboard = lazy(() => import("./pages/BuyerRfqDashboard"));
+const RfqDashboard = lazy(() => import("./pages/RfqDashboard"));
+const SupplierRegistration = lazy(() =>
+  import("./pages/SupplierRegistration").then((m) => ({ default: m.SupplierRegistration }))
+);
+const SupplierProfileDashboard = lazy(() =>
+  import("./pages/SupplierProfileDashboard").then((m) => ({ default: m.SupplierProfileDashboard }))
+);
+const SupplierRfqDashboard = lazy(() => import("./pages/SupplierRfqDashboard"));
+const Tools = lazy(() => import("./pages/Tools"));
+const GetStarted = lazy(() => import("./pages/GetStarted"));
+const SupplierOnboarding = lazy(() => import("./pages/SupplierOnboarding"));
+const ArchitectOnboarding = lazy(() => import("./pages/ArchitectOnboarding"));
+const ArchitectDashboard = lazy(() => import("./pages/ArchitectDashboard"));
+const ArchitectSpecsUpload = lazy(() => import("./pages/ArchitectSpecsUpload"));
+const ArchitectSpecDetail = lazy(() => import("./pages/ArchitectSpecDetail"));
+const ArchitectSpecsList = lazy(() => import("./pages/ArchitectSpecsList"));
+const MaterialSearchPage = lazy(() => import("./pages/MaterialSearchPage"));
+const RFQNewPage = lazy(() => import("./pages/RFQNewPage"));
+const RFQDetailPage = lazy(() => import("./pages/rfq/RFQDetailPage"));
+const RFQListPage = lazy(() => import("./pages/rfq/RFQListPage"));
+const MaterialCreditScorePage = lazy(() => import("./pages/MaterialCreditScorePage"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Subscription = lazy(() => import("./pages/Subscription"));
+const AdminVerificationQueue = lazy(() => import("./pages/AdminVerificationQueue"));
+const AdminSupplierDashboard = lazy(() =>
+  import("./pages/AdminSupplierDashboard").then((m) => ({ default: m.AdminSupplierDashboard }))
+);
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const CrmDashboard = lazy(() => import("./pages/admin/CrmDashboard"));
+const ConciergeDashboard = lazy(() => import("./pages/admin/ConciergeDashboard"));
+const SupplierSpecSubmission = lazy(() => import("./pages/SupplierSpecSubmission"));
+const MaterialSwap = lazy(() => import("./pages/MaterialSwap"));
+const InsiderPage = lazy(() => import("./pages/InsiderPage"));
+const ManufacturerDirectory = lazy(() => import("./pages/ManufacturerDirectory"));
+const ManufacturerProfile = lazy(() => import("./pages/ManufacturerProfile"));
+const SupplierAgentConfig = lazy(() => import("./pages/SupplierAgentConfig"));
+const SupplierMaterials = lazy(() => import("./pages/SupplierMaterials"));
+const SupplierBulkUpload = lazy(() => import("./pages/SupplierBulkUpload"));
+const SupplierAnalytics = lazy(() => import("./pages/SupplierAnalytics"));
+const SupplierFilterSetup = lazy(() => import("./pages/SupplierFilterSetup"));
+const Terms = lazy(() => import("./pages/Terms").then((m) => ({ default: m.Terms })));
+const Privacy = lazy(() => import("./pages/Privacy").then((m) => ({ default: m.Privacy })));
+const HowItWorks = lazy(() => import("./pages/HowItWorks").then((m) => ({ default: m.HowItWorks })));
+const Support = lazy(() => import("./pages/Support"));
+const Login = lazy(() => import("./pages/Login"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Features = lazy(() => import("./pages/Features"));
 
 function Router() {
   return (
@@ -271,7 +277,9 @@ function AppInner() {
         <SupplierOnboardingGuard />
         <ArchitectOnboardingGuard />
         <AnalyticsTracker />
-        <Router />
+        <Suspense fallback={null}>
+          <Router />
+        </Suspense>
         {/* Intercom support widget */}
         <IntercomWidget />
         {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
