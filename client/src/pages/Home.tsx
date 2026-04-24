@@ -23,17 +23,19 @@ export default function Home() {
         <div className="container">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              Stop Waiting Days{' '}
-              <span className="text-primary">for Quotes.</span>
+              Forma Carbon Insights{' '}
+              <span className="text-primary">Finds the Problem.</span>
+              <br />GreenChainz{' '}
+              <span className="text-primary">Solves It.</span>
             </h1>
             <p className="text-xl font-semibold text-muted-foreground max-w-2xl mx-auto">
-              The fastest EPD lookup and sustainable materials procurement platform for architects and GCs.
+              Autodesk moved every architect into a carbon-aware workflow. GreenChainz is the verified procurement layer they land on next.
             </p>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              EC3 tells you the carbon — we fill your RFQ queue and get you compliant before the pre-con meeting. Built for street fighters in a market of preppy incumbents.
+              Forma Carbon Insights tells your team the building is 15% over its embodied carbon target. It doesn't tell you which supplier has the verified lower-carbon alternative, what the EPD says, or how to get a compliant quote. That's us.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              We intercept legacy procurement workflows and inject verified EPD data directly into your model — before the slow suppliers even know a project exists.
+              EPD-verified materials, one-click RFQs, and LEED-ready submittals — directly inside Autodesk Forma and Revit, before the slow suppliers even know a project exists.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link href="/get-started">
@@ -79,7 +81,7 @@ export default function Home() {
             <div className="flex flex-wrap items-center justify-center gap-8">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <img src="/brand/autodesk-logo-white.png" alt="Autodesk" className="h-5 w-auto opacity-60" />
-                <span className="text-xs">Autodesk Forma Extension</span>
+                <span className="text-xs">Works with Forma Carbon Insights</span>
               </div>
               <div className="text-sm text-muted-foreground font-medium">Building Transparency / EC3</div>
               <div className="text-sm text-muted-foreground font-medium">EPD International</div>
@@ -235,17 +237,18 @@ export default function Home() {
               </Link>
             </Card>
 
-            <Card className="p-8 hover:shadow-lg transition-shadow">
+            <Card className="p-8 hover:shadow-lg transition-shadow border-primary/30 bg-primary/5">
+              <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Works with Forma Carbon Insights</div>
               <h3 className="text-2xl font-semibold text-foreground mb-4">Autodesk Forma + Revit</h3>
               <p className="text-muted-foreground mb-6">
-                GreenChainz lives inside your Autodesk workflow. Surface verified green materials and live EPD data directly in Autodesk Forma and Revit — no tab switching, no copy-paste.
+                Forma Carbon Insights tells you the building is over its carbon target. GreenChainz shows you the verified lower-carbon alternative and connects you to the supplier — without leaving Forma.
               </p>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm">
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  Autodesk Forma Extension — search &amp; specify inside Forma
+                  Forma Extension — verified swaps for high-carbon elements
                 </li>
                 <li className="flex items-center gap-2 text-sm">
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -257,11 +260,11 @@ export default function Home() {
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  BIM model parsing — extract material schedules automatically
+                  One-click RFQ to verified suppliers — from inside your BIM
                 </li>
               </ul>
               <Link href="/tools/revit">
-                <Button className="w-full">Explore Autodesk Integration</Button>
+                <Button className="w-full">See the Integration</Button>
               </Link>
             </Card>
 
@@ -413,4 +416,15 @@ export default function Home() {
                   <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </summary>
                 <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  EC3 and One Click LCA are carbon calculation tools — they tell you the carbon impact of a material but stop there. GreenChainz is the procurement execution layer that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, greenwashing detection, and direct supplier connection. EC3 
+                  EC3 and One Click LCA are carbon calculation tools — they tell you the carbon impact of a material but stop there. GreenChainz is the procurement execution layer that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, greenwashing detection, and direct supplier connection. EC3 is a GreenChainz data partner, and GreenChainz extends into Autodesk Forma and Revit so architects can source verified green materials without leaving their BIM workflow.
+                </p>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}

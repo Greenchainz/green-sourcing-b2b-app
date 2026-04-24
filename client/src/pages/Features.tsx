@@ -61,13 +61,13 @@ const features = [
     title: 'Autodesk Forma Extension + Revit Plugin',
     slug: 'revit-plugin',
     description:
-      'GreenChainz lives inside Autodesk. The Forma Extension lets architects search and specify verified green materials at the earliest design stage, while the Revit Plugin scans your BIM model for compliance violations and fires instant swap suggestions — all without leaving your workflow.',
+      'Forma Carbon Insights tells your team the building is over its embodied carbon target. It stops there. GreenChainz picks up exactly where it leaves off — surfacing verified lower-carbon alternatives, live EPD data, and supplier RFQs directly inside Forma and Revit. Autodesk built the analysis. We built the solution.',
     highlights: [
-      'Autodesk Forma Extension — specify green materials in early-stage design',
-      'BIM model parsing — auto-extract material schedules via Autodesk Model Derivative API',
-      'Live embodied carbon scanning of Revit materials',
-      'Instant material swap recommendations with EC3 EPD comparisons',
-      'LEED v5 MRp2 documentation generation',
+      'Works alongside Forma Carbon Insights — procurement layer for every high-carbon flag',
+      'Forma Extension — verified material swaps at the earliest design stage',
+      'Revit Plugin — live compliance scanning with instant swap suggestions',
+      'One-click RFQ to verified suppliers without leaving your BIM workflow',
+      'LEED v5 MRp2 documentation generated automatically',
     ],
   },
   {
@@ -151,11 +151,15 @@ export default function Features() {
       <section className="py-16 md:py-24 bg-gradient-to-b from-background to-secondary/20">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-2">
+              <img src="/brand/autodesk-logo-white.png" alt="Autodesk" className="h-4 w-auto opacity-80" />
+              Works with Forma Carbon Insights — the missing procurement layer
+            </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground">
               The Arsenal
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Every tool an architect or procurement team needs to spec, source, and verify sustainable building materials — in one platform.
+              Autodesk moved the audience into the room. GreenChainz is the booth — verified procurement for every carbon problem Forma Carbon Insights surfaces.
             </p>
           </div>
         </div>
@@ -214,4 +218,15 @@ export default function Features() {
                   Get Started Free
                 </Button>
               </Link>
-              <Link href="/
+              <Link href="/pricing">
+                <Button variant="outline" size="lg">View Pricing</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}

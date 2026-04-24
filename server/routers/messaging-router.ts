@@ -507,6 +507,22 @@ export const messagingRouter = router({
       return { conversationId: conversation.id };
     }),
 
+  getNotificationToken: protectedProcedure.query(async ({ ctx }) => {
+    const { WebPubSubServiceClient } = await import('@azure/web-pubsub');
+    const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
+    const hub = process.env.WEBPUBSUB_HUB ?? 'greenchainz-hub';
+    if (!connectionString) {
+      throw new Error('Azure Web PubSub not configured — set AZURE_WEBPUBSUB_CONNECTION_STRING');
+    }
+    const client = new WebPubSubServiceClient(connectionString, hub);
+    const tokenResponse = await client.getClientAccessToken({
+      userId: `user-${ctx.user.id}`,
+      expirationTimeInMinutes: 60,
+    });
+    // tokenResponse.url is the full wss:// URL with access_token already embedded
+    return { url: tokenResponse.url };
+  }),
+
   checkCallLimit: protectedProcedure.query(async ({ ctx }) => {
     const { checkCallLimit } = await import('../calling-service');
     return await checkCallLimit(ctx.user.id);
