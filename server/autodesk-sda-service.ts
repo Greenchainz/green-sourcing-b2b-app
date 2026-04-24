@@ -22,7 +22,7 @@ export interface SDAProductEpd {
   [key: string]: unknown;
 }
 
-export async function searchEpds(_query: string): Promise<SDAProductEpd[]> {
+export async function searchEpds(_query: string, _category?: string, _limit?: number): Promise<SDAProductEpd[]> {
   return [];
 }
 
