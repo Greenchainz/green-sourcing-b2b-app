@@ -119,6 +119,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const manufacturers = pgTable("manufacturers", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
+  companyName: varchar("name", { length: 255 }).notNull().default(""),
   website: text("website"),
   logoUrl: text("logoUrl"),
   phone: varchar("phone", { length: 50 }),
@@ -223,6 +224,7 @@ export const materials = pgTable("materials", {
   leedDocReady: boolean("leedDocReady").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  ccpsScore: real("ccps_score"),
   // Semantic search: pgvector embedding (text-embedding-3-small, 1536 dim)
   embedding: vector("embedding", { dimensions: 1536 }),
   searchText: text("searchText"),
