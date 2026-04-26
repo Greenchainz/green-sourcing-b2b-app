@@ -21,6 +21,44 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            // PDF / document generation — large, rarely needed on first load
+            if (
+              id.includes("pdfjs-dist") ||
+              id.includes("@pdfme") ||
+              id.includes("jspdf") ||
+              id.includes("pdf-lib") ||
+              id.includes("html2canvas")
+            ) {
+              return "vendor-pdf";
+            }
+            // Charts — match recharts and d3-* packages at node_modules boundary
+            if (id.includes("recharts") || /\/node_modules\/d3-[a-z]/.test(id)) {
+              return "vendor-charts";
+            }
+            // Animation
+            if (id.includes("framer-motion")) {
+              return "vendor-motion";
+            }
+            // React core — match /node_modules/react/ and /node_modules/react-dom/ only
+            if (/\/node_modules\/react(-dom)?\//i.test(id)) {
+              return "vendor-react";
+            }
+            // tRPC + TanStack Query
+            if (
+              id.includes("@trpc") ||
+              id.includes("@tanstack/react-query") ||
+              id.includes("superjson")
+            ) {
+              return "vendor-trpc";
+            }
+          }
+        },
+      },
+    },
   },
   server: {
     host: true,

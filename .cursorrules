@@ -1,20 +1,53 @@
-# Project Architecture & Stack Rules
-This is a **Vite + Express + React** application. 
+# GreenChainz — Cursor Rules
+# Applied automatically to all AI suggestions in this repo.
 
-**STRICT PROHIBITION**:
-- DO NOT USE NEXT.JS. 
-- DO NOT create any files inside an `app/` or `pages/` directory expecting Next.js App/Pages Router.
-- DO NOT import from `next/navigation`, `next/link`, `next/image`, or any `next/*` packages.
-- DO NOT use React Server Components (RSC). `use client` or `use server` directives are unnecessary and prohibited.
-- DO NOT use Next.js specific functions like `getServerSideProps` or `getStaticProps`.
+## Stack
+- Express 5 + tRPC 11 backend (NOT Next.js, NOT REST)
+- Vite + React 19 SPA frontend
+- TypeScript strict mode throughout
+- Drizzle ORM + PostgreSQL
+- pnpm ONLY (never npm, never yarn)
 
-**Architecture Details**:
-- **Frontend**: React, built with Vite (`/client`). Routing is handled by `wouter` or `react-router` (check `client/src/App.tsx`). Note: The UI uses `shadcn/ui`.
-- **Backend**: Express server (`/server`), connected to a PostgreSQL database using `drizzle-orm` (`/drizzle`).
-- **Communication**: Backend routes are exposed via tRPC (`@trpc/server`, `@trpc/client`).
-- **Styling**: Tailwind CSS.
+## Azure Infrastructure (All Services)
+- Hosting: Azure Container Apps
+- Auth: Azure Entra ID Easy Auth sidecar (prod) / registerDevAuthShim() (local dev only)
+- Secrets: Azure Key Vault
+- Database: PostgreSQL on Azure
+- Storage: Azure Blob Storage
+- AI: Azure OpenAI
+- Search: Azure AI Search
+- Maps: Azure Maps
+- Queue: Azure Storage Queue
+- Real-time: Azure Web PubSub
+- Monitoring: Sentry
+- DO NOT suggest AWS, GCP, Firebase, Supabase, Vercel, Railway, or Render
 
-**When Adding New Pages**:
-1. Add React components in `client/src/pages/`.
-2. Add route definitions in `client/src/App.tsx`.
-3. Add backend endpoints in `server/routers/` using tRPC.
+## Auth Rules
+- User identity comes from server-side Easy Auth headers ONLY (X-MS-CLIENT-PRINCIPAL-*)
+- Never read userId/orgId/role from request body or query string
+- MANAGED_IDENTITY_CLIENT_ID != CLIENT_ID — never mix them
+- OAUTH_SERVER_URL goes in .env, NOT .env.local
+- registerDevAuthShim() is for local dev only, always behind NODE_ENV !== 'production'
+
+## Drizzle Schema
+- All column types must be explicitly imported from drizzle-orm/pg-core
+- Missing imports = ReferenceError crash at container startup
+- After schema changes: pnpm run db:generate && pnpm run db:migrate
+
+## Dead Services
+- Autodesk SDA API: shut down April 2026, server/autodesk-sda-service.ts is a stub
+- Do not call searchEpds() or getEpdDetail() — they return empty/throw
+- For EPD data use EC3 (Building Transparency) or EPD International
+- EpdLookupModal.tsx was deleted — do not recreate it
+
+## Docker
+- docker compose up --build for normal rebuilds
+- docker compose build --no-cache app for schema/import changes
+- Build runs: vite build (client) + esbuild server/_core/index.ts (server)
+- Both must pass or the image fails
+
+## General
+- Never suggest Replit SDK
+- BLUF (Bottom Line Up Front) in all explanations
+- Priority #1 feature: SupplierOnboarding.tsx
+- Business goal: 50 suppliers + 200 architects by Q2 2026
