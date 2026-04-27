@@ -217,6 +217,7 @@ export const materials = pgTable("materials", {
   cleaningProtocol: varchar("cleaningProtocol", { length: 120 }),
   // Layer 5: C-Suite — Scope 3, ESG reporting
   scope3EmissionsKgCo2e: decimal("scope3EmissionsKgCo2e", { precision: 10, scale: 3 }),
+  carbonScore: decimal("carbon_score", { precision: 5, scale: 2 }),
   // Layer 6: Sector Verticals — healthcare, K-12, retail, etc.
   sectorTags: text("sectorTags").array(),
   // Layer 7: Supply Chain — cooperative purchasing, LEED doc readiness
