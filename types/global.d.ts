@@ -4,6 +4,14 @@ declare namespace NodeJS {
   }
 }
 
+// Augment Express Request with the `id` field set by createRequestIdMiddleware
+declare namespace Express {
+  interface Request {
+    /** UUID assigned by createRequestIdMiddleware in server/_core/index.ts */
+    id: string;
+  }
+}
+
 declare module 'next/server' {
   export type NextRequest = any;
   export const NextResponse: any;

@@ -10,7 +10,7 @@
  */
 
 import { invokeLLM } from "./_core/llm";
-import type { Message } from "./_core/llm";
+import type { Message, InvokeParams, TextContent } from "./_core/llm";
 import { getDb } from "./db";
 import {
   materials,
@@ -23,6 +23,7 @@ import {
   agentConversations,
   agentAnalytics,
 } from "../drizzle/schema";
+import type { Material, CcpsBaseline } from "../drizzle/schema";
 import { eq, like, and, or, asc, sql, desc } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { calculateCcps, personaToWeights, calcCarbonDelta } from "./ccps-engine";
@@ -96,12 +97,12 @@ async function toolSearchMaterials(query: string, category?: string, limit = 5):
   if (rows.length === 0) return `No materials found matching "${query}".`;
 
   const baselineRows = await db.select().from(ccpsBaselines);
-  const baselineMap: Record<string, any> = {};
+  const baselineMap: Record<string, CcpsBaseline> = {};
   for (const b of baselineRows) baselineMap[b.category] = b;
 
   const results = rows.map((r) => {
-    const baseline = baselineMap[r.category] || {};
-    const ccps = calculateCcps(r as any, baseline);
+    const baseline = baselineMap[r.category] ?? {};
+    const ccps = calculateCcps(r as Material, baseline);
     return {
       id: r.id,
       name: r.name,
@@ -408,8 +409,8 @@ async function toolSuggestMaterialSwaps(materialId: number, limit = 5): Promise<
       materialId,
       swaps: validSwaps,
     }, null, 2);
-  } catch (error: any) {
-    return `Error finding material swaps: ${error.message}`;
+  } catch (error: unknown) {
+    return `Error finding material swaps: ${error instanceof Error ? error.message : String(error)}`;
   }
 }
 
@@ -781,7 +782,7 @@ async function runSpecialist(
   let maxIterations = 3; // Prevent infinite tool-calling loops
 
   while (maxIterations > 0) {
-    const llmParams: any = { messages };
+    const llmParams: InvokeParams = { messages };
     if (tools.length > 0) {
       llmParams.tools = tools;
       llmParams.tool_choice = "auto";
@@ -822,7 +823,7 @@ async function runSpecialist(
     const content = typeof choice.message.content === "string"
       ? choice.message.content
       : Array.isArray(choice.message.content)
-        ? choice.message.content.map((c: any) => (typeof c === "string" ? c : c.text || "")).join("")
+        ? choice.message.content.map((c: string | TextContent) => (typeof c === "string" ? c : c.text ?? "")).join("")
         : "";
 
     const escalated = content.includes("ESCALATE") || content.includes("HANDOFF");
@@ -909,10 +910,9 @@ export async function handleChat(
         sessionId,
         agent: response.agent,
         intentClassified: routing.agent,
-        confidence: String(routing.confidence) as any,
+        confidence: String(routing.confidence),
         toolsUsed: JSON.stringify(response.toolsUsed),
         responseTimeMs: Date.now() - startTime,
-        escalated: !!response.escalated,
         handedOffToHuman: response.content.includes("connect you with"),
       });
     } catch (err) {

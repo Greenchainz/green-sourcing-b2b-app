@@ -23,21 +23,34 @@ import {
   checkSupplierUsageLimit,
 } from "./usage-tracking-service";
 
+// ─── Dimension enums — must match usage-tracking-service.ts exactly ────────────
+const buyerDimensionEnum = z.enum([
+  "rfq_submission",
+  "ai_query",
+  "swap_analysis",
+  "ccps_export",
+  "material_comparison",
+]);
+
+const supplierDimensionEnum = z.enum(["bid_submission", "message_thread"]);
+
+// ─── Router ─────────────────────────────────────────────────────────────────────
 export const subscriptionRouter = router({
   // Buyer subscription procedures
-  getBuyerSubscription: protectedProcedure.query(async ({ ctx }: { ctx: any }) => {
+  getBuyerSubscription: protectedProcedure.query(async ({ ctx }) => {
     return await getBuyerSubscription(ctx.user.id);
   }),
 
-  getBuyerTierLimits: protectedProcedure.query(async ({ ctx }: { ctx: any }) => {
+  getBuyerTierLimits: protectedProcedure.query(async ({ ctx }) => {
     return await getBuyerTierLimits(ctx.user.id);
   }),
 
   checkBuyerFeatureAccess: protectedProcedure
     .input(z.object({ feature: z.string() }))
-    .query(async ({ ctx, input }: { ctx: any; input: any }) => {
+    .query(async ({ ctx, input }) => {
       return await checkBuyerFeatureAccess(ctx.user.id, input.feature);
     }),
+
   upgradeBuyerSubscription: protectedProcedure
     .input(
       z.object({
@@ -46,7 +59,7 @@ export const subscriptionRouter = router({
         msPlanId: z.string().optional(),
       })
     )
-    .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: any }) => {
+    .mutation(async ({ ctx, input }) => {
       return await upgradeBuyerSubscription(
         ctx.user.id,
         input.tier,
@@ -55,26 +68,26 @@ export const subscriptionRouter = router({
       );
     }),
 
-  cancelBuyerSubscription: protectedProcedure.mutation(async ({ ctx }: { ctx: any }) => {
+  cancelBuyerSubscription: protectedProcedure.mutation(async ({ ctx }) => {
     return await cancelBuyerSubscription(ctx.user.id);
   }),
 
   // Supplier subscription procedures
   getSupplierSubscription: protectedProcedure
     .input(z.object({ supplierId: z.number() }))
-    .query(async ({ input }: { input: { supplierId: number } }) => {
+    .query(async ({ input }) => {
       return await getSupplierSubscription(input.supplierId);
     }),
 
   getSupplierTierLimits: protectedProcedure
     .input(z.object({ supplierId: z.number() }))
-    .query(async ({ input }: { input: { supplierId: number } }) => {
+    .query(async ({ input }) => {
       return await getSupplierTierLimits(input.supplierId);
     }),
 
   checkSupplierFeatureAccess: protectedProcedure
     .input(z.object({ supplierId: z.number(), feature: z.string() }))
-    .query(async ({ input }: { input: any }) => {
+    .query(async ({ input }) => {
       return await checkSupplierFeatureAccess(input.supplierId, input.feature);
     }),
 
@@ -87,7 +100,7 @@ export const subscriptionRouter = router({
         msPlanId: z.string().optional(),
       })
     )
-    .mutation(async ({ input }: { input: any }) => {
+    .mutation(async ({ input }) => {
       return await upgradeSupplierSubscription(
         input.supplierId,
         input.tier,
@@ -97,7 +110,7 @@ export const subscriptionRouter = router({
 
   cancelSupplierSubscription: protectedProcedure
     .input(z.object({ supplierId: z.number() }))
-    .mutation(async ({ input }: { input: any }) => {
+    .mutation(async ({ input }) => {
       return await cancelSupplierSubscription(input.supplierId);
     }),
 
@@ -105,17 +118,11 @@ export const subscriptionRouter = router({
   getBuyerUsage: protectedProcedure
     .input(
       z.object({
-        dimension: z.enum([
-          "rfq_submissions",
-          "ai_queries",
-          "swap_analyses",
-          "ccps_exports",
-          "material_comparisons",
-        ]),
+        dimension: buyerDimensionEnum,
         period: z.enum(["month", "all"]).default("month"),
       })
     )
-    .query(async ({ ctx }: { ctx: any }) => {
+    .query(async ({ ctx }) => {
       return await getBuyerUsage(ctx.user.id);
     }),
 
@@ -123,72 +130,56 @@ export const subscriptionRouter = router({
     .input(
       z.object({
         supplierId: z.number(),
-        dimension: z.enum(["bids_submitted", "message_threads"]),
+        dimension: supplierDimensionEnum,
         period: z.enum(["month", "all"]).default("month"),
       })
     )
-    .query(async ({ input }: { input: any }) => {
+    .query(async ({ input }) => {
       return await getSupplierUsage(input.supplierId);
     }),
 
   checkUsageLimit: protectedProcedure
     .input(
-      z.object({
-        userType: z.enum(["buyer", "supplier"]),
-        dimension: z.string(),
-        supplierId: z.number().optional(),
-      })
+      z.discriminatedUnion("userType", [
+        z.object({
+          userType: z.literal("buyer"),
+          dimension: buyerDimensionEnum,
+        }),
+        z.object({
+          userType: z.literal("supplier"),
+          supplierId: z.number(),
+          dimension: supplierDimensionEnum,
+        }),
+      ])
     )
-    .query(async ({ ctx, input }: { ctx: any; input: any }) => {
+    .query(async ({ ctx, input }) => {
       if (input.userType === "buyer") {
-        return await checkBuyerUsageLimit(
-          ctx.user.id,
-          input.dimension as any
-        );
+        return await checkBuyerUsageLimit(ctx.user.id, input.dimension);
       } else {
-        if (!input.supplierId) {
-          throw new Error("supplierId required for supplier usage check");
-        }
-        return await checkSupplierUsageLimit(
-          input.supplierId,
-          input.dimension as any
-        );
+        return await checkSupplierUsageLimit(input.supplierId, input.dimension);
       }
     }),
+
   trackBuyerUsage: protectedProcedure
     .input(
       z.object({
-        dimension: z.enum([
-          "rfq_submissions",
-          "ai_queries",
-          "swap_analyses",
-          "ccps_exports",
-          "material_comparisons",
-        ]),
+        dimension: buyerDimensionEnum,
         quantity: z.number().default(1),
       })
     )
-    .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: any }) => {
-      return await trackBuyerUsage(
-        ctx.user.id,
-        input.dimension,
-        input.quantity
-      );
+    .mutation(async ({ ctx, input }) => {
+      return await trackBuyerUsage(ctx.user.id, input.dimension, input.quantity);
     }),
 
   trackSupplierUsage: protectedProcedure
     .input(
       z.object({
         supplierId: z.number(),
-        dimension: z.enum(["bids_submitted", "message_threads"]),
+        dimension: supplierDimensionEnum,
         quantity: z.number().default(1),
       })
     )
-    .mutation(async ({ input }: { input: any }) => {
-      return await trackSupplierUsage(
-        input.supplierId,
-        input.dimension,
-        input.quantity
-      );
+    .mutation(async ({ input }) => {
+      return await trackSupplierUsage(input.supplierId, input.dimension, input.quantity);
     }),
 });

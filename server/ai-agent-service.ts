@@ -1,6 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import { getRegionalSwapPatterns, getClimateZoneAdjustments, getComplianceRulesForState } from "./location-service";
 import { getDb } from "./db";
+import type { RegionalSwapPatterns, ClimateZoneAdjustments, ComplianceRules } from "../drizzle/schema";
 
 export interface MaterialRecommendation {
   originalMaterial: string;
@@ -44,12 +45,13 @@ export async function optimizeMaterialsForCarbon(
     getClimateZoneAdjustments(state, "general"),
   ]);
 
-  const regionalContext = Array.isArray(regionalPatterns) 
-    ? regionalPatterns.map((p: any) => `${p.originalMaterial} to ${p.alternativeMaterial} (${p.carbonReduction}% reduction)`).join("; ")
+  const regionalContext = regionalPatterns.length > 0
+    ? regionalPatterns.map((p: RegionalSwapPatterns) => `${p.originalMaterial} to ${p.alternativeMaterial} (${p.carbonReduction}% reduction)`).join("; ")
     : "No regional swap data available";
-  
-  const climateContext = Array.isArray(climateAdjustments)
-    ? climateAdjustments.map((c: any) => `${c.materialType}: ${c.durabilityMultiplier}x durability`).join("; ")
+
+  // getClimateZoneAdjustments returns a single row or null, not an array
+  const climateContext = climateAdjustments !== null
+    ? `${(climateAdjustments as ClimateZoneAdjustments).materialType}: ${(climateAdjustments as ClimateZoneAdjustments).durabilityMultiplier}x durability`
     : "No climate adjustments available";
 
   const prompt = `You are a carbon optimization expert for sustainable building materials. Project Location: ${projectLocation}. Materials Needed: ${materials.join(", ")}. Regional Context - Typical swaps: ${regionalContext}. Climate zone adjustments: ${climateContext}. For each material, recommend ONE sustainable alternative that reduces embodied carbon by 20%+ compared to standard material, is available within 500 miles, meets local building codes, has similar or better performance, and is defensible to architects and building owners.`;
@@ -125,8 +127,9 @@ export async function validateMaterialCompliance(
   // Get state-specific compliance rules
   const complianceRules = await getComplianceRulesForState(state);
   
-  const rulesContext = Array.isArray(complianceRules)
-    ? complianceRules.map((r: any) => `${r.ruleName}: ${r.ruleDescription}`).join("; ")
+  // getComplianceRulesForState returns a single row or null, not an array
+  const rulesContext = complianceRules !== null
+    ? `${(complianceRules as ComplianceRules).ruleName}: ${(complianceRules as ComplianceRules).ruleDescription}`
     : "No state-specific rules available";
 
   const prompt = `You are a building code compliance expert specializing in sustainable materials. State: ${state}. Materials to Validate: ${materials.join(", ")}. State Building Code Requirements: ${rulesContext}. For each material, validate compliance with state building codes (IBC, state-specific amendments), LEED certification requirements, local sustainability standards, and fire ratings and safety standards.`;
@@ -219,11 +222,6 @@ export async function enrichRfqWithAiAnalysis(
   const avgCarbonReduction =
     recommendations.length > 0
       ? recommendations.reduce((sum, r) => sum + r.carbonReduction, 0) / recommendations.length
-      : 0;
-
-  const complianceRate =
-    compliance.length > 0
-      ? (compliance.filter((c) => c.isCompliant).length / compliance.length) * 100
       : 0;
 
   const score = Math.round((avgCarbonReduction * 0.6 + complianceRate * 0.4) / 2);

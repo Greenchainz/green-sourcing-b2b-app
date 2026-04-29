@@ -1,19 +1,12 @@
 import { videoCalls } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-
-let db: NodePgDatabase<Record<string, unknown>> | null = null;
-
-// Initialize db connection
-export function setDb(database: NodePgDatabase<Record<string, unknown>>) {
-  db = database;
-}
+import { getDb } from './db';
 
 export interface VideoCallSignal {
   type: 'offer' | 'answer' | 'ice-candidate';
   from: string;
   to: string;
-  data: any;
+  data: Record<string, unknown>;
   timestamp: number;
 }
 
@@ -39,9 +32,10 @@ export async function initiateVideoCall(callerId: number, calleeId: number, conv
   });
 
   // Store in database
+  const db = await getDb();
   if (db) {
     try {
-      await (db as any).insert(videoCalls).values({
+      await db.insert(videoCalls).values({
         callId,
         callerId,
         calleeId,
@@ -49,7 +43,7 @@ export async function initiateVideoCall(callerId: number, calleeId: number, conv
         status: 'initiated',
         startedAt: new Date(),
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[VideoCall] DB insert error:', err);
     }
   }
@@ -73,12 +67,13 @@ export async function ringVideoCall(callId: string) {
 
   call.status = 'ringing';
 
+  const db = await getDb();
   if (db) {
     try {
-      await (db as any).update(videoCalls)
+      await db.update(videoCalls)
         .set({ status: 'ringing' })
         .where(eq(videoCalls.callId, callId));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[VideoCall] DB update error:', err);
     }
   }
@@ -97,12 +92,13 @@ export async function acceptVideoCall(callId: string) {
 
   call.status = 'connected';
 
+  const db = await getDb();
   if (db) {
     try {
-      await (db as any).update(videoCalls)
+      await db.update(videoCalls)
         .set({ status: 'connected' })
         .where(eq(videoCalls.callId, callId));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[VideoCall] DB update error:', err);
     }
   }
@@ -122,16 +118,17 @@ export async function endVideoCall(callId: string) {
   const duration = Date.now() - call.startedAt;
   activeCallsMap.delete(callId);
 
+  const db = await getDb();
   if (db) {
     try {
-      await (db as any).update(videoCalls)
-        .set({ 
-          status: 'ended', 
+      await db.update(videoCalls)
+        .set({
+          status: 'ended',
           endedAt: new Date(),
           durationSeconds: Math.floor(duration / 1000),
         })
         .where(eq(videoCalls.callId, callId));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[VideoCall] DB update error:', err);
     }
   }
@@ -145,12 +142,13 @@ export async function endVideoCall(callId: string) {
 export async function failVideoCall(callId: string) {
   activeCallsMap.delete(callId);
 
+  const db = await getDb();
   if (db) {
     try {
-      await (db as any).update(videoCalls)
+      await db.update(videoCalls)
         .set({ status: 'failed', endedAt: new Date() })
         .where(eq(videoCalls.callId, callId));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[VideoCall] DB update error:', err);
     }
   }
@@ -179,29 +177,26 @@ export function getUserActiveCalls(userId: number) {
 /**
  * Store ICE candidate for WebRTC signaling
  */
-export async function storeIceCandidate(callId: string, from: number, candidate: any) {
+export async function storeIceCandidate(callId: string, from: number, candidate: Record<string, unknown>) {
   console.log(`[VideoCall] ICE candidate from ${from} for call ${callId}:`, candidate);
-  
-  // TODO: Implement proper signaling server or use WebPubSub to broadcast
+  // TODO: Implement proper signaling — use WebPubSub to broadcast to peer
   return { callId, stored: true };
 }
 
 /**
  * Store SDP offer for WebRTC signaling
  */
-export async function storeSdpOffer(callId: string, from: number, offer: any) {
+export async function storeSdpOffer(callId: string, from: number, offer: Record<string, unknown>) {
   console.log(`[VideoCall] SDP offer from ${from} for call ${callId}:`, offer);
-  
-  // TODO: Implement proper signaling server or use WebPubSub to broadcast
+  // TODO: Implement proper signaling — use WebPubSub to broadcast to peer
   return { callId, stored: true };
 }
 
 /**
  * Store SDP answer for WebRTC signaling
  */
-export async function storeSdpAnswer(callId: string, from: number, answer: any) {
+export async function storeSdpAnswer(callId: string, from: number, answer: Record<string, unknown>) {
   console.log(`[VideoCall] SDP answer from ${from} for call ${callId}:`, answer);
-  
-  // TODO: Implement proper signaling server or use WebPubSub to broadcast
+  // TODO: Implement proper signaling — use WebPubSub to broadcast to peer
   return { callId, stored: true };
 }
