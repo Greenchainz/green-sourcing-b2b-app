@@ -97,7 +97,7 @@ export async function getUserConversations(userId: number) {
     .orderBy(desc(conversations.lastMessageAt));
 
   // Filter to get only the other party (not the current user)
-  return userConversations.filter((conv: any) => conv.otherPartyId !== userId);
+  return userConversations.filter((conv) => conv.otherPartyId !== userId);
 }
 
 /**
@@ -273,7 +273,7 @@ export async function getThreadsForMobile(userId: number): Promise<{
   if (!db) throw new Error("Database not available");
 
   // Batch-fetch unread counts for all conversations in one query
-  const convIds = raw.map((c: any) => c.id as number);
+  const convIds = raw.map((c) => c.id as number);
   const unreadRows = await db
     .select({
       conversationId: messages.conversationId,
@@ -294,7 +294,7 @@ export async function getThreadsForMobile(userId: number): Promise<{
     unreadMap.set(row.conversationId, row.total);
   }
 
-  return raw.map((conv: any) => ({
+  return raw.map((conv) => ({
     id: String(conv.id),
     rfqTitle: conv.rfqTitle ?? "",
     counterpartName: conv.otherPartyName ?? conv.otherPartyEmail ?? "Unknown",
@@ -329,7 +329,7 @@ export async function getUnreadMessageCount(userId: number) {
     return 0;
   }
 
-  const conversationIds = userConversations.map((c: any) => c.id);
+  const conversationIds = userConversations.map((c) => c.id);
 
   // Count unread messages in those conversations (sent by others, not by the user)
   const unreadMessages = await db
@@ -343,7 +343,7 @@ export async function getUnreadMessageCount(userId: number) {
     );
 
   // Filter out messages sent by the user themselves
-  const unreadFromOthers = unreadMessages.filter((m: any) => m.senderId !== userId);
+  const unreadFromOthers = unreadMessages.filter((m) => m.senderId !== userId);
 
   return unreadFromOthers.length;
 }

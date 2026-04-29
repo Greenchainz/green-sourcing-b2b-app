@@ -19,6 +19,7 @@
 
 import { Request, Response } from "express";
 import { getMarketplaceAccessToken, getSubscriptionDetails } from "./marketplace-auth";
+import type { MarketplaceSubscription } from "./marketplace-landing";
 import {
   getBuyerSubscription,
   upgradeBuyerSubscription,
@@ -194,7 +195,7 @@ async function findUserBySubscriptionId(msSubscriptionId: string): Promise<numbe
  * Handle "Subscribed" event
  * New subscription purchased
  */
-async function handleSubscribed(userId: number, subscription: any) {
+async function handleSubscribed(userId: number, subscription: MarketplaceSubscription) {
   console.log("[Marketplace Webhook] Handling Subscribed event for user:", userId);
 
   const tier = mapPlanIdToTier(subscription.planId);
@@ -307,7 +308,7 @@ async function handleSuspended(userId: number, msSubscriptionId: string) {
  * Handle "Reinstated" event
  * Suspended subscription reactivated
  */
-async function handleReinstated(userId: number, subscription: any) {
+async function handleReinstated(userId: number, subscription: MarketplaceSubscription) {
   console.log("[Marketplace Webhook] Handling Reinstated event for user:", userId);
 
   const db = await getDb();
@@ -347,7 +348,7 @@ async function handleReinstated(userId: number, subscription: any) {
  * Handle "ChangePlan" event
  * Customer changed plan (e.g., Standard → Premium)
  */
-async function handleChangePlan(userId: number, subscription: any) {
+async function handleChangePlan(userId: number, subscription: MarketplaceSubscription) {
   console.log("[Marketplace Webhook] Handling ChangePlan event for user:", userId);
 
   const newTier = mapPlanIdToTier(subscription.planId);
@@ -388,7 +389,7 @@ async function handleChangePlan(userId: number, subscription: any) {
  * Handle "ChangeQuantity" event
  * Seat count changed
  */
-async function handleChangeQuantity(userId: number, subscription: any) {
+async function handleChangeQuantity(userId: number, subscription: MarketplaceSubscription) {
   console.log("[Marketplace Webhook] Handling ChangeQuantity event for user:", userId);
 
   const db = await getDb();
@@ -428,7 +429,7 @@ async function handleChangeQuantity(userId: number, subscription: any) {
  * Handle "Renewed" event
  * Subscription renewed
  */
-async function handleRenewed(userId: number, subscription: any) {
+async function handleRenewed(userId: number, subscription: MarketplaceSubscription) {
   console.log("[Marketplace Webhook] Handling Renewed event for user:", userId);
 
   const db = await getDb();

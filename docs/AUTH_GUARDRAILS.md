@@ -1,94 +1,104 @@
-# GreenChainz Auth Guardrails
+# AUTH_GUARDRAILS.md
 
 
 > [!CAUTION]
-> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`STACK.md`](./STACK.md).
+> **Stack alert:** This is an **Express + Vite app — NOT Next.js**. Any references to `next/*`, App Router, `NextResponse`, or NextAuth in this document are outdated or incorrect. See [`docs/STACK.md`](./docs/STACK.md) or [`CLAUDE.md`](./CLAUDE.md) at repo root.
 
-> This file exists to prevent well-intentioned developers and AI agents from breaking authentication.
-> If you are about to touch auth, read this first.
+> **DO NOT CHANGE AUTH WITHOUT AN ARCHITECTURE REVIEW.**
+> Any modification to auth flows, token formats, route protection rules, or
+> identity provider configuration must update this file **and**
+> `AuthMethod-Route-HowItWorks.csv`.
 
----
-
-## The One Rule
-
-**Do not change how authentication works without an architecture review from @jnorvi5.**
-
-This includes:
-- Adding, removing, or changing login flows
-- Changing the session cookie name, format, or flags
-- Introducing a new token type or auth mechanism
-- Enabling Azure Easy Auth or any platform-managed auth
-- Changing which routes are protected or public
-- Modifying `sdk.authenticateRequest`, `protectedProcedure`, or `AuthGuard`
+> **Status (April 2026):** Centralized JWT model is canonical. Easy Auth and Next.js edge middleware references are deprecated and being removed.
 
 ---
 
-## What the Auth System Is
+## Centralized Auth Model
 
-- **User login:** Custom OAuth2 (Microsoft, Google, LinkedIn) + email/password
-- **Session:** Single signed JWT cookie named `app_session_id` — HttpOnly, Secure, SameSite=Lax
-- **API protection (Express):** `sdk.authenticateRequest(req)` — returns user or throws
-- **API protection (tRPC):** `protectedProcedure` and `adminProcedure` in `server/_core/trpc.ts`
-- **Frontend protection:** `AuthGuard` component in `client/src/App.tsx`
-- **Service-to-service:** Managed Identity or API keys — never user JWTs
+GreenChainz uses a **single, centralized authentication system** based on
+custom Express OAuth routes and signed JWT session cookies.
 
----
-
-## What the Auth System Is NOT
-
-- NOT Azure Easy Auth
-- NOT `/.auth/login/aad` or `/.auth/callback`
-- NOT NextAuth or any third-party auth library
-- NOT localStorage tokens
-- NOT multiple session cookies
-- NOT client secrets in the frontend, mobile app, or Revit plugin
+**Explicitly prohibited (do not add):**
+- Azure Easy Auth / App Service Auth / `/.auth/*` sidecar endpoints
+- NextAuth / Auth.js / better-auth
+- MSAL client-side library
+- Azure Entra External ID automatic platform auth
+- Any third-party auth-as-a-service
 
 ---
 
-## Dead Code — Do Not Revive
+## JWT Session Cookie Rules
 
-These files exist in the repo but are NOT active and must be deleted (tracked in issue #725):
-
-- `server/_core/easy-auth.ts`
-- `lib/auth/easy-auth.ts`
-- `docs/EASY_AUTH_INTEGRATION.md` (move to `docs/archive/`)
-
-They are imported in `server/_core/index.ts` but the routes they register do nothing. Removing the import lines is safe and required.
-
----
-
-## Open Security Issues
-
-These are known gaps that must be fixed before go-live:
-
-- **#729** — Four admin REST routes have no auth check
-- **#730** — Two RFQ PDF routes expose private data without auth
-- **#731** ✅ — Managed Identity roles: least-privilege setup complete (see `docs/MANAGED_IDENTITY_SETUP.md`)
+| Property | Value |
+|----------|-------|
+| Cookie name | `app_session_id` |
+| Algorithm | HS256 |
+| Payload fields | `openId`, `appId`, `name` |
+| Expiry | 1 year |
+| HttpOnly | ✅ Yes |
+| Secure | ✅ Yes (production) |
+| SameSite | `Lax` |
+| Scope | Same-origin only — `VITE_BACKEND_URL` **must be empty** in production |
 
 ---
 
-## Managed Identity Rules
+## Route Protection Rules
 
-- `MANAGED_IDENTITY_CLIENT_ID` in `.env` = the user-assigned managed identity client ID
-- `CLIENT_ID` in `.env` = the Entra app registration for user sign-in (8b597068-9347-4e99-8860-8c4e9a9bc112)
-- These are **different things**. Never mix them.
-- `OAUTH_SERVER_URL` must be in `.env`, not `.env.local`
-- No managed identity should have Contributor or Owner at subscription scope
+Every route **must** be assigned one of the following auth levels. No route
+may be exposed without explicit classification.
 
----
-
-## For AI Agents and Copilot
-
-If you are an AI agent working in this repo:
-
-1. Do not add Easy Auth to any container app or route
-2. Do not introduce new login endpoints or session mechanisms
-3. Do not change the `app_session_id` cookie name, flags, or signing method
-4. Do not add `/.auth/*` routes
-5. If asked to change auth, stop and ask @jnorvi5 for architecture review first
-6. The full route contract is in `docs/AUTH_ROUTE_CONTRACT.md` — read it before touching any route
+| Level | Middleware | Notes |
+|-------|-----------|-------|
+| **Public** | None | Data must be non-sensitive |
+| **Authenticated** | `sdk.authenticateRequest(req)` — returns 401 if invalid | Any valid session |
+| **Admin** | `sdk.authenticateRequest(req)` + `user.role === "admin"` — returns 403 | `@greenchainz.com` accounts only |
 
 ---
 
-Last updated: 2026-03-24
-Owner: @jnorvi5
+## Service-to-Service Auth
+
+Cross-service calls **must** use managed identity or explicit service tokens.
+User JWTs **must never** be forwarded to another service.
+
+| Credential | Use for |
+|-----------|---------|
+| Azure Managed Identity (`ec248abf-f6ce-4d7c-8888-740317709f1b`) | Key Vault, Azure services |
+| Service API key | Webhook receivers (verify HMAC signature) |
+| User JWT (`app_session_id`) | Browser → backend **only**. Never service → service. |
+
+---
+
+## OAuth Provider Credentials
+
+Secrets are stored in Azure Key Vault (`Greenchainz-vault-2026`), not in env vars.
+
+| Provider | Client ID env var | Key Vault secret |
+|----------|------------------|-----------------|
+| Microsoft | `AZURE_AD_CLIENT_ID` | `AZURE-AD-CLIENT-SECRET` |
+| Google | `GOOGLE_CLIENT_ID` | `GOOGLE-SECRET` |
+| LinkedIn | `LINKEDIN_CLIENT_ID` | `LINKEDIN-SECRET` |
+
+---
+
+## What Triggers a Required Architecture Review
+
+A review is required before merging any change to:
+
+1. The JWT payload fields (`openId`, `appId`, `name`) or signing algorithm.
+2. The session cookie name, flags (HttpOnly, Secure, SameSite), or expiry.
+3. Login / refresh / logout flows (OAuth callback, email auth, token exchange).
+4. The list of auth-protected routes or their auth level.
+5. Any new identity provider or removal of an existing one.
+6. The managed identity or any service token configuration.
+7. The `sdk.authenticateRequest()` or `sdk.verifySession()` implementation.
+
+After review, update **both** this file and `AuthMethod-Route-HowItWorks.csv`.
+
+---
+
+## Change Log
+
+| Date | Author | Change Summary | Reviewed By |
+|------|--------|---------------|-------------|
+| 2026-03-24 | @copilot | Initial creation; added auth checks to unprotected admin and RFQ PDF routes | architecture-review-required |
+| 2026-04-06 | operations | Confirmed centralized JWT as canonical; deprecated Easy Auth and middleware.ts references | architecture-review-complete |

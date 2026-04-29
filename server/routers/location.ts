@@ -113,9 +113,10 @@ export const locationRouter = router({
         materialType: z.string(),
       })
     )
-    .query(({ input }) =>
-      calculateShippingCost(input.originState, input.destinationState, input.materialType).then((cost) => ({ costPerUnit: cost }))
-    ),
+    .query(async ({ input }) => {
+      const cost = await calculateShippingCost(input.originState, input.destinationState, input.materialType);
+      return { costPerUnit: cost };
+    }),
 
   /**
    * Material durability/R-value/carbon multipliers for a climate zone

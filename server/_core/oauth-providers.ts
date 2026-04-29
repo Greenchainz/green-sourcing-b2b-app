@@ -334,13 +334,15 @@ export function registerOAuthProviderRoutes(app: Express) {
 
       // Send welcome email to new users (non-blocking)
       if (isNewUser && userInfo.email) {
-        import("../notification-service").then(({ sendWelcomeEmail }) => {
-          sendWelcomeEmail({
-            name: userInfo.name ?? "there",
-            email: userInfo.email!,
-            role: assignedRole,
-          }).catch((err: unknown) => console.warn("[Auth] Welcome email failed (non-critical):", err));
-        }).catch(() => {});
+        void import("../notification-service")
+          .then(({ sendWelcomeEmail }) =>
+            sendWelcomeEmail({
+              name: userInfo.name ?? "there",
+              email: userInfo.email!,
+              role: assignedRole,
+            })
+          )
+          .catch((err: unknown) => console.warn("[Auth] Welcome email failed (non-critical):", err));
       }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {

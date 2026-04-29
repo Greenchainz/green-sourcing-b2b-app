@@ -55,28 +55,25 @@ export async function generateRfqRevit(
   if (!db) throw new Error("Database not initialized");
 
   // Fetch spec and assembly
-  const spec = await db
+  const [spec] = await db
     .select()
     .from(architectUploadedSpecs)
-    .where(eq(architectUploadedSpecs.id, input.specId))
-    .then((rows) => rows[0]);
+    .where(eq(architectUploadedSpecs.id, input.specId));
 
   if (!spec) throw new Error(`Spec not found`);
 
-  const assembly = await db
+  const [assembly] = await db
     .select()
     .from(architectSpecAssemblies)
-    .where(eq(architectSpecAssemblies.id, input.specAssemblyId))
-    .then((rows) => rows[0]);
+    .where(eq(architectSpecAssemblies.id, input.specAssemblyId));
 
   if (!assembly) throw new Error(`Assembly not found`);
 
   // Fetch primary alternative
-  const primaryAlt = await db
+  const [primaryAlt] = await db
     .select()
     .from(epdMaterials)
-    .where(eq(epdMaterials.id, input.selectedAlternativeId))
-    .then((rows) => rows[0]);
+    .where(eq(epdMaterials.id, input.selectedAlternativeId));
 
   if (!primaryAlt) throw new Error(`Alternative not found`);
 

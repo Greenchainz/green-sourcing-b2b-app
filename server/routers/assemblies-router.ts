@@ -9,6 +9,7 @@ import {
   ewsCarbonComponents,
 } from '../../drizzle/schema';
 import { eq, and, asc, inArray } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 
 export const assemblySpecsRouter = router({
   list: publicProcedure.query(async () => {
@@ -60,7 +61,7 @@ export const assembliesRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      const conditions: any[] = [];
+      const conditions: SQL[] = [];
       if (input?.assemblyType) conditions.push(eq(assemblies.assemblyType, input.assemblyType));
       if (input?.tier) conditions.push(eq(assemblies.sustainabilityTier, input.tier));
 

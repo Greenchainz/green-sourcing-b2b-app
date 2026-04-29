@@ -10,6 +10,7 @@ import { validateSwap, type MaterialSpec } from '../services/swapValidationServi
 import { getDb } from '../db';
 import { materialTechnicalSpecs, swapValidations, materials } from '../../drizzle/schema';
 import { eq, and, desc, inArray } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 
 type TechSpecRow = typeof materialTechnicalSpecs.$inferSelect;
 
@@ -245,17 +246,18 @@ export const swapValidationRouter = router({
       const db = await getDb();
       if (!db) throw new Error('Database unavailable');
 
-      let query = db.select().from(swapValidations);
-
-      const conditions: any[] = [];
+      const conditions: SQL[] = [];
       if (input.incumbentMaterialId) conditions.push(eq(swapValidations.incumbentMaterialId, input.incumbentMaterialId));
       if (input.sustainableMaterialId) conditions.push(eq(swapValidations.sustainableMaterialId, input.sustainableMaterialId));
       if (input.projectId) conditions.push(eq(swapValidations.projectId, input.projectId));
       if (input.validationStatus) conditions.push(eq(swapValidations.validationStatus, input.validationStatus));
 
-      if (conditions.length > 0) query = query.where(and(...conditions)) as any;
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-      const results = await query
+      const results = await db
+        .select()
+        .from(swapValidations)
+        .where(whereClause)
         .orderBy(desc(swapValidations.validatedAt))
         .limit(input.limit);
 

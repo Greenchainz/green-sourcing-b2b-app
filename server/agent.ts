@@ -24,6 +24,7 @@ import {
   agentAnalytics,
 } from "../drizzle/schema";
 import { eq, like, and, or, asc, sql, desc } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { calculateCcps, personaToWeights, calcCarbonDelta } from "./ccps-engine";
 import type { PersonaWeights } from "./ccps-engine";
 
@@ -59,7 +60,7 @@ async function toolSearchMaterials(query: string, category?: string, limit = 5):
   const db = await getDb();
   if (!db) return "Database unavailable.";
 
-  const conditions: any[] = [];
+  const conditions: SQL<unknown>[] = [];
   if (query) {
     conditions.push(
       or(
