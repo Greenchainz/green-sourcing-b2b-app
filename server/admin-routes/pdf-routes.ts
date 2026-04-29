@@ -6,6 +6,7 @@ import express from 'express';
 import { sdk } from '../_core/sdk';
 import { canAccessRfqPdf } from '../_core/route-auth-guards';
 import { checkMaterialScorePdfAccess } from '../services/pdf-access-guard';
+import type { RfqWithBids } from '../rfq-service';
 
 function createErrorResponse(
   message: string,
@@ -28,14 +29,14 @@ export function registerPdfRoutes(
   app.get('/api/pdf/material-score/:materialId', materialScorePdfRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
-      if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
+      if (!user) return res.status(401).json(createErrorResponse('Unauthorized', req.id));
 
       const materialId = parseInt(req.params.materialId as string);
-      if (isNaN(materialId)) return res.status(400).json(createErrorResponse('Invalid material ID', (req as any).id));
+      if (isNaN(materialId)) return res.status(400).json(createErrorResponse('Invalid material ID', req.id));
 
       const access = await checkMaterialScorePdfAccess(user.id);
       if (!access.allowed) {
-        return res.status(403).json(createErrorResponse(access.reason ?? 'Subscription required', (req as any).id));
+        return res.status(403).json(createErrorResponse(access.reason ?? 'Subscription required', req.id));
       }
 
       const { generateMaterialScorePdf } = await import('../material-score-pdf-service');
@@ -45,7 +46,7 @@ export function registerPdfRoutes(
       res.send(pdfBuffer);
     } catch (err) {
       console.error('[pdf] Material score PDF error:', err);
-      res.status(500).json(createErrorResponse('Failed to generate PDF', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Failed to generate PDF', req.id, err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -53,15 +54,15 @@ export function registerPdfRoutes(
   app.get('/api/rfq/:rfqId/pdf/summary', rfqPdfRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
-      if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
+      if (!user) return res.status(401).json(createErrorResponse('Unauthorized', req.id));
       const { generateRfqSummaryPdf } = await import('../rfq-pdf-service');
       const { getRfqWithBids } = await import('../rfq-service');
       const rfqId = parseInt(req.params.rfqId as string);
-      if (isNaN(rfqId)) return res.status(400).json(createErrorResponse('Invalid RFQ ID', (req as any).id));
+      if (isNaN(rfqId)) return res.status(400).json(createErrorResponse('Invalid RFQ ID', req.id));
       const rfq = await getRfqWithBids(rfqId);
-      if (!rfq) return res.status(404).json(createErrorResponse('RFQ not found', (req as any).id));
+      if (!rfq) return res.status(404).json(createErrorResponse('RFQ not found', req.id));
       if (!canAccessRfqPdf(user, rfq.rfq.userId ?? 0)) {
-        return res.status(403).json(createErrorResponse('Forbidden', (req as any).id));
+        return res.status(403).json(createErrorResponse('Forbidden', req.id));
       }
       const pdfBuffer = await generateRfqSummaryPdf({
         rfqId,
@@ -72,8 +73,8 @@ export function registerPdfRoutes(
         buyerEmail: user.email || '',
         dueDate: rfq.rfq.dueDate ?? undefined,
         notes: rfq.rfq.notes ?? undefined,
-        items: (rfq.items || []).map((item: any) => ({
-          materialName: item.materialName || item.name || 'Material',
+        items: (rfq.items || []).map((item: RfqWithBids['items'][number]) => ({
+          materialName: item.materialName || 'Material',
           quantity: Number(item.quantity),
           quantityUnit: item.quantityUnit || 'units',
           notes: item.notes ?? undefined,
@@ -85,7 +86,7 @@ export function registerPdfRoutes(
       res.send(pdfBuffer);
     } catch (err) {
       console.error('PDF generation error:', err);
-      res.status(500).json(createErrorResponse('Failed to generate PDF', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Failed to generate PDF', req.id, err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -93,15 +94,15 @@ export function registerPdfRoutes(
   app.get('/api/rfq/:rfqId/pdf/bids', rfqPdfRateLimit, async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
-      if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
+      if (!user) return res.status(401).json(createErrorResponse('Unauthorized', req.id));
       const { generateBidComparisonPdf } = await import('../rfq-pdf-service');
       const { getRfqWithBids } = await import('../rfq-service');
       const rfqId = parseInt(req.params.rfqId as string);
-      if (isNaN(rfqId)) return res.status(400).json(createErrorResponse('Invalid RFQ ID', (req as any).id));
+      if (isNaN(rfqId)) return res.status(400).json(createErrorResponse('Invalid RFQ ID', req.id));
       const rfq = await getRfqWithBids(rfqId);
-      if (!rfq) return res.status(404).json(createErrorResponse('RFQ not found', (req as any).id));
+      if (!rfq) return res.status(404).json(createErrorResponse('RFQ not found', req.id));
       if (!canAccessRfqPdf(user, rfq.rfq.userId ?? 0)) {
-        return res.status(403).json(createErrorResponse('Forbidden', (req as any).id));
+        return res.status(403).json(createErrorResponse('Forbidden', req.id));
       }
       const pdfBuffer = await generateBidComparisonPdf({
         rfqId,
@@ -112,14 +113,14 @@ export function registerPdfRoutes(
         buyerEmail: user.email || '',
         dueDate: rfq.rfq.dueDate ?? undefined,
         notes: rfq.rfq.notes ?? undefined,
-        items: (rfq.items || []).map((item: any) => ({
-          materialName: item.materialName || item.name || 'Material',
+        items: (rfq.items || []).map((item: RfqWithBids['items'][number]) => ({
+          materialName: item.materialName || 'Material',
           quantity: Number(item.quantity),
           quantityUnit: item.quantityUnit || 'units',
         })),
         createdAt: rfq.rfq.createdAt,
-        bids: (rfq.bids || []).map((bid: any) => ({
-          supplierName: bid.supplierName || bid.companyName || 'Supplier',
+        bids: (rfq.bids || []).map((bid: RfqWithBids['bids'][number]) => ({
+          supplierName: bid.supplierName || 'Supplier',
           bidPrice: String(bid.bidPrice || 0),
           leadDays: Number(bid.leadDays),
           notes: bid.notes ?? undefined,
@@ -131,7 +132,7 @@ export function registerPdfRoutes(
       res.send(pdfBuffer);
     } catch (err) {
       console.error('PDF generation error:', err);
-      res.status(500).json(createErrorResponse('Failed to generate PDF', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Failed to generate PDF', req.id, err instanceof Error ? err.message : String(err)));
     }
   });
 }

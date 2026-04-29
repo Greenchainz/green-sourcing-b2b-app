@@ -48,7 +48,7 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
       const retryAfterSeconds = Math.ceil((entry.resetAt - now) / 1000);
       console.warn(`[rate-limit] IP ${ip} throttled on ${req.method} ${req.path} — retry after ${retryAfterSeconds}s`);
       res.setHeader("Retry-After", String(retryAfterSeconds));
-      res.status(429).json(createErrorResponse("Too Many Requests", (req as any).id));
+      res.status(429).json(createErrorResponse("Too Many Requests", req.id));
       return;
     }
     next();
@@ -56,7 +56,7 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
 }
 
 function createRequestIdMiddleware(req: express.Request, _res: express.Response, next: express.NextFunction): void {
-  (req as any).id = uuidv4();
+  req.id = uuidv4();
   next();
 }
 
@@ -175,12 +175,12 @@ async function startServer() {
     try {
       const user = await sdk.authenticateRequest(req);
       if (!user) {
-        res.status(401).json(createErrorResponse("Not authenticated", (req as any).id));
+        res.status(401).json(createErrorResponse("Not authenticated", req.id));
         return;
       }
       const secret = getSecret("INTERCOM_SECRET");
       if (!secret) {
-        res.status(500).json(createErrorResponse("Intercom secret not configured", (req as any).id));
+        res.status(500).json(createErrorResponse("Intercom secret not configured", req.id));
         return;
       }
       const { SignJWT } = await import("jose");
@@ -195,7 +195,7 @@ async function startServer() {
         .sign(encoder.encode(secret));
       res.json({ token });
     } catch {
-      res.status(401).json(createErrorResponse("Not authenticated", (req as any).id));
+      res.status(401).json(createErrorResponse("Not authenticated", req.id));
     }
   });
 
@@ -203,13 +203,13 @@ async function startServer() {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) {
-        res.status(401).json(createErrorResponse("Unauthorized", (req as any).id));
+        res.status(401).json(createErrorResponse("Unauthorized", req.id));
         return;
       }
       const { role } = req.body as { role?: string };
       const validRoles = ["buyer", "supplier"] as const;
       if (!role || !validRoles.includes(role as (typeof validRoles)[number])) {
-        res.status(400).json(createErrorResponse("Invalid role. Must be 'buyer' or 'supplier'.", (req as any).id));
+        res.status(400).json(createErrorResponse("Invalid role. Must be 'buyer' or 'supplier'.", req.id));
         return;
       }
       const { updateUserRole } = await import("../db");
@@ -217,7 +217,7 @@ async function startServer() {
       res.json({ success: true, role });
     } catch (err) {
       console.error("[user] POST /api/user/set-role error:", err);
-      res.status(500).json(createErrorResponse("Failed to update role", (req as any).id));
+      res.status(500).json(createErrorResponse("Failed to update role", req.id));
     }
   });
 
@@ -260,9 +260,9 @@ async function startServer() {
   app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = err instanceof Error ? err.message : "Internal server error";
     const detail = err instanceof Error && process.env.NODE_ENV === "development" ? err.stack : undefined;
-    console.error(`[server] ${(req as any).id} Unhandled error:`, err);
+    console.error(`[server] ${req.id} Unhandled error:`, err);
     if (!res.headersSent) {
-      res.status(500).json(createErrorResponse(message, (req as any).id, detail));
+      res.status(500).json(createErrorResponse(message, req.id, detail));
     }
   });
 

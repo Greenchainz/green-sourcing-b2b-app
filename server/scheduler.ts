@@ -53,22 +53,25 @@ export async function startSchedulers(): Promise<void> {
           if (epds.length === 0) continue;
 
           const transformed = transformEC3Batch(epds);
-          const ec3Ids = epds.map((e: any) => e.id).filter(Boolean);
+          // EC3EPD.id is the external ID field; filter out any falsy values
+          const ec3Ids = epds.map((e) => e.id).filter(Boolean) as string[];
 
           const existing = await db
             .select({ ec3Id: materials.ec3Id })
             .from(materials)
             .where(inArray(materials.ec3Id, ec3Ids));
 
-          const existingSet = new Set(existing.map((m: any) => m.ec3Id));
-          const toCreate = transformed.filter((m: any) => m.ec3Id && !existingSet.has(m.ec3Id));
-          const toUpdate = transformed.filter((m: any) => m.ec3Id && existingSet.has(m.ec3Id));
+          const existingSet = new Set(existing.map((m) => m.ec3Id));
+          const toCreate = transformed.filter((m) => m.ec3Id && !existingSet.has(m.ec3Id));
+          const toUpdate = transformed.filter((m) => m.ec3Id && existingSet.has(m.ec3Id));
 
           if (toCreate.length > 0) {
-            await db.insert(materials).values(toCreate as any);
+            // transformEC3ToMaterial always populates required fields; Partial<Material> is safe here
+            type InsertMaterial = typeof materials.$inferInsert;
+            await db.insert(materials).values(toCreate as unknown as InsertMaterial[]);
             totalCreated += toCreate.length;
           }
-          for (const m of toUpdate as any[]) {
+          for (const m of toUpdate) {
             await db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!));
             totalUpdated++;
           }
