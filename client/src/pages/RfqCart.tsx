@@ -97,7 +97,7 @@ export default function RfqCart() {
             </Card>
             <Card><CardContent className="p-4">
               {user ? (
-                <PaywallGate dimension="rfq_submissions" mode="soft">
+                <PaywallGate dimension="rfq_submission" mode="soft">
                   <Button className="w-full" onClick={handleSubmit} disabled={createRfq.isPending || items.length === 0}><Send className="w-4 h-4 mr-2" />{createRfq.isPending ? "Submitting..." : "Submit RFQ"}</Button>
                 </PaywallGate>
               ) : (
