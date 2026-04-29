@@ -119,3 +119,13 @@ package-lock.json
 .vs/
 *.pdf
 *.plugin
+
+# Binary assets that don't belong in git
+*.xlsx
+*.xls
+
+# Temp / debug files that accumulate in root
+auth-current.json
+auth-fixed.json
+tscheck-client-temp.json
+tscheck-server-temp.json

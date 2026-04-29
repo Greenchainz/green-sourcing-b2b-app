@@ -38,9 +38,9 @@ export async function calculateSwapScore(
     embodiedCarbonPer1000sf: materials.embodiedCarbonPer1000sf,
     pricePerUnit: materials.pricePerUnit,
   };
-  const [original, candidate] = await Promise.all([
-    db.select(cols).from(materials).where(eq(materials.id, originalMaterialId)).then((r) => r[0]),
-    db.select(cols).from(materials).where(eq(materials.id, candidateMaterialId)).then((r) => r[0]),
+  const [[original], [candidate]] = await Promise.all([
+    db.select(cols).from(materials).where(eq(materials.id, originalMaterialId)),
+    db.select(cols).from(materials).where(eq(materials.id, candidateMaterialId)),
   ]);
 
   if (!original || !candidate) {
@@ -142,7 +142,7 @@ export async function findSwapCandidates(
     embodiedCarbonPer1000sf: materials.embodiedCarbonPer1000sf,
     pricePerUnit: materials.pricePerUnit,
   };
-  const original = await db.select(swapCols).from(materials).where(eq(materials.id, materialId)).then((r) => r[0]);
+  const [original] = await db.select(swapCols).from(materials).where(eq(materials.id, materialId));
 
   if (!original) {
     return [];

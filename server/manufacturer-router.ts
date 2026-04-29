@@ -3,6 +3,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { manufacturers, materials } from "../drizzle/schema";
 import { eq, asc, sql, desc } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 
 export const manufacturerRouter = router({
   getAll: publicProcedure
@@ -15,7 +16,7 @@ export const manufacturerRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      const conditions: any[] = [];
+      const conditions: SQL<unknown>[] = [];
       if (input?.category) {
         conditions.push(eq(manufacturers.category, input.category));
       }

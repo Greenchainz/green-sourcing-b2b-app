@@ -7,6 +7,7 @@ import {
   subscriptions,
 } from "../drizzle/schema";
 import { eq, and, inArray, desc, count, sql, gte } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateComplianceReport } from "./compliance-service";
@@ -795,7 +796,7 @@ export const adminRouter = router({
       if (!db) return { items: [], total: 0 };
 
       const { like, or } = await import("drizzle-orm");
-      const conditions: any[] = [];
+      const conditions: SQL<unknown>[] = [];
       if (input.search) {
         conditions.push(
           or(

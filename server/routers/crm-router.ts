@@ -31,9 +31,10 @@ import {
   enrollInClaimSequence,
   sendManualEmail,
 } from "../services/outreach-email-service";
+import type { TrpcContext } from "../_core/context";
 
 // ── Guard: admin only ──────────────────────────────────────────────────────────
-function requireAdmin(ctx: any) {
+function requireAdmin(ctx: Pick<TrpcContext, "user">) {
   if (ctx.user?.role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin only" });
   }
@@ -500,17 +501,17 @@ export const crmRouter = router({
     triggerFred: protectedProcedure.mutation(async ({ ctx }) => {
       requireAdmin(ctx);
       // Fire and forget — run in background
-      import("../services/fred-scraper")
+      void import("../services/fred-scraper")
         .then(({ runFredScraper }) => runFredScraper())
-        .catch(console.error);
+        .catch((err: unknown) => console.error("[triggerFred]", err));
       return { triggered: true };
     }),
 
     triggerOutreachDrip: protectedProcedure.mutation(async ({ ctx }) => {
       requireAdmin(ctx);
-      import("../services/outreach-email-service")
+      void import("../services/outreach-email-service")
         .then(({ processDueSequenceSteps }) => processDueSequenceSteps())
-        .catch(console.error);
+        .catch((err: unknown) => console.error("[triggerOutreachDrip]", err));
       return { triggered: true };
     }),
   }),

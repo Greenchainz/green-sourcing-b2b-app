@@ -12,6 +12,7 @@ import { transformEC3ToMaterial, transformEC3Batch } from "../ec3-transform";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 
 export const ec3Router = router({
   /**
@@ -50,7 +51,7 @@ export const ec3Router = router({
         .from(materials)
         .where(inArray(materials.ec3Id, ec3Ids));
 
-      const existingEc3Ids = new Set(existingMaterials.map((m: any) => m.ec3Id));
+      const existingEc3Ids = new Set(existingMaterials.map((m) => m.ec3Id));
 
       // Separate into create vs update
       const toCreate = transformedMaterials.filter(m => !existingEc3Ids.has(m.ec3Id!));
@@ -61,7 +62,7 @@ export const ec3Router = router({
 
       // Bulk insert new materials
       if (toCreate.length > 0) {
-        await db.insert(materials).values(toCreate as any);
+        await db.insert(materials).values(toCreate as (typeof materials)["$inferInsert"][]);
         created = toCreate.length;
       }
 
@@ -123,7 +124,7 @@ export const ec3Router = router({
             .limit(1);
 
           if (existing.length === 0) {
-            await db.insert(materials).values(material as any);
+            await db.insert(materials).values(material as (typeof materials)["$inferInsert"]);
             synced++;
           }
         }
@@ -184,7 +185,7 @@ export const ec3Router = router({
       const allResults = await query;
       
       // Filter for materials with EC3 data
-      const results = allResults.filter((m: any) => m.ec3Id !== null);
+      const results = allResults.filter((m) => m.ec3Id !== null);
 
       return {
         success: true,
@@ -203,13 +204,13 @@ export const ec3Router = router({
       if (!db) throw new Error("Database connection failed");
       
       const allMaterials = await db.select().from(materials);
-      const ec3Materials = allMaterials.filter((m: any) => m.ec3Id !== null);
+      const ec3Materials = allMaterials.filter((m) => m.ec3Id !== null);
 
       const totalMaterials = await db.select().from(materials);
 
       // Get last sync time
       const lastSynced = ec3Materials.length > 0
-        ? Math.max(...ec3Materials.map((m: any) => m.ec3SyncedAt?.getTime() || 0))
+        ? Math.max(...ec3Materials.map((m) => m.ec3SyncedAt?.getTime() ?? 0))
         : null;
 
       return {

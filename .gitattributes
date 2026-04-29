@@ -1,0 +1,47 @@
+# Normalize line endings to LF in the repository.
+# Git will convert CRLF → LF on commit and leave files as-is on checkout.
+# This prevents the "300 modified files" CRLF noise on Windows.
+* text=auto eol=lf
+
+# Force these to always be LF even on Windows checkouts
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.sh   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.sql  text eol=lf
+*.env  text eol=lf
+*.env.* text eol=lf
+
+# Binary files — never touch line endings
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.svg  binary
+*.pdf  binary
+*.xlsx binary
+*.xls  binary
+*.zip  binary
+*.ttf  binary
+*.woff binary
+*.woff2 binary
+*.eot  binary
+
+# Shell scripts must be LF
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# Windows shell scripts — keep CRLF
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf

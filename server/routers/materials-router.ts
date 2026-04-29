@@ -9,6 +9,7 @@ import {
   decisionMakerPersonas,
 } from '../../drizzle/schema';
 import { eq, like, and, lte, asc, sql, or, getTableColumns } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
 import { getAllPriceTrendsFromDb, getPriceTrendByCategory } from '../services/price-trends';
@@ -37,7 +38,7 @@ export const materialsRouter = router({
       const db = await getDb();
       if (!db) return { items: [], total: 0 };
 
-      const conditions: any[] = [];
+      const conditions: SQL[] = [];
       if (input.search) {
         conditions.push(
           or(
