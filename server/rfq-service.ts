@@ -36,7 +36,7 @@ export interface SupplierMatch {
 
 export interface RfqWithBids {
   rfq: typeof rfqs.$inferSelect;
-  items: (typeof rfqItems.$inferSelect)[];
+  items: (typeof rfqItems.$inferSelect & { materialName?: string | null })[];
   bids: Array<typeof rfqBids.$inferSelect & { supplierName: string; supplierEmail: string }>;
   analytics?: typeof rfqAnalytics.$inferSelect;
 }
@@ -184,7 +184,23 @@ export async function getRfqWithBids(rfqId: number): Promise<RfqWithBids | null>
   const rfq = await db.select().from(rfqs).where(eq(rfqs.id, rfqId)).execute();
   if (!rfq || rfq.length === 0) return null;
 
-  const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, rfqId)).execute();
+  const itemRows = await db
+    .select({
+      id: rfqItems.id,
+      rfqId: rfqItems.rfqId,
+      materialId: rfqItems.materialId,
+      assemblyId: rfqItems.assemblyId,
+      quantity: rfqItems.quantity,
+      quantityUnit: rfqItems.quantityUnit,
+      notes: rfqItems.notes,
+      createdAt: rfqItems.createdAt,
+      materialName: materials.name,
+    })
+    .from(rfqItems)
+    .leftJoin(materials, eq(rfqItems.materialId, materials.id))
+    .where(eq(rfqItems.rfqId, rfqId))
+    .execute();
+  const items = itemRows;
 
   const bidsWithSuppliers = await db
     .select({

@@ -46,7 +46,7 @@ export async function optimizeMaterialsForCarbon(
   ]);
 
   const regionalContext = regionalPatterns.length > 0
-    ? regionalPatterns.map((p: RegionalSwapPatterns) => `${p.originalMaterial} to ${p.alternativeMaterial} (${p.carbonReduction}% reduction)`).join("; ")
+    ? regionalPatterns.map((p: RegionalSwapPatterns) => `${p.originalMaterial} to ${p.alternativeMaterial} (${p.avgCarbonReduction}% reduction)`).join("; ")
     : "No regional swap data available";
 
   // getClimateZoneAdjustments returns a single row or null, not an array
@@ -224,6 +224,10 @@ export async function enrichRfqWithAiAnalysis(
       ? recommendations.reduce((sum, r) => sum + r.carbonReduction, 0) / recommendations.length
       : 0;
 
+  const complianceRate =
+    compliance.length > 0
+      ? (compliance.filter((c) => c.isCompliant).length / compliance.length) * 100
+      : 0;
   const score = Math.round((avgCarbonReduction * 0.6 + complianceRate * 0.4) / 2);
 
   return {
