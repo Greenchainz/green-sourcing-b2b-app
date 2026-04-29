@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 interface PaywallGateProps {
   feature?: string;
-  dimension?: "rfq_submissions" | "ai_queries" | "swap_analyses" | "ccps_exports" | "material_comparisons";
+  dimension?: "rfq_submission" | "ai_query" | "swap_analysis" | "ccps_export" | "material_comparison";
   children: ReactNode;
   fallback?: ReactNode;
   mode?: "soft" | "hard"; // soft = show warning, hard = block completely
@@ -35,7 +35,7 @@ export function PaywallGate({
   const { data: usageCheck, isLoading: usageLoading } = trpc.subscription.checkUsageLimit.useQuery(
     {
       userType: "buyer",
-      dimension: dimension || "rfq_submissions",
+      dimension: dimension || "rfq_submission",
     },
     {
       enabled: !!dimension,
@@ -144,7 +144,7 @@ export function usePaywallCheck() {
   };
 
   const checkUsage = async (
-    dimension: "rfq_submissions" | "ai_queries" | "swap_analyses" | "ccps_exports" | "material_comparisons"
+    dimension: "rfq_submission" | "ai_query" | "swap_analysis" | "ccps_export" | "material_comparison"
   ): Promise<boolean> => {
     try {
       const result = await utils.subscription.checkUsageLimit.fetch({
