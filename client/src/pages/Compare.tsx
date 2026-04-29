@@ -36,7 +36,7 @@ export default function Compare() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <PaywallGate dimension="material_comparisons" mode="soft">
+      <PaywallGate dimension="material_comparison" mode="soft">
       <div className="container py-6 flex-1">
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4"><Link href="/materials" className="hover:text-foreground">Materials</Link><span>/</span><span className="text-foreground">Compare</span></div>
         <div className="flex items-center justify-between mb-6">

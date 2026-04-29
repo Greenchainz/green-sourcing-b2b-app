@@ -189,7 +189,7 @@ export function ChainBot() {
 
     // Check AI query usage limit only for authenticated users
     if (user) {
-      const allowed = await checkUsage("ai_queries");
+      const allowed = await checkUsage("ai_query");
       if (!allowed) {
         setShowUpgradeModal(true);
         return;
