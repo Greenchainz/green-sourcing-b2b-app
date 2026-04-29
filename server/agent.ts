@@ -68,7 +68,7 @@ async function toolSearchMaterials(query: string, category?: string, limit = 5):
         like(materials.name, `%${query}%`),
         like(materials.productName, `%${query}%`),
         like(materials.category, `%${query}%`)
-      )
+      )!
     );
   }
   if (category) conditions.push(eq(materials.category, category));
@@ -102,7 +102,7 @@ async function toolSearchMaterials(query: string, category?: string, limit = 5):
 
   const results = rows.map((r) => {
     const baseline = baselineMap[r.category] ?? {};
-    const ccps = calculateCcps(r as Material, baseline);
+    const ccps = calculateCcps(r as unknown as Material, baseline);
     return {
       id: r.id,
       name: r.name,
@@ -823,7 +823,7 @@ async function runSpecialist(
     const content = typeof choice.message.content === "string"
       ? choice.message.content
       : Array.isArray(choice.message.content)
-        ? choice.message.content.map((c: string | TextContent) => (typeof c === "string" ? c : c.text ?? "")).join("")
+        ? choice.message.content.map((c) => (typeof c === "string" ? c : ("text" in c ? c.text : "") ?? "")).join("")
         : "";
 
     const escalated = content.includes("ESCALATE") || content.includes("HANDOFF");

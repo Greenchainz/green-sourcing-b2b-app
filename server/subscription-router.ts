@@ -13,6 +13,7 @@ import {
   checkSupplierFeatureAccess,
   getBuyerTierLimits,
   getSupplierTierLimits,
+  TIER_LIMITS,
 } from "./subscription-service";
 import {
   trackBuyerUsage,
@@ -48,7 +49,7 @@ export const subscriptionRouter = router({
   checkBuyerFeatureAccess: protectedProcedure
     .input(z.object({ feature: z.string() }))
     .query(async ({ ctx, input }) => {
-      return await checkBuyerFeatureAccess(ctx.user.id, input.feature);
+      return await checkBuyerFeatureAccess(ctx.user.id, input.feature as keyof typeof TIER_LIMITS["buyer"]["free"]["features"]);
     }),
 
   upgradeBuyerSubscription: protectedProcedure
@@ -88,7 +89,7 @@ export const subscriptionRouter = router({
   checkSupplierFeatureAccess: protectedProcedure
     .input(z.object({ supplierId: z.number(), feature: z.string() }))
     .query(async ({ input }) => {
-      return await checkSupplierFeatureAccess(input.supplierId, input.feature);
+      return await checkSupplierFeatureAccess(input.supplierId, input.feature as keyof typeof TIER_LIMITS["supplier"]["free"]["features"]);
     }),
 
   upgradeSupplierSubscription: protectedProcedure
