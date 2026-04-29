@@ -5,7 +5,7 @@ import { AlertCircle, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface UsageCounterProps {
-  dimension: "rfq_submissions" | "ai_queries" | "swap_analyses" | "ccps_exports" | "material_comparisons";
+  dimension: "rfq_submission" | "ai_query" | "swap_analysis" | "ccps_export" | "material_comparison";
   label: string;
   onUpgradeClick?: () => void;
 }
@@ -32,19 +32,19 @@ export function UsageCounter({ dimension, label, onUpgradeClick }: UsageCounterP
   if (!usage || !limits) return null;
 
   const dimensionMap: Record<string, keyof typeof usage> = {
-    rfq_submissions: "rfqSubmissions",
-    ai_queries: "aiQueries",
-    swap_analyses: "swapAnalyses",
-    ccps_exports: "ccpsExports",
-    material_comparisons: "materialComparisons",
+    rfq_submission: "rfqSubmissions",
+    ai_query: "aiQueries",
+    swap_analysis: "swapAnalyses",
+    ccps_export: "ccpsExports",
+    material_comparison: "materialComparisons",
   };
 
   const limitsMap: Record<string, string> = {
-    rfq_submissions: "rfqsPerMonth",
-    ai_queries: "aiQueriesPerMonth",
-    swap_analyses: "swapAnalysesPerMonth",
-    ccps_exports: "ccpsExportsPerMonth",
-    material_comparisons: "materialComparisonsPerMonth",
+    rfq_submission: "rfqsPerMonth",
+    ai_query: "aiQueriesPerMonth",
+    swap_analysis: "swapAnalysesPerMonth",
+    ccps_export: "ccpsExportsPerMonth",
+    material_comparison: "materialComparisonsPerMonth",
   };
 
   const currentUsage = usage[dimensionMap[dimension]] || 0;
@@ -119,27 +119,27 @@ export function UsageDashboard({ onUpgradeClick }: { onUpgradeClick?: () => void
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <UsageCounter
-        dimension="rfq_submissions"
+        dimension="rfq_submission"
         label="RFQ Submissions"
         onUpgradeClick={onUpgradeClick}
       />
       <UsageCounter
-        dimension="ai_queries"
+        dimension="ai_query"
         label="AI Queries"
         onUpgradeClick={onUpgradeClick}
       />
       <UsageCounter
-        dimension="swap_analyses"
+        dimension="swap_analysis"
         label="Swap Analyses"
         onUpgradeClick={onUpgradeClick}
       />
       <UsageCounter
-        dimension="ccps_exports"
+        dimension="ccps_export"
         label="CCPS Exports"
         onUpgradeClick={onUpgradeClick}
       />
       <UsageCounter
-        dimension="material_comparisons"
+        dimension="material_comparison"
         label="Material Comparisons"
         onUpgradeClick={onUpgradeClick}
       />
