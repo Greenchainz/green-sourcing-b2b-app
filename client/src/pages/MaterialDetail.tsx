@@ -478,7 +478,7 @@ export default function MaterialDetail() {
 
               {/* ── Swaps tab ── */}
               <TabsContent value="swaps">
-                <PaywallGate dimension="swap_analyses" mode="soft">
+                <PaywallGate dimension="swap_analysis" mode="soft">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
