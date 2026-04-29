@@ -45,7 +45,7 @@ export const materialsRouter = router({
             like(materials.name, `%${input.search}%`),
             like(materials.productName, `%${input.search}%`),
             like(materials.category, `%${input.search}%`)
-          )
+          )!
         );
       }
       if (input.category) conditions.push(eq(materials.category, input.category));

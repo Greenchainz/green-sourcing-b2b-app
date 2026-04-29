@@ -802,7 +802,7 @@ export const adminRouter = router({
           or(
             like(materials.name, `%${input.search}%`),
             like(materials.category, `%${input.search}%`),
-          )
+          )!
         );
       }
       if (input.category) conditions.push(eq(materials.category, input.category));
