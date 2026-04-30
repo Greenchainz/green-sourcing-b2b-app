@@ -390,7 +390,6 @@ jobs:
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
             "FRONTEND_URL=https://greenchainz.com"
-            "AZURE_MI_CLIENT_ID=$AZURE_MI_CLIENT_ID"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
           )
           # FRED_API_KEY and RESEND_API_KEY are loaded at runtime from Key Vault
@@ -407,29 +406,14 @@ jobs:
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}"
 
-      - name: Ensure backend allows unauthenticated requests
+          - name: Ensure backend allows unauthenticated requests
         run: |
-          # The backend app handles auth internally (JWT cookies + OAuth).
-          # If Easy Auth is enabled on the Container App with "Return 401" mode it
-          # will block every unauthenticated request — including /api/health — before
-          # the Express process ever sees it.  Set AllowAnonymous so the platform
-          # passes all traffic through and lets the app enforce its own auth rules.
-          #
-          # If auth is not yet configured this command exits non-zero; that is safe
-          # because auth is already disabled (all traffic already passes through).
-          AUTH_ENABLED=$(az containerapp auth show \
+          echo "Forcing AllowAnonymous on Container Apps auth (idempotent, safe if auth not yet configured)"
+          az containerapp auth update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query "properties.platform.enabled" -o tsv 2>/dev/null || echo "false")
-          if [ "$AUTH_ENABLED" = "true" ]; then
-            echo "Easy Auth is enabled — setting unauthenticated action to AllowAnonymous"
-            az containerapp auth update \
-              --name ${{ env.BACKEND_APP }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
-              --unauthenticated-client-action AllowAnonymous
-          else
-            echo "Easy Auth is not enabled — unauthenticated requests already pass through"
-          fi
+            --unauthenticated-client-action AllowAnonymous \
+            2>/dev/null || echo "Auth not configured or update skipped — continuing"
 
       - name: Fix frontend ACR registry (system identity)
         run: |
