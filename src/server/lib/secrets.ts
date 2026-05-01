@@ -19,6 +19,11 @@ export async function loadSecrets(): Promise<void> {
       client.getSecret("OAUTH-SERVER-URL"),
     ]);
     const [jwtResult, dbResult, oauthResult] = results;
+    if (jwtResult.status === "fulfilled" && jwtResult.value.value) process.env.JWT_SECRET = jwtResult.value.value;
+    else console.warn("[secrets] JWT-SECRET not loaded:", jwtResult.status === "rejected" ? jwtResult.reason?.message : "empty");
+    if (dbResult.status === "fulfilled" && dbResult.value.value) process.env.DATABASE_URL = dbResult.value.value;
+    else console.warn("[secrets] DATABASE-URL not loaded:", dbResult.status === "rejected" ? dbResult.reason?.message : "empty");
+    if (oauthResult.status === "fulfilled" && oauthResult.value.value) process.env.OAUTH_SERVER_URL = oauthResult.value.value;
     if (jwtResult.status === "fulfilled" && jwtResult.value.value)
       process.env.JWT_SECRET = jwtResult.value.value;
     else console.warn("[secrets] JWT-SECRET not loaded:", jwtResult.status === "rejected" ? jwtResult.reason?.message : "empty");
