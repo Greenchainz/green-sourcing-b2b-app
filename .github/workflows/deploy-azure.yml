@@ -406,7 +406,7 @@ jobs:
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}"
 
-          - name: Ensure backend allows unauthenticated requests
+      - name: Ensure backend allows unauthenticated requests
         run: |
           echo "Forcing AllowAnonymous on Container Apps auth (idempotent, safe if auth not yet configured)"
           az containerapp auth update \

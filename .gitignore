@@ -129,3 +129,14 @@ auth-current.json
 auth-fixed.json
 tscheck-client-temp.json
 tscheck-server-temp.json
+
+# Agent-generated status reports — never commit these
+MAINTENANCE_*.md
+MAINTENANCE_*.txt
+MAINTENANCE_REPORT*
+MAINTENANCE_STATUS*
+MAINTENANCE_SUMMARY*
+QUICK_FIXES_*.md
+NOON.md
+SCHEDULED_*.md
+SESSION_*.md
