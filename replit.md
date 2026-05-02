@@ -66,6 +66,20 @@ Key variables:
 - The server listens on `0.0.0.0:5000` in development
 - Vite is configured with `allowedHosts: true` for proxy compatibility
 
+## Founder Video Messaging (added May 2026)
+
+- DB tables: `founder_videos`, `founder_video_views` (created via `scripts/apply-founder-video.sql`)
+- `server/routers/founder-video.ts` — tRPC router: `create`, `finalize`, `list`, `delete`, `publicGet`, `publicLogView`
+- `lib/founder-video-storage.ts` — Azure Blob SAS helpers (upload + read URLs, `founder-videos` container)
+- `server/services/founder-video-transcribe.ts` — fire-and-forget Whisper transcription
+- `client/src/components/FounderVideoRecorder.tsx` — 60s in-browser webcam recorder
+- `client/src/pages/FounderVideoList.tsx` — admin list at `/admin/founder-videos`
+- `client/src/pages/FounderVideoNew.tsx` — admin record+send at `/admin/founder-videos/new`
+- `client/src/pages/FounderVideoWatch.tsx` — public watch page at `/v/:token`
+- `sendFounderVideoEmail` added to `server/email-service.ts`
+- Routes wired in `client/src/App.tsx`; router registered in `server/routers.ts`
+- Requires: `AZURE_STORAGE_CONNECTION_STRING` (blob), `AZURE_OPENAI_ENDPOINT`+`AZURE_OPENAI_API_KEY` (Whisper), email credentials
+
 ## New Components & Routers (added May 2026)
 
 - `server/featured-router.ts` — Featured placement tRPC router (`featured.*` procedures); admin can set `isFeatured` + `featuredUntil` on materials/suppliers
