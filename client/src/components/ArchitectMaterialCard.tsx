@@ -11,7 +11,6 @@ import {
   Recycle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 const LEED_CREDIT_MAP = {
   hasEpd: { credit: 'MR Credit: EPD', points: 1 },
