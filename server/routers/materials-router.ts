@@ -16,7 +16,7 @@ import { getAllPriceTrendsFromDb, getPriceTrendByCategory } from '../services/pr
 import { generateEmbedding } from '../services/embedding-service';
 
 export const materialsRouter = router({
-  list: protectedProcedure
+  list: publicProcedure
     .input(
       z.object({
         search: z.string().optional(),
@@ -352,7 +352,7 @@ export const materialsRouter = router({
       };
     }),
 
-  semanticSearch: protectedProcedure
+  semanticSearch: publicProcedure
     .input(
       z.object({
         query: z.string().min(1),

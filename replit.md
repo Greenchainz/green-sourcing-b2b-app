@@ -66,9 +66,41 @@ Key variables:
 - The server listens on `0.0.0.0:5000` in development
 - Vite is configured with `allowedHosts: true` for proxy compatibility
 
+## Founder Video Messaging (added May 2026)
+
+- DB tables: `founder_videos`, `founder_video_views` (created via `scripts/apply-founder-video.sql`)
+- `server/routers/founder-video.ts` — tRPC router: `create`, `finalize`, `list`, `delete`, `publicGet`, `publicLogView`
+- `lib/founder-video-storage.ts` — Azure Blob SAS helpers (upload + read URLs, `founder-videos` container)
+- `server/services/founder-video-transcribe.ts` — fire-and-forget Whisper transcription
+- `client/src/components/FounderVideoRecorder.tsx` — 60s in-browser webcam recorder
+- `client/src/pages/FounderVideoList.tsx` — admin list at `/admin/founder-videos`
+- `client/src/pages/FounderVideoNew.tsx` — admin record+send at `/admin/founder-videos/new`
+- `client/src/pages/FounderVideoWatch.tsx` — public watch page at `/v/:token`
+- `sendFounderVideoEmail` added to `server/email-service.ts`
+- Routes wired in `client/src/App.tsx`; router registered in `server/routers.ts`
+- Requires: `AZURE_STORAGE_CONNECTION_STRING` (blob), `AZURE_OPENAI_ENDPOINT`+`AZURE_OPENAI_API_KEY` (Whisper), email credentials
+
+## New Components & Routers (added May 2026)
+
+- `server/featured-router.ts` — Featured placement tRPC router (`featured.*` procedures); admin can set `isFeatured` + `featuredUntil` on materials/suppliers
+- `server/manufacturer-search-router.ts` — Public manufacturer search (`manufacturerSearch.search`); used on supplier landing page
+- `client/src/components/ArchitectMaterialCard.tsx` — Architect-first material card with LEED credit callouts, carbon bar, basket state
+- `client/src/components/FeaturedRow.tsx` — Horizontal scroll row for featured materials in catalog
+- `client/src/components/MaterialImageUpload.tsx` — Drag-and-drop image uploader (POSTs to `/api/supplier/upload-image`)
+- Image upload endpoint added to `server/upload-route.ts` at `POST /api/supplier/upload-image`
+
+## Database Columns Added
+
+- `materials`: `imageUrl`, `imageBlobName`, `imageUpdatedAt`, `isFeatured`, `featuredUntil`
+- `suppliers`: `isFeatured`, `featuredUntil`
+- `price_history`: created (required by price-trends service)
+
 ## Notes
 
 - Azure Key Vault secrets are only loaded in production (Managed Identity). In dev, use `.env.local`.
 - DB schema errors on startup are expected if `DATABASE_URL` is not set — the app degrades gracefully.
 - Schedulers (RFQ, notifications, EPD sync) run in the background and log errors if DB is unavailable.
 - WebPubSub warnings are expected if `AZURE_WEBPUBSUB_CONNECTION_STRING` is not set.
+- `materials.list` and `materials.semanticSearch` are public — catalog browses without login.
+- Material images require `AZURE_STORAGE_CONNECTION_STRING` + a `material-images` blob container with public read access.
+- Analytics script (`%VITE_ANALYTICS_ENDPOINT%`) removed from `client/index.html` — was causing server URIError crashes.

@@ -62,6 +62,7 @@ import {
   ShieldCheck,
   BarChart3,
   TrendingUp,
+  Video,
 } from 'lucide-react';
 
 // ─── Type definitions ────────────────────────────────────────────────────────
@@ -1584,6 +1585,18 @@ function SystemTab() {
             <Link href="/admin/crm">
               <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
                 <TrendingUp className="mr-2 h-4 w-4" />CRM Pipeline
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/founder-videos">
+              <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
+                <Video className="mr-2 h-4 w-4" />Founder Videos
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/founder-videos/analytics">
+              <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
+                <BarChart3 className="mr-2 h-4 w-4" />Video Analytics
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
