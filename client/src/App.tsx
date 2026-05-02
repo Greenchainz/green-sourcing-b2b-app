@@ -86,6 +86,9 @@ const Support = lazy(() => import("./pages/Support"));
 const Login = lazy(() => import("./pages/Login"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Features = lazy(() => import("./pages/Features"));
+const FounderVideoNew = lazy(() => import("./pages/FounderVideoNew"));
+const FounderVideoList = lazy(() => import("./pages/FounderVideoList"));
+const FounderVideoWatch = lazy(() => import("./pages/FounderVideoWatch"));
 
 function Router() {
   return (
@@ -135,6 +138,9 @@ function Router() {
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
       <Route path="/admin/crm" component={CrmDashboard} />
       <Route path="/admin/concierge" component={ConciergeDashboard} />
+      <Route path="/admin/founder-videos" component={FounderVideoList} />
+      <Route path="/admin/founder-videos/new" component={FounderVideoNew} />
+      <Route path="/v/:token" component={FounderVideoWatch} />
       <Route path="/excel-audit" component={ExcelAudit} />
       <Route path="/excel-audit-tool" component={ExcelAuditWorkingTool} />
       <Route path={"/about"} component={About} />
