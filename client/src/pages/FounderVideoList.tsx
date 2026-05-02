@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle, BarChart2, AlertTriangle } from "lucide-react";
+import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle, BarChart2, AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -39,6 +39,22 @@ export default function FounderVideoList() {
     },
     onError: (err) => toast.error(err.message),
   });
+  const resendMutation = trpc.founderVideo.resend.useMutation({
+    onSuccess: () => {
+      void listQuery.refetch();
+      toast.success("Email resent — link extended 90 days");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const [resendingId, setResendingId] = useState<number | null>(null);
+
+  function handleResend(videoId: number): void {
+    setResendingId(videoId);
+    resendMutation.mutate(
+      { videoId },
+      { onSettled: () => setResendingId(null) },
+    );
+  }
 
   function copyLink(videoId: number, shareUrl: string): void {
     void navigator.clipboard.writeText(shareUrl).then(() => {
@@ -175,6 +191,22 @@ export default function FounderVideoList() {
                     )}
                     Copy link
                   </Button>
+                  {v.status === "ready" && (() => {
+                    const days = daysUntilExpiry(v.expiresAt);
+                    if (days === null || days > 7) return null;
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResend(v.id)}
+                        disabled={resendingId === v.id}
+                        className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${resendingId === v.id ? "animate-spin" : ""}`} />
+                        {days <= 0 ? "Resend & renew" : "Resend email"}
+                      </Button>
+                    );
+                  })()}
                   <Button
                     variant="ghost"
                     size="sm"
