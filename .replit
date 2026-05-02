@@ -13,6 +13,7 @@ PORT = "5000"
 NODE_ENV = "development"
 JWT_SECRET = "dev_jwt_secret_change_in_prod"
 COOKIE_SECRET = "dev_cookie_secret_change_in_prod"
+APP_BASE_URL = "https://a86c0e8b-5de8-49b2-ad4c-8fdd6076524d-00-2fgnsv8moygb3.riker.replit.dev"
 
 [workflows]
 runButton = "Project"
