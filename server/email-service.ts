@@ -882,3 +882,75 @@ Watch it here: ${data.shareUrl}
     text,
   });
 }
+
+/**
+ * Notify the founder when a recipient watches their video (50% beacon).
+ */
+export async function sendFounderVideoWatchAlert(data: {
+  founderEmail: string;
+  recipientName: string;
+  recipientEmail: string;
+  subject: string;
+  durationWatchedSec: number | null;
+  watchedCount: number;
+  shareUrl: string;
+}): Promise<boolean> {
+  const isFirstWatch = data.watchedCount === 1;
+  const durStr = data.durationWatchedSec != null ? `${data.durationWatchedSec}s watched` : "watch started";
+  const emailSubject = isFirstWatch
+    ? `${data.recipientName} just watched your video — ${data.subject}`
+    : `${data.recipientName} watched your video again — ${data.subject}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f6;padding:32px 0;">
+    <tr><td align="center">
+      <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;">
+        <tr><td style="background:${isFirstWatch ? "linear-gradient(135deg,#10b981 0%,#059669 100%)" : "#1e293b"};padding:22px 28px;">
+          <p style="margin:0;font-size:12px;color:${isFirstWatch ? "#bbf7d0" : "#94a3b8"};text-transform:uppercase;letter-spacing:.06em;">GreenChainz · Founder Video</p>
+          <h2 style="margin:6px 0 0;color:#ffffff;font-size:20px;">${isFirstWatch ? "First watch" : `Watch #${data.watchedCount}`} — follow up now</h2>
+        </td></tr>
+        <tr><td style="padding:28px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:6px;padding:18px;margin-bottom:20px;">
+            <tr><td>
+              <div style="margin-bottom:10px;"><span style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Recipient</span><br/><strong style="color:#0f172a;">${data.recipientName}</strong> &lt;${data.recipientEmail}&gt;</div>
+              <div style="margin-bottom:10px;"><span style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Video</span><br/><strong style="color:#0f172a;">${data.subject}</strong></div>
+              <div style="margin-bottom:10px;"><span style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Engagement</span><br/><strong style="color:#0f172a;">${durStr} · total views: ${data.watchedCount}</strong></div>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 20px;color:#374151;font-size:14px;">
+            ${isFirstWatch
+              ? "They just watched for the first time — this is the best moment to follow up while you're top of mind."
+              : "They came back and watched again. High intent — reach out now."}
+          </p>
+          <a href="mailto:${data.recipientEmail}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:11px 26px;border-radius:6px;font-size:14px;font-weight:600;margin-right:8px;">
+            Reply to ${data.recipientName}
+          </a>
+          <a href="${data.shareUrl}" style="display:inline-block;background:#f1f5f9;color:#374151;text-decoration:none;padding:11px 26px;border-radius:6px;font-size:14px;font-weight:600;">
+            View video page
+          </a>
+        </td></tr>
+        <tr><td style="padding:16px 28px;border-top:1px solid #e5e7eb;text-align:center;">
+          <p style="margin:0;color:#9ca3af;font-size:12px;">GreenChainz · Founder Video Alerts</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  const text = `${isFirstWatch ? "First watch" : `Watch #${data.watchedCount}`}: ${data.recipientName} (${data.recipientEmail}) just watched your video "${data.subject}" — ${durStr}.
+
+Reply: mailto:${data.recipientEmail}
+Watch page: ${data.shareUrl}`;
+
+  return sendEmail({
+    to: data.founderEmail,
+    subject: emailSubject,
+    html,
+    text,
+  });
+}
