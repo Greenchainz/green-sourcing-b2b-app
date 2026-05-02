@@ -189,6 +189,41 @@ export const founderVideoRouter = router({
       }));
     }),
 
+  resend: adminProcedure
+    .input(z.object({ videoId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      const [video] = await db
+        .select()
+        .from(founderVideos)
+        .where(and(eq(founderVideos.id, input.videoId), eq(founderVideos.ownerUserId, ctx.user.id)))
+        .limit(1);
+
+      if (!video) throw new TRPCError({ code: "NOT_FOUND", message: "Video not found" });
+      if (video.status !== "ready") throw new TRPCError({ code: "BAD_REQUEST", message: "Video is not ready to send" });
+
+      const newExpiresAt = new Date(Date.now() + DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+      await db
+        .update(founderVideos)
+        .set({ expiresAt: newExpiresAt })
+        .where(eq(founderVideos.id, video.id));
+
+      const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
+
+      void sendFounderVideoEmail({
+        recipientEmail: video.recipientEmail,
+        recipientName: video.recipientName,
+        subject: video.subject,
+        shareUrl,
+        founderName: ctx.user.name ?? "Jerit Norville",
+      }).catch((err) => console.error("[founderVideo.resend] email failed:", err));
+
+      return { ok: true, newExpiresAt };
+    }),
+
   delete: adminProcedure
     .input(z.object({ videoId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
