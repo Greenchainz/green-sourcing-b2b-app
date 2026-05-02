@@ -64,6 +64,7 @@ export async function transcribeFounderVideo(videoId: number): Promise<void> {
   }
 
   try {
+    // Download the blob — Whisper needs a File-like input.
     const readUrl = generateReadSasUrl(video.blobKey);
     const response = await fetch(readUrl);
     if (!response.ok) {
@@ -71,6 +72,7 @@ export async function transcribeFounderVideo(videoId: number): Promise<void> {
     }
     const arrayBuffer = await response.arrayBuffer();
 
+    // Whisper expects a File. Node 20+ provides one globally.
     const file = new File([Buffer.from(arrayBuffer)], `${videoId}.webm`, { type: "video/webm" });
 
     const result = await whisper.client.audio.transcriptions.create({

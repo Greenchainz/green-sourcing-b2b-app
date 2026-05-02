@@ -1837,6 +1837,7 @@ export const appSettings = pgTable("app_settings", {
 export type AppSetting = typeof appSettings.$inferSelect;
 
 // ── Founder Video Messaging ───────────────────────────────────────────────────
+// ── Founder Videos (async video messaging from founder to suppliers/architects) ──
 export const founderVideoStatusEnum = pgEnum("founder_video_status", ["draft", "ready", "deleted"]);
 export const founderVideoTranscriptStatusEnum = pgEnum("founder_video_transcript_status", [
   "pending", "done", "failed",

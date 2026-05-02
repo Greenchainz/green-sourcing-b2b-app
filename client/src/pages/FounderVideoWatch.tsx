@@ -33,6 +33,7 @@ export default function FounderVideoWatch() {
       const total = video.duration;
       if (!total || beaconFiredRef.current) return;
 
+      // Fire beacon once at 50% watched
       if (watched / total >= 0.5) {
         beaconFiredRef.current = true;
         logViewMutation.mutate({

@@ -39,6 +39,7 @@ export default function FounderVideoNew() {
 
     setIsUploading(true);
     try {
+      // Step 1: create draft + get SAS upload URL
       const created = await createMutation.mutateAsync({
         recipientEmail: recipientEmail.trim(),
         recipientName: recipientName.trim(),
@@ -46,6 +47,7 @@ export default function FounderVideoNew() {
         note: note.trim() || undefined,
       });
 
+      // Step 2: PUT blob directly to Azure
       const putRes = await fetch(created.uploadUrl, {
         method: "PUT",
         headers: {
@@ -60,6 +62,7 @@ export default function FounderVideoNew() {
         throw new Error(`Upload failed (${putRes.status}): ${txt.slice(0, 200)}`);
       }
 
+      // Step 3: finalize → triggers transcription + email
       const finalized = await finalizeMutation.mutateAsync({
         videoId: created.videoId,
         durationSec,

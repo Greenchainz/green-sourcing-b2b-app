@@ -21,6 +21,14 @@ import { sendFounderVideoEmail } from "../email-service";
  * Async 60-second videos from the founder to suppliers / architects.
  * Browser records → uploads to Azure Blob via SAS → recipient gets a
  * personalized share link → AI auto-transcribes → owner sees view stats.
+ *
+ * Procedures:
+ *   founderVideo.create       — admin creates a draft + returns SAS upload URL
+ *   founderVideo.finalize     — admin marks upload complete; kicks off transcription + email
+ *   founderVideo.list         — admin lists their sent videos with view counts
+ *   founderVideo.delete       — admin deletes a video (cascades views)
+ *   founderVideo.publicGet    — public watch page reads metadata + read SAS
+ *   founderVideo.publicLogView— public beacon when recipient watches
  */
 
 const SHARE_TOKEN_LENGTH = 16;
@@ -28,6 +36,10 @@ const DEFAULT_RETENTION_DAYS = 90;
 const MAX_DURATION_SEC = 90;
 
 export const founderVideoRouter = router({
+const MAX_DURATION_SEC = 90; // accept slightly over 60 for trim slack
+
+export const founderVideoRouter = router({
+  // ── Founder: create a video draft + return upload SAS URL ─────────────────
   create: adminProcedure
     .input(
       z.object({
@@ -61,6 +73,8 @@ export const founderVideoRouter = router({
           shareToken,
           blobKey: "",
           blobUrl: "",
+          blobKey: "", // filled below
+          blobUrl: "", // filled below
           durationSec: 0,
           transcriptStatus: "pending",
           status: "draft",
@@ -89,6 +103,7 @@ export const founderVideoRouter = router({
       };
     }),
 
+  // ── Founder: mark upload complete; transcribe + email recipient ───────────
   finalize: adminProcedure
     .input(
       z.object({
@@ -127,10 +142,12 @@ export const founderVideoRouter = router({
 
       const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
 
+      // Fire-and-forget: transcription
       void transcribeFounderVideo(input.videoId).catch((err) =>
         console.error(`[founderVideo.finalize] transcribe failed:`, err),
       );
 
+      // Fire-and-forget: email
       if (input.sendEmail) {
         void sendFounderVideoEmail({
           recipientEmail: video.recipientEmail,
@@ -148,6 +165,7 @@ export const founderVideoRouter = router({
       };
     }),
 
+  // ── Founder: list my sent videos with view stats ──────────────────────────
   list: adminProcedure
     .input(
       z.object({
@@ -224,6 +242,7 @@ export const founderVideoRouter = router({
       return { ok: true, newExpiresAt };
     }),
 
+  // ── Founder: delete a video ───────────────────────────────────────────────
   delete: adminProcedure
     .input(z.object({ videoId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
@@ -244,6 +263,7 @@ export const founderVideoRouter = router({
       return { ok: true };
     }),
 
+  // ── Public: watch page metadata + short-lived read SAS URL ────────────────
   publicGet: publicProcedure
     .input(z.object({ token: z.string().min(8).max(32) }))
     .query(async ({ input }) => {
@@ -371,6 +391,7 @@ export const founderVideoRouter = router({
       };
     }),
 
+  // ── Public: log a view (called once per session by watch page) ────────────
   publicLogView: publicProcedure
     .input(
       z.object({
@@ -391,6 +412,7 @@ export const founderVideoRouter = router({
           shareToken: founderVideos.shareToken,
           watchedCount: founderVideos.watchedCount,
         })
+        .select({ id: founderVideos.id })
         .from(founderVideos)
         .where(eq(founderVideos.shareToken, input.token))
         .limit(1);

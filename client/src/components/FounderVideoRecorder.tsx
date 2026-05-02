@@ -136,6 +136,7 @@ export function FounderVideoRecorder({ onSend, isSending }: FounderVideoRecorder
     }
   }, [state, onSend]);
 
+  // Display URL for the <video> in "recorded" state
   const playbackUrl = state.kind === "recorded" ? state.previewUrl : null;
 
   return (
