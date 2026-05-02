@@ -265,7 +265,14 @@ export const founderVideoRouter = router({
       if (!db) return { ok: false };
 
       const [video] = await db
-        .select({ id: founderVideos.id })
+        .select({
+          id: founderVideos.id,
+          subject: founderVideos.subject,
+          recipientEmail: founderVideos.recipientEmail,
+          recipientName: founderVideos.recipientName,
+          shareToken: founderVideos.shareToken,
+          watchedCount: founderVideos.watchedCount,
+        })
         .from(founderVideos)
         .where(eq(founderVideos.shareToken, input.token))
         .limit(1);
@@ -291,6 +298,20 @@ export const founderVideoRouter = router({
           lastWatchedAt: now,
         })
         .where(eq(founderVideos.id, video.id));
+
+      // Fire-and-forget: alert the founder that their video was watched
+      const newWatchedCount = video.watchedCount + 1;
+      const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
+
+      void sendFounderVideoWatchAlert({
+        founderEmail: FOUNDER_EMAIL,
+        recipientName: video.recipientName,
+        recipientEmail: video.recipientEmail,
+        subject: video.subject,
+        durationWatchedSec: input.durationWatchedSec ?? null,
+        watchedCount: newWatchedCount,
+        shareUrl,
+      }).catch((err) => console.error("[founderVideo.publicLogView] watch alert failed:", err));
 
       return { ok: true };
     }),
