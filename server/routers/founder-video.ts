@@ -253,6 +253,88 @@ export const founderVideoRouter = router({
       };
     }),
 
+  analytics: adminProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const videos = await db
+        .select({
+          id: founderVideos.id,
+          recipientEmail: founderVideos.recipientEmail,
+          recipientName: founderVideos.recipientName,
+          subject: founderVideos.subject,
+          durationSec: founderVideos.durationSec,
+          status: founderVideos.status,
+          watchedCount: founderVideos.watchedCount,
+          firstWatchedAt: founderVideos.firstWatchedAt,
+          lastWatchedAt: founderVideos.lastWatchedAt,
+          createdAt: founderVideos.createdAt,
+          shareToken: founderVideos.shareToken,
+          avgWatchSec: sql<number>`COALESCE(AVG(${founderVideoViews.durationWatchedSec}), 0)`,
+          viewCount: sql<number>`COUNT(${founderVideoViews.id})`,
+        })
+        .from(founderVideos)
+        .leftJoin(founderVideoViews, eq(founderVideoViews.videoId, founderVideos.id))
+        .where(and(eq(founderVideos.ownerUserId, ctx.user.id), eq(founderVideos.status, "ready")))
+        .groupBy(founderVideos.id)
+        .orderBy(desc(founderVideos.createdAt));
+
+      const videoIds = videos.map((v) => v.id);
+      const sessions =
+        videoIds.length === 0
+          ? []
+          : await db
+              .select({
+                videoId: founderVideoViews.videoId,
+                viewedAt: founderVideoViews.viewedAt,
+                durationWatchedSec: founderVideoViews.durationWatchedSec,
+              })
+              .from(founderVideoViews)
+              .where(sql`${founderVideoViews.videoId} = ANY(ARRAY[${sql.join(videoIds.map((id) => sql`${id}`), sql`, `)}]::int[])`)
+              .orderBy(desc(founderVideoViews.viewedAt));
+
+      const sessionsByVideo = new Map<number, typeof sessions>();
+      for (const s of sessions) {
+        if (!sessionsByVideo.has(s.videoId)) sessionsByVideo.set(s.videoId, []);
+        sessionsByVideo.get(s.videoId)!.push(s);
+      }
+
+      const enriched = videos.map((v) => ({
+        ...v,
+        avgWatchSec: Number(v.avgWatchSec),
+        viewCount: Number(v.viewCount),
+        watchThroughPct:
+          v.durationSec > 0 ? Math.min(100, Math.round((Number(v.avgWatchSec) / v.durationSec) * 100)) : 0,
+        sessions: (sessionsByVideo.get(v.id) ?? []).map((s) => ({
+          viewedAt: s.viewedAt,
+          durationWatchedSec: s.durationWatchedSec,
+          pct:
+            v.durationSec > 0 && s.durationWatchedSec != null
+              ? Math.min(100, Math.round((s.durationWatchedSec / v.durationSec) * 100))
+              : null,
+        })),
+        shareUrl: `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${v.shareToken}`,
+      }));
+
+      const totalViews = enriched.reduce((acc, v) => acc + v.viewCount, 0);
+      const watchedVideos = enriched.filter((v) => v.viewCount > 0);
+      const overallAvgPct =
+        watchedVideos.length > 0
+          ? Math.round(watchedVideos.reduce((acc, v) => acc + v.watchThroughPct, 0) / watchedVideos.length)
+          : 0;
+
+      return {
+        summary: {
+          totalVideos: enriched.length,
+          totalViews,
+          overallAvgPct,
+          openedCount: watchedVideos.length,
+        },
+        videos: enriched,
+      };
+    }),
+
   publicLogView: publicProcedure
     .input(
       z.object({

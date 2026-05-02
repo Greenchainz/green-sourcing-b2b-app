@@ -89,6 +89,7 @@ const Features = lazy(() => import("./pages/Features"));
 const FounderVideoNew = lazy(() => import("./pages/FounderVideoNew"));
 const FounderVideoList = lazy(() => import("./pages/FounderVideoList"));
 const FounderVideoWatch = lazy(() => import("./pages/FounderVideoWatch"));
+const FounderVideoDashboard = lazy(() => import("./pages/FounderVideoDashboard"));
 
 function Router() {
   return (
@@ -139,6 +140,7 @@ function Router() {
       <Route path="/admin/crm" component={CrmDashboard} />
       <Route path="/admin/concierge" component={ConciergeDashboard} />
       <Route path="/admin/founder-videos" component={FounderVideoList} />
+      <Route path="/admin/founder-videos/analytics" component={FounderVideoDashboard} />
       <Route path="/admin/founder-videos/new" component={FounderVideoNew} />
       <Route path="/v/:token" component={FounderVideoWatch} />
       <Route path="/excel-audit" component={ExcelAudit} />
