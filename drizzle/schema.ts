@@ -1325,6 +1325,7 @@ export const materialAssemblySpecs = pgTable(
     epdNumberIdx: index("idx_assembly_epd_number").on(table.epdNumber),
     carbonTierIdx: index("idx_assembly_carbon_tier").on(table.carbonTier),
     assemblyTypeTagsIdx: index("idx_assembly_type_tags").on(table.assemblyTypeTags),
+    nameUnique: uniqueIndex("idx_assembly_specs_name_unique").on(table.name),
   })
 );
 
