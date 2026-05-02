@@ -1,11 +1,12 @@
 /**
  * Founder Video Storage
  *
- * Helpers to generate SAS-signed URLs for the `founder-videos` Azure Blob
- * container. Browser uploads directly to Azure (no server bandwidth);
- * watch page reads via short-lived read SAS.
+ * Production: Azure Blob Storage (AZURE_STORAGE_CONNECTION_STRING required).
+ *             Browser uploads directly via SAS URL — no server bandwidth used.
  *
- * Container: founder-videos (private, manually created in Azure Portal)
+ * Development fallback: local disk at tmp/founder-videos/ served via
+ *             PUT/GET /api/dev/fv-upload/* and /api/dev/fv/*
+ *             Activated automatically when AZURE_STORAGE_CONNECTION_STRING is not set.
  */
 
 import {
@@ -17,27 +18,31 @@ import {
 
 const CONTAINER_NAME = "founder-videos";
 
-/**
- * Parse AccountName + AccountKey from the connection string.
- * Throws if the env var is missing.
- */
+export function isLocalMode(): boolean {
+  return !process.env.AZURE_STORAGE_CONNECTION_STRING;
+}
+
+/** Base URL for local dev routes — uses REPLIT_DEV_DOMAIN if available. */
+function localBase(): string {
+  const domain = process.env.REPLIT_DEV_DOMAIN;
+  if (domain) return `https://${domain}`;
+  return `http://localhost:${process.env.PORT ?? 5000}`;
+}
+
+// ── Azure helpers ─────────────────────────────────────────────────────────────
+
 function getSharedKeyCredential(): {
   accountName: string;
   credential: StorageSharedKeyCredential;
   blobEndpoint: string;
 } {
-  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-  if (!connectionString) {
-    throw new Error("AZURE_STORAGE_CONNECTION_STRING not set");
-  }
+  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING!;
 
   const parts: Record<string, string> = {};
   for (const piece of connectionString.split(";")) {
     const eq = piece.indexOf("=");
     if (eq === -1) continue;
-    const key = piece.slice(0, eq);
-    const value = piece.slice(eq + 1);
-    parts[key] = value;
+    parts[piece.slice(0, eq)] = piece.slice(eq + 1);
   }
 
   const accountName = parts["AccountName"];
@@ -56,25 +61,31 @@ function getSharedKeyCredential(): {
   };
 }
 
-/** Ensure the container exists. Idempotent. */
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/** Ensure storage container / local directory exists. Idempotent. */
 export async function ensureFounderVideosContainer(): Promise<void> {
-  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-  if (!connectionString) {
-    throw new Error("AZURE_STORAGE_CONNECTION_STRING not set");
+  if (isLocalMode()) {
+    const { mkdirSync } = await import("fs");
+    mkdirSync("tmp/founder-videos", { recursive: true });
+    return;
   }
-  const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-  const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
-  await containerClient.createIfNotExists();
+  const cs = process.env.AZURE_STORAGE_CONNECTION_STRING!;
+  const client = BlobServiceClient.fromConnectionString(cs);
+  await client.getContainerClient(CONTAINER_NAME).createIfNotExists();
 }
 
 /**
- * Generate a write-only SAS URL the browser uses to PUT the video blob.
- * Valid for 30 minutes.
+ * Generate a URL the browser uses to PUT the video blob.
+ * Azure: SAS upload URL (30-min window, write-only).
+ * Local: /api/dev/fv-upload/<blobKey>
  */
 export function generateUploadSasUrl(blobKey: string): string {
-  const { accountName, credential, blobEndpoint } = getSharedKeyCredential();
-  void accountName;
+  if (isLocalMode()) {
+    return `${localBase()}/api/dev/fv-upload/${blobKey}`;
+  }
 
+  const { credential, blobEndpoint } = getSharedKeyCredential();
   const startsOn = new Date(Date.now() - 5 * 60 * 1000);
   const expiresOn = new Date(Date.now() + 30 * 60 * 1000);
 
@@ -94,12 +105,16 @@ export function generateUploadSasUrl(blobKey: string): string {
 }
 
 /**
- * Generate a short-lived read SAS URL for the watch page.
- * Valid for 24 hours.
+ * Generate a URL for the watch page to stream the video.
+ * Azure: read SAS URL (24-hour window).
+ * Local: /api/dev/fv/<blobKey>
  */
 export function generateReadSasUrl(blobKey: string): string {
-  const { credential, blobEndpoint } = getSharedKeyCredential();
+  if (isLocalMode()) {
+    return `${localBase()}/api/dev/fv/${blobKey}`;
+  }
 
+  const { credential, blobEndpoint } = getSharedKeyCredential();
   const expiresOn = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   const sas = generateBlobSASQueryParameters(
@@ -115,13 +130,16 @@ export function generateReadSasUrl(blobKey: string): string {
   return `${blobEndpoint}/${CONTAINER_NAME}/${blobKey}?${sas}`;
 }
 
-/** Build the canonical (no-SAS) blob URL — stored in DB. */
+/** Canonical (no-SAS) blob URL stored in DB. */
 export function buildBlobUrl(blobKey: string): string {
+  if (isLocalMode()) {
+    return `${localBase()}/api/dev/fv/${blobKey}`;
+  }
   const { blobEndpoint } = getSharedKeyCredential();
   return `${blobEndpoint}/${CONTAINER_NAME}/${blobKey}`;
 }
 
-/** Convenience: blobKey for a video — yyyy-mm/<videoId>.webm */
+/** yyyy-mm/<videoId>.webm */
 export function blobKeyForVideo(videoId: number, createdAt: Date = new Date()): string {
   const yyyy = createdAt.getUTCFullYear();
   const mm = String(createdAt.getUTCMonth() + 1).padStart(2, "0");
