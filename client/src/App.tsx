@@ -176,7 +176,6 @@ const PROTECTED_PREFIXES = [
   "/subscription",
   "/admin/",
   "/dashboard",
-  "/search",
   "/rfqs",
 ];
 

@@ -3,9 +3,15 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle, BarChart2 } from "lucide-react";
+import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle, BarChart2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+
+function daysUntilExpiry(expiresAt: Date | string | null | undefined): number | null {
+  if (!expiresAt) return null;
+  const d = typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
+  return Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
 
 function formatRelative(date: Date | string | null | undefined): string {
   if (!date) return "—";
@@ -123,6 +129,22 @@ export default function FounderVideoList() {
                     {v.transcriptStatus === "failed" && (
                       <Badge variant="destructive">Transcribe failed</Badge>
                     )}
+                    {(() => {
+                      const days = daysUntilExpiry(v.expiresAt);
+                      if (days === null || days > 7) return null;
+                      if (days <= 0) return (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          Expired
+                        </Badge>
+                      );
+                      return (
+                        <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400">
+                          <AlertTriangle className="w-3 h-3" />
+                          Expires in {days}d
+                        </Badge>
+                      );
+                    })()}
                   </div>
                 </div>
               </CardHeader>
