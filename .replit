@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash"]
+modules = ["nodejs-20", "web", "bash", "postgresql-16"]
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
@@ -41,6 +41,10 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
