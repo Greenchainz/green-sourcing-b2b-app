@@ -33,9 +33,6 @@ import { sendFounderVideoEmail } from "../email-service";
 
 const SHARE_TOKEN_LENGTH = 16;
 const DEFAULT_RETENTION_DAYS = 90;
-const MAX_DURATION_SEC = 90;
-
-export const founderVideoRouter = router({
 const MAX_DURATION_SEC = 90; // accept slightly over 60 for trim slack
 
 export const founderVideoRouter = router({
@@ -71,8 +68,6 @@ export const founderVideoRouter = router({
           subject: input.subject,
           note: input.note ?? null,
           shareToken,
-          blobKey: "",
-          blobUrl: "",
           blobKey: "", // filled below
           blobUrl: "", // filled below
           durationSec: 0,
@@ -412,7 +407,6 @@ export const founderVideoRouter = router({
           shareToken: founderVideos.shareToken,
           watchedCount: founderVideos.watchedCount,
         })
-        .select({ id: founderVideos.id })
         .from(founderVideos)
         .where(eq(founderVideos.shareToken, input.token))
         .limit(1);
