@@ -53,6 +53,59 @@ uploadRouter.post("/user/avatar", avatarUpload.single("avatar"), async (req, res
   }
 });
 
+// ── Material image upload (supplier self-serve) ────────────────────────────
+const materialImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Use JPEG, PNG, or WebP only.'));
+  },
+});
+
+uploadRouter.post("/supplier/upload-image", materialImageUpload.single("file"), async (req, res) => {
+  try {
+    const user = await sdk.authenticateRequest(req);
+    if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+
+    if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
+
+    const materialIdRaw = req.body?.materialId;
+    const materialId = materialIdRaw ? parseInt(materialIdRaw, 10) : NaN;
+    if (isNaN(materialId)) { res.status(400).json({ error: "materialId required" }); return; }
+
+    const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const blobName = `material-images/${user.id}/${materialId}/${Date.now()}.${ext}`;
+
+    let imageUrl: string;
+    try {
+      const { url } = await storagePut(blobName, req.file.buffer, req.file.mimetype);
+      imageUrl = url;
+    } catch (storageErr) {
+      console.warn("[material-image] Azure storage not configured, skipping blob upload");
+      res.status(503).json({ error: "Image storage not configured. Set AZURE_STORAGE_CONNECTION_STRING." });
+      return;
+    }
+
+    const { getDb } = await import("./db");
+    const db = await getDb();
+    if (db) {
+      const { materials } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      await db.update(materials as any).set({
+        imageUrl,
+        imageBlobName: blobName,
+        imageUpdatedAt: new Date(),
+      }).where(eq(materials.id, materialId));
+    }
+
+    res.json({ success: true, imageUrl, blobName, materialId });
+  } catch (err) {
+    console.error("[material-image upload]", err);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
+
 uploadRouter.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {

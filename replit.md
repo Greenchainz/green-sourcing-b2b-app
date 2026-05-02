@@ -66,9 +66,27 @@ Key variables:
 - The server listens on `0.0.0.0:5000` in development
 - Vite is configured with `allowedHosts: true` for proxy compatibility
 
+## New Components & Routers (added May 2026)
+
+- `server/featured-router.ts` — Featured placement tRPC router (`featured.*` procedures); admin can set `isFeatured` + `featuredUntil` on materials/suppliers
+- `server/manufacturer-search-router.ts` — Public manufacturer search (`manufacturerSearch.search`); used on supplier landing page
+- `client/src/components/ArchitectMaterialCard.tsx` — Architect-first material card with LEED credit callouts, carbon bar, basket state
+- `client/src/components/FeaturedRow.tsx` — Horizontal scroll row for featured materials in catalog
+- `client/src/components/MaterialImageUpload.tsx` — Drag-and-drop image uploader (POSTs to `/api/supplier/upload-image`)
+- Image upload endpoint added to `server/upload-route.ts` at `POST /api/supplier/upload-image`
+
+## Database Columns Added
+
+- `materials`: `imageUrl`, `imageBlobName`, `imageUpdatedAt`, `isFeatured`, `featuredUntil`
+- `suppliers`: `isFeatured`, `featuredUntil`
+- `price_history`: created (required by price-trends service)
+
 ## Notes
 
 - Azure Key Vault secrets are only loaded in production (Managed Identity). In dev, use `.env.local`.
 - DB schema errors on startup are expected if `DATABASE_URL` is not set — the app degrades gracefully.
 - Schedulers (RFQ, notifications, EPD sync) run in the background and log errors if DB is unavailable.
 - WebPubSub warnings are expected if `AZURE_WEBPUBSUB_CONNECTION_STRING` is not set.
+- `materials.list` and `materials.semanticSearch` are public — catalog browses without login.
+- Material images require `AZURE_STORAGE_CONNECTION_STRING` + a `material-images` blob container with public read access.
+- Analytics script (`%VITE_ANALYTICS_ENDPOINT%`) removed from `client/index.html` — was causing server URIError crashes.
