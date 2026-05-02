@@ -33,6 +33,8 @@ import { microsoftSubscriptionRouter } from './routers/microsoft-subscription-ro
 import { notificationsRouter } from './routers/notifications-router';
 import { authRouter, rfqInternalRouter, agentRouter, leadsRouter, materialSwapsRouter } from './routers/misc-router';
 import { autodeskRouter } from './routers/autodesk-router';
+import { featuredRouter } from './featured-router';
+import { manufacturerSearchRouter } from './manufacturer-search-router';
 
 export const appRouter = router({
   system: systemRouter,
@@ -75,6 +77,8 @@ export const appRouter = router({
   concierge: conciergeRouter,
   suggestions: suggestionsRouter,
   autodesk: autodeskRouter,
+  featured: featuredRouter,
+  manufacturerSearch: manufacturerSearchRouter,
 });
 
 export type AppRouter = typeof appRouter;
