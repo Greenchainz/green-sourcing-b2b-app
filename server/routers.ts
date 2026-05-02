@@ -35,6 +35,7 @@ import { authRouter, rfqInternalRouter, agentRouter, leadsRouter, materialSwapsR
 import { autodeskRouter } from './routers/autodesk-router';
 import { featuredRouter } from './featured-router';
 import { manufacturerSearchRouter } from './manufacturer-search-router';
+import { founderVideoRouter } from './routers/founder-video';
 
 export const appRouter = router({
   system: systemRouter,
@@ -79,6 +80,7 @@ export const appRouter = router({
   autodesk: autodeskRouter,
   featured: featuredRouter,
   manufacturerSearch: manufacturerSearchRouter,
+  founderVideo: founderVideoRouter,
 });
 
 export type AppRouter = typeof appRouter;
