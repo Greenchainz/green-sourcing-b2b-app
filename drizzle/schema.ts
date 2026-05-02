@@ -1325,6 +1325,7 @@ export const materialAssemblySpecs = pgTable(
     epdNumberIdx: index("idx_assembly_epd_number").on(table.epdNumber),
     carbonTierIdx: index("idx_assembly_carbon_tier").on(table.carbonTier),
     assemblyTypeTagsIdx: index("idx_assembly_type_tags").on(table.assemblyTypeTags),
+    nameUnique: uniqueIndex("idx_assembly_specs_name_unique").on(table.name),
   })
 );
 
@@ -1835,6 +1836,7 @@ export const appSettings = pgTable("app_settings", {
 
 export type AppSetting = typeof appSettings.$inferSelect;
 
+// ── Founder Video Messaging ───────────────────────────────────────────────────
 // ── Founder Videos (async video messaging from founder to suppliers/architects) ──
 export const founderVideoStatusEnum = pgEnum("founder_video_status", ["draft", "ready", "deleted"]);
 export const founderVideoTranscriptStatusEnum = pgEnum("founder_video_transcript_status", [

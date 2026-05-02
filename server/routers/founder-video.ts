@@ -33,6 +33,9 @@ import { sendFounderVideoEmail } from "../email-service";
 
 const SHARE_TOKEN_LENGTH = 16;
 const DEFAULT_RETENTION_DAYS = 90;
+const MAX_DURATION_SEC = 90;
+
+export const founderVideoRouter = router({
 const MAX_DURATION_SEC = 90; // accept slightly over 60 for trim slack
 
 export const founderVideoRouter = router({
@@ -68,6 +71,8 @@ export const founderVideoRouter = router({
           subject: input.subject,
           note: input.note ?? null,
           shareToken,
+          blobKey: "",
+          blobUrl: "",
           blobKey: "", // filled below
           blobUrl: "", // filled below
           durationSec: 0,
@@ -189,6 +194,7 @@ export const founderVideoRouter = router({
           firstWatchedAt: founderVideos.firstWatchedAt,
           lastWatchedAt: founderVideos.lastWatchedAt,
           createdAt: founderVideos.createdAt,
+          expiresAt: founderVideos.expiresAt,
         })
         .from(founderVideos)
         .where(eq(founderVideos.ownerUserId, ctx.user.id))
@@ -199,6 +205,41 @@ export const founderVideoRouter = router({
         ...r,
         shareUrl: `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${r.shareToken}`,
       }));
+    }),
+
+  resend: adminProcedure
+    .input(z.object({ videoId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      const [video] = await db
+        .select()
+        .from(founderVideos)
+        .where(and(eq(founderVideos.id, input.videoId), eq(founderVideos.ownerUserId, ctx.user.id)))
+        .limit(1);
+
+      if (!video) throw new TRPCError({ code: "NOT_FOUND", message: "Video not found" });
+      if (video.status !== "ready") throw new TRPCError({ code: "BAD_REQUEST", message: "Video is not ready to send" });
+
+      const newExpiresAt = new Date(Date.now() + DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+      await db
+        .update(founderVideos)
+        .set({ expiresAt: newExpiresAt })
+        .where(eq(founderVideos.id, video.id));
+
+      const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
+
+      void sendFounderVideoEmail({
+        recipientEmail: video.recipientEmail,
+        recipientName: video.recipientName,
+        subject: video.subject,
+        shareUrl,
+        founderName: ctx.user.name ?? "Jerit Norville",
+      }).catch((err) => console.error("[founderVideo.resend] email failed:", err));
+
+      return { ok: true, newExpiresAt };
     }),
 
   // ── Founder: delete a video ───────────────────────────────────────────────
@@ -268,6 +309,88 @@ export const founderVideoRouter = router({
       };
     }),
 
+  analytics: adminProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const videos = await db
+        .select({
+          id: founderVideos.id,
+          recipientEmail: founderVideos.recipientEmail,
+          recipientName: founderVideos.recipientName,
+          subject: founderVideos.subject,
+          durationSec: founderVideos.durationSec,
+          status: founderVideos.status,
+          watchedCount: founderVideos.watchedCount,
+          firstWatchedAt: founderVideos.firstWatchedAt,
+          lastWatchedAt: founderVideos.lastWatchedAt,
+          createdAt: founderVideos.createdAt,
+          shareToken: founderVideos.shareToken,
+          avgWatchSec: sql<number>`COALESCE(AVG(${founderVideoViews.durationWatchedSec}), 0)`,
+          viewCount: sql<number>`COUNT(${founderVideoViews.id})`,
+        })
+        .from(founderVideos)
+        .leftJoin(founderVideoViews, eq(founderVideoViews.videoId, founderVideos.id))
+        .where(and(eq(founderVideos.ownerUserId, ctx.user.id), eq(founderVideos.status, "ready")))
+        .groupBy(founderVideos.id)
+        .orderBy(desc(founderVideos.createdAt));
+
+      const videoIds = videos.map((v) => v.id);
+      const sessions =
+        videoIds.length === 0
+          ? []
+          : await db
+              .select({
+                videoId: founderVideoViews.videoId,
+                viewedAt: founderVideoViews.viewedAt,
+                durationWatchedSec: founderVideoViews.durationWatchedSec,
+              })
+              .from(founderVideoViews)
+              .where(sql`${founderVideoViews.videoId} = ANY(ARRAY[${sql.join(videoIds.map((id) => sql`${id}`), sql`, `)}]::int[])`)
+              .orderBy(desc(founderVideoViews.viewedAt));
+
+      const sessionsByVideo = new Map<number, typeof sessions>();
+      for (const s of sessions) {
+        if (!sessionsByVideo.has(s.videoId)) sessionsByVideo.set(s.videoId, []);
+        sessionsByVideo.get(s.videoId)!.push(s);
+      }
+
+      const enriched = videos.map((v) => ({
+        ...v,
+        avgWatchSec: Number(v.avgWatchSec),
+        viewCount: Number(v.viewCount),
+        watchThroughPct:
+          v.durationSec > 0 ? Math.min(100, Math.round((Number(v.avgWatchSec) / v.durationSec) * 100)) : 0,
+        sessions: (sessionsByVideo.get(v.id) ?? []).map((s) => ({
+          viewedAt: s.viewedAt,
+          durationWatchedSec: s.durationWatchedSec,
+          pct:
+            v.durationSec > 0 && s.durationWatchedSec != null
+              ? Math.min(100, Math.round((s.durationWatchedSec / v.durationSec) * 100))
+              : null,
+        })),
+        shareUrl: `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${v.shareToken}`,
+      }));
+
+      const totalViews = enriched.reduce((acc, v) => acc + v.viewCount, 0);
+      const watchedVideos = enriched.filter((v) => v.viewCount > 0);
+      const overallAvgPct =
+        watchedVideos.length > 0
+          ? Math.round(watchedVideos.reduce((acc, v) => acc + v.watchThroughPct, 0) / watchedVideos.length)
+          : 0;
+
+      return {
+        summary: {
+          totalVideos: enriched.length,
+          totalViews,
+          overallAvgPct,
+          openedCount: watchedVideos.length,
+        },
+        videos: enriched,
+      };
+    }),
+
   // ── Public: log a view (called once per session by watch page) ────────────
   publicLogView: publicProcedure
     .input(
@@ -281,6 +404,14 @@ export const founderVideoRouter = router({
       if (!db) return { ok: false };
 
       const [video] = await db
+        .select({
+          id: founderVideos.id,
+          subject: founderVideos.subject,
+          recipientEmail: founderVideos.recipientEmail,
+          recipientName: founderVideos.recipientName,
+          shareToken: founderVideos.shareToken,
+          watchedCount: founderVideos.watchedCount,
+        })
         .select({ id: founderVideos.id })
         .from(founderVideos)
         .where(eq(founderVideos.shareToken, input.token))
@@ -307,6 +438,20 @@ export const founderVideoRouter = router({
           lastWatchedAt: now,
         })
         .where(eq(founderVideos.id, video.id));
+
+      // Fire-and-forget: alert the founder that their video was watched
+      const newWatchedCount = video.watchedCount + 1;
+      const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
+
+      void sendFounderVideoWatchAlert({
+        founderEmail: FOUNDER_EMAIL,
+        recipientName: video.recipientName,
+        recipientEmail: video.recipientEmail,
+        subject: video.subject,
+        durationWatchedSec: input.durationWatchedSec ?? null,
+        watchedCount: newWatchedCount,
+        shareUrl,
+      }).catch((err) => console.error("[founderVideo.publicLogView] watch alert failed:", err));
 
       return { ok: true };
     }),

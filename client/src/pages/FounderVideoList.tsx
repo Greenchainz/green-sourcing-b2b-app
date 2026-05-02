@@ -3,6 +3,16 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle, BarChart2, AlertTriangle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+
+function daysUntilExpiry(expiresAt: Date | string | null | undefined): number | null {
+  if (!expiresAt) return null;
+  const d = typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
+  return Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
 import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -33,6 +43,22 @@ export default function FounderVideoList() {
     },
     onError: (err) => toast.error(err.message),
   });
+  const resendMutation = trpc.founderVideo.resend.useMutation({
+    onSuccess: () => {
+      void listQuery.refetch();
+      toast.success("Email resent — link extended 90 days");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const [resendingId, setResendingId] = useState<number | null>(null);
+
+  function handleResend(videoId: number): void {
+    setResendingId(videoId);
+    resendMutation.mutate(
+      { videoId },
+      { onSettled: () => setResendingId(null) },
+    );
+  }
 
   function copyLink(videoId: number, shareUrl: string): void {
     void navigator.clipboard.writeText(shareUrl).then(() => {
@@ -53,6 +79,16 @@ export default function FounderVideoList() {
         <div>
           <h1 className="text-2xl font-bold">Founder Videos</h1>
           <p className="text-muted-foreground">Async videos sent to suppliers + architects.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/admin/founder-videos/analytics")}>
+            <BarChart2 className="w-4 h-4 mr-2" />
+            Analytics
+          </Button>
+          <Button onClick={() => navigate("/admin/founder-videos/new")}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Video
+          </Button>
         </div>
         <Button onClick={() => navigate("/admin/founder-videos/new")}>
           <Plus className="w-4 h-4 mr-2" />
@@ -117,6 +153,22 @@ export default function FounderVideoList() {
                     {v.transcriptStatus === "failed" && (
                       <Badge variant="destructive">Transcribe failed</Badge>
                     )}
+                    {(() => {
+                      const days = daysUntilExpiry(v.expiresAt);
+                      if (days === null || days > 7) return null;
+                      if (days <= 0) return (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          Expired
+                        </Badge>
+                      );
+                      return (
+                        <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400">
+                          <AlertTriangle className="w-3 h-3" />
+                          Expires in {days}d
+                        </Badge>
+                      );
+                    })()}
                   </div>
                 </div>
               </CardHeader>
@@ -147,6 +199,22 @@ export default function FounderVideoList() {
                     )}
                     Copy link
                   </Button>
+                  {v.status === "ready" && (() => {
+                    const days = daysUntilExpiry(v.expiresAt);
+                    if (days === null || days > 7) return null;
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResend(v.id)}
+                        disabled={resendingId === v.id}
+                        className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${resendingId === v.id ? "animate-spin" : ""}`} />
+                        {days <= 0 ? "Resend & renew" : "Resend email"}
+                      </Button>
+                    );
+                  })()}
                   <Button
                     variant="ghost"
                     size="sm"
