@@ -1,0 +1,56 @@
+ontent)
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+jnorv@jeritsmini MINGW64 /d/perplexitydownloads/green-sourcing-b2b-app (main)
+$ git push origin main
+Everything up-to-date
+
+jnorv@jeritsmini MINGW64 /d/perplexitydownloads/green-sourcing-b2b-app (main)
+$ git checkout --theirs client/src/components/FounderVideoRecorder.tsx
+git checkout --theirs client/src/pages/FounderVideoNew.tsx
+git checkout --theirs client/src/pages/FounderVideoWatch.tsx
+git checkout --theirs drizzle/schema.ts
+git checkout --theirs lib/founder-video-storage.ts
+git checkout --theirs server/routers.ts
+git checkout --theirs server/routers/founder-video.ts
+git checkout --theirs server/services/founder-video-transcribe.ts
+git add .
+git commit -m "resolve conflicts: accept Replit versions with schema + router additions"
+Updated 0 paths from the index
+Updated 0 paths from the index
+Updated 0 paths from the index
+Updated 0 paths from the index
+Updated 0 paths from the index
+Updated 0 paths from the index
+Updated 0 paths from the index
+Updated 0 paths from the index
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+  (commit or discard the untracked or modified content in submodules)
+        modified:   .claude/worktrees/blissful-boyd-8c6e96 (modified content, untracked content)
+        modified:   .claude/worktrees/hopeful-albattani-46cdd3 (modified content, untracked content)
+        modified:   .claude/worktrees/hopeful-archimedes-0969fe (modified content, untracked content)
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+jnorv@jeritsmini MINGW64 /d/perplexitydownloads/green-sourcing-b2b-app (main)
+$ git commit -a
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+  (commit or discard the untracked or modified content in submodules)
+        modified:   .claude/worktrees/blissful-boyd-8c6e96 (modified content, untracked content)
+        modified:   .claude/worktrees/hopeful-albattani-46cdd3 (modified content, untracked content)
+        modified:   .claude/worktrees/hopeful-archimedes-0969fe (modified content, untracked content)
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+jnorv@jeritsmi
