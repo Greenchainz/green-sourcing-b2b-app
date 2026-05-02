@@ -26,6 +26,8 @@ import { publicMaterialsRouter } from "../public-materials-api";
 import { registerPdfRoutes } from "../admin-routes/pdf-routes";
 import { registerMobileMessagesRoutes } from "../admin-routes/mobile-messages";
 import { startSchedulers } from "../scheduler";
+import { devFounderVideoRouter } from "../dev-founder-video-route";
+import { isLocalMode } from "../../lib/founder-video-storage";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -231,6 +233,10 @@ async function startServer() {
   app.post("/api/marketplace/webhook", handleWebhook);
   app.post("/api/microsoft/subscription-webhook", handleMicrosoftWebhook);
   app.use("/api", uploadRouter);
+  if (isLocalMode()) {
+    app.use("/api/dev", devFounderVideoRouter);
+    console.log("[dev-fv] Local video storage active — videos saved to tmp/founder-videos/");
+  }
   app.use(zeptomailWebhookRouter);
   app.use("/api", specSheetRouter);
   // Public REST API for Forma Extension (unauthenticated)
