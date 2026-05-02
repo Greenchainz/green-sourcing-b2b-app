@@ -274,7 +274,7 @@ export const founderVideoRouter = router({
       }
 
       if (video.expiresAt && video.expiresAt < new Date()) {
-        throw new TRPCError({ code: "GONE", message: "This video has expired" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "This video has expired" });
       }
 
       return {
