@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle } from "lucide-react";
+import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle, BarChart2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -54,10 +54,16 @@ export default function FounderVideoList() {
           <h1 className="text-2xl font-bold">Founder Videos</h1>
           <p className="text-muted-foreground">Async videos sent to suppliers + architects.</p>
         </div>
-        <Button onClick={() => navigate("/admin/founder-videos/new")}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Video
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/admin/founder-videos/analytics")}>
+            <BarChart2 className="w-4 h-4 mr-2" />
+            Analytics
+          </Button>
+          <Button onClick={() => navigate("/admin/founder-videos/new")}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Video
+          </Button>
+        </div>
       </div>
 
       {listQuery.isLoading && (
