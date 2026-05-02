@@ -822,3 +822,63 @@ View and respond: ${rfqUrl}
     text,
   });
 }
+
+/**
+ * Send a personalized founder video share link to the recipient.
+ */
+export async function sendFounderVideoEmail(data: {
+  recipientEmail: string;
+  recipientName: string;
+  subject: string;
+  shareUrl: string;
+  founderName: string;
+}): Promise<boolean> {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f6;padding:32px 0;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;">
+        <tr><td style="background:linear-gradient(135deg,#10b981 0%,#059669 100%);padding:28px 32px;">
+          <h1 style="margin:0;color:#ffffff;font-size:22px;">A personal video for you</h1>
+          <p style="margin:6px 0 0;color:#bbf7d0;font-size:14px;">From ${data.founderName} · GreenChainz</p>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin:0 0 16px;color:#374151;font-size:15px;">Hi ${data.recipientName},</p>
+          <p style="margin:0 0 24px;color:#374151;font-size:15px;">
+            I recorded a quick video for you — <strong>${data.subject}</strong>. Click below to watch (it's short).
+          </p>
+          <a href="${data.shareUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:600;">
+            ▶ Watch the video
+          </a>
+          <p style="margin:24px 0 0;color:#6b7280;font-size:13px;">
+            Or paste this link in your browser:<br/>
+            <span style="color:#059669;word-break:break-all;">${data.shareUrl}</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+          <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} GreenChainz · Verified Sustainable Building Materials</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  const text = `Hi ${data.recipientName},
+
+${data.founderName} recorded a personal video for you about: ${data.subject}
+
+Watch it here: ${data.shareUrl}
+
+© ${new Date().getFullYear()} GreenChainz`;
+
+  return sendEmail({
+    to: data.recipientEmail,
+    subject: `${data.founderName} sent you a video — ${data.subject}`,
+    html,
+    text,
+  });
+}

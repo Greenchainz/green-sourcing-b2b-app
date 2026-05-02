@@ -1834,3 +1834,44 @@ export const appSettings = pgTable("app_settings", {
 });
 
 export type AppSetting = typeof appSettings.$inferSelect;
+
+// ── Founder Videos (async video messaging from founder to suppliers/architects) ──
+export const founderVideoStatusEnum = pgEnum("founder_video_status", ["draft", "ready", "deleted"]);
+export const founderVideoTranscriptStatusEnum = pgEnum("founder_video_transcript_status", [
+  "pending", "done", "failed",
+]);
+
+export const founderVideos = pgTable("founder_videos", {
+  id: serial("id").primaryKey(),
+  ownerUserId: integer("ownerUserId").notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  recipientName: varchar("recipientName", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  note: text("note"),
+  shareToken: varchar("shareToken", { length: 32 }).notNull().unique(),
+  blobKey: text("blobKey").notNull(),
+  blobUrl: text("blobUrl").notNull(),
+  durationSec: integer("durationSec").default(0).notNull(),
+  status: founderVideoStatusEnum("status").default("draft").notNull(),
+  transcript: text("transcript"),
+  transcriptStatus: founderVideoTranscriptStatusEnum("transcriptStatus").default("pending").notNull(),
+  watchedCount: integer("watchedCount").default(0).notNull(),
+  firstWatchedAt: timestamp("firstWatchedAt"),
+  lastWatchedAt: timestamp("lastWatchedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+});
+
+export type FounderVideo = typeof founderVideos.$inferSelect;
+export type InsertFounderVideo = typeof founderVideos.$inferInsert;
+
+export const founderVideoViews = pgTable("founder_video_views", {
+  id: serial("id").primaryKey(),
+  videoId: integer("videoId").notNull(),
+  viewedAt: timestamp("viewedAt").defaultNow().notNull(),
+  viewerIp: varchar("viewerIp", { length: 64 }),
+  userAgent: text("userAgent"),
+  durationWatchedSec: integer("durationWatchedSec"),
+});
+
+export type FounderVideoView = typeof founderVideoViews.$inferSelect;

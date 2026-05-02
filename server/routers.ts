@@ -33,6 +33,7 @@ import { microsoftSubscriptionRouter } from './routers/microsoft-subscription-ro
 import { notificationsRouter } from './routers/notifications-router';
 import { authRouter, rfqInternalRouter, agentRouter, leadsRouter, materialSwapsRouter } from './routers/misc-router';
 import { autodeskRouter } from './routers/autodesk-router';
+import { founderVideoRouter } from './routers/founder-video';
 
 export const appRouter = router({
   system: systemRouter,
@@ -75,6 +76,7 @@ export const appRouter = router({
   concierge: conciergeRouter,
   suggestions: suggestionsRouter,
   autodesk: autodeskRouter,
+  founderVideo: founderVideoRouter,
 });
 
 export type AppRouter = typeof appRouter;
