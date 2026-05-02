@@ -176,6 +176,7 @@ export const founderVideoRouter = router({
           firstWatchedAt: founderVideos.firstWatchedAt,
           lastWatchedAt: founderVideos.lastWatchedAt,
           createdAt: founderVideos.createdAt,
+          expiresAt: founderVideos.expiresAt,
         })
         .from(founderVideos)
         .where(eq(founderVideos.ownerUserId, ctx.user.id))
