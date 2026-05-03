@@ -13,10 +13,6 @@ function daysUntilExpiry(expiresAt: Date | string | null | undefined): number | 
   return Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-import { Plus, Copy, Check, Trash2, Eye, Clock, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
-import { trpc } from "@/lib/trpc";
-
 function formatRelative(date: Date | string | null | undefined): string {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
