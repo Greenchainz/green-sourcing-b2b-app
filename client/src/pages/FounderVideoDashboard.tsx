@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "../../../server/routers";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +51,8 @@ function WatchBar({ pct }: { pct: number }) {
   );
 }
 
-type Video = NonNullable<ReturnType<typeof trpc.founderVideo.analytics.useQuery>["data"]>["videos"][number];
+type RouterOutput = inferRouterOutputs<AppRouter>;
+type Video = RouterOutput["founderVideo"]["analytics"]["videos"][number];
 
 function VideoRow({ v }: { v: Video }) {
   const [open, setOpen] = useState(false);
