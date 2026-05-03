@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, publicProcedure } from './_core/trpc';
 import { getDb } from './db';
-import { materials, manufacturers, suppliers } from '../drizzle/schema';
+import { materials, manufacturers } from '../drizzle/schema';
 import { ilike, sql, eq } from 'drizzle-orm';
 
 export const manufacturerSearchRouter = router({
@@ -18,6 +18,7 @@ export const manufacturerSearchRouter = router({
           website: manufacturers.website,
           verified: manufacturers.verified,
           logoUrl: manufacturers.logoUrl,
+          claimed: manufacturers.claimed,
         })
         .from(manufacturers)
         .where(ilike(manufacturers.name, `%${input.q}%`))
@@ -37,19 +38,13 @@ export const manufacturerSearchRouter = router({
             .from(materials)
             .where(eq(materials.manufacturerId, mfr.id));
 
-          const claimed = await db
-            .select({ id: suppliers.id })
-            .from(suppliers)
-            .where(eq(suppliers.manufacturerId, mfr.id))
-            .limit(1);
-
           return {
             manufacturer: mfr.name,
             productCount: Number(stats[0]?.productCount ?? 0),
             hasImages: Boolean(stats[0]?.hasImages),
             hasEpds: Boolean(stats[0]?.hasEpds),
             isVerified: mfr.verified ?? false,
-            isClaimed: claimed.length > 0,
+            isClaimed: mfr.claimed ?? false,
             categories: (stats[0]?.categories ?? []).filter(Boolean).slice(0, 3),
           };
         })

@@ -10,6 +10,8 @@ import nodemailer from "nodemailer";
 
 const FROM_ADDRESS = "GreenChainz <noreply@updates.greenchainz.com>";
 
+export const FOUNDER_EMAIL = "founder@greenchainz.com";
+
 interface EmailOptions {
   to: string;
   subject: string;
