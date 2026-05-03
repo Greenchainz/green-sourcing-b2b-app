@@ -13,7 +13,7 @@ import {
   blobKeyForVideo,
 } from "../../lib/founder-video-storage";
 import { transcribeFounderVideo } from "../services/founder-video-transcribe";
-import { sendFounderVideoEmail } from "../email-service";
+import { sendFounderVideoEmail, sendFounderVideoWatchAlert, FOUNDER_EMAIL } from "../email-service";
 
 /**
  * Founder Video Messaging
@@ -445,7 +445,7 @@ export const founderVideoRouter = router({
         durationWatchedSec: input.durationWatchedSec ?? null,
         watchedCount: newWatchedCount,
         shareUrl,
-      }).catch((err) => console.error("[founderVideo.publicLogView] watch alert failed:", err));
+      }).catch((err: unknown) => console.error("[founderVideo.publicLogView] watch alert failed:", err));
 
       return { ok: true };
     }),
