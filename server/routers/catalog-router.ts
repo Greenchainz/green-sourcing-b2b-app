@@ -8,6 +8,8 @@ import { eq, and, sql, desc } from 'drizzle-orm';
 const CATALOG_PER_PAGE = 24;
 
 export const catalogRouter = router({
+  // publicSearch is intentionally unauthenticated — it exposes only verified=true
+  // materials and is not scoped to any user/org (global public marketplace catalog).
   publicSearch: publicProcedure
     .input(
       z.object({
