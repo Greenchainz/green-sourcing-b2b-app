@@ -36,6 +36,7 @@ import { autodeskRouter } from './routers/autodesk-router';
 import { featuredRouter } from './featured-router';
 import { manufacturerSearchRouter } from './manufacturer-search-router';
 import { founderVideoRouter } from './routers/founder-video';
+import { catalogRouter } from './routers/catalog-router';
 
 export const appRouter = router({
   system: systemRouter,
@@ -81,6 +82,7 @@ export const appRouter = router({
   featured: featuredRouter,
   manufacturerSearch: manufacturerSearchRouter,
   founderVideo: founderVideoRouter,
+  catalog: catalogRouter,
 });
 
 export type AppRouter = typeof appRouter;
