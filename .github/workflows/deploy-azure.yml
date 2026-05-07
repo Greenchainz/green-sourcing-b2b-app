@@ -81,7 +81,7 @@ jobs:
     name: Build & Push Images
     runs-on: ubuntu-latest
     needs: test
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       id-token: write
       contents: read
@@ -347,22 +347,32 @@ jobs:
 
       - name: Ensure system identity + KV access
         run: |
+          set -euo pipefail
+
           # Enable system-assigned identity for the backend app.
           # Use || true because this command fails with BadRequest when the app still
           # holds a stale reference to a deleted user-assigned identity resource
           # (e.g. id-greenchainz-backend). The system identity is already present in
           # that case (Azure emits a warning), so the failure is safe to ignore.
           # The identity show + PRINCIPAL_ID check below validates the actual state.
-          az containerapp identity assign \
+          timeout 180 az containerapp identity assign \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --system-assigned || true
 
-          # Read back the principal ID after assignment.
-          PRINCIPAL_ID=$(az containerapp identity show \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query "principalId" --output tsv)
+          # Read back the principal ID after assignment, with retries for propagation.
+          PRINCIPAL_ID=""
+          for attempt in 1 2 3 4 5 6; do
+            PRINCIPAL_ID=$(timeout 90 az containerapp identity show \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "principalId" --output tsv 2>/dev/null || true)
+            if [ -n "$PRINCIPAL_ID" ]; then
+              break
+            fi
+            echo "Managed identity principal ID not available yet (attempt ${attempt}/6); retrying in 10s..."
+            sleep 10
+          done
 
           if [ -z "$PRINCIPAL_ID" ]; then
             echo "❌ Could not resolve managed identity principal ID for ${{ env.BACKEND_APP }}"
@@ -370,18 +380,42 @@ jobs:
           fi
 
           # Scope the Key Vault role assignment to the vault resource itself.
-          KV_ID=$(az keyvault show \
+          KV_ID=$(timeout 90 az keyvault show \
             --name ${{ env.KEY_VAULT }} \
             --query id --output tsv)
 
-          az role assignment create \
-            --role "Key Vault Secrets User" \
+          # Idempotent role assignment: skip create if assignment already exists.
+          ASSIGNMENT_COUNT=$(timeout 90 az role assignment list \
             --assignee-object-id "$PRINCIPAL_ID" \
-            --assignee-principal-type ServicePrincipal \
-            --scope "$KV_ID" || true
+            --scope "$KV_ID" \
+            --role "Key Vault Secrets User" \
+            --query "length(@)" \
+            --output tsv 2>/dev/null || echo "0")
 
-          echo "Waiting 30s for RBAC propagation..."
-          sleep 30
+          if [ "${ASSIGNMENT_COUNT}" = "0" ]; then
+            CREATED="false"
+            for attempt in 1 2 3; do
+              if timeout 120 az role assignment create \
+                --role "Key Vault Secrets User" \
+                --assignee-object-id "$PRINCIPAL_ID" \
+                --assignee-principal-type ServicePrincipal \
+                --scope "$KV_ID" \
+                --output none; then
+                CREATED="true"
+                break
+              fi
+              echo "Role assignment create attempt ${attempt}/3 failed or timed out; retrying in 10s..."
+              sleep 10
+            done
+            if [ "${CREATED}" != "true" ]; then
+              echo "⚠️ Unable to confirm role assignment creation after retries; continuing (may already exist/propagate)."
+            fi
+          else
+            echo "Key Vault Secrets User role assignment already exists for backend principal."
+          fi
+
+          echo "Waiting 20s for RBAC propagation..."
+          sleep 20
 
       - name: Deploy backend
         env:
