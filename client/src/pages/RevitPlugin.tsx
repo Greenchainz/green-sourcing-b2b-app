@@ -16,10 +16,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
-// ── UPDATE THIS when the Autodesk App Store listing is live ──────────────────
-const DOWNLOAD_URL = "https://apps.autodesk.com/RVT/en/Detail/Index?id=greenchainz"; // TODO: replace with real App Store URL
+const DOWNLOAD_URL = "https://github.com/Greenchainz/greenchainz-revit-plugin/releases/latest";
 const GITHUB_REPO_URL = "https://github.com/Greenchainz/greenchainz-revit-plugin";
-// ─────────────────────────────────────────────────────────────────────────────
 
 const FEATURES = [
   {
