@@ -117,7 +117,7 @@ async function main() {
 
   // Assign images to any new materials that don't have one
   console.log("\n📸 Assigning images to new materials...");
-  const { default: updateImages } = await import("./update-material-images.js").catch(() => ({ default: null }));
+  await import("./update-material-images.js").catch(() => null);
 
   console.log("\n════════════════════════════════════════════════════════");
   console.log(`  ✅ Total created: ${totalCreated}`);
