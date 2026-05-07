@@ -320,14 +320,27 @@ jobs:
           if [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
             echo "No user-assigned identities found — skipping cleanup."
           else
-            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned, UserAssigned", userAssignedIdentities: with_entries(.value = null)}}')
+            # When removing ALL user-assigned identities the type must drop to
+            # "SystemAssigned" — Azure rejects "SystemAssigned, UserAssigned"
+            # with an empty userAssignedIdentities map.
+            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned", userAssignedIdentities: with_entries(.value = null)}}')
             echo "Removing stale user-assigned identities..."
             az rest \
               --method PATCH \
               --uri "${RESOURCE_ID}?api-version=2023-05-01" \
               --body "$PATCH_BODY" \
               --output none || true
-            sleep 15
+            # Poll until the app settles — the secret set step hangs if we
+            # proceed while the container app is still in a transitioning state.
+            for i in $(seq 1 12); do
+              STATE=$(az containerapp show \
+                --name ${{ env.BACKEND_APP }} \
+                --resource-group ${{ env.RESOURCE_GROUP }} \
+                --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+              echo "  ($i) provisioningState: ${STATE:-unknown}"
+              [ "$STATE" = "Succeeded" ] && break
+              sleep 10
+            done
           fi
 
       - name: Upsert backend runtime secrets in Container App
