@@ -303,6 +303,7 @@ jobs:
           # (KV-reference secrets fail when system identity path is missing)
           get_secret fred-api-key
           get_secret resend-api-key
+          get_secret ec3-api-key
 
       - name: Remove stale user-assigned identities from backend
         run: |
@@ -458,6 +459,12 @@ jobs:
             "FRONTEND_URL=https://greenchainz.com"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
           )
+          # EC3 API key — powers the 24h material sync scheduler
+          if [ -n "${{ steps.kv.outputs.ec3-api-key }}" ]; then
+            ENV_VARS+=("EC3_API_KEY=${{ steps.kv.outputs.ec3-api-key }}")
+          else
+            echo "⚠️  ec3-api-key not found in Key Vault — EC3 sync will be skipped"
+          fi
           # FRED_API_KEY and RESEND_API_KEY are loaded at runtime from Key Vault
           # by loadSecrets() using the user-assigned managed identity — no passthrough needed
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
