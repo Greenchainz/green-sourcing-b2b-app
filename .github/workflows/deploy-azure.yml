@@ -348,6 +348,14 @@ jobs:
       - name: Ensure system identity + KV access
         run: |
           set -euo pipefail
+          MAX_PRINCIPAL_RETRIES=6
+          MAX_ROLE_CREATE_RETRIES=3
+          RETRY_SLEEP_SECONDS=10
+          RBAC_PROPAGATION_WAIT_SECONDS=30
+          PRINCIPAL_ERR_FILE=$(mktemp)
+          PRINCIPAL_OUT_FILE=$(mktemp)
+          ASSIGNMENT_ERR_FILE=$(mktemp)
+          trap 'rm -f "$PRINCIPAL_ERR_FILE" "$PRINCIPAL_OUT_FILE" "$ASSIGNMENT_ERR_FILE"' EXIT
 
           # Enable system-assigned identity for the backend app.
           # Use || true because this command fails with BadRequest when the app still
@@ -362,16 +370,22 @@ jobs:
 
           # Read back the principal ID after assignment, with retries for propagation.
           PRINCIPAL_ID=""
-          for attempt in 1 2 3 4 5 6; do
-            PRINCIPAL_ID=$(timeout 90 az containerapp identity show \
+          for attempt in $(seq 1 "$MAX_PRINCIPAL_RETRIES"); do
+            if timeout 90 az containerapp identity show \
               --name ${{ env.BACKEND_APP }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
-              --query "principalId" --output tsv 2>/dev/null || true)
-            if [ -n "$PRINCIPAL_ID" ]; then
+              --query "principalId" --output tsv >"$PRINCIPAL_OUT_FILE" 2>"$PRINCIPAL_ERR_FILE"; then
+              PRINCIPAL_ID=$(cat "$PRINCIPAL_OUT_FILE")
+            else
+              PRINCIPAL_ID=""
+              echo "Principal lookup command failed (attempt ${attempt}/${MAX_PRINCIPAL_RETRIES}):"
+              cat "$PRINCIPAL_ERR_FILE" || true
+            fi
+            if [ -n "${PRINCIPAL_ID}" ]; then
               break
             fi
-            echo "Managed identity principal ID not available yet (attempt ${attempt}/6); retrying in 10s..."
-            sleep 10
+            echo "Managed identity principal ID not available yet (attempt ${attempt}/${MAX_PRINCIPAL_RETRIES}); retrying in ${RETRY_SLEEP_SECONDS}s..."
+            sleep "$RETRY_SLEEP_SECONDS"
           done
 
           if [ -z "$PRINCIPAL_ID" ]; then
@@ -390,11 +404,16 @@ jobs:
             --scope "$KV_ID" \
             --role "Key Vault Secrets User" \
             --query "length(@)" \
-            --output tsv 2>/dev/null || echo "0")
+            --output tsv 2>"$ASSIGNMENT_ERR_FILE") || {
+              echo "❌ Failed to check existing Key Vault role assignment:"
+              cat "$ASSIGNMENT_ERR_FILE" || true
+              exit 1
+            }
+          ASSIGNMENT_COUNT=${ASSIGNMENT_COUNT:-0} # az can return empty output in transient states.
 
           if [ "${ASSIGNMENT_COUNT}" = "0" ]; then
             CREATED="false"
-            for attempt in 1 2 3; do
+            for attempt in $(seq 1 "$MAX_ROLE_CREATE_RETRIES"); do
               if timeout 120 az role assignment create \
                 --role "Key Vault Secrets User" \
                 --assignee-object-id "$PRINCIPAL_ID" \
@@ -404,18 +423,31 @@ jobs:
                 CREATED="true"
                 break
               fi
-              echo "Role assignment create attempt ${attempt}/3 failed or timed out; retrying in 10s..."
-              sleep 10
+              echo "Role assignment create attempt ${attempt}/${MAX_ROLE_CREATE_RETRIES} failed or timed out; retrying in ${RETRY_SLEEP_SECONDS}s..."
+              sleep "$RETRY_SLEEP_SECONDS"
             done
             if [ "${CREATED}" != "true" ]; then
-              echo "⚠️ Unable to confirm role assignment creation after retries; continuing (may already exist/propagate)."
+              VERIFY_COUNT=$(timeout 90 az role assignment list \
+                --assignee-object-id "$PRINCIPAL_ID" \
+                --scope "$KV_ID" \
+                --role "Key Vault Secrets User" \
+                --query "length(@)" \
+                --output tsv 2>"$ASSIGNMENT_ERR_FILE") || {
+                  echo "❌ Failed to verify Key Vault role assignment after retries:"
+                  cat "$ASSIGNMENT_ERR_FILE" || true
+                  exit 1
+                }
+              if [ "${VERIFY_COUNT:-0}" = "0" ]; then
+                echo "❌ Unable to create or verify Key Vault Secrets User role assignment after retries."
+                exit 1
+              fi
             fi
           else
             echo "Key Vault Secrets User role assignment already exists for backend principal."
           fi
 
-          echo "Waiting 20s for RBAC propagation..."
-          sleep 20
+          echo "Waiting ${RBAC_PROPAGATION_WAIT_SECONDS}s for RBAC propagation..."
+          sleep "$RBAC_PROPAGATION_WAIT_SECONDS"
 
       - name: Deploy backend
         env:
