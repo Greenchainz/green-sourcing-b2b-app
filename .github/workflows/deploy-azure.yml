@@ -347,16 +347,48 @@ jobs:
           FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
           RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
         run: |
+          set -euo pipefail
           if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
             echo "❌ Required backend secrets (fred-api-key/resend-api-key) missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
-          az containerapp secret set \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --secrets \
-              "fred-api-key=$FRED_API_KEY" \
-              "resend-api-key=$RESEND_API_KEY"
+          MAX_SECRET_SET_RETRIES=8
+          RETRY_SLEEP_SECONDS=10
+          SECRET_ERR_FILE=$(mktemp)
+          trap 'rm -f "$SECRET_ERR_FILE"' EXIT
+
+          for attempt in $(seq 1 "$MAX_SECRET_SET_RETRIES"); do
+            echo "Upserting backend runtime secrets (attempt ${attempt}/${MAX_SECRET_SET_RETRIES})..."
+            if az containerapp secret set \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --secrets \
+                "fred-api-key=$FRED_API_KEY" \
+                "resend-api-key=$RESEND_API_KEY" 2>"$SECRET_ERR_FILE"; then
+              echo "Backend runtime secrets updated."
+              break
+            fi
+
+            if grep -q "ContainerAppOperationInProgress" "$SECRET_ERR_FILE"; then
+              echo "Container App operation in progress; waiting before retry..."
+              STATE=$(az containerapp show \
+                --name ${{ env.BACKEND_APP }} \
+                --resource-group ${{ env.RESOURCE_GROUP }} \
+                --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+              echo "Current provisioningState: ${STATE:-unknown}"
+              if [ "$attempt" -eq "$MAX_SECRET_SET_RETRIES" ]; then
+                cat "$SECRET_ERR_FILE"
+                echo "❌ Timed out updating backend secrets while Container App was still provisioning."
+                exit 1
+              fi
+              sleep "$RETRY_SLEEP_SECONDS"
+              continue
+            fi
+
+            cat "$SECRET_ERR_FILE"
+            echo "❌ Failed to set backend runtime secrets."
+            exit 1
+          done
 
       - name: Ensure system identity + KV access
         run: |
