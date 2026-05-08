@@ -352,14 +352,14 @@ jobs:
             echo "❌ Required backend secrets (fred-api-key/resend-api-key) missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
-          # Bounded retry window (8 x 10s = ~80s) to cover typical short-lived
-          # overlap while Azure finalizes a prior Container App provisioning op.
+          # Bounded retry window with capped exponential backoff to cover overlap
+          # while Azure finalizes a prior Container App provisioning op.
           MAX_SECRET_SET_RETRIES=8
-          RETRY_SLEEP_SECONDS=10
+          BASE_RETRY_SLEEP_SECONDS=5
+          MAX_RETRY_SLEEP_SECONDS=30
           SECRET_ERR_FILE=$(mktemp)
           STATE_ERR_FILE=$(mktemp)
           trap 'rm -f "$SECRET_ERR_FILE" "$STATE_ERR_FILE"' EXIT
-          SECRET_SET_SUCCEEDED=0
 
           for attempt in $(seq 1 "$MAX_SECRET_SET_RETRIES"); do
             echo "Upserting backend runtime secrets (attempt ${attempt}/${MAX_SECRET_SET_RETRIES})..."
@@ -370,8 +370,7 @@ jobs:
                 "fred-api-key=$FRED_API_KEY" \
                 "resend-api-key=$RESEND_API_KEY" 2>"$SECRET_ERR_FILE"; then
               echo "Backend runtime secrets updated."
-              SECRET_SET_SUCCEEDED=1
-              break
+              exit 0
             fi
 
             # Azure CLI exposes this transient conflict using the
@@ -384,8 +383,6 @@ jobs:
                 --resource-group ${{ env.RESOURCE_GROUP }} \
                 --query "properties.provisioningState" -o tsv 2>"$STATE_ERR_FILE"); then
                 echo "⚠️ Warning (non-fatal): failed to read backend provisioningState for diagnostics: $(head -n 1 "$STATE_ERR_FILE")"
-              else
-                echo "Provisioning state query succeeded."
               fi
               echo "Current provisioningState: ${STATE:-unknown}"
               if [ "$attempt" -eq "$MAX_SECRET_SET_RETRIES" ]; then
@@ -393,7 +390,12 @@ jobs:
                 echo "❌ Timed out updating backend secrets while Container App was still provisioning."
                 exit 1
               fi
-              sleep "$RETRY_SLEEP_SECONDS"
+              sleep_seconds=$(( BASE_RETRY_SLEEP_SECONDS * (2 ** (attempt - 1)) ))
+              if [ "$sleep_seconds" -gt "$MAX_RETRY_SLEEP_SECONDS" ]; then
+                sleep_seconds="$MAX_RETRY_SLEEP_SECONDS"
+              fi
+              echo "Retrying in ${sleep_seconds}s..."
+              sleep "$sleep_seconds"
               continue
             fi
 
@@ -401,11 +403,6 @@ jobs:
             echo "❌ Failed to set backend runtime secrets."
             exit 1
           done
-
-          if [ "$SECRET_SET_SUCCEEDED" -ne 1 ]; then
-            echo "❌ Failed to update backend runtime secrets after retries."
-            exit 1
-          fi
 
       - name: Ensure system identity + KV access
         run: |
