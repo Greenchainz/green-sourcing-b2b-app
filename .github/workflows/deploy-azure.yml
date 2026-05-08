@@ -355,8 +355,9 @@ jobs:
           # Bounded retry window (~80s) to cover typical transient provisioning overlap.
           MAX_SECRET_SET_RETRIES=8
           RETRY_SLEEP_SECONDS=10
-          SECRET_ERR_FILE=$(mktemp)
-          trap 'rm -f "$SECRET_ERR_FILE"' EXIT
+          SECRET_ERR_FILE=$(mktemp /tmp/backend-secret-set-error.XXXXXXXXXX)
+          STATE_ERR_FILE=$(mktemp /tmp/backend-state-read-error.XXXXXXXXXX)
+          trap 'rm -f "$SECRET_ERR_FILE" "$STATE_ERR_FILE"' EXIT
           SECRET_SET_SUCCEEDED=0
 
           for attempt in $(seq 1 "$MAX_SECRET_SET_RETRIES"); do
@@ -372,12 +373,17 @@ jobs:
               break
             fi
 
+            # Azure CLI exposes this transient conflict using the
+            # ContainerAppOperationInProgress error code in stderr.
             if grep -q "ContainerAppOperationInProgress" "$SECRET_ERR_FILE"; then
               echo "Container App operation in progress; waiting before retry..."
-              STATE=$(az containerapp show \
+              STATE=""
+              if ! STATE=$(az containerapp show \
                 --name ${{ env.BACKEND_APP }} \
                 --resource-group ${{ env.RESOURCE_GROUP }} \
-                --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+                --query "properties.provisioningState" -o tsv 2>"$STATE_ERR_FILE"); then
+                echo "Warning: unable to read backend provisioningState: $(head -n 1 "$STATE_ERR_FILE")"
+              fi
               echo "Current provisioningState: ${STATE:-unknown}"
               if [ "$attempt" -eq "$MAX_SECRET_SET_RETRIES" ]; then
                 cat "$SECRET_ERR_FILE"
