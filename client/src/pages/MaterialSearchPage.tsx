@@ -129,7 +129,7 @@ function FilterPanel({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {categories.map((c) => (
+            {categories.filter((c): c is string => !!c && c.trim() !== "").map((c) => (
               <SelectItem key={c} value={c}>{c}</SelectItem>
             ))}
           </SelectContent>

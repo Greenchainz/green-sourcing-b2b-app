@@ -157,7 +157,7 @@ function AssemblyListPage() {
     assemblyType: typeFilter || undefined,
     tier: (tierFilter as AssemblyTier) || undefined,
   });
-  const assemblyTypes = Array.from(new Set(assemblies?.map((a) => a.assemblyType) || []));
+  const assemblyTypes = Array.from(new Set(assemblies?.map((a) => a.assemblyType).filter((t): t is string => !!t && t.trim() !== "") || []));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -553,7 +553,7 @@ function AssemblyDetailPage() {
                       <SelectTrigger className="mt-1"><SelectValue placeholder="All categories" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All categories</SelectItem>
-                        {categories.map((category) => (
+                        {categories.filter((cat) => !!cat.category && cat.category.trim() !== "").map((category) => (
                           <SelectItem key={category.category} value={category.category}>{category.category}</SelectItem>
                         ))}
                       </SelectContent>
