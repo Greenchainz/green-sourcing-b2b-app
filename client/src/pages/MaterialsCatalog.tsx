@@ -312,7 +312,7 @@ function FilterPanel({ filters, categories, onChange }: FilterPanelProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {categories.map((c) => (
+            {categories.filter((c) => !!c.category && c.category.trim() !== "").map((c) => (
               <SelectItem key={c.category} value={c.category}>
                 {c.category}
                 <span className="text-muted-foreground ml-1">({c.count})</span>
