@@ -47,16 +47,14 @@ export async function loadSecrets(): Promise<void> {
 
   if (isProduction) {
     try {
-      // Uses User-Assigned Managed Identity: id-greenchainz-backend
-      // Accept either AZURE_MI_CLIENT_ID (canonical) or MANAGED_IDENTITY_CLIENT_ID (legacy alias)
+      // Accept either AZURE_MI_CLIENT_ID (canonical) or MANAGED_IDENTITY_CLIENT_ID (legacy alias).
+      // If neither is set (or both are empty), fall back to the container's system-assigned
+      // managed identity — ManagedIdentityCredential() with no args selects it automatically.
       const miClientId =
-        process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID;
-      if (!miClientId) {
-        throw new Error(
-          "[Secrets] AZURE_MI_CLIENT_ID (or MANAGED_IDENTITY_CLIENT_ID) env var is required in production"
-        );
-      }
-      const credential = new ManagedIdentityCredential(miClientId);
+        process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID || "";
+      const credential = miClientId
+        ? new ManagedIdentityCredential(miClientId)
+        : new ManagedIdentityCredential(); // system-assigned identity
       const client = new SecretClient(vaultUrl, credential);
 
       console.log(`[Secrets] Loading secrets from Key Vault: ${vaultUrl}`);

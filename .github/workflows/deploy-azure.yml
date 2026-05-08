@@ -312,23 +312,22 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query id -o tsv)
 
-          USER_IDS=$(az rest \
+          IDENTITY_TYPE=$(az rest \
             --method GET \
             --uri "${RESOURCE_ID}?api-version=2023-05-01" \
-            --query "identity.userAssignedIdentities" -o json 2>/dev/null || echo "null")
+            --query "identity.type" -o tsv 2>/dev/null || echo "")
 
-          if [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
-            echo "No user-assigned identities found — skipping cleanup."
+          if [[ ! "$IDENTITY_TYPE" =~ UserAssigned ]]; then
+            echo "Identity type '${IDENTITY_TYPE:-none}' has no user-assigned identities — skipping cleanup."
           else
-            # When removing ALL user-assigned identities the type must drop to
-            # "SystemAssigned" — Azure rejects "SystemAssigned, UserAssigned"
-            # with an empty userAssignedIdentities map.
-            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned", userAssignedIdentities: with_entries(.value = null)}}')
-            echo "Removing stale user-assigned identities..."
+            # When user-assigned identities exist (possibly pointing to deleted resources),
+            # declare the new desired state as SystemAssigned-only WITHOUT listing the old
+            # identity IDs. Nulling out deleted identity IDs causes InvalidIdentityValues.
+            echo "Stripping user-assigned identities (type was: ${IDENTITY_TYPE})..."
             az rest \
               --method PATCH \
               --uri "${RESOURCE_ID}?api-version=2023-05-01" \
-              --body "$PATCH_BODY" \
+              --body '{"identity":{"type":"SystemAssigned"}}' \
               --output none || true
             # Poll until the app settles — the secret set step hangs if we
             # proceed while the container app is still in a transitioning state.
@@ -464,13 +463,16 @@ jobs:
           sleep "$RBAC_PROPAGATION_WAIT_SECONDS"
 
       - name: Deploy backend
-        env:
-          AZURE_MI_CLIENT_ID: ${{ secrets.AZURE_MI_CLIENT_ID }}
         run: |
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
             "FRONTEND_URL=https://greenchainz.com"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
+            # Clear the stale user-assigned identity client ID — backend now uses
+            # system-assigned managed identity. ManagedIdentityCredential() with no
+            # clientId automatically selects the system-assigned identity.
+            "AZURE_MI_CLIENT_ID="
+            "MANAGED_IDENTITY_CLIENT_ID="
           )
           # EC3 API key — powers the 24h material sync scheduler
           if [ -n "${{ steps.kv.outputs.ec3-api-key }}" ]; then
@@ -479,7 +481,7 @@ jobs:
             echo "⚠️  ec3-api-key not found in Key Vault — EC3 sync will be skipped"
           fi
           # FRED_API_KEY and RESEND_API_KEY are loaded at runtime from Key Vault
-          # by loadSecrets() using the user-assigned managed identity — no passthrough needed
+          # by loadSecrets() using the system-assigned managed identity
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
               "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}"
