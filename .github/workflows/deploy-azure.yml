@@ -356,8 +356,8 @@ jobs:
           # overlap while Azure finalizes a prior Container App provisioning op.
           MAX_SECRET_SET_RETRIES=8
           RETRY_SLEEP_SECONDS=10
-          SECRET_ERR_FILE=$(mktemp /tmp/secret-set-err.XXXXXXXXXX)
-          STATE_ERR_FILE=$(mktemp /tmp/state-read-err.XXXXXXXXXX)
+          SECRET_ERR_FILE=$(mktemp)
+          STATE_ERR_FILE=$(mktemp)
           trap 'rm -f "$SECRET_ERR_FILE" "$STATE_ERR_FILE"' EXIT
           SECRET_SET_SUCCEEDED=0
 
@@ -384,6 +384,8 @@ jobs:
                 --resource-group ${{ env.RESOURCE_GROUP }} \
                 --query "properties.provisioningState" -o tsv 2>"$STATE_ERR_FILE"); then
                 echo "⚠️ Warning (non-fatal): failed to read backend provisioningState for diagnostics: $(head -n 1 "$STATE_ERR_FILE")"
+              else
+                echo "Provisioning state query succeeded."
               fi
               echo "Current provisioningState: ${STATE:-unknown}"
               if [ "$attempt" -eq "$MAX_SECRET_SET_RETRIES" ]; then
