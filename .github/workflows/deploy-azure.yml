@@ -352,11 +352,12 @@ jobs:
             echo "❌ Required backend secrets (fred-api-key/resend-api-key) missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
-          # Bounded retry window (~80s) to cover typical transient provisioning overlap.
+          # Bounded retry window (8 x 10s = ~80s) to cover typical short-lived
+          # overlap while Azure finalizes a prior Container App provisioning op.
           MAX_SECRET_SET_RETRIES=8
           RETRY_SLEEP_SECONDS=10
-          SECRET_ERR_FILE=$(mktemp /tmp/backend-secret-set-error.XXXXXXXXXX)
-          STATE_ERR_FILE=$(mktemp /tmp/backend-state-read-error.XXXXXXXXXX)
+          SECRET_ERR_FILE=$(mktemp /tmp/secret-set-err.XXXXXXXXXX)
+          STATE_ERR_FILE=$(mktemp /tmp/state-read-err.XXXXXXXXXX)
           trap 'rm -f "$SECRET_ERR_FILE" "$STATE_ERR_FILE"' EXIT
           SECRET_SET_SUCCEEDED=0
 
@@ -382,7 +383,7 @@ jobs:
                 --name ${{ env.BACKEND_APP }} \
                 --resource-group ${{ env.RESOURCE_GROUP }} \
                 --query "properties.provisioningState" -o tsv 2>"$STATE_ERR_FILE"); then
-                echo "Warning: unable to read backend provisioningState: $(head -n 1 "$STATE_ERR_FILE")"
+                echo "⚠️ Warning (non-fatal): failed to read backend provisioningState for diagnostics: $(head -n 1 "$STATE_ERR_FILE")"
               fi
               echo "Current provisioningState: ${STATE:-unknown}"
               if [ "$attempt" -eq "$MAX_SECRET_SET_RETRIES" ]; then
