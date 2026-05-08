@@ -322,7 +322,7 @@ jobs:
             --uri "${RESOURCE_ID}?api-version=2023-05-01" \
             --query "identity.userAssignedIdentities" -o json 2>/dev/null || echo "null")
 
-          if [ "$IDENTITY_TYPE" != *"UserAssigned"* ]; then
+          if [[ ! "$IDENTITY_TYPE" =~ UserAssigned ]]; then
             echo "Identity type '${IDENTITY_TYPE:-none}' has no user-assigned identities — skipping cleanup."
           elif [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
             echo "No user-assigned identities found — skipping cleanup."
