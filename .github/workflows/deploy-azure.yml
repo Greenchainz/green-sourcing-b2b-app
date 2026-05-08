@@ -277,6 +277,9 @@ jobs:
       id-token: write
       contents: read
     steps:
+      - name: Sync system clock (prevents AADSTS700024 OIDC token timing errors)
+        run: sudo timedatectl set-ntp true || true
+
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
         with:
@@ -349,8 +352,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
-            echo "❌ Required backend secrets (fred-api-key/resend-api-key) missing from Key Vault '${{ env.KEY_VAULT }}'"
-            exit 1
+            echo "⚠️  fred-api-key or resend-api-key not found in Key Vault '${{ env.KEY_VAULT }}' — skipping Container App secret upsert."
+            echo "ℹ️  These secrets are loaded at runtime by loadSecrets() via system-assigned managed identity."
+            exit 0
           fi
           # Bounded retry window with capped exponential backoff to cover overlap
           # while Azure finalizes a prior Container App provisioning op.
@@ -426,6 +430,19 @@ jobs:
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --system-assigned || true
+
+          # Wait for the Container App to finish the identity-assign provisioning
+          # op before attempting to read the principal ID. Without this gate the
+          # identity show call below returns empty during the transition window.
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+            echo "  (settle $i/18) provisioningState: ${STATE:-unknown}"
+            [ "$STATE" = "Succeeded" ] && break
+            sleep 10
+          done
 
           # Read back the principal ID after assignment, with retries for propagation.
           PRINCIPAL_ID=""
@@ -507,6 +524,19 @@ jobs:
 
           echo "Waiting ${RBAC_PROPAGATION_WAIT_SECONDS}s for RBAC propagation..."
           sleep "$RBAC_PROPAGATION_WAIT_SECONDS"
+
+      - name: Wait for backend to reach Succeeded before deploying
+        run: |
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+            echo "  ($i/18) provisioningState: ${STATE:-unknown}"
+            [ "$STATE" = "Succeeded" ] && break
+            [ "$i" -eq 18 ] && echo "❌ Timed out waiting for backend to reach Succeeded" && exit 1
+            sleep 10
+          done
 
       - name: Deploy backend
         run: |
