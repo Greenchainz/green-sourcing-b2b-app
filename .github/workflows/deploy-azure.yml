@@ -21,7 +21,7 @@ env:
   ACR: acrgreenchainzprod916
   RESOURCE_GROUP: rg-greenchainz-prod-container
   FRONTEND_APP: greenchainz-frontend
-  BACKEND_APP: greenchainz-backend
+  BACKEND_APP: greenchainz-backend-v2
   FRONTEND_IMAGE: greenchainz-frontend
   BACKEND_IMAGE: greenchainz-backend
   KEY_VAULT: Greenchainz-vault
