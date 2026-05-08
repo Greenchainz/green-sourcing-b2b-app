@@ -312,18 +312,25 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query id -o tsv)
 
+          IDENTITY_TYPE=$(az rest \
+            --method GET \
+            --uri "${RESOURCE_ID}?api-version=2023-05-01" \
+            --query "identity.type" -o tsv 2>/dev/null || echo "")
+
           USER_IDS=$(az rest \
             --method GET \
             --uri "${RESOURCE_ID}?api-version=2023-05-01" \
             --query "identity.userAssignedIdentities" -o json 2>/dev/null || echo "null")
 
-          if [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
+          if [ "$IDENTITY_TYPE" != *"UserAssigned"* ]; then
+            echo "Identity type '${IDENTITY_TYPE:-none}' has no user-assigned identities — skipping cleanup."
+          elif [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
             echo "No user-assigned identities found — skipping cleanup."
           else
-            # When removing ALL user-assigned identities the type must drop to
-            # "SystemAssigned" — Azure rejects "SystemAssigned, UserAssigned"
-            # with an empty userAssignedIdentities map.
-            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned", userAssignedIdentities: with_entries(.value = null)}}')
+            # Keep "UserAssigned" in identity.type while sending identity IDs with
+            # null values for removal; otherwise Azure rejects the payload with
+            # InvalidResourceIdentityType.
+            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned,UserAssigned", userAssignedIdentities: with_entries(.value = null)}}')
             echo "Removing stale user-assigned identities..."
             az rest \
               --method PATCH \
