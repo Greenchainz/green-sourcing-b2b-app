@@ -596,6 +596,15 @@ jobs:
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}"
 
+      - name: Ensure backend ingress targetPort is 3000
+        run: |
+          az containerapp ingress update \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --target-port 3000 \
+            --type external \
+            --transport auto
+
       - name: Ensure backend allows unauthenticated requests
         run: |
           echo "Forcing AllowAnonymous on Container Apps auth (idempotent, safe if auth not yet configured)"
