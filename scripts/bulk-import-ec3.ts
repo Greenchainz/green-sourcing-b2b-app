@@ -66,7 +66,7 @@ async function importCategory(category: string): Promise<{ created: number; upda
       return { created: 0, updated: 0 };
     }
 
-    const transformed = transformEC3Batch(epds);
+    const transformed = await transformEC3Batch(epds);
     const ec3Ids = epds.map((e) => e.id).filter(Boolean) as string[];
 
     const existing = await db
@@ -131,5 +131,4 @@ async function main() {
 main().catch((err) => {
   console.error("Fatal:", err);
   pool.end();
-  process.exit(1);
-});
+  process.exit(1)
