@@ -7,8 +7,8 @@
  */
 
 import { getDb } from "../db";
-import { users, userEngagement, materials, manufacturers } from "../../drizzle/schema";
-import { eq, desc, gte, lte, gt, and, isNotNull, sql } from "drizzle-orm";
+import { users, userEngagement, materials, manufacturers, rfqs } from "../../drizzle/schema";
+import { eq, desc, gte, lte, gt, lt, and, isNotNull, inArray, sql } from "drizzle-orm";
 import { getAllPriceTrends } from "./price-trends";
 import {
   weeklyDigestEmail,
@@ -269,22 +269,32 @@ const remindedRfqIds = new Set<string>();
 /** Check for RFQs expiring within 24 hours and log reminders */
 async function checkExpiringRfqs(): Promise<void> {
   try {
-    // rfq_status enum: draft | submitted | responded | awarded | closed
-    // Column names are camelCase in prod DB (from original Prisma migration)
-    const rows = await queryMany<{ id: string; dueDate: Date; userId: number }>(
-      `SELECT id, "dueDate", "userId"
-       FROM rfqs
-       WHERE status IN ('submitted', 'responded')
-         AND "dueDate" BETWEEN NOW() AND NOW() + INTERVAL '24 hours'`
-    );
+    const db = await getDb();
+    if (!db) return;
+
+    const now = new Date();
+    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const rows = await db
+      .select({ id: rfqs.id, dueDate: rfqs.dueDate, userId: rfqs.userId })
+      .from(rfqs)
+      .where(
+        and(
+          inArray(rfqs.status, ["submitted", "responded"]),
+          gte(rfqs.dueDate, now),
+          lte(rfqs.dueDate, in24h)
+        )
+      );
 
     for (const rfq of rows) {
-      if (remindedRfqIds.has(rfq.id)) continue;
+      if (!rfq.dueDate) continue;
+      const idStr = String(rfq.id);
+      if (remindedRfqIds.has(idStr)) continue;
 
       console.log(
         `[rfq-scheduler] RFQ ${rfq.id} expires at ${rfq.dueDate.toISOString()} — reminder pending`
       );
-      remindedRfqIds.add(rfq.id);
+      remindedRfqIds.add(idStr);
     }
 
     if (rows.length > 0) {
@@ -298,14 +308,21 @@ async function checkExpiringRfqs(): Promise<void> {
 /** Auto-expire overdue RFQs: close submitted/responded RFQs past their dueDate */
 async function expireOverdueRfqs(): Promise<void> {
   try {
-    // rfq_status enum: draft | submitted | responded | awarded | closed
-    // Column names are camelCase in prod DB (from original Prisma migration)
-    const result = await query(
-      `UPDATE rfqs SET status = 'closed', "updatedAt" = NOW()
-       WHERE status IN ('submitted', 'responded') AND "dueDate" < NOW()`
-    );
+    const db = await getDb();
+    if (!db) return;
 
-    const count = result.rowCount ?? 0;
+    const now = new Date();
+    const result = await db
+      .update(rfqs)
+      .set({ status: "closed", updatedAt: now })
+      .where(
+        and(
+          inArray(rfqs.status, ["submitted", "responded"]),
+          lt(rfqs.dueDate, now)
+        )
+      );
+
+    const count = (result as unknown as { rowCount?: number }).rowCount ?? 0;
     if (count > 0) {
       console.log(`[rfq-scheduler] Expired ${count} overdue RFQ(s)`);
     }

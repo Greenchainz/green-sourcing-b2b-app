@@ -52,7 +52,7 @@ export async function startSchedulers(): Promise<void> {
           const epds = await fetchEC3EPDs(category, 50);
           if (epds.length === 0) continue;
 
-          const transformed = transformEC3Batch(epds);
+          const transformed = await transformEC3Batch(epds);
           // EC3EPD.id is the external ID field; filter out any falsy values
           const ec3Ids = epds.map((e) => e.id).filter(Boolean) as string[];
 
