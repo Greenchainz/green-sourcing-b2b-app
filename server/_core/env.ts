@@ -17,4 +17,8 @@ export const ENV = {
   get ec3ClientSecret(){ return process.env.EC3_CLIENT_SECRET ?? ""; },
   get ec3Username()   { return process.env.EC3_USERNAME ?? ""; },
   get ec3Password()   { return process.env.EC3_PASSWORD ?? ""; },
+  // Azure Cognitive Services Translator (free F0 tier: 2M chars/month)
+  // portal.azure.com → Create resource → "Translator" → F0 free tier
+  get azureTranslatorKey()    { return process.env.AZURE_TRANSLATOR_KEY ?? ""; },
+  get azureTranslatorRegion() { return process.env.AZURE_TRANSLATOR_REGION ?? "eastus"; },
 };

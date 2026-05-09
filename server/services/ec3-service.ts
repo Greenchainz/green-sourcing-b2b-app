@@ -132,7 +132,7 @@ export async function importEC3Materials(
     const raw = await fetchEC3EPDs(category, limit);
     if (raw.length === 0) return 0;
 
-    const transformed = transformEC3Batch(raw);
+    const transformed = await transformEC3Batch(raw);
     let created = 0;
 
     for (const mat of transformed) {

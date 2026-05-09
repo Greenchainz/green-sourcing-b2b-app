@@ -1,39 +1,45 @@
 /**
  * EC3 EPD to Materials Transformation Service
- * 
+ *
  * Maps EC3 EPD data structure to GreenChainz materials table schema.
+ * Non-English EPD names and descriptions are auto-translated to English
+ * so overseas products are readable by US architects.
  */
 
 import type { EC3EPD } from "./ec3";
 import type { Material } from "../drizzle/schema";
 import { parseGWP } from "./ec3";
+import { translateToEnglish } from "./translate";
 
 /**
- * Transform EC3 EPD to Material insert object
- * Maps EC3 fields to materials table schema
+ * Transform a single EC3 EPD to a Material insert object (async — runs translation).
  */
-export function transformEC3ToMaterial(epd: EC3EPD): Partial<Material> {
-  // Parse GWP value from string (e.g., "339 kgCO2e" → 339)
+export async function transformEC3ToMaterial(epd: EC3EPD): Promise<Partial<Material>> {
   const gwpValue = parseGWP(epd.gwp);
-
-  // Map EC3 category to GreenChainz category
-  // EC3 categories: Concrete, Steel, Wood, Insulation, etc.
   const category = mapEC3Category(epd.category.name);
-
-  // Calculate embodied carbon per 1000 SF
-  // This requires knowing the declared unit and MSF factor
   const embodiedCarbonPer1000sf = calculateEmbodiedCarbonPer1000SF(
     gwpValue,
     epd.declared_unit || epd.category.declared_unit
   );
 
+  // Translate non-English fields in parallel — never blocks if translation fails
+  const rawName =
+    epd.name || `${epd.category.display_name} - ${epd.manufacturer?.name || "Unknown"}`;
+  const [name, productName, description] = await Promise.all([
+    translateToEnglish(rawName),
+    epd.name ? translateToEnglish(epd.name) : Promise.resolve(undefined as unknown as string),
+    epd.lca_discussion
+      ? translateToEnglish(epd.lca_discussion)
+      : Promise.resolve(undefined as unknown as string),
+  ]);
+
   return {
-    name: epd.name || `${epd.category.display_name} - ${epd.manufacturer?.name || "Unknown"}`,
-    productName: epd.name,
-    manufacturerId: null, // Will need to match/create manufacturer separately
+    name,
+    productName: productName || undefined,
+    manufacturerId: null,
     category,
     subcategory: epd.category.display_name,
-    description: epd.lca_discussion || undefined,
+    description: description || undefined,
     epdNumber: epd.open_xpd_uuid,
     epdUrl: epd.doc,
     epdExpiry: epd.date_validity_ends ? new Date(epd.date_validity_ends) : undefined,
@@ -45,7 +51,6 @@ export function transformEC3ToMaterial(epd: EC3EPD): Partial<Material> {
     hasEpd: true,
     dataSource: "EC3",
     verified: epd.externally_verified ? true : false,
-    // EC3-specific tracking fields
     ec3Id: epd.id,
     ec3SyncedAt: new Date(),
     ec3Category: epd.category.name,
@@ -119,10 +124,11 @@ function calculateEmbodiedCarbonPer1000SF(
 }
 
 /**
- * Batch transform multiple EPDs to materials
+ * Batch transform multiple EPDs to materials (async — translates non-English content).
+ * Runs all translations concurrently for speed.
  */
-export function transformEC3Batch(epds: EC3EPD[]): Array<Partial<Material>> {
-  return epds.map(transformEC3ToMaterial);
+export async function transformEC3Batch(epds: EC3EPD[]): Promise<Array<Partial<Material>>> {
+  return Promise.all(epds.map(transformEC3ToMaterial));
 }
 
 /**
