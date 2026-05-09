@@ -66,9 +66,9 @@ export async function startSchedulers(): Promise<void> {
           const toUpdate = transformed.filter((m) => m.ec3Id && existingSet.has(m.ec3Id));
 
           if (toCreate.length > 0) {
-            // transformEC3ToMaterial always populates required fields; Partial<Material> is safe here
-            type InsertMaterial = typeof materials.$inferInsert;
-            await db.insert(materials).values(toCreate as unknown as InsertMaterial[]);
+            await db.insert(materials).values(
+              toCreate as unknown as (typeof materials.$inferInsert)[]
+            );
             totalCreated += toCreate.length;
           }
           for (const m of toUpdate) {
