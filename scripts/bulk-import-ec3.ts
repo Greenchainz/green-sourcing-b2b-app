@@ -79,8 +79,9 @@ async function importCategory(category: string): Promise<{ created: number; upda
     const toUpdate = transformed.filter((m) => m.ec3Id && existingSet.has(m.ec3Id));
 
     if (toCreate.length > 0) {
-      type InsertMaterial = typeof materials.$inferInsert;
-      await db.insert(materials).values(toCreate as unknown as InsertMaterial[]);
+      await db.insert(materials).values(
+        toCreate as unknown as (typeof materials.$inferInsert)[]
+      );
       created = toCreate.length;
     }
 
@@ -131,4 +132,5 @@ async function main() {
 main().catch((err) => {
   console.error("Fatal:", err);
   pool.end();
-  process.exit(1)
+  process.exit(1);
+});
