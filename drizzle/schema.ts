@@ -1609,6 +1609,20 @@ export const epdMaterials = pgTable(
 export type EpdMaterial = typeof epdMaterials.$inferSelect;
 export type InsertEpdMaterial = typeof epdMaterials.$inferInsert;
 
+// ─── Material Credit Score Cache ─────────────────────────────────────────────
+
+export const materialCreditScoreCache = pgTable("material_credit_score_cache", {
+  epdId: integer("epdId").primaryKey(),
+  total: integer("total").notNull(),
+  carbonEfficiency: integer("carbonEfficiency").notNull(),
+  epdVerification: integer("epdVerification").notNull(),
+  manufacturerTransparency: integer("manufacturerTransparency").notNull(),
+  assemblyOptionsCoverage: integer("assemblyOptionsCoverage").notNull(),
+  computedAt: timestamp("computedAt").defaultNow().notNull(),
+});
+
+export type MaterialCreditScoreCache = typeof materialCreditScoreCache.$inferSelect;
+
 // ─── CRM Enums ───────────────────────────────────────────────────────────────
 
 export const crmContactTypeEnum = pgEnum("crm_contact_type", [

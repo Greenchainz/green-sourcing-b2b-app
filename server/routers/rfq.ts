@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { query, queryOne, queryMany, withTransaction } from "../../lib/pg-pool";
 import { getDb } from "../db";
 import { auditLog, AuditAction } from "../services/audit-log";
+import { publishRfqEvent } from "../services/event-bus";
 import { rfqRequests, suppliers } from "../../drizzle/schema";
 import { eq, desc, ilike, or } from "drizzle-orm";
 
@@ -80,6 +81,9 @@ export const rfqRouter = router({
         },
         req: ctx.req,
       }).catch((err) => console.error("[audit] rfq.create", err));
+
+      void publishRfqEvent({ type: "rfq.created", rfqId: inserted.id, supplierId: input.supplierId, buyerId: ctx.user.id })
+        .catch((err) => console.error("[event-bus] rfq.created", err));
 
       return { id: inserted.id, supplierName: supplierRow?.companyName ?? null };
     }),
@@ -273,6 +277,9 @@ export const rfqRouter = router({
         req: ctx.req,
       }).catch((err) => console.error("[audit] rfq.respond", err));
 
+      void publishRfqEvent({ type: "rfq.responded", rfqId: input.id, status: input.status })
+        .catch((err) => console.error("[event-bus] rfq.responded", err));
+
       return { success: true };
     }),
 
@@ -310,6 +317,9 @@ export const rfqRouter = router({
         resourceId: input.id,
         req: ctx.req,
       }).catch((err) => console.error("[audit] rfq.cancel", err));
+
+      void publishRfqEvent({ type: "rfq.cancelled", rfqId: input.id })
+        .catch((err) => console.error("[event-bus] rfq.cancelled", err));
 
       return { success: true };
     }),
