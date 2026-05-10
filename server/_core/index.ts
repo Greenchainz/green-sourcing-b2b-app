@@ -4,6 +4,7 @@ import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import express from "express";
+import helmet from "helmet";
 import { v4 as uuidv4 } from "uuid";
 import { createServer } from "http";
 import net from "net";
@@ -129,11 +130,85 @@ async function startServer() {
         process.exit(1);
       }
     }
+
+    // Guard: managed identity client ID must never equal the app client ID.
+    // Mixing these causes silent auth failures in production.
+    if (
+      process.env.MANAGED_IDENTITY_CLIENT_ID &&
+      process.env.MICROSOFT_CLIENT_ID &&
+      process.env.MANAGED_IDENTITY_CLIENT_ID === process.env.MICROSOFT_CLIENT_ID
+    ) {
+      console.error(
+        "[startup] FATAL: MANAGED_IDENTITY_CLIENT_ID must not equal MICROSOFT_CLIENT_ID. " +
+        "These are different credentials — check Azure Portal."
+      );
+      process.exit(1);
+    }
   }
 
   const app = express();
   app.set("trust proxy", true);
   const server = createServer(app);
+
+  // ── Security headers ──────────────────────────────────────────────────────
+  const isDev = process.env.NODE_ENV === "development";
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        // Use report-only in dev so broken assets surface without hard failures.
+        // Enforced in production.
+        reportOnly: isDev,
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            // Azure Application Insights
+            "https://js.monitor.azure.com",
+            "https://az416426.vo.msecnd.net",
+            // Intercom
+            "https://widget.intercom.io",
+            "https://js.intercomcdn.com",
+          ],
+          styleSrc: [
+            "'self'",
+            // shadcn/ui injects inline styles; remove 'unsafe-inline' once
+            // all dynamic styles are migrated to CSS variables.
+            "'unsafe-inline'",
+          ],
+          imgSrc: [
+            "'self'",
+            "data:",
+            "https:",
+            "https://static.intercomassets.com",
+          ],
+          connectSrc: [
+            "'self'",
+            "https://*.monitor.azure.com",
+            "https://*.applicationinsights.azure.com",
+            "https://api.ec3.network",
+            "https://www.epdinternational.org",
+            "https://developer.api.autodesk.com",
+            "https://api.intercom.io",
+            "https://nexus.intercom.io",
+            "wss://nexus.intercom.io",
+          ],
+          frameSrc: ["'none'"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          upgradeInsecureRequests: isDev ? null : [],
+        },
+      },
+      hsts: {
+        maxAge: 31_536_000, // 1 year
+        includeSubDomains: true,
+        preload: true,
+      },
+      frameguard: { action: "deny" },
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+      hidePoweredBy: true,
+    })
+  );
 
   app.use(createRequestIdMiddleware);
   app.use(express.json({

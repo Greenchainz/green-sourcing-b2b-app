@@ -37,6 +37,7 @@ import { featuredRouter } from './featured-router';
 import { manufacturerSearchRouter } from './manufacturer-search-router';
 import { founderVideoRouter } from './routers/founder-video';
 import { catalogRouter } from './routers/catalog-router';
+import { auditRouter } from './routers/audit-router';
 
 export const appRouter = router({
   system: systemRouter,
@@ -83,6 +84,7 @@ export const appRouter = router({
   manufacturerSearch: manufacturerSearchRouter,
   founderVideo: founderVideoRouter,
   catalog: catalogRouter,
+  auditLog: auditRouter,
 });
 
 export type AppRouter = typeof appRouter;

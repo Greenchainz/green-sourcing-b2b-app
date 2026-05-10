@@ -11,6 +11,8 @@ import type { SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateComplianceReport } from "./compliance-service";
+import { dbUserRoleSchema, uiInputRoleSchema, UI_TO_DB_ROLE } from "../shared/types/roles";
+import { auditLog, AuditAction } from "./services/audit-log";
 
 /**
  * Admin Router — Admin-only operations
@@ -55,7 +57,7 @@ export const adminRouter = router({
    */
   approveSupplier: adminProcedure
     .input(z.object({ supplierId: z.number(), notes: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -119,6 +121,20 @@ export const adminRouter = router({
         });
       }
 
+      void auditLog.record({
+        action: AuditAction.SUPPLIER_VERIFICATION_APPROVED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.user.role,
+        resourceType: "supplier",
+        resourceId: input.supplierId,
+        metadata: {
+          companyName: supplier?.companyName ?? null,
+          notes: input.notes ?? null,
+        },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] approveSupplier", err));
+
       return { success: true };
     }),
 
@@ -127,7 +143,7 @@ export const adminRouter = router({
    */
   rejectSupplier: adminProcedure
     .input(z.object({ supplierId: z.number(), notes: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -182,6 +198,20 @@ export const adminRouter = router({
           `,
         });
       }
+
+      void auditLog.record({
+        action: AuditAction.SUPPLIER_VERIFICATION_REJECTED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.user.role,
+        resourceType: "supplier",
+        resourceId: input.supplierId,
+        metadata: {
+          companyName: supplier?.companyName ?? null,
+          reason: input.notes,
+        },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] rejectSupplier", err));
 
       return { success: true };
     }),
@@ -331,16 +361,28 @@ export const adminRouter = router({
    */
   setUserRole: adminProcedure
     .input(z.object({
-      userId: z.number(),
-      role: z.enum(["user", "admin", "buyer", "supplier"]),
+      userId: z.number(), // gcz-allow: admin-targeting — changing another user's role, not self-identity
+      role: dbUserRoleSchema,
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       await db
         .update(users)
         .set({ role: input.role, updatedAt: new Date() })
         .where(eq(users.id, input.userId));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_USER_ROLE_CHANGED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.user.role,
+        resourceType: "user",
+        resourceId: input.userId,
+        metadata: { newRole: input.role },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] setUserRole", err));
+
       return { success: true };
     }),
 
@@ -624,7 +666,7 @@ export const adminRouter = router({
   // Creates a synthetic test user if one doesn't exist, then returns a signed
   // session JWT. The frontend sets it as the cookie and redirects.
   createTestSession: adminProcedure
-    .input(z.object({ role: z.enum(["supplier", "buyer", "architect", "admin"]) }))
+    .input(z.object({ role: uiInputRoleSchema }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -643,12 +685,8 @@ export const adminRouter = router({
         admin: "test-admin@greenchainz-test.internal",
       };
 
-      const roleMap: Record<string, "user" | "admin" | "buyer" | "supplier"> = {
-        supplier: "supplier",
-        buyer: "buyer",
-        architect: "buyer",
-        admin: "admin",
-      };
+      // UI_TO_DB_ROLE maps "architect" → "buyer"; all other roles pass through.
+      const roleMap = UI_TO_DB_ROLE;
 
       // Upsert the test user
       const { users } = await import("../drizzle/schema");

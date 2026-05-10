@@ -1877,3 +1877,38 @@ export const founderVideoViews = pgTable("founder_video_views", {
 });
 
 export type FounderVideoView = typeof founderVideoViews.$inferSelect;
+
+// ── Audit Log ─────────────────────────────────────────────────────────────────
+// Immutable record of security-relevant and business-critical events.
+// Never update or delete rows — append only.
+// Accessible only to greenchainz_admin in the application layer.
+
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  // Who performed the action
+  actorUserId: integer("actorUserId"),          // null for system/scheduler actions
+  actorEmail: varchar("actorEmail", { length: 320 }),
+  actorRole: varchar("actorRole", { length: 32 }),
+  // What they did
+  action: varchar("action", { length: 64 }).notNull(),
+  // What resource was affected
+  resourceType: varchar("resourceType", { length: 64 }),
+  resourceId: varchar("resourceId", { length: 128 }),
+  // Freeform structured context (no PII beyond what's already in actor fields)
+  metadata: json("metadata"),
+  // Result
+  outcome: varchar("outcome", { length: 16 }).default("success").notNull(), // "success" | "failure" | "blocked"
+  // Network context
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  userAgent: text("userAgent"),
+  // Immutable timestamp
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  actorIdx: index("audit_logs_actor_idx").on(table.actorUserId),
+  actionIdx: index("audit_logs_action_idx").on(table.action),
+  createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
+  resourceIdx: index("audit_logs_resource_idx").on(table.resourceType, table.resourceId),
+}));
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;

@@ -21,6 +21,7 @@ import * as db from "../db";
 import { sdk } from "./sdk";
 import { getSessionCookieOptions } from "./cookies";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import type { ActiveUserRole } from "@shared/types/roles";
 
 const scryptAsync = promisify(scrypt);
 const SALT_BYTES = 16;
@@ -117,7 +118,7 @@ function openIdForEmail(email: string): string {
   return `email:${Buffer.from(normalized).toString("base64url")}`;
 }
 
-function assignRole(email: string, requestedRole?: string): "buyer" | "supplier" | "admin" {
+function assignRole(email: string, requestedRole?: string): ActiveUserRole {
   if (email.endsWith("@greenchainz.com")) return "admin";
   if (requestedRole === "supplier") return "supplier";
   return "buyer";
