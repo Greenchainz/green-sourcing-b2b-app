@@ -19,6 +19,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { getDb as getSharedDb } from '../lib/db';
+import type { DbUserRole } from "../shared/types/roles";
 
 // ─── Async accessor (preferred) ─────────────────────────────────────────────
 
@@ -122,7 +123,7 @@ export async function getUserByOpenId(openId: string) {
 
 export async function updateUserRole(
   userId: number,
-  role: "buyer" | "supplier" | "admin" | "user"
+  role: DbUserRole
 ): Promise<void> {
   const resolvedDb = await getDb();
   if (!resolvedDb) throw new Error("[Database] Cannot update user role: database not available");

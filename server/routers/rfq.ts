@@ -3,6 +3,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { query, queryOne, queryMany, withTransaction } from "../../lib/pg-pool";
 import { getDb } from "../db";
+import { auditLog, AuditAction } from "../services/audit-log";
 import { rfqRequests, suppliers } from "../../drizzle/schema";
 import { eq, desc, ilike, or } from "drizzle-orm";
 
@@ -64,6 +65,21 @@ export const rfqRouter = router({
         .from(suppliers)
         .where(eq(suppliers.id, input.supplierId))
         .limit(1);
+
+      void auditLog.record({
+        action: AuditAction.RFQ_CREATED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.user.role,
+        resourceType: "rfq",
+        resourceId: inserted.id,
+        metadata: {
+          supplierId: input.supplierId,
+          supplierName: supplierRow?.companyName ?? null,
+          materialType: input.materialType,
+        },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] rfq.create", err));
 
       return { id: inserted.id, supplierName: supplierRow?.companyName ?? null };
     }),
@@ -246,6 +262,17 @@ export const rfqRouter = router({
         .set({ status: input.status })
         .where(eq(rfqRequests.id, input.id));
 
+      void auditLog.record({
+        action: AuditAction.RFQ_RESPONDED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.user.role,
+        resourceType: "rfq",
+        resourceId: input.id,
+        metadata: { status: input.status },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] rfq.respond", err));
+
       return { success: true };
     }),
 
@@ -273,6 +300,16 @@ export const rfqRouter = router({
         .update(rfqRequests)
         .set({ status: "declined" })
         .where(eq(rfqRequests.id, input.id));
+
+      void auditLog.record({
+        action: AuditAction.RFQ_CANCELLED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.user.role,
+        resourceType: "rfq",
+        resourceId: input.id,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] rfq.cancel", err));
 
       return { success: true };
     }),

@@ -113,11 +113,113 @@ jobs:
           path: npm-audit.json
           retention-days: 90         # keep 90 days — satisfies log retention requirement
 
-  # ── Job 4: Summary notification ─────────────────────────────────────────
+  # ── Job 4: Unsafe identity pattern guards ───────────────────────────────
+  # Catches code that reads user identity from client-supplied input instead
+  # of from the server-side JWT context (ctx.user.*).
+  #
+  # Two tiers:
+  #   HARD FAIL — patterns with zero legitimate uses (will block merge)
+  #   ADVISORY  — patterns with rare legitimate uses (reported, not blocking)
+  #
+  # To opt out of a specific line (admin-targeting only, never for tenant scoping):
+  #   append "// gcz-allow: <reason>" to the line
+  code-pattern-guards:
+    name: Unsafe Identity Pattern Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Hard-fail patterns ────────────────────────────────────────────────
+      # These have NO legitimate uses anywhere in the server codebase.
+      - name: Check for forbidden identity patterns (hard fail)
+        run: |
+          PATTERNS=(
+            'req\.body\.orgId'
+            'req\.query\.orgId'
+            'req\.body\.userId'
+            'req\.query\.userId'
+            'req\.body\.tenantId'
+            'req\.query\.tenantId'
+            'headers\["x-user-id"\]'
+            'headers\["x-org-id"\]'
+            "headers\['x-user-id'\]"
+            "headers\['x-org-id'\]"
+          )
+
+          FOUND=0
+          for pattern in "${PATTERNS[@]}"; do
+            # Exclude lines that have the gcz-allow opt-out comment
+            matches=$(grep -rn --include="*.ts" -E "$pattern" server/ \
+              | grep -v "gcz-allow" \
+              | grep -v "node_modules" \
+              | grep -v "\.test\." \
+              | grep -v "\.spec\." || true)
+            if [ -n "$matches" ]; then
+              echo "❌ FORBIDDEN PATTERN: $pattern"
+              echo "$matches"
+              echo ""
+              FOUND=$((FOUND + 1))
+            fi
+          done
+
+          if [ $FOUND -gt 0 ]; then
+            echo ""
+            echo "──────────────────────────────────────────────────────────────"
+            echo "FAIL: $FOUND forbidden identity pattern(s) found."
+            echo "User identity must come from ctx.user (server-side JWT),"
+            echo "never from client-supplied request body, query, or headers."
+            echo ""
+            echo "If this is a legitimate admin-targeting use, add:"
+            echo "  // gcz-allow: admin-targeting <reason>"
+            echo "to the specific line."
+            echo "──────────────────────────────────────────────────────────────"
+            exit 1
+          fi
+
+          echo "✅ No forbidden identity patterns found."
+
+      # ── Advisory patterns ─────────────────────────────────────────────────
+      # These have rare legitimate uses (e.g. admin targeting another user).
+      # Reports findings but does NOT fail the build.
+      - name: Check for advisory identity patterns (informational)
+        run: |
+          PATTERNS=(
+            'input\.orgId'
+            'input\.tenantId'
+          )
+
+          FOUND=0
+          for pattern in "${PATTERNS[@]}"; do
+            matches=$(grep -rn --include="*.ts" -E "$pattern" server/ \
+              | grep -v "gcz-allow" \
+              | grep -v "node_modules" \
+              | grep -v "\.test\." \
+              | grep -v "\.spec\." || true)
+            if [ -n "$matches" ]; then
+              echo "⚠️  ADVISORY PATTERN: $pattern"
+              echo "$matches"
+              echo ""
+              FOUND=$((FOUND + 1))
+            fi
+          done
+
+          if [ $FOUND -gt 0 ]; then
+            echo "──────────────────────────────────────────────────────────────"
+            echo "ADVISORY: $FOUND pattern(s) found for manual review."
+            echo "Verify these are NOT used for tenant-scoping your own data."
+            echo "If they are admin-targeting a different user's record, add:"
+            echo "  // gcz-allow: admin-targeting <reason>"
+            echo "──────────────────────────────────────────────────────────────"
+          else
+            echo "✅ No advisory identity patterns found."
+          fi
+
+  # ── Job 5: Summary notification ─────────────────────────────────────────
   scan-summary:
     name: Scan Summary
     runs-on: ubuntu-latest
-    needs: [dependency-scan, container-scan, npm-audit]
+    needs: [dependency-scan, container-scan, npm-audit, code-pattern-guards]
     if: always()
     steps:
       - name: Print scan summary
@@ -126,9 +228,10 @@ jobs:
           echo "GreenChainz Security Scan Complete"
           echo "Run: ${{ github.run_number }} | ${{ github.sha }}"
           echo "Triggered by: ${{ github.event_name }}"
-          echo "Dependency scan: ${{ needs.dependency-scan.result }}"
-          echo "Container scan:  ${{ needs.container-scan.result }}"
-          echo "npm audit:       ${{ needs.npm-audit.result }}"
+          echo "Dependency scan:      ${{ needs.dependency-scan.result }}"
+          echo "Container scan:       ${{ needs.container-scan.result }}"
+          echo "npm audit:            ${{ needs.npm-audit.result }}"
+          echo "Code pattern guards:  ${{ needs.code-pattern-guards.result }}"
           echo "========================================"
           echo "Results are available in the GitHub Security tab."
           echo "Artifact retention: 90 days."
