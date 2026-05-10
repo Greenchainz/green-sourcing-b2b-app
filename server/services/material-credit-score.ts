@@ -10,7 +10,7 @@
  */
 
 import { getDb } from "../db";
-import { epdMaterials, suppliers } from "../../drizzle/schema";
+import { epdMaterials, suppliers, materialCreditScoreCache } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
 // ─── Benchmarks ───────────────────────────────────────────────────────────────
@@ -122,18 +122,71 @@ function scoreAssemblyOptions(coveredOptions: Set<number>): number {
   return 0;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function emptyScore(): MaterialCreditScoreResult {
+  return { total: 0, breakdown: { carbonEfficiency: 0, epdVerification: 0, manufacturerTransparency: 0, assemblyOptionsCoverage: 0 } };
+}
+
+async function writeCache(epdId: number, result: MaterialCreditScoreResult): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .insert(materialCreditScoreCache)
+    .values({
+      epdId,
+      total: result.total,
+      carbonEfficiency: result.breakdown.carbonEfficiency,
+      epdVerification: result.breakdown.epdVerification,
+      manufacturerTransparency: result.breakdown.manufacturerTransparency,
+      assemblyOptionsCoverage: result.breakdown.assemblyOptionsCoverage,
+    })
+    .onConflictDoUpdate({
+      target: materialCreditScoreCache.epdId,
+      set: {
+        total: result.total,
+        carbonEfficiency: result.breakdown.carbonEfficiency,
+        epdVerification: result.breakdown.epdVerification,
+        manufacturerTransparency: result.breakdown.manufacturerTransparency,
+        assemblyOptionsCoverage: result.breakdown.assemblyOptionsCoverage,
+        computedAt: new Date(),
+      },
+    });
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
  * Compute the Material Credit Score for a single epd_materials row.
+ * Cache-first: returns the pre-computed score if available, otherwise
+ * computes live and writes the result to cache asynchronously.
  */
 export async function compute(
   epdId: number
 ): Promise<MaterialCreditScoreResult> {
   const db = await getDb();
-  if (!db) {
-    return { total: 0, breakdown: { carbonEfficiency: 0, epdVerification: 0, manufacturerTransparency: 0, assemblyOptionsCoverage: 0 } };
+  if (!db) return emptyScore();
+
+  // ── Cache hit ──────────────────────────────────────────────────────────────
+  const [cached] = await db
+    .select()
+    .from(materialCreditScoreCache)
+    .where(eq(materialCreditScoreCache.epdId, epdId))
+    .limit(1);
+
+  if (cached) {
+    return {
+      total: cached.total,
+      breakdown: {
+        carbonEfficiency: cached.carbonEfficiency,
+        epdVerification: cached.epdVerification,
+        manufacturerTransparency: cached.manufacturerTransparency,
+        assemblyOptionsCoverage: cached.assemblyOptionsCoverage,
+      },
+    };
   }
+
+  // ── Cache miss: compute live, then populate cache async ───────────────────
 
   const [row] = await db
     .select()
@@ -141,9 +194,7 @@ export async function compute(
     .where(eq(epdMaterials.id, epdId))
     .limit(1);
 
-  if (!row) {
-    return { total: 0, breakdown: { carbonEfficiency: 0, epdVerification: 0, manufacturerTransparency: 0, assemblyOptionsCoverage: 0 } };
-  }
+  if (!row) return emptyScore();
 
   // Fetch supplier profile for transparency score
   const [supplierRow] = await db
@@ -192,7 +243,7 @@ export async function compute(
     carbonEfficiency + epdVerification + manufacturerTransparency + assemblyOptionsCoverage
   );
 
-  return {
+  const result: MaterialCreditScoreResult = {
     total,
     breakdown: {
       carbonEfficiency,
@@ -201,6 +252,11 @@ export async function compute(
       assemblyOptionsCoverage,
     },
   };
+
+  // Populate cache asynchronously — never block the caller
+  void writeCache(epdId, result).catch((err) => console.error("[score-cache] write failed:", err));
+
+  return result;
 }
 
 /**

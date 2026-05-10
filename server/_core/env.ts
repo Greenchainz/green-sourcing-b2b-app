@@ -21,4 +21,6 @@ export const ENV = {
   // portal.azure.com → Create resource → "Translator" → F0 free tier
   get azureTranslatorKey()    { return process.env.AZURE_TRANSLATOR_KEY ?? ""; },
   get azureTranslatorRegion() { return process.env.AZURE_TRANSLATOR_REGION ?? "eastus"; },
+  // Azure Service Bus — async event pipeline
+  get serviceBusConnectionString() { return process.env.SERVICE_BUS_CONNECTION_STRING ?? ""; },
 };

@@ -13,6 +13,7 @@ import { z } from "zod";
 import { generateComplianceReport } from "./compliance-service";
 import { dbUserRoleSchema, uiInputRoleSchema, UI_TO_DB_ROLE } from "../shared/types/roles";
 import { auditLog, AuditAction } from "./services/audit-log";
+import { publishSupplierEvent } from "./services/event-bus";
 
 /**
  * Admin Router — Admin-only operations
@@ -135,6 +136,9 @@ export const adminRouter = router({
         req: ctx.req,
       }).catch((err) => console.error("[audit] approveSupplier", err));
 
+      void publishSupplierEvent({ type: "supplier.approved", supplierId: input.supplierId })
+        .catch((err) => console.error("[event-bus] supplier.approved", err));
+
       return { success: true };
     }),
 
@@ -212,6 +216,9 @@ export const adminRouter = router({
         },
         req: ctx.req,
       }).catch((err) => console.error("[audit] rejectSupplier", err));
+
+      void publishSupplierEvent({ type: "supplier.rejected", supplierId: input.supplierId })
+        .catch((err) => console.error("[event-bus] supplier.rejected", err));
 
       return { success: true };
     }),
