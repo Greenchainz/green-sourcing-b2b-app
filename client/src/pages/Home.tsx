@@ -10,8 +10,8 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="EPD Lookup & Sustainable Materials Procurement Software — GreenChainz"
-        description="GreenChainz is the B2B procurement platform for architects and contractors delivering instant EPD lookups, automated RFQs, and real-time LEED/Buy Clean/Title 24 compliance — inside Autodesk Forma, Revit, Excel, and your browser."
+        title="Where Sustainable Material Deals Get Made — GreenChainz"
+        description="GreenChainz connects architects and sustainable material suppliers — verified materials, direct RFQs, real conversations, real deals. This is where the handshake happens."
         canonicalPath="/"
       />
       <StructuredData data={homepageSchema} />
@@ -23,24 +23,22 @@ export default function Home() {
         <div className="container">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              Forma Carbon Insights{' '}
-              <span className="text-primary">Finds the Problem.</span>
-              <br />GreenChainz{' '}
-              <span className="text-primary">Solves It.</span>
+              Verified green materials are only useful{' '}
+              <span className="text-primary">if you can actually source them.</span>
             </h1>
             <p className="text-xl font-semibold text-muted-foreground max-w-2xl mx-auto">
-              Autodesk moved every architect into a carbon-aware workflow. GreenChainz is the verified procurement layer they land on next.
+              GreenChainz is where architects and sustainable material suppliers find each other — and actually do business.
             </p>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Forma Carbon Insights tells your team the building is 15% over its embodied carbon target. It doesn't tell you which supplier has the verified lower-carbon alternative, what the EPD says, or how to get a compliant quote. That's us.
+              The data exists. The software exists. What's been missing is the connection — the conversation, the RFQ, the relationship. That's what we built.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              EPD-verified materials, one-click RFQs, and LEED-ready submittals — directly inside Autodesk Forma and Revit, before the slow suppliers even know a project exists.
+              Our SWAP Engine catches architects mid-decision and shows them a greener alternative that meets their specs. From there — direct messaging, RFQs, video calls, and a deal. All in one place.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link href="/get-started">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300">
-                  Get Bulletproof Specs →
+                  Find Verified Materials →
                 </Button>
               </Link>
               <Link href="/how-it-works">
@@ -103,13 +101,13 @@ export default function Home() {
         <div className="container">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
-              THE HONEST CALCULUS
+              HOW IT WORKS
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Liability-Free. Code-Compliant. No Excuses.
+              From better spec to real deal — all in one workflow.
             </h2>
             <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-              You care about both. The planet and the liability exposure. GreenChainz doesn't make you choose. Bulletproof EPD data protects you from toxic tort claims and advances projects worth building. Winning both is the point.
+              Better documentation. Cleaner compliance. Stronger sourcing decisions. GreenChainz gives your team verified EPD data and connects you with the suppliers who can actually deliver.
             </p>
           </div>
 
@@ -120,9 +118,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Kill the Consultant Bill</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Find the Right Material Fast</h3>
               <p className="text-muted-foreground">
-                No more $500/hr consultants hunting EPDs. Our AI does the heavy lifting. Your GC doesn't need to know it used to take three days.
+                Search verified materials by carbon, certifications, compliance requirements, and location. No more digging through PDFs or chasing down data sheets.
               </p>
             </Card>
 
@@ -132,9 +130,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">BIM In. RFQ Out. Done.</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Send RFQs Without the Back-and-Forth</h3>
               <p className="text-muted-foreground">
-                What used to require a junior PM, two spreadsheets, and a prayer now takes minutes. Instant EPD lookups, automated RFQs, one-click submittals.
+                Turn your material selection into a quote request in one click. Suppliers get a clear RFQ. You get responses you can actually compare — price, carbon, documentation, all in one place.
               </p>
             </Card>
 
@@ -144,9 +142,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Compliance Is a Weapon. Wield It.</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Connect and Close the Deal</h3>
               <p className="text-muted-foreground">
-                Local Law 97. Title 24. LEED v5. Buy Clean. We track every moving target so you show up to every bid with bulletproof data.
+                Message suppliers directly, jump on a video call, build the relationship. LEED, Title 24, Buy Clean, Local Law 97 — compliance documentation is there when you need it. The deal is what we're here for.
               </p>
             </Card>
           </div>
