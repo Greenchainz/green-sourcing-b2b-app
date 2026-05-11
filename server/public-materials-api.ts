@@ -15,7 +15,7 @@
 import { Router, type Request, type Response } from 'express';
 import { getDb } from './db';
 import { materials, manufacturers, rfqRequests, suppliers, users } from '../drizzle/schema';
-import { eq, like, and, lte, or, ilike, desc } from 'drizzle-orm';
+import { eq, like, and, lte, or, desc, sql } from 'drizzle-orm';
 import { sdk } from './_core/sdk';
 
 export const publicMaterialsRouter = Router();
@@ -277,7 +277,7 @@ publicMaterialsRouter.post('/rfq/add-item', async (req: Request, res: Response) 
       .where(
         and(
           eq(suppliers.verified, true),
-          ilike(suppliers.materialCategories as unknown as string, `%${material.category}%`)
+          sql`${suppliers.materialCategories}::text ILIKE ${`%${material.category}%`}`
         )
       )
       .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
