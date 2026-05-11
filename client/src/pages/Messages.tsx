@@ -652,12 +652,12 @@ function ThreadPanel({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-green-600"
           onClick={handleVideoCall}
           title={`Start video call with ${name}`}
           disabled={!conv?.otherPartyId}
         >
-          <Phone className="h-4 w-4" />
+          <Video className="h-4 w-4" />
         </Button>
       </div>
 
