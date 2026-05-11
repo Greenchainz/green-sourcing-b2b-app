@@ -251,8 +251,7 @@ export const rfqRouter = router({
       const rows = await db
         .select({ supplierId: rfqRequests.supplierId, status: rfqRequests.status })
         .from(rfqRequests)
-        .where(eq(rfqRequests.id, input.id))
-        .limit(1);
+        .where(eq(rfqRequests.id, input.id));
 
       if (!rows.length) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
