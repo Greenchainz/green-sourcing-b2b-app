@@ -256,7 +256,12 @@ export const rfqRouter = router({
       if (!rows.length) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rows[0].supplierId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (rows.length > 1) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Duplicate RFQ records found" });
+      }
+      const [row] = rows;
+
+      if (row.supplierId !== ctx.user.id && ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "This RFQ was not assigned to you" });
       }
 
