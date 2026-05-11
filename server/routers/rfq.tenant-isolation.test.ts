@@ -165,10 +165,13 @@ describe("RFQ tenant isolation", () => {
 
   describe("cancel", () => {
     it("allows User A to cancel their own RFQ", async () => {
+      // limit() resolves with the RFQ row for the ownership check
       (mockDb.limit as ReturnType<typeof vi.fn>).mockResolvedValue([
         { architectId: USER_A.id },
       ]);
-      (mockDb.where as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      // Do NOT override where() here — makeDb() already has it as mockReturnThis(),
+      // which lets the select chain reach .limit(). The update chain's .where()
+      // returns `this` (non-thenable), so await resolves cleanly.
 
       const result = await callerAs(USER_A).cancel({ id: 1 });
       expect(result.success).toBe(true);
