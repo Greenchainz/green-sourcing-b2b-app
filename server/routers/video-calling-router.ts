@@ -28,6 +28,7 @@ export const videoCallingRouter = router({
       const { initiateVideoCall } = await import('../webrtc-video-service');
       return await initiateVideoCall({
         callerId: ctx.user.id,
+        callerName: ctx.user.name ?? ctx.user.email ?? `User ${ctx.user.id}`,
         calleeId: input.calleeId,
         conversationId: input.conversationId,
       });

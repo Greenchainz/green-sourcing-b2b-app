@@ -25,10 +25,11 @@ const activeCalls = new Map<string, VideoCallSession>();
  */
 export async function initiateVideoCall(params: {
   callerId: number;
+  callerName: string;
   calleeId: number;
   conversationId: number;
 }): Promise<VideoCallSession> {
-  const { callerId, calleeId, conversationId } = params;
+  const { callerId, callerName, calleeId, conversationId } = params;
 
   const callId = `call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
@@ -48,6 +49,7 @@ export async function initiateVideoCall(params: {
     type: "video_call_incoming",
     callId,
     callerId,
+    callerName,
     conversationId,
   });
 

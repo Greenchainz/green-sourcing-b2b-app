@@ -3,7 +3,7 @@ import { getDb } from "./db";
 import { rfqMessages, rfqThreads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-const hubName = process.env.WEBPUBSUB_HUB || "greenchainzhub";
+const hubName = process.env.WEBPUBSUB_HUB ?? "greenchainz-hub";
 
 // Lazy-initialize so the module doesn't throw at startup before secrets are loaded
 let _client: WebPubSubServiceClient | null = null;
@@ -24,13 +24,12 @@ function getClient(): WebPubSubServiceClient {
 /**
  * Broadcast notification to a specific user
  */
-export async function broadcastNotification(userId: number, notification: any) {
+export async function broadcastNotification(userId: number, notification: Record<string, unknown>) {
   try {
-    await getClient().sendToUser(`user-${userId}`, {
-      type: "notification",
-      data: notification,
-    });
-    console.log(`✅ Notification broadcast to user-${userId}`);
+    // Send the notification payload directly — no outer wrapper.
+    // Clients parse event.data and check notification.type at the top level.
+    await getClient().sendToUser(`user-${userId}`, notification);
+    console.log(`✅ Notification broadcast to user-${userId}: ${notification.type}`);
   } catch (error) {
     console.error("❌ Failed to broadcast notification:", error);
   }

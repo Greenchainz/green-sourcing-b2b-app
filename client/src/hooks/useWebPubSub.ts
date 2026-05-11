@@ -89,7 +89,7 @@ export function useWebPubSub() {
               );
             }
 
-            if (data.type === "webrtc_signal") {
+            if (data.type === "webrtc_signaling") {
               window.dispatchEvent(
                 new CustomEvent("webrtc-signal", {
                   detail: {
