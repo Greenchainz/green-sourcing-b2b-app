@@ -8,7 +8,7 @@ import {
   ccpsBaselines,
   decisionMakerPersonas,
 } from '../../drizzle/schema';
-import { eq, like, and, lte, asc, sql, or, getTableColumns } from 'drizzle-orm';
+import { eq, like, and, lte, asc, sql, or, not, getTableColumns } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
@@ -38,7 +38,12 @@ export const materialsRouter = router({
       const db = await getDb();
       if (!db) return { items: [], total: 0 };
 
-      const conditions: SQL[] = [];
+      const conditions: SQL[] = [
+        // Exclude Swiss/German KBOB reference data — non-English names, no images,
+        // not real purchasable products. The catalog shows only English-language
+        // verified products (static-seed, ews-pdf-import, supplier-submitted).
+        not(like(materials.dataSource, 'open-material-data%')),
+      ];
       if (input.search) {
         conditions.push(
           or(
