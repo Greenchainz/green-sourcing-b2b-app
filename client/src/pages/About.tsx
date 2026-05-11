@@ -1,6 +1,5 @@
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import VideoPlaceholder from '../components/VideoPlaceholder';
 import { Card } from '../components/ui/card';
 import SEOHead from '../components/SEOHead';
 import StructuredData, { aboutPageSchema } from '../components/StructuredData';
@@ -55,11 +54,20 @@ export default function About() {
               </p>
             </div>
             
-            <VideoPlaceholder
-              title="Meet Jerit Norville"
-              description="Founder & CEO shares the GreenChainz vision"
-              aspectRatio="16/9"
-            />
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black aspect-video">
+              <video
+                className="w-full h-full object-cover"
+                controls
+                preload="metadata"
+                poster=""
+              >
+                <source
+                  src="https://greencontent.blob.core.windows.net/greenchainz-uploads/WIN_20260511_06_38_12_Pro.mp4"
+                  type="video/mp4"
+                />
+                Your browser does not support the video tag.
+              </video>
+            </div>
           </div>
         </div>
       </section>
@@ -272,20 +280,20 @@ export default function About() {
         <div className="container relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Enter the Fight
+              Ready to Source Smarter?
             </h2>
             <p className="text-lg text-muted-foreground">
-              The trillion-dollar construction materials market is changing hands. The incumbents are slow. The window is open. Get in.
+              Join the architects and suppliers already closing deals on verified sustainable materials — without the back-and-forth.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <a href="/get-started" className="w-full sm:w-auto">
                 <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg bg-gradient-to-r from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] text-white hover:shadow-lg hover:scale-105 transition-all duration-300">
-                  Get Bulletproof Specs
+                  Get Started Free
                 </button>
               </a>
               <a href="/contact" className="w-full sm:w-auto">
                 <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg border-2 border-primary/30 bg-background/50 backdrop-blur-sm hover:bg-primary/5 hover:border-primary/50 transition-all duration-300">
-                  Talk Strategy
+                  Talk to Jerit
                 </button>
               </a>
             </div>
