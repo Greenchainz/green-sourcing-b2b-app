@@ -205,6 +205,35 @@ async function exchangeLinkedInCode(code: string, redirectUri: string): Promise<
 
 export function registerOAuthProviderRoutes(app: Express) {
   // ── Current user — must register BEFORE /:provider wildcard ───────────────
+
+  // ── Forma Extension auth connect ─────────────────────────────────────────
+  // GET /auth/connect?scope=rfq:write&redirect_uri=<formaCallbackUrl>
+  //
+  // The Forma Extension stores a long-lived Bearer token in localStorage.
+  // This route starts a normal Microsoft OAuth flow; on callback we issue a
+  // JWT with ext="forma" and redirect to redirect_uri#token=<jwt> so the
+  // extension can extract it from the URL fragment (never logged).
+  //
+  // redirect_uri is validated against allowed Forma / localhost origins.
+  app.get("/auth/connect", (req: Request, res: Response) => {
+    const redirectUri = typeof req.query.redirect_uri === "string" ? req.query.redirect_uri : "";
+
+    const allowedPrefixes = [
+      "https://localhost",
+      "http://localhost",
+      "https://app.autodeskforma.com",
+      "https://app.autodeskforma.eu",
+    ];
+    if (redirectUri && !allowedPrefixes.some((p) => redirectUri.startsWith(p))) {
+      res.status(400).send("Invalid redirect_uri");
+      return;
+    }
+
+    const state = createState(`__forma__${encodeURIComponent(redirectUri)}`, null);
+    const msRedirectUri = buildRedirectUri(req, "microsoft");
+    res.redirect(302, getMicrosoftAuthUrl(msRedirectUri, state));
+  });
+
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
       const user = await sdk.authenticateRequest(req);
@@ -345,6 +374,30 @@ export function registerOAuthProviderRoutes(app: Express) {
           .catch((err: unknown) => console.warn("[Auth] Welcome email failed (non-critical):", err));
       }
 
+      // ── Forma Extension flow ─────────────────────────────────────────────
+      if (returnPath.startsWith("__forma__")) {
+        const extCallback = decodeURIComponent(returnPath.slice("__forma__".length));
+        const { SignJWT } = await import("jose");
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET ?? "");
+        const expiresAt = Math.floor((Date.now() + ONE_YEAR_MS) / 1000);
+        const formaToken = await new SignJWT({
+          openId: userInfo.openId,
+          appId:  process.env.VITE_APP_ID ?? "",
+          name:   userInfo.name ?? "",
+          ext:    "forma",
+        })
+          .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+          .setExpirationTime(expiresAt)
+          .sign(secret);
+
+        const dest = extCallback
+          ? `${extCallback}#token=${encodeURIComponent(formaToken)}`
+          : `/auth/connect/success#token=${encodeURIComponent(formaToken)}`;
+        res.redirect(302, dest);
+        return;
+      }
+
+      // ── Normal web session ────────────────────────────────────────────────
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name ?? "",
         expiresInMs: ONE_YEAR_MS,

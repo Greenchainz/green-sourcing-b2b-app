@@ -6,16 +6,42 @@
  * in an iframe and has no access to the user's GreenChainz session cookie.
  *
  * Routes:
- *   GET /api/public/materials/search   — keyword + category search
- *   GET /api/public/materials/:id/swaps — greener alternatives (SWAP engine)
+ *   GET  /api/public/materials/search    — keyword + category search
+ *   GET  /api/public/materials/:id/swaps — greener alternatives (SWAP engine)
+ *   GET  /api/public/auth/verify         — validate a Forma extension Bearer token
+ *   POST /api/public/rfq/add-item        — create an RFQ from the Forma extension
  */
 
 import { Router, type Request, type Response } from 'express';
 import { getDb } from './db';
-import { materials, manufacturers } from '../drizzle/schema';
-import { eq, like, and, lte, or } from 'drizzle-orm';
+import { materials, manufacturers, rfqRequests, suppliers, users } from '../drizzle/schema';
+import { eq, like, and, lte, or, ilike, desc } from 'drizzle-orm';
+import { sdk } from './_core/sdk';
 
 export const publicMaterialsRouter = Router();
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Extract and verify a Forma extension Bearer token from the Authorization header.
+ * Returns the decoded openId on success, or null if invalid/missing.
+ *
+ * Extension tokens are standard GreenChainz JWTs (signed with JWT_SECRET) with
+ * an extra `ext: "forma"` claim so they can't be confused with session cookies.
+ */
+async function verifyExtensionToken(req: Request): Promise<string | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  try {
+    const payload = await sdk.verifySession(token);
+    if (!payload) return null;
+    if ((payload as Record<string, unknown>).ext !== 'forma') return null;
+    return payload.openId;
+  } catch {
+    return null;
+  }
+}
 
 // ── GET /api/public/materials/search ─────────────────────────────────────────
 
@@ -102,7 +128,6 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
     const materialId = Number(req.params.id);
     if (isNaN(materialId)) return res.status(400).json({ error: 'Invalid material ID' });
 
-    // Look up the source material
     const [source] = await db
       .select({
         id:       materials.id,
@@ -116,7 +141,6 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
 
     if (!source) return res.status(404).json({ error: 'Material not found' });
 
-    // Find lower-carbon alternatives in the same category
     const alternatives = await db
       .select({
         id:                  materials.id,
@@ -136,10 +160,7 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
         and(
           like(materials.category, `%${source.category}%`),
           eq(materials.hasEpd, true),
-          // Only return materials with lower GWP than the source
-          source.gwpValue
-            ? lte(materials.gwpValue, source.gwpValue)
-            : undefined
+          source.gwpValue ? lte(materials.gwpValue, source.gwpValue) : undefined
         )
       )
       .limit(5);
@@ -164,6 +185,158 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
     return res.json({ alternatives: shaped });
   } catch (err) {
     console.error('[public-api] materials/swaps error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── GET /api/public/auth/verify ───────────────────────────────────────────────
+//
+// Called by the Forma extension on startup to confirm the stored token is valid.
+// Returns 200 + { ok, user } or 401.
+
+publicMaterialsRouter.get('/auth/verify', async (req: Request, res: Response) => {
+  const openId = await verifyExtensionToken(req);
+  if (!openId) return res.status(401).json({ error: 'Invalid or expired token' });
+
+  try {
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+
+    const [user] = await db
+      .select({ id: users.id, name: users.name, email: users.email, role: users.role })
+      .from(users)
+      .where(eq(users.openId, openId))
+      .limit(1);
+
+    if (!user) return res.status(401).json({ error: 'User not found' });
+
+    return res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  } catch (err) {
+    console.error('[public-api] auth/verify error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /api/public/rfq/add-item ────────────────────────────────────────────
+//
+// Creates an RFQ from the Forma extension. Requires a valid extension Bearer token.
+// Finds the best-match verified supplier for the material's category and fires a
+// notification email to them.
+//
+// Body: { materialId: string, quantity: number, unit: string, projectName?: string }
+
+publicMaterialsRouter.post('/rfq/add-item', async (req: Request, res: Response) => {
+  const openId = await verifyExtensionToken(req);
+  if (!openId) {
+    return res.status(401).json({ error: 'Invalid or expired token — re-link your GreenChainz account' });
+  }
+
+  const { materialId, quantity, unit, projectName } = req.body as {
+    materialId?: unknown;
+    quantity?: unknown;
+    unit?: unknown;
+    projectName?: unknown;
+  };
+
+  if (!materialId || typeof materialId !== 'string') {
+    return res.status(400).json({ error: 'materialId is required' });
+  }
+  const qty = Number(quantity);
+  if (isNaN(qty) || qty <= 0) {
+    return res.status(400).json({ error: 'quantity must be a positive number' });
+  }
+  const unitStr  = typeof unit        === 'string' && unit.trim()        ? unit.trim()        : 'unit';
+  const project  = typeof projectName === 'string' && projectName.trim() ? projectName.trim() : 'Forma Project';
+
+  try {
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+
+    // 1. Resolve architect user
+    const [architect] = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.openId, openId))
+      .limit(1);
+
+    if (!architect) return res.status(401).json({ error: 'User not found' });
+
+    // 2. Resolve material → get category for supplier matching
+    const [material] = await db
+      .select({ id: materials.id, name: materials.name, category: materials.category })
+      .from(materials)
+      .where(eq(materials.id, Number(materialId)))
+      .limit(1);
+
+    if (!material) return res.status(404).json({ error: 'Material not found' });
+
+    // 3. Find best-match verified supplier (category match, premium first)
+    const [matchedSupplier] = await db
+      .select({ id: suppliers.id, companyName: suppliers.companyName, email: suppliers.email })
+      .from(suppliers)
+      .where(
+        and(
+          eq(suppliers.verified, true),
+          ilike(suppliers.materialCategories as unknown as string, `%${material.category}%`)
+        )
+      )
+      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
+      .limit(1);
+
+    // Fall back to any verified supplier if no category match
+    const fallbackRows = matchedSupplier ? [] : await db
+      .select({ id: suppliers.id, companyName: suppliers.companyName, email: suppliers.email })
+      .from(suppliers)
+      .where(eq(suppliers.verified, true))
+      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
+      .limit(1);
+
+    const supplier = matchedSupplier ?? fallbackRows[0];
+    if (!supplier) {
+      return res.status(503).json({
+        error: 'No verified suppliers available for this material category. Try again later.',
+      });
+    }
+
+    // 4. Insert RFQ record
+    const [inserted] = await db
+      .insert(rfqRequests)
+      .values({
+        architectId:  architect.id,
+        supplierId:   supplier.id,
+        materialId:   material.id,
+        materialType: material.name,
+        quantity:     String(qty),
+        specs:        `${unitStr} — submitted via Autodesk Forma`,
+        message:      `Project: ${project}\nMaterial: ${material.name} (${material.category})\nQuantity: ${qty} ${unitStr}\nSource: Autodesk Forma Extension`,
+        status:       'pending',
+      })
+      .returning({ id: rfqRequests.id });
+
+    if (!inserted) return res.status(500).json({ error: 'Failed to create RFQ' });
+
+    // 5. Notify supplier (fire-and-forget)
+    void import('./email-service')
+      .then(({ sendRfqNotificationEmail }) =>
+        sendRfqNotificationEmail({
+          supplierEmail: supplier.email,
+          supplierName:  supplier.companyName,
+          projectName:   project,
+          materialCount: 1,
+          matchScore:    matchedSupplier ? 90 : 60,
+          rfqId:         inserted.id,
+        })
+      )
+      .catch((err: unknown) => console.error('[public-api] RFQ email failed (non-critical):', err));
+
+    return res.status(201).json({
+      rfqId:        inserted.id,
+      supplierName: supplier.companyName,
+      message:      `RFQ sent to ${supplier.companyName}. They'll respond within 48 hours.`,
+    });
+
+  } catch (err) {
+    console.error('[public-api] rfq/add-item error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -5,10 +5,19 @@
  *   rfq-events      → RFQ lifecycle events
  *   supplier-events → supplier approval + EPD ingestion
  *
- * Graceful no-op when SERVICE_BUS_CONNECTION_STRING is unset (local dev).
- * Never throws — all errors are logged and swallowed so callers can fire-and-forget.
+ * Auth: DefaultAzureCredential (managed identity in prod, AzureCliCredential locally).
+ * No connection string — never put Service Bus keys in env vars.
+ *
+ * Graceful no-op when SERVICE_BUS_NAMESPACE is unset (local dev without az login).
+ * Never throws — all errors logged; callers always fire-and-forget.
+ *
+ * Azure setup:
+ *   1. Create Service Bus namespace in Azure Portal
+ *   2. Add app setting: SERVICE_BUS_NAMESPACE=<name>.servicebus.windows.net
+ *   3. Grant the app's managed identity "Azure Service Bus Data Sender" on the namespace
  */
 
+import { DefaultAzureCredential } from "@azure/identity";
 import { ServiceBusClient, type ServiceBusSender } from "@azure/service-bus";
 import { ENV } from "../_core/env";
 
@@ -29,8 +38,11 @@ export type SupplierEvent =
 let _client: ServiceBusClient | null = null;
 
 function getClient(): ServiceBusClient | null {
-  if (!ENV.serviceBusConnectionString) return null;
-  if (!_client) _client = new ServiceBusClient(ENV.serviceBusConnectionString);
+  const ns = ENV.serviceBusNamespace;
+  if (!ns) return null; // no-op in local dev without the namespace configured
+  if (!_client) {
+    _client = new ServiceBusClient(ns, new DefaultAzureCredential());
+  }
   return _client;
 }
 
