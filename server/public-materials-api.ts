@@ -277,7 +277,11 @@ publicMaterialsRouter.post('/rfq/add-item', async (req: Request, res: Response) 
       .where(
         and(
           eq(suppliers.verified, true),
-          sql`${suppliers.materialCategories}::text ILIKE ${`%${material.category}%`}`
+          sql`EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(${suppliers.materialCategories}::jsonb) AS category
+            WHERE category ILIKE ${material.category}
+          )`
         )
       )
       .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
