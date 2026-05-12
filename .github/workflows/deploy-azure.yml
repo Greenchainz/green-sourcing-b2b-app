@@ -121,7 +121,7 @@ jobs:
           fi
 
       - name: Set up Docker Buildx (layer caching)
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to ACR (token-based — no username/password)
         run: az acr login --name ${{ env.ACR }}
