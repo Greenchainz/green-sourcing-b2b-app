@@ -251,13 +251,17 @@ export const rfqRouter = router({
       const rows = await db
         .select({ supplierId: rfqRequests.supplierId, status: rfqRequests.status })
         .from(rfqRequests)
-        .where(eq(rfqRequests.id, input.id))
-        .limit(1);
+        .where(eq(rfqRequests.id, input.id));
 
       if (!rows.length) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rows[0].supplierId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (rows.length > 1) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Duplicate RFQ records found" });
+      }
+      const [row] = rows;
+
+      if (row.supplierId !== ctx.user.id && ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "This RFQ was not assigned to you" });
       }
 
