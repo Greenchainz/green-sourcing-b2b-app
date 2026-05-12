@@ -24,24 +24,21 @@ export async function startSchedulers(): Promise<void> {
     const { transformEC3Batch } = await import('./ec3-transform');
     const { getDb } = await import('./db');
     const { materials } = await import('../drizzle/schema');
-    const { inArray, eq, isNotNull } = await import('drizzle-orm');
+    const { inArray, eq } = await import('drizzle-orm');
 
-    const FALLBACK_EC3_CATEGORIES = ['Concrete', 'Steel', 'Wood', 'Insulation', 'Glass', 'Aluminum', 'Masonry', 'Roofing'];
+    // Fixed English EC3 category list — do NOT derive from the materials table.
+    // The DB contains KBOB reference data with German category names (Beton, Stahl,
+    // etc.) which return zero results from EC3. Always use this canonical list.
+    const EC3_SYNC_CATEGORIES = [
+      'Concrete', 'Steel', 'Wood', 'Insulation', 'Glass', 'Aluminum',
+      'Masonry', 'Roofing', 'Flooring', 'Gypsum', 'Copper', 'Timber',
+    ];
 
     const runEC3Sync = async () => {
       console.log('[EC3 Sync] Starting scheduled sync...');
       const db = await getDb();
       if (!db) { console.error('[EC3 Sync] No DB connection'); return; }
 
-      // Derive categories from existing materials; fall back to hardcoded seed list on a fresh DB.
-      const categoryRows = await db
-        .selectDistinct({ category: materials.category })
-        .from(materials)
-        .where(isNotNull(materials.category));
-      const dynamicCategories = categoryRows
-        .map((r: { category: string | null }) => r.category)
-        .filter((c: string | null): c is string => Boolean(c));
-      const EC3_SYNC_CATEGORIES = dynamicCategories.length > 0 ? dynamicCategories : FALLBACK_EC3_CATEGORIES;
       console.log(`[EC3 Sync] Syncing ${EC3_SYNC_CATEGORIES.length} categories: ${EC3_SYNC_CATEGORIES.join(', ')}`);
 
       let totalCreated = 0;
@@ -168,15 +165,15 @@ export async function startSchedulers(): Promise<void> {
     }
   }, 7 * 24 * 60 * 60 * 1000);
 
-  // ── EPD Sync Scheduler (Autodesk SDA) — first run: 3min, then hourly ──────
-  setTimeout(async () => {
-    try {
-      const { startEpdSyncScheduler } = await import('./epd-sync-scheduler');
-      startEpdSyncScheduler(60 * 60 * 1000);
-    } catch (e) {
-      console.error('[EPD Sync] Failed to start scheduler:', e);
-    }
-  }, 3 * 60 * 1000);
+  // ── EPD Sync Scheduler (Autodesk SDA) — DISABLED (SDA shut down April 2026) ─
+  // SDA was decommissioned. The stub in autodesk-sda-service.ts returns empty
+  // arrays / throws. Re-enable if a replacement EPD source is wired in.
+  // To re-enable: uncomment the block below and set an appropriate interval.
+  //
+  // setTimeout(async () => {
+  //   const { startEpdSyncScheduler } = await import('./epd-sync-scheduler');
+  //   startEpdSyncScheduler(24 * 60 * 60 * 1000); // daily, not hourly
+  // }, 3 * 60 * 1000);
 
   // ── Supplier Scraper — first run: 5min, then weekly ───────────────────────
   setTimeout(async () => {
