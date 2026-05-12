@@ -1,9 +1,9 @@
 name: Security Vulnerability Scan
 
 on:
-  # Quarterly schedule — runs on the 1st of Jan, Apr, Jul, Oct at 08:00 UTC
+  # Weekly schedule to reduce stale vulnerability findings between pushes
   schedule:
-    - cron: "0 8 1 1,4,7,10 *"
+    - cron: "0 8 * * 1"
   # Also runs on every PR and push to main for continuous coverage
   pull_request:
     branches: [main]
@@ -56,31 +56,42 @@ jobs:
   container-scan:
     name: Container Image Scan (Trivy)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: Dockerfile.backend
+            image_name: greenchainz-backend
+            category: trivy-container-backend
+          - dockerfile: Dockerfile.frontend
+            image_name: greenchainz-frontend
+            category: trivy-container-frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Docker image for scanning
+      - name: Build Docker image for scanning (fresh base, no cache)
         run: |
-          docker build -f Dockerfile -t greenchainz-app:scan-${{ github.sha }} .
-        continue-on-error: true
+          docker build --pull --no-cache -f ${{ matrix.dockerfile }} -t ${{ matrix.image_name }}:scan-${{ github.sha }} .
 
       - name: Run Trivy container scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: "greenchainz-app:scan-${{ github.sha }}"
+          image-ref: "${{ matrix.image_name }}:scan-${{ github.sha }}"
           format: "sarif"
-          output: "trivy-container.sarif"
+          output: "trivy-container-${{ matrix.image_name }}.sarif"
+          scanners: "vuln"
+          vuln-type: "os,library"
           severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
           exit-code: "0"             # don't fail the build — report only
-        continue-on-error: true
 
       - name: Upload Trivy SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
-        if: always() && hashFiles('trivy-container.sarif') != ''
+        if: always() && hashFiles(format('trivy-container-{0}.sarif', matrix.image_name)) != ''
         with:
-          sarif_file: trivy-container.sarif
-          category: trivy-container
+          sarif_file: trivy-container-${{ matrix.image_name }}.sarif
+          category: ${{ matrix.category }}
 
   # ── Job 3: pnpm audit (no token needed, always runs) ──────────────────────
   npm-audit:
