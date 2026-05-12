@@ -133,19 +133,25 @@ describe("RFQ tenant isolation", () => {
   describe("respond", () => {
     it("allows the assigned supplier (Supplier C) to accept the RFQ", async () => {
       // First select: returns RFQ with supplierId = SUPPLIER_C
-      (mockDb.limit as ReturnType<typeof vi.fn>).mockResolvedValue([
+      (mockDb.where as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
         { supplierId: SUPPLIER_C.id, status: "pending" },
       ]);
       // update().set().where() chain
-      (mockDb.where as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      const updateWhere = vi.fn().mockResolvedValue([]);
+      const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+      const update = vi.fn().mockReturnValue({ set: updateSet });
+      mockDb.update = update;
 
       const result = await callerAs(SUPPLIER_C).respond({ id: 1, status: "accepted" });
       expect(result.success).toBe(true);
+      expect(update).toHaveBeenCalled();
+      expect(updateSet).toHaveBeenCalledWith({ status: "accepted" });
+      expect(updateWhere).toHaveBeenCalled();
     });
 
     it("blocks Supplier D (not assigned) from responding to the RFQ (FORBIDDEN)", async () => {
       // RFQ was assigned to Supplier C, not D
-      (mockDb.limit as ReturnType<typeof vi.fn>).mockResolvedValue([
+      (mockDb.where as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
         { supplierId: SUPPLIER_C.id, status: "pending" },
       ]);
 
