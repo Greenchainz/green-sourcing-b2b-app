@@ -1,6 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { trackSearch, trackClick } from "@/lib/appInsights";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MaterialCard from "@/components/MaterialCard";
@@ -314,6 +315,21 @@ export default function MaterialSearchPage() {
   const total = data?.total ?? 0;
   const rawItems = data?.items ?? [];
 
+  // ── App Insights telemetry ────────────────────────────────────────────────
+  // Generate a stable search ID per query term so Search → Click events link up.
+  const searchIdRef = useRef<string>('');
+  useEffect(() => {
+    if (!data || isLoading) return;
+    // New search ID each time the query term changes
+    searchIdRef.current = crypto.randomUUID();
+    trackSearch({
+      searchId:    searchIdRef.current,
+      indexName:   'materials',
+      queryTerms:  filters.search ?? '',
+      resultCount: total,
+    });
+  }, [filters.search, filters.category, page, total]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredItems = rawItems.filter((m: any) => {
     if (filters.maxGwp !== undefined && m.gwpValue && Number(m.gwpValue) > filters.maxGwp) return false;
     if (filters.priceMin !== undefined && m.pricePerUnit && Number(m.pricePerUnit) < filters.priceMin) return false;
@@ -465,8 +481,10 @@ export default function MaterialSearchPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredItems.map((m: any) => (
-                  <MaterialCard key={m.id} {...m} />
+                {filteredItems.map((m: any, idx: number) => (
+                  <div key={m.id} onClick={() => trackClick({ searchId: searchIdRef.current, clickedDocId: String(m.id), rank: idx + 1 + page * PAGE_SIZE })}>
+                    <MaterialCard {...m} />
+                  </div>
                 ))}
               </div>
             )}
