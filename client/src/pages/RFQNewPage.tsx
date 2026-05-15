@@ -199,6 +199,19 @@ export default function RFQNewPage() {
   const [supplierSearch, setSupplierSearch] = useState("");
   const hasAutoSelectedRef = useRef(false);
 
+  const {
+    register,
+    handleSubmit,
+    trigger,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
+    defaultValues: { unit: "SF", epdRequired: "preferred" },
+  });
+
   // Architect profile for region toggle
   const { data: profile } = trpc.architect.getMyProfile.useQuery(undefined, {
     enabled: user?.role === "architect",
@@ -284,19 +297,6 @@ export default function RFQNewPage() {
       navigate(`/rfqs/${primaryId}`);
     },
     onError: (err) => toast.error(err.message),
-  });
-
-  const {
-    register,
-    handleSubmit,
-    trigger,
-    watch,
-    setValue,
-    getValues,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema) as any,
-    defaultValues: { unit: "SF", epdRequired: "preferred" },
   });
 
   const watchedCerts = watchedCertsForMatch ?? [];
