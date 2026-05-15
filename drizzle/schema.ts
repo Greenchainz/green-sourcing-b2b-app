@@ -14,6 +14,7 @@ import {
   index,
   uniqueIndex,
   customType,
+  smallint,
 } from "drizzle-orm/pg-core";
 
 // bytea custom type — used by email_credentials (managed via raw SQL in email-auth.ts)
