@@ -5,12 +5,14 @@ export const getLoginUrl = (returnPath?: string, role?: 'buyer' | 'supplier') =>
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
 
-  // Fallback to Easy Auth login when OAuth portal URL is not configured.
-  // In dev the registerDevAuthShim handles /.auth/login/aad.
-  // In production Azure Container Apps Easy Auth handles it natively.
+  // Fallback to the app's own custom OAuth endpoint when the external portal
+  // URL is not configured. This hits /api/auth/microsoft on this Express server.
   if (!oauthPortalUrl) {
-    const redirectParam = returnPath ? `?post_login_redirect_uri=${encodeURIComponent(returnPath)}` : '';
-    return `/.auth/login/aad${redirectParam}`;
+    const params = new URLSearchParams();
+    if (returnPath) params.set("returnPath", returnPath);
+    if (role) params.set("role", role);
+    const qs = params.toString();
+    return `/api/auth/microsoft${qs ? `?${qs}` : ""}`;
   }
 
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
