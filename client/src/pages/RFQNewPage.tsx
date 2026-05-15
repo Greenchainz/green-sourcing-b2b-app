@@ -477,6 +477,74 @@ export default function RFQNewPage() {
     setClarifyInput("");
   };
 
+  // ── Spec PDF upload for the AI intake (Step 0) ───────────────────────────────
+  // Uses Azure Document Intelligence → LLM pipeline, then drives the AI flow
+  // (same endpoint as the manual-form spec upload, different state handling)
+  const handleSpecUploadAi = async (file: File) => {
+    if (!file || file.type !== "application/pdf") {
+      setSpecError("Please upload a PDF file (spec section, CSI division, etc.)");
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      setSpecError("File too large — max 25 MB");
+      return;
+    }
+
+    setSpecUploading(true);
+    setSpecError(null);
+
+    const formData = new FormData();
+    formData.append("spec", file);
+
+    try {
+      const res = await fetch("/api/rfq/parse-spec", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Parse failed" })) as { error?: string };
+        throw new Error(err.error ?? "Parse failed");
+      }
+
+      const fields = await res.json() as Record<string, unknown>;
+      const filled = applyParsedFields(fields);
+
+      // Auto-generate description if the PDF didn't supply one
+      const v = getValues();
+      if (!v.description || (v.description as string).trim().length < 2) {
+        const cat = (v.category as string) || "";
+        const qty = v.quantity ? `${v.quantity} ${v.unit ?? ""}`.trim() : "";
+        const loc = v.projectCity ? `in ${v.projectCity}${v.projectState ? `, ${v.projectState}` : ""}` : "";
+        const autoDesc = [cat, qty, loc].filter(Boolean).join(" ");
+        if (autoDesc.trim().length >= 2) {
+          setValue("description", autoDesc.trim(), { shouldValidate: true });
+        }
+      }
+
+      setAiParsed(true);
+      if (filled.length > 0) setAiSummary(filled);
+
+      const missing = getMissingField();
+      if (!missing) {
+        setAllFieldsReady(true);
+        setClarifyQuestion(null);
+        toast.success(`Spec parsed — ${filled.length} fields filled from "${file.name}". Ready to match suppliers.`);
+      } else {
+        setClarifyQuestion(missing.question);
+        setAllFieldsReady(false);
+        if (filled.length > 0) {
+          toast.success(`Spec parsed — ${filled.length} fields pre-filled. Just a couple more details needed.`);
+        } else {
+          toast.warning("Spec analyzed but limited data extracted. Please answer the questions below.", { duration: 5000 });
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Spec parsing failed";
+      setSpecError(msg);
+      toast.error(msg);
+    } finally {
+      setSpecUploading(false);
+      if (specInputRef.current) specInputRef.current.value = "";
+    }
+  };
+
   const mapSpecCategory = (cat: string): string => {
     const map: Record<string, string> = {
       "Concrete": "Concrete & Masonry",
@@ -676,8 +744,9 @@ export default function RFQNewPage() {
             <Card>
               <CardContent className="pt-6 space-y-5">
                 {!aiParsed ? (
-                  /* Phase 1 — Initial text entry */
+                  /* Phase 1 — Initial entry (text OR spec PDF) */
                   <div className="space-y-4">
+                    {/* ── Natural language input ─────────────────────────── */}
                     <div className="space-y-2">
                       <Label htmlFor="aiInput" className="flex items-center gap-1.5 text-base font-semibold">
                         <MessageSquare className="w-4 h-4 text-green-600" />
@@ -689,7 +758,7 @@ export default function RFQNewPage() {
                       <Textarea
                         id="aiInput"
                         placeholder="e.g., Need 3,000 SF of FSC-certified CLT panels for a 6-story mixed-use building in Austin, TX. EPD documentation required for LEED credit."
-                        rows={5}
+                        rows={4}
                         value={aiInput}
                         onChange={(e) => setAiInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAiSubmit(); }}
@@ -711,6 +780,72 @@ export default function RFQNewPage() {
                         <><Sparkles className="w-4 h-4 mr-2" />Analyze &amp; Match Suppliers</>
                       )}
                     </Button>
+
+                    {/* ── OR divider ─────────────────────────────────────── */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 border-t" />
+                      <span className="text-xs text-muted-foreground">or</span>
+                      <div className="flex-1 border-t" />
+                    </div>
+
+                    {/* ── Spec PDF drop zone ─────────────────────────────── */}
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5 text-sm font-medium">
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                        Drop a spec section PDF — AI will pre-fill everything
+                      </Label>
+                      <div
+                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                        onDragLeave={() => setIsDragging(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDragging(false);
+                          const file = e.dataTransfer.files[0];
+                          if (file) void handleSpecUploadAi(file);
+                        }}
+                        onClick={() => !specUploading && specInputRef.current?.click()}
+                        className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-4 text-center transition-colors cursor-pointer select-none ${
+                          specUploading
+                            ? "border-primary/40 bg-primary/5 cursor-not-allowed"
+                            : isDragging
+                            ? "border-green-500 bg-green-50 dark:bg-green-900/10"
+                            : "border-border hover:border-green-400 hover:bg-muted/30"
+                        }`}
+                      >
+                        <input
+                          ref={specInputRef}
+                          type="file"
+                          accept="application/pdf"
+                          className="sr-only"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void handleSpecUploadAi(file);
+                          }}
+                        />
+                        {specUploading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                            <p className="text-sm font-medium">Analyzing spec section…</p>
+                            <p className="text-xs text-muted-foreground">Document Intelligence + AI — under 10 seconds</p>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-5 h-5 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                              <span className="font-medium text-foreground">Drop a spec PDF</span> or click to browse
+                            </p>
+                            <p className="text-xs text-muted-foreground">CSI spec section, product data sheet · Max 25 MB</p>
+                          </>
+                        )}
+                      </div>
+                      {specError && (
+                        <div className="flex items-start gap-2 rounded-md bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 px-3 py-2">
+                          <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                          <p className="text-xs text-red-600 dark:text-red-400">{specError}</p>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="text-center">
                       <button
                         type="button"
