@@ -137,6 +137,16 @@ export const faqItems = [
       'Yes, GreenChainz is free to start with no credit card required. Setup takes under 5 minutes. The platform includes EPD lookup, material comparison, and basic RFQ functionality at no cost. Enterprise features including advanced analytics, team collaboration, and priority supplier matching are available through paid plans.',
   },
   {
+    question: 'How does the SWAP Engine match suppliers to a project?',
+    answer:
+      'The SWAP Engine is GreenChainz\'s decision-grade supplier matching system. It evaluates every supplier across eight weighted dimensions that reflect real procurement decisions: spec and code compliance, documentation completeness (EPD depth, HPD, submittal readiness), lead time and regional availability, whole-life cost signals, labor productivity, supply chain integrity, risk defensibility, and sustainability. Suppliers first pass hard eligibility gates — wrong category, missing required certification, GWP over threshold, or no submittal capability all result in exclusion. The remaining eligible suppliers are ranked by composite score. The result is a shortlist of 5–7 options that can be approved, sourced, priced, delivered, and defended, with the most sustainable viable options surfaced at the top.',
+  },
+  {
+    question: 'Does GreenChainz understand real procurement constraints, not just sustainability?',
+    answer:
+      'Yes. GreenChainz is built around how procurement actually works across all eight tiers of building industry decision-makers: spec defensibility for architects, whole-life cost and carbon budget compliance for quantity surveyors, schedule and labor productivity for general contractors, total cost of ownership for facility managers, supply chain integrity for CPOs, and sector-specific requirements for healthcare, education, and affordable housing. Sustainability is a weighted dimension inside realistic procurement logic — not the overriding filter. The output is not "the greenest supplier." It is the suppliers that can actually win the specification, ranked by sustainability where the tradeoffs are viable.',
+  },
+  {
     question: 'How is GreenChainz different from EC3 or One Click LCA?',
     answer:
       'EC3 (Embodied Carbon in Construction Calculator) and One Click LCA are carbon calculation and LCA tools — they tell you the carbon impact of a material but do not help you buy it. GreenChainz is a procurement execution platform that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, real-time greenwashing detection via browser extension, and direct supplier connection. EC3 is a noted GreenChainz data partner, and the two platforms are complementary.',

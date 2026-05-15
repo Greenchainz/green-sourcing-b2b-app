@@ -43,13 +43,15 @@ export function MaterialTypeahead(props: VariantProps) {
 }
 
 // ─── Location Typeahead ───────────────────────────────────────────────────────
+// Uses Nominatim (OpenStreetMap) for real geocoded city/address suggestions.
+// Returns TypeaheadItems with lat/lng so callers can store coordinates.
 
 export function LocationTypeahead(props: VariantProps) {
   const utils = trpc.useUtils();
 
   const fetchSuggestions = useCallback(
     async (q: string): Promise<TypeaheadItem[]> => {
-      const results = await utils.suggestions.locations.fetch({ q });
+      const results = await utils.suggestions.locationGeo.fetch({ q });
       return results;
     },
     [utils]
@@ -57,11 +59,11 @@ export function LocationTypeahead(props: VariantProps) {
 
   return (
     <Typeahead
-      placeholder="e.g. Austin, TX or Virginia"
+      placeholder="e.g. Austin, TX or 123 Main St"
       icon={<MapPin className="h-4 w-4" />}
       clearable
-      debounceMs={100}
-      minChars={1}
+      debounceMs={350}
+      minChars={3}
       {...props}
       fetchSuggestions={fetchSuggestions}
     />

@@ -5,8 +5,8 @@ import { query, queryOne, queryMany, withTransaction } from "../../lib/pg-pool";
 import { getDb } from "../db";
 import { auditLog, AuditAction } from "../services/audit-log";
 import { publishRfqEvent } from "../services/event-bus";
-import { rfqRequests, suppliers } from "../../drizzle/schema";
-import { eq, desc, ilike, or, not } from "drizzle-orm";
+import { rfqRequests, suppliers, suppliersLocation } from "../../drizzle/schema";
+import { eq, desc, ilike, or, not, inArray } from "drizzle-orm";
 
 /**
  * RFQ Marketplace Lifecycle Router
@@ -499,6 +499,8 @@ export const rfqRouter = router({
         maxGwp: z.number().optional(),
         projectState: z.string().optional(),
         projectCity: z.string().optional(),
+        projectLat: z.number().optional(),
+        projectLng: z.number().optional(),
       })
     )
     .query(async ({ input }) => {
@@ -527,6 +529,44 @@ export const rfqRouter = router({
       const requestedCerts = (input.certifications ?? []).map((c) => c.toLowerCase());
       const projectState = (input.projectState ?? "").toUpperCase();
 
+      // ── Haversine distance (miles) ─────────────────────────────────────────
+      function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+        const R = 3959;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLng = ((lng2 - lng1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      // Fetch supplier locations in one query for haversine scoring
+      const supplierIds = rows.map((r) => r.id);
+      const locationRows =
+        supplierIds.length > 0
+          ? await db
+              .select({
+                supplierId: suppliersLocation.supplierId,
+                lat: suppliersLocation.latitude,
+                lng: suppliersLocation.longitude,
+              })
+              .from(suppliersLocation)
+              .where(inArray(suppliersLocation.supplierId, supplierIds))
+          : [];
+
+      const locationMap = new Map<number, { lat: number; lng: number }>();
+      for (const loc of locationRows) {
+        if (!locationMap.has(loc.supplierId)) {
+          locationMap.set(loc.supplierId, {
+            lat: parseFloat(String(loc.lat)),
+            lng: parseFloat(String(loc.lng)),
+          });
+        }
+      }
+
+      const projectLat = input.projectLat;
+      const projectLng = input.projectLng;
+
       // Score each supplier
       const scored = rows.map((s) => {
         let score = 0;
@@ -538,13 +578,25 @@ export const rfqRouter = router({
         );
         if (categoryMatch) score += 40;
 
-        // State proximity: +25 for same state
-        const isLocalSupplier = !!(
-          projectState.length === 2 &&
-          s.state &&
-          s.state.trim().toUpperCase() === projectState
-        );
-        if (isLocalSupplier) score += 25;
+        // Location scoring: haversine if coords available, else state match
+        const supplierCoords = locationMap.get(s.id);
+        let isLocalSupplier = false;
+        if (projectLat != null && projectLng != null && supplierCoords) {
+          const miles = haversine(projectLat, projectLng, supplierCoords.lat, supplierCoords.lng);
+          if (miles < 50) { score += 30; isLocalSupplier = true; }
+          else if (miles < 150) { score += 25; isLocalSupplier = true; }
+          else if (miles < 300) { score += 15; }
+          else if (miles < 500) { score += 8; }
+          else { score += 2; }
+        } else {
+          // Fall back to state match
+          isLocalSupplier = !!(
+            projectState.length === 2 &&
+            s.state &&
+            s.state.trim().toUpperCase() === projectState
+          );
+          if (isLocalSupplier) score += 25;
+        }
 
         // Certification overlap: +5 each, capped at +20
         const supplierCerts = (s.certifications ?? []).map((c) => c.toLowerCase());
@@ -607,6 +659,8 @@ export const rfqRouter = router({
         maxGwp: input.maxGwp,
         projectState: input.projectState,
         projectCity: input.projectCity,
+        projectLat: input.projectLat,
+        projectLng: input.projectLng,
       });
 
       // Apply agent ranking order to results
