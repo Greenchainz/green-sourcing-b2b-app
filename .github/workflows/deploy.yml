@@ -76,24 +76,40 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
 
-      # ── 6. Deploy to Azure Container Apps ────────────────────────────────────
+      # ── 6. Deploy — update Container App image and wait for revision to go active
       - name: Deploy to Azure Container Apps
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          containerAppName: ${{ secrets.AZURE_CONTAINER_APP_NAME }}
-          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        run: |
+          az containerapp update \
+            --name "${{ secrets.AZURE_CONTAINER_APP_NAME }}" \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --revision-suffix "gh-${{ github.run_number }}"
 
-      # ── 7. Health check — confirm the new revision is serving ────────────────
-      - name: Wait for deployment to stabilize
-        run: sleep 30
+      - name: Wait for active revision
+        run: |
+          echo "Waiting for new revision to become active..."
+          for i in $(seq 1 20); do
+            STATUS=$(az containerapp revision list \
+              --name "${{ secrets.AZURE_CONTAINER_APP_NAME }}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --query "[?contains(name, 'gh-${{ github.run_number }}')].properties.runningState" \
+              --output tsv 2>/dev/null)
+            echo "Revision status: $STATUS"
+            if [ "$STATUS" = "Running" ]; then
+              echo "Revision is running ✅"
+              break
+            fi
+            sleep 10
+          done
 
+      # ── 7. Health check ───────────────────────────────────────────────────────
       - name: Health check
         run: |
+          sleep 15
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://greenchainz.com/health)
           echo "Health check HTTP status: $STATUS"
           if [ "$STATUS" != "200" ]; then
-            echo "Health check failed with status $STATUS"
+            echo "Health check failed — new revision may still be warming up"
             exit 1
           fi
           echo "Deployment healthy ✅"
