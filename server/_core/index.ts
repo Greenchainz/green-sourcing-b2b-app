@@ -162,12 +162,16 @@ async function startServer() {
           defaultSrc: ["'self'"],
           scriptSrc: [
             "'self'",
+            // Inline scripts (App Insights bootstrap + Intercom settings object)
+            "'unsafe-inline'",
             // Azure Application Insights
             "https://js.monitor.azure.com",
             "https://az416426.vo.msecnd.net",
             // Intercom
             "https://widget.intercom.io",
             "https://js.intercomcdn.com",
+            // CookieYes consent banner
+            "https://cdn-cookieyes.com",
           ],
           styleSrc: [
             "'self'",
@@ -189,10 +193,14 @@ async function startServer() {
             "https://www.epdinternational.org",
             "https://developer.api.autodesk.com",
             "https://api.intercom.io",
+            "https://api-iam.intercom.io",
             "https://nexus.intercom.io",
             "wss://nexus.intercom.io",
+            // WebPubSub real-time messaging
+            "wss://greenchainz.webpubsub.azure.com",
           ],
-          frameSrc: ["'none'"],
+          // OSM iframe used in RFQ location preview
+          frameSrc: ["https://www.openstreetmap.org"],
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
           formAction: ["'self'"],
