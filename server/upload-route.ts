@@ -145,6 +145,37 @@ uploadRouter.post("/rfq/parse-spec", specUpload.single("spec"), async (req, res)
   }
 });
 
+// ── RFQ Natural-language text parser (NL → LLM → ParsedRfqTextFields) ─────────
+
+uploadRouter.post("/rfq/parse-text", async (req, res) => {
+  try {
+    const user = await sdk.authenticateRequest(req);
+    if (!user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const { text } = req.body as { text?: string };
+    if (!text || typeof text !== "string" || text.trim().length < 5) {
+      res.status(400).json({ error: "text is required (min 5 chars)" });
+      return;
+    }
+
+    const { parseRfqText } = await import("./services/document-intelligence");
+    const fields = await parseRfqText(text);
+
+    console.log(
+      `[parse-text] user=${user.id} chars=${text.length} ` +
+      `confidence=${fields.confidence} fields=[${fields.fieldsFound.join(",")}]`
+    );
+
+    res.json(fields);
+  } catch (err) {
+    console.error("[parse-text]", err);
+    res.status(500).json({ error: "Text parsing failed" });
+  }
+});
+
 uploadRouter.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {

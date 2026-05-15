@@ -40,6 +40,7 @@ import {
   Upload,
   Loader2,
   AlertCircle,
+  MessageSquare,
 } from "lucide-react";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -125,8 +126,9 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const STEP_FIELDS: Record<number, (keyof FormData)[]> = {
-  0: ["projectName", "projectType", "projectCity", "projectState"],
-  1: ["category", "description", "quantity", "unit"],
+  // Step 0 (AI mode) — all required fields validated together before jumping to suppliers
+  0: ["projectName", "projectType", "projectCity", "projectState", "category", "description", "quantity", "unit"],
+  1: ["projectName", "projectType", "projectCity", "projectState", "category", "description", "quantity", "unit"],
   2: [],
   3: [],
 };
@@ -134,7 +136,7 @@ const STEP_FIELDS: Record<number, (keyof FormData)[]> = {
 // ── Step indicator ─────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { label: "Project",   icon: FolderOpen },
+  { label: "Describe",  icon: MessageSquare },
   { label: "Material",  icon: Package },
   { label: "Suppliers", icon: Building2 },
   { label: "Review",    icon: ClipboardCheck },
@@ -309,7 +311,172 @@ export default function RFQNewPage() {
   const [isDragging, setIsDragging] = useState(false);
   const specInputRef = useRef<HTMLInputElement>(null);
 
+  // ── AI intake state ──────────────────────────────────────────────────────────
+  const [aiInput, setAiInput] = useState("");
+  const [aiParsing, setAiParsing] = useState(false);
+  const [aiParsed, setAiParsed] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string[]>([]);
+  const [clarifyQuestion, setClarifyQuestion] = useState<string | null>(null);
+  const [clarifyInput, setClarifyInput] = useState("");
+  const [allFieldsReady, setAllFieldsReady] = useState(false);
+
   // Map LLM category labels → form MATERIAL_CATEGORIES values
+  // ── AI intake helpers ────────────────────────────────────────────────────────
+
+  const mapAiCategory = (cat: string): string => {
+    const direct = MATERIAL_CATEGORIES.find(c => c === cat);
+    if (direct) return direct;
+    const legacyMap: Record<string, string> = {
+      "Concrete": "Concrete & Masonry",
+      "Steel": "Steel & Metal",
+      "Timber / Mass Timber": "Timber & Wood",
+      "Glass": "Glazing & Windows",
+      "Cladding": "Cladding & Facades",
+      "MEP": "HVAC Systems",
+      "Gypsum / Drywall": "Interior Finishes",
+    };
+    if (legacyMap[cat]) return legacyMap[cat];
+    return MATERIAL_CATEGORIES.find(c =>
+      c.toLowerCase().includes(cat.toLowerCase()) || cat.toLowerCase().includes(c.toLowerCase().split(" ")[0])
+    ) ?? "";
+  };
+
+  const applyParsedFields = (fields: Record<string, unknown>): string[] => {
+    const fieldsFound = Array.isArray(fields.fieldsFound) ? (fields.fieldsFound as string[]) : [];
+    const filled: string[] = [];
+
+    if (typeof fields.category === "string" && fields.category) {
+      const mapped = mapAiCategory(fields.category);
+      if (mapped) { setValue("category", mapped, { shouldValidate: true }); filled.push("Material type"); }
+    }
+    if (typeof fields.description === "string" && fields.description.trim().length >= 2) {
+      setValue("description", fields.description, { shouldValidate: true });
+      filled.push("Description");
+    }
+    if (typeof fields.quantity === "number" && fields.quantity > 0) {
+      setValue("quantity", fields.quantity as any, { shouldValidate: true });
+      filled.push("Quantity");
+    }
+    if (typeof fields.unit === "string") {
+      const validUnit = (["SF","LF","EA","CY","tons"] as const).find(
+        u => u.toLowerCase() === (fields.unit as string).toLowerCase()
+      );
+      if (validUnit) setValue("unit", validUnit);
+    }
+    if (fieldsFound.includes("certifications") && Array.isArray(fields.certifications)) {
+      const validCerts = (fields.certifications as string[]).filter(fc =>
+        CERT_OPTIONS.some(opt => opt.toLowerCase() === fc.toLowerCase())
+      );
+      if (validCerts.length > 0) { setValue("certifications", validCerts); filled.push("Certifications"); }
+    }
+    if (typeof fields.maxGwp === "number") {
+      setValue("maxGwp", fields.maxGwp as any);
+      filled.push("GWP limit");
+    }
+    if (fieldsFound.includes("epdRequired")) {
+      setValue("epdRequired", fields.epdRequired ? "yes" : "preferred");
+    }
+    if (typeof fields.projectName === "string" && fields.projectName.trim()) {
+      setValue("projectName", fields.projectName.trim(), { shouldValidate: true });
+      filled.push("Project name");
+    }
+    if (typeof fields.projectType === "string" && fields.projectType.trim()) {
+      const validType = PROJECT_TYPES.find(
+        t => t.toLowerCase() === (fields.projectType as string).toLowerCase() ||
+             (fields.projectType as string).toLowerCase().includes(t.toLowerCase().split(" ")[0])
+      );
+      if (validType) { setValue("projectType", validType, { shouldValidate: true }); filled.push("Project type"); }
+    }
+    if (typeof fields.projectCity === "string" && fields.projectCity.trim()) {
+      setValue("projectCity", fields.projectCity.trim(), { shouldValidate: true });
+      filled.push("City");
+    }
+    if (typeof fields.projectState === "string" && US_STATES.includes(fields.projectState.toUpperCase())) {
+      setValue("projectState", fields.projectState.toUpperCase(), { shouldValidate: true });
+      filled.push("State");
+    }
+    return filled;
+  };
+
+  const getMissingField = (): { field: string; question: string } | null => {
+    const v = getValues();
+    if (!v.category) return { field: "category", question: "What type of material do you need? e.g., concrete, steel, timber, insulation, roofing, flooring…" };
+    if (!v.quantity || Number(v.quantity) <= 0) return { field: "quantity", question: "How much do you need? e.g., '2,500 SF', '50 tons', '100 LF'" };
+    if (!v.projectCity || !v.projectState) return { field: "location", question: "Where is the project located? e.g., Boston, MA or Chicago, IL" };
+    if (!v.projectName) return { field: "projectName", question: "What's the project name or address? e.g., '555 Market St Office Tower'" };
+    if (!v.projectType) return { field: "projectType", question: "What type of building is this? e.g., office, multifamily residential, healthcare, retail" };
+    return null;
+  };
+
+  const parseAndApply = async (text: string, isClarification = false) => {
+    setAiParsing(true);
+    try {
+      const res = await fetch("/api/rfq/parse-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? "Parse failed");
+      }
+      const fields = await res.json() as Record<string, unknown>;
+      const filled = applyParsedFields(fields);
+
+      // Auto-generate description if still empty
+      const v = getValues();
+      if (!v.description || (v.description as string).trim().length < 2) {
+        const cat = (v.category as string) || "";
+        const qty = v.quantity ? `${v.quantity} ${v.unit ?? ""}`.trim() : "";
+        const loc = v.projectCity ? `in ${v.projectCity}${v.projectState ? `, ${v.projectState}` : ""}` : "";
+        const autoDesc = [cat, qty, loc].filter(Boolean).join(" ");
+        if (autoDesc.trim().length >= 2) {
+          setValue("description", autoDesc.trim(), { shouldValidate: true });
+        }
+      }
+
+      if (!isClarification) {
+        setAiParsed(true);
+        if (filled.length > 0) setAiSummary(filled);
+      } else if (filled.length > 0) {
+        setAiSummary(prev => [...new Set([...prev, ...filled])]);
+      }
+
+      const missing = getMissingField();
+      if (!missing) {
+        setAllFieldsReady(true);
+        setClarifyQuestion(null);
+      } else {
+        setClarifyQuestion(missing.question);
+        setAllFieldsReady(false);
+      }
+    } catch {
+      toast.error("Couldn't parse that — try rephrasing or fill in manually.");
+    } finally {
+      setAiParsing(false);
+    }
+  };
+
+  const handleAiSubmit = () => {
+    if (!aiInput.trim() || aiParsing) return;
+    void parseAndApply(aiInput, false);
+  };
+
+  const handleClarifySubmit = () => {
+    if (!clarifyInput.trim() || aiParsing) return;
+    const enriched = `${aiInput}\n\nAdditional info: ${clarifyInput}`;
+    void parseAndApply(enriched, true);
+    setClarifyInput("");
+  };
+
+  const resetAi = () => {
+    setAiParsed(false);
+    setAllFieldsReady(false);
+    setAiSummary([]);
+    setClarifyQuestion(null);
+    setClarifyInput("");
+  };
+
   const mapSpecCategory = (cat: string): string => {
     const map: Record<string, string> = {
       "Concrete": "Concrete & Masonry",
@@ -482,7 +649,11 @@ export default function RFQNewPage() {
       <div className="container max-w-2xl py-8 flex-1">
         {/* Back link */}
         <button
-          onClick={() => (step > 0 ? setStep((s) => s - 1) : navigate("/dashboard"))}
+          onClick={() => {
+            if (step === 0) navigate("/dashboard");
+            else if (step === 2) setStep(aiParsed && allFieldsReady ? 0 : 1);
+            else setStep((s) => s - 1);
+          }}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -500,8 +671,149 @@ export default function RFQNewPage() {
 
         <form onSubmit={handleSubmit(onSubmit)}>
 
-          {/* ── Step 0: Project Info ──────────────────────────────────── */}
+          {/* ── Step 0: AI Intake ─────────────────────────────────────── */}
           {step === 0 && (
+            <Card>
+              <CardContent className="pt-6 space-y-5">
+                {!aiParsed ? (
+                  /* Phase 1 — Initial text entry */
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="aiInput" className="flex items-center gap-1.5 text-base font-semibold">
+                        <MessageSquare className="w-4 h-4 text-green-600" />
+                        Tell us what you need
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Describe your project in plain language — material type, quantity, location, certifications, anything relevant. Our AI handles the details.
+                      </p>
+                      <Textarea
+                        id="aiInput"
+                        placeholder="e.g., Need 3,000 SF of FSC-certified CLT panels for a 6-story mixed-use building in Austin, TX. EPD documentation required for LEED credit."
+                        rows={5}
+                        value={aiInput}
+                        onChange={(e) => setAiInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAiSubmit(); }}
+                        className="resize-none"
+                        disabled={aiParsing}
+                        autoFocus
+                      />
+                      <p className="text-xs text-muted-foreground">⌘Enter to submit</p>
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      onClick={handleAiSubmit}
+                      disabled={!aiInput.trim() || aiParsing}
+                    >
+                      {aiParsing ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing…</>
+                      ) : (
+                        <><Sparkles className="w-4 h-4 mr-2" />Analyze &amp; Match Suppliers</>
+                      )}
+                    </Button>
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={() => { setAiParsed(true); setAllFieldsReady(false); setStep(1); }}
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                      >
+                        Fill out the form manually instead →
+                      </button>
+                    </div>
+                  </div>
+                ) : allFieldsReady ? (
+                  /* Phase 3 — All required fields present */
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 px-4 py-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-green-800 dark:text-green-300">Ready to match suppliers</p>
+                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">Captured: {aiSummary.join(" · ")}</p>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-2 text-sm">
+                      {watch("category") && <div className="flex gap-2"><span className="w-24 shrink-0 text-muted-foreground">Material</span><span className="font-medium">{watch("category")}</span></div>}
+                      {watch("quantity") && <div className="flex gap-2"><span className="w-24 shrink-0 text-muted-foreground">Quantity</span><span className="font-medium">{watch("quantity")} {watch("unit")}</span></div>}
+                      {watch("description") && <div className="flex gap-2"><span className="w-24 shrink-0 text-muted-foreground">Details</span><span className="font-medium truncate">{watch("description")}</span></div>}
+                      {watch("projectCity") && <div className="flex gap-2"><span className="w-24 shrink-0 text-muted-foreground">Location</span><span className="font-medium">{watch("projectCity")}, {watch("projectState")}</span></div>}
+                      {watch("projectName") && <div className="flex gap-2"><span className="w-24 shrink-0 text-muted-foreground">Project</span><span className="font-medium">{watch("projectName")}</span></div>}
+                      {(watch("certifications") ?? []).length > 0 && <div className="flex gap-2"><span className="w-24 shrink-0 text-muted-foreground">Certs</span><span className="font-medium">{(watch("certifications") ?? []).join(", ")}</span></div>}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        onClick={() => setStep(2)}
+                      >
+                        Find Suppliers <ArrowRight className="w-4 h-4 ml-1" />
+                      </Button>
+                      <Button type="button" variant="outline" onClick={resetAi}>
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Phase 2 — Conversational clarification */
+                  <div className="space-y-4">
+                    {aiSummary.length > 0 && (
+                      <div className="flex items-start gap-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 px-4 py-3">
+                        <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                        <p className="text-sm text-green-800 dark:text-green-300">
+                          Got it — filled in: <span className="font-medium">{aiSummary.join(", ")}</span>
+                        </p>
+                      </div>
+                    )}
+                    {clarifyQuestion && (
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-green-600 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-3.5 h-3.5 text-white" />
+                          </div>
+                          <div className="flex-1 rounded-2xl rounded-tl-none bg-muted px-4 py-2.5">
+                            <p className="text-sm">{clarifyQuestion}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pl-9">
+                          <Input
+                            placeholder="Your answer…"
+                            value={clarifyInput}
+                            onChange={(e) => setClarifyInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleClarifySubmit(); }}
+                            disabled={aiParsing}
+                            className="flex-1"
+                            autoFocus
+                          />
+                          <Button
+                            type="button"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={handleClarifySubmit}
+                            disabled={!clarifyInput.trim() || aiParsing}
+                          >
+                            {aiParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {aiParsing && !clarifyQuestion && (
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing…
+                      </div>
+                    )}
+                    <div className="pt-1 border-t">
+                      <button type="button" onClick={resetAi}
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+                        ← Start over
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ── Step 1: Manual Project + Material Form (fallback) ─────── */}
+          {step === 1 && (
             <Card>
               <CardContent className="pt-6 space-y-5">
                 <div className="space-y-1.5">
@@ -1038,11 +1350,17 @@ export default function RFQNewPage() {
           {/* ── Navigation ──────────────────────────────────────────── */}
           <div className="flex gap-3 mt-6">
             {step > 0 && (
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setStep((s) => s - 1)}>
+              <Button type="button" variant="outline" className="flex-1"
+                onClick={() => {
+                  if (step === 2) setStep(aiParsed && allFieldsReady ? 0 : 1);
+                  else setStep((s) => s - 1);
+                }}
+              >
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
             )}
-            {step < 3 ? (
+            {/* Step 0 handles its own CTA (AI chat); step 1+ use Next/Send */}
+            {step === 0 ? null : step < 3 ? (
               <Button type="button" className="flex-1 bg-green-600 hover:bg-green-700" onClick={goNext}>
                 Next <ArrowRight className="w-4 h-4 ml-1" />
               </Button>

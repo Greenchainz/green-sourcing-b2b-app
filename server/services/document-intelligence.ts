@@ -65,6 +65,14 @@ export interface ParsedRfqFields {
   fieldsFound: string[];
 }
 
+/** Extended result from natural-language text parsing — includes project context fields */
+export interface ParsedRfqTextFields extends ParsedRfqFields {
+  projectName: string | null;
+  projectCity: string | null;
+  projectState: string | null;
+  projectType: string | null;
+}
+
 // ── Credential singleton ────────────────────────────────────────────────────────
 
 let _credential: DefaultAzureCredential | null = null;
@@ -353,4 +361,126 @@ export async function parseSpecPdf(buffer: Buffer): Promise<ParsedRfqFields> {
     console.error("[doc-intel] Unexpected pipeline error:", err);
     return EMPTY;
   });
+}
+
+// ── Natural-language text parsing ──────────────────────────────────────────────
+
+const NL_SYSTEM_PROMPT = `You are an AI procurement assistant for GreenChainz, a sustainable building materials marketplace. The user has typed a free-form message describing what they need for a construction project.
+
+Extract structured data from their message. Use ONLY information explicitly stated — do not infer or guess. For fields not mentioned, return null.
+
+Return ONLY valid JSON — no markdown, no extra text:
+{
+  "projectName": "<project name or address, or null>",
+  "projectType": "<one of: Commercial Office, Multi-Family Residential, Single-Family Residential, Education, Healthcare, Hospitality, Industrial / Warehouse, Mixed-Use, Retail, Government / Civic, Infrastructure, Other — or null>",
+  "projectCity": "<city name, or null>",
+  "projectState": "<two-letter US state abbreviation e.g. CA, TX, NY — or null>",
+  "category": "<one of: Concrete & Masonry, Steel & Metal, Timber & Wood, Insulation, Roofing, Flooring, Glazing & Windows, HVAC Systems, Electrical, Plumbing, Interior Finishes, Doors & Hardware, Cladding & Facades, Other — or empty string if not mentioned>",
+  "description": "<1-3 sentence summary of what is being requested, or empty string>",
+  "certifications": ["<LEED, EPD, FSC, GreenGuard, Cradle to Cradle, Living Building Challenge, ISO 14001, Other — only those explicitly mentioned>"],
+  "maxGwp": <maximum GWP in kgCO2e/kg as a number, or null>,
+  "quantity": <numeric quantity, or null>,
+  "unit": "<SF, LF, EA, CY, tons — or null>",
+  "epdRequired": <true only if EPD is explicitly required, false otherwise>,
+  "confidence": "<HIGH if ≥5 fields found, MEDIUM if 3-4, LOW if ≤2>",
+  "fieldsFound": ["<list of field names that had data: projectName, projectType, projectCity, projectState, category, description, certifications, maxGwp, quantity, unit, epdRequired>"]
+}`;
+
+async function structureNlText(text: string): Promise<ParsedRfqTextFields | null> {
+  try {
+    const token = await getAzureToken();
+    const azureBase = getAzureBase(FOUNDRY_ENDPOINT);
+    const url = `${azureBase}/openai/deployments/${STRUCT_MODEL}/chat/completions?api-version=${API_VERSION}`;
+
+    const truncated = text.length > 4000 ? text.substring(0, 4000) + "\n[...truncated]" : text;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: NL_SYSTEM_PROMPT },
+          { role: "user", content: truncated },
+        ],
+        temperature: 0,
+        max_tokens: 600,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`[doc-intel] NL parse API ${res.status}: ${body}`);
+    }
+
+    const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
+    const raw = json.choices[0]?.message?.content ?? "";
+    const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = JSON.parse(clean) as Partial<ParsedRfqTextFields>;
+
+    return {
+      projectName: typeof parsed.projectName === "string" ? parsed.projectName : null,
+      projectType: typeof parsed.projectType === "string" ? parsed.projectType : null,
+      projectCity: typeof parsed.projectCity === "string" ? parsed.projectCity : null,
+      projectState: typeof parsed.projectState === "string" ? parsed.projectState : null,
+      category: typeof parsed.category === "string" ? parsed.category : "",
+      description: typeof parsed.description === "string" ? parsed.description : "",
+      certifications: Array.isArray(parsed.certifications) ? parsed.certifications : [],
+      maxGwp: typeof parsed.maxGwp === "number" ? parsed.maxGwp : null,
+      quantity: typeof parsed.quantity === "number" ? parsed.quantity : null,
+      unit: typeof parsed.unit === "string" ? parsed.unit : null,
+      epdRequired: parsed.epdRequired === true,
+      confidence: parsed.confidence ?? "LOW",
+      fieldsFound: Array.isArray(parsed.fieldsFound) ? parsed.fieldsFound : [],
+    };
+  } catch (err) {
+    console.error("[doc-intel] NL structuring failed:", err);
+    return null;
+  }
+}
+
+/**
+ * Parses a free-form natural language request into structured RFQ + project fields.
+ * Skips Document Intelligence — calls LLM directly.
+ * Never throws — returns a low-confidence empty result on failure.
+ */
+export async function parseRfqText(text: string): Promise<ParsedRfqTextFields> {
+  const EMPTY: ParsedRfqTextFields = {
+    projectName: null,
+    projectType: null,
+    projectCity: null,
+    projectState: null,
+    category: "",
+    description: "",
+    certifications: [],
+    maxGwp: null,
+    quantity: null,
+    unit: null,
+    epdRequired: false,
+    confidence: "LOW",
+    fieldsFound: [],
+  };
+
+  if (!text || text.trim().length < 5) return EMPTY;
+
+  try {
+    const result = await Promise.race([
+      structureNlText(text),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), TIMEOUT_MS)),
+    ]);
+
+    if (!result) {
+      console.warn("[doc-intel] NL parse timed out");
+      return EMPTY;
+    }
+
+    console.log(
+      `[doc-intel] NL parse: ${result.fieldsFound.length} fields (confidence: ${result.confidence}): ` +
+      result.fieldsFound.join(", ")
+    );
+    return result;
+  } catch (err) {
+    console.error("[doc-intel] parseRfqText error:", err);
+    return EMPTY;
+  }
 }
