@@ -15,3 +15,4 @@
 export * from "./decisionMakers";
 export * from "./supplierCategories";
 export * from "./salesPsychology";
+export * from "./swapEngine";

@@ -5,6 +5,7 @@
  *   suggestions.materials  — material name + category suggestions from DB
  *   suggestions.categories — distinct material categories
  *   suggestions.locations  — US city/state suggestions (static + DB-derived)
+ *   suggestions.locationGeo — Nominatim (OSM) geocoded suggestions with lat/lng
  *   suggestions.companies  — supplier/manufacturer name suggestions
  */
 import { router, publicProcedure } from "../_core/trpc";
@@ -12,6 +13,10 @@ import { z } from "zod";
 import { getDb } from "../db";
 import { materials, manufacturers, scrapedSuppliers } from "../../drizzle/schema";
 import { ilike, or, sql, asc } from "drizzle-orm";
+
+// ─── Nominatim cache (in-memory, survives server restarts poorly but free) ────
+// Keyed by raw query string; evicted when size > 500.
+const _nominatimCache = new Map<string, { label: string; value: string; sublabel?: string; lat: number; lng: number }[]>();
 
 // ─── Static location data ─────────────────────────────────────────────────────
 // Top 120 US cities + all 50 states — no external API needed
@@ -277,6 +282,75 @@ export const suggestionsRouter = router({
         }
 
         return results.slice(0, 8);
+      } catch {
+        return [];
+      }
+    }),
+
+  // ── Geocoded location suggestions via Nominatim (OSM) — no API key ──────────
+  // Returns city/address suggestions with lat/lng for map preview + radius matching.
+  // In-memory cache prevents hammering Nominatim (ToS: max 1 req/sec).
+  locationGeo: publicProcedure
+    .input(z.object({ q: z.string().min(3).max(100) }))
+    .query(async ({ input }) => {
+      const q = input.q.trim();
+      const cached = _nominatimCache.get(q);
+      if (cached) return cached;
+
+      try {
+        const url =
+          `https://nominatim.openstreetmap.org/search` +
+          `?q=${encodeURIComponent(q)}` +
+          `&format=json&addressdetails=1&limit=6&countrycodes=us`;
+
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent": "GreenChainz/1.0 (founder@greenchainz.com)",
+            "Accept-Language": "en-US,en",
+          },
+          signal: AbortSignal.timeout(4000),
+        });
+
+        if (!res.ok) return [];
+
+        type NominatimResult = {
+          display_name: string;
+          lat: string;
+          lon: string;
+          address?: { city?: string; town?: string; county?: string; state?: string };
+        };
+        const data = (await res.json()) as NominatimResult[];
+
+        const results = data.map((item) => {
+          // Build a short human-readable label from the address parts
+          const addr = item.address ?? {};
+          const city = addr.city ?? addr.town ?? addr.county ?? "";
+          const state = addr.state ?? "";
+          const label = city && state ? `${city}, ${state}` : item.display_name.split(",").slice(0, 2).join(",").trim();
+          return {
+            label,
+            value: label,
+            sublabel: item.display_name.split(",").slice(0, 4).join(",").trim(),
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+          };
+        });
+
+        // Deduplicate by label
+        const seen = new Set<string>();
+        const deduped = results.filter((r) => {
+          if (seen.has(r.label)) return false;
+          seen.add(r.label);
+          return true;
+        });
+
+        _nominatimCache.set(q, deduped);
+        // Evict oldest entry if cache grows large
+        if (_nominatimCache.size > 500) {
+          _nominatimCache.delete(_nominatimCache.keys().next().value!);
+        }
+
+        return deduped;
       } catch {
         return [];
       }

@@ -486,6 +486,26 @@ export default function Home() {
 
               <details className="group border border-border rounded-lg p-4 bg-card">
                 <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  How does the SWAP Engine match suppliers to my project?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  The SWAP Engine is GreenChainz's decision-grade matching system. Unlike tools that rank by sustainability score alone, SWAP evaluates every supplier across the full set of criteria that actually drive procurement decisions: spec and code compliance, documentation completeness (EPD depth, HPD, chain-of-custody, submittal readiness), lead time and regional availability, whole-life cost signals, labor productivity, supply chain integrity, and risk defensibility. Sustainability is a weighted dimension inside that scoring — not the objective function. The engine first filters out any supplier that fails a hard gate (wrong category, missing required certification, GWP over threshold, no submittal capability), then ranks the eligible pool. The result is a shortlist of 5–7 options your team can actually approve, source, price, deliver, and defend — with the more sustainable options surfaced where the procurement math supports it.
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  Does GreenChainz only care about sustainability, or does it understand real procurement constraints?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  GreenChainz is built around how procurement actually works — not how sustainability advocates wish it did. The platform scores suppliers across eight dimensions that reflect the real concerns of every role in the building process: spec defensibility for architects and spec writers, whole-life cost and carbon budget compliance for quantity surveyors and asset managers, schedule and labor productivity for GCs and superintendents, total cost of ownership for facility managers, supply chain integrity for CPOs, and sector-specific requirements for healthcare, education, and affordable housing projects. Sustainability is embedded throughout — EPD availability, Buy Clean compliance, Scope 3 disclosure — but it operates as a tiebreaker and differentiator inside realistic procurement logic. The output is not "the greenest supplier." It is "the suppliers that can actually win this specification, ranked by sustainability where the tradeoffs are viable."
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
                   How is GreenChainz different from EC3 or One Click LCA?
                   <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </summary>

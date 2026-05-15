@@ -37,6 +37,9 @@ export interface TypeaheadItem {
   sublabel?: string;
   /** Optional badge text (e.g. category, state) */
   badge?: string;
+  /** Geocoded coordinates — populated by LocationTypeahead results */
+  lat?: number;
+  lng?: number;
 }
 
 export interface TypeaheadProps {
