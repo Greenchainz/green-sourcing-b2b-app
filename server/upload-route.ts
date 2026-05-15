@@ -106,6 +106,45 @@ uploadRouter.post("/supplier/upload-image", materialImageUpload.single("file"), 
   }
 });
 
+// ── RFQ Spec PDF parser (Document Intelligence → LLM → ParsedRfqFields) ────────
+const specUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB — spec books can be large
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "application/pdf") cb(null, true);
+    else cb(new Error("Only PDF files are accepted for spec parsing"));
+  },
+});
+
+uploadRouter.post("/rfq/parse-spec", specUpload.single("spec"), async (req, res) => {
+  try {
+    const user = await sdk.authenticateRequest(req);
+    if (!user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({ error: "No PDF file uploaded" });
+      return;
+    }
+
+    const { parseSpecPdf } = await import("./services/document-intelligence");
+    const fields = await parseSpecPdf(req.file.buffer);
+
+    console.log(
+      `[parse-spec] user=${user.id} file="${req.file.originalname}" ` +
+      `size=${req.file.size} confidence=${fields.confidence} ` +
+      `fields=[${fields.fieldsFound.join(",")}]`
+    );
+
+    res.json(fields);
+  } catch (err) {
+    console.error("[parse-spec]", err);
+    res.status(500).json({ error: "Spec parsing failed" });
+  }
+});
+
 uploadRouter.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {

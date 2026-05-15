@@ -6,7 +6,7 @@ import { getDb } from "../db";
 import { auditLog, AuditAction } from "../services/audit-log";
 import { publishRfqEvent } from "../services/event-bus";
 import { rfqRequests, suppliers } from "../../drizzle/schema";
-import { eq, desc, ilike, or } from "drizzle-orm";
+import { eq, desc, ilike, or, not } from "drizzle-orm";
 
 /**
  * RFQ Marketplace Lifecycle Router
@@ -486,6 +486,150 @@ export const rfqRouter = router({
         : await baseQuery;
 
       return rows;
+    }),
+
+  // ── Smart supplier matching for RFQ targeting ────────────────────────────
+  // Scores every active supplier against the RFQ requirements and returns
+  // a ranked list of ≥5 results with isHighSustainability + isLocalSupplier flags.
+  matchSuppliers: protectedProcedure
+    .input(
+      z.object({
+        category: z.string().min(1),
+        certifications: z.array(z.string()).optional().default([]),
+        maxGwp: z.number().optional(),
+        projectState: z.string().optional(),
+        projectCity: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // Pull all non-rejected suppliers with fields needed for scoring
+      const rows = await db
+        .select({
+          id: suppliers.id,
+          companyName: suppliers.companyName,
+          city: suppliers.city,
+          state: suppliers.state,
+          materialCategories: suppliers.materialCategories,
+          certifications: suppliers.certifications,
+          verificationStatus: suppliers.verificationStatus,
+          isPremium: suppliers.isPremium,
+          sustainabilityScore: suppliers.sustainabilityScore,
+          weightedRankScore: suppliers.weightedRankScore,
+          tier: suppliers.tier,
+        })
+        .from(suppliers)
+        .where(not(eq(suppliers.verificationStatus, "rejected")));
+
+      const categoryLower = input.category.toLowerCase();
+      const requestedCerts = (input.certifications ?? []).map((c) => c.toLowerCase());
+      const projectState = (input.projectState ?? "").toUpperCase();
+
+      // Score each supplier
+      const scored = rows.map((s) => {
+        let score = 0;
+
+        // Category match: +40 if any stored category overlaps the requested one
+        const supplierCats = (s.materialCategories ?? []).map((c) => c.toLowerCase());
+        const categoryMatch = supplierCats.some(
+          (c) => c.includes(categoryLower) || categoryLower.includes(c)
+        );
+        if (categoryMatch) score += 40;
+
+        // State proximity: +25 for same state
+        const isLocalSupplier = !!(
+          projectState.length === 2 &&
+          s.state &&
+          s.state.trim().toUpperCase() === projectState
+        );
+        if (isLocalSupplier) score += 25;
+
+        // Certification overlap: +5 each, capped at +20
+        const supplierCerts = (s.certifications ?? []).map((c) => c.toLowerCase());
+        const certificationMatches = (input.certifications ?? []).filter((rc) =>
+          supplierCerts.some(
+            (sc) => sc.includes(rc.toLowerCase()) || rc.toLowerCase().includes(sc)
+          )
+        );
+        score += Math.min(certificationMatches.length * 5, 20);
+
+        // Sustainability score (0–100 scale → up to +20)
+        const sustScore = s.sustainabilityScore != null ? Number(s.sustainabilityScore) : 0;
+        score += (sustScore / 100) * 20;
+
+        // Quality signals
+        if (s.isPremium) score += 5;
+        if (s.verificationStatus === "approved") score += 3;
+        if (s.weightedRankScore != null) score += Math.min(s.weightedRankScore * 2, 10);
+
+        return {
+          ...s,
+          sustainabilityScore: s.sustainabilityScore != null ? Number(s.sustainabilityScore) : null,
+          weightedRankScore: s.weightedRankScore ?? null,
+          matchScore: Math.round(score),
+          isLocalSupplier,
+          certificationMatches,
+          isHighSustainability: false, // set after sorting below
+        };
+      });
+
+      // Sort by composite score
+      scored.sort((a, b) => b.matchScore - a.matchScore);
+
+      // Guarantee ≥5 results: prefer category matches, fall back to overall top
+      const categoryMatches = scored.filter((s) => s.matchScore >= 40);
+      const fallbackIds = new Set<number>();
+
+      let pool: typeof scored;
+      if (categoryMatches.length >= 5) {
+        pool = categoryMatches;
+      } else {
+        // Fill remaining slots from overall top; mark those as fallback
+        const fill = scored
+          .filter((s) => s.matchScore < 40)
+          .slice(0, Math.max(5 - categoryMatches.length, 0));
+        fill.forEach((s) => fallbackIds.add(s.id));
+        pool = [...categoryMatches, ...fill];
+      }
+
+      // Cap at 15 so the UI stays manageable
+      const results = pool.slice(0, 15);
+
+      // ── RFQ-MATCHING agent: semantic re-rank + sustainability flagging ────────
+      // Runs against the scored candidate pool. Falls back to score order on
+      // timeout/error — transparently, with zero impact on the user experience.
+      const { rankSuppliersWithAgent } = await import("../services/rfq-agent");
+      const agentRanking = await rankSuppliersWithAgent(results, {
+        category: input.category,
+        certifications: input.certifications,
+        maxGwp: input.maxGwp,
+        projectState: input.projectState,
+        projectCity: input.projectCity,
+      });
+
+      // Apply agent ranking order to results
+      const rankMap = new Map(
+        agentRanking.rankedIds.map((id, idx) => [id, idx])
+      );
+      results.sort(
+        (a, b) => (rankMap.get(a.id) ?? 999) - (rankMap.get(b.id) ?? 999)
+      );
+
+      // Use agent's high-sustainability judgement
+      const highIds = new Set(agentRanking.highSustainabilityIds);
+      if (highIds.size === 0 && results.length > 0) {
+        highIds.add(results[0].id); // guaranteed minimum
+      }
+
+      // Return only buyer-safe fields — strip internal tier and rank score
+      return results.map(({ weightedRankScore: _wr, tier: _tier, ...s }) => ({
+        ...s,
+        isHighSustainability: highIds.has(s.id),
+        isFallback: fallbackIds.has(s.id),
+        _agentSource: agentRanking.source, // dev signal — stripped by tRPC serialisation if needed
+      }));
     }),
 
   // ── Create RFQ requests for multiple suppliers at once ────────────────────

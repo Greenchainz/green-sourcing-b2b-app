@@ -11,7 +11,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col">
       <SEOHead
         title="Where Sustainable Material Deals Get Made — GreenChainz"
-        description="GreenChainz connects architects and sustainable material suppliers — verified materials, direct RFQs, real conversations, real deals. This is where the handshake happens."
+        description="GreenChainz connects project teams and verified suppliers — EPD-backed materials, structured RFQs, and compliance documentation for spec writers, procurement, contractors, and suppliers."
         canonicalPath="/"
       />
       <StructuredData data={homepageSchema} />
@@ -27,24 +27,32 @@ export default function Home() {
               <span className="text-primary">if you can actually source them.</span>
             </h1>
             <p className="text-xl font-semibold text-muted-foreground max-w-2xl mx-auto">
-              GreenChainz is where architects and sustainable material suppliers find each other — and actually do business.
+              GreenChainz is where project teams and verified suppliers connect — and actually do business.
+            </p>
+            <p className="text-sm text-muted-foreground max-w-2xl mx-auto -mt-4">
+              Spec writers, procurement teams, and contractors — all in one workflow.
             </p>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              The data exists. The software exists. What's been missing is the connection — the conversation, the RFQ, the relationship. That's what we built.
+              The data exists. The software exists. What's been missing is the workflow — the conversation, the RFQ, the documentation, the deal. That's what we built.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              Our SWAP Engine catches architects mid-decision and shows them a greener alternative that meets their specs. From there — direct messaging, RFQs, video calls, and a deal. All in one place.
+              Our SWAP Engine catches the project team at the decision moment and surfaces verified alternatives that meet requirements. From there — direct messaging, RFQs, video calls, and a deal. All in one place.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Link href="/get-started">
+              <Link href="/materials">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300">
-                  Find Verified Materials →
+                  Explore Materials →
                 </Button>
               </Link>
-              <Link href="/how-it-works">
+              <Link href="/rfq/new">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                  See How It Works
+                  Submit RFQ — No Shopping Required
                 </Button>
+              </Link>
+            </div>
+            <div className="pt-2">
+              <Link href="/tools/submittal" className="text-sm text-primary hover:underline underline-offset-4 font-medium">
+                Generate a Submittal Pack → (the schedule gate, free to start)
               </Link>
             </div>
             <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground pt-4">
@@ -67,6 +75,74 @@ export default function Home() {
                 5-minute setup
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Built For Strip */}
+      <section className="py-6 bg-primary/5 border-b border-border">
+        <div className="container">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Built for</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="px-4 py-1.5 rounded-full border border-primary/30 bg-background text-sm font-medium text-foreground">
+                Spec &amp; Design Teams
+              </span>
+              <span className="px-4 py-1.5 rounded-full border border-primary/30 bg-background text-sm font-medium text-foreground">
+                Procurement &amp; Construction
+              </span>
+              <span className="px-4 py-1.5 rounded-full border border-primary/30 bg-background text-sm font-medium text-foreground">
+                Verified Suppliers
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Two-Mode Entry */}
+      <section className="py-12 bg-background border-b border-border">
+        <div className="container">
+          <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-8">
+            How do you want to start?
+          </p>
+          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            <Link href="/materials">
+              <div className="group relative rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-foreground mb-1">Explore Materials</h3>
+                <p className="text-sm text-muted-foreground">Browse verified sustainable products by category, carbon, and compliance. Get spec-ready sheets.</p>
+                <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Browse the catalog →</p>
+              </div>
+            </Link>
+            <Link href="/rfq/new">
+              <div className="group relative rounded-xl border border-primary/40 bg-primary/5 hover:border-primary hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
+                <div className="absolute top-3 right-3 text-[10px] font-bold text-primary uppercase tracking-wide bg-primary/10 rounded px-1.5 py-0.5">Procurement</div>
+                <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
+                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-foreground mb-1">Submit RFQ</h3>
+                <p className="text-sm text-muted-foreground">Requirements in. Comparable bids out. No back-and-forth — suppliers respond to a structured format.</p>
+                <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Skip the browsing →</p>
+              </div>
+            </Link>
+            <Link href="/tools/submittal">
+              <div className="group relative rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-foreground mb-1">Generate Submittal Pack</h3>
+                <p className="text-sm text-muted-foreground">EPD + compliance docs packaged for approval. Work can't proceed without it — make it pass first time.</p>
+                <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Generate now →</p>
+              </div>
+            </Link>
           </div>
         </div>
       </section>
@@ -328,13 +404,13 @@ export default function Home() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide">
-              THE SPEC ADVANTAGE
+              THE SPEED ADVANTAGE
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              The Architect Who Specs Faster Wins the Project.
+              The Team That Specs & Sources Faster Wins the Project.
             </h2>
             <p className="text-lg text-muted-foreground">
-              Procurement teams drowning in manual RFQs and architects waiting days for quotes are bleeding time and projects to competitors who've already switched. In five minutes, not five days.
+              Procurement teams drowning in manual RFQs and spec teams waiting days for quotes are bleeding time — and losing projects to teams who move in minutes, not days.
             </p>
             <div className="pt-4">
               <Link href="/get-started">
@@ -360,21 +436,21 @@ export default function Home() {
             <div className="space-y-6">
               <details className="group border border-border rounded-lg p-4 bg-card" open>
                 <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
-                  What is an EPD and why do architects need it?
+                  What is an EPD and why do project teams need it?
                   <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </summary>
                 <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  An EPD (Environmental Product Declaration) is a third-party verified document that quantifies the environmental impact of a building material across its entire life cycle. Architects need EPDs because LEED v5 now makes embodied carbon quantification mandatory for all new construction projects. Without verified EPDs, architects face compliance failures, audit risks, and potential liability exposure.
+                  An EPD (Environmental Product Declaration) is a third-party verified document that quantifies the environmental impact of a building material across its entire life cycle. Spec writers, procurement teams, and contractors need EPDs because LEED v5 now makes embodied carbon quantification mandatory for all new construction projects. Without verified EPDs, project teams face compliance failures, audit risks, and potential liability exposure.
                 </p>
               </details>
 
               <details className="group border border-border rounded-lg p-4 bg-card">
                 <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
-                  How does GreenChainz help architects find verified EPDs?
+                  How does GreenChainz help teams find and source verified EPDs?
                   <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </summary>
                 <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  GreenChainz provides instant lookup across 50,000+ verified EPDs directly inside Excel, Revit, and your web browser. Search by material type, carbon footprint, certification, and compliance requirement. The browser extension also overlays compliance data on supplier websites in real time, catching greenwashing claims before they become a liability.
+                  GreenChainz provides instant lookup across 50,000+ verified EPDs directly inside Excel, Revit, and your web browser. Spec writers search by material type, carbon footprint, certification, and compliance requirement. Procurement teams turn selections into structured RFQs in one click. The browser extension overlays compliance data on supplier websites in real time, catching greenwashing claims before they become a liability.
                 </p>
               </details>
 
@@ -414,7 +490,7 @@ export default function Home() {
                   <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </summary>
                 <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  EC3 and One Click LCA are carbon calculation tools — they tell you the carbon impact of a material but stop there. GreenChainz is the procurement execution layer that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, greenwashing detection, and direct supplier connection. EC3 is a GreenChainz data partner, and GreenChainz extends into Autodesk Forma and Revit so architects can source verified green materials without leaving their BIM workflow.
+                  EC3 and One Click LCA are carbon calculation tools — they tell you the carbon impact of a material but stop there. GreenChainz is the procurement execution layer that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, greenwashing detection, and direct supplier connection. EC3 is a GreenChainz data partner, and GreenChainz extends into Autodesk Forma and Revit so the full project team — spec writers, procurement, and contractors — can source verified green materials without leaving their existing workflows.
                 </p>
               </details>
             </div>
