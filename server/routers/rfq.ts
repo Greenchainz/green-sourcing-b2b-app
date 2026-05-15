@@ -641,7 +641,7 @@ export const rfqRouter = router({
         if (s.isPremium) score += 5;
         if (s.verificationStatus === "approved") score += 3;
         if (s.weightedRankScore != null) score += Math.min(s.weightedRankScore * 2, 10);
-        if (s.tier === "verified" || s.tier === "enterprise") score += 8;
+        if (s.tier === "premium") score += 8;
         else if (s.tier === "standard") score += 4;
         else if (s.tier === "free") score -= 5; // free suppliers are less likely to be RFQ-ready
 
