@@ -800,6 +800,7 @@ export default function RFQNewPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>EPD Required?</Label>
+                    <Select
                       defaultValue={formValues.epdRequired ?? "preferred"}
                       onValueChange={(v) => setValue("epdRequired", v as "yes" | "no" | "preferred")}
                     >
