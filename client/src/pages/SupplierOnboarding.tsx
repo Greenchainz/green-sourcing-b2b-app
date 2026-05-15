@@ -31,6 +31,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Pencil,
+  MapPin,
+  Truck,
 } from "lucide-react";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -57,6 +59,20 @@ const CERTIFICATIONS = [
   "Living Building Challenge",
   "Other",
 ];
+
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+  "VA","WA","WV","WI","WY",
+] as const;
+
+const SERVICE_RADIUS_OPTIONS = [
+  { value: 50,  label: "50 miles — very local" },
+  { value: 100, label: "100 miles" },
+  { value: 250, label: "250 miles" },
+  { value: 500, label: "500 miles — regional" },
+] as const;
 
 // ── Schema ─────────────────────────────────────────────────────────────────────
 
@@ -93,6 +109,12 @@ const schema = z.object({
     .array(z.string())
     .min(1, "Select at least one category"),
   certifications: z.array(z.string()).optional(),
+  // ── Service area ────────────────────────────────────────────────────────
+  shipsNationwide: z.boolean().optional(),
+  serviceRadiusMiles: z.number().int().positive().nullable().optional(),
+  statesServed: z.array(z.string()).nullable().optional(),
+  minOrderQuantity: z.number().positive().nullable().optional(),
+  maxOrderQuantity: z.number().positive().nullable().optional(),
 });
 
 type FormValues = z.input<typeof schema>;
@@ -107,6 +129,11 @@ type SupplierProfile = {
   description?: string;
   materialCategories?: string[];
   certifications?: string[];
+  shipsNationwide?: boolean;
+  serviceRadiusMiles?: number | null;
+  statesServed?: string[] | null;
+  minOrderQuantity?: number | null;
+  maxOrderQuantity?: number | null;
 };
 
 // ── Steps ──────────────────────────────────────────────────────────────────────
@@ -116,15 +143,17 @@ const STEPS = [
   { label: "Contact", icon: User, description: "Contact information" },
   { label: "Materials", icon: Package, description: "Material categories" },
   { label: "Certifications", icon: Award, description: "Sustainability certs" },
+  { label: "Service Area", icon: MapPin, description: "Where you deliver" },
   { label: "Review", icon: ClipboardCheck, description: "Review & submit" },
 ];
 
-// Fields to validate per step (only required fields; optional ones like phone are skipped)
+// Fields to validate per step
 const STEP_FIELDS: (keyof FormValues)[][] = [
   ["companyName"],
   ["contactName", "email"],
   ["materialCategories"],
   ["certifications"],
+  [], // service area — all optional
   [],
 ];
 
@@ -277,6 +306,11 @@ export default function SupplierOnboarding() {
       description: p.description ?? "",
       materialCategories: p.materialCategories ?? [],
       certifications: p.certifications ?? [],
+      shipsNationwide: p.shipsNationwide ?? false,
+      serviceRadiusMiles: p.serviceRadiusMiles ?? null,
+      statesServed: p.statesServed ?? null,
+      minOrderQuantity: p.minOrderQuantity ?? null,
+      maxOrderQuantity: p.maxOrderQuantity ?? null,
     });
   }, [profileQuery.data, reset, user]);
 
@@ -525,8 +559,154 @@ export default function SupplierOnboarding() {
               </Card>
             )}
 
-            {/* ── Step 5: Review & Submit ──────────────────────────── */}
+            {/* ── Step 5: Service Area ─────────────────────────────── */}
             {step === 4 && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-700/10 flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-emerald-700" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Service Area & Delivery</CardTitle>
+                      <CardDescription>
+                        Tell GreenChainz where you deliver. This is how we route RFQs to the right suppliers — nobody wants a concrete bid from 800 miles away.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Ships nationwide toggle */}
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="shipsNationwide"
+                      checked={watch("shipsNationwide") ?? false}
+                      onCheckedChange={(checked) =>
+                        setValue("shipsNationwide", !!checked, { shouldValidate: true })
+                      }
+                    />
+                    <div>
+                      <Label htmlFor="shipsNationwide" className="font-medium cursor-pointer">
+                        We ship / deliver nationwide
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Check this if you can serve projects anywhere in the US — typical for mass timber, specialty systems, and manufactured products.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Only show radius + states if not shipping nationwide */}
+                  {!watch("shipsNationwide") && (
+                    <>
+                      {/* Delivery radius */}
+                      <div className="space-y-2">
+                        <Label className="font-medium flex items-center gap-1.5">
+                          <Truck className="w-3.5 h-3.5 text-muted-foreground" />
+                          Delivery radius (optional)
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          How far can you deliver from your facility? Leave blank to use GreenChainz defaults for your material type.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {SERVICE_RADIUS_OPTIONS.map((opt) => {
+                            const current = watch("serviceRadiusMiles");
+                            const selected = current === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() =>
+                                  setValue("serviceRadiusMiles", selected ? null : opt.value)
+                                }
+                                className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                                  selected
+                                    ? "bg-emerald-700 text-white border-emerald-700"
+                                    : "border-border hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* States served */}
+                      <div className="space-y-2">
+                        <Label className="font-medium">States served (optional)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Select states where you actively serve projects. Overrides the radius above for those states.
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto rounded-lg border p-3">
+                          {US_STATES.map((state) => {
+                            const current = (watch("statesServed") ?? []) as string[];
+                            const selected = current.includes(state);
+                            return (
+                              <button
+                                key={state}
+                                type="button"
+                                onClick={() => {
+                                  const next = selected
+                                    ? current.filter((s) => s !== state)
+                                    : [...current, state];
+                                  setValue("statesServed", next.length > 0 ? next : null);
+                                }}
+                                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                                  selected
+                                    ? "bg-emerald-700 text-white"
+                                    : "bg-muted text-muted-foreground hover:bg-emerald-100 dark:hover:bg-emerald-900/20"
+                                }`}
+                              >
+                                {state}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {((watch("statesServed") ?? []) as string[]).length > 0 && (
+                          <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                            {((watch("statesServed") ?? []) as string[]).length} state(s) selected
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Order capacity */}
+                  <div className="space-y-3">
+                    <Label className="font-medium">Typical order capacity (optional)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Helps GreenChainz avoid routing RFQs that are too small or too large for your operation.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Minimum order</Label>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 500"
+                          {...register("minOrderQuantity", { valueAsNumber: true })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Typical max order</Label>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 50000"
+                          {...register("maxOrderQuantity", { valueAsNumber: true })}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Units depend on your material type (SF, tons, LF, etc.).</p>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground italic">
+                    All fields on this step are optional — you can update them later from your dashboard.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ── Step 6: Review & Submit ──────────────────────────── */}
+            {step === 5 && (
               <Card className="shadow-sm">
                 <CardHeader>
                   <div className="flex items-center gap-3">

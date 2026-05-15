@@ -529,6 +529,13 @@ export const suppliers = pgTable("suppliers", {
   microsoftPlanId: text("microsoftPlanId"),
   tierUpdatedAt: timestamp("tierUpdatedAt"),
   specSheetUrl: text("specSheetUrl"),
+  // ── Service area & shipping capability ──────────────────────────────────
+  // Collected during onboarding. Used by matchSuppliers for distance-aware routing.
+  serviceRadiusMiles: integer("serviceRadiusMiles"),             // null = use category default radius
+  statesServed: json("statesServed").$type<string[]>(),          // explicit list of 2-char state codes
+  shipsNationwide: boolean("shipsNationwide").default(false),    // true = no distance limit
+  minOrderQuantity: decimal("minOrderQuantity", { precision: 12, scale: 2 }), // per unit (category-appropriate)
+  maxOrderQuantity: decimal("maxOrderQuantity", { precision: 12, scale: 2 }), // typical project max
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
