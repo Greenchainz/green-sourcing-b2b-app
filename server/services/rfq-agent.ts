@@ -85,6 +85,8 @@ export interface RfqRequirements {
   maxGwp?: number;
   projectState?: string;
   projectCity?: string;
+  projectLat?: number;
+  projectLng?: number;
 }
 
 export interface AgentRanking {
