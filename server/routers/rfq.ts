@@ -7,6 +7,7 @@ import { auditLog, AuditAction } from "../services/audit-log";
 import { publishRfqEvent } from "../services/event-bus";
 import { rfqRequests, suppliers, suppliersLocation } from "../../drizzle/schema";
 import { eq, desc, ilike, or, not, inArray } from "drizzle-orm";
+import { getShippingClass, isWithinServiceArea, DEFAULT_RADIUS_MILES } from "../lib/shipping-classes";
 
 /**
  * RFQ Marketplace Lifecycle Router
@@ -521,6 +522,10 @@ export const rfqRouter = router({
           sustainabilityScore: suppliers.sustainabilityScore,
           weightedRankScore: suppliers.weightedRankScore,
           tier: suppliers.tier,
+          // ── Service area fields (shipping-class routing) ──────────────────
+          serviceRadiusMiles: suppliers.serviceRadiusMiles,
+          statesServed: suppliers.statesServed,
+          shipsNationwide: suppliers.shipsNationwide,
         })
         .from(suppliers)
         .where(not(eq(suppliers.verificationStatus, "rejected")));
@@ -528,6 +533,9 @@ export const rfqRouter = router({
       const categoryLower = input.category.toLowerCase();
       const requestedCerts = (input.certifications ?? []).map((c) => c.toLowerCase());
       const projectState = (input.projectState ?? "").toUpperCase();
+
+      // ── Shipping class for this RFQ ────────────────────────────────────────
+      const shippingClass = getShippingClass(input.category);
 
       // ── Haversine distance (miles) ─────────────────────────────────────────
       function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -567,29 +575,47 @@ export const rfqRouter = router({
       const projectLat = input.projectLat;
       const projectLng = input.projectLng;
 
-      // Score each supplier
-      const scored = rows.map((s) => {
+      // Score each supplier — with shipping-class eligibility gate
+      const scored = rows.flatMap((s) => {
         let score = 0;
 
-        // Category match: +40 if any stored category overlaps the requested one
+        // ── Category match: +40 ────────────────────────────────────────────
         const supplierCats = (s.materialCategories ?? []).map((c) => c.toLowerCase());
         const categoryMatch = supplierCats.some(
           (c) => c.includes(categoryLower) || categoryLower.includes(c)
         );
         if (categoryMatch) score += 40;
 
-        // Location scoring: haversine if coords available, else state match
+        // ── Distance & service-area eligibility gate ───────────────────────
         const supplierCoords = locationMap.get(s.id);
-        let isLocalSupplier = false;
+        let distanceMiles: number | null = null;
         if (projectLat != null && projectLng != null && supplierCoords) {
-          const miles = haversine(projectLat, projectLng, supplierCoords.lat, supplierCoords.lng);
-          if (miles < 50) { score += 30; isLocalSupplier = true; }
-          else if (miles < 150) { score += 25; isLocalSupplier = true; }
-          else if (miles < 300) { score += 15; }
-          else if (miles < 500) { score += 8; }
-          else { score += 2; }
+          distanceMiles = haversine(projectLat, projectLng, supplierCoords.lat, supplierCoords.lng);
+        }
+
+        const eligible = isWithinServiceArea({
+          distanceMiles,
+          projectState,
+          supplierState: s.state ?? null,
+          shipsNationwide: s.shipsNationwide ?? false,
+          statesServed: (s.statesServed as string[] | null) ?? null,
+          serviceRadiusMiles: s.serviceRadiusMiles ?? null,
+          shippingClass,
+        });
+
+        // Hard exclude local-heavy suppliers that are out of range
+        if (!eligible && shippingClass === "local_heavy") return [];
+
+        // ── Distance scoring ───────────────────────────────────────────────
+        let isLocalSupplier = false;
+        if (distanceMiles != null) {
+          if (distanceMiles < 50)       { score += 30; isLocalSupplier = true; }
+          else if (distanceMiles < 150) { score += 25; isLocalSupplier = true; }
+          else if (distanceMiles < 300) { score += 15; }
+          else if (distanceMiles < 500) { score += 8; }
+          else if (eligible)            { score += 2; } // far but within declared service area
         } else {
-          // Fall back to state match
+          // No coordinates — fall back to state match
           isLocalSupplier = !!(
             projectState.length === 2 &&
             s.state &&
@@ -598,7 +624,7 @@ export const rfqRouter = router({
           if (isLocalSupplier) score += 25;
         }
 
-        // Certification overlap: +5 each, capped at +20
+        // ── Certification overlap: +5 each, capped at +20 ─────────────────
         const supplierCerts = (s.certifications ?? []).map((c) => c.toLowerCase());
         const certificationMatches = (input.certifications ?? []).filter((rc) =>
           supplierCerts.some(
@@ -607,16 +633,19 @@ export const rfqRouter = router({
         );
         score += Math.min(certificationMatches.length * 5, 20);
 
-        // Sustainability score (0–100 scale → up to +20)
+        // ── Sustainability score (0–100 → up to +20) ──────────────────────
         const sustScore = s.sustainabilityScore != null ? Number(s.sustainabilityScore) : 0;
         score += (sustScore / 100) * 20;
 
-        // Quality signals
+        // ── Quality & tier signals ─────────────────────────────────────────
         if (s.isPremium) score += 5;
         if (s.verificationStatus === "approved") score += 3;
         if (s.weightedRankScore != null) score += Math.min(s.weightedRankScore * 2, 10);
+        if (s.tier === "verified" || s.tier === "enterprise") score += 8;
+        else if (s.tier === "standard") score += 4;
+        else if (s.tier === "free") score -= 5; // free suppliers are less likely to be RFQ-ready
 
-        return {
+        return [{
           ...s,
           sustainabilityScore: s.sustainabilityScore != null ? Number(s.sustainabilityScore) : null,
           weightedRankScore: s.weightedRankScore ?? null,
@@ -624,7 +653,8 @@ export const rfqRouter = router({
           isLocalSupplier,
           certificationMatches,
           isHighSustainability: false, // set after sorting below
-        };
+          shippingClass,
+        }];
       });
 
       // Sort by composite score

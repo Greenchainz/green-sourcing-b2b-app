@@ -15,6 +15,13 @@ import { sendSupplierWelcomeEmail, sendFounderNewSupplierAlert } from "../email-
  *   supplierOnboarding.updateProfile    — update an existing supplier profile
  */
 
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+  "VA","WA","WV","WI","WY",
+] as const;
+
 const onboardingInput = z.object({
   companyName: z.string().min(1, "Company name is required"),
   contactName: z.string().min(1, "Contact name is required"),
@@ -24,6 +31,12 @@ const onboardingInput = z.object({
   description: z.string().optional(),
   materialCategories: z.array(z.string()).min(1, "Select at least one material category"),
   certifications: z.array(z.string()).optional(),
+  // ── Service area & shipping capability ──────────────────────────────────
+  serviceRadiusMiles: z.number().int().positive().nullable().optional(),
+  statesServed: z.array(z.enum(US_STATES)).nullable().optional(),
+  shipsNationwide: z.boolean().optional(),
+  minOrderQuantity: z.number().positive().nullable().optional(),
+  maxOrderQuantity: z.number().positive().nullable().optional(),
 });
 
 export const supplierOnboardingRouter = router({
@@ -54,6 +67,11 @@ export const supplierOnboardingRouter = router({
             description: input.description ?? null,
             materialCategories: input.materialCategories,
             certifications: input.certifications ?? [],
+            serviceRadiusMiles: input.serviceRadiusMiles ?? null,
+            statesServed: input.statesServed ?? null,
+            shipsNationwide: input.shipsNationwide ?? false,
+            minOrderQuantity: input.minOrderQuantity != null ? String(input.minOrderQuantity) : null,
+            maxOrderQuantity: input.maxOrderQuantity != null ? String(input.maxOrderQuantity) : null,
             updatedAt: new Date(),
           })
           .where(eq(suppliers.id, existing.id));
@@ -74,6 +92,11 @@ export const supplierOnboardingRouter = router({
           description: input.description ?? null,
           materialCategories: input.materialCategories,
           certifications: input.certifications ?? [],
+          serviceRadiusMiles: input.serviceRadiusMiles ?? null,
+          statesServed: input.statesServed ?? null,
+          shipsNationwide: input.shipsNationwide ?? false,
+          minOrderQuantity: input.minOrderQuantity != null ? String(input.minOrderQuantity) : null,
+          maxOrderQuantity: input.maxOrderQuantity != null ? String(input.maxOrderQuantity) : null,
           verificationStatus: "pending",
         })
         .returning({ id: suppliers.id });
@@ -126,6 +149,11 @@ export const supplierOnboardingRouter = router({
         location: suppliers.location,
         isPremium: suppliers.isPremium,
         sustainabilityScore: suppliers.sustainabilityScore,
+        serviceRadiusMiles: suppliers.serviceRadiusMiles,
+        statesServed: suppliers.statesServed,
+        shipsNationwide: suppliers.shipsNationwide,
+        minOrderQuantity: suppliers.minOrderQuantity,
+        maxOrderQuantity: suppliers.maxOrderQuantity,
         createdAt: suppliers.createdAt,
         updatedAt: suppliers.updatedAt,
       })
