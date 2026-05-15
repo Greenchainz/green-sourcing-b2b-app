@@ -62,7 +62,7 @@ export default function About() {
                 poster=""
               >
                 <source
-                  src="https://greencontent.blob.core.windows.net/greenchainz-uploads/WIN_20260511_06_38_12_Pro.mp4"
+                  src="https://greencontent.blob.core.windows.net/greenchainz-uploads/about-video"
                   type="video/mp4"
                 />
                 Your browser does not support the video tag.
