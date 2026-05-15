@@ -1,0 +1,95 @@
+name: Build & Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+permissions:
+  id-token: write   # required for OIDC login to Azure
+  contents: read
+
+# ── Secrets required in GitHub → Settings → Secrets and variables → Actions ──
+#
+#   AZURE_CLIENT_ID        — service principal / managed identity client ID for OIDC
+#                            (go to Azure Portal → App Registrations → your app → Overview → Application (client) ID)
+#   AZURE_TENANT_ID        — 1d04bf50-8175-40af-a9d5-f8e441460b06
+#   AZURE_SUBSCRIPTION_ID  — your Azure subscription ID
+#   AZURE_CONTAINER_APP_NAME — the Container App name (Azure Portal → Container Apps)
+#   AZURE_RESOURCE_GROUP   — rg-greenchainz-prod
+#
+#   Build-time secrets (baked into the Vite client bundle):
+#   VITE_AZURE_MAPS_KEY    — Azure Maps key
+#   VITE_SENTRY_DSN        — Sentry DSN (optional)
+#   SENTRY_AUTH_TOKEN      — Sentry source map upload token (optional)
+#   SENTRY_ORG             — Sentry org slug (optional)
+#   SENTRY_PROJECT         — Sentry project slug (optional)
+
+env:
+  REGISTRY: acrgreenchainzprod916.azurecr.io
+  IMAGE_NAME: greenchainz-app
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Log in to Azure via OIDC (no stored secrets) ──────────────────────
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── 3. Log in to ACR using the Azure token (no ACR password needed) ──────
+      - name: Log in to Azure Container Registry
+        run: az acr login --name acrgreenchainzprod916
+
+      # ── 4. Build & push Docker image ─────────────────────────────────────────
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            VITE_BACKEND_URL=https://greenchainz.com
+            VITE_AZURE_MAPS_KEY=${{ secrets.VITE_AZURE_MAPS_KEY }}
+            VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            SENTRY_ORG=${{ secrets.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ secrets.SENTRY_PROJECT }}
+          # Layer cache — dramatically speeds up repeat builds
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      # ── 5. Deploy to Azure Container Apps ────────────────────────────────────
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          containerAppName: ${{ secrets.AZURE_CONTAINER_APP_NAME }}
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # ── 6. Health check — confirm the new revision is serving ────────────────
+      - name: Wait for deployment to stabilize
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://greenchainz.com/health)
+          echo "Health check HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed with status $STATUS"
+            exit 1
+          fi
+          echo "Deployment healthy ✅"
