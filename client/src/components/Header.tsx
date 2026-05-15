@@ -5,17 +5,16 @@ import { getLoginUrl } from '../const';
 import { NotificationCenter } from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
 import { trpc } from '../lib/trpc';
-import { Menu, X, ChevronDown, Zap, FileUp, Layers, BarChart2, FileText, GitCompare, FileSearch, Camera } from 'lucide-react';
+import { Menu, X, ChevronDown, Zap, Layers, BarChart2, GitCompare, FileSearch, Camera } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 
 const ARCHITECT_TOOLS = [
-  { href: "/architect/specs/upload", icon: Zap,        label: "Spec Lookup",          desc: "Find green alternatives for one assembly or a full project" },
-  { href: "/architect/specs",        icon: FileSearch,  label: "My Specs",             desc: "View past lookups and uploaded specs" },
-  { href: "/assemblies",             icon: Layers,      label: "Assemblies",           desc: "Build and compare wall assembly systems" },
-  { href: "/carbon-compare",         icon: GitCompare,  label: "Carbon Compare",       desc: "Side-by-side embodied carbon comparison" },
-  { href: "/carbon-dashboard",       icon: BarChart2,   label: "Carbon Dashboard",     desc: "Track carbon across your projects" },
-  { href: "/tools/submittal",        icon: FileText,    label: "Submittal Generator",  desc: "Generate CSI-compliant product submittals" },
+  { href: "/architect/specs/upload", icon: Zap,        label: "Spec Lookup",    desc: "Find green alternatives for one assembly or a full project" },
+  { href: "/architect/specs",        icon: FileSearch,  label: "My Specs",       desc: "View past lookups and uploaded specs" },
+  { href: "/assemblies",             icon: Layers,      label: "Assemblies",     desc: "Build and compare wall assembly systems" },
+  { href: "/carbon-compare",         icon: GitCompare,  label: "Carbon Compare", desc: "Side-by-side embodied carbon comparison" },
+  { href: "/carbon-dashboard",       icon: BarChart2,   label: "Carbon Dashboard", desc: "Track carbon across your projects" },
 ];
 
 function ToolsDropdown() {
@@ -171,16 +170,24 @@ export default function Header() {
             About
           </Link>
           <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            Materials
+            Explore
           </Link>
           <Link href="/manufacturers" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Suppliers
           </Link>
-          {/* Architect tools dropdown — hidden for suppliers */}
+          {/* Tools dropdown — hidden for suppliers */}
           {user?.role !== 'supplier' && <ToolsDropdown />}
           {user?.role !== 'supplier' && (
-            <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              RFQ Cart
+            <Link href="/rfq/new" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Submit RFQ
+            </Link>
+          )}
+          {user?.role !== 'supplier' && (
+            <Link
+              href="/tools/submittal"
+              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors border border-primary/30 rounded-md px-2.5 py-1 hover:bg-primary/5"
+            >
+              Submittal Pack
             </Link>
           )}
           {user?.role !== 'supplier' && (
@@ -205,7 +212,7 @@ export default function Header() {
             )}
           </Link>
           <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            Subscription
+            Pricing
           </Link>
           {user?.role === 'supplier' ? (
             <Link href="/supplier/dashboard" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
@@ -247,9 +254,14 @@ export default function Header() {
                   Sign In
                 </Button>
               </a>
+              <a href="/rfq/new">
+                <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                  Submit RFQ
+                </Button>
+              </a>
               <a href="/get-started">
                 <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_15px_rgba(159,232,112,0.6)] transition-all duration-300">
-                  Get Bulletproof Specs
+                  Explore Materials
                 </Button>
               </a>
             </>
@@ -267,7 +279,7 @@ export default function Header() {
             </Link>
             <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
-              Materials
+              Explore Materials
             </Link>
             <Link href="/manufacturers" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
@@ -275,6 +287,17 @@ export default function Header() {
             </Link>
             {user?.role !== 'supplier' && (
               <>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-4 pt-2">Start Here</p>
+                <Link href="/rfq/new"
+                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                  onClick={() => setMobileMenuOpen(false)}>
+                  Submit RFQ
+                </Link>
+                <Link href="/tools/submittal"
+                  className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                  onClick={() => setMobileMenuOpen(false)}>
+                  Generate Submittal Pack
+                </Link>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-4 pt-2">Tools</p>
                 {ARCHITECT_TOOLS.map(({ href, label }) => (
                   <Link key={href} href={href}
@@ -284,12 +307,6 @@ export default function Header() {
                   </Link>
                 ))}
               </>
-            )}
-            {user?.role !== 'supplier' && (
-              <Link href="/rfq" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                RFQ Cart
-              </Link>
             )}
             {user?.role !== 'supplier' && (
               <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
@@ -318,7 +335,7 @@ export default function Header() {
             </Link>
             <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
-              Subscription
+              Pricing
             </Link>
             {user?.role === 'supplier' ? (
               <Link href="/supplier/dashboard" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
@@ -338,9 +355,14 @@ export default function Header() {
                     Sign In
                   </Button>
                 </a>
+                <a href="/rfq">
+                  <Button variant="outline" size="sm" className="w-full">
+                    Submit RFQ
+                  </Button>
+                </a>
                 <a href="/get-started">
                   <Button size="sm" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                    Get Bulletproof Specs
+                    Explore Materials
                   </Button>
                 </a>
               </div>
