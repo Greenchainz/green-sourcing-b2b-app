@@ -184,6 +184,9 @@ export const supplierOnboardingRouter = router({
         .set({
           ...input,
           website: input.website || null,
+          // decimal columns must be coerced to string for Drizzle
+          minOrderQuantity: input.minOrderQuantity != null ? String(input.minOrderQuantity) : null,
+          maxOrderQuantity: input.maxOrderQuantity != null ? String(input.maxOrderQuantity) : null,
           updatedAt: new Date(),
         })
         .where(eq(suppliers.id, existing.id));
