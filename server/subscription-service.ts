@@ -69,7 +69,7 @@ export const METERED_DIMENSIONS = {
 export const TIER_LIMITS = {
   buyer: {
     free: {
-      rfqsPerMonth: 0,
+      rfqsPerMonth: 3,
       aiQueriesPerMonth: 10,
       swapAnalysesPerMonth: 5,
       ccpsExportsPerMonth: 3,

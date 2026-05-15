@@ -104,6 +104,8 @@ const schema = z.object({
   projectType: z.string().min(1, "Project type is required"),
   projectCity: z.string().min(1, "City is required"),
   projectState: z.string().length(2, "Select a state"),
+  projectLat: z.number().optional(),
+  projectLng: z.number().optional(),
   startDate: z.string().optional(),
   projectSqFt: z.coerce.number().positive().optional().or(z.literal("")),
 
@@ -208,6 +210,8 @@ export default function RFQNewPage() {
   const watchedCertsForMatch = watch("certifications");
   const watchedMaxGwp = watch("maxGwp");
   const watchedProjectState = watch("projectState");
+  const watchedLat = watch("projectLat");
+  const watchedLng = watch("projectLng");
 
   // Smart supplier matching — fires when user reaches Step 2 with a category
   const { data: matchedSuppliers = [], isLoading: matchLoading } =
@@ -218,6 +222,8 @@ export default function RFQNewPage() {
         maxGwp: watchedMaxGwp ? Number(watchedMaxGwp) : undefined,
         projectState: watchedProjectState ?? undefined,
         projectCity: watch("projectCity") ?? undefined,
+        projectLat: watchedLat,
+        projectLng: watchedLng,
       },
       {
         enabled: step === 2 && !!(watchedCategory),
@@ -529,11 +535,28 @@ export default function RFQNewPage() {
                       id="projectCity"
                       placeholder="San Francisco"
                       value={formValues.projectCity ?? ""}
-                      onChange={(v) => setValue("projectCity", v, { shouldValidate: true })}
+                      onChange={(v) => {
+                        setValue("projectCity", v, { shouldValidate: true });
+                        // Clear geocoords if the user types manually
+                        setValue("projectLat", undefined);
+                        setValue("projectLng", undefined);
+                      }}
                       onSelect={(item) => {
-                        // Extract city name before the comma
+                        // City name is before the first comma
                         const city = item.label.split(",")[0].trim();
                         setValue("projectCity", city, { shouldValidate: true });
+                        // Auto-fill state: sublabel format is "City, ST, USA" or "City, State, Country"
+                        if (item.sublabel) {
+                          const parts = item.sublabel.split(",").map((s) => s.trim());
+                          // Look for a 2-char uppercase state code in the parts
+                          const stateCode = parts.find((p) => /^[A-Z]{2}$/.test(p));
+                          if (stateCode && US_STATES.includes(stateCode)) {
+                            setValue("projectState", stateCode, { shouldValidate: true });
+                          }
+                        }
+                        // Store geocoords for haversine scoring
+                        if (item.lat != null) setValue("projectLat", item.lat);
+                        if (item.lng != null) setValue("projectLng", item.lng);
                       }}
                       inputClassName={errors.projectCity ? "border-red-500" : ""}
                     />
@@ -552,6 +575,20 @@ export default function RFQNewPage() {
                     {errors.projectState && <p className="text-xs text-red-500">{errors.projectState.message}</p>}
                   </div>
                 </div>
+
+                {/* OSM map preview — only shown once geocoords are captured */}
+                {watchedLat != null && watchedLng != null && (
+                  <div className="rounded-lg overflow-hidden border border-border">
+                    <iframe
+                      title="Project location"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${watchedLng - 0.08}%2C${watchedLat - 0.06}%2C${watchedLng + 0.08}%2C${watchedLat + 0.06}&layer=mapnik&marker=${watchedLat}%2C${watchedLng}`}
+                      width="100%"
+                      height="160"
+                      className="border-0"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">

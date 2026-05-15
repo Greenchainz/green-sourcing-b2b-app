@@ -508,12 +508,13 @@ export const messagingRouter = router({
     }),
 
   getNotificationToken: protectedProcedure.query(async ({ ctx }) => {
-    const { WebPubSubServiceClient } = await import('@azure/web-pubsub');
     const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
     const hub = process.env.WEBPUBSUB_HUB ?? 'greenchainz-hub';
+    // Return null URL when WebPubSub is not configured — client degrades gracefully
     if (!connectionString) {
-      throw new Error('Azure Web PubSub not configured — set AZURE_WEBPUBSUB_CONNECTION_STRING');
+      return { url: null };
     }
+    const { WebPubSubServiceClient } = await import('@azure/web-pubsub');
     const client = new WebPubSubServiceClient(connectionString, hub);
     const tokenResponse = await client.getClientAccessToken({
       userId: `user-${ctx.user.id}`,

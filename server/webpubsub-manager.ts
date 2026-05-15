@@ -5,18 +5,23 @@ import { eq } from "drizzle-orm";
 
 const hubName = process.env.WEBPUBSUB_HUB ?? "greenchainz-hub";
 
-// Lazy-initialize so the module doesn't throw at startup before secrets are loaded
+// Lazy-initialize so the module doesn't throw at startup before secrets are loaded.
+// Returns null when AZURE_WEBPUBSUB_CONNECTION_STRING is not configured — callers
+// degrade gracefully (messages still persist to DB; real-time delivery is skipped).
 let _client: WebPubSubServiceClient | null = null;
+let _clientInitialized = false;
 
-function getClient(): WebPubSubServiceClient {
-  if (!_client) {
+function getClient(): WebPubSubServiceClient | null {
+  if (!_clientInitialized) {
+    _clientInitialized = true;
     const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
-    if (!connectionString) {
-      throw new Error(
-        "AZURE_WEBPUBSUB_CONNECTION_STRING is not set — add WEBPUBSUB-CONNECTION-STRING to Key Vault"
+    if (connectionString) {
+      _client = new WebPubSubServiceClient(connectionString, hubName);
+    } else {
+      console.warn(
+        "[WebPubSub] AZURE_WEBPUBSUB_CONNECTION_STRING not set — real-time notifications disabled"
       );
     }
-    _client = new WebPubSubServiceClient(connectionString, hubName);
   }
   return _client;
 }
@@ -25,10 +30,12 @@ function getClient(): WebPubSubServiceClient {
  * Broadcast notification to a specific user
  */
 export async function broadcastNotification(userId: number, notification: Record<string, unknown>) {
+  const c = getClient();
+  if (!c) return; // WebPubSub not configured — degrade silently
   try {
     // Send the notification payload directly — no outer wrapper.
     // Clients parse event.data and check notification.type at the top level.
-    await getClient().sendToUser(`user-${userId}`, notification);
+    await c.sendToUser(`user-${userId}`, notification);
     console.log(`✅ Notification broadcast to user-${userId}: ${notification.type}`);
   } catch (error) {
     console.error("❌ Failed to broadcast notification:", error);
@@ -57,7 +64,10 @@ export async function getWebSocketAccessToken(userId: number, threadId: number) 
     throw new Error("User does not have access to this thread");
   }
 
-  const token = await getClient().getClientAccessToken({
+  const c = getClient();
+  if (!c) throw new Error("Real-time messaging is not configured on this server.");
+
+  const token = await c.getClientAccessToken({
     userId: `user-${userId}`,
     expirationTimeInMinutes: 60,
     roles: [`thread-${threadId}`],
@@ -114,6 +124,7 @@ export async function sendMessageToThread(
 
   const c = getClient();
 
+  if (c) {
   // Deliver to recipient
   await c.sendToUser(`user-${isBuyer ? threadData.supplierId : threadData.buyerId}`, {
     type: "message",
@@ -131,6 +142,7 @@ export async function sendMessageToThread(
     messageId: insertedMessage?.id,
     timestamp: now.toISOString(),
   });
+  } // end if (c)
 
   return {
     success: true,
@@ -163,12 +175,15 @@ export async function broadcastTypingIndicator(
   const threadData = thread[0];
   const recipientId = isBuyer ? threadData.supplierId : threadData.buyerId;
 
-  await getClient().sendToUser(`user-${recipientId}`, {
-    type: "typing",
-    threadId,
-    userId,
-    senderType: isBuyer ? "buyer" : "supplier",
-  });
+  const c = getClient();
+  if (c) {
+    await c.sendToUser(`user-${recipientId}`, {
+      type: "typing",
+      threadId,
+      userId,
+      senderType: isBuyer ? "buyer" : "supplier",
+    });
+  }
 
   return { success: true };
 }
@@ -230,17 +245,19 @@ export async function closeThread(threadId: number) {
 
   if (thread && thread.length > 0) {
     const c = getClient();
-    const threadData = thread[0];
-    await c.sendToUser(`user-${threadData.buyerId}`, {
-      type: "thread_closed",
-      threadId,
-      reason: "RFQ has been finalized",
-    });
-    await c.sendToUser(`user-${threadData.supplierId}`, {
-      type: "thread_closed",
-      threadId,
-      reason: "RFQ has been finalized",
-    });
+    if (c) {
+      const threadData = thread[0];
+      await c.sendToUser(`user-${threadData.buyerId}`, {
+        type: "thread_closed",
+        threadId,
+        reason: "RFQ has been finalized",
+      });
+      await c.sendToUser(`user-${threadData.supplierId}`, {
+        type: "thread_closed",
+        threadId,
+        reason: "RFQ has been finalized",
+      });
+    }
   }
 
   return { success: true };
