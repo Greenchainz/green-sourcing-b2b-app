@@ -10,8 +10,8 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="Where Sustainable Material Deals Get Made — GreenChainz"
-        description="GreenChainz connects project teams and verified suppliers — EPD-backed materials, structured RFQs, and compliance documentation for spec writers, procurement, contractors, and suppliers."
+        title="Spec to Submittal — Verified Sustainable Materials | GreenChainz"
+        description="GreenChainz is a verified decision engine for building materials. SWAP Engine inside Revit suggests validated alternatives. Distance-aware RFQ routing finds suppliers who can actually deliver. CSI-formatted submittals close the deal."
         canonicalPath="/"
       />
       <StructuredData data={homepageSchema} />
@@ -23,36 +23,31 @@ export default function Home() {
         <div className="container">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              Verified green materials are only useful{' '}
-              <span className="text-primary">if you can actually source them.</span>
+              The only platform that meets architects{' '}
+              <span className="text-primary">inside Revit</span>
+              {' '}and carries a material from spec to verified submittal.
             </h1>
             <p className="text-xl font-semibold text-muted-foreground max-w-2xl mx-auto">
-              GreenChainz is where project teams and verified suppliers connect — and actually do business.
-            </p>
-            <p className="text-sm text-muted-foreground max-w-2xl mx-auto -mt-4">
-              Spec writers, procurement teams, and contractors — all in one workflow.
-            </p>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              The data exists. The software exists. What's been missing is the workflow — the conversation, the RFQ, the documentation, the deal. That's what we built.
+              Not a directory. A decision engine.
             </p>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              Our SWAP Engine catches the project team at the decision moment and surfaces verified alternatives that meet requirements. From there — direct messaging, RFQs, video calls, and a deal. All in one place.
+              When an element goes over carbon budget, the SWAP Engine surfaces validated alternatives that pass structural, fire, and code checks — then routes an RFQ to suppliers who can actually deliver to your jobsite. The GC-ready submittal is generated automatically.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Link href="/materials">
+              <Link href="/rfq/new">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300">
-                  Explore Materials →
+                  Submit RFQ →
                 </Button>
               </Link>
-              <Link href="/rfq/new">
+              <Link href="/tools/revit">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                  Submit RFQ — No Shopping Required
+                  Get the Revit Plugin
                 </Button>
               </Link>
             </div>
             <div className="pt-2">
               <Link href="/tools/submittal" className="text-sm text-primary hover:underline underline-offset-4 font-medium">
-                Generate a Submittal Pack → (the schedule gate, free to start)
+                Generate a Submittal Pack → (free to start)
               </Link>
             </div>
             <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground pt-4">
@@ -103,32 +98,32 @@ export default function Home() {
       <section className="py-12 bg-background border-b border-border">
         <div className="container">
           <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-8">
-            How do you want to start?
+            Where do you enter the flow?
           </p>
           <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            <Link href="/materials">
-              <div className="group relative rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+            <Link href="/tools/revit">
+              <div className="group relative rounded-xl border border-primary/40 bg-primary/5 hover:border-primary hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
+                <div className="absolute top-3 right-3 text-[10px] font-bold text-primary uppercase tracking-wide bg-primary/10 rounded px-1.5 py-0.5">Primary</div>
+                <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                   <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-foreground mb-1">Explore Materials</h3>
-                <p className="text-sm text-muted-foreground">Browse verified sustainable products by category, carbon, and compliance. Get spec-ready sheets.</p>
-                <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Browse the catalog →</p>
+                <h3 className="font-semibold text-foreground mb-1">Revit + Forma Plugin</h3>
+                <p className="text-sm text-muted-foreground">Element over carbon budget? The SWAP Engine suggests validated alternatives without making you leave Revit. One-click RFQ from inside BIM.</p>
+                <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Get the plugin →</p>
               </div>
             </Link>
             <Link href="/rfq/new">
-              <div className="group relative rounded-xl border border-primary/40 bg-primary/5 hover:border-primary hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
-                <div className="absolute top-3 right-3 text-[10px] font-bold text-primary uppercase tracking-wide bg-primary/10 rounded px-1.5 py-0.5">Procurement</div>
-                <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
+              <div className="group relative rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
                 <h3 className="font-semibold text-foreground mb-1">Submit RFQ</h3>
-                <p className="text-sm text-muted-foreground">Requirements in. Comparable bids out. No back-and-forth — suppliers respond to a structured format.</p>
-                <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Skip the browsing →</p>
+                <p className="text-sm text-muted-foreground">Paste a spec or describe what you need. RFQs route automatically to verified suppliers who can actually deliver to your jobsite — by shipping class and distance.</p>
+                <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Submit now →</p>
               </div>
             </Link>
             <Link href="/tools/submittal">
@@ -139,7 +134,7 @@ export default function Home() {
                   </svg>
                 </div>
                 <h3 className="font-semibold text-foreground mb-1">Generate Submittal Pack</h3>
-                <p className="text-sm text-muted-foreground">EPD + compliance docs packaged for approval. Work can't proceed without it — make it pass first time.</p>
+                <p className="text-sm text-muted-foreground">CSI-formatted submittal with EPD, verification statements, and supplier data — packaged for GC approval. This is the handoff nobody else owns.</p>
                 <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Generate now →</p>
               </div>
             </Link>
@@ -177,13 +172,13 @@ export default function Home() {
         <div className="container">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
-              HOW IT WORKS
+              THE FLOW
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              From better spec to real deal — all in one workflow.
+              Spec → Swap → RFQ → Submittal. Trust intact at every step.
             </h2>
             <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-              Better documentation. Cleaner compliance. Stronger sourcing decisions. GreenChainz gives your team verified EPD data and connects you with the suppliers who can actually deliver.
+              Every other tool hands you data and walks away. We carry the material from the moment it's specified to the moment the GC signs off — without losing the verification context along the way.
             </p>
           </div>
 
@@ -191,24 +186,24 @@ export default function Home() {
             <Card className="p-8 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Find the Right Material Fast</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Catch It in Revit</h3>
               <p className="text-muted-foreground">
-                Search verified materials by carbon, certifications, compliance requirements, and location. No more digging through PDFs or chasing down data sheets.
+                Forma flags the carbon problem. GreenChainz answers it — validated swap, verified supplier, one-click RFQ — without breaking the architect's workflow. We live where specs get written.
               </p>
             </Card>
 
             <Card className="p-8 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Send RFQs Without the Back-and-Forth</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Swap to Verified</h3>
               <p className="text-muted-foreground">
-                Turn your material selection into a quote request in one click. Suppliers get a clear RFQ. You get responses you can actually compare — price, carbon, documentation, all in one place.
+                The SWAP Engine doesn't show you a catalog. It answers one question: what should I switch to? Alternatives are checked against structural, fire, and code requirements before they're surfaced. Confidence levels are always visible, never hidden.
               </p>
             </Card>
 
@@ -218,18 +213,18 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Connect and Close the Deal</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Submittal. Done.</h3>
               <p className="text-muted-foreground">
-                Message suppliers directly, jump on a video call, build the relationship. LEED, Title 24, Buy Clean, Local Law 97 — compliance documentation is there when you need it. The deal is what we're here for.
+                Architects don't buy materials — they hand paperwork to GCs. We own that handoff. CSI MasterFormat submittal with EPD, verification statements, and supplier data — generated automatically from the approved swap.
               </p>
             </Card>
           </div>
 
           <div className="mt-12 text-center">
             <blockquote className="text-xl italic text-muted-foreground max-w-3xl mx-auto">
-              "The architect who specs faster wins the project.<br />
-              The supplier who responds fastest wins the bid.<br />
-              Everyone else goes home."
+              "Every other platform gives you data and stops.<br />
+              GreenChainz gives you data, the decision, the supplier,<br />
+              and the paperwork to close it."
             </blockquote>
           </div>
         </div>
@@ -240,136 +235,101 @@ export default function Home() {
         <div className="container">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide mb-2">
-              THE ARSENAL
+              WHERE WE LIVE
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Four Ways to Outmaneuver Legacy Procurement.
+              Inside your tools. Not in a separate tab.
             </h2>
             <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-              No bloated ERP. No begging for quotes. Just compliance data injected directly into the tools you already use.
+              The decision layer for verified materials — embedded in Revit, Forma, Excel, and your browser. Zero export-then-upload workflows.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <Card className="p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-2xl font-semibold text-foreground mb-4">Excel Audit</h3>
-              <p className="text-muted-foreground mb-6">
-                Drop your BOM. Get weaponized compliance data—EPD scores, carbon calculations, code-ready alternatives—without leaving Excel.
-              </p>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Embodied carbon (kgCO2e)
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Health hazard detection
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  One-click alternatives
-                </li>
-              </ul>
-              <Link href="/tools/excel">
-                <Button className="w-full">Extract Assembly Data</Button>
-              </Link>
-            </Card>
-
-            <Card className="p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-2xl font-semibold text-foreground mb-4">Browser Extension</h3>
-              <p className="text-muted-foreground mb-6">
-                We overlay hard compliance data directly on supplier sites. Catch greenwashing claims before they become your liability.
-              </p>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Real-time EPD lookups
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Price + carbon comparison
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Works on any website
-                </li>
-              </ul>
-              <Link href="/tools/extension">
-                <Button className="w-full">Deploy the Extension</Button>
-              </Link>
-            </Card>
-
-            <Card className="p-8 hover:shadow-lg transition-shadow border-primary/30 bg-primary/5">
-              <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Works with Forma Carbon Insights</div>
-              <h3 className="text-2xl font-semibold text-foreground mb-4">Autodesk Forma + Revit</h3>
-              <p className="text-muted-foreground mb-6">
-                Forma Carbon Insights tells you the building is over its carbon target. GreenChainz shows you the verified lower-carbon alternative and connects you to the supplier — without leaving Forma.
-              </p>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Forma Extension — verified swaps for high-carbon elements
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Revit Plugin — live compliance scanning &amp; bulk swaps
-                </li>
-                <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  One-click RFQ to verified suppliers — from inside your BIM
-                </li>
-              </ul>
-              <Link href="/tools/revit">
-                <Button className="w-full">See the Integration</Button>
-              </Link>
+            {/* Primary moat — spans full width */}
+            <Card className="md:col-span-2 p-8 hover:shadow-lg transition-shadow border-primary/40 bg-primary/5">
+              <div className="flex flex-col md:flex-row md:items-start gap-6">
+                <div className="flex-1">
+                  <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Primary Entry Point — Works with Forma Carbon Insights</div>
+                  <h3 className="text-2xl font-semibold text-foreground mb-3">Autodesk Forma + Revit Plugin</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Forma tells you an element is over carbon budget. GreenChainz tells you what to do about it — validated swap, live EPD data, distance-aware RFQ to verified suppliers — all without leaving your BIM environment. Architects specify in Revit. That's where decisions happen. That's where we live.
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2 text-sm">
+                      <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                      SWAP Engine — verified alternatives with confidence ratings, always visible
+                    </li>
+                    <li className="flex items-center gap-2 text-sm">
+                      <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                      One-click RFQ to verified suppliers — routed by material type and jobsite distance
+                    </li>
+                    <li className="flex items-center gap-2 text-sm">
+                      <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                      LEED v5 MRp2 submittal documentation auto-generated from approved selection
+                    </li>
+                  </ul>
+                </div>
+                <div className="md:w-48 flex-shrink-0">
+                  <Link href="/tools/revit">
+                    <Button className="w-full mb-2">Get the Plugin</Button>
+                  </Link>
+                  <p className="text-xs text-muted-foreground text-center">Revit 2024+ &amp; Forma</p>
+                </div>
+              </div>
             </Card>
 
             <Card className="p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-2xl font-semibold text-foreground mb-4">Submittal Generator</h3>
               <p className="text-muted-foreground mb-6">
-                Feed it a spec. It generates a complete LEED submittal package with EPD-backed products. Reviewers get nothing to reject.
+                Architects don't buy materials — they hand paperwork to GCs. GreenChainz owns that handoff. CSI MasterFormat submittal with EPD, verification statements, and supplier data — generated from the approved selection, not assembled manually.
               </p>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  AI spec extraction
+                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  AI spec extraction — upload a CSI division, get a matched product list
                 </li>
                 <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Auto product matching
+                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  Verification statements included — reviewers have nothing to reject
                 </li>
                 <li className="flex items-center gap-2 text-sm">
-                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Ready-to-send PDFs
+                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  PDF output, structured data for GC systems
                 </li>
               </ul>
               <Link href="/tools/submittal">
-                <Button className="w-full">Force the Submittal</Button>
+                <Button className="w-full">Generate Submittal Pack</Button>
               </Link>
+            </Card>
+
+            <Card className="p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-2xl font-semibold text-foreground mb-4">Excel Audit + Browser Extension</h3>
+              <p className="text-muted-foreground mb-6">
+                Drop your BOM into Excel — get EPD scores, carbon calculations, and verified alternatives back. Or install the browser extension to overlay hard compliance data on any supplier site and catch greenwashing before it becomes your liability.
+              </p>
+              <ul className="space-y-2 mb-6">
+                <li className="flex items-center gap-2 text-sm">
+                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  Embodied carbon (kgCO2e) per element, with verified alternatives
+                </li>
+                <li className="flex items-center gap-2 text-sm">
+                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  Extension flags self-declared vs. third-party verified EPDs in real time
+                </li>
+                <li className="flex items-center gap-2 text-sm">
+                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  Works on any website — no supplier cooperation required
+                </li>
+              </ul>
+              <div className="flex gap-2">
+                <Link href="/tools/excel" className="flex-1">
+                  <Button className="w-full" variant="outline">Excel Audit</Button>
+                </Link>
+                <Link href="/tools/extension" className="flex-1">
+                  <Button className="w-full" variant="outline">Extension</Button>
+                </Link>
+              </div>
             </Card>
           </div>
         </div>
@@ -404,23 +364,28 @@ export default function Home() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <p className="text-sm font-semibold text-primary uppercase tracking-wide">
-              THE SPEED ADVANTAGE
+              THE ONLY ONE
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              The Team That Specs & Sources Faster Wins the Project.
+              Verified. Inside Revit. Spec to submittal.
             </h2>
             <p className="text-lg text-muted-foreground">
-              Procurement teams drowning in manual RFQs and spec teams waiting days for quotes are bleeding time — and losing projects to teams who move in minutes, not days.
+              EC3 gives you data. Mindful Materials gives you a library. GreenChainz gives you a verified supplier who will show up with the right product, the right EPD, and the paperwork to prove it. That's the gap nobody else closes.
             </p>
-            <div className="pt-4">
-              <Link href="/get-started">
+            <div className="pt-4 flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/rfq/new">
                 <Button size="lg" className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90">
-                  Run a Free Compliance Check
+                  Submit Your First RFQ
+                </Button>
+              </Link>
+              <Link href="/tools/revit">
+                <Button size="lg" variant="outline" className="text-lg px-8 py-6">
+                  Get the Revit Plugin
                 </Button>
               </Link>
             </div>
             <p className="text-sm text-muted-foreground">
-              No credit card required • Live in 5 minutes • Cancel anytime
+              Free to start • No credit card required • Live in 5 minutes
             </p>
           </div>
         </div>
