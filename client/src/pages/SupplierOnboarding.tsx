@@ -17,6 +17,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -109,6 +116,10 @@ const schema = z.object({
     .array(z.string())
     .min(1, "Select at least one category"),
   certifications: z.array(z.string()).optional(),
+  // ── Location — drives distance-based RFQ routing fallback ───────────────
+  city: z.string().optional(),
+  state: z.string().optional(),   // 2-char state code
+  zipCode: z.string().optional(),
   // ── Service area ────────────────────────────────────────────────────────
   shipsNationwide: z.boolean().optional(),
   serviceRadiusMiles: z.number().int().positive().nullable().optional(),
@@ -129,6 +140,9 @@ type SupplierProfile = {
   description?: string;
   materialCategories?: string[];
   certifications?: string[];
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
   shipsNationwide?: boolean;
   serviceRadiusMiles?: number | null;
   statesServed?: string[] | null;
@@ -306,6 +320,9 @@ export default function SupplierOnboarding() {
       description: p.description ?? "",
       materialCategories: p.materialCategories ?? [],
       certifications: p.certifications ?? [],
+      city: p.city ?? "",
+      state: p.state ?? "",
+      zipCode: p.zipCode ?? "",
       shipsNationwide: p.shipsNationwide ?? false,
       serviceRadiusMiles: p.serviceRadiusMiles ?? null,
       statesServed: p.statesServed ?? null,
@@ -383,7 +400,7 @@ export default function SupplierOnboarding() {
                         Company Information
                       </CardTitle>
                       <CardDescription>
-                        Tell architects about your company. Fields marked * are required to appear in marketplace search.
+                        Tell project teams about your company. Fields marked * are required to appear in search results.
                       </CardDescription>
                     </div>
                   </div>
@@ -446,7 +463,7 @@ export default function SupplierOnboarding() {
                         Contact Details
                       </CardTitle>
                       <CardDescription>
-                        How architects can reach you.
+                        How project teams can reach you for RFQs and quotes.
                       </CardDescription>
                     </div>
                   </div>
@@ -576,6 +593,50 @@ export default function SupplierOnboarding() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Facility location — required for distance-based RFQ routing */}
+                  <div className="space-y-3">
+                    <Label className="font-medium">
+                      Facility location <span className="text-red-500">*</span>
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Required for RFQ routing. GreenChainz uses your location to match you only with projects you can realistically serve — nobody wants a concrete bid from 800 miles away.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">City</Label>
+                        <Input
+                          placeholder="e.g. Charlotte"
+                          {...register("city")}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">State</Label>
+                        <Select
+                          value={watch("state") ?? ""}
+                          onValueChange={(v) => setValue("state", v, { shouldValidate: true })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {US_STATES.map((s) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">ZIP code</Label>
+                        <Input
+                          placeholder="e.g. 28202"
+                          {...register("zipCode")}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4" />
+
                   {/* Ships nationwide toggle */}
                   <div className="flex items-start gap-3">
                     <Checkbox
@@ -876,6 +937,52 @@ export default function SupplierOnboarding() {
                         </span>
                       )}
                     </div>
+                  </div>
+
+                  {/* Service Area Summary */}
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-sm text-emerald-700 flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Service Area
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-emerald-700 h-8"
+                        onClick={() => setStep(4)}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div>
+                        <dt className="text-muted-foreground">Facility location</dt>
+                        <dd className="font-medium">
+                          {[allValues.city, allValues.state, allValues.zipCode]
+                            .filter(Boolean)
+                            .join(", ") || (
+                            <span className="text-amber-600 font-normal text-xs">
+                              ⚠ Not set — RFQ routing will be limited
+                            </span>
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Delivery reach</dt>
+                        <dd className="font-medium">
+                          {allValues.shipsNationwide
+                            ? "Nationwide"
+                            : allValues.serviceRadiusMiles
+                            ? `${allValues.serviceRadiusMiles} mile radius`
+                            : ((allValues.statesServed ?? []) as string[]).length > 0
+                            ? `${((allValues.statesServed ?? []) as string[]).join(", ")}`
+                            : "Default (by material type)"}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
                 </CardContent>
               </Card>

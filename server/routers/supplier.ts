@@ -31,6 +31,12 @@ const onboardingInput = z.object({
   description: z.string().optional(),
   materialCategories: z.array(z.string()).min(1, "Select at least one material category"),
   certifications: z.array(z.string()).optional(),
+  // ── Supplier location — required for distance-based RFQ routing ──────────
+  // Without state, isWithinServiceArea() can't do a state-match fallback and
+  // the supplier becomes invisible to all radius-based routing.
+  city: z.string().optional(),
+  state: z.enum(US_STATES).optional(),   // 2-char state code — drives routing fallback
+  zipCode: z.string().optional(),
   // ── Service area & shipping capability ──────────────────────────────────
   serviceRadiusMiles: z.number().int().positive().nullable().optional(),
   statesServed: z.array(z.enum(US_STATES)).nullable().optional(),
@@ -67,6 +73,9 @@ export const supplierOnboardingRouter = router({
             description: input.description ?? null,
             materialCategories: input.materialCategories,
             certifications: input.certifications ?? [],
+            city: input.city ?? null,
+            state: input.state ?? null,
+            zipCode: input.zipCode ?? null,
             serviceRadiusMiles: input.serviceRadiusMiles ?? null,
             statesServed: input.statesServed ?? null,
             shipsNationwide: input.shipsNationwide ?? false,
@@ -92,6 +101,9 @@ export const supplierOnboardingRouter = router({
           description: input.description ?? null,
           materialCategories: input.materialCategories,
           certifications: input.certifications ?? [],
+          city: input.city ?? null,
+          state: input.state ?? null,
+          zipCode: input.zipCode ?? null,
           serviceRadiusMiles: input.serviceRadiusMiles ?? null,
           statesServed: input.statesServed ?? null,
           shipsNationwide: input.shipsNationwide ?? false,
