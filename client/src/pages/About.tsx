@@ -8,8 +8,8 @@ export default function About() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="About GreenChainz — B2B Sustainable Building Materials Compliance Platform"
-        description="GreenChainz was built to fix construction's data access problem. Learn how our platform delivers 50,000+ verified EPDs, automated RFQ workflows, and real-time greenwashing detection for architects and GCs."
+        title="About GreenChainz — Verified Decision Engine for Sustainable Building Materials"
+        description="GreenChainz is not a material directory. It's a verified decision engine that lives inside Revit, surfaces validated swaps, routes RFQs to suppliers who can actually deliver, and generates CSI-formatted submittals."
         canonicalPath="/about"
       />
       <StructuredData data={aboutPageSchema} />
@@ -23,19 +23,18 @@ export default function About() {
         <div className="container relative z-10">
           <div className="max-w-4xl mx-auto text-center space-y-6">
             <div className="inline-block px-4 py-2 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-sm mb-4">
-              <span className="text-sm font-semibold text-primary">The Origin Story</span>
+              <span className="text-sm font-semibold text-primary">Why We Exist</span>
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              We Opened the{' '}
+              Not a directory.{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[oklch(0.85_0.15_145)] to-[oklch(0.65_0.14_145)]">
-                Door.
+                A decision engine.
               </span>
-              {' '}Bring Your Data.
             </h1>
 
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              For decades, sustainable material procurement was locked behind expensive consultants, siloed databases, and 3-day quote cycles. We built the platform that puts 50,000+ verified EPDs, instant RFQs, and real-time compliance data into every architect's hands. Data in. Specs out.
+              The data existed. The EPDs existed. What was missing was the layer that takes a flagged element in Revit, answers "what do I switch to?", routes an RFQ to suppliers who can actually reach your jobsite, and hands the GC a submittal that passes first review. That's what we built.
             </p>
           </div>
         </div>
@@ -84,7 +83,7 @@ export default function About() {
               </div>
               <h3 className="text-2xl font-bold text-foreground mb-4">Our Mission</h3>
               <p className="text-muted-foreground leading-relaxed">
-                To intercept legacy procurement at the exact point of decision and inject superior material data before the incumbents even notice. Green building shouldn't cost more time, money, or sanity—it should be the automatic default, enforced by software, not consultants.
+                Capture the spec upstream — inside Revit, before the material decision is made — then carry it through swap, RFQ, and submittal without dropping the verification context. Green procurement should be the path of least resistance, enforced by software, not consultants.
               </p>
             </Card>
 
@@ -94,7 +93,7 @@ export default function About() {
               </div>
               <h3 className="text-2xl font-bold text-foreground mb-4">Our Vision</h3>
               <p className="text-muted-foreground leading-relaxed">
-                An industry where carbon is tracked as rigorously as cost, where greenwashing is exposed on contact, and where the fastest, most data-driven suppliers win—not the ones with the biggest lobbying budget. "Buy Clean" stops being a regulation to fear and becomes the easiest path forward.
+                A construction industry where verified suppliers win specs on merit, not relationships. Where carbon is tracked as rigorously as cost. Where "Buy Clean" is the default workflow — not a compliance burden. And where no architect ever has to manually chase an EPD PDF again.
               </p>
             </Card>
           </div>
@@ -117,27 +116,27 @@ export default function About() {
             <div className="space-y-6">
               {[
                 {
-                  title: 'Manual EPD Lookups',
-                  problem: 'Teams waste hours digging through PDFs and databases to verify environmental product declarations.',
-                  solution: 'We automate it—instant lookups across 50K+ verified EPDs.',
+                  title: 'Specs Written in Revit, Sourcing Happens Elsewhere',
+                  problem: 'Architects specify in BIM. Sourcing happens in email, spreadsheets, and phone calls — by someone else, days later. The decision context is lost every time.',
+                  solution: 'GreenChainz lives inside Revit and Forma. Swap suggestions and RFQ routing happen at the moment of spec — not after it.',
                   icon: '📄'
                 },
                 {
-                  title: 'Greenwashing Everywhere',
-                  problem: 'Suppliers make vague "eco-friendly" claims without data to back them up.',
-                  solution: 'We surface only certified, third-party verified products.',
+                  title: 'Self-Reported Sustainability Is Worthless',
+                  problem: 'Every supplier claims to be green. None of it is verified. Specifying the wrong product means compliance failures, audit risk, and liability.',
+                  solution: 'Every material in GreenChainz is third-party verified. Confidence levels are always visible. Scores are server-side and immutable — suppliers can\'t edit them.',
                   icon: '🚫'
                 },
                 {
-                  title: 'Compliance Chaos',
-                  problem: 'LEED, Buy Clean, and local regulations create a moving target of requirements.',
-                  solution: 'We track the rules and flag non-compliance in real-time.',
+                  title: 'RFQs Go to the Wrong Suppliers',
+                  problem: 'A concrete supplier 600 miles from the jobsite isn\'t a real option. Manual RFQ processes ignore shipping class, distance, and delivery capacity entirely.',
+                  solution: 'GreenChainz routes RFQs by material type and shipping class. Local-heavy materials stay local. Suppliers who can\'t deliver don\'t see the RFQ.',
                   icon: '⚖️'
                 },
                 {
-                  title: 'Disconnected Tools',
-                  problem: 'Sustainability data lives in separate platforms, forcing context-switching.',
-                  solution: 'We integrate directly into Excel, Revit, and your browser.',
+                  title: 'The Submittal Is an Afterthought',
+                  problem: 'Architects select a material. Someone else assembles the submittal. It\'s rejected. Three weeks of schedule, wasted.',
+                  solution: 'GreenChainz generates the CSI MasterFormat submittal automatically from the approved selection — EPD, verification statements, supplier data, all included.',
                   icon: '🔌'
                 }
               ].map((item, index) => (

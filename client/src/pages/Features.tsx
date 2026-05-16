@@ -141,8 +141,8 @@ export default function Features() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="Features — GreenChainz | EPD Lookup, RFQ Automation, Autodesk Forma Extension, Revit Plugin"
-        description="GreenChainz features: 100,000+ EPD lookup via EC3, automated RFQ from Excel BOMs, Autodesk Forma Extension, Revit Plugin, Chrome greenwashing detection, Carbon Compare, Material Credit Scores, LEED v5/Buy Clean compliance, and AI Audit Agent."
+        title="Features — GreenChainz | Revit Plugin, SWAP Engine, RFQ Routing, Submittal Generator"
+        description="GreenChainz features: SWAP Engine inside Revit and Forma, distance-aware RFQ routing, CSI MasterFormat submittal generation, AI Audit Agent, and 50K+ verified EPDs from EC3 and EPD International."
         canonicalPath="/features"
       />
       <Header />
@@ -156,10 +156,10 @@ export default function Features() {
               Works with Forma Carbon Insights — the missing procurement layer
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-              The Arsenal
+              Spec → Swap → RFQ → Submittal
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Autodesk moved the audience into the room. GreenChainz is the booth — verified procurement for every carbon problem Forma Carbon Insights surfaces.
+              Each feature reinforces one thing: a verified decision engine that meets architects inside Revit and carries a material all the way to GC sign-off. Nothing here is a standalone tool. It's a chain.
             </p>
           </div>
         </div>
