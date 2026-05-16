@@ -9,7 +9,7 @@ export default function About() {
     <div className="min-h-screen flex flex-col">
       <SEOHead
         title="About GreenChainz — Verified Decision Engine for Sustainable Building Materials"
-        description="GreenChainz is not a material directory. It's a verified decision engine that lives inside Revit, surfaces validated swaps, routes RFQs to suppliers who can actually deliver, and generates CSI-formatted submittals."
+        description="GreenChainz is not a material directory. It's a verified decision engine that surfaces validated swaps, routes RFQs to suppliers who can actually deliver, and generates CSI-formatted submittals — from spec to submittal."
         canonicalPath="/about"
       />
       <StructuredData data={aboutPageSchema} />
@@ -34,7 +34,7 @@ export default function About() {
             </h1>
 
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              The data existed. The EPDs existed. What was missing was the layer that takes a flagged element in Revit, answers "what do I switch to?", routes an RFQ to suppliers who can actually reach your jobsite, and hands the GC a submittal that passes first review. That's what we built.
+              The data existed. The EPDs existed. What was missing was the layer that takes a material decision, answers "what do I switch to?", routes an RFQ to suppliers who can actually reach your jobsite, and hands the GC a submittal that passes first review. That's what we built.
             </p>
           </div>
         </div>
@@ -83,7 +83,7 @@ export default function About() {
               </div>
               <h3 className="text-2xl font-bold text-foreground mb-4">Our Mission</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Capture the spec upstream — inside Revit, before the material decision is made — then carry it through swap, RFQ, and submittal without dropping the verification context. Green procurement should be the path of least resistance, enforced by software, not consultants.
+                Capture the spec at the moment the material decision is made — then carry it through swap, RFQ, and submittal without dropping the verification context. Green procurement should be the path of least resistance, enforced by software, not consultants.
               </p>
             </Card>
 
@@ -93,7 +93,7 @@ export default function About() {
               </div>
               <h3 className="text-2xl font-bold text-foreground mb-4">Our Vision</h3>
               <p className="text-muted-foreground leading-relaxed">
-                A construction industry where verified suppliers win specs on merit, not relationships. Where carbon is tracked as rigorously as cost. Where "Buy Clean" is the default workflow — not a compliance burden. And where no architect ever has to manually chase an EPD PDF again.
+                A construction industry where verified suppliers win specs on merit, not relationships. Where carbon is tracked as rigorously as cost. Where "Buy Clean" is the default workflow — not a compliance burden. And where no project team ever has to manually chase an EPD PDF again.
               </p>
             </Card>
           </div>
@@ -116,9 +116,9 @@ export default function About() {
             <div className="space-y-6">
               {[
                 {
-                  title: 'Specs Written in Revit, Sourcing Happens Elsewhere',
-                  problem: 'Architects specify in BIM. Sourcing happens in email, spreadsheets, and phone calls — by someone else, days later. The decision context is lost every time.',
-                  solution: 'GreenChainz lives inside Revit and Forma. Swap suggestions and RFQ routing happen at the moment of spec — not after it.',
+                  title: 'The Spec and the Sourcing Are Completely Disconnected',
+                  problem: 'Project teams specify in BIM or on paper. Sourcing happens in email, spreadsheets, and phone calls — by someone else, days later. The decision context is lost every time.',
+                  solution: 'GreenChainz intercepts the material decision the moment it\'s made — inside Revit, Forma, or via RFQ. Swap suggestions and routing happen at spec time, not after it.',
                   icon: '📄'
                 },
                 {
@@ -135,7 +135,7 @@ export default function About() {
                 },
                 {
                   title: 'The Submittal Is an Afterthought',
-                  problem: 'Architects select a material. Someone else assembles the submittal. It\'s rejected. Three weeks of schedule, wasted.',
+                  problem: 'A material gets selected. Someone else assembles the submittal. It\'s rejected. Three weeks of schedule, wasted.',
                   solution: 'GreenChainz generates the CSI MasterFormat submittal automatically from the approved selection — EPD, verification statements, supplier data, all included.',
                   icon: '🔌'
                 }
@@ -282,7 +282,7 @@ export default function About() {
               Ready to Source Smarter?
             </h2>
             <p className="text-lg text-muted-foreground">
-              Join the architects and suppliers already closing deals on verified sustainable materials — without the back-and-forth.
+              Join the project teams and suppliers already closing deals on verified sustainable materials — without the back-and-forth.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <a href="/get-started" className="w-full sm:w-auto">
