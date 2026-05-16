@@ -603,8 +603,28 @@ export const rfqRouter = router({
           shippingClass,
         });
 
-        // Hard exclude local-heavy suppliers that are out of range
-        if (!eligible && shippingClass === "local_heavy") return [];
+        // Hard exclude ineligible suppliers.
+        //
+        // local_heavy (concrete, CMU, aggregates): always hard-exclude if out of range.
+        //   A concrete supplier 200mi away is effectively unreachable — freight kills the bid.
+        //
+        // regional (insulation, roofing, flooring, etc.): hard-exclude when we have real
+        //   distance data. When coordinates are unavailable, state-match already runs inside
+        //   isWithinServiceArea and decided eligibility — so !eligible with no coordinates
+        //   also means hard-exclude.
+        //
+        // national_specialty (structural steel, CLT, curtain wall): supplier-declared
+        //   statesServed restrictions are the only realistic exclusion. The defaultRadius
+        //   is 2,500mi (effectively nationwide), so !eligible here means the supplier
+        //   explicitly restricted to states that don't include the project. Respect that.
+        //
+        // Rule: never surface a supplier who cannot realistically deliver to the jobsite.
+        if (!eligible) {
+          if (shippingClass === "local_heavy") return [];
+          if (shippingClass === "regional") return [];
+          if (shippingClass === "national_specialty") return [];
+          // digital_data has no distance restriction; eligible is always true
+        }
 
         // ── Distance scoring ───────────────────────────────────────────────
         let isLocalSupplier = false;
