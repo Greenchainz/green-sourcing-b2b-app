@@ -1333,78 +1333,107 @@ export default function RFQNewPage() {
                     ))}
                   </div>
                 ) : displayedSuppliers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No suppliers found for this category.</p>
+                  <div className="text-center py-8 space-y-2">
+                    <p className="text-sm font-medium text-foreground">No verified suppliers found in your area.</p>
+                    <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                      {watchedCategory && ["Concrete & Masonry"].includes(watchedCategory)
+                        ? "Concrete and masonry are routed locally (within ~150 mi). Try a city closer to your material source, or contact us to expand coverage."
+                        : "We match suppliers by location and delivery capability. Try adjusting your project location or selecting a broader category."}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Want to nominate a supplier?{" "}
+                      <a href="/contact" className="text-primary underline underline-offset-2">Let us know.</a>
+                    </p>
+                  </div>
                 ) : (
-                  displayedSuppliers.map((s, idx) => {
-                    const selected = selectedIds.includes(s.id);
-                    const sustScore = s.sustainabilityScore != null ? Number(s.sustainabilityScore) : null;
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => toggleSupplier(s.id)}
-                        className={`w-full text-left rounded-lg border p-3 flex items-start gap-3 transition-colors ${
-                          selected
-                            ? "border-green-500 bg-green-50 dark:bg-green-900/10"
-                            : s.isHighSustainability && !s.isFallback
-                            ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/5 hover:border-emerald-400"
-                            : "border-border hover:border-green-300 bg-card"
-                        }`}
-                      >
-                        <div className={`w-5 h-5 rounded flex items-center justify-center border-2 shrink-0 mt-0.5 ${selected ? "border-green-500 bg-green-500" : "border-muted-foreground/30"}`}>
-                          {selected && <CheckCircle className="w-3 h-3 text-white" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-sm font-medium truncate">{s.companyName}</p>
-                            {idx === 0 && !supplierSearch && !s.isFallback && (
-                              <span className="text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full leading-none">
-                                #1 Match
-                              </span>
-                            )}
-                            {s.isFallback && (
-                              <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full leading-none">
-                                Broader match
-                              </span>
-                            )}
+                  <>
+                    {displayedSuppliers.map((s, idx) => {
+                      const selected = selectedIds.includes(s.id);
+                      const sustScore = s.sustainabilityScore != null ? Number(s.sustainabilityScore) : null;
+                      const isVerified = s.verificationStatus === "approved";
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => toggleSupplier(s.id)}
+                          className={`w-full text-left rounded-lg border p-3 flex items-start gap-3 transition-colors ${
+                            selected
+                              ? "border-green-500 bg-green-50 dark:bg-green-900/10"
+                              : s.isHighSustainability && !s.isFallback
+                              ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/5 hover:border-emerald-400"
+                              : "border-border hover:border-green-300 bg-card"
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded flex items-center justify-center border-2 shrink-0 mt-0.5 ${selected ? "border-green-500 bg-green-500" : "border-muted-foreground/30"}`}>
+                            {selected && <CheckCircle className="w-3 h-3 text-white" />}
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            {(s.city || s.state) && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                <MapPin className="w-2.5 h-2.5" />
-                                {[s.city, s.state].filter(Boolean).join(", ")}
-                              </p>
-                            )}
-                            {s.isLocalSupplier && (
-                              <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-full leading-none">
-                                Same-state
-                              </span>
-                            )}
-                          </div>
-                          {s.certificationMatches.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {s.certificationMatches.slice(0, 3).map((c) => (
-                                <span key={c} className="text-[10px] border border-green-300 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full leading-none">
-                                  {c}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-sm font-medium truncate">{s.companyName}</p>
+                              {idx === 0 && !supplierSearch && !s.isFallback && (
+                                <span className="text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full leading-none">
+                                  #1 Match
                                 </span>
-                              ))}
+                              )}
+                              {s.isFallback && (
+                                <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full leading-none">
+                                  Broader match
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                          {s.isHighSustainability && !s.isFallback && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">
-                              <Sparkles className="w-2.5 h-2.5" />High Sustainability Option
-                            </span>
-                          )}
-                          <div className="flex items-center gap-1">
-                            <ScoreBadge score={sustScore} />
-                            {s.isPremium && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />}
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              {(s.city || s.state) && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                  <MapPin className="w-2.5 h-2.5" />
+                                  {[s.city, s.state].filter(Boolean).join(", ")}
+                                </p>
+                              )}
+                              {s.isLocalSupplier && (
+                                <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-full leading-none">
+                                  Same-state
+                                </span>
+                              )}
+                              {/* Verification status — always visible per product doctrine */}
+                              {isVerified ? (
+                                <span className="text-[10px] font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5">
+                                  <CheckCircle className="w-2.5 h-2.5" />Verified
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full leading-none">
+                                  Pending review
+                                </span>
+                              )}
+                            </div>
+                            {s.certificationMatches.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {s.certificationMatches.slice(0, 3).map((c) => (
+                                  <span key={c} className="text-[10px] border border-green-300 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full leading-none">
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </button>
-                    );
-                  })
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            {s.isHighSustainability && !s.isFallback && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">
+                                <Sparkles className="w-2.5 h-2.5" />High Sustainability
+                              </span>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <ScoreBadge score={sustScore} />
+                              {s.isPremium && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {/* Routing transparency note */}
+                    <p className="text-[10px] text-muted-foreground text-center pt-1">
+                      Matched by delivery range, certifications, and verified sustainability data.
+                      Suppliers outside your delivery area are excluded automatically.
+                    </p>
+                  </>
                 )}
               </div>
             </div>

@@ -45,9 +45,19 @@ export const DEFAULT_RADIUS_MILES: Readonly<Record<ShippingClass, number>> = {
   digital_data:       Infinity,
 } as const;
 
-/** Hard cutoff beyond which a local_heavy supplier is excluded unless they
- *  explicitly declare a wider service area or shipsNationwide. */
+/**
+ * Hard cutoffs beyond which a supplier is excluded for each class.
+ *
+ * local_heavy  — 150mi. Ready-mix concrete, CMU, aggregates: beyond this the freight
+ *                premium makes the bid uncompetitive regardless of material price.
+ * regional     — 500mi. LTL freight on insulation / roofing / flooring at 500+ miles
+ *                is economically unrealistic; skip rather than mislead.
+ * national_specialty — no hard mileage cutoff. Structural steel and curtain wall systems
+ *                       ship via fabricator networks; distance is not the binding constraint.
+ *                       Suppliers can still self-restrict via statesServed.
+ */
 export const LOCAL_HEAVY_HARD_CUTOFF_MILES = 150;
+export const REGIONAL_HARD_CUTOFF_MILES    = 500;
 
 /** Resolve shipping class from a raw category string (case-insensitive partial match). */
 export function getShippingClass(category: string): ShippingClass {
@@ -112,11 +122,22 @@ export function isWithinServiceArea(params: {
 
   const maxRadius = serviceRadiusMiles ?? DEFAULT_RADIUS_MILES[shippingClass];
 
-  // Hard cutoff for local-heavy materials regardless of any other logic
+  // Hard cutoff for local-heavy materials regardless of any other logic.
+  // A supplier beyond 150mi for concrete/CMU/aggregates is unreachable in practice.
   if (
     shippingClass === "local_heavy" &&
     serviceRadiusMiles == null &&
     distanceMiles > LOCAL_HEAVY_HARD_CUTOFF_MILES
+  ) {
+    return false;
+  }
+
+  // Hard cutoff for regional materials beyond 500mi when no custom radius is declared.
+  // LTL freight at this distance makes the bid economically unrealistic.
+  if (
+    shippingClass === "regional" &&
+    serviceRadiusMiles == null &&
+    distanceMiles > REGIONAL_HARD_CUTOFF_MILES
   ) {
     return false;
   }
