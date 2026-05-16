@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, materials, suppliers } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 export const supplierRfqRouter = router({
   /**
@@ -204,9 +204,13 @@ export const supplierRfqRouter = router({
           status: rfqBids.status,
           notes: rfqBids.notes,
           createdAt: rfqBids.createdAt,
+          projectName: rfqs.projectName,
+          projectLocation: rfqs.projectLocation,
         })
         .from(rfqBids)
+        .leftJoin(rfqs, eq(rfqBids.rfqId, rfqs.id))
         .where(eq(rfqBids.supplierId, supplier[0].id))
+        .orderBy(desc(rfqBids.createdAt))
         .limit(input.limit)
         .offset(input.offset);
 
