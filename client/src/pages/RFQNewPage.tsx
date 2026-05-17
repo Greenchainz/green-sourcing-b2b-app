@@ -117,9 +117,12 @@ const schema = z.object({
   // Step 0 — Project Info
   projectName: z.string().min(1, "Project name is required"),
   projectType: z.string().min(1, "Project type is required"),
+  // Zip is the primary location input. City + state are derived from zip lookup
+  // and stored for supplier matching — but they're optional so a lookup failure
+  // never blocks submission.
   projectZip: z.string().regex(/^\d{5}$/, "Enter a 5-digit zip code").optional(),
-  projectCity: z.string().min(1, "City is required"),
-  projectState: z.string().length(2, "Select a state"),
+  projectCity: z.string().optional().default(""),
+  projectState: z.string().optional().default(""),
   projectLat: z.number().optional(),
   projectLng: z.number().optional(),
   startDate: z.string().optional(),
@@ -402,11 +405,13 @@ export default function RFQNewPage() {
       );
       if (validType) { setValue("projectType", validType, { shouldValidate: true }); filled.push("Project type"); }
     }
-    // Zip takes priority — look it up and derive city + state from it
+    // Zip takes priority — look it up and derive city + state from it.
+    // If the lookup fails (API down etc.), we still store the zip and move on.
     if (typeof fields.projectZip === "string" && /^\d{5}$/.test(fields.projectZip)) {
-      void lookupZip(fields.projectZip).then((loc) => {
+      const zip = fields.projectZip;
+      setValue("projectZip", zip, { shouldValidate: true });
+      void lookupZip(zip).then((loc) => {
         if (loc) {
-          setValue("projectZip", fields.projectZip as string, { shouldValidate: true });
           setValue("projectCity", loc.city, { shouldValidate: true });
           setValue("projectState", loc.state, { shouldValidate: true });
         }
@@ -429,7 +434,7 @@ export default function RFQNewPage() {
     const v = getValues();
     if (!v.category) return { field: "category", question: "What type of material do you need? e.g., concrete, steel, timber, insulation, roofing, flooring…" };
     if (!v.quantity || Number(v.quantity) <= 0) return { field: "quantity", question: "How much do you need? e.g., '2,500 SF', '50 tons', '100 LF'" };
-    if (!v.projectCity || !v.projectState) return { field: "location", question: "What's the project zip code? e.g., 02101" };
+    if (!v.projectZip && !v.projectCity) return { field: "location", question: "What's the project zip code? e.g., 02101" };
     if (!v.projectName) return { field: "projectName", question: "What's the project name or address? e.g., '555 Market St Office Tower'" };
     if (!v.projectType) return { field: "projectType", question: "What type of building is this? e.g., office, multifamily residential, healthcare, retail" };
     return null;
@@ -498,20 +503,19 @@ export default function RFQNewPage() {
       setAiParsing(true);
       void lookupZip(clarifyInput.trim()).then((loc) => {
         setAiParsing(false);
+        setValue("projectZip", clarifyInput.trim(), { shouldValidate: true });
+        // Populate city/state if lookup succeeded — if it failed (API down etc.)
+        // we still accept the zip and move forward.
         if (loc) {
-          setValue("projectZip", clarifyInput.trim(), { shouldValidate: true });
           setValue("projectCity", loc.city, { shouldValidate: true });
           setValue("projectState", loc.state, { shouldValidate: true });
-          setClarifyInput("");
-          setTimeout(() => {
-            const next = getMissingField();
-            if (!next) { setAllFieldsReady(true); setClarifyQuestion(null); }
-            else setClarifyQuestion(next.question);
-          }, 0);
-        } else {
-          toast.error("Couldn't find that zip code — try a city and state instead, e.g. Boston, MA");
-          setClarifyInput("");
         }
+        setClarifyInput("");
+        setTimeout(() => {
+          const next = getMissingField();
+          if (!next) { setAllFieldsReady(true); setClarifyQuestion(null); }
+          else setClarifyQuestion(next.question);
+        }, 0);
       });
       return;
     }
@@ -1041,6 +1045,7 @@ export default function RFQNewPage() {
                           setValue("projectZip", z);
                           if (z.length === 5) {
                             void lookupZip(z).then((loc) => {
+                              // Populate city/state if lookup succeeded — never block if it doesn't
                               if (loc) {
                                 setValue("projectCity", loc.city, { shouldValidate: true });
                                 setValue("projectState", loc.state, { shouldValidate: true });
