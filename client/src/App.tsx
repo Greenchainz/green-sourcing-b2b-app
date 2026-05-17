@@ -238,7 +238,7 @@ function SupplierOnboardingGuard() {
 function ArchitectOnboardingGuard() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const isArchitectUser = user?.role === "architect";
+  const isArchitectUser = user?.role === "buyer";
 
   const { data: profile, isLoading } = trpc.architect.getMyProfile.useQuery(undefined, {
     enabled: !!isArchitectUser,

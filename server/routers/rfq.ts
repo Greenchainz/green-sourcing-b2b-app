@@ -441,21 +441,29 @@ export const rfqRouter = router({
       return { success: true };
     }),
 
-  // ── Scheduler: auto-expire overdue RFQs (no auth) ────────────────────────
+  // ── Scheduler: auto-expire overdue RFQs ─────────────────────────────────
+  // Requires SCHEDULER_SECRET header to prevent unauthenticated invocation.
   // rfq_status enum: draft | submitted | responded | awarded | closed
-  expire: publicProcedure.mutation(async () => {
-    const result = await query(
-      `UPDATE rfqs SET status = 'closed', "updatedAt" = NOW()
-       WHERE status IN ('submitted', 'responded') AND "dueDate" < NOW()`,
-    );
+  expire: publicProcedure
+    .input(z.object({ schedulerSecret: z.string() }))
+    .mutation(async ({ input }) => {
+      const expected = process.env.SCHEDULER_SECRET;
+      if (!expected || input.schedulerSecret !== expected) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid scheduler secret" });
+      }
 
-    const count = result.rowCount ?? 0;
-    if (count > 0) {
-      console.log(`[rfq.expire] Expired ${count} overdue RFQ(s)`);
-    }
+      const result = await query(
+        `UPDATE rfqs SET status = 'closed', "updatedAt" = NOW()
+         WHERE status IN ('submitted', 'responded') AND "dueDate" < NOW()`,
+      );
 
-    return { expired_count: count };
-  }),
+      const count = result.rowCount ?? 0;
+      if (count > 0) {
+        console.log(`[rfq.expire] Expired ${count} overdue RFQ(s)`);
+      }
+
+      return { expired_count: count };
+    }),
 
   // ── List verified suppliers for RFQ targeting ────────────────────────────
   listSuppliers: protectedProcedure

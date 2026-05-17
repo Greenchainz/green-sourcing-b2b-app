@@ -122,7 +122,7 @@ export const rfqInternalRouter = router({
 // ─── Agent (ChainBot) ─────────────────────────────────────────────────────────
 
 export const agentRouter = router({
-  chat: publicProcedure
+  chat: protectedProcedure
     .input(
       z.object({
         message: z.string().min(1).max(2000),
@@ -138,8 +138,8 @@ export const agentRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const userPersona = ctx.user?.persona || 'default';
-      const userName = ctx.user?.name || undefined;
+      const userPersona = ctx.user.persona || 'default';
+      const userName = ctx.user.name || undefined;
       const response = await handleChat(
         input.message,
         input.sessionId,
@@ -148,7 +148,7 @@ export const agentRouter = router({
           userPersona,
           userName: userName || undefined,
         },
-        ctx.user?.id
+        ctx.user.id
       );
       return {
         content: response.content,
@@ -157,9 +157,9 @@ export const agentRouter = router({
       };
     }),
 
-  history: publicProcedure
+  history: protectedProcedure
     .input(z.object({ sessionId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return [];
       const rows = await db
@@ -170,7 +170,12 @@ export const agentRouter = router({
           createdAt: agentConversations.createdAt,
         })
         .from(agentConversations)
-        .where(eq(agentConversations.sessionId, input.sessionId))
+        .where(
+          and(
+            eq(agentConversations.sessionId, input.sessionId),
+            eq(agentConversations.userId, ctx.user.id),
+          )
+        )
         .orderBy(asc(agentConversations.createdAt))
         .limit(50);
       return rows;
@@ -205,7 +210,7 @@ export const leadsRouter = router({
 // ─── Material Swaps ───────────────────────────────────────────────────────────
 
 export const materialSwapsRouter = router({
-  findCandidates: publicProcedure
+  findCandidates: protectedProcedure
     .input(
       z.object({
         materialId: z.number(),
@@ -217,7 +222,7 @@ export const materialSwapsRouter = router({
       return findSwapCandidates(input.materialId, input.limit);
     }),
 
-  getSavedSwaps: publicProcedure
+  getSavedSwaps: protectedProcedure
     .input(z.object({ materialId: z.number() }))
     .query(async ({ input }) => {
       const { getSavedSwaps } = await import('../material-swap-service');
@@ -250,7 +255,7 @@ export const materialSwapsRouter = router({
       return { swapId, success: swapId > 0 };
     }),
 
-  calculateScore: publicProcedure
+  calculateScore: protectedProcedure
     .input(
       z.object({
         originalMaterialId: z.number(),

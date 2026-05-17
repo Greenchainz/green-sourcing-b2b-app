@@ -54,6 +54,7 @@ export const supplierRfqRouter = router({
           createdAt: rfqs.createdAt,
         })
         .from(rfqs)
+        .where(eq(rfqs.status, "submitted"))
         .limit(input.limit)
         .offset(input.offset);
 
