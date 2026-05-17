@@ -3,77 +3,61 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, DollarSign, TrendingDown, MessageSquare, CheckCircle2, XCircle, AlertCircle, ArrowRight, FileDown } from "lucide-react";
+import { Clock, DollarSign, MessageSquare, CheckCircle2, XCircle, AlertCircle, ArrowRight, FileDown } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 
+// Status values come from the rfqRequests table
 const STATUS_CONFIG = {
-  draft: { label: "Draft", color: "bg-gray-500", icon: AlertCircle },
-  submitted: { label: "Submitted", color: "bg-blue-500", icon: Clock },
-  responded: { label: "Bids Received", color: "bg-purple-500", icon: DollarSign },
-  awarded: { label: "Awarded", color: "bg-green-500", icon: CheckCircle2 },
-  closed: { label: "Closed", color: "bg-gray-600", icon: XCircle },
-};
+  pending:   { label: "Pending",   color: "bg-blue-500",   icon: Clock         },
+  accepted:  { label: "Accepted",  color: "bg-green-500",  icon: CheckCircle2  },
+  declined:  { label: "Declined",  color: "bg-red-500",    icon: XCircle       },
+  fulfilled: { label: "Fulfilled", color: "bg-purple-500", icon: CheckCircle2  },
+  cancelled: { label: "Cancelled", color: "bg-gray-600",   icon: XCircle       },
+} as const;
+
+type StatusKey = keyof typeof STATUS_CONFIG;
+
+/** Pull projectName and projectLocation out of the specs JSON blob */
+function parseSpecs(specs: string | null): { projectName: string; projectLocation: string } {
+  if (specs) {
+    try {
+      const p = JSON.parse(specs);
+      const info = p?.projectInfo ?? p;
+      const name = info?.projectName as string | undefined;
+      const city = info?.projectCity as string | undefined;
+      const state = info?.projectState as string | undefined;
+      return {
+        projectName: name || "",
+        projectLocation: [city, state].filter(Boolean).join(", "),
+      };
+    } catch { /* not JSON */ }
+  }
+  return { projectName: "", projectLocation: "" };
+}
 
 export default function RfqDashboard() {
-  const { user, isLoading } = useAuth();
   const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
-  const acceptBidMutation = trpc.rfqMarketplace.acceptBid.useMutation();
-  const utils = trpc.useUtils();
+  // Use rfqRequests.listMine — the same table createMulti writes to
+  const { data: rawRfqs = [], isLoading: rfqsLoading } = trpc.rfqRequests.listMine.useQuery(undefined, {
+    staleTime: 30_000,
+  });
 
-  const handleAcceptBid = async (rfqId: number, bidId: number) => {
-    setActionError(null);
-    try {
-      await acceptBidMutation.mutateAsync({ rfqId, bidId });
-      utils.rfqMarketplace.getUserRfqs.invalidate();
-      utils.rfqMarketplace.getRfqDetails.invalidate({ rfqId });
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to accept bid");
-    }
-  };
+  // Enrich each row with derived display fields
+  const rfqs = rawRfqs.map((r) => {
+    const { projectName, projectLocation } = parseSpecs(r.specs ?? null);
+    return {
+      ...r,
+      projectName: projectName || r.materialType,
+      projectLocation,
+    };
+  });
 
-  const { data: rfqs, isLoading: rfqsLoading } = trpc.rfqMarketplace.getUserRfqs.useQuery(
-    { userId: (typeof user?.id === 'string' ? parseInt(user.id) : user?.id) || 0 },
-    { enabled: !!user?.id }
-  );
-
-  const { data: selectedRfqDetails, isLoading: detailsLoading } = trpc.rfqMarketplace.getRfqDetails.useQuery(
-    { rfqId: selectedRfqId || 0 },
-    { enabled: !!selectedRfqId }
-  );
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <Header />
-        <div className="container py-16 text-center flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <Header />
-        <div className="container py-16 text-center flex-1">
-          <h2 className="text-2xl font-bold mb-4">Sign in to view your RFQs</h2>
-          <p className="text-muted-foreground mb-6">You need to be logged in to track your requests for quotation.</p>
-          <Link href="/"><Button>Back to Home</Button></Link>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+  const selectedRfq = rfqs.find((r) => r.id === selectedRfqId) ?? null;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -88,7 +72,7 @@ export default function RfqDashboard() {
           <TabsList>
             <TabsTrigger value="all">All RFQs</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="awarded">Awarded</TabsTrigger>
+            <TabsTrigger value="accepted">Accepted</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
@@ -97,13 +81,13 @@ export default function RfqDashboard() {
                 <Skeleton className="h-32" />
                 <Skeleton className="h-32" />
               </div>
-            ) : rfqs && rfqs.length > 0 ? (
+            ) : rfqs.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* RFQ List */}
                 <div className="lg:col-span-1 space-y-3">
-                  {rfqs.map((rfq: any) => {
-                    const status = (rfq.status || 'draft') as keyof typeof STATUS_CONFIG;
-                    const config = STATUS_CONFIG[status];
+                  {rfqs.map((rfq) => {
+                    const status = ((rfq.status as string) || "pending") as StatusKey;
+                    const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
                     const StatusIcon = config.icon;
                     return (
                       <Card
@@ -119,10 +103,10 @@ export default function RfqDashboard() {
                               {config.label}
                             </Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground mb-2">{rfq.projectLocation}</p>
+                          <p className="text-xs text-muted-foreground mb-2">{rfq.projectLocation || rfq.materialType}</p>
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-muted-foreground">
-                              {rfq.itemCount} items • {rfq.bidCount || 0} bids
+                              {rfq.supplierName ?? `Supplier #${rfq.supplierId}`}
                             </span>
                             <ArrowRight className="w-3 h-3 text-muted-foreground" />
                           </div>
@@ -134,198 +118,79 @@ export default function RfqDashboard() {
 
                 {/* RFQ Details */}
                 <div className="lg:col-span-2">
-                  {selectedRfqId && selectedRfqDetails ? (
+                  {selectedRfq ? (
                     <div className="space-y-4">
-                      {/* PDF Download Buttons */}
-                      <div className="flex gap-2 justify-end">
-                        <a
-                          href={`/api/rfq/${selectedRfqId}/pdf/summary`}
-                          download
-                          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
-                        >
-                          <FileDown className="w-3.5 h-3.5" /> RFQ Summary PDF
-                        </a>
-                        {selectedRfqDetails.bids && selectedRfqDetails.bids.length > 0 && (
-                          <a
-                            href={`/api/rfq/${selectedRfqId}/pdf/bids`}
-                            download
-                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
-                          >
-                            <FileDown className="w-3.5 h-3.5" /> Bid Comparison PDF
-                          </a>
-                        )}
-                      </div>
-
                       {/* RFQ Header */}
                       <Card>
                         <CardHeader>
                           <div className="flex items-start justify-between">
                             <div>
-                              <CardTitle className="text-xl">{selectedRfqDetails.projectName}</CardTitle>
-                              <p className="text-sm text-muted-foreground mt-1">{selectedRfqDetails.projectLocation}</p>
+                              <CardTitle className="text-xl">{selectedRfq.projectName}</CardTitle>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {selectedRfq.projectLocation || selectedRfq.materialType}
+                              </p>
                             </div>
-                            <Badge className={`${STATUS_CONFIG[(selectedRfqDetails.status || 'draft') as keyof typeof STATUS_CONFIG].color} text-white`}>
-                              {STATUS_CONFIG[(selectedRfqDetails.status || 'draft') as keyof typeof STATUS_CONFIG].label}
+                            <Badge className={`${(STATUS_CONFIG[(selectedRfq.status as StatusKey)] ?? STATUS_CONFIG.pending).color} text-white`}>
+                              {(STATUS_CONFIG[(selectedRfq.status as StatusKey)] ?? STATUS_CONFIG.pending).label}
                             </Badge>
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <p className="text-xs text-muted-foreground">Project Type</p>
-                              <p className="font-semibold">{selectedRfqDetails.projectType || "—"}</p>
+                              <p className="text-xs text-muted-foreground">Supplier</p>
+                              <p className="font-semibold">{selectedRfq.supplierName ?? `Supplier #${selectedRfq.supplierId}`}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">Submitted</p>
                               <p className="font-semibold">
-                                {new Date(selectedRfqDetails.createdAt).toLocaleDateString()}
+                                {new Date(selectedRfq.createdAt).toLocaleDateString()}
                               </p>
                             </div>
-                            {selectedRfqDetails.dueDate && (
-                              <div>
-                                <p className="text-xs text-muted-foreground">Due Date</p>
-                                <p className="font-semibold">
-                                  {new Date(selectedRfqDetails.dueDate).toLocaleDateString()}
-                                </p>
-                              </div>
-                            )}
                             <div>
-                              <p className="text-xs text-muted-foreground">Materials</p>
-                              <p className="font-semibold">{selectedRfqDetails.itemCount} items</p>
+                              <p className="text-xs text-muted-foreground">Material</p>
+                              <p className="font-semibold">{selectedRfq.materialType}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Quantity</p>
+                              <p className="font-semibold">{selectedRfq.quantity}</p>
                             </div>
                           </div>
-                          {selectedRfqDetails.notes && (
+                          {selectedRfq.message && (
                             <div className="pt-3 border-t">
                               <p className="text-xs text-muted-foreground mb-1">Notes</p>
-                              <p className="text-sm">{selectedRfqDetails.notes}</p>
+                              <p className="text-sm">{selectedRfq.message}</p>
                             </div>
                           )}
                         </CardContent>
                       </Card>
 
-                      {/* Analytics */}
-                      {selectedRfqDetails.analytics && (
+                      {/* Waiting for bids */}
+                      {selectedRfq.status === "pending" && (
                         <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base">Bid Summary</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="p-3 bg-muted/30 rounded-lg">
-                                <p className="text-xs text-muted-foreground">Total Bids</p>
-                                <p className="text-2xl font-bold">{selectedRfqDetails.analytics.totalBidsReceived}</p>
-                              </div>
-                              <div className="p-3 bg-muted/30 rounded-lg">
-                                <p className="text-xs text-muted-foreground">Avg Response Time</p>
-                                <p className="text-2xl font-bold">
-                                  {selectedRfqDetails.analytics.avgResponseTimeHours
-                                    ? `${Number(selectedRfqDetails.analytics.avgResponseTimeHours).toFixed(1)}h`
-                                    : "—"}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Lowest Bid</span>
-                                <span className="text-sm font-bold">
-                                  ${Number(selectedRfqDetails.analytics.lowestBidPrice || 0).toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Average Bid</span>
-                                <span className="text-sm font-bold">
-                                  ${Number(selectedRfqDetails.analytics.avgBidPrice || 0).toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Highest Bid</span>
-                                <span className="text-sm font-bold">
-                                  ${Number(selectedRfqDetails.analytics.highestBidPrice || 0).toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
+                          <CardContent className="p-8 text-center">
+                            <Clock className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                            <p className="text-sm text-muted-foreground mb-2">Waiting for supplier response...</p>
+                            <p className="text-xs text-muted-foreground">
+                              Suppliers typically respond within 24–48 hours.
+                            </p>
                           </CardContent>
                         </Card>
                       )}
 
-                      {/* Bids List */}
-                      {selectedRfqDetails.bids && selectedRfqDetails.bids.length > 0 && (
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base">Supplier Bids ({selectedRfqDetails.bids.length})</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            {selectedRfqDetails.bids.map((bid: any) => (
-                              <div
-                                key={bid.id}
-                                className="p-3 border border-border rounded-lg hover:bg-muted/30 transition-colors"
-                              >
-                                <div className="flex items-start justify-between mb-2">
-                                  <div>
-                                    <p className="font-semibold text-sm">{bid.supplierName || "Supplier"}</p>
-                                    <p className="text-xs text-muted-foreground">{bid.supplierLocation || "Location TBD"}</p>
-                                  </div>
-                                  <Badge
-                                    variant={
-                                      bid.status === "accepted"
-                                        ? "default"
-                                        : bid.status === "rejected"
-                                          ? "destructive"
-                                          : "secondary"
-                                    }
-                                  >
-                                    {bid.status.charAt(0).toUpperCase() + bid.status.slice(1)}
-                                  </Badge>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 mb-2">
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Bid Price</p>
-                                    <p className="font-bold">${Number(bid.bidPrice || 0).toFixed(2)}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Lead Time</p>
-                                    <p className="font-bold">{bid.leadDays} days</p>
-                                  </div>
-                                </div>
-                                {bid.notes && <p className="text-xs text-muted-foreground italic mb-2">{bid.notes}</p>}
-                                <div className="flex gap-2">
-                                  {bid.status === "submitted" && (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        variant="default"
-                                        className="bg-green-600 hover:bg-green-700"
-                                        disabled={acceptBidMutation.isPending}
-                                        onClick={() => selectedRfqId && handleAcceptBid(selectedRfqId, bid.id)}
-                                      >
-                                        {acceptBidMutation.isPending ? "Accepting..." : "Accept"}
-                                      </Button>
-                                    </>
-                                  )}
-                                  <Button size="sm" variant="ghost">
-                                    <MessageSquare className="w-4 h-4 mr-1" />
-                                    Message
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* No Bids Yet */}
-                      {(!selectedRfqDetails.bids || selectedRfqDetails.bids.length === 0) &&
-                        selectedRfqDetails.status === "submitted" && (
-                          <Card>
-                            <CardContent className="p-8 text-center">
-                              <Clock className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                              <p className="text-sm text-muted-foreground mb-2">Waiting for supplier bids...</p>
-                              <p className="text-xs text-muted-foreground">
-                                Suppliers are reviewing your RFQ. Bids typically arrive within 24-48 hours.
-                              </p>
-                            </CardContent>
-                          </Card>
-                        )}
+                      {/* Message supplier link */}
+                      <div className="flex gap-2">
+                        <Link href={`/rfqs/${selectedRfq.id}`}>
+                          <Button size="sm" variant="outline">
+                            <FileDown className="w-4 h-4 mr-1" />
+                            View Full Detail
+                          </Button>
+                        </Link>
+                        <Button size="sm" variant="ghost">
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          Message Supplier
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <Card>
@@ -340,8 +205,8 @@ export default function RfqDashboard() {
               <Card>
                 <CardContent className="p-8 text-center">
                   <p className="text-muted-foreground mb-4">No RFQs yet</p>
-                  <Link href="/materials">
-                    <Button>Browse Materials & Create RFQ</Button>
+                  <Link href="/rfq/new">
+                    <Button className="bg-green-600 hover:bg-green-700">Send your first RFQ</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -351,19 +216,19 @@ export default function RfqDashboard() {
           <TabsContent value="active">
             {rfqsLoading ? (
               <Skeleton className="h-32" />
-            ) : rfqs && rfqs.filter((r: any) => ["submitted", "responded"].includes(r.status)).length > 0 ? (
+            ) : rfqs.filter((r) => r.status === "pending").length > 0 ? (
               <div className="space-y-3">
                 {rfqs
-                  .filter((r: any) => ["submitted", "responded"].includes(r.status))
-                  .map((rfq: any) => (
+                  .filter((r) => r.status === "pending")
+                  .map((rfq) => (
                     <Card key={rfq.id} className="cursor-pointer" onClick={() => setSelectedRfqId(rfq.id)}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-semibold">{rfq.projectName}</p>
-                            <p className="text-sm text-muted-foreground">{rfq.projectLocation}</p>
+                            <p className="text-sm text-muted-foreground">{rfq.projectLocation || rfq.materialType}</p>
                           </div>
-                          <Badge className="bg-blue-500 text-white">{rfq.bidCount || 0} bids</Badge>
+                          <Badge className="bg-blue-500 text-white">Pending</Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -378,22 +243,22 @@ export default function RfqDashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="awarded">
+          <TabsContent value="accepted">
             {rfqsLoading ? (
               <Skeleton className="h-32" />
-            ) : rfqs && rfqs.filter((r: any) => r.status === "awarded").length > 0 ? (
+            ) : rfqs.filter((r) => r.status === "accepted").length > 0 ? (
               <div className="space-y-3">
                 {rfqs
-                  .filter((r: any) => r.status === "awarded")
-                  .map((rfq: any) => (
+                  .filter((r) => r.status === "accepted")
+                  .map((rfq) => (
                     <Card key={rfq.id} className="cursor-pointer" onClick={() => setSelectedRfqId(rfq.id)}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-semibold">{rfq.projectName}</p>
-                            <p className="text-sm text-muted-foreground">{rfq.projectLocation}</p>
+                            <p className="text-sm text-muted-foreground">{rfq.projectLocation || rfq.materialType}</p>
                           </div>
-                          <Badge className="bg-green-500 text-white">Awarded</Badge>
+                          <Badge className="bg-green-500 text-white">Accepted</Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -402,7 +267,7 @@ export default function RfqDashboard() {
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No awarded RFQs yet</p>
+                  <p className="text-muted-foreground">No accepted RFQs yet</p>
                 </CardContent>
               </Card>
             )}
