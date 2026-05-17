@@ -97,25 +97,18 @@ const US_STATES = [
   "VA","WA","WV","WI","WY",
 ];
 
-/** Resolve a user-typed state string to a 2-letter abbreviation, or null. */
-const STATE_NAME_MAP: Record<string, string> = {
-  alabama:"AL",alaska:"AK",arizona:"AZ",arkansas:"AR",california:"CA",
-  colorado:"CO",connecticut:"CT",delaware:"DE",florida:"FL",georgia:"GA",
-  hawaii:"HI",idaho:"ID",illinois:"IL",indiana:"IN",iowa:"IA",kansas:"KS",
-  kentucky:"KY",louisiana:"LA",maine:"ME",maryland:"MD",massachusetts:"MA",
-  michigan:"MI",minnesota:"MN",mississippi:"MS",missouri:"MO",montana:"MT",
-  nebraska:"NE",nevada:"NV","new hampshire":"NH","new jersey":"NJ",
-  "new mexico":"NM","new york":"NY","north carolina":"NC","north dakota":"ND",
-  ohio:"OH",oklahoma:"OK",oregon:"OR",pennsylvania:"PA","rhode island":"RI",
-  "south carolina":"SC","south dakota":"SD",tennessee:"TN",texas:"TX",
-  utah:"UT",vermont:"VT",virginia:"VA",washington:"WA","west virginia":"WV",
-  wisconsin:"WI",wyoming:"WY",
-};
-function resolveStateCode(input: string): string | null {
-  const upper = input.trim().toUpperCase();
-  if (US_STATES.includes(upper)) return upper;
-  const lower = input.trim().toLowerCase();
-  return STATE_NAME_MAP[lower] ?? null;
+/** Look up a 5-digit US zip code → { city, state } via zippopotam.us (no API key). */
+async function lookupZip(zip: string): Promise<{ city: string; state: string } | null> {
+  try {
+    const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+    if (!res.ok) return null;
+    const data = await res.json() as { places?: { "place name": string; "state abbreviation": string }[] };
+    const place = data.places?.[0];
+    if (!place) return null;
+    return { city: place["place name"], state: place["state abbreviation"] };
+  } catch {
+    return null;
+  }
 }
 
 // ── Schema ─────────────────────────────────────────────────────────────────────
@@ -124,6 +117,7 @@ const schema = z.object({
   // Step 0 — Project Info
   projectName: z.string().min(1, "Project name is required"),
   projectType: z.string().min(1, "Project type is required"),
+  projectZip: z.string().regex(/^\d{5}$/, "Enter a 5-digit zip code").optional(),
   projectCity: z.string().min(1, "City is required"),
   projectState: z.string().length(2, "Select a state"),
   projectLat: z.number().optional(),
@@ -408,13 +402,25 @@ export default function RFQNewPage() {
       );
       if (validType) { setValue("projectType", validType, { shouldValidate: true }); filled.push("Project type"); }
     }
-    if (typeof fields.projectCity === "string" && fields.projectCity.trim()) {
-      setValue("projectCity", fields.projectCity.trim(), { shouldValidate: true });
-      filled.push("City");
-    }
-    if (typeof fields.projectState === "string" && US_STATES.includes(fields.projectState.toUpperCase())) {
-      setValue("projectState", fields.projectState.toUpperCase(), { shouldValidate: true });
-      filled.push("State");
+    // Zip takes priority — look it up and derive city + state from it
+    if (typeof fields.projectZip === "string" && /^\d{5}$/.test(fields.projectZip)) {
+      void lookupZip(fields.projectZip).then((loc) => {
+        if (loc) {
+          setValue("projectZip", fields.projectZip as string, { shouldValidate: true });
+          setValue("projectCity", loc.city, { shouldValidate: true });
+          setValue("projectState", loc.state, { shouldValidate: true });
+        }
+      });
+      filled.push("Location");
+    } else {
+      if (typeof fields.projectCity === "string" && fields.projectCity.trim()) {
+        setValue("projectCity", fields.projectCity.trim(), { shouldValidate: true });
+        filled.push("City");
+      }
+      if (typeof fields.projectState === "string" && US_STATES.includes(fields.projectState.toUpperCase())) {
+        setValue("projectState", fields.projectState.toUpperCase(), { shouldValidate: true });
+        filled.push("State");
+      }
     }
     return filled;
   };
@@ -423,8 +429,7 @@ export default function RFQNewPage() {
     const v = getValues();
     if (!v.category) return { field: "category", question: "What type of material do you need? e.g., concrete, steel, timber, insulation, roofing, flooring…" };
     if (!v.quantity || Number(v.quantity) <= 0) return { field: "quantity", question: "How much do you need? e.g., '2,500 SF', '50 tons', '100 LF'" };
-    if (!v.projectCity) return { field: "location", question: "Where is the project located? e.g., Boston, MA or Chicago, IL" };
-    if (!v.projectState) return { field: "state", question: `Got it — ${v.projectCity}. Which state? e.g., MA, NY, CA` };
+    if (!v.projectCity || !v.projectState) return { field: "location", question: "What's the project zip code? e.g., 02101" };
     if (!v.projectName) return { field: "projectName", question: "What's the project name or address? e.g., '555 Market St Office Tower'" };
     if (!v.projectType) return { field: "projectType", question: "What type of building is this? e.g., office, multifamily residential, healthcare, retail" };
     return null;
@@ -487,22 +492,28 @@ export default function RFQNewPage() {
   const handleClarifySubmit = () => {
     if (!clarifyInput.trim() || aiParsing) return;
 
-    // State-only clarification: resolve directly without an AI round-trip.
-    const missing = getMissingField();
-    if (missing?.field === "state") {
-      const code = resolveStateCode(clarifyInput);
-      if (code) {
-        setValue("projectState", code, { shouldValidate: true });
-        setClarifyInput("");
-        // getMissingField reads fresh values — re-run after setValue settles
-        setTimeout(() => {
-          const next = getMissingField();
-          if (!next) { setAllFieldsReady(true); setClarifyQuestion(null); }
-          else setClarifyQuestion(next.question);
-        }, 0);
-        return;
-      }
-      // Unrecognised — fall through to AI parse so it can try to interpret it
+    // Zip code: resolve directly without an AI round-trip.
+    const zipMatch = clarifyInput.trim().match(/^\d{5}$/);
+    if (zipMatch) {
+      setAiParsing(true);
+      void lookupZip(clarifyInput.trim()).then((loc) => {
+        setAiParsing(false);
+        if (loc) {
+          setValue("projectZip", clarifyInput.trim(), { shouldValidate: true });
+          setValue("projectCity", loc.city, { shouldValidate: true });
+          setValue("projectState", loc.state, { shouldValidate: true });
+          setClarifyInput("");
+          setTimeout(() => {
+            const next = getMissingField();
+            if (!next) { setAllFieldsReady(true); setClarifyQuestion(null); }
+            else setClarifyQuestion(next.question);
+          }, 0);
+        } else {
+          toast.error("Couldn't find that zip code — try a city and state instead, e.g. Boston, MA");
+          setClarifyInput("");
+        }
+      });
+      return;
     }
 
     const enriched = `${aiInput}\n\nAdditional info: ${clarifyInput}`;
@@ -1016,51 +1027,40 @@ export default function RFQNewPage() {
                   {errors.projectType && <p className="text-xs text-red-500">{errors.projectType.message}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="projectCity">City *</Label>
-                    <LocationTypeahead
-                      id="projectCity"
-                      placeholder="San Francisco"
-                      value={formValues.projectCity ?? ""}
-                      onChange={(v) => {
-                        setValue("projectCity", v, { shouldValidate: true });
-                        // Clear geocoords if the user types manually
-                        setValue("projectLat", undefined);
-                        setValue("projectLng", undefined);
-                      }}
-                      onSelect={(item) => {
-                        // City name is before the first comma
-                        const city = item.label.split(",")[0].trim();
-                        setValue("projectCity", city, { shouldValidate: true });
-                        // Auto-fill state: sublabel format is "City, ST, USA" or "City, State, Country"
-                        if (item.sublabel) {
-                          const parts = item.sublabel.split(",").map((s) => s.trim());
-                          // Look for a 2-char uppercase state code in the parts
-                          const stateCode = parts.find((p) => /^[A-Z]{2}$/.test(p));
-                          if (stateCode && US_STATES.includes(stateCode)) {
-                            setValue("projectState", stateCode, { shouldValidate: true });
+                <div className="space-y-1.5">
+                  <Label htmlFor="projectZip">Project Zip Code *</Label>
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <Input
+                        id="projectZip"
+                        placeholder="e.g. 02101"
+                        maxLength={5}
+                        value={formValues.projectZip ?? ""}
+                        onChange={(e) => {
+                          const z = e.target.value.replace(/\D/g, "").slice(0, 5);
+                          setValue("projectZip", z);
+                          if (z.length === 5) {
+                            void lookupZip(z).then((loc) => {
+                              if (loc) {
+                                setValue("projectCity", loc.city, { shouldValidate: true });
+                                setValue("projectState", loc.state, { shouldValidate: true });
+                              }
+                            });
                           }
-                        }
-                        // Store geocoords for haversine scoring
-                        if (item.lat != null) setValue("projectLat", item.lat);
-                        if (item.lng != null) setValue("projectLng", item.lng);
-                      }}
-                      inputClassName={errors.projectCity ? "border-red-500" : ""}
-                    />
-                    {errors.projectCity && <p className="text-xs text-red-500">{errors.projectCity.message}</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>State *</Label>
-                    <Select onValueChange={(v) => setValue("projectState", v, { shouldValidate: true })}>
-                      <SelectTrigger className={errors.projectState ? "border-red-500" : ""}>
-                        <SelectValue placeholder="State" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {errors.projectState && <p className="text-xs text-red-500">{errors.projectState.message}</p>}
+                        }}
+                        className={errors.projectZip ?? errors.projectCity ?? errors.projectState ? "border-red-500" : ""}
+                      />
+                      {(errors.projectZip ?? errors.projectCity ?? errors.projectState) && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.projectZip?.message ?? errors.projectCity?.message ?? errors.projectState?.message}
+                        </p>
+                      )}
+                    </div>
+                    {formValues.projectCity && formValues.projectState && (
+                      <div className="text-sm text-muted-foreground pt-2 whitespace-nowrap">
+                        {formValues.projectCity}, {formValues.projectState}
+                      </div>
+                    )}
                   </div>
                 </div>
 
