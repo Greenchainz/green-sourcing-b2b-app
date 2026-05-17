@@ -97,6 +97,27 @@ const US_STATES = [
   "VA","WA","WV","WI","WY",
 ];
 
+/** Resolve a user-typed state string to a 2-letter abbreviation, or null. */
+const STATE_NAME_MAP: Record<string, string> = {
+  alabama:"AL",alaska:"AK",arizona:"AZ",arkansas:"AR",california:"CA",
+  colorado:"CO",connecticut:"CT",delaware:"DE",florida:"FL",georgia:"GA",
+  hawaii:"HI",idaho:"ID",illinois:"IL",indiana:"IN",iowa:"IA",kansas:"KS",
+  kentucky:"KY",louisiana:"LA",maine:"ME",maryland:"MD",massachusetts:"MA",
+  michigan:"MI",minnesota:"MN",mississippi:"MS",missouri:"MO",montana:"MT",
+  nebraska:"NE",nevada:"NV","new hampshire":"NH","new jersey":"NJ",
+  "new mexico":"NM","new york":"NY","north carolina":"NC","north dakota":"ND",
+  ohio:"OH",oklahoma:"OK",oregon:"OR",pennsylvania:"PA","rhode island":"RI",
+  "south carolina":"SC","south dakota":"SD",tennessee:"TN",texas:"TX",
+  utah:"UT",vermont:"VT",virginia:"VA",washington:"WA","west virginia":"WV",
+  wisconsin:"WI",wyoming:"WY",
+};
+function resolveStateCode(input: string): string | null {
+  const upper = input.trim().toUpperCase();
+  if (US_STATES.includes(upper)) return upper;
+  const lower = input.trim().toLowerCase();
+  return STATE_NAME_MAP[lower] ?? null;
+}
+
 // ── Schema ─────────────────────────────────────────────────────────────────────
 
 const schema = z.object({
@@ -402,7 +423,8 @@ export default function RFQNewPage() {
     const v = getValues();
     if (!v.category) return { field: "category", question: "What type of material do you need? e.g., concrete, steel, timber, insulation, roofing, flooring…" };
     if (!v.quantity || Number(v.quantity) <= 0) return { field: "quantity", question: "How much do you need? e.g., '2,500 SF', '50 tons', '100 LF'" };
-    if (!v.projectCity || !v.projectState) return { field: "location", question: "Where is the project located? e.g., Boston, MA or Chicago, IL" };
+    if (!v.projectCity) return { field: "location", question: "Where is the project located? e.g., Boston, MA or Chicago, IL" };
+    if (!v.projectState) return { field: "state", question: `Got it — ${v.projectCity}. Which state? e.g., MA, NY, CA` };
     if (!v.projectName) return { field: "projectName", question: "What's the project name or address? e.g., '555 Market St Office Tower'" };
     if (!v.projectType) return { field: "projectType", question: "What type of building is this? e.g., office, multifamily residential, healthcare, retail" };
     return null;
@@ -464,6 +486,25 @@ export default function RFQNewPage() {
 
   const handleClarifySubmit = () => {
     if (!clarifyInput.trim() || aiParsing) return;
+
+    // State-only clarification: resolve directly without an AI round-trip.
+    const missing = getMissingField();
+    if (missing?.field === "state") {
+      const code = resolveStateCode(clarifyInput);
+      if (code) {
+        setValue("projectState", code, { shouldValidate: true });
+        setClarifyInput("");
+        // getMissingField reads fresh values — re-run after setValue settles
+        setTimeout(() => {
+          const next = getMissingField();
+          if (!next) { setAllFieldsReady(true); setClarifyQuestion(null); }
+          else setClarifyQuestion(next.question);
+        }, 0);
+        return;
+      }
+      // Unrecognised — fall through to AI parse so it can try to interpret it
+    }
+
     const enriched = `${aiInput}\n\nAdditional info: ${clarifyInput}`;
     void parseAndApply(enriched, true);
     setClarifyInput("");
