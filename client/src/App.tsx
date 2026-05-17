@@ -150,6 +150,8 @@ function Router() {
       <Route path={"/tools/extension"} component={BrowserExtension} />
       <Route path={"/tools/revit"} component={RevitPlugin} />
       <Route path={"/tools/submittal"} component={SubmittalGenerator} />
+      <Route path={"/tools/assemblies"} component={Assemblies} />
+      <Route path={"/tools/assemblies/:id"} component={Assemblies} />
        <Route path={"/terms"} component={Terms} />
       <Route path={"/privacy"} component={Privacy} />
       <Route path={"/support"} component={Support} />

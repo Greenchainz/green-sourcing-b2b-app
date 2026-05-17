@@ -354,9 +354,11 @@ export default function MaterialDetail() {
                     {m.productName && m.productName !== m.name && (
                       <p className="text-sm text-muted-foreground mt-0.5">{m.productName}</p>
                     )}
-                    <p className="text-sm text-muted-foreground mt-1">
-                      by <span className="font-medium text-foreground">{m.manufacturerName}</span>
-                    </p>
+                    {m.manufacturerName && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        by <span className="font-medium text-foreground">{m.manufacturerName}</span>
+                      </p>
+                    )}
                     {m.description && (
                       <p className="text-sm text-muted-foreground mt-3 leading-relaxed line-clamp-3">
                         {m.description}
@@ -1010,7 +1012,7 @@ export default function MaterialDetail() {
                 <CardTitle className="text-sm">Manufacturer</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-base font-semibold">{m.manufacturerName}</p>
+                <p className="text-base font-semibold">{m.manufacturerName ?? "—"}</p>
                 {m.manufacturerWebsite && (
                   <a
                     href={m.manufacturerWebsite}
