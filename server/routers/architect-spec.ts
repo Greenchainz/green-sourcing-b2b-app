@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
 import { parseArchitectSpec } from "../services/architect-spec-parser";
 import { matchSpecAlternatives } from "../services/architect-spec-matcher";
@@ -97,18 +98,26 @@ export const architectSpecRouter = router({
     .mutation(async ({ input, ctx }) => {
       const buffer = Buffer.from(input.fileBufferBase64, "base64");
 
-      const result = await parseArchitectSpec({
-        architectId: ctx.user.id,
-        fileBuffer: buffer,
-        originalFilename: input.originalFilename,
-        blobUrl: input.blobUrl,
-        mimeType: input.mimeType,
-        projectName: input.projectName,
-        projectLocation: input.projectLocation,
-        estimatedValue: input.estimatedValue,
-      });
-
-      return result;
+      try {
+        const result = await parseArchitectSpec({
+          architectId: ctx.user.id,
+          fileBuffer: buffer,
+          originalFilename: input.originalFilename,
+          blobUrl: input.blobUrl,
+          mimeType: input.mimeType,
+          projectName: input.projectName,
+          projectLocation: input.projectLocation,
+          estimatedValue: input.estimatedValue,
+        });
+        return result;
+      } catch (err) {
+        // Log the full error server-side for debugging, never expose DB internals to client
+        console.error("[architect-spec] uploadAndParse failed:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to analyze assembly. Please check your file format and try again.",
+        });
+      }
     }),
 
   /** Run the matcher across every parsed row in a spec. */
