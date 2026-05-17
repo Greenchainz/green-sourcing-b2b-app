@@ -191,7 +191,7 @@ function MyProjects() {
       ) : (
         <div className="space-y-3">
           {projects.map((project) => {
-            const totalGwp = project.materials.reduce((sum, m) => sum + m.gwpValue, 0);
+            const totalGwp = project.materials.reduce((sum, m) => sum + (m.gwpValue ?? 0), 0);
             return (
               <Card key={project.id} className="hover:shadow-sm transition-shadow group">
                 <CardContent className="py-3 px-4">
@@ -205,7 +205,7 @@ function MyProjects() {
                         </span>
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Wind className="w-3 h-3 text-green-500" />
-                          {totalGwp.toFixed(1)} kg CO₂e
+                          {totalGwp > 0 ? `${totalGwp.toFixed(1)} kg CO₂e` : "—"}
                         </span>
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <CalendarDays className="w-3 h-3" />
@@ -286,7 +286,7 @@ function SavedMaterials() {
               <p className="text-xs font-medium leading-tight line-clamp-2 mb-1">{mat.name}</p>
               <p className="text-xs text-muted-foreground flex items-center gap-0.5">
                 <Wind className="w-3 h-3 text-green-500 shrink-0" />
-                {mat.gwpValue.toFixed(1)} kg CO₂e
+                {mat.gwpValue != null ? `${mat.gwpValue.toFixed(1)} kg CO₂e` : "—"}
               </p>
             </CardContent>
           </Card>
