@@ -21,8 +21,8 @@ const STATUS_CONFIG = {
 
 type StatusKey = keyof typeof STATUS_CONFIG;
 
-/** Pull projectName and projectLocation out of the specs JSON blob */
-function parseSpecs(specs: string | null): { projectName: string; projectLocation: string } {
+/** Pull display fields out of the specs JSON blob */
+function parseSpecs(specs: string | null): { projectName: string; projectLocation: string; notes: string } {
   if (specs) {
     try {
       const p = JSON.parse(specs);
@@ -30,13 +30,15 @@ function parseSpecs(specs: string | null): { projectName: string; projectLocatio
       const name = info?.projectName as string | undefined;
       const city = info?.projectCity as string | undefined;
       const state = info?.projectState as string | undefined;
+      const notes = (info?.notes ?? info?.additionalNotes ?? p?.notes ?? "") as string;
       return {
         projectName: name || "",
         projectLocation: [city, state].filter(Boolean).join(", "),
+        notes,
       };
     } catch { /* not JSON */ }
   }
-  return { projectName: "", projectLocation: "" };
+  return { projectName: "", projectLocation: "", notes: "" };
 }
 
 export default function RfqDashboard() {
@@ -49,11 +51,12 @@ export default function RfqDashboard() {
 
   // Enrich each row with derived display fields
   const rfqs = rawRfqs.map((r) => {
-    const { projectName, projectLocation } = parseSpecs(r.specs ?? null);
+    const { projectName, projectLocation, notes } = parseSpecs(r.specs ?? null);
     return {
       ...r,
       projectName: projectName || r.materialType,
       projectLocation,
+      notes,
     };
   });
 
@@ -156,10 +159,10 @@ export default function RfqDashboard() {
                               <p className="font-semibold">{selectedRfq.quantity}</p>
                             </div>
                           </div>
-                          {selectedRfq.message && (
+                          {selectedRfq.notes && (
                             <div className="pt-3 border-t">
                               <p className="text-xs text-muted-foreground mb-1">Notes</p>
-                              <p className="text-sm">{selectedRfq.message}</p>
+                              <p className="text-sm">{selectedRfq.notes}</p>
                             </div>
                           )}
                         </CardContent>

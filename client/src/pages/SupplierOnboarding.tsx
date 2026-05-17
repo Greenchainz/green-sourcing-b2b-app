@@ -346,7 +346,10 @@ export default function SupplierOnboarding() {
 
   const prevStep = () => setStep((s) => Math.max(s - 1, 0));
 
-  const onSubmit = (data: FormData) => submitOnboarding.mutate(data);
+  // state is a validated 2-char code from a dropdown — cast to satisfy the
+  // server-side z.enum(US_STATES) type which can't be imported on the client.
+  const onSubmit = (data: FormData) =>
+    submitOnboarding.mutate(data as Parameters<typeof submitOnboarding.mutate>[0]);
 
   // Loading state while checking for existing profile
   if (profileQuery.isLoading) {
