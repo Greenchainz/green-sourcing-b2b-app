@@ -8,7 +8,7 @@ import {
   ccpsBaselines,
   decisionMakerPersonas,
 } from '../../drizzle/schema';
-import { eq, like, and, lte, asc, sql, or, not, getTableColumns } from 'drizzle-orm';
+import { eq, like, ilike, and, lte, asc, sql, or, not, getTableColumns } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
@@ -47,17 +47,17 @@ export const materialsRouter = router({
       if (input.search) {
         conditions.push(
           or(
-            like(materials.name, `%${input.search}%`),
-            like(materials.productName, `%${input.search}%`),
-            like(materials.category, `%${input.search}%`)
+            ilike(materials.name, `%${input.search}%`),
+            ilike(materials.productName, `%${input.search}%`),
+            ilike(materials.category, `%${input.search}%`)
           )!
         );
       }
-      if (input.category) conditions.push(eq(materials.category, input.category));
+      if (input.category) conditions.push(ilike(materials.category, input.category));
       if (input.hasEpd !== undefined) conditions.push(eq(materials.hasEpd, input.hasEpd));
       if (input.usManufactured !== undefined) conditions.push(eq(materials.usManufactured, input.usManufactured));
       if (input.maxGwp !== undefined) conditions.push(lte(materials.gwpValue, String(input.maxGwp)));
-      if (input.categorySearch) conditions.push(like(materials.category, `%${input.categorySearch}%`));
+      if (input.categorySearch) conditions.push(ilike(materials.category, `%${input.categorySearch}%`));
       if (input.certifications?.includes('EPD')) conditions.push(eq(materials.hasEpd, true));
       if (input.certifications?.includes('HPD')) conditions.push(eq(materials.hasHpd, true));
       if (input.certifications?.includes('FSC')) conditions.push(eq(materials.hasFsc, true));
