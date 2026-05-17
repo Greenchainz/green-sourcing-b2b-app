@@ -441,15 +441,14 @@ export const rfqRouter = router({
       return { success: true };
     }),
 
-  // ── Scheduler: auto-expire overdue RFQs ─────────────────────────────────
-  // Requires SCHEDULER_SECRET header to prevent unauthenticated invocation.
+  // ── Manual trigger: force-expire overdue RFQs (admin only) ─────────────
+  // Auto-expiry runs every 15 min via notification-scheduler.ts expireOverdueRfqs().
+  // This endpoint exists only for manual intervention — requires admin role.
   // rfq_status enum: draft | submitted | responded | awarded | closed
-  expire: publicProcedure
-    .input(z.object({ schedulerSecret: z.string() }))
-    .mutation(async ({ input }) => {
-      const expected = process.env.SCHEDULER_SECRET;
-      if (!expected || input.schedulerSecret !== expected) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid scheduler secret" });
+  expire: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin only" });
       }
 
       const result = await query(
@@ -459,7 +458,7 @@ export const rfqRouter = router({
 
       const count = result.rowCount ?? 0;
       if (count > 0) {
-        console.log(`[rfq.expire] Expired ${count} overdue RFQ(s)`);
+        console.log(`[rfq.expire] Manual trigger: expired ${count} overdue RFQ(s)`);
       }
 
       return { expired_count: count };
