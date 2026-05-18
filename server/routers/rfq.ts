@@ -5,7 +5,7 @@ import { query, queryOne, queryMany, withTransaction } from "../../lib/pg-pool";
 import { getDb } from "../db";
 import { auditLog, AuditAction } from "../services/audit-log";
 import { publishRfqEvent } from "../services/event-bus";
-import { rfqRequests, suppliers, suppliersLocation } from "../../drizzle/schema";
+import { rfqRequests, rfqDrafts, suppliers, suppliersLocation } from "../../drizzle/schema";
 import { eq, desc, ilike, or, not, inArray } from "drizzle-orm";
 import { getShippingClass, isWithinServiceArea, DEFAULT_RADIUS_MILES } from "../lib/shipping-classes";
 
@@ -848,4 +848,252 @@ export const rfqRouter = router({
       return { ...r, parsedSpecs };
     });
   }),
+
+  // ── HITL: Save AI-proposed RFQ as a draft for human review ───────────────
+  // Called immediately after the AI intake parses the user's text.
+  // Runs the swap engine (enrichment + supplier ranking) and persists the
+  // result as an rfq_draft row with status="draft".
+  // The architect then reviews and either approves (→ approveDraft) or edits.
+  saveDraft: protectedProcedure
+    .input(
+      z.object({
+        rawText: z.string().min(5, "Describe what you need (min 5 chars)"),
+        projectZip: z.string().regex(/^\d{5}$/).optional(),
+        // Allow the client to pass the already-parsed intent fields (from parse-text)
+        // so we don't have to re-parse. All are optional — engine fills gaps.
+        parsedIntent: z.object({
+          category: z.string().optional(),
+          description: z.string().optional(),
+          quantity: z.number().optional(),
+          unit: z.string().optional(),
+          certifications: z.array(z.string()).optional(),
+          maxGwp: z.number().optional(),
+          epdRequired: z.boolean().optional(),
+          projectName: z.string().optional(),
+          projectType: z.string().optional(),
+          projectCity: z.string().optional(),
+          projectState: z.string().optional(),
+          confidence: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
+          fieldsFound: z.array(z.string()).optional(),
+        }).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      const { runSwapEngine, intentFromParsed } = await import("../domain/swapEngine");
+      const { parseRfqText } = await import("../services/document-intelligence");
+
+      // Build the intent — use provided parsed fields or re-parse the raw text
+      let intent;
+      if (input.parsedIntent && (input.parsedIntent.fieldsFound?.length ?? 0) > 0) {
+        intent = {
+          rawText: input.rawText,
+          category: input.parsedIntent.category,
+          description: input.parsedIntent.description,
+          quantity: input.parsedIntent.quantity,
+          unit: input.parsedIntent.unit,
+          certifications: input.parsedIntent.certifications,
+          maxGwp: input.parsedIntent.maxGwp,
+          epdRequired: input.parsedIntent.epdRequired,
+          projectName: input.parsedIntent.projectName,
+          projectType: input.parsedIntent.projectType,
+          projectCity: input.parsedIntent.projectCity,
+          projectState: input.parsedIntent.projectState,
+          projectZip: input.projectZip,
+          confidence: input.parsedIntent.confidence ?? "LOW",
+          fieldsFound: input.parsedIntent.fieldsFound ?? [],
+        };
+      } else {
+        // Re-parse (fallback if client didn't pass a parsed result)
+        const parsed = await parseRfqText(input.rawText);
+        intent = intentFromParsed(parsed, input.rawText, input.projectZip);
+      }
+
+      // Run the swap engine — single source of supplier reasoning
+      const swapResult = await runSwapEngine(intent, {
+        userId: ctx.user.id,
+        role: ctx.user.role as "architect" | "admin" | "supplier",
+      });
+
+      // Persist as a draft
+      // rfqDrafts already imported at top of file
+      const [draft] = await db
+        .insert(rfqDrafts)
+        .values({
+          architectId: ctx.user.id,
+          rawInput: input.rawText,
+          aiOutput: swapResult as unknown as Record<string, unknown>,
+          humanEdits: null,
+          fieldDecisions: null,
+          status: "draft",
+        })
+        .returning({ id: rfqDrafts.id, status: rfqDrafts.status });
+
+      if (!draft) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to save draft" });
+      }
+
+      console.log(`[rfq.saveDraft] user=${ctx.user.id} draftId=${draft.id} suppliers=${swapResult.candidateSuppliers.length} agentAvailable=${swapResult.agentAvailable}`);
+
+      return { draftId: draft.id, swapResult };
+    }),
+
+  // ── HITL: Get a draft by ID (for the review screen) ──────────────────────
+  getDraft: protectedProcedure
+    .input(z.object({ draftId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // rfqDrafts already imported at top of file
+      const [draft] = await db
+        .select()
+        .from(rfqDrafts)
+        .where(eq(rfqDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      }
+      if (draft.architectId !== ctx.user.id && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+
+      return draft;
+    }),
+
+  // ── HITL: Approve a draft → create rfq_request rows ──────────────────────
+  // The human has reviewed the AI's proposal, optionally edited fields,
+  // and chosen which suppliers to contact. This finalises the draft and
+  // creates one rfq_request per selected supplier.
+  approveDraft: protectedProcedure
+    .input(
+      z.object({
+        draftId: z.number().int(),
+        // Final (possibly human-edited) RFQ fields
+        finalFields: z.object({
+          materialType: z.string().min(1),
+          quantity: z.number().positive(),
+          specs: z.string().optional(),
+          message: z.string().optional(),
+        }),
+        // Which suppliers the human selected from the shortlist
+        selectedSupplierIds: z.array(z.number().int()).min(1, "Select at least one supplier"),
+        // Per-field decisions: which AI inferences the human accepted vs changed
+        fieldDecisions: z.record(z.string(), z.enum(["accepted", "edited", "rejected"])).optional(),
+        // Reason if the human is overriding significant AI suggestions
+        humanNote: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // rfqDrafts already imported at top of file
+
+      // Load and validate the draft
+      const [draft] = await db
+        .select()
+        .from(rfqDrafts)
+        .where(eq(rfqDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      }
+      if (draft.architectId !== ctx.user.id && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+      if (draft.status !== "draft") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Draft is already ${draft.status}` });
+      }
+
+      const { enforceAndTrack } = await import("../usage-tracking-service");
+
+      // Create one rfq_request per selected supplier
+      const createdIds: number[] = [];
+      for (const supplierId of input.selectedSupplierIds) {
+        await enforceAndTrack(ctx.user.id, "rfq_submission");
+
+        const [inserted] = await db
+          .insert(rfqRequests)
+          .values({
+            architectId: ctx.user.id,
+            supplierId,
+            materialType: input.finalFields.materialType,
+            quantity: String(input.finalFields.quantity),
+            specs: input.finalFields.specs ?? null,
+            message: input.finalFields.message ?? null,
+            status: "pending",
+            draftId: input.draftId,
+          })
+          .returning({ id: rfqRequests.id });
+
+        if (inserted) {
+          createdIds.push(inserted.id);
+          void auditLog.record({
+            action: AuditAction.RFQ_CREATED,
+            actorUserId: ctx.user.id,
+            actorEmail: ctx.user.email ?? null,
+            actorRole: ctx.user.role,
+            resourceType: "rfq",
+            resourceId: inserted.id,
+            metadata: { supplierId, draftId: input.draftId, source: "hitl_approved" },
+            req: ctx.req,
+          }).catch((err) => console.error("[audit] approveDraft", err));
+
+          void publishRfqEvent({ type: "rfq.created", rfqId: inserted.id, supplierId, buyerId: ctx.user.id })
+            .catch((err) => console.error("[event-bus] approveDraft", err));
+        }
+      }
+
+      // Mark the draft approved and record what the human chose
+      await db
+        .update(rfqDrafts)
+        .set({
+          status: "approved",
+          humanEdits: input.finalFields as unknown as Record<string, unknown>,
+          fieldDecisions: (input.fieldDecisions ?? {}) as unknown as Record<string, unknown>,
+          approvedAt: new Date(),
+          approvedByUserId: ctx.user.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(rfqDrafts.id, input.draftId));
+
+      console.log(`[rfq.approveDraft] user=${ctx.user.id} draftId=${input.draftId} rfqsCreated=${createdIds.length} suppliers=[${input.selectedSupplierIds.join(",")}]`);
+
+      return { rfqIds: createdIds, draftId: input.draftId, suppliersContacted: createdIds.length };
+    }),
+
+  // ── HITL: Reject a draft ──────────────────────────────────────────────────
+  rejectDraft: protectedProcedure
+    .input(z.object({
+      draftId: z.number().int(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // rfqDrafts already imported at top of file
+      const [draft] = await db
+        .select({ id: rfqDrafts.id, architectId: rfqDrafts.architectId, status: rfqDrafts.status })
+        .from(rfqDrafts)
+        .where(eq(rfqDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      if (draft.architectId !== ctx.user.id && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+
+      await db
+        .update(rfqDrafts)
+        .set({ status: "rejected", rejectionReason: input.reason ?? null, updatedAt: new Date() })
+        .where(eq(rfqDrafts.id, input.draftId));
+
+      return { draftId: input.draftId, status: "rejected" };
+    }),
 });

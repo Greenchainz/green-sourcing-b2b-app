@@ -1460,9 +1460,54 @@ export const scrapedLeads = pgTable("scraped_leads", {
 export type ScrapedLead = typeof scrapedLeads.$inferSelect;
 export type InsertScrapedLead = typeof scrapedLeads.$inferInsert;
 
+// ─── RFQ Drafts (Human-in-the-Loop review) ───────────────────────────────────
+// AI proposes → human reviews → system executes.
+// A draft holds the AI's raw output and the human's final approved version.
+// No rfq_request row is created until the draft reaches "approved" status.
+
+export const rfqDraftStatusEnum = pgEnum("rfq_draft_status", [
+  "draft",      // AI produced this, awaiting human review
+  "approved",   // Human approved (possibly with edits) — rfq_requests created
+  "rejected",   // Human rejected — no rfq_requests created
+]);
+
+export const rfqDrafts = pgTable("rfq_drafts", {
+  id: serial("id").primaryKey(),
+  architectId: integer("architect_id").notNull(),
+
+  // Raw text the architect typed into the intake box
+  rawInput: text("raw_input").notNull(),
+
+  // Full SwapResult JSON from swapEngine (AI output, immutable after creation)
+  aiOutput: json("ai_output").notNull(),
+
+  // Human-edited version of the RFQ fields (starts as a copy of aiOutput, mutated on edit)
+  humanEdits: json("human_edits"),
+
+  // Which AI-inferred fields the human explicitly accepted vs. changed
+  // e.g. { "category": "accepted", "quantity": "edited", "certifications": "rejected" }
+  fieldDecisions: json("field_decisions"),
+
+  // Reason provided when a field or the whole draft is rejected
+  rejectionReason: text("rejection_reason"),
+
+  status: rfqDraftStatusEnum("status").default("draft").notNull(),
+
+  // Set when the human approves — links back to the created rfq_requests rows
+  approvedAt: timestamp("approved_at"),
+  approvedByUserId: integer("approved_by_user_id"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type RfqDraft = typeof rfqDrafts.$inferSelect;
+export type InsertRfqDraft = typeof rfqDrafts.$inferInsert;
+
 // ─── RFQ Requests ────────────────────────────────────────────────────────────
 // Simpler direct-assignment model: one architect → one supplier per request.
 // Complements the existing rfqs/rfq_bids wave-matching tables.
+// A request is only created after the architect approves a draft.
 
 export const rfqRequestStatusEnum = pgEnum("rfq_request_status", [
   "pending",
@@ -1481,6 +1526,8 @@ export const rfqRequests = pgTable("rfq_requests", {
   specs: text("specs"),
   message: text("message"),
   status: rfqRequestStatusEnum("status").default("pending").notNull(),
+  // FK to the draft that produced this request (for audit trail)
+  draftId: integer("draft_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
