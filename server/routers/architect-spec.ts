@@ -87,7 +87,7 @@ export const architectSpecRouter = router({
     .input(
       z.object({
         originalFilename: z.string().min(1),
-        blobUrl: z.string().url(),
+        blobUrl: z.string().optional(), // optional for quick-lookup (no blob upload needed)
         mimeType: z.string().optional(),
         fileBufferBase64: z.string().min(1),
         projectName: z.string().optional(),
@@ -115,7 +115,7 @@ export const architectSpecRouter = router({
         console.error("[architect-spec] uploadAndParse failed:", err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to analyze assembly. Please check your file format and try again.",
+          message: err instanceof Error ? err.message : "Failed to analyze assembly. Please try again.",
         });
       }
     }),

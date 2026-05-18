@@ -312,6 +312,8 @@ async function startServer() {
   app.get("/security", (_req, res) => res.redirect(301, "/security.html"));
   app.get("/legal/incident-response-plan", (_req, res) => res.redirect(301, "/legal/incident-response-plan.html"));
   app.get("/legal/infosec-policy", (_req, res) => res.redirect(301, "/legal/infosec-policy.html"));
+  app.get("/tools/carbon-compare", (_req, res) => res.redirect(301, "/carbon-compare"));
+  app.get("/tools/assemblies", (_req, res) => res.redirect(301, "/assemblies"));
   app.get("/api/marketplace/landing", handleLandingPage);
   app.post("/api/marketplace/webhook", handleWebhook);
   app.post("/api/microsoft/subscription-webhook", handleMicrosoftWebhook);
