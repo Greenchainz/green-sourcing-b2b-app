@@ -14,6 +14,7 @@ import { broadcastNotification } from "./webpubsub-manager";
 
 export interface CallSession {
   callId: string;
+  groupCallId: string; // ACS group call UUID — both parties join this room
   conversationId: number;
   callerId: number;
   receiverId: number;
@@ -131,9 +132,12 @@ export async function initiateCall(params: {
   }
 
   const callId = `call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  // RFC-4122 v4 UUID — both parties join the same ACS group call room
+  const groupCallId = crypto.randomUUID();
 
   const session: CallSession = {
     callId,
+    groupCallId,
     conversationId,
     callerId,
     receiverId,
@@ -154,19 +158,21 @@ export async function initiateCall(params: {
       callType,
       status: "missed", // Default to missed, will update if accepted
       startTime: session.startedAt,
+      groupCallId,
     });
   }
 
-  // Notify receiver via WebPubSub
+  // Notify receiver via WebPubSub — include groupCallId so both sides can join same room
   await broadcastNotification(receiverId, {
     type: "call_incoming",
     callId,
+    groupCallId,
     callerId,
     callType,
     conversationId,
   });
 
-  return { callId, session };
+  return { callId, groupCallId, session };
 }
 
 /**

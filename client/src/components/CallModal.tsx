@@ -1,8 +1,13 @@
-import { useState, useEffect } from "react";
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+
+// @azure/communication-react and its peer deps are lazy-imported so they
+// only load when a video call is actually initiated (~2 MB savings on initial bundle).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CallCompositeType = React.ComponentType<{ adapter: any; options?: Record<string, unknown> }>;
 
 interface CallModalProps {
   isOpen: boolean;
@@ -11,7 +16,10 @@ interface CallModalProps {
   callId: string;
   otherPartyName: string;
   isOutgoing: boolean;
+  currentUserName?: string;
 }
+
+type CallStatus = "connecting" | "ringing" | "active" | "ended";
 
 export function CallModal({
   isOpen,
@@ -20,162 +28,192 @@ export function CallModal({
   callId,
   otherPartyName,
   isOutgoing,
+  currentUserName = "You",
 }: CallModalProps) {
+  const [callStatus, setCallStatus] = useState<CallStatus>(isOutgoing ? "ringing" : "connecting");
   const [callDuration, setCallDuration] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoEnabled, setIsVideoEnabled] = useState(callType === "video");
-  const [callStatus, setCallStatus] = useState<"connecting" | "ringing" | "active" | "ended">(
-    isOutgoing ? "ringing" : "connecting"
-  );
+
+  // ACS adapter state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [acsAdapter, setAcsAdapter] = useState<any>(null);
+  const [acsLoading, setAcsLoading] = useState(false);
+  const [acsError, setAcsError] = useState<string | null>(null);
+  const [CallComposite, setCallComposite] = useState<CallCompositeType | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adapterRef = useRef<any>(null);
+
+  const utils = trpc.useUtils();
 
   const endCallMutation = trpc.messaging.endCall.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       setCallStatus("ended");
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      adapterRef.current?.dispose?.();
+      setTimeout(onClose, 2000);
     },
   });
 
   const acceptCallMutation = trpc.messaging.acceptCall.useMutation({
-    onSuccess: () => {
-      setCallStatus("active");
-    },
+    onSuccess: () => setCallStatus("active"),
   });
 
   const rejectCallMutation = trpc.messaging.rejectCall.useMutation({
-    onSuccess: () => {
-      onClose();
-    },
+    onSuccess: onClose,
   });
 
-  // Duration timer
+  // Duration timer (voice calls / active state)
   useEffect(() => {
     if (callStatus !== "active") return;
-
-    const interval = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
-    }, 1000);
-
+    const interval = setInterval(() => setCallDuration((d) => d + 1), 1000);
     return () => clearInterval(interval);
   }, [callStatus]);
 
-  // Auto-accept for outgoing calls (simulated)
+  // Outgoing: auto-transition ringing → active (real accept via WebPubSub in prod)
   useEffect(() => {
     if (isOutgoing && callStatus === "ringing") {
-      // Simulate call being accepted after 2 seconds
-      const timeout = setTimeout(() => {
-        setCallStatus("active");
-      }, 2000);
-      return () => clearTimeout(timeout);
+      const t = setTimeout(() => setCallStatus("active"), 3000);
+      return () => clearTimeout(t);
     }
   }, [isOutgoing, callStatus]);
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
+  // When call becomes active + it's video, fetch ACS token and boot the compositor
+  useEffect(() => {
+    if (callStatus !== "active" || callType !== "video" || acsAdapter) return;
 
-  const handleEndCall = () => {
-    endCallMutation.mutate({ callId });
-  };
+    setAcsLoading(true);
+    setAcsError(null);
 
-  const handleAcceptCall = () => {
-    acceptCallMutation.mutate({ callId });
-  };
+    void (async () => {
+      try {
+        const tokenData = await utils.messaging.getCallToken.fetch({ callId });
 
-  const handleRejectCall = () => {
-    rejectCallMutation.mutate({ callId });
-  };
+        const [
+          { createAzureCommunicationCallAdapter, CallComposite: Composite },
+          { AzureCommunicationTokenCredential },
+        ] = await Promise.all([
+          import("@azure/communication-react"),
+          import("@azure/communication-common"),
+        ]);
+
+        // Store component in state (wrapped in arrow so React doesn't call it as init fn)
+        setCallComposite(() => Composite as CallCompositeType);
+
+        const adapter = await createAzureCommunicationCallAdapter({
+          userId: { communicationUserId: tokenData.acsUserId },
+          displayName: currentUserName,
+          credential: new AzureCommunicationTokenCredential(tokenData.token),
+          locator: { groupId: tokenData.groupCallId },
+        });
+
+        adapterRef.current = adapter;
+        setAcsAdapter(adapter);
+      } catch (err) {
+        setAcsError(err instanceof Error ? err.message : "Failed to start video call");
+      } finally {
+        setAcsLoading(false);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callStatus, callType, callId]);
+
+  // Dispose adapter on unmount
+  useEffect(() => {
+    return () => {
+      adapterRef.current?.dispose?.();
+    };
+  }, []);
+
+  const formatDuration = (s: number) =>
+    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+
+  const isWideModal = callType === "video" && callStatus === "active";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={isWideModal ? "sm:max-w-4xl" : "sm:max-w-md"}>
         <DialogHeader>
           <DialogTitle>
-            {callType === "voice" ? "Voice Call" : "Video Call"}
+            {callType === "voice" ? "Voice Call" : "Video Call"} — {otherPartyName}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-6 py-6">
-          {/* Call Status */}
-          <div className="text-center">
-            <h3 className="text-xl font-semibold">{otherPartyName}</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {callStatus === "connecting" && "Connecting..."}
-              {callStatus === "ringing" && "Ringing..."}
-              {callStatus === "active" && formatDuration(callDuration)}
-              {callStatus === "ended" && "Call Ended"}
-            </p>
-          </div>
+        <div className="flex flex-col items-center gap-4 py-4">
+          {/* Status line */}
+          <p className="text-sm text-muted-foreground">
+            {callStatus === "connecting" && "Incoming call…"}
+            {callStatus === "ringing" && "Ringing…"}
+            {callStatus === "active" && callType === "voice" && formatDuration(callDuration)}
+            {callStatus === "ended" && "Call ended"}
+          </p>
 
-          {/* Video Feed Placeholder */}
-          {callType === "video" && isVideoEnabled && (
-            <div className="w-full aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
-              <Video className="h-12 w-12 text-gray-500" />
-              <p className="text-gray-400 ml-2">Video feed (placeholder)</p>
+          {/* ── Video: real ACS CallComposite ─────────────────────── */}
+          {callType === "video" && callStatus === "active" && (
+            <div className="w-full rounded-lg overflow-hidden" style={{ height: 480 }}>
+              {acsLoading && (
+                <div className="flex h-full items-center justify-center bg-gray-900">
+                  <Loader2 className="h-8 w-8 animate-spin text-white" />
+                  <span className="ml-3 text-white text-sm">Starting video…</span>
+                </div>
+              )}
+
+              {acsError && (
+                <div className="flex h-full items-center justify-center bg-gray-900">
+                  <p className="text-red-400 text-sm px-6 text-center">{acsError}</p>
+                </div>
+              )}
+
+              {!acsLoading && !acsError && acsAdapter && CallComposite && (
+                <CallComposite
+                  adapter={acsAdapter}
+                  options={{
+                    callControls: {
+                      // We render our own End Call button below for consistency
+                      endCallButton: false,
+                    },
+                  }}
+                />
+              )}
             </div>
           )}
 
-          {/* Call Controls */}
-          <div className="flex items-center gap-4">
-            {/* Mute Button */}
-            {callStatus === "active" && (
-              <Button
-                variant={isMuted ? "destructive" : "outline"}
-                size="icon"
-                className="h-12 w-12 rounded-full"
-                onClick={() => setIsMuted(!isMuted)}
-              >
-                {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-              </Button>
+          {/* ── Call controls ──────────────────────────────────────── */}
+          <div className="flex items-center gap-4 mt-2">
+            {/* Incoming: accept / reject */}
+            {!isOutgoing && callStatus === "connecting" && (
+              <>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="h-14 w-14 rounded-full bg-green-500 hover:bg-green-600"
+                  onClick={() => acceptCallMutation.mutate({ callId })}
+                  disabled={acceptCallMutation.isPending}
+                >
+                  <Phone className="h-6 w-6" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="h-14 w-14 rounded-full"
+                  onClick={() => rejectCallMutation.mutate({ callId })}
+                  disabled={rejectCallMutation.isPending}
+                >
+                  <PhoneOff className="h-6 w-6" />
+                </Button>
+              </>
             )}
 
-            {/* Video Toggle (for video calls) */}
-            {callType === "video" && callStatus === "active" && (
-              <Button
-                variant={!isVideoEnabled ? "destructive" : "outline"}
-                size="icon"
-                className="h-12 w-12 rounded-full"
-                onClick={() => setIsVideoEnabled(!isVideoEnabled)}
-              >
-                {isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-              </Button>
-            )}
-
-            {/* End Call / Reject Button */}
-            {(callStatus === "active" || callStatus === "ringing") && (
+            {/* Active or outgoing-ringing: end call */}
+            {(callStatus === "active" || (isOutgoing && callStatus === "ringing")) && (
               <Button
                 variant="destructive"
                 size="icon"
                 className="h-14 w-14 rounded-full"
-                onClick={isOutgoing || callStatus === "active" ? handleEndCall : handleRejectCall}
+                onClick={() => endCallMutation.mutate({ callId })}
+                disabled={endCallMutation.isPending}
               >
                 <PhoneOff className="h-6 w-6" />
               </Button>
             )}
-
-            {/* Accept Button (for incoming calls) */}
-            {!isOutgoing && callStatus === "connecting" && (
-              <Button
-                variant="default"
-                size="icon"
-                className="h-14 w-14 rounded-full bg-green-500 hover:bg-green-600"
-                onClick={handleAcceptCall}
-              >
-                <Phone className="h-6 w-6" />
-              </Button>
-            )}
           </div>
-
-          {/* Call Stats */}
-          {callStatus === "active" && (
-            <div className="text-xs text-muted-foreground">
-              {isMuted && "🔇 Muted"}
-              {!isVideoEnabled && callType === "video" && " • 📹 Video Off"}
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
