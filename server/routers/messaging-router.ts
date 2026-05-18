@@ -568,4 +568,34 @@ export const messagingRouter = router({
       const { endCall } = await import('../calling-service');
       return await endCall(input.callId, ctx.user.id);
     }),
+
+  /**
+   * Returns an ACS token + groupCallId so the client can join the real video call.
+   * Only the caller and receiver of the given callId may request a token.
+   */
+  getCallToken: protectedProcedure
+    .input(z.object({ callId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const { getCallSession } = await import('../calling-service');
+      const { getAcsTokenForUser, getAcsEndpoint } = await import('../acs-service');
+
+      const session = getCallSession(input.callId);
+      if (!session) throw new Error('Call session not found or already ended');
+
+      const isParticipant =
+        ctx.user.id === session.callerId || ctx.user.id === session.receiverId;
+      if (!isParticipant) throw new Error('Not a participant of this call');
+
+      const { token, acsUserId, expiresOn } = await getAcsTokenForUser(ctx.user.id);
+      const endpointUrl = getAcsEndpoint();
+
+      return {
+        token,
+        acsUserId,
+        expiresOn,
+        groupCallId: session.groupCallId,
+        endpointUrl,
+        callType: session.callType,
+      };
+    }),
 });

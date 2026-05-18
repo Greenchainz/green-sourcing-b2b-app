@@ -109,6 +109,7 @@ export const users = pgTable("users", {
   linkedinProfileUrl: varchar("linkedin_profile_url", { length: 500 }),
   linkedinVerifiedAt: timestamp("linkedin_verified_at"),
   avatarUrl: text("avatarUrl"),
+  acsUserId: text("acs_user_id"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -984,6 +985,7 @@ export const callHistory = pgTable("call_history", {
   startTime: timestamp("startTime").notNull(),
   endTime: timestamp("endTime"),
   durationSeconds: integer("durationSeconds").default(0),
+  groupCallId: text("group_call_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
