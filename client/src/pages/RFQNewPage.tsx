@@ -41,7 +41,51 @@ import {
   Loader2,
   AlertCircle,
   MessageSquare,
+  ShieldCheck,
+  Info,
+  TriangleAlert,
 } from "lucide-react";
+
+// ── HITL local types (mirrors server/domain/swapEngine.ts) ────────────────────
+
+interface InferredField {
+  value: unknown;
+  source: "explicit" | "inferred" | "missing";
+  note?: string;
+}
+
+interface SwapResultPreview {
+  status: "draft";
+  enrichedIntent: {
+    projectName: InferredField;
+    projectType: InferredField;
+    projectCity: InferredField;
+    projectState: InferredField;
+    category: InferredField;
+    description: InferredField;
+    quantity: InferredField;
+    unit: InferredField;
+    certifications: InferredField;
+    maxGwp: InferredField;
+    epdRequired: InferredField;
+    targetDeliveryDate: InferredField;
+  };
+  missingFields: string[];
+  warnings: string[];
+  candidateSuppliers: Array<{
+    supplierId: number;
+    companyName: string;
+    city: string | null;
+    state: string | null;
+    reason: string;
+    confidence: "high" | "medium" | "low";
+    isFallback: boolean;
+    isHighSustainability: boolean;
+    matchScore: number;
+  }>;
+  agentAvailable: boolean;
+  matchSource: "agent" | "fallback";
+}
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -343,6 +387,155 @@ const STEP_FIELDS: Record<number, (keyof FormData)[]> = {
   3: [],
 };
 
+// ── HITL Review Panel ──────────────────────────────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  category: "Material type",
+  description: "Description",
+  quantity: "Quantity",
+  unit: "Unit",
+  certifications: "Certifications",
+  maxGwp: "Max GWP",
+  epdRequired: "EPD required",
+  projectName: "Project name",
+  projectType: "Project type",
+  projectCity: "City",
+  projectState: "State",
+  targetDeliveryDate: "Target delivery",
+};
+
+function formatFieldValue(value: unknown): string {
+  if (value == null) return "—";
+  if (Array.isArray(value)) return (value as string[]).join(", ") || "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
+function SourceBadge({ source, note }: { source: "explicit" | "inferred" | "missing"; note?: string }) {
+  if (source === "explicit") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 px-1.5 py-0.5 rounded-full leading-none">
+        <CheckCircle className="w-2.5 h-2.5" /> From your text
+      </span>
+    );
+  }
+  if (source === "inferred") {
+    return (
+      <span title={note} className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 px-1.5 py-0.5 rounded-full leading-none cursor-help">
+        <Info className="w-2.5 h-2.5" /> AI-suggested
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-muted-foreground bg-muted/60 border border-border px-1.5 py-0.5 rounded-full leading-none">
+      Missing
+    </span>
+  );
+}
+
+function HitlReviewPanel({
+  swapResult,
+  onApprove,
+  onEdit,
+}: {
+  swapResult: SwapResultPreview;
+  onApprove: () => void;
+  onEdit: () => void;
+}) {
+  const fields = swapResult.enrichedIntent;
+  const fieldEntries = Object.entries(fields) as [keyof typeof fields, { value: unknown; source: "explicit" | "inferred" | "missing"; note?: string }][];
+  const visibleFields = fieldEntries.filter(([, f]) => f.source !== "missing" || f.value != null);
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start gap-3 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 px-4 py-3">
+        <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Review before we contact suppliers</p>
+          <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+            Verify the AI's analysis below. AI-suggested fields are highlighted — correct anything that's off before sending.
+          </p>
+        </div>
+      </div>
+
+      {/* Warnings */}
+      {swapResult.warnings.length > 0 && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 px-4 py-3 space-y-1.5">
+          {swapResult.warnings.map((w, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <TriangleAlert className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 dark:text-amber-300">{w}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Field table */}
+      <div className="rounded-lg border overflow-hidden">
+        <div className="divide-y">
+          {visibleFields.map(([key, f]) => (
+            <div key={key} className={`flex items-center justify-between gap-3 px-4 py-2.5 text-sm ${f.source === "inferred" ? "bg-amber-50/40 dark:bg-amber-900/5" : f.source === "missing" ? "bg-muted/30" : ""}`}>
+              <span className="text-muted-foreground w-28 shrink-0 text-xs">{FIELD_LABELS[key as string] ?? key}</span>
+              <span className="flex-1 font-medium truncate text-xs">{formatFieldValue(f.value)}</span>
+              <SourceBadge source={f.source} note={f.note} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Supplier preview */}
+      {swapResult.candidateSuppliers.length > 0 && (
+        <div className="rounded-lg border bg-muted/20 px-4 py-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            AI shortlisted {swapResult.candidateSuppliers.length} potential supplier{swapResult.candidateSuppliers.length !== 1 ? "s" : ""}
+          </p>
+          <div className="space-y-1">
+            {swapResult.candidateSuppliers.slice(0, 3).map((s) => (
+              <div key={s.supplierId} className="flex items-center gap-2 text-xs">
+                <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                <span className="font-medium">{s.companyName}</span>
+                {(s.city || s.state) && (
+                  <span className="text-muted-foreground">{[s.city, s.state].filter(Boolean).join(", ")}</span>
+                )}
+                {s.isHighSustainability && (
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full leading-none">
+                    High Sustainability
+                  </span>
+                )}
+              </div>
+            ))}
+            {swapResult.candidateSuppliers.length > 3 && (
+              <p className="text-xs text-muted-foreground pl-5">+{swapResult.candidateSuppliers.length - 3} more — you'll choose the final list next</p>
+            )}
+          </div>
+          {!swapResult.agentAvailable && (
+            <p className="text-[10px] text-muted-foreground mt-2 italic">Score-based ranking — AI agent unavailable</p>
+          )}
+        </div>
+      )}
+
+      {/* CTAs */}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          className="flex-1 bg-green-600 hover:bg-green-700"
+          onClick={onApprove}
+        >
+          <CheckCircle className="w-4 h-4 mr-2" />
+          Looks good — Find Suppliers
+        </Button>
+        <Button type="button" variant="outline" onClick={onEdit}>
+          Edit
+        </Button>
+      </div>
+      <p className="text-xs text-center text-muted-foreground">
+        Nothing is sent to suppliers until you confirm on the final screen.
+      </p>
+    </div>
+  );
+}
+
 // ── Step indicator ─────────────────────────────────────────────────────────────
 
 const STEPS = [
@@ -511,6 +704,61 @@ export default function RFQNewPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  // ── HITL mutations ───────────────────────────────────────────────────────────
+  const saveDraftMutation = trpc.rfqRequests.saveDraft.useMutation({
+    onSuccess: ({ draftId: id, swapResult: sr }) => {
+      setDraftId(id);
+      setSwapResult(sr as unknown as SwapResultPreview);
+      setHitlReviewing(true);
+      setHitlSaving(false);
+    },
+    onError: (err) => {
+      console.error("[saveDraft]", err);
+      // Graceful degradation — skip HITL review and go straight to supplier selection
+      setHitlSaving(false);
+      setStep(2);
+      toast.warning("Could not save AI analysis — proceeding to supplier selection.", { duration: 4000 });
+    },
+  });
+
+  const approveDraftMutation = trpc.rfqRequests.approveDraft.useMutation({
+    onSuccess: ({ rfqIds }) => {
+      const primaryId = rfqIds[0];
+      toast.success("RFQ sent — comparable bids incoming.", {
+        description: "Submittal PDF included. Preview it now or find it on your dashboard when bids arrive.",
+        action: { label: "Preview Submittal PDF", onClick: () => navigate("/tools/submittal") },
+      });
+      if (primaryId) navigate(`/rfqs/${primaryId}`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Called when user clicks "Find Suppliers" after AI has all required fields.
+  // Persists a DRAFT via the swap engine, then shows the HITL review panel.
+  const handleAiReviewStart = () => {
+    const v = getValues();
+    setHitlSaving(true);
+    saveDraftMutation.mutate({
+      rawText: aiInput || "AI-parsed RFQ",
+      projectZip: v.projectZip,
+      parsedIntent: {
+        category: v.category || undefined,
+        description: v.description || undefined,
+        quantity: v.quantity ? Number(v.quantity) : undefined,
+        unit: v.unit || undefined,
+        certifications: (v.certifications ?? []).length > 0 ? v.certifications : undefined,
+        maxGwp: v.maxGwp ? Number(v.maxGwp) : undefined,
+        epdRequired: v.epdRequired === "yes" ? true : v.epdRequired === "no" ? false : undefined,
+        projectName: v.projectName || undefined,
+        projectType: v.projectType || undefined,
+        projectCity: v.projectCity || undefined,
+        projectState: v.projectState || undefined,
+        confidence: "HIGH",
+        fieldsFound: parsedFieldsFound,
+      },
+    });
+  };
+
   const watchedCerts = watchedCertsForMatch ?? [];
 
   // ── Spec upload state ────────────────────────────────────────────────────────
@@ -529,6 +777,13 @@ export default function RFQNewPage() {
   const [clarifyQuestion, setClarifyQuestion] = useState<string | null>(null);
   const [clarifyInput, setClarifyInput] = useState("");
   const [allFieldsReady, setAllFieldsReady] = useState(false);
+  const [parsedFieldsFound, setParsedFieldsFound] = useState<string[]>([]);
+
+  // ── HITL state ───────────────────────────────────────────────────────────────
+  const [hitlReviewing, setHitlReviewing] = useState(false);
+  const [hitlSaving, setHitlSaving] = useState(false);
+  const [draftId, setDraftId] = useState<number | null>(null);
+  const [swapResult, setSwapResult] = useState<SwapResultPreview | null>(null);
 
   // Map LLM category labels → form MATERIAL_CATEGORIES values
   // ── AI intake helpers ────────────────────────────────────────────────────────
@@ -647,6 +902,10 @@ export default function RFQNewPage() {
       const fields = await res.json() as Record<string, unknown>;
       const filled = applyParsedFields(fields);
 
+      // Capture raw fieldsFound for later saveDraft call
+      const rawFieldsFound = Array.isArray(fields.fieldsFound) ? (fields.fieldsFound as string[]) : [];
+      setParsedFieldsFound(rawFieldsFound);
+
       // Auto-generate description if still empty
       const v = getValues();
       if (!v.description || (v.description as string).trim().length < 2) {
@@ -723,6 +982,11 @@ export default function RFQNewPage() {
     setAiSummary([]);
     setClarifyQuestion(null);
     setClarifyInput("");
+    setParsedFieldsFound([]);
+    setHitlReviewing(false);
+    setHitlSaving(false);
+    setDraftId(null);
+    setSwapResult(null);
   };
 
   // ── Spec PDF upload for the AI intake (Step 0) ───────────────────────────────
@@ -932,6 +1196,28 @@ export default function RFQNewPage() {
       toast.error("Select at least one supplier");
       return;
     }
+
+    // AI flow: use approveDraft (records HITL decision + creates RFQ requests)
+    if (draftId !== null) {
+      approveDraftMutation.mutate({
+        draftId,
+        finalFields: {
+          materialType: data.category,
+          quantity: Number(data.quantity),
+          specs: data.description || undefined,
+        },
+        selectedSupplierIds: selectedIds,
+        // Default all fields to "accepted" — user reviewed and clicked through
+        fieldDecisions: Object.fromEntries(
+          ["category", "description", "quantity", "unit", "certifications",
+           "maxGwp", "epdRequired", "projectName", "projectType", "projectCity", "projectState"]
+            .map((f) => [f, "accepted" as const])
+        ),
+      });
+      return;
+    }
+
+    // Manual path: createMulti
     createMulti.mutate({
       projectInfo: {
         projectName: data.projectName,
@@ -1104,7 +1390,7 @@ export default function RFQNewPage() {
                       </button>
                     </div>
                   </div>
-                ) : allFieldsReady ? (
+                ) : allFieldsReady && !hitlReviewing ? (
                   /* Phase 3 — All required fields present */
                   <div className="space-y-4">
                     <div className="flex items-start gap-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 px-4 py-3">
@@ -1126,15 +1412,33 @@ export default function RFQNewPage() {
                       <Button
                         type="button"
                         className="flex-1 bg-green-600 hover:bg-green-700"
-                        onClick={() => setStep(2)}
+                        onClick={handleAiReviewStart}
+                        disabled={hitlSaving}
                       >
-                        Find Suppliers <ArrowRight className="w-4 h-4 ml-1" />
+                        {hitlSaving ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing with AI…</>
+                        ) : (
+                          <><ShieldCheck className="w-4 h-4 mr-2" />Review &amp; Find Suppliers</>
+                        )}
                       </Button>
-                      <Button type="button" variant="outline" onClick={resetAi}>
+                      <Button type="button" variant="outline" onClick={resetAi} disabled={hitlSaving}>
                         Edit
                       </Button>
                     </div>
                   </div>
+
+                ) : allFieldsReady && hitlReviewing && swapResult ? (
+                  /* Phase 4 — HITL Review: human verifies AI analysis before suppliers see it */
+                  <HitlReviewPanel
+                    swapResult={swapResult}
+                    onApprove={() => {
+                      setHitlReviewing(false);
+                      setStep(2);
+                    }}
+                    onEdit={() => {
+                      setHitlReviewing(false);
+                    }}
+                  />
                 ) : (
                   /* Phase 2 — Conversational clarification */
                   <div className="space-y-4">
@@ -1769,10 +2073,10 @@ export default function RFQNewPage() {
             ) : (
               <Button
                 type="submit"
-                disabled={createMulti.isPending}
+                disabled={createMulti.isPending || approveDraftMutation.isPending}
                 className="flex-1 bg-green-600 hover:bg-green-700"
               >
-                {createMulti.isPending ? (
+                {(createMulti.isPending || approveDraftMutation.isPending) ? (
                   <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Sending…</>
                 ) : (
                   <><Send className="w-4 h-4 mr-2" />Send RFQ</>
