@@ -217,6 +217,59 @@ publicMaterialsRouter.get('/auth/verify', async (req: Request, res: Response) =>
   }
 });
 
+// ── GET /api/public/suppliers ─────────────────────────────────────────────────
+//
+// Returns verified suppliers for the Revit plugin and other external consumers.
+// Unauthenticated — returns only non-sensitive fields (no email, no user IDs).
+// Optional query params: ?category=concrete  ?region=California
+
+publicMaterialsRouter.get('/suppliers', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+
+    const { category, region } = req.query as { category?: string; region?: string };
+
+    const rows = await db
+      .select({
+        id:                  suppliers.id,
+        companyName:         suppliers.companyName,
+        website:             suppliers.website,
+        description:         suppliers.description,
+        materialCategories:  suppliers.materialCategories,
+        certifications:      suppliers.certifications,
+        city:                suppliers.city,
+        state:               suppliers.state,
+        country:             suppliers.country,
+        sustainabilityScore: suppliers.sustainabilityScore,
+        isPremium:           suppliers.isPremium,
+        logoUrl:             suppliers.logoUrl,
+      })
+      .from(suppliers)
+      .where(eq(suppliers.verified, true))
+      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore));
+
+    let filtered = rows;
+
+    if (category) {
+      filtered = filtered.filter(s =>
+        s.materialCategories?.some(c => c.toLowerCase().includes(category.toLowerCase()))
+      );
+    }
+
+    if (region) {
+      filtered = filtered.filter(s =>
+        [s.city, s.state, s.country].some(f => f?.toLowerCase().includes(region.toLowerCase()))
+      );
+    }
+
+    return res.json({ count: filtered.length, suppliers: filtered });
+  } catch (err) {
+    console.error('[public-api] suppliers error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── POST /api/public/rfq/add-item ────────────────────────────────────────────
 //
 // Creates an RFQ from the Forma extension. Requires a valid extension Bearer token.
