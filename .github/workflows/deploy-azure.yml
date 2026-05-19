@@ -127,7 +127,7 @@ jobs:
         run: az acr login --name ${{ env.ACR }}
 
       - name: Build & push frontend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.frontend
@@ -144,7 +144,7 @@ jobs:
             VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 
       - name: Build & push backend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.backend
