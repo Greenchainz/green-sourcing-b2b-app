@@ -166,6 +166,12 @@ export const supplierOnboardingRouter = router({
         shipsNationwide: suppliers.shipsNationwide,
         minOrderQuantity: suppliers.minOrderQuantity,
         maxOrderQuantity: suppliers.maxOrderQuantity,
+        otifPercentage: suppliers.otifPercentage,
+        avgLeadTimeDays: suppliers.avgLeadTimeDays,
+        leadTimeVarianceDays: suppliers.leadTimeVarianceDays,
+        supplierZScore: suppliers.supplierZScore,
+        inventoryVisibility: suppliers.inventoryVisibility,
+        vetLastUpdatedAt: suppliers.vetLastUpdatedAt,
         createdAt: suppliers.createdAt,
         updatedAt: suppliers.updatedAt,
       })
@@ -197,12 +203,4 @@ export const supplierOnboardingRouter = router({
           ...input,
           website: input.website || null,
           // decimal columns must be coerced to string for Drizzle
-          minOrderQuantity: input.minOrderQuantity != null ? String(input.minOrderQuantity) : null,
-          maxOrderQuantity: input.maxOrderQuantity != null ? String(input.maxOrderQuantity) : null,
-          updatedAt: new Date(),
-        })
-        .where(eq(suppliers.id, existing.id));
-
-      return { success: true };
-    }),
-});
+        

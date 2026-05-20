@@ -232,18 +232,23 @@ publicMaterialsRouter.get('/suppliers', async (req: Request, res: Response) => {
 
     const rows = await db
       .select({
-        id:                  suppliers.id,
-        companyName:         suppliers.companyName,
-        website:             suppliers.website,
-        description:         suppliers.description,
-        materialCategories:  suppliers.materialCategories,
-        certifications:      suppliers.certifications,
-        city:                suppliers.city,
-        state:               suppliers.state,
-        country:             suppliers.country,
-        sustainabilityScore: suppliers.sustainabilityScore,
-        isPremium:           suppliers.isPremium,
-        logoUrl:             suppliers.logoUrl,
+        id:                   suppliers.id,
+        companyName:          suppliers.companyName,
+        website:              suppliers.website,
+        description:          suppliers.description,
+        materialCategories:   suppliers.materialCategories,
+        certifications:       suppliers.certifications,
+        city:                 suppliers.city,
+        state:                suppliers.state,
+        country:              suppliers.country,
+        sustainabilityScore:  suppliers.sustainabilityScore,
+        isPremium:            suppliers.isPremium,
+        logoUrl:              suppliers.logoUrl,
+        otifPercentage:       suppliers.otifPercentage,
+        avgLeadTimeDays:      suppliers.avgLeadTimeDays,
+        leadTimeVarianceDays: suppliers.leadTimeVarianceDays,
+        supplierZScore:       suppliers.supplierZScore,
+        inventoryVisibility:  suppliers.inventoryVisibility,
       })
       .from(suppliers)
       .where(eq(suppliers.verified, true))
@@ -332,68 +337,4 @@ publicMaterialsRouter.post('/rfq/add-item', async (req: Request, res: Response) 
           eq(suppliers.verified, true),
           sql`EXISTS (
             SELECT 1
-            FROM jsonb_array_elements_text(${suppliers.materialCategories}::jsonb) AS category
-            WHERE category ILIKE ${material.category}
-          )`
-        )
-      )
-      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
-      .limit(1);
-
-    // Fall back to any verified supplier if no category match
-    const fallbackRows = matchedSupplier ? [] : await db
-      .select({ id: suppliers.id, companyName: suppliers.companyName, email: suppliers.email })
-      .from(suppliers)
-      .where(eq(suppliers.verified, true))
-      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
-      .limit(1);
-
-    const supplier = matchedSupplier ?? fallbackRows[0];
-    if (!supplier) {
-      return res.status(503).json({
-        error: 'No verified suppliers available for this material category. Try again later.',
-      });
-    }
-
-    // 4. Insert RFQ record
-    const [inserted] = await db
-      .insert(rfqRequests)
-      .values({
-        architectId:  architect.id,
-        supplierId:   supplier.id,
-        materialId:   material.id,
-        materialType: material.name,
-        quantity:     String(qty),
-        specs:        `${unitStr} — submitted via Autodesk Forma`,
-        message:      `Project: ${project}\nMaterial: ${material.name} (${material.category})\nQuantity: ${qty} ${unitStr}\nSource: Autodesk Forma Extension`,
-        status:       'pending',
-      })
-      .returning({ id: rfqRequests.id });
-
-    if (!inserted) return res.status(500).json({ error: 'Failed to create RFQ' });
-
-    // 5. Notify supplier (fire-and-forget)
-    void import('./email-service')
-      .then(({ sendRfqNotificationEmail }) =>
-        sendRfqNotificationEmail({
-          supplierEmail: supplier.email,
-          supplierName:  supplier.companyName,
-          projectName:   project,
-          materialCount: 1,
-          matchScore:    matchedSupplier ? 90 : 60,
-          rfqId:         inserted.id,
-        })
-      )
-      .catch((err: unknown) => console.error('[public-api] RFQ email failed (non-critical):', err));
-
-    return res.status(201).json({
-      rfqId:        inserted.id,
-      supplierName: supplier.companyName,
-      message:      `RFQ sent to ${supplier.companyName}. They'll respond within 48 hours.`,
-    });
-
-  } catch (err) {
-    console.error('[public-api] rfq/add-item error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
+            FROM jsonb_array_elements_text(${suppliers.m

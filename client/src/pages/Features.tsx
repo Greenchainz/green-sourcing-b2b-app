@@ -32,15 +32,16 @@ const features = [
   },
   {
     icon: FileText,
-    title: 'Automated RFQ System — BOM Drop to Instant Quotes',
+    title: 'RFQ Automation — Carbon Impact Before You Commit',
     slug: 'rfq-automation',
     description:
-      'Drop your Bill of Materials (BOM) and get compliance-ready supplier quotes without leaving Excel. No more manual RFQs, no more 3-day wait for callbacks. AI-powered validation ensures completeness before submission.',
+      'Every other carbon tool shows you the impact after design is locked. GreenChainz shows it at the procurement decision moment — before the RFQ goes out, while you still have a choice. Projected kgCO2e (A1–A3) is calculated live from EPD-backed supplier data and displayed on the review screen so architects can spec lower-carbon materials in the same workflow, not a separate audit.',
     highlights: [
-      'Upload BOM from Excel — instant RFQ generation',
-      'AI-powered completeness validation',
-      'Automatic CSI MasterFormat categorization',
-      'Multi-material RFQ support with compliance flags',
+      'Live carbon forecast (kgCO2e A1–A3) at RFQ review — before any PO is placed',
+      'EPD-backed GWP data from your verified supplier database, EC3 benchmark fallback',
+      'LEED MR credit context surfaced per material category, inline',
+      'AI parses spec PDFs → matches EPD-verified suppliers automatically',
+      'CSI Form 13.1A-compliant submittal generated with every approved RFQ',
     ],
   },
   {
@@ -98,15 +99,15 @@ const features = [
   },
   {
     icon: Shield,
-    title: 'Regulatory Compliance Tracking',
+    title: 'Liability-Proof Compliance Tracking',
     slug: 'compliance-tracking',
     description:
-      'Track compliance across every moving regulatory target: LEED v5, Buy Clean California Act, Local Law 97 (NYC), Title 24 (California), and more. Automatic alerts when regulations change or materials fall out of compliance.',
+      "Architects reject sustainable alternatives for one reason: liability. If the material fails code review or triggers a warranty claim, it's on them. GreenChainz removes that risk — ICC-ES reports, UL Listings, and third-party verified EPDs are confirmed before any submittal is generated. Every credential is defensive documentation, not just an environmental badge.",
     highlights: [
-      'LEED v5 mandatory embodied carbon (MRp2) tracking',
-      'Buy Clean Act GWP threshold monitoring',
-      'Local Law 97 building emissions compliance',
-      'Title 24 California energy code alignment',
+      'ICC-ES reports on file for bio-based and alternative materials — code review ready',
+      'UL Listings verified before submittal generation — not self-declared by manufacturers',
+      'EPDs backed by EPD International + EPD Hub — third-party verified, not manufacturer PDFs',
+      'LEED v5 MRp2, Buy Clean Act GWP, Local Law 97, Title 24 — all tracked automatically',
     ],
   },
   {
@@ -208,25 +209,4 @@ export default function Features() {
       <section className="py-16 bg-secondary/20">
         <div className="container">
           <div className="max-w-2xl mx-auto text-center space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Ready to weaponize your specs?</h2>
-            <p className="text-muted-foreground">
-              Free to start. No credit card required. Live in 5 minutes.
-            </p>
-            <div className="flex items-center justify-center gap-4 pt-2">
-              <Link href="/get-started">
-                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  Get Started Free
-                </Button>
-              </Link>
-              <Link href="/pricing">
-                <Button variant="outline" size="lg">View Pricing</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </div>
-  );
-}
+            <h2 className="text-2xl font-bold text-foreground">Ready to weaponize yo
