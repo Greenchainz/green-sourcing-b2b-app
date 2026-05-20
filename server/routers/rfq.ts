@@ -1067,6 +1067,28 @@ export const rfqRouter = router({
       return { rfqIds: createdIds, draftId: input.draftId, suppliersContacted: createdIds.length };
     }),
 
+  // ── Carbon forecast — called at RFQ review step before submission ─────────
+  // Returns projected embodied carbon (kgCO2e A1-A3) for the RFQ line items.
+  // Uses EPD-backed DB averages where available, falls back to EC3 industry benchmarks.
+  // No auth required — this is a calculation, not a data mutation.
+  carbonForecast: protectedProcedure
+    .input(
+      z.object({
+        items: z.array(
+          z.object({
+            category: z.string().min(1),
+            quantity: z.number().positive(),
+            unit: z.enum(["SF", "LF", "CY", "tons", "EA"]),
+            materialId: z.number().int().optional(),
+          })
+        ).min(1).max(10),
+      })
+    )
+    .query(async ({ input }) => {
+      const { forecastRfqCarbon } = await import("../services/carbon-forecast");
+      return forecastRfqCarbon(input.items);
+    }),
+
   // ── HITL: Reject a draft ──────────────────────────────────────────────────
   rejectDraft: protectedProcedure
     .input(z.object({
