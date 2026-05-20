@@ -1038,7 +1038,7 @@ export function SupplierProfileDashboard() {
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between py-3">
+                      <div className="flex items-center justify-between py-3 border-b">
                         <div className="flex items-center gap-2 text-gray-600">
                           <Building2 className="w-4 h-4" />
                           <span className="text-sm">Company</span>
@@ -1047,16 +1047,7 @@ export function SupplierProfileDashboard() {
                           {profile.data.companyName || "—"}
                         </span>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
 
-      <Footer />
-    </div>
-  );
-}
+                      {/* ── Reliability & vetting metrics ────────────────── */}
+                      <div className="pt-3 pb-1">
+                        <p classN

@@ -537,6 +537,15 @@ export const suppliers = pgTable("suppliers", {
   shipsNationwide: boolean("shipsNationwide").default(false),    // true = no distance limit
   minOrderQuantity: decimal("minOrderQuantity", { precision: 12, scale: 2 }), // per unit (category-appropriate)
   maxOrderQuantity: decimal("maxOrderQuantity", { precision: 12, scale: 2 }), // typical project max
+  // ── Supplier reliability & vetting metrics ───────────────────────────────
+  // Populated by the AI Audit Agent and updated quarterly.
+  // Displayed on supplier profiles as trust signals for architects.
+  otifPercentage: decimal("otif_percentage", { precision: 5, scale: 2 }),    // On-Time In-Full delivery rate (0–100)
+  avgLeadTimeDays: integer("avg_lead_time_days"),                              // Average days from PO to delivery
+  leadTimeVarianceDays: integer("lead_time_variance_days"),                   // ±days variance (lower = more reliable)
+  supplierZScore: decimal("supplier_z_score", { precision: 5, scale: 2 }),   // Altman Z-score proxy for financial health
+  inventoryVisibility: boolean("inventory_visibility").default(false),        // true = real-time stock visibility available
+  vetLastUpdatedAt: timestamp("vet_last_updated_at"),                         // when reliability data was last refreshed
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -1960,25 +1969,4 @@ export const auditLogs = pgTable("audit_logs", {
   actorEmail: varchar("actorEmail", { length: 320 }),
   actorRole: varchar("actorRole", { length: 32 }),
   // What they did
-  action: varchar("action", { length: 64 }).notNull(),
-  // What resource was affected
-  resourceType: varchar("resourceType", { length: 64 }),
-  resourceId: varchar("resourceId", { length: 128 }),
-  // Freeform structured context (no PII beyond what's already in actor fields)
-  metadata: json("metadata"),
-  // Result
-  outcome: varchar("outcome", { length: 16 }).default("success").notNull(), // "success" | "failure" | "blocked"
-  // Network context
-  ipAddress: varchar("ipAddress", { length: 64 }),
-  userAgent: text("userAgent"),
-  // Immutable timestamp
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (table) => ({
-  actorIdx: index("audit_logs_actor_idx").on(table.actorUserId),
-  actionIdx: index("audit_logs_action_idx").on(table.action),
-  createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
-  resourceIdx: index("audit_logs_resource_idx").on(table.resourceType, table.resourceId),
-}));
-
-export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertAuditLog = typeof auditLogs.$inferInsert;
+  action: varchar("action", { length: 64 }).notNu

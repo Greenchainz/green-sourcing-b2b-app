@@ -116,13 +116,14 @@ export default function Home() {
             </Link>
             <Link href="/rfq/new">
               <div className="group relative rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
+                <div className="absolute top-3 right-3 text-[10px] font-bold text-emerald-700 uppercase tracking-wide bg-emerald-100 rounded px-1.5 py-0.5">Carbon forecast</div>
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
                 <h3 className="font-semibold text-foreground mb-1">Submit RFQ</h3>
-                <p className="text-sm text-muted-foreground">Paste a spec or describe what you need. RFQs route automatically to verified suppliers who can actually deliver to your jobsite — by shipping class and distance.</p>
+                <p className="text-sm text-muted-foreground">See projected kgCO₂e before the RFQ goes out — while you still have a choice. Routes automatically to verified suppliers by material type and jobsite distance.</p>
                 <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Submit now →</p>
               </div>
             </Link>
@@ -162,6 +163,48 @@ export default function Home() {
               >
                 Microsoft Marketplace →
               </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Carbon-at-decision-moment callout */}
+      <section className="py-16 bg-emerald-950 text-white">
+        <div className="container max-w-4xl">
+          <div className="flex flex-col md:flex-row items-start gap-10">
+            <div className="flex-1">
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-3">
+                What nobody else does
+              </p>
+              <h2 className="text-2xl md:text-3xl font-bold text-white leading-snug mb-4">
+                Carbon impact at the procurement decision moment — not after design is locked.
+              </h2>
+              <p className="text-emerald-100/80 text-base leading-relaxed mb-6">
+                Procore, Gravity, and Autodesk's carbon tools show you embodied carbon after the model is signed off. By then the spec is set, the supplier is picked, and changing it costs you a change order.
+              </p>
+              <p className="text-emerald-100/80 text-base leading-relaxed">
+                GreenChainz shows projected kgCO₂e (A1–A3) on the RFQ review screen — before a single purchase order is placed, while the architect still has a choice. EPD-backed figures from your verified supplier database. LEED MR credit context inline. One place. One decision. Done.
+              </p>
+            </div>
+            <div className="flex-shrink-0 w-full md:w-72 rounded-xl border border-emerald-700 bg-emerald-900/60 p-5 space-y-3">
+              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">When you see the number</p>
+              <div className="space-y-2.5">
+                {[
+                  { tool: "Autodesk / Procore", when: "After design is locked", color: "text-red-400" },
+                  { tool: "Manual EPD audit", when: "Days after spec is sent", color: "text-amber-400" },
+                  { tool: "GreenChainz", when: "Before the RFQ goes out", color: "text-emerald-400" },
+                ].map((row) => (
+                  <div key={row.tool} className="flex items-center justify-between text-sm">
+                    <span className="text-white/70">{row.tool}</span>
+                    <span className={`font-semibold ${row.color}`}>{row.when}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-emerald-700">
+                <p className="text-xs text-emerald-300/70 leading-relaxed">
+                  Earlier = cheaper to fix. Every other tool gives you data. We give you a decision window.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -213,9 +256,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Submittal. Done.</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Submittal. Done. Liability covered.</h3>
               <p className="text-muted-foreground">
-                Architects don't buy materials — they hand paperwork to GCs. We own that handoff. CSI MasterFormat submittal with EPD, verification statements, and supplier data — generated automatically from the approved swap.
+                Architects' #1 fear with sustainable materials: will it fail code review? Every submittal includes UL Listings, ICC-ES reports, and third-party verified EPDs — so reviewers have nothing to reject and you have nothing to defend.
               </p>
             </Card>
           </div>
@@ -281,21 +324,25 @@ export default function Home() {
 
             <Card className="p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-2xl font-semibold text-foreground mb-4">Submittal Generator</h3>
-              <p className="text-muted-foreground mb-6">
-                Architects don't buy materials — they hand paperwork to GCs. GreenChainz owns that handoff. CSI MasterFormat submittal with EPD, verification statements, and supplier data — generated from the approved selection, not assembled manually.
+              <p className="text-muted-foreground mb-4">
+                Architects' #1 fear with sustainable materials: will it fail code review or trigger a warranty claim? GreenChainz generates submittals with the documentation that kills that question before it gets asked.
               </p>
-              <ul className="space-y-2 mb-6">
+              <ul className="space-y-2 mb-4">
                 <li className="flex items-center gap-2 text-sm">
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                  AI spec extraction — upload a CSI division, get a matched product list
+                  ICC-ES reports included for all bio-based and alternative materials
                 </li>
                 <li className="flex items-center gap-2 text-sm">
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                  Verification statements included — reviewers have nothing to reject
+                  UL Listings verified before submittal generation — not self-declared
                 </li>
                 <li className="flex items-center gap-2 text-sm">
                   <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                  PDF output, structured data for GC systems
+                  EPDs backed by EPD International + EPD Hub — not manufacturer PDFs
+                </li>
+                <li className="flex items-center gap-2 text-sm">
+                  <svg className="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                  CSI Form 13.1A format — reviewers have nothing to reject
                 </li>
               </ul>
               <Link href="/tools/submittal">
@@ -455,35 +502,4 @@ export default function Home() {
                   <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </summary>
                 <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  The SWAP Engine is GreenChainz's decision-grade matching system. Unlike tools that rank by sustainability score alone, SWAP evaluates every supplier across the full set of criteria that actually drive procurement decisions: spec and code compliance, documentation completeness (EPD depth, HPD, chain-of-custody, submittal readiness), lead time and regional availability, whole-life cost signals, labor productivity, supply chain integrity, and risk defensibility. Sustainability is a weighted dimension inside that scoring — not the objective function. The engine first filters out any supplier that fails a hard gate (wrong category, missing required certification, GWP over threshold, no submittal capability), then ranks the eligible pool. The result is a shortlist of 5–7 options your team can actually approve, source, price, deliver, and defend — with the more sustainable options surfaced where the procurement math supports it.
-                </p>
-              </details>
-
-              <details className="group border border-border rounded-lg p-4 bg-card">
-                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
-                  Does GreenChainz only care about sustainability, or does it understand real procurement constraints?
-                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </summary>
-                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  GreenChainz is built around how procurement actually works — not how sustainability advocates wish it did. The platform scores suppliers across eight dimensions that reflect the real concerns of every role in the building process: spec defensibility for architects and spec writers, whole-life cost and carbon budget compliance for quantity surveyors and asset managers, schedule and labor productivity for GCs and superintendents, total cost of ownership for facility managers, supply chain integrity for CPOs, and sector-specific requirements for healthcare, education, and affordable housing projects. Sustainability is embedded throughout — EPD availability, Buy Clean compliance, Scope 3 disclosure — but it operates as a tiebreaker and differentiator inside realistic procurement logic. The output is not "the greenest supplier." It is "the suppliers that can actually win this specification, ranked by sustainability where the tradeoffs are viable."
-                </p>
-              </details>
-
-              <details className="group border border-border rounded-lg p-4 bg-card">
-                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
-                  How is GreenChainz different from EC3 or One Click LCA?
-                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </summary>
-                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  EC3 and One Click LCA are carbon calculation tools — they tell you the carbon impact of a material but stop there. GreenChainz is the procurement execution layer that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, greenwashing detection, and direct supplier connection. EC3 is a GreenChainz data partner, and GreenChainz extends into Autodesk Forma and Revit so the full project team — spec writers, procurement, and contractors — can source verified green materials without leaving their existing workflows.
-                </p>
-              </details>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </div>
-  );
-}
+                  The SWAP Engine is GreenChainz's decision-grade matching system. Unlike tools that rank by sustainability score alone, SWAP evaluates every supplier across the full set of criteria that actually drive procurement decisions: spec and code compliance, documentation completeness (EPD depth, HPD, chain-of-custody, submittal readiness), lead time and regional availability, whole-life cost signals, labor productivity, supply chain integrity, and risk defensibility. Sustainability is a weighted dimension inside that scoring — not the objective function. The engine first filters out any supplier that fails a hard gate (wrong category, missing required certification, GWP over threshold, no submittal capability), then ranks the eligible pool. The result is a shortlist of 5–7 options your team can actually approve, source, price, deliver, 
