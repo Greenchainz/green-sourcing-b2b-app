@@ -11,6 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { CarbonForecastPanel } from "@/components/CarbonForecastPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LocationTypeahead, CompanyTypeahead } from "@/components/ui/typeahead-variants";
@@ -2037,6 +2038,22 @@ export default function RFQNewPage() {
                   </p>
                 </CardContent>
               </Card>
+            </div>
+          )}
+
+          {/* ── Carbon forecast on review step ──────────────────────── */}
+          {step === 3 && watchedCategory && (
+            <div className="mt-4">
+              <CarbonForecastPanel
+                enabled={step === 3}
+                items={[
+                  {
+                    category: watchedCategory,
+                    quantity: Number(watch("quantity")) || 1,
+                    unit: (watch("unit") || "SF") as "SF" | "LF" | "CY" | "tons" | "EA",
+                  },
+                ]}
+              />
             </div>
           )}
 
