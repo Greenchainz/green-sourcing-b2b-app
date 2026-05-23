@@ -36,7 +36,10 @@ const scoringWeightsSchema = z.object({
   leadTime:       z.number().min(0).max(1),
   documentation:  z.number().min(0).max(1),
   certifications: z.number().min(0).max(1),
-});
+}).refine(
+  (w) => Math.abs(Object.values(w).reduce((s, v) => s + v, 0) - 1) < 0.01,
+  { message: "Scoring weights must sum to 1" }
+);
 
 // ─── Helper: derive scored totals from a bid ─────────────────────────────────
 
@@ -112,11 +115,17 @@ export const supplierResponseRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      // Resolve supplierId from ctx — never from client input
+      // Resolve supplierId from ctx — never from client input.
+      // Also enforces that only approved (verified) suppliers can submit.
       const [supplierRow] = await db
         .select({ id: suppliers.id })
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(
+          and(
+            eq(suppliers.userId, ctx.user.id),
+            eq(suppliers.verificationStatus, "approved"),
+          )
+        )
         .limit(1);
 
       if (!supplierRow) {

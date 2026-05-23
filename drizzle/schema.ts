@@ -433,8 +433,8 @@ export const rfqs = pgTable("rfqs", {
   depositAmount: decimal("deposit_amount"),
   // ── Smart RFx Builder additions ─────────────────────────────────────────────
   requestType: varchar("request_type", { length: 40 }).default("rfq_quote"),
-  responseFieldSchema: json("response_field_schema"),
-  scoringWeights: json("scoring_weights"),
+  responseFieldSchema: json("response_field_schema").$type<Array<{ key: string; label: string; fieldType: string; required: boolean; category: string; helpText?: string }>>(),
+  scoringWeights: json("scoring_weights").$type<{ price: number; carbon: number; leadTime: number; documentation: number; certifications: number }>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

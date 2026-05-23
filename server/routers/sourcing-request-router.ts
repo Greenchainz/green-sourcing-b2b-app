@@ -45,7 +45,10 @@ const scoringWeightsSchema = z.object({
   leadTime:      z.number().min(0).max(1),
   documentation: z.number().min(0).max(1),
   certifications:z.number().min(0).max(1),
-});
+}).refine(
+  (w) => Math.abs(Object.values(w).reduce((s, v) => s + v, 0) - 1) < 0.01,
+  { message: "Scoring weights must sum to 1" }
+);
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 

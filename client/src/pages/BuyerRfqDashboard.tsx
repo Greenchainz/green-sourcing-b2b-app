@@ -294,13 +294,26 @@ const REQUEST_TYPE_LABELS: Record<string, string> = {
 
 function SmartRequestsTab() {
   const [, navigate] = useLocation();
-  const { data: requests, isLoading } = trpc.sourcingRequest.listMine.useQuery({ limit: 25 });
+  const { data: requests, isLoading, error } = trpc.sourcingRequest.listMine.useQuery({ limit: 25 });
 
   if (isLoading) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center space-y-3">
+          <AlertCircle className="w-8 h-8 text-destructive mx-auto" />
+          <p className="text-sm text-destructive font-medium">
+            {error.message ?? "Failed to load smart requests"}
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 

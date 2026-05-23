@@ -103,7 +103,9 @@ export const architectSpecRouter = router({
           architectId: ctx.user.id,
           fileBuffer: buffer,
           originalFilename: input.originalFilename,
-          blobUrl: input.blobUrl,
+          blobUrl:
+            input.blobUrl ??
+            `inline://architect-specs/${ctx.user.id}/${crypto.randomUUID()}-${input.originalFilename}`,
           mimeType: input.mimeType,
           projectName: input.projectName,
           projectLocation: input.projectLocation,

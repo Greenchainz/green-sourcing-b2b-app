@@ -100,10 +100,8 @@ export default function CreateSourcingRequestPage() {
     onError: (err) => toast.error(err.message ?? "Failed to create request"),
   });
 
-  const getDefaultFieldsQuery = trpc.sourcingRequest.getDefaultFields.useQuery(
-    { requestType: overriddenType ?? "rfq_quote" },
-    { enabled: false }
-  );
+  // Imperative fetcher avoids stale-closure issues with state-derived query inputs
+  const utils = trpc.useUtils();
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
@@ -126,9 +124,10 @@ export default function CreateSourcingRequestPage() {
 
   const handleChangeType = async (type: RequestType) => {
     setOverriddenType(type);
-    const result = await getDefaultFieldsQuery.refetch();
-    if (result.data) {
-      setFields(result.data as SupplierResponseField[]);
+    // Fetch with the new `type` directly — avoids stale closure on `overriddenType`
+    const data = await utils.sourcingRequest.getDefaultFields.fetch({ requestType: type });
+    if (data) {
+      setFields(data as SupplierResponseField[]);
       setRecommendation((prev) =>
         prev ? { ...prev, requestType: type, confidence: 1, reason: "Manually selected" } : null
       );
