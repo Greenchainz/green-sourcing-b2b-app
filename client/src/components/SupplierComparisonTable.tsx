@@ -8,11 +8,11 @@
  * Buyer can re-weight and trigger a rescore.
  */
 
-import { useState } from "react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+
 import {
   Table,
   TableBody,
@@ -36,7 +36,6 @@ import {
   Award,
   RefreshCw,
   Loader2,
-  TrendingDown,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
@@ -79,11 +78,6 @@ function scoreColor(score: number): string {
   return "text-red-500";
 }
 
-function scoreBg(score: number): string {
-  if (score >= 80) return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
-  if (score >= 60) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
-  return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-}
 
 export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
   const rescoreMutation = trpc.supplierResponse.scoreResponses.useMutation({

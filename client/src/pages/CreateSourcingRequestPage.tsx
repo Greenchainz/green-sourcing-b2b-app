@@ -69,7 +69,7 @@ const EXAMPLES = [
 
 export default function CreateSourcingRequestPage() {
   const [, navigate] = useLocation();
-  const { user } = useAuth();
+  useAuth();
 
   // Step state
   const [step, setStep] = useState<Step>("describe");

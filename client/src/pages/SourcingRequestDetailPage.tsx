@@ -52,7 +52,7 @@ export default function SourcingRequestDetailPage() {
   const [, navigate] = useLocation();
   const rfqId = parseInt(id ?? "0", 10);
 
-  const { data, isLoading, error, refetch } = trpc.sourcingRequest.getById.useQuery(
+  const { data, isLoading, error } = trpc.sourcingRequest.getById.useQuery(
     { rfqId },
     { enabled: rfqId > 0 }
   );
@@ -101,7 +101,7 @@ export default function SourcingRequestDetailPage() {
     );
   }
 
-  const { rfq, items, responseCount, bestScore, avgPrice } = data;
+  const { rfq, responseCount, bestScore, avgPrice } = data;
   const fieldSchema = (rfq.responseFieldSchema ?? []) as Array<{ label: string; required: boolean; category: string }>;
 
   return (

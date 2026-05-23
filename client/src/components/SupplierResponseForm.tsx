@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Send, AlertCircle, CheckCircle2, PackageCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
