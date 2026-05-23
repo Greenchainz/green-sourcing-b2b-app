@@ -1,4 +1,5 @@
 import { router, protectedProcedure } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, materials, suppliers } from "../drizzle/schema";
@@ -31,18 +32,29 @@ export const supplierRfqRouter = router({
   }),
 
   /**
-   * Get available RFQs for a supplier
+   * Get available RFQs for a supplier — only accessible by registered suppliers
    */
   getAvailableRfqs: protectedProcedure
     .input(
       z.object({
-        limit: z.number().default(20),
-        offset: z.number().default(0),
+        limit: z.number().int().min(1).max(100).default(20),
+        offset: z.number().int().min(0).default(0),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database connection failed");
+
+      // Only registered suppliers may browse open RFQs
+      const [supplier] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(eq(suppliers.userId, ctx.user.id))
+        .limit(1);
+
+      if (!supplier && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "A supplier account is required to view available RFQs" });
+      }
 
       const allRfqs = await db
         .select({

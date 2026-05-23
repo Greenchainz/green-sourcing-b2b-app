@@ -335,6 +335,11 @@ export default function SupplierOnboarding() {
   const certifications = watch("certifications") ?? [];
   const allValues = watch();
 
+  // Location is shown as required in the UI and drives RFQ routing.
+  // Block submission if city, state, AND zipCode are all blank.
+  const locationMissing =
+    !allValues.city?.trim() && !allValues.state?.trim() && !allValues.zipCode?.trim();
+
   const nextStep = async () => {
     const fields = STEP_FIELDS[step];
     if (fields.length > 0) {
@@ -1017,23 +1022,37 @@ export default function SupplierOnboarding() {
                 </Button>
               )}
               {step === STEPS.length - 1 && (
-                <Button
-                  type="submit"
-                  className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white"
-                  disabled={submitOnboarding.isPending}
-                >
-                  {submitOnboarding.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Submitting…
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Submit Application
-                    </>
+                <div className="flex-1 flex flex-col gap-2">
+                  {locationMissing && (
+                    <p className="text-sm text-amber-600 text-center">
+                      ⚠ Add your facility location (Step 5) before submitting — it's required for RFQ routing.{" "}
+                      <button
+                        type="button"
+                        className="underline font-medium"
+                        onClick={() => setStep(4)}
+                      >
+                        Go back
+                      </button>
+                    </p>
                   )}
-                </Button>
+                  <Button
+                    type="submit"
+                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white"
+                    disabled={submitOnboarding.isPending || locationMissing}
+                  >
+                    {submitOnboarding.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Submitting…
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Submit Application
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           </form>

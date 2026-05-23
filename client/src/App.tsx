@@ -56,6 +56,7 @@ const ArchitectSpecsUpload = lazy(() => import("./pages/ArchitectSpecsUpload"));
 const ArchitectSpecDetail = lazy(() => import("./pages/ArchitectSpecDetail"));
 const ArchitectSpecsList = lazy(() => import("./pages/ArchitectSpecsList"));
 const MaterialSearchPage = lazy(() => import("./pages/MaterialSearchPage"));
+const TCOCalculatorPage = lazy(() => import("./pages/TCOCalculatorPage"));
 const RFQNewPage = lazy(() => import("./pages/RFQNewPage"));
 const RFQDetailPage = lazy(() => import("./pages/rfq/RFQDetailPage"));
 const RFQListPage = lazy(() => import("./pages/rfq/RFQListPage"));
@@ -152,6 +153,7 @@ function Router() {
       <Route path={"/tools/submittal"} component={SubmittalGenerator} />
       <Route path={"/tools/assemblies"} component={Assemblies} />
       <Route path={"/tools/assemblies/:id"} component={Assemblies} />
+      <Route path={"/tools/tco"} component={TCOCalculatorPage} />
        <Route path={"/terms"} component={Terms} />
       <Route path={"/privacy"} component={Privacy} />
       <Route path={"/support"} component={Support} />

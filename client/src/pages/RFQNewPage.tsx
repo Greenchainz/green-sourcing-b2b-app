@@ -2086,4 +2086,26 @@ export default function RFQNewPage() {
             {step === 0 ? null : step < 3 ? (
               <Button type="button" className="flex-1 bg-green-600 hover:bg-green-700" onClick={goNext}>
                 Next <ArrowRight className="w-4 h-4 ml-1" />
-              <
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={createMulti.isPending || approveDraftMutation.isPending}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+              >
+                {(createMulti.isPending || approveDraftMutation.isPending) ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Sending…</>
+                ) : (
+                  <><Send className="w-4 h-4 mr-2" />Send RFQ</>
+                )}
+              </Button>
+            )}
+          </div>
+
+        </form>
+      </div>
+
+      <Footer />
+    </div>
+  );
+}

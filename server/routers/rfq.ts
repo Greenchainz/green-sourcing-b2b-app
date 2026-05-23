@@ -1097,4 +1097,25 @@ export const rfqRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPC
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // rfqDrafts already imported at top of file
+      const [draft] = await db
+        .select({ id: rfqDrafts.id, architectId: rfqDrafts.architectId, status: rfqDrafts.status })
+        .from(rfqDrafts)
+        .where(eq(rfqDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      if (draft.architectId !== ctx.user.id && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+
+      await db
+        .update(rfqDrafts)
+        .set({ status: "rejected", rejectionReason: input.reason ?? null, updatedAt: new Date() })
+        .where(eq(rfqDrafts.id, input.draftId));
+
+      return { draftId: input.draftId, status: "rejected" };
+    }),
+});

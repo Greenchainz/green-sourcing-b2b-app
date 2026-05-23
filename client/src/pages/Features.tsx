@@ -14,6 +14,8 @@ import {
   Zap,
   Bot,
   Scale,
+  Truck,
+  TrendingDown,
 } from 'lucide-react';
 
 const features = [
@@ -42,6 +44,20 @@ const features = [
       'LEED MR credit context surfaced per material category, inline',
       'AI parses spec PDFs → matches EPD-verified suppliers automatically',
       'CSI Form 13.1A-compliant submittal generated with every approved RFQ',
+    ],
+  },
+  {
+    icon: Truck,
+    title: 'Supplier Vetting — No Vendor Goes Dark Mid-Project',
+    slug: 'supplier-vetting',
+    description:
+      'A sustainable spec that falls apart at procurement is just a nice idea. Before any supplier receives an RFQ through GreenChainz, we screen them for delivery reliability, financial health, and inventory readiness — so you\'re not the one chasing them three days before a pour. OTIF rate, lead time variance, and Altman Z-score financial health are visible on every supplier card before you commit.',
+    highlights: [
+      '95%+ OTIF (On-Time In-Full) required — flagged below 85%, removed below 75%',
+      'Altman Z-score financial screening — no vendors on the edge of insolvency',
+      'Average lead time + variance shown upfront — set realistic schedules',
+      'Real-time inventory visibility for premium suppliers — know before you ask',
+      'All vetting data re-checked quarterly by the GreenChainz AI Audit Agent',
     ],
   },
   {
@@ -121,6 +137,20 @@ const features = [
       'Aggregate carbon and compliance roll-up',
       'Save and reuse assemblies across projects',
       'Export assembly specs with EPD documentation',
+    ],
+  },
+  {
+    icon: TrendingDown,
+    title: '25-Year TCO Calculator — OpEx to Property Value',
+    slug: 'tco-calculator',
+    description:
+      'Asset managers and ownership groups need one number: how does this material decision affect the building\'s value? The GreenChainz TCO calculator takes installation cost, maintenance cycles, replacement frequency, and energy savings and produces a 25-year lifecycle cost comparison with payback period. The NOI bridge converts annual OpEx savings directly into property valuation impact at any cap rate — the language ownership actually speaks.',
+    highlights: [
+      'Side-by-side 25-year cumulative cost chart — standard vs. sustainable',
+      'Payback period with year-by-year crossover visualization',
+      'Configurable cap rate → lower OpEx = higher property valuation',
+      'Maintenance cycle, replacement lifespan, and energy savings all modeled',
+      'One-click RFQ to the verified supplier from the results screen',
     ],
   },
   {
@@ -209,4 +239,25 @@ export default function Features() {
       <section className="py-16 bg-secondary/20">
         <div className="container">
           <div className="max-w-2xl mx-auto text-center space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Ready to weaponize yo
+            <h2 className="text-2xl font-bold text-foreground">Ready to weaponize your specs?</h2>
+            <p className="text-muted-foreground">
+              Free to start. No credit card required. Live in 5 minutes.
+            </p>
+            <div className="flex items-center justify-center gap-4 pt-2">
+              <Link href="/get-started">
+                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  Get Started Free
+                </Button>
+              </Link>
+              <Link href="/pricing">
+                <Button variant="outline" size="lg">View Pricing</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}
