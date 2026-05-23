@@ -66,7 +66,7 @@ function DeltaIcon({ pct }: { pct: number }) {
 }
 
 export function CarbonForecastPanel({ items, enabled = true }: CarbonForecastPanelProps) {
-  const { data, isLoading, isError } = trpc.rfq.carbonForecast.useQuery(
+  const { data, isLoading, isError } = trpc.rfqRequests.carbonForecast.useQuery(
     { items },
     {
       enabled: enabled && items.length > 0,
