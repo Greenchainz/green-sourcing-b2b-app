@@ -120,7 +120,7 @@ export async function initiateCall(params: {
   callerId: number;
   receiverId: number;
   callType: "voice" | "video";
-}): Promise<{ callId: string; session: CallSession }> {
+}): Promise<{ callId: string; groupCallId: string; session: CallSession }> {
   const { conversationId, callerId, receiverId, callType } = params;
 
   // Check caller's tier limits
