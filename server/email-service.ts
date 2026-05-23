@@ -956,3 +956,143 @@ Watch page: ${data.shareUrl}`;
     text,
   });
 }
+
+// ─── Smart RFx supplier invite email ─────────────────────────────────────────
+
+const REQUEST_TYPE_LABELS: Record<string, string> = {
+  rfi:                     "Request for Information (RFI)",
+  rfq_quote:               "Request for Quote (RFQ)",
+  rfp:                     "Request for Proposal (RFP)",
+  supplier_qualification:  "Supplier Qualification Request",
+  alternative_material:    "Alternative Material Request",
+  submittal_documentation: "Submittal Documentation Request",
+  bid_package:             "Bid Package",
+};
+
+/**
+ * Send a supplier invite email for a Smart RFx sourcing request.
+ * Uses Resend (primary) → Zeptomail SMTP (fallback).
+ */
+export async function sendRfxInviteEmail(data: {
+  supplierEmail:   string;
+  supplierName:    string;
+  projectName:     string;
+  projectLocation?: string;
+  requestType:     string;
+  description?:    string;
+  matchScore:      number;
+  rfqId:           number;
+}): Promise<boolean> {
+  const BASE_URL = process.env.FRONTEND_URL || "https://greenchainz.com";
+  const respondUrl = `${BASE_URL}/supplier/respond/${data.rfqId}`;
+  const typeLabel  = REQUEST_TYPE_LABELS[data.requestType] ?? data.requestType;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Project Match — GreenChainz</title>
+</head>
+<body style="margin:0;padding:0;background:#f8faf8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;line-height:1.6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8faf8;">
+    <tr>
+      <td align="center" style="padding:24px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+          <!-- Header -->
+          <tr>
+            <td style="background:#15803d;padding:24px 32px;text-align:center;">
+              <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">GreenChainz</h1>
+              <p style="margin:6px 0 0;font-size:14px;color:#bbf7d0;">New project match for your company</p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;">Hi <strong>${data.supplierName}</strong>,</p>
+              <p style="margin:0 0 24px;color:#374151;">
+                GreenChainz matched your company to a new sustainable material request.
+                Review the details below and submit your response directly on the platform.
+              </p>
+
+              <!-- Project card -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#15803d;text-transform:uppercase;letter-spacing:0.5px;">
+                      ${typeLabel}
+                    </p>
+                    <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#14532d;">
+                      ${data.projectName}
+                    </h2>
+                    ${data.projectLocation ? `<p style="margin:0 0 8px;font-size:14px;color:#374151;">📍 ${data.projectLocation}</p>` : ""}
+                    ${data.description ? `<p style="margin:0;font-size:14px;color:#4b5563;border-top:1px solid #bbf7d0;padding-top:12px;margin-top:12px;">${data.description.slice(0, 250)}${data.description.length > 250 ? "…" : ""}</p>` : ""}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Match score pill -->
+              <p style="margin:0 0 24px;font-size:13px;color:#6b7280;">
+                <span style="display:inline-block;background:#dcfce7;color:#15803d;border-radius:999px;padding:4px 12px;font-weight:600;font-size:13px;">
+                  ✓ ${data.matchScore}% match score
+                </span>
+                &nbsp;based on your material categories and service area
+              </p>
+
+              <!-- CTA -->
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:6px;background:#15803d;">
+                    <a href="${respondUrl}"
+                      style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:6px;">
+                      View Request &amp; Respond →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;">
+                Or copy this link: <a href="${respondUrl}" style="color:#15803d;">${respondUrl}</a>
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+              <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">
+                You received this because your company is registered on GreenChainz as a verified supplier.
+              </p>
+              <p style="margin:0;font-size:12px;color:#6b7280;">
+                <a href="${BASE_URL}/unsubscribe" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>
+                &nbsp;·&nbsp;
+                <a href="${BASE_URL}" style="color:#6b7280;text-decoration:underline;">greenchainz.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${data.supplierName},
+
+GreenChainz found a new ${typeLabel} that matches your company profile.
+
+Project: ${data.projectName}${data.projectLocation ? `\nLocation: ${data.projectLocation}` : ""}
+Match score: ${data.matchScore}%
+
+View and respond here:
+${respondUrl}
+
+GreenChainz — Sustainable Material Procurement`;
+
+  return sendEmail({
+    to:      data.supplierEmail,
+    subject: `New project match: ${data.projectName} — GreenChainz`,
+    html,
+    text,
+  });
+}

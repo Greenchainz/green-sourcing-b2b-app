@@ -5,19 +5,22 @@
  * and real supplier action.
  *
  * Procedures:
- *   recommend        — Pure classifier, no DB. Returns request type + fields.
- *   create           — Saves to rfqs with requestType + responseFieldSchema.
- *   getById          — Full request + aggregated response summary.
- *   listMine         — Buyer's own requests.
- *   updateFields     — Mutate responseFieldSchema / scoringWeights.
+ *   recommend             — Pure classifier, no DB. Returns request type + fields.
+ *   create                — Saves to rfqs; fires auto-match + notify (background).
+ *   getById               — Full request + aggregated response summary.
+ *   listMine              — Buyer's own requests.
+ *   updateFields          — Mutate responseFieldSchema / scoringWeights.
+ *   listInvitedSuppliers  — Suppliers auto-matched and notified for a request.
+ *   reinviteSuppliers     — Re-run auto-match for an existing request.
  */
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { rfqs, rfqItems, rfqBids } from "../../drizzle/schema";
+import { rfqs, rfqItems, rfqBids, rfqSupplierInvites, suppliers } from "../../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { notifyMatchedSuppliers } from "../services/rfx-invite-notifier";
 import {
   recommendRequestType,
   REQUEST_TYPES,
@@ -105,8 +108,8 @@ export const sourcingRequestRouter = router({
           notes:               input.notes,
           dueDate:             input.dueDate,
           requestType:         input.requestType,
-          responseFieldSchema: input.responseFieldSchema as object,
-          scoringWeights:      input.scoringWeights as object ?? null,
+          responseFieldSchema: input.responseFieldSchema,
+          scoringWeights:      input.scoringWeights ?? null,
           requiredCertifications: input.requiredCertifications ?? [],
           status:              "submitted",
         })
@@ -125,6 +128,17 @@ export const sourcingRequestRouter = router({
           }))
         );
       }
+
+      // Fire-and-forget auto-match + notify suppliers.
+      // Never blocks the buyer's response — errors are logged internally.
+      void notifyMatchedSuppliers({
+        rfqId:                  rfq.id,
+        requestType:            input.requestType,
+        projectName:            input.projectName,
+        projectLocation:        input.projectLocation,
+        description:            input.notes,
+        requiredCertifications: input.requiredCertifications,
+      }).catch((err) => console.error("[sourcing-request] Auto-notify failed:", err));
 
       return { rfqId: rfq.id };
     }),
@@ -217,8 +231,8 @@ export const sourcingRequestRouter = router({
       await db
         .update(rfqs)
         .set({
-          ...(input.responseFieldSchema && { responseFieldSchema: input.responseFieldSchema as object }),
-          ...(input.scoringWeights && { scoringWeights: input.scoringWeights as object }),
+          ...(input.responseFieldSchema && { responseFieldSchema: input.responseFieldSchema }),
+          ...(input.scoringWeights && { scoringWeights: input.scoringWeights }),
         })
         .where(eq(rfqs.id, input.rfqId));
 
@@ -263,5 +277,81 @@ export const sourcingRequestRouter = router({
       }
 
       return rfq;
+    }),
+
+  /**
+   * List suppliers auto-matched and notified for a buyer's sourcing request.
+   * Buyer-scoped: validates ownership before returning invite list.
+   */
+  listInvitedSuppliers: protectedProcedure
+    .input(z.object({ rfqId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Ownership check
+      const [rfq] = await db
+        .select({ id: rfqs.id })
+        .from(rfqs)
+        .where(and(eq(rfqs.id, input.rfqId), eq(rfqs.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!rfq) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found" });
+
+      const invites = await db
+        .select({
+          inviteId:    rfqSupplierInvites.id,
+          supplierId:  rfqSupplierInvites.supplierId,
+          matchScore:  rfqSupplierInvites.matchScore,
+          emailSent:   rfqSupplierInvites.emailSent,
+          inAppSent:   rfqSupplierInvites.inAppSent,
+          respondedAt: rfqSupplierInvites.respondedAt,
+          notifiedAt:  rfqSupplierInvites.notifiedAt,
+          companyName: suppliers.companyName,
+          tier:        suppliers.tier,
+          state:       suppliers.state,
+          email:       suppliers.email,
+        })
+        .from(rfqSupplierInvites)
+        .innerJoin(suppliers, eq(rfqSupplierInvites.supplierId, suppliers.id))
+        .where(eq(rfqSupplierInvites.rfqId, input.rfqId))
+        .orderBy(desc(rfqSupplierInvites.matchScore));
+
+      return invites;
+    }),
+
+  /**
+   * Re-run auto-match for an existing request (e.g. after updating the RFQ).
+   * Idempotent — suppliers already invited are skipped.
+   * Buyer-scoped.
+   */
+  reinviteSuppliers: protectedProcedure
+    .input(z.object({ rfqId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const [rfq] = await db
+        .select()
+        .from(rfqs)
+        .where(and(eq(rfqs.id, input.rfqId), eq(rfqs.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!rfq) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found" });
+
+      if (rfq.status === "closed" || rfq.status === "awarded") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot reinvite on a closed or awarded request" });
+      }
+
+      const result = await notifyMatchedSuppliers({
+        rfqId:                  input.rfqId,
+        requestType:            rfq.requestType ?? "rfq_quote",
+        projectName:            rfq.projectName,
+        projectLocation:        rfq.projectLocation ?? undefined,
+        description:            rfq.notes ?? undefined,
+        requiredCertifications: (rfq.requiredCertifications ?? []) as string[],
+      });
+
+      return result;
     }),
 });
