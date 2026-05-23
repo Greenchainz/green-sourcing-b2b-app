@@ -162,7 +162,7 @@ export async function parseArchitectSpec(opts: {
   architectId: number;
   fileBuffer: Buffer;
   originalFilename: string;
-  blobUrl: string;
+  blobUrl?: string;
   mimeType?: string;
   projectName?: string;
   projectLocation?: string;
@@ -175,7 +175,7 @@ export async function parseArchitectSpec(opts: {
   const insertSpec: InsertArchitectUploadedSpec = {
     architectId: opts.architectId,
     originalFilename: opts.originalFilename,
-    blobUrl: opts.blobUrl,
+    blobUrl: opts.blobUrl ?? "",
     mimeType: opts.mimeType ?? "application/pdf",
     fileSizeBytes: opts.fileBuffer.length,
     parseStatus: "processing",
