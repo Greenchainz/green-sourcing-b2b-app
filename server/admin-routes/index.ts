@@ -37,6 +37,20 @@ export function registerAdminRoutes(
     }
   });
 
+  // Seed decision_maker_personas with CCPS weights
+  app.post('/api/admin/seed-personas', adminRateLimit, async (req, res) => {
+    try {
+      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      if (!user) return;
+      const { seedPersonas } = await import('../seed-personas');
+      const result = await seedPersonas();
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error('[admin] Seed personas error:', err);
+      res.status(500).json(createErrorResponse('Seed failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+    }
+  });
+
   // Seed materials catalog from EC3
   app.post('/api/admin/seed-materials', adminRateLimit, async (req, res) => {
     try {

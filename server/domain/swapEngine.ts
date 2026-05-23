@@ -26,10 +26,18 @@
 import type { ParsedRfqTextFields } from "../services/document-intelligence";
 import { rankSuppliersWithAgent, type SupplierCandidate, type RfqRequirements } from "../services/rfq-agent";
 import { getDb } from "../db";
-import { suppliers, suppliersLocation } from "../../drizzle/schema";
-import { eq, or, ilike } from "drizzle-orm";
+import { suppliers, suppliersLocation, supplierMaterialEpds, supplierBuyerFitInputs } from "../../drizzle/schema";
+import { eq, or, ilike, inArray, and, gt, isNull, desc } from "drizzle-orm";
 import { getShippingClass, isWithinServiceArea, DEFAULT_RADIUS_MILES } from "../lib/shipping-classes";
 import { calculateDistance as haversineMiles } from "../location-service";
+import {
+  scoreCandidate,
+  loadPersonaWeights,
+  type EnrichedCandidate,
+  type ScoreBreakdown,
+  type ScoringIntent,
+  type PersonaKey,
+} from "./scoring/composite-score";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -120,17 +128,23 @@ export interface SwapResult {
 
   /** How the supplier pool was sourced */
   matchSource: "agent" | "fallback";
+
+  /** Per-candidate composite score breakdowns (9 metric families) — for UI display and audit */
+  scoreBreakdowns: ScoreBreakdown[];
+
+  /** Persona key used for composite scoring (for audit log + UI display) */
+  personaKey: PersonaKey;
 }
 
 // ── Supplier candidate fetch ───────────────────────────────────────────────────
 
-async function fetchCandidates(intent: ParsedRfqIntent): Promise<SupplierCandidate[]> {
+async function fetchCandidates(intent: ParsedRfqIntent): Promise<EnrichedCandidate[]> {
   const db = await getDb();
   if (!db) return [];
 
   const category = intent.category ?? "";
 
-  // Pull active suppliers whose categories or certifications could match
+  // ── Step 1: Core supplier + location query ────────────────────────────────
   const rows = await db
     .select({
       id: suppliers.id,
@@ -142,10 +156,16 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<SupplierCandida
       materialCategories: suppliers.materialCategories,
       certifications: suppliers.certifications,
       sustainabilityScore: suppliers.sustainabilityScore,
-      // Service area fields live on the suppliers table
       shipsNationwide: suppliers.shipsNationwide,
       statesServed: suppliers.statesServed,
       serviceRadiusMiles: suppliers.serviceRadiusMiles,
+      // Reliability vetting fields
+      otifPercentage: suppliers.otifPercentage,
+      avgLeadTimeDays: suppliers.avgLeadTimeDays,
+      leadTimeVarianceDays: suppliers.leadTimeVarianceDays,
+      supplierZScore: suppliers.supplierZScore,
+      inventoryVisibility: suppliers.inventoryVisibility,
+      vetLastUpdatedAt: suppliers.vetLastUpdatedAt,
     })
     .from(suppliers)
     .leftJoin(suppliersLocation, eq(suppliersLocation.supplierId, suppliers.id))
@@ -154,41 +174,61 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<SupplierCandida
 
   if (rows.length === 0) return [];
 
-  // Score candidates locally before sending to the agent
+  const supplierIds = rows.map((r) => r.id);
+
+  // ── Step 2: Best approved EPD per supplier (lowest GWP) ──────────────────
+  const now = new Date();
+  const epdRows = await db
+    .select({
+      supplierId: supplierMaterialEpds.supplierId,
+      gwpValue: supplierMaterialEpds.gwpValue,
+    })
+    .from(supplierMaterialEpds)
+    .where(
+      and(
+        eq(supplierMaterialEpds.status, "approved"),
+        inArray(supplierMaterialEpds.supplierId, supplierIds),
+        or(
+          isNull(supplierMaterialEpds.expiresAt),
+          gt(supplierMaterialEpds.expiresAt, now),
+        ),
+      ),
+    )
+    .orderBy(supplierMaterialEpds.gwpValue); // ASC — lowest GWP surfaces first
+
+  const epdMap = new Map<number, { gwpValue: number | null; hasEpd: boolean }>();
+  for (const epd of epdRows) {
+    if (!epdMap.has(epd.supplierId)) {
+      epdMap.set(epd.supplierId, {
+        gwpValue: epd.gwpValue != null ? parseFloat(epd.gwpValue) : null,
+        hasEpd: true,
+      });
+    }
+  }
+
+  // ── Step 3: Buyer-fit inputs per supplier (most recent row) ──────────────
+  const fitRows = await db
+    .select()
+    .from(supplierBuyerFitInputs)
+    .where(inArray(supplierBuyerFitInputs.supplierId, supplierIds))
+    .orderBy(desc(supplierBuyerFitInputs.computedAt));
+
+  const fitMap = new Map<number, typeof fitRows[0]>();
+  for (const row of fitRows) {
+    if (!fitMap.has(row.supplierId)) fitMap.set(row.supplierId, row);
+  }
+
+  // ── Step 4: Build EnrichedCandidate[] with distance + service-area check ─
   const shippingClass = getShippingClass(category);
 
-  const scored: SupplierCandidate[] = rows.map((s) => {
-    const cats: string[] = Array.isArray(s.materialCategories)
-      ? (s.materialCategories as string[])
-      : [];
-    const certs: string[] = Array.isArray(s.certifications)
-      ? (s.certifications as string[])
-      : [];
-    // DB returns decimal as string — coerce to number
+  const enriched: EnrichedCandidate[] = rows.map((s) => {
+    const cats: string[] = Array.isArray(s.materialCategories) ? (s.materialCategories as string[]) : [];
+    const certs: string[] = Array.isArray(s.certifications) ? (s.certifications as string[]) : [];
     const sustainScore = s.sustainabilityScore != null ? parseFloat(s.sustainabilityScore) : null;
+    const epd = epdMap.get(s.id) ?? { gwpValue: null, hasEpd: false };
+    const fit = fitMap.get(s.id);
 
-    let score = 0;
-
-    // Category match (highest weight)
-    const catLower = category.toLowerCase();
-    if (cats.some((c) => c.toLowerCase().includes(catLower) || catLower.includes(c.toLowerCase()))) {
-      score += 40;
-    }
-
-    // Certification overlap
-    const reqCerts = (intent.certifications ?? []).map((c) => c.toLowerCase());
-    const certOverlap = certs.filter((c) => reqCerts.includes(c.toLowerCase())).length;
-    score += Math.min(certOverlap * 10, 30);
-
-    // EPD required but supplier doesn't have it
-    if (intent.epdRequired && !certs.some((c) => c.toUpperCase() === "EPD")) {
-      score -= 10;
-    }
-
-    // Sustainability score contribution (stored 0–1 decimal, scale to 0–30)
-    score += Math.round((sustainScore ?? 0) * 30);
-
-    // Geographic proximity — compute real distance when both project and supplier are geocoded.
+    // Pre-compute haversine distance when project is geocoded
     let distanceMiles: number | null = null;
     if (
       intent.projectLatitude != null &&
@@ -215,23 +255,10 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<SupplierCandida
         serviceRadiusMiles: s.serviceRadiusMiles != null ? Number(s.serviceRadiusMiles) : null,
         shippingClass,
       });
-      // Graduated proximity bonus when real distance is known; fall back to state-match bonus.
-      if (isLocal) {
-        if (distanceMiles == null) {
-          score += 15;
-        } else if (distanceMiles <= 25) {
-          score += 25;
-        } else if (distanceMiles <= 100) {
-          score += 18;
-        } else if (distanceMiles <= 250) {
-          score += 12;
-        } else {
-          score += 6;
-        }
-      }
     }
 
     return {
+      // Core identity
       id: s.id,
       companyName: s.companyName ?? `Supplier #${s.id}`,
       city: s.city ?? null,
@@ -240,12 +267,30 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<SupplierCandida
       certifications: certs,
       sustainabilityScore: sustainScore,
       isLocalSupplier: isLocal,
-      matchScore: Math.max(0, Math.min(100, score)),
+      matchScore: 0, // replaced by composite score in runSwapEngine
+      // Carbon / EPD
+      gwpValue: epd.gwpValue,
+      hasEpd: epd.hasEpd,
+      // Reliability vetting
+      otifPercentage: s.otifPercentage != null ? parseFloat(s.otifPercentage) : null,
+      avgLeadTimeDays: s.avgLeadTimeDays,
+      leadTimeVarianceDays: s.leadTimeVarianceDays,
+      supplierZScore: s.supplierZScore != null ? parseFloat(s.supplierZScore) : null,
+      inventoryVisibility: s.inventoryVisibility ?? false,
+      vetLastUpdatedAt: s.vetLastUpdatedAt ?? null,
+      // Buyer-fit signals
+      buyerFitScore: fit?.buyerFitScore ?? null,
+      avgRfqResponseHours: fit?.avgRfqResponseHours ?? null,
+      priceIndexVsMedian: fit?.priceIndexVsMedian ?? null,
+      completedRfqCount: fit?.completedRfqCount ?? 0,
+      noShowCount: fit?.noShowCount ?? 0,
+      leadTimeDays: fit?.leadTimeDays ?? null,
+      // Distance
+      distanceMiles,
     };
   });
 
-  // Return top candidates sorted by score descending
-  return scored.sort((a, b) => b.matchScore - a.matchScore).slice(0, 20);
+  return enriched;
 }
 
 // ── Field annotation helpers ──────────────────────────────────────────────────
@@ -320,8 +365,8 @@ export async function runSwapEngine(
     targetDeliveryDate: { value: null, source: "missing" },
   };
 
-  // ── Step 3: Fetch and score candidate suppliers ───────────────────────────────
-  let candidates: SupplierCandidate[] = [];
+  // ── Step 3: Fetch enriched candidate pool ────────────────────────────────────
+  let candidates: EnrichedCandidate[] = [];
   try {
     candidates = await fetchCandidates(intent);
     trace.push(`Candidate pool: ${candidates.length} verified suppliers`);
@@ -329,6 +374,35 @@ export async function runSwapEngine(
     console.error("[swapEngine] Failed to fetch candidates:", err);
     warnings.push("Could not load supplier catalog — using empty shortlist");
     trace.push("Candidate fetch failed — proceeding with empty pool");
+  }
+
+  // ── Step 3b: Composite scoring ────────────────────────────────────────────────
+  // Map RequesterContext role → persona key. Extend when architect profiles carry firmType.
+  const personaKey =
+    _context.role === "architect" ? "architect" : "default";
+  const personaWeights = await loadPersonaWeights(personaKey);
+
+  const scoringIntent: ScoringIntent = {
+    maxGwp: intent.maxGwp,
+    epdRequired: intent.epdRequired,
+    certifications: intent.certifications,
+    projectState: intent.projectState,
+    projectClimateZone: intent.projectClimateZone,
+    category: intent.category,
+  };
+
+  let scoreBreakdowns: ScoreBreakdown[] = [];
+  if (candidates.length > 0) {
+    scoreBreakdowns = candidates.map((c) => scoreCandidate(c, scoringIntent, personaWeights));
+    const scoreMap = new Map(scoreBreakdowns.map((b) => [b.supplierId, b]));
+    // Stamp composite total back onto each candidate so agent ranking sees updated scores
+    for (const c of candidates) {
+      const bd = scoreMap.get(c.id);
+      if (bd) c.matchScore = bd.total;
+    }
+    // Re-sort by composite score descending before sending to agent
+    candidates.sort((a, b) => b.matchScore - a.matchScore);
+    trace.push(`Composite scoring complete (persona: ${personaKey}). Top score: ${candidates[0]?.matchScore ?? 0}/100`);
   }
 
   // ── Step 4: Run Foundry agent ranking ────────────────────────────────────────
@@ -401,6 +475,8 @@ export async function runSwapEngine(
     reasoningTrace: trace,
     agentAvailable,
     matchSource: agentResult.source,
+    scoreBreakdowns,
+    personaKey,
   };
 }
 

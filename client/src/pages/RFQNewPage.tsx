@@ -45,6 +45,8 @@ import {
   ShieldCheck,
   Info,
   TriangleAlert,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 // ── HITL local types (mirrors server/domain/swapEngine.ts) ────────────────────
@@ -53,6 +55,27 @@ interface InferredField {
   value: unknown;
   source: "explicit" | "inferred" | "missing";
   note?: string;
+}
+
+interface MetricScore {
+  raw: number;
+  weighted: number;
+  weight: number;
+  reason: string;
+}
+
+interface ScoreBreakdown {
+  supplierId: number;
+  total: number;
+  carbon: MetricScore;
+  compliance: MetricScore;
+  certification: MetricScore;
+  cost: MetricScore;
+  supplyChain: MetricScore;
+  reliability: MetricScore;
+  financial: MetricScore;
+  regional: MetricScore;
+  buyerFit: MetricScore;
 }
 
 interface SwapResultPreview {
@@ -84,8 +107,10 @@ interface SwapResultPreview {
     isHighSustainability: boolean;
     matchScore: number;
   }>;
+  scoreBreakdowns: ScoreBreakdown[];
   agentAvailable: boolean;
   matchSource: "agent" | "fallback";
+  personaKey: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -434,6 +459,105 @@ function SourceBadge({ source, note }: { source: "explicit" | "inferred" | "miss
   );
 }
 
+// ── Score breakdown UI ────────────────────────────────────────────────────────
+
+const METRIC_META: Record<
+  keyof Omit<ScoreBreakdown, "supplierId" | "total">,
+  { label: string; color: string }
+> = {
+  carbon:        { label: "Carbon",          color: "bg-emerald-500" },
+  compliance:    { label: "Code Compliance", color: "bg-blue-500"    },
+  certification: { label: "Certifications",  color: "bg-purple-500"  },
+  cost:          { label: "Cost",            color: "bg-amber-500"   },
+  supplyChain:   { label: "Supply Chain",    color: "bg-cyan-500"    },
+  reliability:   { label: "Reliability",     color: "bg-orange-500"  },
+  financial:     { label: "Financial Health",color: "bg-rose-500"    },
+  regional:      { label: "Regional Fit",    color: "bg-teal-500"    },
+  buyerFit:      { label: "Buyer Fit",       color: "bg-indigo-500"  },
+};
+
+const METRIC_KEYS = Object.keys(METRIC_META) as (keyof typeof METRIC_META)[];
+
+function ScoreBar({ score, color }: { score: number; color: string }) {
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full rounded-full ${color} transition-all`}
+          style={{ width: `${Math.max(2, score)}%` }}
+        />
+      </div>
+      <span className="text-[10px] tabular-nums text-muted-foreground w-6 text-right shrink-0">
+        {score}
+      </span>
+    </div>
+  );
+}
+
+function ScoreBreakdownExpander({
+  breakdown,
+}: {
+  breakdown: ScoreBreakdown;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Confidence colour based on total score
+  const totalColor =
+    breakdown.total >= 65
+      ? "text-green-700 dark:text-green-400"
+      : breakdown.total >= 40
+      ? "text-amber-700 dark:text-amber-400"
+      : "text-muted-foreground";
+
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+      >
+        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        {open ? "Hide" : "See"} score breakdown
+        <span className={`ml-1 font-semibold tabular-nums ${totalColor}`}>
+          {breakdown.total}/100
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Composite Score Breakdown
+          </p>
+          {METRIC_KEYS.map((key) => {
+            const m = breakdown[key];
+            const meta = METRIC_META[key];
+            return (
+              <div key={key} className="space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-foreground">{meta.label}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    ×{(m.weight * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <ScoreBar score={m.raw} color={meta.color} />
+                <p className="text-[9px] text-muted-foreground leading-tight">{m.reason}</p>
+              </div>
+            );
+          })}
+          <div className="pt-1.5 border-t border-border flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-foreground">Composite Total</span>
+            <span className={`text-[11px] font-bold tabular-nums ${totalColor}`}>
+              {breakdown.total}/100
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── HITL review panel ─────────────────────────────────────────────────────────
+
 function HitlReviewPanel({
   swapResult,
   onApprove,
@@ -485,33 +609,60 @@ function HitlReviewPanel({
         </div>
       </div>
 
-      {/* Supplier preview */}
+      {/* Supplier preview with score breakdowns */}
       {swapResult.candidateSuppliers.length > 0 && (
         <div className="rounded-lg border bg-muted/20 px-4 py-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            AI shortlisted {swapResult.candidateSuppliers.length} potential supplier{swapResult.candidateSuppliers.length !== 1 ? "s" : ""}
-          </p>
-          <div className="space-y-1">
-            {swapResult.candidateSuppliers.slice(0, 3).map((s) => (
-              <div key={s.supplierId} className="flex items-center gap-2 text-xs">
-                <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
-                <span className="font-medium">{s.companyName}</span>
-                {(s.city || s.state) && (
-                  <span className="text-muted-foreground">{[s.city, s.state].filter(Boolean).join(", ")}</span>
-                )}
-                {s.isHighSustainability && (
-                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full leading-none">
-                    High Sustainability
-                  </span>
-                )}
-              </div>
-            ))}
-            {swapResult.candidateSuppliers.length > 3 && (
-              <p className="text-xs text-muted-foreground pl-5">+{swapResult.candidateSuppliers.length - 3} more — you'll choose the final list next</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              AI shortlisted {swapResult.candidateSuppliers.length} potential supplier{swapResult.candidateSuppliers.length !== 1 ? "s" : ""}
+            </p>
+            {!swapResult.agentAvailable && (
+              <span className="text-[10px] text-muted-foreground italic">Score-based ranking</span>
             )}
           </div>
-          {!swapResult.agentAvailable && (
-            <p className="text-[10px] text-muted-foreground mt-2 italic">Score-based ranking — AI agent unavailable</p>
+
+          <div className="space-y-3">
+            {swapResult.candidateSuppliers.slice(0, 3).map((s, idx) => {
+              const breakdown = swapResult.scoreBreakdowns?.find(
+                (b) => b.supplierId === s.supplierId,
+              );
+              return (
+                <div key={s.supplierId} className="border-b last:border-0 pb-3 last:pb-0">
+                  <div className="flex items-start gap-2">
+                    <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-semibold">{s.companyName}</span>
+                        {idx === 0 && (
+                          <span className="text-[9px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full leading-none">
+                            #1 Match
+                          </span>
+                        )}
+                        {s.isHighSustainability && (
+                          <span className="text-[9px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full leading-none">
+                            High Sustainability
+                          </span>
+                        )}
+                      </div>
+                      {(s.city || s.state) && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {[s.city, s.state].filter(Boolean).join(", ")}
+                        </p>
+                      )}
+                      {breakdown && (
+                        <ScoreBreakdownExpander breakdown={breakdown} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {swapResult.candidateSuppliers.length > 3 && (
+            <p className="text-[10px] text-muted-foreground mt-2 pl-5">
+              +{swapResult.candidateSuppliers.length - 3} more suppliers — you'll choose the final list next
+            </p>
           )}
         </div>
       )}
