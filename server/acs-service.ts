@@ -61,7 +61,7 @@ export async function getAcsTokenForUser(userId: number): Promise<AcsTokenResult
   );
 
   return {
-    acsUserId,
+    acsUserId: acsUserId as string, // narrowed: either was non-null or was assigned in the if block above
     token: tokenResponse.token,
     expiresOn: tokenResponse.expiresOn,
   };
