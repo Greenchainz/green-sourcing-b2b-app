@@ -884,6 +884,7 @@ export const rfqRouter = router({
 
       const { runSwapEngine, intentFromParsed } = await import("../domain/swapEngine");
       const { parseRfqText } = await import("../services/document-intelligence");
+      const { geocodeProjectLocation } = await import("../services/geocode-project-location");
 
       // Build the intent — use provided parsed fields or re-parse the raw text
       let intent;
@@ -910,6 +911,17 @@ export const rfqRouter = router({
         const parsed = await parseRfqText(input.rawText);
         intent = intentFromParsed(parsed, input.rawText, input.projectZip);
       }
+
+      // Resolve project coordinates + climate zone so the swap engine can compute
+      // real distance-to-supplier rather than guessing by state.
+      const geocode = await geocodeProjectLocation({
+        city: intent.projectCity,
+        state: intent.projectState,
+        zip: intent.projectZip,
+      });
+      intent.projectLatitude = geocode.latitude ?? undefined;
+      intent.projectLongitude = geocode.longitude ?? undefined;
+      intent.projectClimateZone = geocode.climateZone ?? undefined;
 
       // Run the swap engine — single source of supplier reasoning
       const swapResult = await runSwapEngine(intent, {
