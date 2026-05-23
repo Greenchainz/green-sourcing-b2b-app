@@ -924,10 +924,12 @@ export const rfqRouter = router({
       intent.projectClimateZone = geocode.climateZone ?? undefined;
 
       // Run the swap engine — single source of supplier reasoning
+      const engineStart = Date.now();
       const swapResult = await runSwapEngine(intent, {
         userId: ctx.user.id,
         role: ctx.user.role as "architect" | "admin" | "supplier",
       });
+      const engineDurationMs = Date.now() - engineStart;
 
       // Persist as a draft
       // rfqDrafts already imported at top of file
@@ -947,7 +949,22 @@ export const rfqRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to save draft" });
       }
 
-      console.log(`[rfq.saveDraft] user=${ctx.user.id} draftId=${draft.id} suppliers=${swapResult.candidateSuppliers.length} agentAvailable=${swapResult.agentAvailable}`);
+      console.log(`[rfq.saveDraft] user=${ctx.user.id} draftId=${draft.id} suppliers=${swapResult.candidateSuppliers.length} agentAvailable=${swapResult.agentAvailable} duration=${engineDurationMs}ms`);
+
+      // Append-only audit log for every engine run (fire-and-forget)
+      const { logMatchRun } = await import("../services/match-run-logger");
+      void logMatchRun({
+        draftId:        draft.id,
+        userId:         ctx.user.id,
+        personaKey:     swapResult.personaKey,
+        agentAvailable: swapResult.agentAvailable,
+        matchSource:    swapResult.matchSource,
+        candidateCount: swapResult.scoreBreakdowns.length,
+        shortlistCount: swapResult.candidateSuppliers.length,
+        scoreBreakdowns: swapResult.scoreBreakdowns,
+        reasoningTrace:  swapResult.reasoningTrace,
+        durationMs:      engineDurationMs,
+      }).catch((err) => console.error("[rfq.saveDraft] match-run log failed:", err));
 
       return { draftId: draft.id, swapResult };
     }),
