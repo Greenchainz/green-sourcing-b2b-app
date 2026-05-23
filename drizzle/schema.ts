@@ -405,7 +405,9 @@ export const decisionMakerPersonas = pgTable("decision_maker_personas", {
   costWeight: decimal("costWeight", { precision: 4, scale: 2 }),
   supplyChainWeight: decimal("supplyChainWeight", { precision: 4, scale: 2 }),
   healthWeight: decimal("healthWeight", { precision: 4, scale: 2 }),
-});
+}, (table) => ({
+  personaKeyIdx: uniqueIndex("idx_decision_maker_personas_persona_key").on(table.personaKey),
+}));
 
 export type DecisionMakerPersona = typeof decisionMakerPersonas.$inferSelect;
 
@@ -1994,3 +1996,34 @@ export const auditLogs = pgTable("audit_logs", {
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+// ── RFQ Match Runs — append-only SWAP Engine audit ────────────────────────────
+// Every invocation of runSwapEngine writes one row. Never update or delete.
+// Used for: supplier scorecard analytics, per-run reasoning audit, CCPS trend analysis.
+
+export const rfqMatchRuns = pgTable(
+  "rfq_match_runs",
+  {
+    id: serial("id").primaryKey(),
+    draftId: integer("draft_id"),                                    // rfq_drafts.id (set post-save)
+    userId: integer("user_id").notNull(),
+    personaKey: varchar("persona_key", { length: 50 }).notNull(),    // e.g. "architect"
+    agentAvailable: boolean("agent_available").notNull(),
+    matchSource: varchar("match_source", { length: 32 }).notNull(),  // "agent" | "fallback"
+    candidateCount: integer("candidate_count").notNull().default(0),
+    shortlistCount: integer("shortlist_count").notNull().default(0),
+    /** Full ScoreBreakdown[] JSON for every candidate scored in this run */
+    scoreBreakdowns: json("score_breakdowns"),
+    reasoningTrace: json("reasoning_trace").$type<string[]>(),
+    durationMs: integer("duration_ms"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    draftIdx:     index("idx_match_runs_draft").on(table.draftId),
+    userIdx:      index("idx_match_runs_user").on(table.userId),
+    createdAtIdx: index("idx_match_runs_created_at").on(table.createdAt),
+  }),
+);
+
+export type RfqMatchRun = typeof rfqMatchRuns.$inferSelect;
+export type InsertRfqMatchRun = typeof rfqMatchRuns.$inferInsert;
