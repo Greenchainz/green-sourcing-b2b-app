@@ -29,6 +29,7 @@ import { getDb } from "../db";
 import { suppliers, suppliersLocation } from "../../drizzle/schema";
 import { eq, or, ilike } from "drizzle-orm";
 import { getShippingClass, isWithinServiceArea, DEFAULT_RADIUS_MILES } from "../lib/shipping-classes";
+import { calculateDistance as haversineMiles } from "../location-service";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,11 @@ export interface ParsedRfqIntent {
   projectCity?: string;
   projectState?: string;
   projectZip?: string;
+  /** Geocoded project coordinates (populated server-side, never from client). */
+  projectLatitude?: number;
+  projectLongitude?: number;
+  /** ASHRAE / IECC climate zone (e.g. "4A"). Best-effort, may be null. */
+  projectClimateZone?: string;
   confidence: "HIGH" | "MEDIUM" | "LOW";
   fieldsFound: string[];
 }
@@ -182,11 +188,26 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<SupplierCandida
     // Sustainability score contribution (stored 0–1 decimal, scale to 0–30)
     score += Math.round((sustainScore ?? 0) * 30);
 
-    // Geographic proximity — use simplified state-match if no coords
+    // Geographic proximity — compute real distance when both project and supplier are geocoded.
+    let distanceMiles: number | null = null;
+    if (
+      intent.projectLatitude != null &&
+      intent.projectLongitude != null &&
+      s.latitude != null &&
+      s.longitude != null
+    ) {
+      distanceMiles = haversineMiles(
+        intent.projectLatitude,
+        intent.projectLongitude,
+        Number(s.latitude),
+        Number(s.longitude),
+      );
+    }
+
     let isLocal = false;
     if (intent.projectState) {
       isLocal = isWithinServiceArea({
-        distanceMiles: null, // no coord-to-coord distance available here
+        distanceMiles,
         projectState: intent.projectState,
         supplierState: s.state ?? null,
         shipsNationwide: s.shipsNationwide ?? false,
@@ -194,7 +215,20 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<SupplierCandida
         serviceRadiusMiles: s.serviceRadiusMiles != null ? Number(s.serviceRadiusMiles) : null,
         shippingClass,
       });
-      if (isLocal) score += 15;
+      // Graduated proximity bonus when real distance is known; fall back to state-match bonus.
+      if (isLocal) {
+        if (distanceMiles == null) {
+          score += 15;
+        } else if (distanceMiles <= 25) {
+          score += 25;
+        } else if (distanceMiles <= 100) {
+          score += 18;
+        } else if (distanceMiles <= 250) {
+          score += 12;
+        } else {
+          score += 6;
+        }
+      }
     }
 
     return {
@@ -373,11 +407,19 @@ export async function runSwapEngine(
 /**
  * Converts a ParsedRfqTextFields (from document-intelligence) into a ParsedRfqIntent
  * suitable for the swap engine.
+ *
+ * `geocode` is optional; pass it after running `geocodeProjectLocation()` so
+ * `fetchCandidates` can compute real distance to each supplier.
  */
 export function intentFromParsed(
   parsed: ParsedRfqTextFields,
   rawText: string,
-  projectZip?: string
+  projectZip?: string,
+  geocode?: {
+    latitude?: number | null;
+    longitude?: number | null;
+    climateZone?: string | null;
+  },
 ): ParsedRfqIntent {
   return {
     rawText,
@@ -393,6 +435,9 @@ export function intentFromParsed(
     projectCity: parsed.projectCity ?? undefined,
     projectState: parsed.projectState ?? undefined,
     projectZip,
+    projectLatitude: geocode?.latitude ?? undefined,
+    projectLongitude: geocode?.longitude ?? undefined,
+    projectClimateZone: geocode?.climateZone ?? undefined,
     confidence: parsed.confidence,
     fieldsFound: parsed.fieldsFound,
   };
