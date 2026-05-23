@@ -91,6 +91,10 @@ const FounderVideoNew = lazy(() => import("./pages/FounderVideoNew"));
 const FounderVideoList = lazy(() => import("./pages/FounderVideoList"));
 const FounderVideoWatch = lazy(() => import("./pages/FounderVideoWatch"));
 const FounderVideoDashboard = lazy(() => import("./pages/FounderVideoDashboard"));
+const CreateSourcingRequestPage = lazy(() => import("./pages/CreateSourcingRequestPage"));
+const SourcingRequestDetailPage = lazy(() => import("./pages/SourcingRequestDetailPage"));
+const BuyerRequestsPage = lazy(() => import("./pages/BuyerRequestsPage"));
+const SupplierRespondPage = lazy(() => import("./pages/SupplierRespondPage"));
 
 function Router() {
   return (
@@ -162,6 +166,11 @@ function Router() {
       <Route path={"/features"} component={Features} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={ArchitectDashboard} />
+      {/* ── Smart RFx Builder ─────────────────────────────────────────── */}
+      <Route path="/buyer/new-request" component={CreateSourcingRequestPage} />
+      <Route path="/buyer/requests" component={BuyerRequestsPage} />
+      <Route path="/buyer/requests/:id" component={SourcingRequestDetailPage} />
+      <Route path="/supplier/respond/:rfqId" component={SupplierRespondPage} />
       <Route path={"404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -181,6 +190,7 @@ const PROTECTED_PREFIXES = [
   "/admin/",
   "/dashboard",
   "/rfqs",
+  "/buyer/",
 ];
 
 function AuthGuard() {
