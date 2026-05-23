@@ -38,6 +38,8 @@ import { manufacturerSearchRouter } from './manufacturer-search-router';
 import { founderVideoRouter } from './routers/founder-video';
 import { catalogRouter } from './routers/catalog-router';
 import { auditRouter } from './routers/audit-router';
+import { sourcingRequestRouter } from './routers/sourcing-request-router';
+import { supplierResponseRouter } from './routers/supplier-response-router';
 
 export const appRouter = router({
   system: systemRouter,
@@ -85,6 +87,8 @@ export const appRouter = router({
   founderVideo: founderVideoRouter,
   catalog: catalogRouter,
   auditLog: auditRouter,
+  sourcingRequest: sourcingRequestRouter,
+  supplierResponse: supplierResponseRouter,
 });
 
 export type AppRouter = typeof appRouter;

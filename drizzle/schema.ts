@@ -431,6 +431,10 @@ export const rfqs = pgTable("rfqs", {
   depositVerified: boolean("deposit_verified").default(false),
   depositPaymentIntentId: varchar("deposit_payment_intent_id", { length: 255 }),
   depositAmount: decimal("deposit_amount"),
+  // ── Smart RFx Builder additions ─────────────────────────────────────────────
+  requestType: varchar("request_type", { length: 40 }).default("rfq_quote"),
+  responseFieldSchema: json("response_field_schema"),
+  scoringWeights: json("scoring_weights"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -781,6 +785,12 @@ export const rfqBids = pgTable("rfq_bids", {
   leadDays: integer("leadDays"),
   notes: text("notes"),
   expiresAt: timestamp("expiresAt"),
+  // ── Smart RFx structured response additions ──────────────────────────────────
+  canFulfill: boolean("can_fulfill"),
+  fieldValues: json("field_values"),
+  gwpValue: decimal("gwp_value", { precision: 14, scale: 4 }),
+  epdReference: text("epd_reference"),
+  rfxTotalScore: decimal("rfx_total_score", { precision: 6, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
