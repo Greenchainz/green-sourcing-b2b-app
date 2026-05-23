@@ -358,7 +358,9 @@ export function registerOAuthProviderRoutes(app: Express) {
         email: userInfo.email,
         loginMethod: userInfo.provider,
         lastSignedIn: new Date(),
-        role: assignedRole,
+        // Only set role for brand-new users — never overwrite an existing user's role.
+        // upsertUser skips the role column when value is undefined (see server/db.ts:78).
+        role: isNewUser ? assignedRole : undefined,
       });
 
       // Send welcome email to new users (non-blocking)

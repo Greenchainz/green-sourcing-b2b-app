@@ -115,21 +115,22 @@ export const supplierRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database connection failed");
 
-      let query = db.select().from(suppliers);
+      const searchTerm = input.query?.trim() ? `%${input.query.trim()}%` : null;
 
-      // Filter by search query if provided
-      if (input.query && input.query.trim()) {
-        const searchTerm = `%${input.query.trim()}%`;
-        query = query.where(
-          or(
-            like(suppliers.companyName, searchTerm),
-            like(suppliers.city, searchTerm),
-            like(suppliers.state, searchTerm)
-          )
-        ) as any;
-      }
+      const results = await db
+        .select()
+        .from(suppliers)
+        .where(
+          searchTerm
+            ? or(
+                like(suppliers.companyName, searchTerm),
+                like(suppliers.city, searchTerm),
+                like(suppliers.state, searchTerm)
+              )
+            : undefined
+        )
+        .limit(20);
 
-      const results = await query.limit(20).execute();
       return results;
     }),
 

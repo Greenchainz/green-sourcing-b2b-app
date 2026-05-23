@@ -1050,4 +1050,66 @@ export function SupplierProfileDashboard() {
 
                       {/* ── Reliability & vetting metrics ────────────────── */}
                       <div className="pt-3 pb-1">
-                        <p classN
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Reliability Metrics</p>
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">OTIF Rate</span>
+                            {profile.data.otifPercentage != null ? (
+                              <Badge className={
+                                Number(profile.data.otifPercentage) >= 95
+                                  ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                  : Number(profile.data.otifPercentage) >= 85
+                                  ? "bg-amber-100 text-amber-800 border-amber-300"
+                                  : "bg-red-100 text-red-800 border-red-300"
+                              }>
+                                {Number(profile.data.otifPercentage).toFixed(0)}% on-time in-full
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-gray-400">Pending audit</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Avg Lead Time</span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {profile.data.avgLeadTimeDays != null
+                                ? `${profile.data.avgLeadTimeDays} days${profile.data.leadTimeVarianceDays != null ? ` ±${profile.data.leadTimeVarianceDays}` : ""}`
+                                : "—"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Financial Health</span>
+                            {profile.data.supplierZScore != null ? (
+                              <Badge className={
+                                Number(profile.data.supplierZScore) >= 2.9
+                                  ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                  : Number(profile.data.supplierZScore) >= 1.8
+                                  ? "bg-amber-100 text-amber-800 border-amber-300"
+                                  : "bg-red-100 text-red-800 border-red-300"
+                              }>
+                                {Number(profile.data.supplierZScore) >= 2.9 ? "Strong" : Number(profile.data.supplierZScore) >= 1.8 ? "Stable" : "Watch"} (Z: {Number(profile.data.supplierZScore).toFixed(1)})
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-gray-400">Pending audit</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Inventory Visibility</span>
+                            <Badge variant={profile.data.inventoryVisibility ? "default" : "secondary"}>
+                              {profile.data.inventoryVisibility ? "Real-time" : "Not connected"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}

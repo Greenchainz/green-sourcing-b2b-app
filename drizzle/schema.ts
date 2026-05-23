@@ -422,6 +422,9 @@ export const rfqs = pgTable("rfqs", {
   requiredCertifications: json("requiredCertifications").$type<string[]>(),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  geocodedAt: timestamp("geocoded_at"),
+  geocodeSource: varchar("geocode_source", { length: 32 }),
+  projectClimateZone: varchar("project_climate_zone", { length: 10 }),
   dueDate: timestamp("dueDate"),
   depositVerified: boolean("deposit_verified").default(false),
   depositPaymentIntentId: varchar("deposit_payment_intent_id", { length: 255 }),
@@ -1969,4 +1972,25 @@ export const auditLogs = pgTable("audit_logs", {
   actorEmail: varchar("actorEmail", { length: 320 }),
   actorRole: varchar("actorRole", { length: 32 }),
   // What they did
-  action: varchar("action", { length: 64 }).notNu
+  action: varchar("action", { length: 64 }).notNull(),
+  // What resource was affected
+  resourceType: varchar("resourceType", { length: 64 }),
+  resourceId: varchar("resourceId", { length: 128 }),
+  // Freeform structured context (no PII beyond what's already in actor fields)
+  metadata: json("metadata"),
+  // Result
+  outcome: varchar("outcome", { length: 16 }).default("success").notNull(), // "success" | "failure" | "blocked"
+  // Network context
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  userAgent: text("userAgent"),
+  // Immutable timestamp
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  actorIdx: index("audit_logs_actor_idx").on(table.actorUserId),
+  actionIdx: index("audit_logs_action_idx").on(table.action),
+  createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
+  resourceIdx: index("audit_logs_resource_idx").on(table.resourceType, table.resourceId),
+}));
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;

@@ -100,7 +100,7 @@ export default function Home() {
           <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-8">
             Where do you enter the flow?
           </p>
-          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
             <Link href="/tools/revit">
               <div className="group relative rounded-xl border border-primary/40 bg-primary/5 hover:border-primary hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
                 <div className="absolute top-3 right-3 text-[10px] font-bold text-primary uppercase tracking-wide bg-primary/10 rounded px-1.5 py-0.5">Primary</div>
@@ -137,6 +137,19 @@ export default function Home() {
                 <h3 className="font-semibold text-foreground mb-1">Generate Submittal Pack</h3>
                 <p className="text-sm text-muted-foreground">CSI-formatted submittal with EPD, verification statements, and supplier data — packaged for GC approval. This is the handoff nobody else owns.</p>
                 <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Generate now →</p>
+              </div>
+            </Link>
+            <Link href="/tools/tco">
+              <div className="group relative rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all duration-200 p-6 cursor-pointer text-left h-full">
+                <div className="absolute top-3 right-3 text-[10px] font-bold text-blue-700 uppercase tracking-wide bg-blue-100 rounded px-1.5 py-0.5">Asset managers</div>
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-foreground mb-1">25-Year TCO Calculator</h3>
+                <p className="text-sm text-muted-foreground">Compare lifecycle costs — maintenance cycles, replacements, energy savings. See payback period and what lower OpEx means for property valuation.</p>
+                <p className="text-xs text-primary font-medium mt-3 group-hover:underline">Calculate now →</p>
               </div>
             </Link>
           </div>
@@ -382,6 +395,63 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Supplier Vetting Section */}
+      <section className="py-16 bg-card border-y border-border">
+        <div className="container max-w-4xl">
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary mb-3">
+              Who we send your RFQ to
+            </p>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground leading-snug mb-3">
+              Every supplier is screened before they ever see your project.
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              A sustainable material spec falls apart when the vendor disappears mid-project. Before any supplier receives an RFQ on GreenChainz, we run them through the same checks your procurement team would — so you don't have to.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5">
+            <div className="rounded-xl border border-border bg-background p-5">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-foreground mb-1.5">95%+ OTIF Requirement</h3>
+              <p className="text-sm text-muted-foreground">
+                We track On-Time In-Full delivery rates. Suppliers below 85% are flagged. Below 75% are removed. You see the score on every supplier card — not after you've committed.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-5">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-foreground mb-1.5">Financial Health Check</h3>
+              <p className="text-sm text-muted-foreground">
+                Altman Z-score financial screening on every verified supplier. No vendors on the edge of insolvency taking your PO and going dark before delivery.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-5">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-foreground mb-1.5">Real-Time Inventory Visibility</h3>
+              <p className="text-sm text-muted-foreground">
+                Premium suppliers connect live inventory. You know before the RFQ whether they actually have stock — not three days after you sent it and the schedule slipped.
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">The bottom line:</span> a sustainable spec that doesn't survive procurement is just a nice idea. GreenChainz makes sure the supplier can actually deliver it — on time, with the right paperwork, at the right jobsite.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Section */}
       <section className="py-20 bg-primary/5">
         <div className="container">
@@ -502,4 +572,35 @@ export default function Home() {
                   <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </summary>
                 <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                  The SWAP Engine is GreenChainz's decision-grade matching system. Unlike tools that rank by sustainability score alone, SWAP evaluates every supplier across the full set of criteria that actually drive procurement decisions: spec and code compliance, documentation completeness (EPD depth, HPD, chain-of-custody, submittal readiness), lead time and regional availability, whole-life cost signals, labor productivity, supply chain integrity, and risk defensibility. Sustainability is a weighted dimension inside that scoring — not the objective function. The engine first filters out any supplier that fails a hard gate (wrong category, missing required certification, GWP over threshold, no submittal capability), then ranks the eligible pool. The result is a shortlist of 5–7 options your team can actually approve, source, price, deliver, 
+                  The SWAP Engine is GreenChainz's decision-grade matching system. Unlike tools that rank by sustainability score alone, SWAP evaluates every supplier across the full set of criteria that actually drive procurement decisions: spec and code compliance, documentation completeness (EPD depth, HPD, chain-of-custody, submittal readiness), lead time and regional availability, whole-life cost signals, labor productivity, supply chain integrity, and risk defensibility. Sustainability is a weighted dimension inside that scoring — not the objective function. The engine first filters out any supplier that fails a hard gate (wrong category, missing required certification, GWP over threshold, no submittal capability), then ranks the eligible pool. The result is a shortlist of 5–7 options your team can actually approve, source, price, deliver, and defend — with the more sustainable options surfaced where the procurement math supports it.
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  Does GreenChainz only care about sustainability, or does it understand real procurement constraints?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  GreenChainz is built around how procurement actually works — not how sustainability advocates wish it did. The platform scores suppliers across eight dimensions that reflect the real concerns of every role in the building process: spec defensibility for architects and spec writers, whole-life cost and carbon budget compliance for quantity surveyors and asset managers, schedule and labor productivity for GCs and superintendents, total cost of ownership for facility managers, supply chain integrity for CPOs, and sector-specific requirements for healthcare, education, and affordable housing projects. Sustainability is embedded throughout — EPD availability, Buy Clean compliance, Scope 3 disclosure — but it operates as a tiebreaker and differentiator inside realistic procurement logic. The output is not "the greenest supplier." It is "the suppliers that can actually win this specification, ranked by sustainability where the tradeoffs are viable."
+                </p>
+              </details>
+
+              <details className="group border border-border rounded-lg p-4 bg-card">
+                <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+                  How is GreenChainz different from EC3 or One Click LCA?
+                  <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                  EC3 and One Click LCA are carbon calculation tools — they tell you the carbon impact of a material but stop there. GreenChainz is the procurement execution layer that turns EPD data into live supplier quotes. Where EC3 ends at data lookup and One Click LCA ends at compliance reporting, GreenChainz continues into automated RFQ generation, greenwashing detection, and direct supplier connection. EC3 is a GreenChainz data partner, and GreenChainz extends into Autodesk Forma and Revit so the full project team — spec writers, procurement, and contractors — can source verified green materials without leaving their existing workflows.
+                </p>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}

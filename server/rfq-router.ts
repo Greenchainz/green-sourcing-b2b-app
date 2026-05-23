@@ -5,7 +5,7 @@ import { submitRfq, getRfqWithBids, submitBid, getOrCreateThread, sendMessage, g
 import type { RfqSubmissionInput } from "./rfq-service";
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers, users } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { enrichRfqWithAiAnalysis } from "./ai-agent-service";
 import { getMarketplaceAccessToken } from "./marketplace-auth";
 
@@ -82,21 +82,21 @@ export const rfqMarketplaceRouter = router({
   submit: protectedProcedure
     .input(
       z.object({
-        projectName: z.string().min(1),
-        projectLocation: z.string(),
-        projectType: z.string().optional(),
+        projectName: z.string().min(1).max(200),
+        projectLocation: z.string().max(300),
+        projectType: z.string().max(100).optional(),
         materials: z.array(
           z.object({
             materialId: z.number(),
             quantity: z.number().positive(),
-            quantityUnit: z.string(),
+            quantityUnit: z.string().max(50),
           })
-        ),
-        notes: z.string().optional(),
+        ).min(1).max(50),
+        notes: z.string().max(2000).optional(),
         dueDate: z.date().optional(),
-        buyerPersona: z.string().optional(),
+        buyerPersona: z.string().max(100).optional(),
         // Microsoft Commercial Marketplace order/subscription ID (optional pre-activation)
-        microsoftOrderId: z.string().optional(),
+        microsoftOrderId: z.string().max(200).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -134,26 +134,72 @@ export const rfqMarketplaceRouter = router({
     }),
 
   // Get RFQ with all bids and analytics
+  // Access: RFQ owner, any supplier with a bid on it, or admin
   getWithBids: protectedProcedure
     .input(z.object({ rfqId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+      if (!rfq) throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
+
+      const isOwner = rfq.userId === ctx.user.id;
+      const isAdmin = ctx.user.role === "admin";
+
+      if (!isOwner && !isAdmin) {
+        // Check if the authenticated user is a supplier with a bid on this RFQ
+        const [supplierRecord] = await db
+          .select({ id: suppliers.id })
+          .from(suppliers)
+          .where(eq(suppliers.userId, ctx.user.id))
+          .limit(1);
+
+        if (!supplierRecord) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+        }
+
+        const [existingBid] = await db
+          .select({ id: rfqBids.id })
+          .from(rfqBids)
+          .where(and(eq(rfqBids.rfqId, input.rfqId), eq(rfqBids.supplierId, supplierRecord.id)))
+          .limit(1);
+
+        if (!existingBid) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+        }
+      }
+
       return getRfqWithBids(input.rfqId);
     }),
 
-  // Submit a bid for an RFQ
+  // Submit a bid for an RFQ — supplierId is always derived from ctx.user, never trusted from input
   submitBid: protectedProcedure
     .input(
       z.object({
         rfqId: z.number(),
-        supplierId: z.number(),
         bidPrice: z.number().positive(),
-        leadDays: z.number().positive(),
-        notes: z.string().optional(),
+        leadDays: z.number().int().positive(),
+        notes: z.string().max(2000).optional(),
         expiresAt: z.date().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return submitBid(input.rfqId, input.supplierId, input.bidPrice, input.leadDays, input.notes);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // Only registered suppliers may bid
+      const [supplierRecord] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(eq(suppliers.userId, ctx.user.id))
+        .limit(1);
+
+      if (!supplierRecord) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "A supplier account is required to submit a bid" });
+      }
+
+      return submitBid(input.rfqId, supplierRecord.id, input.bidPrice, input.leadDays, input.notes);
     }),
 
   // Get or create messaging thread for RFQ
@@ -164,24 +210,17 @@ export const rfqMarketplaceRouter = router({
     }),
 
   // Send message in RFQ thread
+  // senderId is derived from ctx.user.id — never trust client-supplied sender identity
   sendMessage: protectedProcedure
     .input(
       z.object({
         threadId: z.number(),
-        message: z.string(),
-        senderId: z.number(),
+        message: z.string().min(1).max(4000),
         senderType: z.enum(["buyer", "supplier"]),
       })
     )
-    .mutation(async ({ input }) => {
-      return sendMessage(input.threadId, input.senderId, input.senderType, input.message);
-    }),
-
-  // Get messages from thread (legacy — use getThreadMessages for paginated access)
-  getMessages: protectedProcedure
-    .input(z.object({ threadId: z.number(), limit: z.number().optional() }))
-    .query(async ({ input }) => {
-      return getThreadMessages(input.threadId, input.limit);
+    .mutation(async ({ ctx, input }) => {
+      return sendMessage(input.threadId, ctx.user.id, input.senderType, input.message);
     }),
 
   // Get paginated thread messages (used by RealTimeChat)
@@ -214,77 +253,60 @@ export const rfqMarketplaceRouter = router({
       return getWebSocketAccessToken(ctx.user.id, input.threadId);
     }),
 
-  // Accept a bid and create order
+  // Accept a bid and create order — only the RFQ owner may accept
   acceptBid: protectedProcedure
     .input(z.object({ rfqId: z.number(), bidId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      const [rfq] = await db.select({ userId: rfqs.userId }).from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
+      if (!rfq) throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
+      if (rfq.userId !== ctx.user.id && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the RFQ owner can accept a bid" });
+      }
+
       return acceptBid(input.rfqId, input.bidId);
     }),
 
-  // Get RFQs for the authenticated user (alias for getBuyerRfqs — used by RfqDashboard)
+  // Get RFQs for the authenticated user
+  // input.userId is intentionally ignored — always scoped to ctx.user.id for multi-tenant safety.
+  // getBuyerRfqs was an identical duplicate and has been removed; callers should use this procedure.
   getUserRfqs: protectedProcedure
-    .input(z.object({ userId: z.number() }))
-    .query(async ({ ctx, input }) => {
+    .input(z.object({ userId: z.number().optional() }))
+    .query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) return [];
-
-      // Security: always use authenticated user's ID, ignore input.userId
-      const userId = ctx.user.id;
 
       const userRfqs = await db
         .select()
         .from(rfqs)
-        .where(eq(rfqs.userId, userId))
+        .where(eq(rfqs.userId, ctx.user.id))
         .orderBy(desc(rfqs.createdAt));
 
-      const enriched = await Promise.all(
-        userRfqs.map(async (rfq) => {
-          const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, rfq.id));
-          const bids = await db.select().from(rfqBids).where(eq(rfqBids.rfqId, rfq.id));
-          return {
-            ...rfq,
-            itemCount: items.length,
-            bidCount: bids.length,
-          };
-        })
-      );
+      if (userRfqs.length === 0) return [];
 
-      return enriched;
-    }),
+      // Batch fetch items + bids — 2 queries regardless of RFQ count (was N+1)
+      const rfqIds = userRfqs.map((r) => r.id);
+      const [allItems, allBids] = await Promise.all([
+        db.select({ rfqId: rfqItems.rfqId }).from(rfqItems).where(inArray(rfqItems.rfqId, rfqIds)),
+        db.select({ rfqId: rfqBids.rfqId }).from(rfqBids).where(inArray(rfqBids.rfqId, rfqIds)),
+      ]);
 
-  // Get RFQs for buyer with CCPS enrichment
-  getBuyerRfqs: protectedProcedure
-    .input(z.object({ buyerId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return [];
+      const itemCountMap = new Map<number, number>();
+      const bidCountMap = new Map<number, number>();
+      for (const item of allItems) itemCountMap.set(item.rfqId, (itemCountMap.get(item.rfqId) ?? 0) + 1);
+      for (const bid of allBids) bidCountMap.set(bid.rfqId, (bidCountMap.get(bid.rfqId) ?? 0) + 1);
 
-      // Security: always use authenticated user's ID
-      const userId = ctx.user.id;
-
-      const userRfqs = await db
-        .select()
-        .from(rfqs)
-        .where(eq(rfqs.userId, userId))
-        .orderBy(desc(rfqs.createdAt));
-
-      const enriched = await Promise.all(
-        userRfqs.map(async (rfq) => {
-          const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, rfq.id));
-          const bids = await db.select().from(rfqBids).where(eq(rfqBids.rfqId, rfq.id));
-
-          return {
-            ...rfq,
-            itemCount: items.length,
-            bidCount: bids.length,
-          };
-        })
-      );
-
-      return enriched;
+      return userRfqs.map((rfq) => ({
+        ...rfq,
+        itemCount: itemCountMap.get(rfq.id) ?? 0,
+        bidCount: bidCountMap.get(rfq.id) ?? 0,
+      }));
     }),
 
   // Get detailed RFQ with items, bids, and analytics
+  // Access: RFQ owner, any supplier with a bid on it, or admin
   getRfqDetails: protectedProcedure
     .input(z.object({ rfqId: z.number() }))
     .query(async ({ ctx, input }) => {
@@ -293,6 +315,31 @@ export const rfqMarketplaceRouter = router({
 
       const rfq = await db.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
       if (!rfq.length) return null;
+
+      const isOwner = rfq[0].userId === ctx.user.id;
+      const isAdmin = ctx.user.role === "admin";
+
+      if (!isOwner && !isAdmin) {
+        const [supplierRecord] = await db
+          .select({ id: suppliers.id })
+          .from(suppliers)
+          .where(eq(suppliers.userId, ctx.user.id))
+          .limit(1);
+
+        if (!supplierRecord) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+        }
+
+        const [existingBid] = await db
+          .select({ id: rfqBids.id })
+          .from(rfqBids)
+          .where(and(eq(rfqBids.rfqId, input.rfqId), eq(rfqBids.supplierId, supplierRecord.id)))
+          .limit(1);
+
+        if (!existingBid) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+        }
+      }
 
       const items = await db.select().from(rfqItems).where(eq(rfqItems.rfqId, input.rfqId));
 
@@ -334,8 +381,8 @@ export const rfqMarketplaceRouter = router({
   analyzeWithAi: protectedProcedure
     .input(
       z.object({
-        projectLocation: z.string(),
-        materials: z.array(z.string()),
+        projectLocation: z.string().max(300),
+        materials: z.array(z.string().max(100)).min(1).max(20),
       })
     )
     .mutation(async ({ input }) => {
