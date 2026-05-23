@@ -59,7 +59,6 @@ export default function RfqDetail() {
     try {
       await submitBidMutation.mutateAsync({
         rfqId: rfqId || 0,
-        supplierId: supplierData.id,
         bidPrice: parseFloat(bidPrice),
         leadDays: parseInt(leadDays),
         notes: bidNotes || undefined,
