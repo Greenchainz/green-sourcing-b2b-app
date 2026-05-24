@@ -178,8 +178,9 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore, shadowCarbonPr
     onError: (err) => toast.error(err.message ?? "Rescore failed"),
   });
 
-  const topBid = bids[0];
   const canFulfillBids = bids.filter((b) => b.canFulfill !== false);
+  // Winner is the top qualifying bid — skip any "can't fulfill" responses
+  const topBid = canFulfillBids[0] ?? bids[0];
 
   // Compute average GWP across all bids that have data — used for delta chips
   const gwpValues = bids
@@ -221,7 +222,7 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore, shadowCarbonPr
                 </p>
                 {/* Decision rationale */}
                 <p className="text-xs text-green-700/80 dark:text-green-400/80 mt-1 leading-relaxed">
-                  {generateWinnerNarrative(topBid, bids, shadowCarbonPrice)}
+                  {generateWinnerNarrative(topBid, canFulfillBids, shadowCarbonPrice)}
                 </p>
               </div>
               <div className="text-right shrink-0">
