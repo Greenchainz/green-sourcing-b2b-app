@@ -40,6 +40,7 @@ import { catalogRouter } from './routers/catalog-router';
 import { auditRouter } from './routers/audit-router';
 import { sourcingRequestRouter } from './routers/sourcing-request-router';
 import { supplierResponseRouter } from './routers/supplier-response-router';
+import { supplierSustainabilityRouter } from './routers/supplier-sustainability-router';
 
 export const appRouter = router({
   system: systemRouter,
@@ -89,6 +90,7 @@ export const appRouter = router({
   auditLog: auditRouter,
   sourcingRequest: sourcingRequestRouter,
   supplierResponse: supplierResponseRouter,
+  supplierSustainability: supplierSustainabilityRouter,
 });
 
 export type AppRouter = typeof appRouter;
