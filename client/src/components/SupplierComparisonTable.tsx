@@ -41,14 +41,18 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { DataQualityBadge } from "@/components/DataQualityBadge";
 
 interface ScoreBreakdown {
   total: number;
   priceScore: number;
   carbonScore: number;
+  carbonScoreRaw?: number;
   leadTimeScore: number;
   documentationScore: number;
   certificationScore: number;
+  dataQualityLevel?: string | null;
+  qualityMultiplier?: number | null;
 }
 
 interface BidRow {
@@ -61,6 +65,7 @@ interface BidRow {
   gwpValue: string | null;
   epdReference: string | null;
   rfxTotalScore: string | null;
+  dataQualityLevel: string | null;
   scoreBreakdown: ScoreBreakdown;
   createdAt: Date;
 }
@@ -228,15 +233,29 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
                         )}
                       </TableCell>
 
-                      {/* GWP */}
+                      {/* GWP + data quality badge */}
                       <TableCell className="text-right">
                         {bid.gwpValue ? (
-                          <span className="font-mono text-sm text-green-700 dark:text-green-400">
-                            {parseFloat(bid.gwpValue).toFixed(1)}
-                            <span className="text-xs text-muted-foreground ml-0.5">kg</span>
-                          </span>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="font-mono text-sm text-green-700 dark:text-green-400">
+                              {parseFloat(bid.gwpValue).toFixed(1)}
+                              <span className="text-xs text-muted-foreground ml-0.5">kg</span>
+                            </span>
+                            <DataQualityBadge
+                              level={bid.dataQualityLevel ?? bid.scoreBreakdown.dataQualityLevel}
+                              size="sm"
+                              showTooltip
+                            />
+                          </div>
                         ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="text-muted-foreground text-xs">—</span>
+                            <DataQualityBadge
+                              level={bid.dataQualityLevel ?? bid.scoreBreakdown.dataQualityLevel}
+                              size="sm"
+                              showTooltip
+                            />
+                          </div>
                         )}
                       </TableCell>
 
@@ -289,10 +308,23 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
                             <TooltipContent className="space-y-1 p-3">
                               <p className="text-xs font-semibold mb-1">Score breakdown</p>
                               <ScoreLine label="Price" score={bd.priceScore} />
-                              <ScoreLine label="Carbon" score={bd.carbonScore} />
+                              <ScoreLine
+                                label={`Carbon${bd.qualityMultiplier != null && bd.qualityMultiplier < 1 ? ` (×${bd.qualityMultiplier})` : ""}`}
+                                score={bd.carbonScore}
+                                rawScore={bd.carbonScoreRaw}
+                              />
                               <ScoreLine label="Lead time" score={bd.leadTimeScore} />
                               <ScoreLine label="Documentation" score={bd.documentationScore} />
                               <ScoreLine label="Certifications" score={bd.certificationScore} />
+                              {bd.dataQualityLevel && (
+                                <div className="pt-1 border-t mt-1">
+                                  <DataQualityBadge
+                                    level={bd.dataQualityLevel}
+                                    size="sm"
+                                    showTooltip={false}
+                                  />
+                                </div>
+                              )}
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -325,11 +357,26 @@ function MiniBar({ icon, score }: { icon: React.ReactNode; score: number }) {
   );
 }
 
-function ScoreLine({ label, score }: { label: string; score: number }) {
+function ScoreLine({
+  label,
+  score,
+  rawScore,
+}: {
+  label: string;
+  score: number;
+  rawScore?: number;
+}) {
   return (
     <div className="flex items-center justify-between gap-4 text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`font-mono font-medium ${scoreColor(score)}`}>{score}</span>
+      <span className={`font-mono font-medium ${scoreColor(score)}`}>
+        {score}
+        {rawScore != null && rawScore !== score && (
+          <span className="text-muted-foreground font-normal ml-1">
+            (raw {rawScore})
+          </span>
+        )}
+      </span>
     </div>
   );
 }
