@@ -16,7 +16,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { rfqs, rfqBids, suppliers } from "../../drizzle/schema";
+import { rfqs, rfqBids, suppliers, rfqSupplierInvites } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import {
   scoreRfxResponse,
@@ -36,7 +36,10 @@ const scoringWeightsSchema = z.object({
   leadTime:       z.number().min(0).max(1),
   documentation:  z.number().min(0).max(1),
   certifications: z.number().min(0).max(1),
-});
+}).refine(
+  (w) => Math.abs(Object.values(w).reduce((s, v) => s + v, 0) - 1) < 0.01,
+  { message: "Scoring weights must sum to 1" }
+);
 
 // ─── Helper: derive scored totals from a bid ─────────────────────────────────
 
@@ -112,11 +115,17 @@ export const supplierResponseRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      // Resolve supplierId from ctx — never from client input
+      // Resolve supplierId from ctx — never from client input.
+      // Also enforces that only approved (verified) suppliers can submit.
       const [supplierRow] = await db
         .select({ id: suppliers.id })
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(
+          and(
+            eq(suppliers.userId, ctx.user.id),
+            eq(suppliers.verificationStatus, "approved"),
+          )
+        )
         .limit(1);
 
       if (!supplierRow) {
@@ -206,6 +215,18 @@ export const supplierResponseRouter = router({
         .update(rfqBids)
         .set({ rfxTotalScore: total.toString() })
         .where(eq(rfqBids.id, bidId));
+
+      // Stamp respondedAt on the invite row so the buyer can see who responded
+      void db
+        .update(rfqSupplierInvites)
+        .set({ respondedAt: new Date() })
+        .where(
+          and(
+            eq(rfqSupplierInvites.rfqId,     input.rfqId),
+            eq(rfqSupplierInvites.supplierId, supplierRow.id),
+          )
+        )
+        .catch((err) => console.error("[supplier-response] respondedAt stamp failed:", err));
 
       return { bidId, score: total };
     }),
@@ -307,7 +328,7 @@ export const supplierResponseRouter = router({
       if (input.scoringWeights) {
         await db
           .update(rfqs)
-          .set({ scoringWeights: input.scoringWeights as object })
+          .set({ scoringWeights: input.scoringWeights })
           .where(eq(rfqs.id, input.rfqId));
       }
 

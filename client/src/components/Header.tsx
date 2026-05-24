@@ -5,16 +5,17 @@ import { getLoginUrl } from '../const';
 import { NotificationCenter } from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
 import { trpc } from '../lib/trpc';
-import { Menu, X, ChevronDown, Zap, Layers, BarChart2, GitCompare, FileSearch, Camera } from 'lucide-react';
+import { Menu, X, ChevronDown, Zap, Layers, BarChart2, GitCompare, FileSearch, Camera, ClipboardList } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 
 const ARCHITECT_TOOLS = [
-  { href: "/architect/specs/upload", icon: Zap,        label: "Spec Lookup",    desc: "Find green alternatives for one assembly or a full project" },
-  { href: "/architect/specs",        icon: FileSearch,  label: "My Specs",       desc: "View past lookups and uploaded specs" },
-  { href: "/assemblies",             icon: Layers,      label: "Assemblies",     desc: "Build and compare wall assembly systems" },
-  { href: "/carbon-compare",         icon: GitCompare,  label: "Carbon Compare", desc: "Side-by-side embodied carbon comparison" },
-  { href: "/carbon-dashboard",       icon: BarChart2,   label: "Carbon Dashboard", desc: "Track carbon across your projects" },
+  { href: "/buyer/new-request",      icon: Zap,          label: "Smart RFx Builder", desc: "Turn a material need into a structured RFI, RFQ, or RFP in seconds", highlight: true },
+  { href: "/architect/specs/upload", icon: FileSearch,   label: "Spec Lookup",       desc: "Find green alternatives for one assembly or a full project" },
+  { href: "/architect/specs",        icon: ClipboardList, label: "My Specs",          desc: "View past lookups and uploaded specs" },
+  { href: "/assemblies",             icon: Layers,        label: "Assemblies",        desc: "Build and compare wall assembly systems" },
+  { href: "/carbon-compare",         icon: GitCompare,    label: "Carbon Compare",    desc: "Side-by-side embodied carbon comparison" },
+  { href: "/carbon-dashboard",       icon: BarChart2,     label: "Carbon Dashboard",  desc: "Track carbon across your projects" },
 ];
 
 function ToolsDropdown() {
@@ -40,22 +41,25 @@ function ToolsDropdown() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-72 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 overflow-hidden">
-          {ARCHITECT_TOOLS.map(({ href, icon: Icon, label, desc }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className="flex items-start gap-3 px-4 py-3 hover:bg-accent transition-colors"
-            >
-              <div className="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                <Icon className="w-3.5 h-3.5 text-green-700" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">{label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-              </div>
-            </Link>
+        <div className="absolute left-0 top-full mt-2 w-80 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 overflow-hidden">
+          {ARCHITECT_TOOLS.map(({ href, icon: Icon, label, desc, highlight }, idx) => (
+            <div key={href}>
+              {/* Divider after the highlighted first item */}
+              {idx === 1 && <div className="border-t border-border mx-4 my-1" />}
+              <Link
+                href={href}
+                onClick={() => setOpen(false)}
+                className={`flex items-start gap-3 px-4 py-3 transition-colors ${highlight ? "hover:bg-green-50 dark:hover:bg-green-950/30" : "hover:bg-accent"}`}
+              >
+                <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${highlight ? "bg-green-600" : "bg-green-100"}`}>
+                  <Icon className={`w-3.5 h-3.5 ${highlight ? "text-white" : "text-green-700"}`} />
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${highlight ? "text-green-700 dark:text-green-400" : "text-foreground"}`}>{label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                </div>
+              </Link>
+            </div>
           ))}
         </div>
       )}
@@ -195,6 +199,15 @@ export default function Header() {
               My RFQs
             </Link>
           )}
+          {user && user?.role !== 'supplier' && (
+            <Link
+              href="/buyer/new-request"
+              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-md transition-colors"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              New Request
+            </Link>
+          )}
           <Link href="/insider" className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors">
             Insider
           </Link>
@@ -288,10 +301,16 @@ export default function Header() {
             {user?.role !== 'supplier' && (
               <>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-4 pt-2">Start Here</p>
-                <Link href="/rfq/new"
-                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                <Link href="/buyer/new-request"
+                  className="flex items-center gap-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors py-2 px-4 rounded-md"
                   onClick={() => setMobileMenuOpen(false)}>
-                  Submit RFQ
+                  <Zap className="w-4 h-4" />
+                  Smart RFx Builder — New Request
+                </Link>
+                <Link href="/rfq/new"
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                  onClick={() => setMobileMenuOpen(false)}>
+                  Submit classic RFQ
                 </Link>
                 <Link href="/tools/submittal"
                   className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
@@ -309,10 +328,16 @@ export default function Header() {
               </>
             )}
             {user?.role !== 'supplier' && (
-              <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
-                My RFQs
-              </Link>
+              <>
+                <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                   onClick={() => setMobileMenuOpen(false)}>
+                  My RFQs
+                </Link>
+                <Link href="/buyer/requests" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                   onClick={() => setMobileMenuOpen(false)}>
+                  My Requests
+                </Link>
+              </>
             )}
             <Link href="/insider" className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                onClick={() => setMobileMenuOpen(false)}>
