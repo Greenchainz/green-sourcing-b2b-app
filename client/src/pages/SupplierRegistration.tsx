@@ -176,8 +176,8 @@ export function SupplierRegistration() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Bypass the Gatekeepers</h1>
-          <p className="text-lg text-gray-600">You have the tech. We have the access. Digitize your threat and get in front of the world's top architectural firms.</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Get in Front of the Right Projects</h1>
+          <p className="text-lg text-gray-600">You have the product. We have the access. Digitize your reach and get in front of the world's top architectural firms.</p>
         </div>
 
         {/* Progress Indicator */}

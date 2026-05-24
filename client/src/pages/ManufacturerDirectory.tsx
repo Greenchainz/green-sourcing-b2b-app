@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
@@ -112,10 +112,18 @@ export default function ManufacturerDirectory() {
               {selectedCategory ? ` in ${selectedCategory}` : ""}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {manufacturers.map((mfg) => (
-                <Link key={mfg.id} href={`/manufacturers/${mfg.id}`}>
+              {manufacturers.map((mfg) => {
+                // Research-library entries have negative IDs — no DB profile exists yet.
+                const hasProfile = mfg.id > 0;
+                const CardWrapper = hasProfile
+                  ? ({ children }: { children: React.ReactNode }) => (
+                      <Link key={mfg.id} href={`/manufacturers/${mfg.id}`}>{children}</Link>
+                    )
+                  : ({ children }: { children: React.ReactNode }) => <div key={mfg.id}>{children}</div>;
+                return (
+                <CardWrapper key={mfg.id}>
                   <Card
-                    className={`group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${
+                    className={`transition-all ${hasProfile ? "group cursor-pointer hover:shadow-lg hover:-translate-y-0.5" : "opacity-80"} ${
                       mfg.featured
                         ? "border-emerald-500/50 shadow-emerald-500/10"
                         : ""
@@ -176,12 +184,17 @@ export default function ManufacturerDirectory() {
                             </span>
                           )}
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
+                        {hasProfile ? (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Profile coming soon</span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
-              ))}
+                </CardWrapper>
+                );
+              })}
             </div>
           </>
         )}
