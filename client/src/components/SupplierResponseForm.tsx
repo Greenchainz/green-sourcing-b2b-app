@@ -46,9 +46,20 @@ export function SupplierResponseForm({
   onSubmitted,
 }: Props) {
   const [canFulfill, setCanFulfill] = useState<boolean>(true);
-  const [values, setValues] = useState<Record<string, string | boolean | number>>(
-    (existingResponse as Record<string, string | boolean | number>) ?? {}
-  );
+
+  // Initialize boolean fields to their explicit defaults so required-field validation
+  // never blocks on "untouched" boolean fields (undefined ≠ false in the validator).
+  // can_fulfill starts true to match the top-level toggle default.
+  const [values, setValues] = useState<Record<string, string | boolean | number>>(() => {
+    if (existingResponse) return existingResponse as Record<string, string | boolean | number>;
+    const init: Record<string, string | boolean | number> = {};
+    fieldSchema.forEach((f) => {
+      if (f.fieldType === "boolean") {
+        init[f.key] = f.key === "can_fulfill" ? true : false;
+      }
+    });
+    return init;
+  });
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -67,12 +78,14 @@ export function SupplierResponseForm({
     setValues((prev) => ({ ...prev, [key]: val }));
   };
 
-  // Group fields by category
-  const byCategory = fieldSchema.reduce<Record<string, SupplierResponseField[]>>((acc, f) => {
-    if (!acc[f.category]) acc[f.category] = [];
-    acc[f.category].push(f);
-    return acc;
-  }, {});
+  // Group fields by category, excluding can_fulfill (handled by the top-level toggle).
+  const byCategory = fieldSchema
+    .filter((f) => f.key !== "can_fulfill")
+    .reduce<Record<string, SupplierResponseField[]>>((acc, f) => {
+      if (!acc[f.category]) acc[f.category] = [];
+      acc[f.category].push(f);
+      return acc;
+    }, {});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,7 +151,10 @@ export function SupplierResponseForm({
               </span>
               <Switch
                 checked={canFulfill}
-                onCheckedChange={setCanFulfill}
+                onCheckedChange={(v) => {
+                  setCanFulfill(v);
+                  setValue("can_fulfill", v); // keep values in sync for validation
+                }}
               />
             </div>
           </div>
