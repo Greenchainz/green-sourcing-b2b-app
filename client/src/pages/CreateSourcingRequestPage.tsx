@@ -45,6 +45,16 @@ import {
   type ScoringWeights,
 } from "@/components/RequestFieldBuilder";
 
+const REQUEST_TYPE_DISPLAY: Record<string, string> = {
+  rfi:                     "RFI — Request for Information",
+  rfq_quote:               "RFQ — Request for Quote",
+  rfp:                     "RFP — Request for Proposal",
+  supplier_qualification:  "Supplier Qualification Request",
+  alternative_material:    "Alternative Material Request",
+  submittal_documentation: "Submittal Documentation Request",
+  bid_package:             "Bid Package",
+};
+
 const WEIGHT_LABELS: Record<string, string> = {
   price:         "Price",
   carbon:        "Embodied Carbon",
@@ -379,7 +389,9 @@ export default function CreateSourcingRequestPage() {
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs mb-0.5">Request type</p>
-                    <p className="font-medium capitalize">{recommendation.requestType.replace(/_/g, " ")}</p>
+                    <p className="font-medium">
+                      {REQUEST_TYPE_DISPLAY[recommendation.requestType] ?? recommendation.requestType.replace(/_/g, " ")}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs mb-0.5">Fields</p>
