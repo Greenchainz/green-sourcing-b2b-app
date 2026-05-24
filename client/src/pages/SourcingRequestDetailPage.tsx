@@ -35,6 +35,10 @@ import {
   Building2,
   Calculator,
   X,
+  FileText,
+  Send,
+  BarChart3,
+  Trophy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SupplierComparisonTable } from "@/components/SupplierComparisonTable";
@@ -56,6 +60,99 @@ const STATUS_STYLES: Record<string, string> = {
   awarded:   "bg-green-100 text-green-800",
   closed:    "bg-red-100 text-red-800",
 };
+
+// ─── Procurement Lifecycle component ─────────────────────────────────────────
+
+interface LifecycleStage {
+  label:    string;
+  sublabel: string;
+  icon:     React.ReactNode;
+}
+
+const LIFECYCLE_STAGES: LifecycleStage[] = [
+  { label: "Define",   sublabel: "Request + fields",   icon: <FileText  className="w-4 h-4" /> },
+  { label: "Invite",   sublabel: "Suppliers notified", icon: <Send      className="w-4 h-4" /> },
+  { label: "Collect",  sublabel: "Awaiting responses", icon: <Bell      className="w-4 h-4" /> },
+  { label: "Evaluate", sublabel: "Compare & score",    icon: <BarChart3 className="w-4 h-4" /> },
+  { label: "Award",    sublabel: "Supplier selected",  icon: <Trophy    className="w-4 h-4" /> },
+];
+
+function resolveLifecycleStage(
+  status: string | null | undefined,
+  responseCount: number,
+  inviteCount: number,
+): number {
+  if (status === "awarded" || status === "closed") return 4;
+  if (responseCount > 0) return 3;
+  if (inviteCount > 0)   return 2;
+  if (status === "submitted" || status === "responded") return 1;
+  return 0;
+}
+
+function ProcurementLifecycle({
+  status,
+  responseCount,
+  inviteCount,
+}: {
+  status: string | null | undefined;
+  responseCount: number;
+  inviteCount: number;
+}) {
+  const current = resolveLifecycleStage(status, responseCount, inviteCount);
+
+  return (
+    <Card>
+      <CardContent className="py-4 px-5">
+        <div className="flex items-start justify-between gap-2 overflow-x-auto">
+          {LIFECYCLE_STAGES.map((stage, idx) => {
+            const isDone    = idx < current;
+            const isCurrent = idx === current;
+            const isPending = idx > current;
+
+            return (
+              <div key={stage.label} className="flex items-start gap-0 flex-1 min-w-0">
+                {/* Stage */}
+                <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                  {/* Icon circle */}
+                  <div
+                    className={[
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                      isDone    ? "bg-green-500 text-white"                                         : "",
+                      isCurrent ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2" : "",
+                      isPending ? "bg-muted text-muted-foreground"                                  : "",
+                    ].join(" ")}
+                  >
+                    {isDone ? <CheckCircle2 className="w-4 h-4" /> : stage.icon}
+                  </div>
+                  {/* Labels */}
+                  <div className="text-center min-w-0">
+                    <p className={`text-xs font-semibold truncate ${isCurrent ? "text-primary" : isPending ? "text-muted-foreground" : "text-foreground"}`}>
+                      {stage.label}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate hidden sm:block">
+                      {stage.sublabel}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Connector line (not after last item) */}
+                {idx < LIFECYCLE_STAGES.length - 1 && (
+                  <div className="flex-1 h-px mt-4 mx-1 shrink-0 min-w-[12px]"
+                    style={{
+                      background: idx < current
+                        ? "rgb(34 197 94)"   // green-500
+                        : "hsl(var(--border))",
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function SourcingRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -209,6 +306,13 @@ export default function SourcingRequestDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Procurement lifecycle */}
+        <ProcurementLifecycle
+          status={rfq.status}
+          responseCount={responseCount}
+          inviteCount={invitesQuery.data?.length ?? 0}
+        />
 
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-4">
