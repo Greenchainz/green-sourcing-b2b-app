@@ -435,6 +435,10 @@ export const rfqs = pgTable("rfqs", {
   requestType: varchar("request_type", { length: 40 }).default("rfq_quote"),
   responseFieldSchema: json("response_field_schema").$type<Array<{ key: string; label: string; fieldType: string; required: boolean; category: string; helpText?: string }>>(),
   scoringWeights: json("scoring_weights").$type<{ price: number; carbon: number; leadTime: number; documentation: number; certifications: number }>(),
+  // ── Internal Carbon Pricing (Shadow Price) ───────────────────────────────────
+  // Buyer-set $/tonne CO₂e — used to compute carbon-adjusted cost in comparison table.
+  // Formula: Carbon-Adjusted Cost = Bid Price + (GWP_kg / 1000 × shadowCarbonPrice)
+  shadowCarbonPrice: decimal("shadow_carbon_price", { precision: 10, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
