@@ -45,6 +45,14 @@ import {
   type ScoringWeights,
 } from "@/components/RequestFieldBuilder";
 
+const WEIGHT_LABELS: Record<string, string> = {
+  price:         "Price",
+  carbon:        "Embodied Carbon",
+  leadTime:      "Lead Time",
+  documentation: "Documentation",
+  certifications:"Certifications",
+};
+
 // ─── Steps ───────────────────────────────────────────────────────────────────
 
 type Step = "describe" | "recommend" | "customize" | "submit";
@@ -106,6 +114,10 @@ export default function CreateSourcingRequestPage() {
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   const handleClassify = async () => {
+    if (!projectName.trim()) {
+      toast.error("Project name is required before continuing");
+      return;
+    }
     if (description.trim().length < 10) {
       toast.error("Please describe your need in at least 10 characters");
       return;
@@ -389,7 +401,7 @@ export default function CreateSourcingRequestPage() {
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(weights).map(([k, v]) => (
                       <Badge key={k} variant="secondary" className="text-xs">
-                        {k}: {Math.round(v * 100)}%
+                        {WEIGHT_LABELS[k as keyof typeof WEIGHT_LABELS] ?? k}: {Math.round(v * 100)}%
                       </Badge>
                     ))}
                   </div>

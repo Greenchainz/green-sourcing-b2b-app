@@ -258,7 +258,12 @@ export default function Header() {
                   </Button>
                 </Link>
               )}
-              <UserAvatar />
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide border border-border text-muted-foreground bg-muted/50">
+                  {user.role ?? "user"}
+                </span>
+                <UserAvatar />
+              </div>
             </>
           ) : (
             <>

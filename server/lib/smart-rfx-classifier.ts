@@ -185,7 +185,7 @@ export function recommendRequestType(description: string): SmartRfxRecommendatio
     /\b(proposal|solution|approach|package|system|recommend|alternative.?approach|design.?assist|rfp|design.?build|full.?service)\b/.test(text);
 
   const wantsQualification =
-    /\b(qualification|qualify|credentials|insurance|capacity|references|compliance|certified.?supplier|prequalif|prequalification|background|vetting|bonding)\b/.test(text);
+    /\b(qualification|qualify|credentials|insurance|capacity|references|certified.?supplier|prequalif|prequalification|background|vetting|bonding|supplier.?compliance|compliance.?cert)\b/.test(text);
 
   const wantsAlternative =
     /\b(alternative|substitute|replacement|lower.?carbon|low.?carbon|equivalent|swap|instead|instead of|comparable)\b/.test(text);
