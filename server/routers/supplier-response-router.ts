@@ -24,6 +24,10 @@ import {
   DEFAULT_SCORING_WEIGHTS,
   type RfxScoringWeights,
 } from "../lib/rfx-response-scorer";
+import {
+  inferBidDataQualityLevel,
+  type DataQualityLevel,
+} from "../lib/sustainability-data-quality";
 import type { SupplierResponseField } from "../lib/smart-rfx-classifier";
 
 // ─── Zod schemas ─────────────────────────────────────────────────────────────
@@ -162,18 +166,32 @@ export const supplierResponseRouter = router({
 
       let bidId: number;
 
+      // Infer data quality level server-side from submitted evidence.
+      // Never trust a level from client input.
+      const hasEpdEvidence =
+        !!input.epdReference ||
+        input.fieldValues?.["epd_available"] === true ||
+        input.fieldValues?.["epd_available"] === "true";
+      const hasGwpEvidence = input.gwpValue != null;
+      const inferredQualityLevel: DataQualityLevel = inferBidDataQualityLevel(
+        null,            // no persisted level yet
+        hasEpdEvidence,
+        hasGwpEvidence,
+      );
+
       const bidData = {
-        rfqId:        input.rfqId,
-        supplierId:   supplierRow.id,
-        status:       "submitted" as const,
-        canFulfill:   input.canFulfill,
-        bidPrice:     input.bidPrice?.toString() ?? null,
-        leadDays:     input.leadDays ?? null,
-        notes:        input.notes ?? null,
-        expiresAt:    input.expiresAt ?? null,
-        epdReference: input.epdReference ?? null,
-        gwpValue:     input.gwpValue?.toString() ?? null,
-        fieldValues:  input.fieldValues as object,
+        rfqId:            input.rfqId,
+        supplierId:       supplierRow.id,
+        status:           "submitted" as const,
+        canFulfill:       input.canFulfill,
+        bidPrice:         input.bidPrice?.toString() ?? null,
+        leadDays:         input.leadDays ?? null,
+        notes:            input.notes ?? null,
+        expiresAt:        input.expiresAt ?? null,
+        epdReference:     input.epdReference ?? null,
+        gwpValue:         input.gwpValue?.toString() ?? null,
+        fieldValues:      input.fieldValues as object,
+        dataQualityLevel: inferredQualityLevel,
       };
 
       if (existing.length > 0) {
@@ -209,7 +227,10 @@ export const supplierResponseRouter = router({
         median,
       );
 
-      const { total } = scoreRfxResponse(scoreInput, weights);
+      const { total } = scoreRfxResponse(
+        { ...scoreInput, dataQualityLevel: inferredQualityLevel },
+        weights,
+      );
 
       await db
         .update(rfqBids)
@@ -265,9 +286,10 @@ export const supplierResponseRouter = router({
           expiresAt:     rfqBids.expiresAt,
           epdReference:  rfqBids.epdReference,
           gwpValue:      rfqBids.gwpValue,
-          fieldValues:   rfqBids.fieldValues,
-          rfxTotalScore: rfqBids.rfxTotalScore,
-          createdAt:     rfqBids.createdAt,
+          fieldValues:      rfqBids.fieldValues,
+          rfxTotalScore:    rfqBids.rfxTotalScore,
+          dataQualityLevel: rfqBids.dataQualityLevel,
+          createdAt:        rfqBids.createdAt,
         })
         .from(rfqBids)
         .innerJoin(suppliers, eq(rfqBids.supplierId, suppliers.id))
@@ -285,7 +307,15 @@ export const supplierResponseRouter = router({
 
       const bidsWithBreakdown = bids.map((bid) => {
         const scoreInput = extractScoreInputs(bid, rfq, median);
-        const breakdown = scoreRfxResponse(scoreInput, weights);
+        const qualityLevel = inferBidDataQualityLevel(
+          bid.dataQualityLevel as DataQualityLevel | null,
+          scoreInput.hasEpd,
+          scoreInput.gwpValue != null,
+        );
+        const breakdown = scoreRfxResponse(
+          { ...scoreInput, dataQualityLevel: qualityLevel },
+          weights,
+        );
         return {
           ...bid,
           scoreBreakdown: breakdown,
@@ -349,7 +379,15 @@ export const supplierResponseRouter = router({
       await Promise.all(
         bids.map(async (bid) => {
           const scoreInput = extractScoreInputs(bid, rfq, median);
-          const { total } = scoreRfxResponse(scoreInput, weights);
+          const qualityLevel = inferBidDataQualityLevel(
+            bid.dataQualityLevel as DataQualityLevel | null,
+            scoreInput.hasEpd,
+            scoreInput.gwpValue != null,
+          );
+          const { total } = scoreRfxResponse(
+            { ...scoreInput, dataQualityLevel: qualityLevel },
+            weights,
+          );
           await db
             .update(rfqBids)
             .set({ rfxTotalScore: total.toString() })

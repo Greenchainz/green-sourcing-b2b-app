@@ -8,10 +8,12 @@
  */
 
 import { useParams, useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +33,8 @@ import {
   Loader2,
   CheckCircle2,
   Building2,
+  Calculator,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SupplierComparisonTable } from "@/components/SupplierComparisonTable";
@@ -80,6 +84,46 @@ export default function SourcingRequestDetailPage() {
     },
     onError: (err) => toast.error(err.message ?? "Failed to reinvite suppliers"),
   });
+
+  // ── Shadow Carbon Pricing ────────────────────────────────────────────────────
+  const [shadowCarbonPrice, setShadowCarbonPrice] = useState<number | null>(null);
+  const [shadowInput, setShadowInput] = useState<string>("");
+
+  // Sync from server value after load
+  useEffect(() => {
+    if (data?.rfq?.shadowCarbonPrice != null) {
+      const val = parseFloat(String(data.rfq.shadowCarbonPrice));
+      setShadowCarbonPrice(val);
+      setShadowInput(val.toString());
+    }
+  }, [data?.rfq?.shadowCarbonPrice]);
+
+  const updateFieldsMutation = trpc.sourcingRequest.updateFields.useMutation({
+    onSuccess: () => toast.success("Carbon price saved"),
+    onError: (err) => toast.error(err.message ?? "Failed to save"),
+  });
+
+  const applyShadowPrice = (price: number | null) => {
+    setShadowCarbonPrice(price);
+    setShadowInput(price != null ? price.toString() : "");
+    updateFieldsMutation.mutate({ rfqId, shadowCarbonPrice: price });
+  };
+
+  const handleShadowInputApply = () => {
+    const parsed = parseFloat(shadowInput);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      toast.error("Enter a valid carbon price ($/tonne)");
+      return;
+    }
+    applyShadowPrice(Math.round(parsed * 100) / 100);
+  };
+
+  const SHADOW_PRESETS = [
+    { label: "$40", value: 40, hint: "WEF floor" },
+    { label: "$70", value: 70, hint: "Unilever ICP" },
+    { label: "$100", value: 100, hint: "Near-term target" },
+    { label: "$180", value: 180, hint: "2030 trajectory" },
+  ];
 
   const supplierLink = `${window.location.origin}/supplier/respond/${rfqId}`;
 
@@ -259,6 +303,89 @@ export default function SourcingRequestDetailPage() {
 
         <Separator />
 
+        {/* Shadow Carbon Pricing setter */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Calculator className="w-4 h-4 text-blue-500" />
+              Internal Carbon Price
+              {shadowCarbonPrice != null && shadowCarbonPrice > 0 && (
+                <Badge className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-100 ml-1">
+                  ${shadowCarbonPrice}/tonne active
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Set your organization's internal carbon price ($/tonne CO₂e) to see a <strong>carbon-adjusted cost</strong> alongside each bid.
+              Adds the carbon penalty to each supplier's price so you can compare true total cost.
+            </p>
+
+            {/* Quick presets */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground shrink-0">Presets:</span>
+              {SHADOW_PRESETS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => applyShadowPrice(p.value)}
+                  title={p.hint}
+                  className={[
+                    "text-xs px-2.5 py-1 rounded-full border transition-colors",
+                    shadowCarbonPrice === p.value
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "border-border text-foreground hover:border-blue-400 hover:text-blue-700",
+                  ].join(" ")}
+                >
+                  {p.label}
+                  <span className="text-[10px] opacity-70 ml-1">{p.hint}</span>
+                </button>
+              ))}
+              {shadowCarbonPrice != null && (
+                <button
+                  onClick={() => applyShadowPrice(null)}
+                  className="text-xs px-2 py-1 rounded-full border border-border text-muted-foreground hover:border-red-400 hover:text-red-600 transition-colors flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" />
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Custom value input */}
+            <div className="flex items-center gap-2 max-w-xs">
+              <span className="text-sm text-muted-foreground shrink-0">$</span>
+              <Input
+                type="number"
+                min={0}
+                max={10000}
+                step={5}
+                placeholder="Custom (e.g. 55)"
+                value={shadowInput}
+                onChange={(e) => setShadowInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleShadowInputApply()}
+                className="h-8 text-sm"
+              />
+              <span className="text-xs text-muted-foreground shrink-0">/tonne CO₂e</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleShadowInputApply}
+                disabled={updateFieldsMutation.isPending}
+                className="h-8 text-xs shrink-0"
+              >
+                {updateFieldsMutation.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
         {/* Comparison table */}
         <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -278,6 +405,7 @@ export default function SourcingRequestDetailPage() {
               rfqId={rfqId}
               bids={(responsesQuery.data?.bids ?? []) as Parameters<typeof SupplierComparisonTable>[0]["bids"]}
               onRescore={() => void responsesQuery.refetch()}
+              shadowCarbonPrice={shadowCarbonPrice}
             />
           )}
         </div>

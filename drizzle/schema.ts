@@ -435,6 +435,10 @@ export const rfqs = pgTable("rfqs", {
   requestType: varchar("request_type", { length: 40 }).default("rfq_quote"),
   responseFieldSchema: json("response_field_schema").$type<Array<{ key: string; label: string; fieldType: string; required: boolean; category: string; helpText?: string }>>(),
   scoringWeights: json("scoring_weights").$type<{ price: number; carbon: number; leadTime: number; documentation: number; certifications: number }>(),
+  // ── Internal Carbon Pricing (Shadow Price) ───────────────────────────────────
+  // Buyer-set $/tonne CO₂e — used to compute carbon-adjusted cost in comparison table.
+  // Formula: Carbon-Adjusted Cost = Bid Price + (GWP_kg / 1000 × shadowCarbonPrice)
+  shadowCarbonPrice: decimal("shadow_carbon_price", { precision: 10, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -791,6 +795,9 @@ export const rfqBids = pgTable("rfq_bids", {
   gwpValue: decimal("gwp_value", { precision: 14, scale: 4 }),
   epdReference: text("epd_reference"),
   rfxTotalScore: decimal("rfx_total_score", { precision: 6, scale: 2 }),
+  // ── Data quality (set server-side, never from client) ─────────────────────
+  // L0 = proxy/none, L1 = self-reported, L2 = third-party, L3 = EPD verified
+  dataQualityLevel: varchar("data_quality_level", { length: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -2062,3 +2069,60 @@ export const rfqSupplierInvites = pgTable(
 );
 
 export type RfqSupplierInvite = typeof rfqSupplierInvites.$inferSelect;
+
+// ── Supplier Sustainability Profiles ──────────────────────────────────────────
+// One row per supplier. Partial save is allowed — no fields are mandatory at DB
+// level. The application layer enforces "Required to go live" rules via the
+// Data Ladder (L0–L3). Last-updated audit trail is baked in.
+
+export const supplierSustainabilityProfiles = pgTable(
+  "supplier_sustainability_profiles",
+  {
+    id:           serial("id").primaryKey(),
+    supplierId:   integer("supplier_id").notNull().unique(),
+
+    // ── Data ladder ─────────────────────────────────────────────────────────
+    // Inferred by the server from the combination of fields below.
+    // L0 = proxy/none · L1 = self-reported · L2 = third-party · L3 = EPD
+    dataQualityLevel: varchar("data_quality_level", { length: 2 }).default("L0").notNull(),
+    dataSourceType:   varchar("data_source_type",   { length: 50 }),
+
+    // ── EPD / product documentation ─────────────────────────────────────────
+    hasEpd:       boolean("has_epd").default(false).notNull(),
+    epdReference: text("epd_reference"),
+
+    // ── Scope 1 + 2 emissions (tCO₂e) ──────────────────────────────────────
+    // Computed by emissions-calculator.ts from energy inputs below
+    scope1Emissions: decimal("scope1_emissions", { precision: 14, scale: 4 }),
+    scope2Emissions: decimal("scope2_emissions", { precision: 14, scale: 4 }),
+    totalEmissions:  decimal("total_emissions",  { precision: 14, scale: 4 }),
+
+    // ── SME-friendly calculator inputs ───────────────────────────────────────
+    // Suppliers enter their annual utility bill numbers — we do the math.
+    electricityKwh:    decimal("electricity_kwh",    { precision: 14, scale: 2 }),
+    naturalGasMmbtu:   decimal("natural_gas_mmbtu",  { precision: 14, scale: 2 }),
+    dieselGallons:     decimal("diesel_gallons",      { precision: 14, scale: 2 }),
+
+    // ── Spend-based fallback (L0 only) ───────────────────────────────────────
+    annualRevenue:  decimal("annual_revenue", { precision: 16, scale: 2 }),
+
+    // ── Certifications ────────────────────────────────────────────────────────
+    certifications: json("certifications").$type<string[]>().default([]),
+
+    // ── Audit trail (required for all value changes) ─────────────────────────
+    calculationMethod: varchar("calculation_method", { length: 100 }),  // "energy_bill" | "spend_based" | "epd" | "manual"
+    lastUpdatedBy:     integer("last_updated_by"),  // users.id of who last saved
+    verifiedAt:        timestamp("verified_at"),
+    verifiedBy:        integer("verified_by"),      // admin users.id
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    supplierIdx: index("idx_ssp_supplier").on(table.supplierId),
+    qualityIdx:  index("idx_ssp_quality").on(table.dataQualityLevel),
+  }),
+);
+
+export type SupplierSustainabilityProfile = typeof supplierSustainabilityProfiles.$inferSelect;
+export type InsertSupplierSustainabilityProfile = typeof supplierSustainabilityProfiles.$inferInsert;

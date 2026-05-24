@@ -38,17 +38,22 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Calculator,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { DataQualityBadge } from "@/components/DataQualityBadge";
 
 interface ScoreBreakdown {
   total: number;
   priceScore: number;
   carbonScore: number;
+  carbonScoreRaw?: number;
   leadTimeScore: number;
   documentationScore: number;
   certificationScore: number;
+  dataQualityLevel?: string | null;
+  qualityMultiplier?: number | null;
 }
 
 interface BidRow {
@@ -61,6 +66,7 @@ interface BidRow {
   gwpValue: string | null;
   epdReference: string | null;
   rfxTotalScore: string | null;
+  dataQualityLevel: string | null;
   scoreBreakdown: ScoreBreakdown;
   createdAt: Date;
 }
@@ -69,6 +75,8 @@ interface Props {
   rfqId: number;
   bids: BidRow[];
   onRescore?: () => void;
+  /** Buyer-set internal carbon price in $/tonne CO₂e. When set, shows a carbon-adjusted cost column. */
+  shadowCarbonPrice?: number | null;
 }
 
 // Score color helper
@@ -79,7 +87,7 @@ function scoreColor(score: number): string {
 }
 
 
-export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
+export function SupplierComparisonTable({ rfqId, bids, onRescore, shadowCarbonPrice }: Props) {
   const rescoreMutation = trpc.supplierResponse.scoreResponses.useMutation({
     onSuccess: ({ updated }) => {
       toast.success(`Rescored ${updated} responses`);
@@ -133,6 +141,17 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
         </Card>
       )}
 
+      {/* Shadow carbon price active banner */}
+      {shadowCarbonPrice != null && shadowCarbonPrice > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 text-xs">
+          <Calculator className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            <strong>Internal carbon price active:</strong> ${shadowCarbonPrice}/tonne CO₂e —
+            "Adj. Cost" adds the carbon penalty to each bid price.
+          </span>
+        </div>
+      )}
+
       {/* Table */}
       <Card>
         <CardHeader className="pb-3">
@@ -172,6 +191,23 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
                       Price
                     </span>
                   </TableHead>
+                  {shadowCarbonPrice != null && shadowCarbonPrice > 0 && (
+                    <TableHead className="text-right">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center justify-end gap-1 cursor-help">
+                              <Calculator className="w-3.5 h-3.5 text-blue-500" />
+                              Adj. Cost
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[220px] text-xs">
+                            Carbon-adjusted cost = Bid price + (GWP kg ÷ 1,000 × ${shadowCarbonPrice}/tonne CO₂e)
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableHead>
+                  )}
                   <TableHead className="text-right">
                     <span className="flex items-center justify-end gap-1">
                       <Leaf className="w-3.5 h-3.5 text-green-500" />
@@ -194,6 +230,15 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
                   const isTop = idx === 0;
                   const score = bid.rfxTotalScore ? Number(bid.rfxTotalScore) : bid.scoreBreakdown.total;
                   const bd = bid.scoreBreakdown;
+
+                  // Carbon-adjusted cost: Bid Price + (GWP_kg / 1000 × shadowCarbonPrice)
+                  const carbonAdjustedCost =
+                    shadowCarbonPrice != null &&
+                    shadowCarbonPrice > 0 &&
+                    bid.bidPrice != null &&
+                    bid.gwpValue != null
+                      ? parseFloat(bid.bidPrice) + (parseFloat(bid.gwpValue) / 1000) * shadowCarbonPrice
+                      : null;
 
                   return (
                     <TableRow
@@ -228,15 +273,58 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
                         )}
                       </TableCell>
 
-                      {/* GWP */}
+                      {/* Carbon-adjusted cost (only when shadow price is active) */}
+                      {shadowCarbonPrice != null && shadowCarbonPrice > 0 && (
+                        <TableCell className="text-right">
+                          {carbonAdjustedCost != null ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={`font-mono text-sm cursor-help ${isTop ? "text-blue-700 dark:text-blue-400 font-bold" : "text-blue-600 dark:text-blue-500"}`}>
+                                    ${carbonAdjustedCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs space-y-0.5 p-2">
+                                  <p className="font-semibold">Carbon-adjusted cost</p>
+                                  <p className="text-muted-foreground">
+                                    ${parseFloat(bid.bidPrice!).toLocaleString()} bid
+                                    {" + "}
+                                    {(parseFloat(bid.gwpValue!) / 1000 * shadowCarbonPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })} carbon
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : bid.gwpValue == null ? (
+                            <span className="text-muted-foreground text-xs">No GWP</span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">No price</span>
+                          )}
+                        </TableCell>
+                      )}
+
+                      {/* GWP + data quality badge */}
                       <TableCell className="text-right">
                         {bid.gwpValue ? (
-                          <span className="font-mono text-sm text-green-700 dark:text-green-400">
-                            {parseFloat(bid.gwpValue).toFixed(1)}
-                            <span className="text-xs text-muted-foreground ml-0.5">kg</span>
-                          </span>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="font-mono text-sm text-green-700 dark:text-green-400">
+                              {parseFloat(bid.gwpValue).toFixed(1)}
+                              <span className="text-xs text-muted-foreground ml-0.5">kg</span>
+                            </span>
+                            <DataQualityBadge
+                              level={bid.dataQualityLevel ?? bid.scoreBreakdown.dataQualityLevel}
+                              size="sm"
+                              showTooltip
+                            />
+                          </div>
                         ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="text-muted-foreground text-xs">—</span>
+                            <DataQualityBadge
+                              level={bid.dataQualityLevel ?? bid.scoreBreakdown.dataQualityLevel}
+                              size="sm"
+                              showTooltip
+                            />
+                          </div>
                         )}
                       </TableCell>
 
@@ -289,10 +377,23 @@ export function SupplierComparisonTable({ rfqId, bids, onRescore }: Props) {
                             <TooltipContent className="space-y-1 p-3">
                               <p className="text-xs font-semibold mb-1">Score breakdown</p>
                               <ScoreLine label="Price" score={bd.priceScore} />
-                              <ScoreLine label="Carbon" score={bd.carbonScore} />
+                              <ScoreLine
+                                label={`Carbon${bd.qualityMultiplier != null && bd.qualityMultiplier < 1 ? ` (×${bd.qualityMultiplier})` : ""}`}
+                                score={bd.carbonScore}
+                                rawScore={bd.carbonScoreRaw}
+                              />
                               <ScoreLine label="Lead time" score={bd.leadTimeScore} />
                               <ScoreLine label="Documentation" score={bd.documentationScore} />
                               <ScoreLine label="Certifications" score={bd.certificationScore} />
+                              {bd.dataQualityLevel && (
+                                <div className="pt-1 border-t mt-1">
+                                  <DataQualityBadge
+                                    level={bd.dataQualityLevel}
+                                    size="sm"
+                                    showTooltip={false}
+                                  />
+                                </div>
+                              )}
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -325,11 +426,26 @@ function MiniBar({ icon, score }: { icon: React.ReactNode; score: number }) {
   );
 }
 
-function ScoreLine({ label, score }: { label: string; score: number }) {
+function ScoreLine({
+  label,
+  score,
+  rawScore,
+}: {
+  label: string;
+  score: number;
+  rawScore?: number;
+}) {
   return (
     <div className="flex items-center justify-between gap-4 text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`font-mono font-medium ${scoreColor(score)}`}>{score}</span>
+      <span className={`font-mono font-medium ${scoreColor(score)}`}>
+        {score}
+        {rawScore != null && rawScore !== score && (
+          <span className="text-muted-foreground font-normal ml-1">
+            (raw {rawScore})
+          </span>
+        )}
+      </span>
     </div>
   );
 }
