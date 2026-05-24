@@ -18,7 +18,6 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { rfqs, rfqItems, rfqBids } from "../../drizzle/schema";
 import { rfqs, rfqItems, rfqBids, rfqSupplierInvites, suppliers } from "../../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { notifyMatchedSuppliers } from "../services/rfx-invite-notifier";
