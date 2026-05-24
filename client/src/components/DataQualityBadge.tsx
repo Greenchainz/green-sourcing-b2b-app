@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ShieldCheck, ShieldAlert, Shield, ShieldX } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Shield } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
