@@ -433,8 +433,8 @@ export const rfqs = pgTable("rfqs", {
   depositAmount: decimal("deposit_amount"),
   // ── Smart RFx Builder additions ─────────────────────────────────────────────
   requestType: varchar("request_type", { length: 40 }).default("rfq_quote"),
-  responseFieldSchema: json("response_field_schema"),
-  scoringWeights: json("scoring_weights"),
+  responseFieldSchema: json("response_field_schema").$type<Array<{ key: string; label: string; fieldType: string; required: boolean; category: string; helpText?: string }>>(),
+  scoringWeights: json("scoring_weights").$type<{ price: number; carbon: number; leadTime: number; documentation: number; certifications: number }>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -2037,3 +2037,28 @@ export const rfqMatchRuns = pgTable(
 
 export type RfqMatchRun = typeof rfqMatchRuns.$inferSelect;
 export type InsertRfqMatchRun = typeof rfqMatchRuns.$inferInsert;
+
+// ── RFQ Supplier Invites — auto-match audit + notification tracking ────────────
+// One row per (rfq, supplier) pair. Inserted when the auto-matcher runs.
+// uniqueIndex prevents double-notifying the same supplier on the same RFQ.
+
+export const rfqSupplierInvites = pgTable(
+  "rfq_supplier_invites",
+  {
+    id:          serial("id").primaryKey(),
+    rfqId:       integer("rfq_id").notNull(),
+    supplierId:  integer("supplier_id").notNull(),
+    matchScore:  decimal("match_score", { precision: 5, scale: 2 }),
+    emailSent:   boolean("email_sent").default(false).notNull(),
+    inAppSent:   boolean("in_app_sent").default(false).notNull(),
+    respondedAt: timestamp("responded_at"),   // set when rfqBid is inserted
+    notifiedAt:  timestamp("notified_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    rfqIdx:      index("idx_rsi_rfq").on(table.rfqId),
+    supplierIdx: index("idx_rsi_supplier").on(table.supplierId),
+    uniquePair:  uniqueIndex("idx_rsi_unique").on(table.rfqId, table.supplierId),
+  }),
+);
+
+export type RfqSupplierInvite = typeof rfqSupplierInvites.$inferSelect;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
@@ -21,6 +22,13 @@ import {
   XCircle,
   Package,
   ArrowRight,
+  Zap,
+  DollarSign,
+  FileText,
+  ClipboardList,
+  UserCheck,
+  MapPin,
+  Calendar,
 } from "lucide-react";
 import { RfqCreationForm } from "@/components/RfqCreationForm";
 import { BidComparison } from "@/components/BidComparison";
@@ -262,6 +270,133 @@ function RfqSkeleton() {
   );
 }
 
+// ─── Smart Requests tab ───────────────────────────────────────────────────────
+
+const REQUEST_TYPE_ICONS: Record<string, React.ElementType> = {
+  rfi:                     FileText,
+  rfq_quote:               DollarSign,
+  rfp:                     ClipboardList,
+  supplier_qualification:  UserCheck,
+  alternative_material:    ClipboardList,
+  submittal_documentation: FileText,
+  bid_package:             Package,
+};
+
+const REQUEST_TYPE_LABELS: Record<string, string> = {
+  rfi:                     "RFI",
+  rfq_quote:               "RFQ",
+  rfp:                     "RFP",
+  supplier_qualification:  "Qualification",
+  alternative_material:    "Alternative",
+  submittal_documentation: "Submittal",
+  bid_package:             "Bid Package",
+};
+
+function SmartRequestsTab() {
+  const [, navigate] = useLocation();
+  const { data: requests, isLoading, error } = trpc.sourcingRequest.listMine.useQuery({ limit: 25 });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center space-y-3">
+          <AlertCircle className="w-8 h-8 text-destructive mx-auto" />
+          <p className="text-sm text-destructive font-medium">
+            {error.message ?? "Failed to load smart requests"}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!requests || requests.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center space-y-4">
+          <Zap className="w-10 h-10 text-green-600 mx-auto opacity-60" />
+          <div>
+            <p className="font-semibold">No smart requests yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Use the Smart RFx Builder to turn a material need into a structured
+              RFI, RFQ, RFP, or qualification request — with auto-scoring.
+            </p>
+          </div>
+          <Link href="/buyer/new-request">
+            <Button className="bg-green-600 hover:bg-green-700 text-white">
+              <Zap className="w-4 h-4 mr-1.5" />
+              Create your first smart request
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Link href="/buyer/new-request">
+          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+            <Zap className="w-3.5 h-3.5 mr-1.5" /> New request
+          </Button>
+        </Link>
+      </div>
+      {requests.map((req) => {
+        const TypeIcon = REQUEST_TYPE_ICONS[req.requestType ?? "rfq_quote"] ?? FileText;
+        const typeLabel = REQUEST_TYPE_LABELS[req.requestType ?? "rfq_quote"] ?? "RFQ";
+        return (
+          <div
+            key={req.id}
+            className="rounded-xl border bg-card text-card-foreground shadow-sm px-5 py-4 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate(`/buyer/requests/${req.id}`)}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-2 rounded-lg bg-green-50 dark:bg-green-950/30 shrink-0">
+                <TypeIcon className="w-4 h-4 text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Badge variant="outline" className="text-xs">{typeLabel}</Badge>
+                  <span className="text-xs text-muted-foreground capitalize">{req.status}</span>
+                </div>
+                <p className="font-semibold truncate">{req.projectName}</p>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                  {req.projectLocation && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />{req.projectLocation}
+                    </span>
+                  )}
+                  {req.createdAt && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(req.createdAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {Number(req.responseCount) > 0 && (
+                <div className="text-center shrink-0">
+                  <p className="text-lg font-bold text-green-600">{req.responseCount}</p>
+                  <p className="text-xs text-muted-foreground">responses</p>
+                </div>
+              )}
+              <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function BuyerRfqDashboard() {
   const { user } = useAuth();
@@ -355,20 +490,28 @@ export default function BuyerRfqDashboard() {
 
       <div className="container max-w-6xl py-8 flex-1 space-y-6">
 
-        {/* Page title + Create button */}
-        <div className="flex justify-between items-center">
+        {/* Page title + CTAs */}
+        <div className="flex justify-between items-start gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">RFQ Dashboard</h1>
             <p className="text-muted-foreground mt-1">
               Manage your requests for quotation and compare supplier bids
             </p>
           </div>
-          <Button
-            onClick={() => setShowCreateRfq(true)}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-          >
-            <Plus className="w-4 h-4" /> Create RFQ
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Link href="/buyer/new-request">
+              <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
+                <Zap className="w-4 h-4" /> Smart RFx Builder
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateRfq(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Classic RFQ
+            </Button>
+          </div>
         </div>
 
         {/* Summary stats */}
@@ -456,6 +599,10 @@ export default function BuyerRfqDashboard() {
                   {closedRfqs.length}
                 </span>
               </TabsTrigger>
+              <TabsTrigger value="smart" className="flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-green-600" />
+                Smart Requests
+              </TabsTrigger>
             </TabsList>
 
             {/* ── Active RFQs ─────────────────────────────────────────────── */}
@@ -535,6 +682,10 @@ export default function BuyerRfqDashboard() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+            {/* ── Smart RFx Requests ──────────────────────────────────────────── */}
+            <TabsContent value="smart">
+              <SmartRequestsTab />
             </TabsContent>
           </Tabs>
         )}

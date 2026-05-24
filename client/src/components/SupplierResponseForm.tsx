@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Send, AlertCircle, CheckCircle2, PackageCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -49,6 +49,7 @@ export function SupplierResponseForm({
   const [values, setValues] = useState<Record<string, string | boolean | number>>(
     (existingResponse as Record<string, string | boolean | number>) ?? {}
   );
+  const [additionalNotes, setAdditionalNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const submitMutation = trpc.supplierResponse.submitStructured.useMutation({
@@ -98,6 +99,7 @@ export function SupplierResponseForm({
       leadDays,
       gwpValue,
       epdReference,
+      notes: additionalNotes.trim() || undefined,
       fieldValues: values as Record<string, unknown>,
     });
   };
@@ -179,8 +181,8 @@ export function SupplierResponseForm({
           <Textarea
             id="notes"
             placeholder="Anything else the buyer should know..."
-            value={String(values["__notes"] ?? "")}
-            onChange={(e) => setValue("__notes", e.target.value)}
+            value={additionalNotes}
+            onChange={(e) => setAdditionalNotes(e.target.value)}
             rows={3}
             maxLength={2000}
           />
