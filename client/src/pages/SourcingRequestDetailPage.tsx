@@ -25,6 +25,12 @@ import {
   ClipboardList,
   Link2,
   Copy,
+  Mail,
+  Bell,
+  RefreshCw,
+  Loader2,
+  CheckCircle2,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SupplierComparisonTable } from "@/components/SupplierComparisonTable";
@@ -61,6 +67,19 @@ export default function SourcingRequestDetailPage() {
     { rfqId },
     { enabled: rfqId > 0 }
   );
+
+  const invitesQuery = trpc.sourcingRequest.listInvitedSuppliers.useQuery(
+    { rfqId },
+    { enabled: rfqId > 0 }
+  );
+
+  const reinviteMutation = trpc.sourcingRequest.reinviteSuppliers.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Invited ${result.invited} new supplier${result.invited !== 1 ? "s" : ""}${result.emailed ? ` — ${result.emailed} emailed` : ""}`);
+      void invitesQuery.refetch();
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to reinvite suppliers"),
+  });
 
   const supplierLink = `${window.location.origin}/supplier/respond/${rfqId}`;
 
@@ -148,7 +167,7 @@ export default function SourcingRequestDetailPage() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-4 text-center">
               <p className="text-2xl font-bold text-green-600">{responseCount}</p>
@@ -167,6 +186,14 @@ export default function SourcingRequestDetailPage() {
                 {avgPrice ? `$${parseFloat(String(avgPrice)).toLocaleString()}` : "—"}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">Avg price</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <p className="text-2xl font-bold text-blue-600">
+                {invitesQuery.data?.length ?? "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Invited</p>
             </CardContent>
           </Card>
         </div>
@@ -252,6 +279,100 @@ export default function SourcingRequestDetailPage() {
               bids={(responsesQuery.data?.bids ?? []) as Parameters<typeof SupplierComparisonTable>[0]["bids"]}
               onRescore={() => void responsesQuery.refetch()}
             />
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Invited suppliers section */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Bell className="w-5 h-5 text-blue-500" />
+              Auto-matched suppliers
+              {invitesQuery.data && invitesQuery.data.length > 0 && (
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  ({invitesQuery.data.length} notified)
+                </span>
+              )}
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => reinviteMutation.mutate({ rfqId })}
+              disabled={reinviteMutation.isPending}
+            >
+              {reinviteMutation.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              Find more suppliers
+            </Button>
+          </div>
+
+          {invitesQuery.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : !invitesQuery.data || invitesQuery.data.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                <Bell className="w-6 h-6 mx-auto mb-2 opacity-40" />
+                <p>No suppliers have been notified yet.</p>
+                <p className="text-xs mt-1">Click "Find more suppliers" to run auto-matching.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-2">
+              {invitesQuery.data.map((invite) => (
+                <div
+                  key={invite.inviteId}
+                  className="flex items-center gap-4 px-4 py-3 rounded-lg border bg-card"
+                >
+                  <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-sm">{invite.companyName}</p>
+                      {invite.tier === "premium" && (
+                        <Badge variant="default" className="text-xs bg-amber-500 hover:bg-amber-500">Premium</Badge>
+                      )}
+                      {invite.tier === "standard" && (
+                        <Badge variant="secondary" className="text-xs">Standard</Badge>
+                      )}
+                      {invite.respondedAt && (
+                        <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100">Responded</Badge>
+                      )}
+                    </div>
+                    {invite.state && (
+                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {invite.state}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-blue-600">
+                        {invite.matchScore ? Math.round(parseFloat(String(invite.matchScore))) : "—"}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">match</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <span title="Email sent">
+                        <Mail className={`w-4 h-4 ${invite.emailSent ? "text-green-500" : "text-muted-foreground/30"}`} />
+                      </span>
+                      <span title="In-app notified">
+                        <Bell className={`w-4 h-4 ${invite.inAppSent ? "text-green-500" : "text-muted-foreground/30"}`} />
+                      </span>
+                      {invite.respondedAt && (
+                        <span title="Responded">
+                          <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
