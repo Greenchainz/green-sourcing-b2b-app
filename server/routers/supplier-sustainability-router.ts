@@ -19,7 +19,7 @@ import {
   suppliers,
   supplierSustainabilityProfiles,
 } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   inferDataQualityLevel,
   type DataSourceType,
@@ -140,7 +140,7 @@ export const supplierSustainabilityRouter = router({
       };
 
       // Infer data quality level from combined state
-      let dataQualityLevel: "L0" | "L1" | "L2" | "L3" = "L0";
+      let dataQualityLevel: "L0" | "L1" | "L2" | "L3";
       if (merged.hasEpd && merged.epdReference) {
         dataQualityLevel = "L3";
       } else if (merged.hasEpd) {

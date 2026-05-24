@@ -16,7 +16,7 @@
 
 import { getDb } from "../db";
 import { suppliers } from "../../drizzle/schema";
-import { eq, and, gt, or } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
