@@ -68,7 +68,9 @@
       "Bash(git checkout *)",
       "Bash(git cherry-pick *)",
       "Bash(git fetch *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "Bash(pnpm run *)",
+      "Bash(pnpm exec *)"
     ]
   }
 }
