@@ -83,6 +83,7 @@ export const sourcingRequestRouter = router({
         requestType:         requestTypeSchema.default("rfq_quote"),
         responseFieldSchema: z.array(supplierResponseFieldSchema).min(1),
         scoringWeights:      scoringWeightsSchema.optional(),
+        shadowCarbonPrice:   z.number().nonnegative().max(10000).optional(),
         requiredCertifications: z.array(z.string()).optional(),
         items: z.array(
           z.object({
@@ -111,6 +112,7 @@ export const sourcingRequestRouter = router({
           requestType:         input.requestType,
           responseFieldSchema: input.responseFieldSchema,
           scoringWeights:      input.scoringWeights ?? null,
+          shadowCarbonPrice:   input.shadowCarbonPrice?.toString() ?? null,
           requiredCertifications: input.requiredCertifications ?? [],
           status:              "submitted",
         })
@@ -215,6 +217,7 @@ export const sourcingRequestRouter = router({
         rfqId:               z.number().int().positive(),
         responseFieldSchema: z.array(supplierResponseFieldSchema).optional(),
         scoringWeights:      scoringWeightsSchema.optional(),
+        shadowCarbonPrice:   z.number().nonnegative().max(10000).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -234,6 +237,9 @@ export const sourcingRequestRouter = router({
         .set({
           ...(input.responseFieldSchema && { responseFieldSchema: input.responseFieldSchema }),
           ...(input.scoringWeights && { scoringWeights: input.scoringWeights }),
+          ...(input.shadowCarbonPrice !== undefined && {
+            shadowCarbonPrice: input.shadowCarbonPrice != null ? input.shadowCarbonPrice.toString() : null,
+          }),
         })
         .where(eq(rfqs.id, input.rfqId));
 

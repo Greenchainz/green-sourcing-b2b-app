@@ -9,7 +9,16 @@
  *
  * Default weights: price 30%, carbon 30%, lead time 15%, docs 15%, certs 10%.
  * Buyers can override via scoringWeights on the sourcing request.
+ *
+ * Data quality multiplier: carbonScore is multiplied by sustainabilityWeightMultiplier(level)
+ * before being fed into the weighted total. L3 (EPD) = no penalty. L0 = 50% penalty.
  */
+
+import {
+  type DataQualityLevel,
+  sustainabilityWeightMultiplier,
+  inferBidDataQualityLevel,
+} from "./sustainability-data-quality";
 
 export interface RfxScoringWeights {
   price:           number;  // 0–1, sum must equal 1
@@ -48,15 +57,24 @@ export interface RfxResponseScoreInput {
   totalRequiredFields: number;
   /** Certification keywords provided. */
   certifications: string | null;
+  /**
+   * Data quality level for the supplier's emissions data.
+   * When provided, the carbonScore dimension is multiplied by
+   * sustainabilityWeightMultiplier(level). Inferred from hasEpd/gwpValue if null.
+   */
+  dataQualityLevel?: DataQualityLevel | null;
 }
 
 export interface RfxResponseScoreBreakdown {
-  total: number;           // 0–100 integer
-  priceScore: number;      // 0–100
-  carbonScore: number;
+  total: number;               // 0–100 integer
+  priceScore: number;          // 0–100
+  carbonScore: number;         // 0–100, after quality multiplier
+  carbonScoreRaw: number;      // 0–100, before quality multiplier (for UI display)
   leadTimeScore: number;
   documentationScore: number;
   certificationScore: number;
+  dataQualityLevel: DataQualityLevel;   // L0–L3 inferred/provided
+  qualityMultiplier: number;            // 0.5–1.0
 }
 
 /**
@@ -67,9 +85,9 @@ export function scoreRfxResponse(
   input: RfxResponseScoreInput,
   weights: RfxScoringWeights = DEFAULT_SCORING_WEIGHTS,
 ): RfxResponseScoreBreakdown {
-  const priceScore = scorePriceDimension(input.bidPrice, input.medianBidPrice);
-  const carbonScore = scoreCarbonDimension(input.gwpValue, input.maxGwp, input.hasEpd);
-  const leadTimeScore = scoreLeadTimeDimension(input.leadDays, input.maxLeadDays);
+  const priceScore     = scorePriceDimension(input.bidPrice, input.medianBidPrice);
+  const carbonScoreRaw = scoreCarbonDimension(input.gwpValue, input.maxGwp, input.hasEpd);
+  const leadTimeScore  = scoreLeadTimeDimension(input.leadDays, input.maxLeadDays);
   const documentationScore = scoreDocumentationDimension(
     input.hasEpd,
     input.filledRequiredFields,
@@ -77,21 +95,34 @@ export function scoreRfxResponse(
   );
   const certificationScore = scoreCertificationDimension(input.certifications);
 
+  // Apply data quality multiplier to the carbon dimension.
+  // Rewards suppliers who provide verified EPD data over raw self-reporting.
+  const qualityLevel  = inferBidDataQualityLevel(
+    input.dataQualityLevel,
+    input.hasEpd,
+    input.gwpValue != null,
+  );
+  const qualityMultiplier = sustainabilityWeightMultiplier(qualityLevel);
+  const carbonScore = Math.round(carbonScoreRaw * qualityMultiplier);
+
   const total = Math.round(
-    priceScore        * weights.price +
-    carbonScore       * weights.carbon +
-    leadTimeScore     * weights.leadTime +
-    documentationScore* weights.documentation +
-    certificationScore* weights.certifications,
+    priceScore           * weights.price +
+    carbonScore          * weights.carbon +
+    leadTimeScore        * weights.leadTime +
+    documentationScore   * weights.documentation +
+    certificationScore   * weights.certifications,
   );
 
   return {
     total: Math.min(100, Math.max(0, total)),
     priceScore,
     carbonScore,
+    carbonScoreRaw,
     leadTimeScore,
     documentationScore,
     certificationScore,
+    dataQualityLevel: qualityLevel,
+    qualityMultiplier,
   };
 }
 
