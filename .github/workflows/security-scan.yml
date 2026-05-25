@@ -75,7 +75,7 @@ jobs:
           docker build --pull --no-cache -f ${{ matrix.dockerfile }} -t ${{ matrix.image_name }}:scan-${{ github.sha }} .
 
       - name: Run Trivy container scan
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: "${{ matrix.image_name }}:scan-${{ github.sha }}"
           format: "sarif"
