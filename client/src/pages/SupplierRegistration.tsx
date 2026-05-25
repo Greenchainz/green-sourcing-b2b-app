@@ -172,21 +172,21 @@ export function SupplierRegistration() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 sm:py-12 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Get in Front of the Right Projects</h1>
-          <p className="text-lg text-gray-600">You have the product. We have the access. Digitize your reach and get in front of the world's top architectural firms.</p>
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2">Get in Front of the Right Projects</h1>
+          <p className="text-base sm:text-lg text-gray-600">You have the product. We have the access. Digitize your reach and get in front of the world's top architectural firms.</p>
         </div>
 
         {/* Progress Indicator */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex justify-between mb-4">
             {[1, 2, 3, 4].map((step) => (
               <div key={step} className="flex flex-col items-center flex-1">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold mb-2 transition-all ${
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold mb-2 transition-all text-sm sm:text-base ${
                     step <= currentStep
                       ? "bg-green-600 text-white"
                       : "bg-gray-200 text-gray-600"
@@ -294,7 +294,7 @@ export function SupplierRegistration() {
                     placeholder="123 Business St"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="city">City *</Label>
                     <Input
@@ -316,7 +316,7 @@ export function SupplierRegistration() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="zipCode">ZIP/Postal Code *</Label>
                     <Input
@@ -346,7 +346,7 @@ export function SupplierRegistration() {
               <div className="space-y-6">
                 <div>
                   <Label className="text-base font-semibold mb-3 block">Material Types *</Label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {MATERIAL_TYPES.map((material) => (
                       <div key={material.id} className="flex items-center space-x-2">
                         <Checkbox
@@ -410,8 +410,8 @@ export function SupplierRegistration() {
                           </li>
                         </ul>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold">$0</p>
+                      <div className="text-right shrink-0">
+                        <p className="text-xl sm:text-2xl font-bold">$0</p>
                         <p className="text-xs text-gray-600">forever</p>
                       </div>
                     </div>
@@ -448,8 +448,8 @@ export function SupplierRegistration() {
                           </li>
                         </ul>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold">$99</p>
+                      <div className="text-right shrink-0">
+                        <p className="text-xl sm:text-2xl font-bold">$99</p>
                         <p className="text-xs text-gray-600">/month</p>
                       </div>
                     </div>
@@ -460,7 +460,7 @@ export function SupplierRegistration() {
           </CardContent>
 
           {/* Navigation Buttons */}
-          <div className="px-6 py-4 border-t flex justify-between gap-3">
+          <div className="px-4 sm:px-6 py-4 border-t flex justify-between gap-3">
             <Button
               variant="outline"
               onClick={handlePrevious}

@@ -145,15 +145,15 @@ export default function SupplierRespondPage() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 {rfq.requestType && (
                   <Badge variant="secondary" className="mb-2 text-xs">
                     {REQUEST_TYPE_LABELS[rfq.requestType] ?? rfq.requestType}
                   </Badge>
                 )}
-                <CardTitle className="text-xl">{rfq.projectName}</CardTitle>
+                <CardTitle className="text-lg sm:text-xl leading-snug">{rfq.projectName}</CardTitle>
               </div>
-              <Building2 className="w-6 h-6 text-muted-foreground shrink-0 mt-1" />
+              <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground shrink-0 mt-1" />
             </div>
           </CardHeader>
           <CardContent className="space-y-2 pt-0">

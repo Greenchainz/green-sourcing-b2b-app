@@ -48,10 +48,10 @@ export default function MaterialSwap() {
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Material Swap Engine</h1>
-        <p className="text-muted-foreground">
+    <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-4xl font-bold mb-2">Material Swap Engine</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">
           Find sustainable alternatives with full CCPS scorecard comparison
         </p>
       </div>
@@ -97,8 +97,8 @@ export default function MaterialSwap() {
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{material.name}</h3>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-base sm:text-lg">{material.name}</h3>
                           {material.productName && (
                             <p className="text-sm text-muted-foreground">{material.productName}</p>
                           )}
@@ -234,7 +234,7 @@ export default function MaterialSwap() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="carbon">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
                 <TabsTrigger value="carbon">Carbon</TabsTrigger>
                 <TabsTrigger value="compliance">Compliance</TabsTrigger>
                 <TabsTrigger value="certifications">Certifications</TabsTrigger>
@@ -244,7 +244,7 @@ export default function MaterialSwap() {
               </TabsList>
 
               <TabsContent value="carbon" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">{comparison.material1.name}</CardTitle>
@@ -292,7 +292,7 @@ export default function MaterialSwap() {
               </TabsContent>
 
               <TabsContent value="compliance" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">{comparison.material1.name}</CardTitle>
@@ -352,7 +352,7 @@ export default function MaterialSwap() {
               </TabsContent>
 
               <TabsContent value="certifications" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">{comparison.material1.name}</CardTitle>
@@ -386,7 +386,7 @@ export default function MaterialSwap() {
               </TabsContent>
 
               <TabsContent value="cost" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">{comparison.material1.name}</CardTitle>
@@ -454,7 +454,7 @@ export default function MaterialSwap() {
               </TabsContent>
 
               <TabsContent value="supply" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">{comparison.material1.name}</CardTitle>
@@ -496,7 +496,7 @@ export default function MaterialSwap() {
               </TabsContent>
 
               <TabsContent value="health" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">{comparison.material1.name}</CardTitle>

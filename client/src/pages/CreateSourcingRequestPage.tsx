@@ -199,7 +199,7 @@ export default function CreateSourcingRequestPage() {
         </div>
 
         {/* Step indicators */}
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {STEPS.map((s, i) => (
             <div key={s.id} className="flex items-center gap-1">
               <div
@@ -334,14 +334,14 @@ export default function CreateSourcingRequestPage() {
         {/* ── Step 3: Customize ───────────────────────────────────────────── */}
         {step === "customize" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h2 className="font-semibold text-lg">Customize request</h2>
                 <p className="text-sm text-muted-foreground">
                   Toggle fields and adjust scoring weights for supplier responses.
                 </p>
               </div>
-              <Badge variant="outline" className="text-sm">
+              <Badge variant="outline" className="text-sm shrink-0">
                 {fields.length} fields
               </Badge>
             </div>
@@ -378,7 +378,7 @@ export default function CreateSourcingRequestPage() {
                 <CardTitle className="text-base">Review before submitting</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground text-xs mb-0.5">Project</p>
                     <p className="font-medium">{projectName}</p>
