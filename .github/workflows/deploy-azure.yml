@@ -254,6 +254,17 @@ jobs:
           echo "🌱 Seeding lead time estimates..."
           pnpm tsx scripts/seed-lead-times.ts
 
+      - name: Seed materials catalog (idempotent — skips if already seeded)
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          echo "🌱 Seeding static materials catalog..."
+          pnpm tsx scripts/seed-materials-static.ts
+
       - name: Close PostgreSQL firewall for runner
         if: always()
         run: |
