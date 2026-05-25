@@ -188,7 +188,7 @@ export function Privacy() {
   const [, setLocation] = useLocation();
 
   return (
-    <div className="min-h-screen bg-background text-foreground py-12 px-4">
+    <div className="min-h-screen bg-background text-foreground py-6 sm:py-12 px-4">
       <div className="max-w-4xl mx-auto">
         <Button 
           variant="ghost" 

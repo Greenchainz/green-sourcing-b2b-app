@@ -109,19 +109,19 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4 py-8 sm:py-0">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <img src="/brand/greenchainz-icon.png" alt="GreenChainz" className="w-10 h-10" width="40" height="40" style={{width:40,height:40,flexShrink:0}} />
-            <span className="text-2xl font-bold text-white">GreenChainz</span>
+            <span className="text-xl sm:text-2xl font-bold text-white">GreenChainz</span>
           </div>
           <p className="text-gray-400 text-sm">Verified Sustainable Sourcing</p>
         </div>
 
         {/* Card */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-8 shadow-2xl">
           <h1 className="text-xl font-semibold text-white text-center mb-2">
             Sign in to your account
           </h1>
