@@ -7,7 +7,8 @@ WORKDIR /app
 # Enable corepack (built into Node 22) to install pnpm without hitting npm registry
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 # Install dumb-init for proper signal handling (copied to runtime below)
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+# Upgrade all packages first to pull in glibc security patches from Debian repos
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 # Copy package files and patches (needed for pnpm patched dependencies)
 COPY package.json pnpm-lock.yaml ./
 COPY patches/ ./patches/
