@@ -5,6 +5,7 @@ import {
   materials,
   manufacturers,
   materialCertifications,
+  materialSpecs,
   ccpsBaselines,
   decisionMakerPersonas,
 } from '../../drizzle/schema';
@@ -453,8 +454,9 @@ export const materialsRouter = router({
       const rows = await db
         .select({ material: scoreColumns, manufacturerName: manufacturers.name })
         .from(materials)
+        .innerJoin(materialSpecs, eq(materialSpecs.materialId, materials.id))
         .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
-        .where(eq(materials.supplierId, input.supplierId));
+        .where(eq(materialSpecs.supplierId, input.supplierId));
 
       if (rows.length === 0) return [];
 
