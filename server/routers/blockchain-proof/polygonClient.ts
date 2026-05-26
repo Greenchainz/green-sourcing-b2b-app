@@ -6,20 +6,20 @@
 import { createPublicClient, http, defineChain } from "viem";
 
 const chainId = Number(process.env.POLYGON_CHAIN_ID ?? 137);
+const POLYGON_MAINNET_FALLBACK_RPC = "https://polygon-rpc.com";
+const POLYGON_AMOY_FALLBACK_RPC = "https://rpc-amoy.polygon.technology";
+const configuredRpcUrl = process.env.POLYGON_RPC_URL?.trim();
 const fallbackRpcUrl = chainId === 137
-  ? "https://polygon-rpc.com"
-  : "https://rpc-amoy.polygon.technology";
+  ? POLYGON_MAINNET_FALLBACK_RPC
+  : POLYGON_AMOY_FALLBACK_RPC;
+const resolvedRpcUrl = configuredRpcUrl || fallbackRpcUrl;
 
-if (!process.env.POLYGON_RPC_URL && process.env.BLOCKCHAIN_PROOF_ENABLED === "true") {
-  console.warn("[blockchain-proof] POLYGON_RPC_URL is not set — anchoring will fail");
+if (!configuredRpcUrl && process.env.BLOCKCHAIN_PROOF_ENABLED === "true") {
+  console.warn("[blockchain-proof] POLYGON_RPC_URL is not set — using fallback public RPC endpoint");
 }
 
 export function getPolygonRpcUrl(): string {
-  const rpcUrl = process.env.POLYGON_RPC_URL?.trim();
-  if (!rpcUrl) {
-    throw new Error("[blockchain-proof] POLYGON_RPC_URL is not set");
-  }
-  return rpcUrl;
+  return resolvedRpcUrl;
 }
 
 export const polygonChain = defineChain({
@@ -31,8 +31,8 @@ export const polygonChain = defineChain({
     decimals: 18,
   },
   rpcUrls: {
-    default: { http: [process.env.POLYGON_RPC_URL?.trim() || fallbackRpcUrl] },
-    public:  { http: [process.env.POLYGON_RPC_URL?.trim() || fallbackRpcUrl] },
+    default: { http: [resolvedRpcUrl] },
+    public:  { http: [resolvedRpcUrl] },
   },
   blockExplorers: {
     default: {
@@ -44,14 +44,14 @@ export const polygonChain = defineChain({
   },
 });
 
-let _polygonPublicClient: ReturnType<typeof createPublicClient> | null = null;
+let cachedPolygonPublicClient: ReturnType<typeof createPublicClient> | null = null;
 export function getPolygonPublicClient() {
-  if (_polygonPublicClient) return _polygonPublicClient;
-  _polygonPublicClient = createPublicClient({
+  if (cachedPolygonPublicClient) return cachedPolygonPublicClient;
+  cachedPolygonPublicClient = createPublicClient({
     chain:     polygonChain,
     transport: http(getPolygonRpcUrl()),
   });
-  return _polygonPublicClient;
+  return cachedPolygonPublicClient;
 }
 
 /**
