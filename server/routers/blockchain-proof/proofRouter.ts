@@ -115,7 +115,7 @@ export const proofRouter = router({
         rulesVersion: z.string().min(1),
         score:        z.number(),
         rating:       z.string().min(1),
-        inputs:       z.record(z.unknown()),
+        inputs:       z.record(z.string(), z.unknown()),
         computedAt:   z.string().datetime(),
       })
     )
