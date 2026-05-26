@@ -6,10 +6,20 @@
 import { createPublicClient, http, defineChain } from "viem";
 
 const chainId = Number(process.env.POLYGON_CHAIN_ID ?? 137);
-const rpcUrl  = process.env.POLYGON_RPC_URL ?? "";
+const fallbackRpcUrl = chainId === 137
+  ? "https://polygon-rpc.com"
+  : "https://rpc-amoy.polygon.technology";
 
-if (!rpcUrl && process.env.BLOCKCHAIN_PROOF_ENABLED === "true") {
+if (!process.env.POLYGON_RPC_URL && process.env.BLOCKCHAIN_PROOF_ENABLED === "true") {
   console.warn("[blockchain-proof] POLYGON_RPC_URL is not set — anchoring will fail");
+}
+
+export function getPolygonRpcUrl(): string {
+  const rpcUrl = process.env.POLYGON_RPC_URL?.trim();
+  if (!rpcUrl) {
+    throw new Error("[blockchain-proof] POLYGON_RPC_URL is not set");
+  }
+  return rpcUrl;
 }
 
 export const polygonChain = defineChain({
@@ -21,8 +31,8 @@ export const polygonChain = defineChain({
     decimals: 18,
   },
   rpcUrls: {
-    default: { http: [rpcUrl] },
-    public:  { http: [rpcUrl] },
+    default: { http: [process.env.POLYGON_RPC_URL?.trim() || fallbackRpcUrl] },
+    public:  { http: [process.env.POLYGON_RPC_URL?.trim() || fallbackRpcUrl] },
   },
   blockExplorers: {
     default: {
@@ -34,10 +44,15 @@ export const polygonChain = defineChain({
   },
 });
 
-export const polygonPublicClient = createPublicClient({
-  chain:     polygonChain,
-  transport: http(rpcUrl),
-});
+let _polygonPublicClient: ReturnType<typeof createPublicClient> | null = null;
+export function getPolygonPublicClient() {
+  if (_polygonPublicClient) return _polygonPublicClient;
+  _polygonPublicClient = createPublicClient({
+    chain:     polygonChain,
+    transport: http(getPolygonRpcUrl()),
+  });
+  return _polygonPublicClient;
+}
 
 /**
  * Build the full PolygonScan explorer URL for a transaction hash.
