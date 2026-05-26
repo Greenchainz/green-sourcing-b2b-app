@@ -2126,3 +2126,60 @@ export const supplierSustainabilityProfiles = pgTable(
 
 export type SupplierSustainabilityProfile = typeof supplierSustainabilityProfiles.$inferSelect;
 export type InsertSupplierSustainabilityProfile = typeof supplierSustainabilityProfiles.$inferInsert;
+
+// ── GreenChainz Proof Ledger — Blockchain Anchors ────────────────────────────
+// Immutable record of every artifact anchored on Polygon via AnchorRegistry.sol.
+// Append-only: never update or delete rows. Use verificationStatus only for
+// internal state tracking (e.g. "anchored" → "mismatch_detected").
+//
+// artifactType values:
+//   "epd"                — verified EPD document
+//   "certification"      — supplier certification (LEED, FSC, GreenGuard, etc.)
+//   "material_score"     — material credit score snapshot
+//   "material_submittal" — approved CSI material submittal PDF
+//   "supplier_audit"     — AI Audit Agent verification record
+//
+// artifactId is stored as varchar to support both integer IDs (suppliers,
+// materials) and string IDs (EPD numbers from external providers like EC3).
+
+export const blockchainAnchors = pgTable(
+  "blockchain_anchors",
+  {
+    id: serial("id").primaryKey(),
+
+    // Who initiated this anchor (null for automated/system anchors)
+    anchoredByUserId: integer("anchored_by_user_id"),
+
+    // What was anchored
+    artifactType: varchar("artifact_type", { length: 64 }).notNull(),
+    artifactId:   varchar("artifact_id",   { length: 255 }).notNull(),
+
+    // Cryptographic proof — keccak256 hashes (66 chars: "0x" + 64 hex)
+    artifactHash: varchar("artifact_hash", { length: 66 }).notNull(),
+    contextHash:  varchar("context_hash",  { length: 66 }).notNull(),
+
+    // Chain location
+    chainId:         integer("chain_id").notNull(),
+    contractAddress: varchar("contract_address", { length: 42 }).notNull(),
+    txHash:          varchar("tx_hash", { length: 66 }).notNull().unique(),
+    blockNumber:     integer("block_number"),
+
+    // Internal state — never alter historical proof records
+    verificationStatus: varchar("verification_status", { length: 32 })
+      .notNull()
+      .default("anchored"),
+
+    anchoredAt: timestamp("anchored_at", { withTimezone: true }).notNull(),
+    createdAt:  timestamp("created_at",  { withTimezone: true }).notNull().defaultNow(),
+    updatedAt:  timestamp("updated_at",  { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    artifactIdx:  index("idx_bc_anchors_artifact").on(table.artifactType, table.artifactId),
+    txHashIdx:    index("idx_bc_anchors_tx_hash").on(table.txHash),
+    userIdx:      index("idx_bc_anchors_user").on(table.anchoredByUserId),
+    anchoredAtIdx: index("idx_bc_anchors_anchored_at").on(table.anchoredAt),
+  })
+);
+
+export type BlockchainAnchor = typeof blockchainAnchors.$inferSelect;
+export type InsertBlockchainAnchor = typeof blockchainAnchors.$inferInsert;

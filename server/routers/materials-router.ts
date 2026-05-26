@@ -434,4 +434,123 @@ export const materialsRouter = router({
       const { searchEC3Materials } = await import('../services/ec3-service');
       return searchEC3Materials(input.query, input.category);
     }),
+
+  /**
+   * getScoresForSupplier — batch Material Credit Scores for all of a supplier's materials.
+   *
+   * Fetches all materials + certifications in 2 queries, then scores every row with
+   * the same logic as getScore. Returns sorted ascending by total (worst-first) so
+   * the supplier can immediately see what needs attention.
+   */
+  getScoresForSupplier: publicProcedure
+    .input(z.object({ supplierId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // ── 1. Fetch all materials for this supplier ──────────────────────────
+      const { embedding: _e, searchText: _s, ...scoreColumns } = getTableColumns(materials);
+      const rows = await db
+        .select({ material: scoreColumns, manufacturerName: manufacturers.name })
+        .from(materials)
+        .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+        .where(eq(materials.supplierId, input.supplierId));
+
+      if (rows.length === 0) return [];
+
+      // ── 2. Fetch all certifications for these materials in one query ───────
+      const materialIds = rows.map((r) => r.material.id);
+      const allCerts = await db
+        .select({ materialId: materialCertifications.materialId, certificationName: materialCertifications.certificationName })
+        .from(materialCertifications)
+        .where(sql`${materialCertifications.materialId} = ANY(${sql.raw(`ARRAY[${materialIds.join(',')}]::int[]`)})`)
+      ;
+
+      const certsByMaterial = new Map<number, string[]>();
+      for (const c of allCerts) {
+        if (!c.certificationName) continue;
+        const existing = certsByMaterial.get(c.materialId) ?? [];
+        existing.push(c.certificationName);
+        certsByMaterial.set(c.materialId, existing);
+      }
+
+      // ── 3. Score each material (same logic as getScore) ────────────────────
+      const scored = rows.map(({ material, manufacturerName }) => {
+        const hasEpdFlag = !!material.hasEpd;
+        const hasEpdNumber = !!material.epdNumber;
+        const epdScore = hasEpdFlag ? 30 : hasEpdNumber ? 15 : 0;
+
+        const gwp      = material.gwpValue           ? Number(material.gwpValue)           : null;
+        const median   = material.ec3IndustryMedian  ? Number(material.ec3IndustryMedian)  : null;
+        const best     = material.ec3BestPractice    ? Number(material.ec3BestPractice)    : null;
+        const conserv  = material.ec3ConservativeEstimate ? Number(material.ec3ConservativeEstimate) : null;
+
+        let carbonScore = 0;
+        if (gwp !== null && median !== null && median > 0) {
+          if (best !== null && gwp <= best) {
+            carbonScore = 25;
+          } else if (conserv !== null && gwp >= conserv) {
+            carbonScore = 0;
+          } else if (conserv !== null && best !== null && conserv > best) {
+            carbonScore = Math.max(0, Math.min(25, Math.round(25 * (conserv - gwp) / (conserv - best))));
+          } else {
+            carbonScore = Math.max(0, Math.min(25, Math.round((1 - gwp / median) * 50)));
+          }
+        }
+
+        const certSet = new Set<string>();
+        if (material.hasEpd)       certSet.add('EPD');
+        if (material.hasHpd)       certSet.add('HPD');
+        if (material.hasFsc)       certSet.add('FSC');
+        if (material.hasC2c)       certSet.add('Cradle to Cradle');
+        if (material.hasGreenguard) certSet.add('GREENGUARD');
+        if (material.hasDeclare)   certSet.add('Declare');
+        for (const name of (certsByMaterial.get(material.id) ?? [])) certSet.add(name);
+        const certificationScore = Math.min(20, certSet.size * 4);
+
+        const miles = material.regionalAvailabilityMiles ?? null;
+        const baseLocal = miles === null ? 8 : miles === 0 ? 15 : Math.max(0, Math.min(15, Math.round((1 - miles / 500) * 15)));
+        const localSourcingScore = material.usManufactured ? Math.min(15, baseLocal + 3) : baseLocal;
+
+        const transparencyFields = [
+          material.description, material.gwpValue, material.pricePerUnit,
+          material.leadTimeDays, material.epdUrl || material.epdNumber,
+          material.specSheetUrl, material.manufacturerId,
+          material.recycledContentPct, material.ec3IndustryMedian, material.category,
+        ];
+        const filledCount = transparencyFields.filter(
+          (f) => f !== null && f !== undefined && String(f).trim() !== ''
+        ).length;
+        const transparencyScore = Math.round((filledCount / transparencyFields.length) * 10);
+
+        const total = Math.min(100, epdScore + carbonScore + certificationScore + localSourcingScore + transparencyScore);
+
+        // Top improvement tip — first gap by descending impact
+        let topTip: string | null = null;
+        if (!hasEpdFlag)                                            topTip = "Upload a verified EPD (+30 pts)";
+        else if (carbonScore < 15)                                  topTip = "Add EC3 GWP data to improve carbon score";
+        else if (certSet.size < 2)                                  topTip = "Add 2+ certifications (+8 pts each)";
+        else if (localSourcingScore < 10)                           topTip = "Set regional availability or confirm US manufacturing";
+        else if (transparencyScore < 7)                             topTip = "Fill in price, lead time, and spec sheet URL";
+
+        return {
+          materialId: material.id,
+          materialName: material.name ?? "Unnamed Material",
+          category: material.category ?? "",
+          manufacturerName: manufacturerName ?? null,
+          total,
+          breakdown: {
+            epd:           { score: epdScore,           max: 30, hasEpd: hasEpdFlag },
+            carbon:        { score: carbonScore,         max: 25, gwp },
+            certifications:{ score: certificationScore,  max: 20, count: certSet.size },
+            localSourcing: { score: localSourcingScore,  max: 15, miles, usManufactured: !!material.usManufactured },
+            transparency:  { score: transparencyScore,   max: 10, filledFields: filledCount, totalFields: transparencyFields.length },
+          },
+          topTip,
+        };
+      });
+
+      // Worst scores first so the supplier sees what needs fixing immediately
+      return scored.sort((a, b) => a.total - b.total);
+    }),
 });

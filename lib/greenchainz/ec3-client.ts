@@ -26,9 +26,15 @@ export async function lookupEpd(epdNumber: string): Promise<Ec3EpdResult | null>
     throw new Error('EC3_API_BASE_URL is not set');
   }
 
-  const apiKey = process.env.EC3_API_KEY;
+  // EC3 API key loaded from Azure Key Vault at startup via lib/secrets.ts.
+  // KV secret name: "EC3-API-KEY"
+  const { getSecret } = await import('../secrets');
+  const apiKey = getSecret('EC3_API_KEY');
   if (!apiKey) {
-    throw new Error('EC3_API_KEY is not set');
+    throw new Error(
+      'EC3_API_KEY not found. ' +
+      'Ensure Key Vault secret "EC3-API-KEY" exists and the managed identity has access.'
+    );
   }
 
   const url = `${baseUrl}/epds/${encodeURIComponent(epdNumber)}`;

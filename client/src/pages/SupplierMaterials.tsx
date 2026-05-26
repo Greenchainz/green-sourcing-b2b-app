@@ -49,7 +49,58 @@ import {
   DollarSign,
   ChevronDown,
   ChevronUp,
+  BarChart2,
+  Zap,
 } from "lucide-react";
+
+// ── MCS Score Badge ──────────────────────────────────────────────────────────
+
+interface McsScore {
+  materialId: number;
+  total: number;
+  topTip: string | null;
+  breakdown: {
+    epd: { score: number; max: number; hasEpd: boolean };
+    carbon: { score: number; max: number; gwp: number | null };
+    certifications: { score: number; max: number; count: number };
+    localSourcing: { score: number; max: number; miles: number | null; usManufactured: boolean };
+    transparency: { score: number; max: number; filledFields: number; totalFields: number };
+  };
+}
+
+function McsScoreBadge({ score }: { score: McsScore | undefined }) {
+  if (!score) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  const { total } = score;
+  const color =
+    total >= 70 ? "#22c55e" : total >= 40 ? "#f59e0b" : "#ef4444";
+  const label =
+    total >= 70 ? "Good" : total >= 40 ? "Fair" : "Low";
+
+  const radius = 12;
+  const circ = 2 * Math.PI * radius;
+  const filled = circ * (total / 100);
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Mini ring */}
+      <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" className="-rotate-90">
+        <circle cx="16" cy="16" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="4" />
+        <circle
+          cx="16" cy="16" r={radius} fill="none"
+          stroke={color} strokeWidth="4" strokeLinecap="round"
+          strokeDasharray={`${filled} ${circ}`}
+        />
+      </svg>
+      <div>
+        <p className="text-sm font-bold tabular-nums leading-none" style={{ color }}>{total}</p>
+        <p className="text-[10px] text-muted-foreground leading-none">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -574,10 +625,12 @@ function toBool(val: boolean | number | null | undefined): boolean {
 
 function InlineEditRow({
   material,
+  score,
   onEpdSubmit,
   onUpdated,
 }: {
   material: MaterialRow;
+  score?: McsScore;
   onEpdSubmit: (name: string, id: number) => void;
   onUpdated: () => void;
 }) {
@@ -708,6 +761,17 @@ function InlineEditRow({
             </div>
           )}
         </td>
+        {/* ── Credit Score column ── */}
+        <td className="p-4">
+          <div className="flex flex-col gap-1">
+            <McsScoreBadge score={score} />
+            {score?.topTip && score.total < 70 && (
+              <p className="text-[10px] text-muted-foreground max-w-[140px] leading-tight">
+                {score.topTip}
+              </p>
+            )}
+          </div>
+        </td>
         <td className="p-4">
           <div className="flex items-center gap-1">
             <Button
@@ -821,10 +885,12 @@ function InlineEditRow({
 
 function MaterialCard({
   material,
+  score,
   onEpdSubmit,
   onUpdated,
 }: {
   material: MaterialRow;
+  score?: McsScore;
   onEpdSubmit: (name: string, id: number) => void;
   onUpdated: () => void;
 }) {
@@ -883,6 +949,21 @@ function MaterialCard({
               : "No EPD"}
         </Badge>
       </div>
+
+      {/* MCS score strip */}
+      {score && (
+        <div className="flex items-center gap-3 py-2 px-3 my-2 rounded-lg bg-muted/40 border border-border/40">
+          <McsScoreBadge score={score} />
+          {score.topTip && score.total < 70 ? (
+            <p className="text-xs text-muted-foreground leading-snug flex-1">{score.topTip}</p>
+          ) : (
+            <p className="text-xs text-green-600 font-medium">Good standing</p>
+          )}
+          <Link href={`/materials/${material.materialId}/score`}>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs shrink-0">Full report →</Button>
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 text-sm mb-3">
         <div className="flex items-center gap-1.5">
@@ -1025,6 +1106,19 @@ export default function SupplierMaterials() {
       staleTime: 60_000,
     });
 
+  // Fetch Material Credit Scores for all materials in one batch call
+  const { data: scoresRaw = [] } = trpc.materials.getScoresForSupplier.useQuery(
+    { supplierId: profile?.id ?? 0 },
+    { enabled: !!profile?.id, staleTime: 5 * 60_000 }
+  );
+
+  // Index scores by materialId for O(1) lookup in rows
+  const scoreMap = useMemo(() => {
+    const map = new Map<number, McsScore>();
+    for (const s of scoresRaw) map.set(s.materialId, s as McsScore);
+    return map;
+  }, [scoresRaw]);
+
   const isLoading = profileLoading || specsLoading || epdsLoading;
 
   // Combine specs + EPDs into a unified list
@@ -1148,17 +1242,67 @@ export default function SupplierMaterials() {
           <Card className="p-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-blue-500" />
+                <BarChart2 className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Total EPDs
-                </p>
-                <p className="text-2xl font-bold">{myEpds.length}</p>
+                {(() => {
+                  const scores = scoresRaw.map((s) => s.total);
+                  const avg = scores.length
+                    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+                    : null;
+                  const color =
+                    avg === null ? "text-foreground"
+                    : avg >= 70 ? "text-green-600"
+                    : avg >= 40 ? "text-amber-600"
+                    : "text-red-500";
+                  return (
+                    <>
+                      <p className="text-sm text-muted-foreground">Avg. Credit Score</p>
+                      <p className={`text-2xl font-bold ${color}`}>
+                        {avg ?? "—"}
+                        {avg !== null && <span className="text-sm font-normal text-muted-foreground ml-1">/ 100</span>}
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </Card>
         </div>
+
+        {/* Score Lab alert — surfaces materials that need attention */}
+        {(() => {
+          const lowScorers = scoresRaw.filter((s) => s.total < 50);
+          if (lowScorers.length === 0) return null;
+          return (
+            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4 flex items-start gap-3">
+              <Zap className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                  {lowScorers.length} material{lowScorers.length > 1 ? "s" : ""} with a Credit Score below 50
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                  Low scores reduce your visibility to architects searching the marketplace. The biggest wins are usually adding a verified EPD and completing your product data.
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {lowScorers.slice(0, 5).map((s) => (
+                    <Link key={s.materialId} href={`/materials/${s.materialId}/score`}>
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 hover:bg-amber-200 transition-colors cursor-pointer border border-amber-200 dark:border-amber-700">
+                        {s.materialName.length > 28 ? s.materialName.slice(0, 25) + "…" : s.materialName}
+                        <span className="font-bold">{s.total}</span>
+                      </span>
+                    </Link>
+                  ))}
+                  {lowScorers.length > 5 && (
+                    <span className="text-xs text-amber-700 dark:text-amber-400 self-center">
+                      +{lowScorers.length - 5} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Search Bar */}
         <div className="relative mb-6">
@@ -1237,15 +1381,19 @@ export default function SupplierMaterials() {
                         EPD Status
                       </th>
                       <th className="text-left p-4 text-sm font-semibold text-muted-foreground">
+                        Credit Score
+                      </th>
+                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {paginated.map((mat, i) => (
+                    {paginated.map((mat) => (
                       <InlineEditRow
                         key={mat.id}
                         material={mat}
+                        score={scoreMap.get(mat.materialId)}
                         onEpdSubmit={openEpdModal}
                         onUpdated={refetchSpecs}
                       />
@@ -1261,6 +1409,7 @@ export default function SupplierMaterials() {
                 <MaterialCard
                   key={mat.id}
                   material={mat}
+                  score={scoreMap.get(mat.materialId)}
                   onEpdSubmit={openEpdModal}
                   onUpdated={refetchSpecs}
                 />

@@ -41,6 +41,7 @@ import { auditRouter } from './routers/audit-router';
 import { sourcingRequestRouter } from './routers/sourcing-request-router';
 import { supplierResponseRouter } from './routers/supplier-response-router';
 import { supplierSustainabilityRouter } from './routers/supplier-sustainability-router';
+import { proofRouter } from './routers/blockchain-proof/proofRouter';
 
 export const appRouter = router({
   system: systemRouter,
@@ -91,6 +92,7 @@ export const appRouter = router({
   sourcingRequest: sourcingRequestRouter,
   supplierResponse: supplierResponseRouter,
   supplierSustainability: supplierSustainabilityRouter,
+  proof: proofRouter,
 });
 
 export type AppRouter = typeof appRouter;

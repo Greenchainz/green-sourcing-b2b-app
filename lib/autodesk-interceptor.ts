@@ -74,11 +74,18 @@ export interface RevitExtractionResult {
  * Get Autodesk Forge OAuth token
  */
 export async function getForgeToken(): Promise<string> {
-  const clientId = process.env.AUTODESK_CLIENT_ID;
-  const clientSecret = process.env.AUTODESK_CLIENT_SECRET;
+  // Credentials loaded from Azure Key Vault at startup via lib/secrets.ts.
+  // KV secret names: "AUTODESK-CLIENT-ID", "AUTODESK-CLIENT-SECRET"
+  const { getSecret } = await import('./secrets');
+  const clientId = getSecret('AUTODESK_CLIENT_ID');
+  const clientSecret = getSecret('AUTODESK_CLIENT_SECRET');
 
   if (!clientId || !clientSecret) {
-    throw new Error('Autodesk Forge credentials not configured (AUTODESK_CLIENT_ID, AUTODESK_CLIENT_SECRET)');
+    throw new Error(
+      'Autodesk Forge credentials not found in Key Vault. ' +
+      'Ensure "AUTODESK-CLIENT-ID" and "AUTODESK-CLIENT-SECRET" exist in the vault ' +
+      'and the managed identity has "Key Vault Secrets User" role.'
+    );
   }
 
   try {
