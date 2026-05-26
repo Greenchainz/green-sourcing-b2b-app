@@ -74,6 +74,8 @@ function buildLocalSigner(privateKey: `0x${string}`): EvmSigner {
 //   5. Broadcast signed tx via Polygon RPC
 
 async function buildKeyVaultSigner(): Promise<EvmSigner> {
+  const keyVaultKeysModule = "@azure/keyvault-keys";
+
   // Dynamic import so this module doesn't blow up when the package isn't installed
   const [
     { KeyClient, CryptographyClient },
@@ -82,7 +84,7 @@ async function buildKeyVaultSigner(): Promise<EvmSigner> {
     { serializeTransaction, parseTransaction },
     { publicKeyToAddress },
   ] = await Promise.all([
-    import("@azure/keyvault-keys"),
+    import(keyVaultKeysModule),
     import("@azure/identity"),
     import("viem"),
     import("viem"),
