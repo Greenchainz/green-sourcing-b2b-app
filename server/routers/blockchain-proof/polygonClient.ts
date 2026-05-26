@@ -6,10 +6,20 @@
 import { createPublicClient, http, defineChain } from "viem";
 
 const chainId = Number(process.env.POLYGON_CHAIN_ID ?? 137);
-const rpcUrl  = process.env.POLYGON_RPC_URL ?? "";
+const POLYGON_MAINNET_FALLBACK_RPC = "https://polygon-rpc.com";
+const POLYGON_AMOY_FALLBACK_RPC = "https://rpc-amoy.polygon.technology";
+const configuredRpcUrl = process.env.POLYGON_RPC_URL?.trim();
+const fallbackRpcUrl = chainId === 137
+  ? POLYGON_MAINNET_FALLBACK_RPC
+  : POLYGON_AMOY_FALLBACK_RPC;
+const resolvedRpcUrl = configuredRpcUrl || fallbackRpcUrl;
 
-if (!rpcUrl && process.env.BLOCKCHAIN_PROOF_ENABLED === "true") {
-  console.warn("[blockchain-proof] POLYGON_RPC_URL is not set — anchoring will fail");
+if (!configuredRpcUrl && process.env.BLOCKCHAIN_PROOF_ENABLED === "true") {
+  console.warn("[blockchain-proof] POLYGON_RPC_URL is not set — using fallback public RPC endpoint");
+}
+
+export function getPolygonRpcUrl(): string {
+  return resolvedRpcUrl;
 }
 
 export const polygonChain = defineChain({
@@ -21,8 +31,8 @@ export const polygonChain = defineChain({
     decimals: 18,
   },
   rpcUrls: {
-    default: { http: [rpcUrl] },
-    public:  { http: [rpcUrl] },
+    default: { http: [resolvedRpcUrl] },
+    public:  { http: [resolvedRpcUrl] },
   },
   blockExplorers: {
     default: {
@@ -34,10 +44,15 @@ export const polygonChain = defineChain({
   },
 });
 
-export const polygonPublicClient = createPublicClient({
-  chain:     polygonChain,
-  transport: http(rpcUrl),
-});
+let cachedPolygonPublicClient: ReturnType<typeof createPublicClient> | null = null;
+export function getPolygonPublicClient() {
+  if (cachedPolygonPublicClient) return cachedPolygonPublicClient;
+  cachedPolygonPublicClient = createPublicClient({
+    chain:     polygonChain,
+    transport: http(getPolygonRpcUrl()),
+  });
+  return cachedPolygonPublicClient;
+}
 
 /**
  * Build the full PolygonScan explorer URL for a transaction hash.

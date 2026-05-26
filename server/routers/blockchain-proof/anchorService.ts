@@ -9,7 +9,7 @@
 import { getDb } from "../../db";
 import { blockchainAnchors } from "../../../drizzle/schema";
 import { anchorRegistryAbi } from "./anchorRegistryAbi";
-import { polygonPublicClient } from "./polygonClient";
+import { getPolygonPublicClient } from "./polygonClient";
 import { getProofSigner } from "./keyVaultEvmSigner";
 import { ARTIFACT_TYPE_IDS, type AnchorArtifactInput, type AnchorArtifactResult } from "./proofTypes";
 
@@ -94,6 +94,7 @@ export async function anchorArtifact(
   // ── Wait for confirmation ────────────────────────────────────────────────────
   let blockNumber: number | undefined;
   try {
+    const polygonPublicClient = getPolygonPublicClient();
     const receipt = await polygonPublicClient.waitForTransactionReceipt({ hash: txHash });
     blockNumber = Number(receipt.blockNumber);
     console.log(`[blockchain-proof] Confirmed at block ${blockNumber}`);
