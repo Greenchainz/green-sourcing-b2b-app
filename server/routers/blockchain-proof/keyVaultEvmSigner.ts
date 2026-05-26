@@ -19,7 +19,7 @@ import {
   type WriteContractParameters,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { polygonChain } from "./polygonClient";
+import { getPolygonRpcUrl, polygonChain } from "./polygonClient";
 
 // ─── Signer abstraction ───────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ function buildLocalSigner(privateKey: `0x${string}`): EvmSigner {
   const walletClient = createWalletClient({
     account,
     chain:     polygonChain,
-    transport: http(process.env.POLYGON_RPC_URL),
+    transport: http(getPolygonRpcUrl()),
   }).extend(publicActions);
 
   return {
