@@ -17,7 +17,16 @@ export interface JWTPayload {
 }
 
 function getJwtSecret(): string {
-  return process.env.JWT_SECRET || 'development-secret-key';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      '[jwt] JWT_SECRET is not set. ' +
+      'In production this must be loaded from Azure Key Vault via lib/secrets.ts. ' +
+      'In local dev set it in .env.local. ' +
+      'Refusing to sign/verify tokens with an empty or hardcoded secret.'
+    );
+  }
+  return secret;
 }
 const JWT_EXPIRY_SECONDS = 60 * 60 * 24 * 7; // 7d
 const REFRESH_EXPIRY_SECONDS = 60 * 60 * 24 * 30; // 30d

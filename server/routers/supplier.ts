@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { suppliers } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sendSupplierWelcomeEmail, sendFounderNewSupplierAlert } from "../email-service";
+import { parseEpdPdf } from "../services/epd-intelligence";
 
 /**
  * Supplier Onboarding Router
@@ -210,5 +211,36 @@ export const supplierOnboardingRouter = router({
         .where(eq(suppliers.id, existing.id));
 
       return { success: true };
+    }),
+
+  // ── Parse EPD / product sheet PDF → pre-fill profile fields ─────────────
+  // Accepts a base64-encoded PDF, runs it through Azure Document Intelligence
+  // + GPT-4o, and returns structured fields ready to hydrate the onboarding form.
+  parseEpdDocument: protectedProcedure
+    .input(
+      z.object({
+        /** Base64-encoded PDF bytes */
+        fileBase64: z.string().min(100, "File content too short"),
+        /** Original filename — for logging only */
+        fileName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.fileBase64, "base64");
+
+      if (buffer.length > 20 * 1024 * 1024) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "File too large — maximum 20 MB",
+        });
+      }
+
+      console.log(
+        `[epd-upload] Parsing ${input.fileName ?? "document"} (${Math.round(buffer.length / 1024)}KB)`
+      );
+
+      const result = await parseEpdPdf(buffer);
+
+      return result;
     }),
 });

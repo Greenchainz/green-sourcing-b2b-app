@@ -125,13 +125,16 @@ export function resolveConnectionString(): string | undefined {
   const user = process.env.AZURE_POSTGRESQL_USER;
   const db   = process.env.AZURE_POSTGRESQL_DATABASE;
   const port = process.env.AZURE_POSTGRESQL_PORT || '5432';
-  const password = process.env.AZURE_POSTGRESQL_PASSWORD ?? process.env.DB_PASSWORD;
   const sslMode  = process.env.AZURE_POSTGRESQL_SSL || 'require';
 
   if (host && user && db) {
+    // Production: POSTGRES_AUTH_MODE=aad — password omitted; Postgres AAD auth
+    // exchanges a managed-identity token (fetchAadDbToken) instead of a password.
+    // Never use AZURE_POSTGRESQL_PASSWORD or DB_PASSWORD — those are banned in prod.
+    // Local dev: use DATABASE_URL from .env.local (set above); this branch is for
+    // Service Connector override only and should never carry a password in prod.
     const u = encodeURIComponent(user);
-    const p = password ? encodeURIComponent(password) : '';
-    return `postgres://${u}:${p}@${host}:${port}/${db}?sslmode=${sslMode}`;
+    return `postgres://${u}@${host}:${port}/${db}?sslmode=${sslMode}`;
   }
 
   return undefined;

@@ -16,6 +16,8 @@ import {
   Scale,
   Truck,
   TrendingDown,
+  ShieldCheck,
+  ScanLine,
 } from 'lucide-react';
 
 const features = [
@@ -123,7 +125,7 @@ const features = [
       'ICC-ES reports on file for bio-based and alternative materials — code review ready',
       'UL Listings verified before submittal generation — not self-declared by manufacturers',
       'EPDs backed by EPD International + EPD Hub — third-party verified, not manufacturer PDFs',
-      'LEED v5 MRp2, Buy Clean Act GWP, Local Law 97, Title 24 — all tracked automatically',
+      'LEED v5 MRp2, Buy Clean Act GWP thresholds (BCCA + 5 states), Local Law 97, Title 24 — all tracked automatically',
     ],
   },
   {
@@ -166,14 +168,42 @@ const features = [
       'Audit report generation for stakeholder review',
     ],
   },
+  {
+    icon: ShieldCheck,
+    title: 'Buy Clean California Act Compliance — Built Into Every Swap',
+    slug: 'bcca-compliance',
+    description:
+      "California's Buy Clean Act sets hard GWP limits for structural steel, rebar, flat glass, and mineral wool on public projects — and similar laws are live in Colorado, Oregon, Washington, Minnesota, and New Mexico. GreenChainz hard-codes every BCCA threshold directly into the Swap Engine. When you search for an alternative, every candidate is immediately flagged as compliant, non-compliant, or a compliance upgrade over what you currently have specified. No spreadsheet. No manual lookup. The legal limit is built into the recommendation.",
+    highlights: [
+      'Hard-coded GWP limits for all 5 BCCA-eligible material categories (updated April 2026)',
+      'Every swap candidate shows compliance status, GWP margin, and % headroom vs. threshold',
+      '"Upgrades compliance" flag surfaces swaps that fix a non-compliant spec in one click',
+      'Mineral wool functional-unit comparison flagged automatically — no silent false positives',
+      'Covers Buy Clean laws in CA, CO, OR, WA, MN, NM — expanding as new states pass',
+    ],
+  },
+  {
+    icon: ScanLine,
+    title: 'EPD Auto-Fill — Upload Once, Profile Done',
+    slug: 'epd-auto-fill',
+    description:
+      "Suppliers have EPDs. They hate re-keying them into every platform they join. GreenChainz eliminates that entirely. Upload your EPD or product datasheet PDF — Azure Document Intelligence reads it, GPT-4o structures it, and your profile is pre-filled: GWP values, certifications, EPD number, program operator, validity dates, recycled content, and facility location. You review, adjust if needed, and save. The average supplier goes from zero to verified profile in under three minutes.",
+    highlights: [
+      'Drag-and-drop EPD, product sheet, or certification PDF — any format accepted',
+      'AI extracts GWP A1–A3, GWP A1–C4, EPD number, program, validity dates automatically',
+      'Certifications (FSC, GreenGuard, Declare, HPD, Cradle to Cradle) detected and pre-checked',
+      'Recycled content percentage and facility location pulled from document text',
+      'Confidence score shown per extraction — HIGH / MEDIUM / LOW — so you know what to verify',
+    ],
+  },
 ];
 
 export default function Features() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="Features — GreenChainz | Revit Plugin, SWAP Engine, RFQ Routing, Submittal Generator"
-        description="GreenChainz features: SWAP Engine inside Revit and Forma, distance-aware RFQ routing, CSI MasterFormat submittal generation, AI Audit Agent, and 50K+ verified EPDs from EC3 and EPD International."
+        title="Features — GreenChainz | BCCA Compliance, EPD Auto-Fill, SWAP Engine, Revit Plugin"
+        description="GreenChainz features: Buy Clean California Act compliance built into every material swap, EPD PDF auto-fill for suppliers, SWAP Engine inside Revit and Forma, distance-aware RFQ routing, blockchain-verified EPDs, and CSI MasterFormat submittal generation."
         canonicalPath="/features"
       />
       <Header />

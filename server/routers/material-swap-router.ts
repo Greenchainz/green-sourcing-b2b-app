@@ -52,6 +52,7 @@ import {
   validateSwap as validateSwapService,
   type MaterialSpec,
 } from '../services/swapValidationService';
+import { checkBccaCompliance } from '../services/bcca';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -238,6 +239,8 @@ export const materialSwapRouter = router({
         // Approximate carbon savings per functional unit (kg CO2e)
         const carbonSavingsKgCO2 = parseFloat(gwpReduction.toFixed(4));
 
+        const bcca = checkBccaCompliance(r.category, toNum(r.gwpValue), r.name);
+
         return {
           materialId: r.id,
           materialName: r.name,
@@ -254,6 +257,14 @@ export const materialSwapRouter = router({
           carbonSavingsKgCO2,
           supplier: r.supplierName,
           pricePerUnit: toNum(r.pricePerUnit),
+          bcca: {
+            status:      bcca.status,
+            message:     bcca.message,
+            gwpMargin:   bcca.gwpMargin,
+            gwpMarginPct:bcca.gwpMarginPct,
+            threshold:   bcca.threshold?.maxGwp ?? null,
+            unit:        bcca.threshold?.unit ?? null,
+          },
         };
       });
     }),
@@ -496,10 +507,19 @@ export const materialSwapRouter = router({
             : null;
           const leadTimeDelta: number | null = null; // not stored in current schema
 
+          const bccaOriginal  = checkBccaCompliance(originalRow.category, toNum(originalRow.gwpValue), originalRow.name);
+          const bccaCandidate = checkBccaCompliance(c.category, toNum(c.gwpValue), c.name);
+
           return {
             original: originalRow,
             candidate: c,
             tradeoffs: { priceDelta, leadTimeDelta },
+            bcca: {
+              original:  { status: bccaOriginal.status,  message: bccaOriginal.message,  gwpMargin: bccaOriginal.gwpMargin },
+              candidate: { status: bccaCandidate.status, message: bccaCandidate.message, gwpMargin: bccaCandidate.gwpMargin },
+              /** True when original is non-compliant but candidate IS compliant — key differentiator */
+              upgradesCompliance: bccaOriginal.status === "non_compliant" && bccaCandidate.status === "compliant",
+            },
           };
         });
 

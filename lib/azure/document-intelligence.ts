@@ -1,12 +1,10 @@
-import { DocumentAnalysisClient, AzureKeyCredential } from '@azure/ai-form-recognizer';
+import { DocumentAnalysisClient } from '@azure/ai-form-recognizer';
 import { getAzureCredential } from './credentials';
 
 // Accept either the new AZURE_-prefixed name or the legacy name for backward compatibility
 const ENDPOINT =
   process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT ??
   process.env.DOCUMENT_INTELLIGENCE_ENDPOINT;
-
-const API_KEY = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
 
 if (!ENDPOINT) {
   console.warn(
@@ -16,12 +14,11 @@ if (!ENDPOINT) {
   );
 }
 
+// Always use Managed Identity / DefaultAzureCredential — never an API key.
+// Grant the Container App's managed identity the "Cognitive Services User" role
+// on the Document Intelligence resource in Azure Portal.
 function buildClient(): DocumentAnalysisClient | null {
   if (!ENDPOINT) return null;
-  // Prefer API key auth when a key is provided; otherwise use DefaultAzureCredential
-  if (API_KEY) {
-    return new DocumentAnalysisClient(ENDPOINT, new AzureKeyCredential(API_KEY));
-  }
   return new DocumentAnalysisClient(ENDPOINT, getAzureCredential());
 }
 
