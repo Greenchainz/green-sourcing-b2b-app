@@ -39,6 +39,30 @@ export function registerPdfRoutes(
         return res.status(403).json(createErrorResponse(access.reason ?? 'Subscription required', req.id));
       }
 
+      const { getDb } = await import('../db');
+      const { materials } = await import('../../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      const { evaluateEpdValidity } = await import('../services/epd-validity-policy');
+      const db = await getDb();
+      if (db) {
+        const [material] = await db
+          .select({ epdExpiry: materials.epdExpiry })
+          .from(materials)
+          .where(eq(materials.id, materialId))
+          .limit(1);
+
+        const epdValidity = evaluateEpdValidity(material?.epdExpiry ?? null);
+        if (!epdValidity.isUsableForScoring) {
+          return res.status(409).json(
+            createErrorResponse(
+              'Material score export blocked by CCPS policy',
+              req.id,
+              'Underlying EPD is missing or expired.'
+            )
+          );
+        }
+      }
+
       const { generateMaterialScorePdf } = await import('../material-score-pdf-service');
       const pdfBuffer = await generateMaterialScorePdf(materialId, user);
       res.setHeader('Content-Type', 'application/pdf');

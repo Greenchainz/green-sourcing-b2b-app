@@ -19,6 +19,7 @@
 import { getDb } from "../db";
 import { epdMaterials } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { evaluateEpdValidity } from "./epd-validity-policy";
 
 export type Persona = "aor" | "leed_ap" | "gc_pm" | "spec_writer";
 
@@ -115,10 +116,7 @@ async function computeComplianceScore(materialId: number): Promise<number> {
   let score = 0;
 
   // Valid EPD (not expired)
-  if (
-    material.epdExpiry &&
-    new Date(material.epdExpiry) > new Date()
-  ) {
+  if (evaluateEpdValidity(material.epdExpiry).isUsableForScoring) {
     score += 25;
   }
 
