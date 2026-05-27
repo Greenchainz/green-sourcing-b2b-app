@@ -13,6 +13,7 @@ export default function About() {
   // Prefer an explicitly configured MP4 URL for maximum browser compatibility.
   const aboutVideoUrl = (import.meta.env.VITE_ABOUT_VIDEO_URL ?? "").trim();
   const aboutVideoToken = (import.meta.env.VITE_ABOUT_VIDEO_TOKEN ?? "").trim();
+  const aboutVideoAutoplay = (import.meta.env.VITE_ABOUT_VIDEO_AUTOPLAY ?? "").trim() === "true";
 
   // Hooks can’t be conditional; keep input valid but disable unless configured.
   const tokenForQuery =
@@ -100,6 +101,7 @@ export default function About() {
                   preload="metadata"
                   playsInline
                   crossOrigin="anonymous"
+                  {...(aboutVideoAutoplay ? { autoPlay: true, muted: true } : {})}
                   onError={(e) => {
                     // Better error logging for debugging CORS / load issues
                     // and show a user-friendly message in the UI.
