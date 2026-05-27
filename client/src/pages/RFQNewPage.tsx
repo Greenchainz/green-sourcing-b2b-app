@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
   FolderOpen,
@@ -739,6 +740,37 @@ function ScoreBadge({ score }: { score: number | null | undefined }) {
       <Leaf className="w-2.5 h-2.5" />{score}
     </span>
   );
+}
+
+function verifiedBadgeReasonLabel(reason: string): string {
+  switch (reason) {
+    case "missing_verified_epd":
+      return "Missing a verified EPD.";
+    case "onboarding_incomplete":
+      return "Supplier onboarding is incomplete.";
+    case "response_sla_unmet":
+      return "RFQ responsiveness SLA is not met.";
+    case "supplier_blocked":
+      return "Supplier is suspended or blocked.";
+    default:
+      return "Verification requirements are not fully met.";
+  }
+}
+
+function verifiedBadgeLabel(status: string | undefined): string {
+  if (status === "VERIFIED") return "Verified Supplier";
+  if (status === "PARTIAL") return "Partially Verified";
+  return "Unverified Supplier";
+}
+
+function verifiedBadgeClass(status: string | undefined): string {
+  if (status === "VERIFIED") {
+    return "text-[10px] font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5";
+  }
+  if (status === "PARTIAL") {
+    return "text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5";
+  }
+  return "text-[10px] font-semibold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5";
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -2044,7 +2076,8 @@ export default function RFQNewPage() {
                     {displayedSuppliers.map((s, idx) => {
                       const selected = selectedIds.includes(s.id);
                       const sustScore = s.sustainabilityScore != null ? Number(s.sustainabilityScore) : null;
-                      const isVerified = s.verificationStatus === "approved";
+                      const verifiedStatus = s.verifiedSupplierStatus;
+                      const verifiedReasons = (s.verifiedSupplierReasons ?? []) as string[];
                       return (
                         <button
                           key={s.id}
@@ -2088,15 +2121,26 @@ export default function RFQNewPage() {
                                 </span>
                               )}
                               {/* Verification status — always visible per product doctrine */}
-                              {isVerified ? (
-                                <span className="text-[10px] font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5">
-                                  <CheckCircle className="w-2.5 h-2.5" />Verified
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full leading-none">
-                                  Pending review
-                                </span>
-                              )}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={verifiedBadgeClass(verifiedStatus)}>
+                                    <CheckCircle className="w-2.5 h-2.5" />
+                                    {verifiedBadgeLabel(verifiedStatus)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[260px]">
+                                  <p className="font-medium">{verifiedBadgeLabel(verifiedStatus)}</p>
+                                  {verifiedReasons.length > 0 ? (
+                                    <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                                      {verifiedReasons.map((reason) => (
+                                        <li key={reason}>{verifiedBadgeReasonLabel(reason)}</li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p className="mt-1">All verification criteria are currently met.</p>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
                             </div>
                             {s.certificationMatches.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">

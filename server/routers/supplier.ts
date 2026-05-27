@@ -1,4 +1,4 @@
-import { router, protectedProcedure } from "../_core/trpc";
+import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
@@ -6,6 +6,7 @@ import { suppliers } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sendSupplierWelcomeEmail, sendFounderNewSupplierAlert } from "../email-service";
 import { parseEpdPdf } from "../services/epd-intelligence";
+import { getSupplierVerificationSnapshot } from "../services/supplier-verification";
 
 /**
  * Supplier Onboarding Router
@@ -154,6 +155,10 @@ export const supplierOnboardingRouter = router({
         certifications: suppliers.certifications,
         verificationStatus: suppliers.verificationStatus,
         verified: suppliers.verified,
+        verifiedSupplierStatus: suppliers.verifiedSupplierStatus,
+        verifiedSupplierReasons: suppliers.verifiedSupplierReasons,
+        verifiedSupplierComputedAt: suppliers.verifiedSupplierComputedAt,
+        verifiedSupplierExpiresAt: suppliers.verifiedSupplierExpiresAt,
         address: suppliers.address,
         city: suppliers.city,
         state: suppliers.state,
@@ -181,6 +186,20 @@ export const supplierOnboardingRouter = router({
       .limit(1);
 
     return profile ?? null;
+  }),
+
+  // ── Read-only computed supplier verification badge snapshot ───────────────
+  getVerificationBadge: publicProcedure
+  .input(
+    z.object({
+      supplierId: z.number().int().positive(),
+      forceRefresh: z.boolean().optional(),
+    })
+  )
+  .query(async ({ input }) => {
+    return getSupplierVerificationSnapshot(input.supplierId, {
+      forceRefresh: input.forceRefresh ?? false,
+    });
   }),
 
   // ── Update an existing supplier profile ──────────────────────────────────

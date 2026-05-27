@@ -76,6 +76,7 @@ export const supplierTierEnum = pgEnum("supplier_tier", ["free", "standard", "pr
 export const supplierStatusEnum = pgEnum("supplier_status", ["active", "canceled", "past_due", "suspended", "pending"]);
 export const buyerStatusEnum = pgEnum("buyer_status", ["active", "canceled", "past_due", "suspended", "pending", "trial"]);
 export const verificationStatusEnum = pgEnum("verification_status", ["pending", "approved", "rejected"]);
+export const supplierVerifiedBadgeStatusEnum = pgEnum("supplier_verified_badge_status", ["UNVERIFIED", "PARTIAL", "VERIFIED"]);
 export const usageDimensionEnum = pgEnum("usage_dimension", [
   "rfq_submission", "ai_query", "swap_analysis", "ccps_export",
   "material_comparison", "supplier_match", "message_thread",
@@ -526,6 +527,10 @@ export const suppliers = pgTable("suppliers", {
   verified: boolean("verified").default(false),
   verificationStatus: verificationStatusEnum("verificationStatus").default("pending").notNull(),
   verifiedAt: timestamp("verifiedAt"),
+  verifiedSupplierStatus: supplierVerifiedBadgeStatusEnum("verified_supplier_status").default("UNVERIFIED").notNull(),
+  verifiedSupplierReasons: json("verified_supplier_reasons").$type<string[]>().default([]).notNull(),
+  verifiedSupplierComputedAt: timestamp("verified_supplier_computed_at"),
+  verifiedSupplierExpiresAt: timestamp("verified_supplier_expires_at"),
   description: text("description"),
   location: varchar("location", { length: 255 }),
   contactName: varchar("contactName", { length: 255 }),

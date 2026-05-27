@@ -5,6 +5,7 @@ import { query, queryOne, queryMany, withTransaction } from "../../lib/pg-pool";
 import { getDb } from "../db";
 import { auditLog, AuditAction } from "../services/audit-log";
 import { publishRfqEvent } from "../services/event-bus";
+import { getSupplierVerificationSnapshots } from "../services/supplier-verification";
 import { rfqRequests, rfqDrafts, suppliers, suppliersLocation } from "../../drizzle/schema";
 import { eq, desc, ilike, or, not, inArray } from "drizzle-orm";
 import { getShippingClass, isWithinServiceArea, DEFAULT_RADIUS_MILES } from "../lib/shipping-classes";
@@ -493,7 +494,15 @@ export const rfqRouter = router({
           )
         : await baseQuery;
 
-      return rows;
+      const verificationBySupplierId = await getSupplierVerificationSnapshots(rows.map((row) => row.id));
+
+      return rows.map((row) => ({
+        ...row,
+        verifiedSupplierStatus:
+          verificationBySupplierId.get(row.id)?.status ?? "UNVERIFIED",
+        verifiedSupplierReasons:
+          verificationBySupplierId.get(row.id)?.reasons ?? [],
+      }));
     }),
 
   // ── Smart supplier matching for RFQ targeting ────────────────────────────
@@ -733,12 +742,19 @@ export const rfqRouter = router({
       if (highIds.size === 0 && results.length > 0) {
         highIds.add(results[0].id); // guaranteed minimum
       }
+      const verificationBySupplierId = await getSupplierVerificationSnapshots(
+        results.map((result) => result.id)
+      );
 
       // Return only buyer-safe fields — strip internal tier and rank score
       return results.map(({ weightedRankScore: _wr, tier: _tier, ...s }) => ({
         ...s,
         isHighSustainability: highIds.has(s.id),
         isFallback: fallbackIds.has(s.id),
+        verifiedSupplierStatus:
+          verificationBySupplierId.get(s.id)?.status ?? "UNVERIFIED",
+        verifiedSupplierReasons:
+          verificationBySupplierId.get(s.id)?.reasons ?? [],
         _agentSource: agentRanking.source, // dev signal — stripped by tRPC serialisation if needed
       }));
     }),
