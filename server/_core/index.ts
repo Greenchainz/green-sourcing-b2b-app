@@ -167,10 +167,22 @@ async function startServer() {
             // Azure Application Insights
             "https://js.monitor.azure.com",
             "https://az416426.vo.msecnd.net",
+            // HubSpot scripts (e.g. js-na2.hs-scripts.com)
+            "https://js-na2.hs-scripts.com",
             // Intercom
             "https://widget.intercom.io",
             "https://js.intercomcdn.com",
             // CookieYes consent banner
+            "https://cdn-cookieyes.com",
+          ],
+          // Allow script elements from the same external origins as above
+          scriptSrcElem: [
+            "'self'",
+            "https://js.monitor.azure.com",
+            "https://az416426.vo.msecnd.net",
+            "https://js-na2.hs-scripts.com",
+            "https://widget.intercom.io",
+            "https://js.intercomcdn.com",
             "https://cdn-cookieyes.com",
           ],
           styleSrc: [
@@ -185,6 +197,12 @@ async function startServer() {
             "https:",
             "https://static.intercomassets.com",
           ],
+          // Media (video/audio) sources — allow HTTPS and Azure Blob Storage hosts
+          mediaSrc: [
+            "'self'",
+            "https:",
+            "https://*.blob.core.windows.net",
+          ],
           connectSrc: [
             "'self'",
             "https://*.monitor.azure.com",
@@ -194,8 +212,9 @@ async function startServer() {
             "https://developer.api.autodesk.com",
             "https://api.intercom.io",
             "https://api-iam.intercom.io",
-            "https://nexus.intercom.io",
-            "wss://nexus.intercom.io",
+            // Intercom uses multiple subdomains for websocket endpoints
+            "https://*.intercom.io",
+            "wss://*.intercom.io",
             // WebPubSub real-time messaging
             "wss://greenchainz.webpubsub.azure.com",
           ],
