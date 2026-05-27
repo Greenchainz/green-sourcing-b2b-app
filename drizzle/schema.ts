@@ -1705,10 +1705,39 @@ export const materialCreditScoreCache = pgTable("material_credit_score_cache", {
   epdVerification: integer("epdVerification").notNull(),
   manufacturerTransparency: integer("manufacturerTransparency").notNull(),
   assemblyOptionsCoverage: integer("assemblyOptionsCoverage").notNull(),
+  rulesVersion: varchar("rulesVersion", { length: 32 }).notNull().default("ccps-policy-v1"),
+  inputFingerprint: varchar("inputFingerprint", { length: 64 }).notNull().default(""),
+  epdValidityStatus: varchar("epdValidityStatus", { length: 20 }).notNull().default("missing"),
+  staleReason: varchar("staleReason", { length: 64 }),
+  expiresAt: timestamp("expiresAt").notNull().defaultNow(),
   computedAt: timestamp("computedAt").defaultNow().notNull(),
 });
 
 export type MaterialCreditScoreCache = typeof materialCreditScoreCache.$inferSelect;
+
+export const materialCreditScoreSnapshots = pgTable("material_credit_score_snapshots", {
+  id: serial("id").primaryKey(),
+  epdId: integer("epdId").notNull(),
+  total: integer("total").notNull(),
+  carbonEfficiency: integer("carbonEfficiency").notNull(),
+  epdVerification: integer("epdVerification").notNull(),
+  manufacturerTransparency: integer("manufacturerTransparency").notNull(),
+  assemblyOptionsCoverage: integer("assemblyOptionsCoverage").notNull(),
+  rulesVersion: varchar("rulesVersion", { length: 32 }).notNull(),
+  inputFingerprint: varchar("inputFingerprint", { length: 64 }).notNull(),
+  epdValidityStatus: varchar("epdValidityStatus", { length: 20 }).notNull(),
+  staleReason: varchar("staleReason", { length: 64 }),
+  inputs: json("inputs").$type<Record<string, unknown>>(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  computedAt: timestamp("computedAt").defaultNow().notNull(),
+}, (table) => ({
+  epdComputedIdx: index("idx_material_credit_score_snapshots_epd_computed").on(
+    table.epdId,
+    table.computedAt
+  ),
+}));
+
+export type MaterialCreditScoreSnapshot = typeof materialCreditScoreSnapshots.$inferSelect;
 
 // ─── CRM Enums ───────────────────────────────────────────────────────────────
 

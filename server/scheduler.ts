@@ -160,6 +160,26 @@ export async function startSchedulers(): Promise<void> {
   const { startNotificationScheduler } = await import('./services/notification-scheduler');
   startNotificationScheduler();
 
+  // ── Material score snapshot maintenance — startup + daily ──────────────────
+  const runMaterialScoreMaintenance = async () => {
+    try {
+      const {
+        markExpiredMaterialScoreCaches,
+        cleanupOldMaterialScoreSnapshots,
+      } = await import('./services/material-credit-score');
+      const staleMarked = await markExpiredMaterialScoreCaches();
+      const removed = await cleanupOldMaterialScoreSnapshots();
+      if (staleMarked > 0 || removed > 0) {
+        console.log(`[score-maintenance] stale marked=${staleMarked}, snapshots removed=${removed}`);
+      }
+    } catch (e) {
+      console.error('[score-maintenance] run failed:', e);
+    }
+  };
+
+  setTimeout(runMaterialScoreMaintenance, 120_000);
+  setInterval(runMaterialScoreMaintenance, 24 * 60 * 60 * 1000);
+
   // ── Streak reminder emails — daily (first run: 90s after boot) ────────────
   async function runStreakReminders(): Promise<void> {
     try {
