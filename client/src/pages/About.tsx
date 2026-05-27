@@ -99,9 +99,19 @@ export default function About() {
                   controls
                   preload="metadata"
                   playsInline
-                  onError={() => setVideoError("Video failed to load. The URL may be missing or access-restricted.")}
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    // Better error logging for debugging CORS / load issues
+                    // and show a user-friendly message in the UI.
+                    // eslint-disable-next-line no-console
+                    console.error("About video error:", e);
+                    setVideoError("Video failed to load. The URL may be missing, access-restricted, or blocked by CORS.");
+                  }}
                 >
-                  <source src={resolvedVideoUrl} type={aboutVideoUrl ? "video/mp4" : undefined} />
+                  <source
+                    src={resolvedVideoUrl}
+                    type={/\.webm($|\?)/.test(resolvedVideoUrl) ? "video/webm" : /\.mp4($|\?)/.test(resolvedVideoUrl) ? "video/mp4" : undefined}
+                  />
                   Your browser does not support the video tag.
                 </video>
               ) : (
