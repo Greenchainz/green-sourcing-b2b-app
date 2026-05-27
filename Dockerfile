@@ -32,11 +32,6 @@ ARG VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 # Vite reads it during the build step below via the inline env var.
 ARG VITE_AZURE_MAPS_KEY
 ARG VITE_BACKEND_URL
-ARG VITE_SENTRY_DSN
-# Sentry source map upload (runs during vite build via @sentry/vite-plugin)
-ARG SENTRY_AUTH_TOKEN
-ARG SENTRY_ORG
-ARG SENTRY_PROJECT
 # Make them available during build
 ENV VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
     VITE_FRONTEND_WEBPUBSUB_HUB=$VITE_FRONTEND_WEBPUBSUB_HUB \
@@ -46,12 +41,7 @@ ENV VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
 # Build the app:
 #   - vite build  → dist/public/ (client static assets, VITE_AZURE_MAPS_KEY baked in here)
 #   - esbuild     → dist/index.js (server bundle)
-RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY \
-    VITE_SENTRY_DSN=$VITE_SENTRY_DSN \
-    SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
-    SENTRY_ORG=$SENTRY_ORG \
-    SENTRY_PROJECT=$SENTRY_PROJECT \
-    pnpm run build
+RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY pnpm run build
 
 # Stage 3: Runtime — node:22-bookworm-slim (Debian 12, actively patched glibc, non-root node user)
 FROM node:22-bookworm-slim AS runtime
