@@ -15,7 +15,7 @@ type SentryLike = {
   replayIntegration?: (opts: any) => any;
 };
 
-const noop = () => {};
+const noop = () => { };
 
 const SentryStub: SentryLike = {
   init: noop,
