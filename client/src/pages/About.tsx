@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -29,11 +29,24 @@ export default function About() {
 
   const resolvedVideoUrl =
     aboutVideoUrl || founderVideoQuery.data?.videoUrl || "";
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState<boolean>(aboutVideoAutoplay ? true : false);
   const showLoading = founderVideoQuery.isLoading;
   const showUnavailable =
     !aboutVideoUrl &&
     aboutVideoToken.length >= 8 &&
     (founderVideoQuery.error || (!showLoading && !founderVideoQuery.data));
+
+  useEffect(() => {
+    // keep local muted state in sync with the actual element
+    const el = videoRef.current;
+    if (!el) return;
+    const onVolumeChange = () => setIsMuted(el.muted);
+    el.muted = aboutVideoAutoplay ? true : el.muted;
+    setIsMuted(el.muted);
+    el.addEventListener("volumechange", onVolumeChange);
+    return () => el.removeEventListener("volumechange", onVolumeChange);
+  }, [aboutVideoAutoplay, resolvedVideoUrl]);
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
@@ -98,6 +111,7 @@ export default function About() {
                 <video
                   className="w-full h-full object-cover"
                   controls
+                  ref={videoRef}
                   preload="metadata"
                   playsInline
                   crossOrigin="anonymous"
@@ -116,10 +130,30 @@ export default function About() {
                   />
                   Your browser does not support the video tag.
                 </video>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
-                  Founder video not configured yet.
+              ) : null}
+
+              {/* Unmute overlay button shown when video is present and currently muted */}
+              {resolvedVideoUrl && isMuted && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <button
+                    className="pointer-events-auto bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-black/80 transition"
+                    onClick={() => {
+                      const el = videoRef.current;
+                      if (!el) return;
+                      el.muted = false;
+                      // try to resume playback if paused
+                      void el.play().catch(() => { });
+                      setIsMuted(false);
+                    }}
+                    aria-label="Unmute video"
+                  >
+                    Unmute
+                  </button>
                 </div>
+              ) : (
+              <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
+                Founder video not configured yet.
+              </div>
               )}
 
               {(videoError || showUnavailable) && (
