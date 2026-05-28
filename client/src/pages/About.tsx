@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Volume2, VolumeX } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Card } from "../components/ui/card";
@@ -125,57 +125,57 @@ export default function About() {
                   }}
                 >
                   <source
-                    src={resolvedVideoUrl}
-                    type={/\.webm($|\?)/.test(resolvedVideoUrl) ? "video/webm" : /\.mp4($|\?)/.test(resolvedVideoUrl) ? "video/mp4" : undefined}
-                  />
-                  Your browser does not support the video tag.
-                </video>
+                    {resolvedVideoUrl ? null : (
+                      aria - label= "Unmute video"
+                      >
+                      Unmute
+                    </button>
+
+                    {/* YouTube-style quick control for sound */}
+              {resolvedVideoUrl && isMuted ? (
+                <button
+                  className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 rounded-full bg-black/75 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/70"
+                  onClick={() => {
+                    const el = videoRef.current;
+                    if (!el) return;
+                    el.muted = false;
+                    void el.play().catch(() => { });
+                    setIsMuted(false);
+                  }}
+                  aria-label="Unmute video"
+                >
+                  <VolumeX className="h-4 w-4" />
+                  Tap to unmute
+                </button>
               ) : null}
-
-              {/* Unmute overlay button shown when video is present and currently muted */}
-              {resolvedVideoUrl && isMuted && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <button
-                    className="pointer-events-auto bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-black/80 transition"
-                    onClick={() => {
-                      const el = videoRef.current;
-                      if (!el) return;
-                      el.muted = false;
-                      // try to resume playback if paused
-                      void el.play().catch(() => { });
-                      setIsMuted(false);
-                    }}
-                    aria-label="Unmute video"
-                  >
-                    Unmute
-                  </button>
-                </div>
-              ) : (
-              <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
-                Founder video not configured yet.
-              </div>
-              )}
-
-              {(videoError || showUnavailable) && (
-                <div className="absolute inset-x-0 bottom-0 bg-black/70 text-white text-sm p-3 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-medium">Video unavailable</p>
-                    <p className="opacity-90">
-                      {videoError ??
-                        (founderVideoQuery.error?.message ||
-                          "This video could not be loaded. Check VITE_ABOUT_VIDEO_URL or VITE_ABOUT_VIDEO_TOKEN.")}
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
+            ) : null
+            ) : (
+            <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
+              Founder video not configured yet.
+            </div>
+              )}
+
+            {(videoError || showUnavailable) && (
+              <div className="absolute inset-x-0 bottom-0 bg-black/70 text-white text-sm p-3 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium">Video unavailable</p>
+                  <p className="opacity-90">
+                    {videoError ??
+                      (founderVideoQuery.error?.message ||
+                        "This video could not be loaded. Check VITE_ABOUT_VIDEO_URL or VITE_ABOUT_VIDEO_TOKEN.")}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </section>
+    </div>
+      </section >
 
-      {/* Mission & Vision */}
-      <section className="py-20 relative overflow-hidden">
+    {/* Mission & Vision */ }
+    < section className = "py-20 relative overflow-hidden" >
         <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20"></div>
 
         <div className="container relative z-10">
@@ -212,94 +212,94 @@ export default function About() {
             </Card>
           </div>
         </div>
-      </section>
+      </section >
 
-      {/* The Problem We're Solving */}
-      <section className="py-20 bg-secondary/30">
-        <div className="container">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                The Broken System We're Dismantling
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                While the rest of the world automated, construction procurement
-                stayed manual, opaque, and controlled by incumbents who benefit
-                directly from your confusion.
-              </p>
-            </div>
+    {/* The Problem We're Solving */ }
+    < section className = "py-20 bg-secondary/30" >
+      <div className="container">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              The Broken System We're Dismantling
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              While the rest of the world automated, construction procurement
+              stayed manual, opaque, and controlled by incumbents who benefit
+              directly from your confusion.
+            </p>
+          </div>
 
-            <div className="space-y-6">
-              {[
-                {
-                  title:
-                    "The Spec and the Sourcing Are Completely Disconnected",
-                  problem:
-                    "Project teams specify in BIM or on paper. Sourcing happens in email, spreadsheets, and phone calls — by someone else, days later. The decision context is lost every time.",
-                  solution:
-                    "GreenChainz intercepts the material decision the moment it's made — inside Revit, Forma, or via RFQ. Swap suggestions and routing happen at spec time, not after it.",
-                  icon: "📄",
-                },
-                {
-                  title: "Self-Reported Sustainability Is Worthless",
-                  problem:
-                    "Every supplier claims to be green. None of it is verified. Specifying the wrong product means compliance failures, audit risk, and liability.",
-                  solution:
-                    "Every material in GreenChainz is third-party verified. Confidence levels are always visible. Scores are server-side and immutable — suppliers can't edit them.",
-                  icon: "🚫",
-                },
-                {
-                  title: "RFQs Go to the Wrong Suppliers",
-                  problem:
-                    "A concrete supplier 600 miles from the jobsite isn't a real option. Manual RFQ processes ignore shipping class, distance, and delivery capacity entirely.",
-                  solution:
-                    "GreenChainz routes RFQs by material type and shipping class. Local-heavy materials stay local. Suppliers who can't deliver don't see the RFQ.",
-                  icon: "⚖️",
-                },
-                {
-                  title: "The Submittal Is an Afterthought",
-                  problem:
-                    "A material gets selected. Someone else assembles the submittal. It's rejected. Three weeks of schedule, wasted.",
-                  solution:
-                    "GreenChainz generates the CSI MasterFormat submittal automatically from the approved selection — EPD, verification statements, supplier data, all included.",
-                  icon: "🔌",
-                },
-              ].map((item, index) => (
-                <Card
-                  key={index}
-                  className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)] flex items-center justify-center text-2xl">
-                      {item.icon}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-foreground mb-2">
-                        {item.title}
-                      </h3>
-                      <p className="text-muted-foreground mb-2">
-                        <span className="font-medium text-destructive">
-                          Problem:
-                        </span>{" "}
-                        {item.problem}
-                      </p>
-                      <p className="text-muted-foreground">
-                        <span className="font-medium text-primary">
-                          Solution:
-                        </span>{" "}
-                        {item.solution}
-                      </p>
-                    </div>
+          <div className="space-y-6">
+            {[
+              {
+                title:
+                  "The Spec and the Sourcing Are Completely Disconnected",
+                problem:
+                  "Project teams specify in BIM or on paper. Sourcing happens in email, spreadsheets, and phone calls — by someone else, days later. The decision context is lost every time.",
+                solution:
+                  "GreenChainz intercepts the material decision the moment it's made — inside Revit, Forma, or via RFQ. Swap suggestions and routing happen at spec time, not after it.",
+                icon: "📄",
+              },
+              {
+                title: "Self-Reported Sustainability Is Worthless",
+                problem:
+                  "Every supplier claims to be green. None of it is verified. Specifying the wrong product means compliance failures, audit risk, and liability.",
+                solution:
+                  "Every material in GreenChainz is third-party verified. Confidence levels are always visible. Scores are server-side and immutable — suppliers can't edit them.",
+                icon: "🚫",
+              },
+              {
+                title: "RFQs Go to the Wrong Suppliers",
+                problem:
+                  "A concrete supplier 600 miles from the jobsite isn't a real option. Manual RFQ processes ignore shipping class, distance, and delivery capacity entirely.",
+                solution:
+                  "GreenChainz routes RFQs by material type and shipping class. Local-heavy materials stay local. Suppliers who can't deliver don't see the RFQ.",
+                icon: "⚖️",
+              },
+              {
+                title: "The Submittal Is an Afterthought",
+                problem:
+                  "A material gets selected. Someone else assembles the submittal. It's rejected. Three weeks of schedule, wasted.",
+                solution:
+                  "GreenChainz generates the CSI MasterFormat submittal automatically from the approved selection — EPD, verification statements, supplier data, all included.",
+                icon: "🔌",
+              },
+            ].map((item, index) => (
+              <Card
+                key={index}
+                className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-lg transition-all duration-300"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)] flex items-center justify-center text-2xl">
+                    {item.icon}
                   </div>
-                </Card>
-              ))}
-            </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold text-foreground mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-muted-foreground mb-2">
+                      <span className="font-medium text-destructive">
+                        Problem:
+                      </span>{" "}
+                      {item.problem}
+                    </p>
+                    <p className="text-muted-foreground">
+                      <span className="font-medium text-primary">
+                        Solution:
+                      </span>{" "}
+                      {item.solution}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
-      </section>
+      </div>
+      </section >
 
-      {/* Founder Story */}
-      <section className="py-20 relative overflow-hidden">
+    {/* Founder Story */ }
+    < section className = "py-20 relative overflow-hidden" >
         <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20"></div>
 
         <div className="container relative z-10">
@@ -351,94 +351,94 @@ export default function About() {
             </Card>
           </div>
         </div>
-      </section>
+      </section >
 
-      {/* Values */}
-      <section className="py-20 bg-secondary/30">
-        <div className="container">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                Our Values
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                The principles that guide everything we build.
-              </p>
-            </div>
+    {/* Values */ }
+    < section className = "py-20 bg-secondary/30" >
+      <div className="container">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Our Values
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              The principles that guide everything we build.
+            </p>
+          </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
-              {[
-                {
-                  icon: "⚡",
-                  title: "Speed Over Perfection",
-                  description:
-                    "Ship fast, iterate faster. The project timeline has no patience for endless polish.",
-                  color:
-                    "from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)]",
-                },
-                {
-                  icon: "🔍",
-                  title: "Data Over Marketing",
-                  description:
-                    "We trust third-party certifications, not supplier claims. No greenwashing allowed.",
-                  color:
-                    "from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)]",
-                },
-                {
-                  icon: "🤝",
-                  title: "Integration Over Disruption",
-                  description:
-                    "We meet users where they are - Excel, Revit, Chrome - not in yet another dashboard.",
-                  color:
-                    "from-[oklch(0.65_0.14_145)] to-[oklch(0.55_0.16_145)]",
-                },
-                {
-                  icon: "💰",
-                  title: "ROI Over Virtue Signaling",
-                  description:
-                    "Sustainability should save money and time, not cost extra. We prove it.",
-                  color:
-                    "from-[oklch(0.80_0.20_145)] to-[oklch(0.70_0.12_145)]",
-                },
-                {
-                  icon: "🌍",
-                  title: "Access Over Exclusivity",
-                  description:
-                    "Green building should not be a luxury. We price for scale, not prestige.",
-                  color:
-                    "from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)]",
-                },
-                {
-                  icon: "🔧",
-                  title: "Tools Over Consultants",
-                  description:
-                    "Empower teams to do it themselves. No expensive audits required.",
-                  color:
-                    "from-[oklch(0.70_0.12_145)] to-[oklch(0.60_0.14_145)]",
-                },
-              ].map((value, index) => (
-                <Card
-                  key={index}
-                  className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-xl hover:scale-105 transition-all duration-300 group"
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: "⚡",
+                title: "Speed Over Perfection",
+                description:
+                  "Ship fast, iterate faster. The project timeline has no patience for endless polish.",
+                color:
+                  "from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)]",
+              },
+              {
+                icon: "🔍",
+                title: "Data Over Marketing",
+                description:
+                  "We trust third-party certifications, not supplier claims. No greenwashing allowed.",
+                color:
+                  "from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)]",
+              },
+              {
+                icon: "🤝",
+                title: "Integration Over Disruption",
+                description:
+                  "We meet users where they are - Excel, Revit, Chrome - not in yet another dashboard.",
+                color:
+                  "from-[oklch(0.65_0.14_145)] to-[oklch(0.55_0.16_145)]",
+              },
+              {
+                icon: "💰",
+                title: "ROI Over Virtue Signaling",
+                description:
+                  "Sustainability should save money and time, not cost extra. We prove it.",
+                color:
+                  "from-[oklch(0.80_0.20_145)] to-[oklch(0.70_0.12_145)]",
+              },
+              {
+                icon: "🌍",
+                title: "Access Over Exclusivity",
+                description:
+                  "Green building should not be a luxury. We price for scale, not prestige.",
+                color:
+                  "from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)]",
+              },
+              {
+                icon: "🔧",
+                title: "Tools Over Consultants",
+                description:
+                  "Empower teams to do it themselves. No expensive audits required.",
+                color:
+                  "from-[oklch(0.70_0.12_145)] to-[oklch(0.60_0.14_145)]",
+              },
+            ].map((value, index) => (
+              <Card
+                key={index}
+                className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-xl hover:scale-105 transition-all duration-300 group"
+              >
+                <div
+                  className={`w-14 h-14 rounded-xl bg-gradient-to-br ${value.color} flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform duration-300`}
                 >
-                  <div
-                    className={`w-14 h-14 rounded-xl bg-gradient-to-br ${value.color} flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform duration-300`}
-                  >
-                    {value.icon}
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">
-                    {value.title}
-                  </h3>
-                  <p className="text-muted-foreground">{value.description}</p>
-                </Card>
-              ))}
-            </div>
+                  {value.icon}
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  {value.title}
+                </h3>
+                <p className="text-muted-foreground">{value.description}</p>
+              </Card>
+            ))}
           </div>
         </div>
-      </section>
+      </div>
+      </section >
 
-      {/* CTA Section */}
-      <section className="py-20 relative overflow-hidden">
+    {/* CTA Section */ }
+    < section className = "py-20 relative overflow-hidden" >
         <div className="absolute inset-0 bg-gradient-to-br from-[oklch(0.85_0.15_145_/_0.1)] to-[oklch(0.65_0.14_145_/_0.1)]"></div>
 
         <div className="container relative z-10">
@@ -464,9 +464,9 @@ export default function About() {
             </div>
           </div>
         </div>
-      </section>
+      </section >
 
-      <Footer />
-    </div>
+    <Footer />
+    </div >
   );
 }
