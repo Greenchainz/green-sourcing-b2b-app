@@ -28,6 +28,7 @@ import {
 import { Link, useLocation } from "wouter";
 import { ScoreBadge } from "@/components/MaterialCreditScore/ScoreBadge";
 import { PriceTrendBadge } from "@/components/PriceTrendBadge";
+import { getMaterialImage } from "@/lib/material-images";
 
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -74,15 +75,15 @@ export interface MaterialCardProps {
 
 const AVATAR_PALETTES = [
   { bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-200" },
-  { bg: "bg-teal-100",    text: "text-teal-800",    border: "border-teal-200"    },
-  { bg: "bg-sky-100",     text: "text-sky-800",     border: "border-sky-200"     },
-  { bg: "bg-violet-100",  text: "text-violet-800",  border: "border-violet-200"  },
-  { bg: "bg-amber-100",   text: "text-amber-800",   border: "border-amber-200"   },
-  { bg: "bg-rose-100",    text: "text-rose-800",    border: "border-rose-200"    },
-  { bg: "bg-lime-100",    text: "text-lime-800",    border: "border-lime-200"    },
-  { bg: "bg-cyan-100",    text: "text-cyan-800",    border: "border-cyan-200"    },
-  { bg: "bg-orange-100",  text: "text-orange-800",  border: "border-orange-200"  },
-  { bg: "bg-indigo-100",  text: "text-indigo-800",  border: "border-indigo-200"  },
+  { bg: "bg-teal-100", text: "text-teal-800", border: "border-teal-200" },
+  { bg: "bg-sky-100", text: "text-sky-800", border: "border-sky-200" },
+  { bg: "bg-violet-100", text: "text-violet-800", border: "border-violet-200" },
+  { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200" },
+  { bg: "bg-rose-100", text: "text-rose-800", border: "border-rose-200" },
+  { bg: "bg-lime-100", text: "text-lime-800", border: "border-lime-200" },
+  { bg: "bg-cyan-100", text: "text-cyan-800", border: "border-cyan-200" },
+  { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200" },
+  { bg: "bg-indigo-100", text: "text-indigo-800", border: "border-indigo-200" },
 ];
 
 function hashStr(s: string): number {
@@ -111,20 +112,20 @@ function carbonContext(
   if (isNaN(g) || isNaN(m) || m === 0) return null;
   const pct = Math.round(((m - g) / m) * 100); // positive = better than median
   if (pct >= 40) return { label: "Top 25% in class", color: "text-green-600" };
-  if (pct >= 15) return { label: `${pct}% below avg`,  color: "text-green-600" };
-  if (pct >= -10) return { label: "Near avg",            color: "text-amber-600" };
-  return { label: `${Math.abs(pct)}% above avg`,         color: "text-red-500"   };
+  if (pct >= 15) return { label: `${pct}% below avg`, color: "text-green-600" };
+  if (pct >= -10) return { label: "Near avg", color: "text-amber-600" };
+  return { label: `${Math.abs(pct)}% above avg`, color: "text-red-500" };
 }
 
 // ── Cert definitions ──────────────────────────────────────────────────────────
 
 const CERT_DEFS = [
-  { key: "hasEpd"        as const, label: "EPD",     cls: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-  { key: "hasFsc"        as const, label: "FSC",     cls: "bg-green-50 border-green-200 text-green-700"       },
-  { key: "hasC2c"        as const, label: "C2C",     cls: "bg-teal-50 border-teal-200 text-teal-700"          },
-  { key: "hasHpd"        as const, label: "HPD",     cls: "bg-sky-50 border-sky-200 text-sky-700"             },
-  { key: "hasGreenguard" as const, label: "GG",      cls: "bg-lime-50 border-lime-200 text-lime-700"          },
-  { key: "hasDeclare"    as const, label: "Declare", cls: "bg-purple-50 border-purple-200 text-purple-700"    },
+  { key: "hasEpd" as const, label: "EPD", cls: "bg-emerald-50 border-emerald-200 text-emerald-700" },
+  { key: "hasFsc" as const, label: "FSC", cls: "bg-green-50 border-green-200 text-green-700" },
+  { key: "hasC2c" as const, label: "C2C", cls: "bg-teal-50 border-teal-200 text-teal-700" },
+  { key: "hasHpd" as const, label: "HPD", cls: "bg-sky-50 border-sky-200 text-sky-700" },
+  { key: "hasGreenguard" as const, label: "GG", cls: "bg-lime-50 border-lime-200 text-lime-700" },
+  { key: "hasDeclare" as const, label: "Declare", cls: "bg-purple-50 border-purple-200 text-purple-700" },
 ] as const;
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -139,20 +140,20 @@ export default function MaterialCard(props: MaterialCardProps) {
   } = props;
 
   const [, navigate] = useLocation();
-  const mcsScore    = ccps.ccpsTotal;
-  const carbCtx     = carbonContext(gwpValue, ec3IndustryMedian);
+  const mcsScore = ccps.ccpsTotal;
+  const carbCtx = carbonContext(gwpValue, ec3IndustryMedian);
   const activeCerts = CERT_DEFS.filter((c) => !!props[c.key]);
 
   const handleRequestQuote = (e: React.MouseEvent) => {
     e.preventDefault();
     navigate(
-      `/rfq/new?materialId=${id}&category=${encodeURIComponent(category)}&epdRequired=${
-        props.hasEpd ? "true" : "false"
+      `/rfq/new?materialId=${id}&category=${encodeURIComponent(category)}&epdRequired=${props.hasEpd ? "true" : "false"
       }`
     );
   };
 
   const avatar = materialAvatar(name, category);
+  const imageSrc = getMaterialImage(category, props.imageUrl);
 
   // ── List variant ────────────────────────────────────────────────────────────
   if (variant === "list") {
@@ -161,8 +162,8 @@ export default function MaterialCard(props: MaterialCardProps) {
 
         {/* Thumbnail */}
         <div className={`shrink-0 w-10 h-10 rounded overflow-hidden border ${avatar.border} ${avatar.bg} flex items-center justify-center`}>
-          {props.imageUrl ? (
-            <img src={props.imageUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
+          {imageSrc ? (
+            <img src={imageSrc} alt={name} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <span className={`text-xs font-bold ${avatar.text}`}>{avatar.initials}</span>
           )}
@@ -287,10 +288,10 @@ export default function MaterialCard(props: MaterialCardProps) {
 
         {/* ── Hero image / avatar ─────────────────────────────────────── */}
         <div className={`relative w-full h-32 overflow-hidden ${props.imageUrl ? "bg-muted" : `${avatar.bg} border-b ${avatar.border}`}`}>
-          {props.imageUrl ? (
+          {imageSrc ? (
             <>
               <img
-                src={props.imageUrl}
+                src={imageSrc}
                 alt={name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
