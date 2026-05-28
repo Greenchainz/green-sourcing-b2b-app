@@ -200,6 +200,9 @@ async function startServer() {
           mediaSrc: [
             "'self'",
             "https:",
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "http://[::1]:*",
             "https://*.blob.core.windows.net",
           ],
           connectSrc: [
