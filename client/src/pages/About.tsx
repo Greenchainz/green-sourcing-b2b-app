@@ -114,7 +114,6 @@ export default function About() {
                   ref={videoRef}
                   preload="metadata"
                   playsInline
-                  crossOrigin="anonymous"
                   {...(aboutVideoAutoplay ? { autoPlay: true, muted: true } : {})}
                   onError={(e) => {
                     // Better error logging for debugging CORS / load issues
