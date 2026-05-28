@@ -123,14 +123,15 @@ export default function About() {
                     setVideoError("Video failed to load. The URL may be missing, access-restricted, or blocked by CORS.");
                   }}
                 >
-                  <source
-                    {resolvedVideoUrl ? null : (
-                      aria - label= "Unmute video"
-                      >
-                      Unmute
-                    </button>
+                  <source src={resolvedVideoUrl} />
+                </video>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
+                  Founder video not configured yet.
+                </div>
+              )}
 
-                    {/* YouTube-style quick control for sound */}
+              {/* YouTube-style quick control for sound */}
               {resolvedVideoUrl && isMuted ? (
                 <button
                   className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 rounded-full bg-black/75 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/70"
@@ -147,34 +148,26 @@ export default function About() {
                   Tap to unmute
                 </button>
               ) : null}
-            </div>
-            ) : null
-            ) : (
-            <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
-              Founder video not configured yet.
-            </div>
-              )}
 
-            {(videoError || showUnavailable) && (
-              <div className="absolute inset-x-0 bottom-0 bg-black/70 text-white text-sm p-3 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium">Video unavailable</p>
-                  <p className="opacity-90">
-                    {videoError ??
-                      (founderVideoQuery.error?.message ||
-                        "This video could not be loaded. Check VITE_ABOUT_VIDEO_URL or VITE_ABOUT_VIDEO_TOKEN.")}
-                  </p>
+              {(videoError || showUnavailable) && (
+                <div className="absolute inset-x-0 bottom-0 bg-black/70 text-white text-sm p-3 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium">Video unavailable</p>
+                    <p className="opacity-90">
+                      {videoError ??
+                        (founderVideoQuery.error?.message ||
+                          "This video could not be loaded. Check VITE_ABOUT_VIDEO_URL or VITE_ABOUT_VIDEO_TOKEN.")}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-    </div>
-      </section >
+      </section>
 
-    {/* Mission & Vision */ }
-    < section className = "py-20 relative overflow-hidden" >
+      {/* Mission & Vision */}
+      <section className="py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20"></div>
 
         <div className="container relative z-10">
@@ -211,94 +204,94 @@ export default function About() {
             </Card>
           </div>
         </div>
-      </section >
+      </section>
 
-    {/* The Problem We're Solving */ }
-    < section className = "py-20 bg-secondary/30" >
-      <div className="container">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              The Broken System We're Dismantling
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              While the rest of the world automated, construction procurement
-              stayed manual, opaque, and controlled by incumbents who benefit
-              directly from your confusion.
-            </p>
-          </div>
+      {/* The Problem We're Solving */}
+      <section className="py-20 bg-secondary/30">
+        <div className="container">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+                The Broken System We're Dismantling
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                While the rest of the world automated, construction procurement
+                stayed manual, opaque, and controlled by incumbents who benefit
+                directly from your confusion.
+              </p>
+            </div>
 
-          <div className="space-y-6">
-            {[
-              {
-                title:
-                  "The Spec and the Sourcing Are Completely Disconnected",
-                problem:
-                  "Project teams specify in BIM or on paper. Sourcing happens in email, spreadsheets, and phone calls — by someone else, days later. The decision context is lost every time.",
-                solution:
-                  "GreenChainz intercepts the material decision the moment it's made — inside Revit, Forma, or via RFQ. Swap suggestions and routing happen at spec time, not after it.",
-                icon: "📄",
-              },
-              {
-                title: "Self-Reported Sustainability Is Worthless",
-                problem:
-                  "Every supplier claims to be green. None of it is verified. Specifying the wrong product means compliance failures, audit risk, and liability.",
-                solution:
-                  "Every material in GreenChainz is third-party verified. Confidence levels are always visible. Scores are server-side and immutable — suppliers can't edit them.",
-                icon: "🚫",
-              },
-              {
-                title: "RFQs Go to the Wrong Suppliers",
-                problem:
-                  "A concrete supplier 600 miles from the jobsite isn't a real option. Manual RFQ processes ignore shipping class, distance, and delivery capacity entirely.",
-                solution:
-                  "GreenChainz routes RFQs by material type and shipping class. Local-heavy materials stay local. Suppliers who can't deliver don't see the RFQ.",
-                icon: "⚖️",
-              },
-              {
-                title: "The Submittal Is an Afterthought",
-                problem:
-                  "A material gets selected. Someone else assembles the submittal. It's rejected. Three weeks of schedule, wasted.",
-                solution:
-                  "GreenChainz generates the CSI MasterFormat submittal automatically from the approved selection — EPD, verification statements, supplier data, all included.",
-                icon: "🔌",
-              },
-            ].map((item, index) => (
-              <Card
-                key={index}
-                className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-lg transition-all duration-300"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)] flex items-center justify-center text-2xl">
-                    {item.icon}
+            <div className="space-y-6">
+              {[
+                {
+                  title:
+                    "The Spec and the Sourcing Are Completely Disconnected",
+                  problem:
+                    "Project teams specify in BIM or on paper. Sourcing happens in email, spreadsheets, and phone calls — by someone else, days later. The decision context is lost every time.",
+                  solution:
+                    "GreenChainz intercepts the material decision the moment it's made — inside Revit, Forma, or via RFQ. Swap suggestions and routing happen at spec time, not after it.",
+                  icon: "📄",
+                },
+                {
+                  title: "Self-Reported Sustainability Is Worthless",
+                  problem:
+                    "Every supplier claims to be green. None of it is verified. Specifying the wrong product means compliance failures, audit risk, and liability.",
+                  solution:
+                    "Every material in GreenChainz is third-party verified. Confidence levels are always visible. Scores are server-side and immutable — suppliers can't edit them.",
+                  icon: "🚫",
+                },
+                {
+                  title: "RFQs Go to the Wrong Suppliers",
+                  problem:
+                    "A concrete supplier 600 miles from the jobsite isn't a real option. Manual RFQ processes ignore shipping class, distance, and delivery capacity entirely.",
+                  solution:
+                    "GreenChainz routes RFQs by material type and shipping class. Local-heavy materials stay local. Suppliers who can't deliver don't see the RFQ.",
+                  icon: "⚖️",
+                },
+                {
+                  title: "The Submittal Is an Afterthought",
+                  problem:
+                    "A material gets selected. Someone else assembles the submittal. It's rejected. Three weeks of schedule, wasted.",
+                  solution:
+                    "GreenChainz generates the CSI MasterFormat submittal automatically from the approved selection — EPD, verification statements, supplier data, all included.",
+                  icon: "🔌",
+                },
+              ].map((item, index) => (
+                <Card
+                  key={index}
+                  className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-lg transition-all duration-300"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)] flex items-center justify-center text-2xl">
+                      {item.icon}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold text-foreground mb-2">
+                        {item.title}
+                      </h3>
+                      <p className="text-muted-foreground mb-2">
+                        <span className="font-medium text-destructive">
+                          Problem:
+                        </span>{" "}
+                        {item.problem}
+                      </p>
+                      <p className="text-muted-foreground">
+                        <span className="font-medium text-primary">
+                          Solution:
+                        </span>{" "}
+                        {item.solution}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-foreground mb-2">
-                      {item.title}
-                    </h3>
-                    <p className="text-muted-foreground mb-2">
-                      <span className="font-medium text-destructive">
-                        Problem:
-                      </span>{" "}
-                      {item.problem}
-                    </p>
-                    <p className="text-muted-foreground">
-                      <span className="font-medium text-primary">
-                        Solution:
-                      </span>{" "}
-                      {item.solution}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-      </section >
+      </section>
 
-    {/* Founder Story */ }
-    < section className = "py-20 relative overflow-hidden" >
+      {/* Founder Story */}
+      <section className="py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20"></div>
 
         <div className="container relative z-10">
@@ -317,39 +310,39 @@ export default function About() {
                   <p className="text-lg text-muted-foreground mb-4">
                     <span className="font-semibold text-foreground">
                       Founder & CEO
-                    </span>
+                    </section>
                   </p>
-                  <div className="space-y-4 text-muted-foreground leading-relaxed">
-                    <p>
-                      Jerit's path to GreenChainz started in the military, moved
-                      through construction project management, and landed in
-                      tech—where he saw an opportunity to fix a broken system.
-                    </p>
-                    <p>
-                      After watching procurement teams struggle with LEED
-                      compliance on multi-million dollar projects, he realized
-                      the problem wasn't a lack of sustainable products—it was a
-                      lack of accessible data. Architects wanted to specify
-                      green materials. Contractors wanted to source them. But
-                      nobody had time to become an EPD expert.
-                    </p>
-                    <p>
-                      So Jerit built GreenChainz: a platform that treats
-                      sustainability data like any other spec—searchable,
-                      comparable, and built into the tools teams already use.
-                    </p>
-                    <p className="font-medium text-foreground">
-                      &ldquo;The construction industry doesn&rsquo;t have a
-                      sustainability problem. It has a data access problem.
-                      We&rsquo;re fixing that&mdash;with or without the legacy
-                      players&rsquo; permission.&rdquo;
-                    </p>
-                  </div>
+                  {/* Our Story Timeline */}
+                  <section className="py-20 bg-secondary/30">
+                    Jerit's path to GreenChainz started in the military, moved
+                    through construction project management, and landed in
+                    tech—where he saw an opportunity to fix a broken system.
+                  </p>
+                  <p>
+                    After watching procurement teams struggle with LEED
+                    compliance on multi-million dollar projects, he realized
+                    the problem wasn't a lack of sustainable products—it was a
+                    lack of accessible data. Architects wanted to specify
+                    green materials. Contractors wanted to source them. But
+                    nobody had time to become an EPD expert.
+                  </p>
+                  <p>
+                    So Jerit built GreenChainz: a platform that treats
+                    sustainability data like any other spec—searchable,
+                    comparable, and built into the tools teams already use.
+                  </p>
+                  <p className="font-medium text-foreground">
+                    &ldquo;The construction industry doesn&rsquo;t have a
+                    sustainability problem. It has a data access problem.
+                    We&rsquo;re fixing that&mdash;with or without the legacy
+                    players&rsquo; permission.&rdquo;
+                  </p>
                 </div>
               </div>
-            </Card>
           </div>
-        </div>
+        </Card>
+    </div>
+        </div >
       </section >
 
     {/* Values */ }
@@ -421,19 +414,19 @@ export default function About() {
                 className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-xl hover:scale-105 transition-all duration-300 group"
               >
                 <div
-                  className={`w-14 h-14 rounded-xl bg-gradient-to-br ${value.color} flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform duration-300`}
-                >
-                  {value.icon}
-                </div>
+              </section>
+              >
+              {/* CTA */ }
+              < section className = "py-20 relative overflow-hidden" >
                 <h3 className="text-xl font-semibold text-foreground mb-2">
                   {value.title}
                 </h3>
                 <p className="text-muted-foreground">{value.description}</p>
               </Card>
             ))}
-          </div>
         </div>
       </div>
+      </div >
       </section >
 
     {/* CTA Section */ }
@@ -467,5 +460,5 @@ export default function About() {
 
     <Footer />
     </div >
-  );
-}
+      </section >
+    </div >
