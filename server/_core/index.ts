@@ -213,6 +213,7 @@ async function startServer() {
             "'self'",
             "https://*.monitor.azure.com",
             "https://*.applicationinsights.azure.com",
+            "https://forms-na2.hscollectedforms.net",
             "https://api.ec3.network",
             "https://www.epdinternational.org",
             "https://developer.api.autodesk.com",
