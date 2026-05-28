@@ -177,9 +177,13 @@ async function startServer() {
           // Allow script elements from the same external origins as above
           scriptSrcElem: [
             "'self'",
+            "'unsafe-inline'",
             "https://js.monitor.azure.com",
             "https://az416426.vo.msecnd.net",
             "https://js-na2.hs-scripts.com",
+            "https://js-na2.hs-banner.com",
+            "https://js-na2.hscollectedforms.net",
+            "https://js-na2.hs-analytics.net",
             "https://widget.intercom.io",
             "https://js.intercomcdn.com",
             "https://cdn-cookieyes.com",
@@ -200,9 +204,9 @@ async function startServer() {
           mediaSrc: [
             "'self'",
             "https:",
-            "http://localhost:*",
-            "http://127.0.0.1:*",
-            "http://[::1]:*",
+            "http://localhost",
+            "http://127.0.0.1",
+            "http://[::1]",
             "https://*.blob.core.windows.net",
           ],
           connectSrc: [
