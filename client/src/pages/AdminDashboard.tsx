@@ -1447,259 +1447,225 @@ function SystemTab() {
 
   return (
     <div className="space-y-6">
-      {/* Test Users */}
+      {/* Test user role switching was removed with the legacy cookie-session flow. */}
+
+      {/* Quick Links */}
       <Card className="border-gray-800 bg-gray-900">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
-            <User className="h-4 w-4 text-gray-400" />
-            Test as a Brand-New User
+            <Zap className="h-4 w-4 text-gray-400" />
+            Platform Links
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-xs text-gray-400">
-            Creates a synthetic test account and logs you in as them — full cold-start experience with no prior data. Your admin session is replaced for 8 hours; come back to <code className="text-gray-300">/admin</code> to switch back.
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {TEST_USER_ROLES.map(({ role, label, desc, color, icon, redirect }) => (
-              <div key={role} className="rounded-lg border border-gray-800 bg-gray-800/40 p-4 flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="rounded-md p-1.5 bg-gray-700/50">{icon}</div>
-                  <p className="font-semibold text-sm text-white">{label}</p>
-                </div>
-                <p className="text-xs text-gray-500 flex-1">{desc}</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className={`w-full text-xs h-8 font-medium ${color}`}
-                  disabled={createTestSession.isPending && activeRole === role}
-                  onClick={() => {
-                    if (!window.confirm(`Log in as a test ${label}? This replaces your current session.`)) return;
-                    setActiveRole(role);
-                    createTestSession.mutate({ role, redirect } as any);
-                  }}
-                >
-                  {createTestSession.isPending && activeRole === role ? (
-                    <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Switching…</>
-                  ) : (
-                    {/* Test user role switching removed with the legacy cookie-session flow. */ }
-
-      {/* Quick Links */}
-                  <Card className="border-gray-800 bg-gray-900">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
-                        <Zap className="h-4 w-4 text-gray-400" />
-                        Platform Links
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-3">
-                        <Link href="/admin/suppliers">
-                          <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
-                            <Building2 className="mr-2 h-4 w-4" />Supplier Dashboard
-                            <ExternalLink className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
-                        <Link href="/admin/verification-queue">
-                          <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
-                            <Clock className="mr-2 h-4 w-4" />Verification Queue
-                            <ExternalLink className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
-                        <Link href="/admin/concierge">
-                          <Button variant="outline" size="sm" className="border-green-800 bg-green-950 text-green-300 hover:bg-green-900 hover:text-white">
-                            <Zap className="mr-2 h-4 w-4" />Concierge Routing
-                            <ExternalLink className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
-                        <Link href="/admin/crm">
-                          <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
-                            <TrendingUp className="mr-2 h-4 w-4" />CRM Pipeline
-                            <ExternalLink className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
-                        <Link href="/admin/founder-videos">
-                          <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
-                            <Video className="mr-2 h-4 w-4" />Founder Videos
-                            <ExternalLink className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
-                        <Link href="/admin/founder-videos/analytics">
-                          <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
-                            <BarChart3 className="mr-2 h-4 w-4" />Video Analytics
-                            <ExternalLink className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
-                        <Link href="/materials">
-                          <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
-                            <Package className="mr-2 h-4 w-4" />Materials Catalog
-                            <ExternalLink className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
-                        <Link href="/manufacturers">
-                          <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
-                            <Building2 className="mr-2 h-4 w-4" />Suppliers Directory
-                            <ExternalLink className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
-              </div>
-            );
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/admin/suppliers">
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <Building2 className="mr-2 h-4 w-4" />Supplier Dashboard
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/verification-queue">
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <Clock className="mr-2 h-4 w-4" />Verification Queue
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/concierge">
+              <Button variant="outline" size="sm" className="border-green-800 bg-green-950 text-green-300 hover:bg-green-900 hover:text-white">
+                <Zap className="mr-2 h-4 w-4" />Concierge Routing
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/crm">
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <TrendingUp className="mr-2 h-4 w-4" />CRM Pipeline
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/founder-videos">
+              <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
+                <Video className="mr-2 h-4 w-4" />Founder Videos
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/founder-videos/analytics">
+              <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
+                <BarChart3 className="mr-2 h-4 w-4" />Video Analytics
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/materials">
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <Package className="mr-2 h-4 w-4" />Materials Catalog
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/manufacturers">
+              <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
+                <Building2 className="mr-2 h-4 w-4" />Suppliers Directory
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
-            // ─── Access Denied ───────────────────────────────────────────────────────────
+// ─── Access Denied ───────────────────────────────────────────────────────────
 
-            function AccessDenied() {
+function AccessDenied() {
   return (
-            <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-              <div className="rounded-full border border-red-500/30 bg-red-500/10 p-5">
-                <ShieldAlert className="h-10 w-10 text-red-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-white">Access Denied</h2>
-              <p className="max-w-sm text-gray-400">
-                You don&apos;t have admin privileges. This page is restricted to administrators only.
-              </p>
-              <Link href="/">
-                <Button
-                  variant="outline"
-                  className="mt-2 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
-                >
-                  Back to Home
-                </Button>
-              </Link>
-            </div>
-            );
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+      <div className="rounded-full border border-red-500/30 bg-red-500/10 p-5">
+        <ShieldAlert className="h-10 w-10 text-red-400" />
+      </div>
+      <h2 className="text-2xl font-bold text-white">Access Denied</h2>
+      <p className="max-w-sm text-gray-400">
+        You don&apos;t have admin privileges. This page is restricted to administrators only.
+      </p>
+      <Link href="/">
+        <Button
+          variant="outline"
+          className="mt-2 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+        >
+          Back to Home
+        </Button>
+      </Link>
+    </div>
+  );
 }
 
-            // ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Main Component ──────────────────────────────────────────────────────────
 
-            export default function AdminDashboard() {
-  const {user, isLoading: authLoading } = useAuth();
-            const [activeTab, setActiveTab] = useState('overview');
+export default function AdminDashboard() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState('overview');
 
-            // Loading state while auth resolves
-            if (authLoading) {
+  // Loading state while auth resolves
+  if (authLoading) {
     return (
-            <div className="min-h-screen bg-gray-950">
-              <Header />
-              <main className="container mx-auto max-w-7xl px-4 py-10">
-                <div className="space-y-6">
-                  <Skeleton className="h-10 w-64" />
-                  <div className="grid grid-cols-4 gap-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-28 w-full" />
-                    ))}
-                  </div>
-                  <Skeleton className="h-72 w-full" />
-                </div>
-              </main>
-              <Footer />
+      <div className="min-h-screen bg-gray-950">
+        <Header />
+        <main className="container mx-auto max-w-7xl px-4 py-10">
+          <div className="space-y-6">
+            <Skeleton className="h-10 w-64" />
+            <div className="grid grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-28 w-full" />
+              ))}
             </div>
-            );
+            <Skeleton className="h-72 w-full" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
-            // Security: deny non-admins
-            if (!user || user.role !== 'admin') {
+  // Security: deny non-admins
+  if (!user || user.role !== 'admin') {
     return (
-            <div className="min-h-screen bg-gray-950">
-              <Header />
-              <main className="container mx-auto max-w-7xl px-4 py-10">
-                <AccessDenied />
-              </main>
-              <Footer />
-            </div>
-            );
+      <div className="min-h-screen bg-gray-950">
+        <Header />
+        <main className="container mx-auto max-w-7xl px-4 py-10">
+          <AccessDenied />
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
-            return (
-            <div className="min-h-screen bg-gray-950">
-              <Header />
+  return (
+    <div className="min-h-screen bg-gray-950">
+      <Header />
 
-              <main className="container mx-auto max-w-7xl px-4 py-8">
-                {/* Page header */}
-                <div className="mb-8 flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <LayoutDashboard className="h-5 w-5 text-emerald-400" />
-                      <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-                    </div>
-                    <p className="text-sm text-gray-400">
-                      GreenChainz platform administration &mdash; logged in as{' '}
-                      <span className="text-emerald-400">{user.email}</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-                      <User className="h-3 w-3" />
-                      Admin
-                    </span>
-                  </div>
-                </div>
-
-                {/* Tabs */}
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="mb-6 border border-gray-800 bg-gray-900 p-1">
-                    <TabsTrigger
-                      value="overview"
-                      className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
-                    >
-                      <LayoutDashboard className="mr-1.5 h-4 w-4" />
-                      Overview
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="users"
-                      className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
-                    >
-                      <Users className="mr-1.5 h-4 w-4" />
-                      Users
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="suppliers"
-                      className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
-                    >
-                      <Building2 className="mr-1.5 h-4 w-4" />
-                      Suppliers
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="catalog"
-                      className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
-                    >
-                      <Package className="mr-1.5 h-4 w-4" />
-                      Catalog
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="system"
-                      className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
-                    >
-                      <Server className="mr-1.5 h-4 w-4" />
-                      System
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="overview">
-                    <OverviewTab />
-                  </TabsContent>
-
-                  <TabsContent value="users">
-                    <UsersTab />
-                  </TabsContent>
-
-                  <TabsContent value="suppliers">
-                    <SuppliersTab />
-                  </TabsContent>
-
-                  <TabsContent value="catalog">
-                    <CatalogTab />
-                  </TabsContent>
-
-                  <TabsContent value="system">
-                    <SystemTab />
-                  </TabsContent>
-                </Tabs>
-              </main>
-
-              <Footer />
+      <main className="container mx-auto max-w-7xl px-4 py-8">
+        {/* Page header */}
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <LayoutDashboard className="h-5 w-5 text-emerald-400" />
+              <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
             </div>
-            );
+            <p className="text-sm text-gray-400">
+              GreenChainz platform administration &mdash; logged in as{' '}
+              <span className="text-emerald-400">{user.email}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
+              <User className="h-3 w-3" />
+              Admin
+            </span>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6 border border-gray-800 bg-gray-900 p-1">
+            <TabsTrigger
+              value="overview"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <LayoutDashboard className="mr-1.5 h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="users"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Users className="mr-1.5 h-4 w-4" />
+              Users
+            </TabsTrigger>
+            <TabsTrigger
+              value="suppliers"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Building2 className="mr-1.5 h-4 w-4" />
+              Suppliers
+            </TabsTrigger>
+            <TabsTrigger
+              value="catalog"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Package className="mr-1.5 h-4 w-4" />
+              Catalog
+            </TabsTrigger>
+            <TabsTrigger
+              value="system"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Server className="mr-1.5 h-4 w-4" />
+              System
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            <OverviewTab />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UsersTab />
+          </TabsContent>
+
+          <TabsContent value="suppliers">
+            <SuppliersTab />
+          </TabsContent>
+
+          <TabsContent value="catalog">
+            <CatalogTab />
+          </TabsContent>
+
+          <TabsContent value="system">
+            <SystemTab />
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      <Footer />
+    </div>
+  );
 }
