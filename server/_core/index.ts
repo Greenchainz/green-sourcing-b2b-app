@@ -18,7 +18,6 @@ import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 import { uploadRouter } from "../upload-route";
 import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { specSheetRouter } from "../spec-sheet-router";
-import { sdk } from "./sdk";
 import { registerAdminRoutes } from "../admin-routes/index";
 import { publicMaterialsRouter } from "../public-materials-api";
 import { registerPdfRoutes } from "../admin-routes/pdf-routes";
