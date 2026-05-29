@@ -32,16 +32,12 @@ export const leadCaptureProcedure = t.procedure.use(leadCaptureRateLimitMiddlewa
 const requireUser = t.middleware(async (opts) => {
   const { ctx, next } = opts;
 
-  if (!ctx.user) {
+  // Prefer Easy Auth payload; fall back to DB-mapped `ctx.user` (legacy).
+  if (!ctx.auth && !ctx.user) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: UNAUTHED_ERR_MSG });
   }
 
-  return next({
-    ctx: {
-      ...ctx,
-      user: ctx.user,
-    },
-  });
+  return next({ ctx: { ...ctx } });
 });
 
 export const protectedProcedure = t.procedure
@@ -52,16 +48,12 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== 'admin') {
+    const role = ctx.auth?.role ?? ctx.user?.role;
+    if (!role || role !== 'admin') {
       throw new TRPCError({ code: 'FORBIDDEN', message: NOT_ADMIN_ERR_MSG });
     }
 
-    return next({
-      ctx: {
-        ...ctx,
-        user: ctx.user,
-      },
-    });
+    return next({ ctx: { ...ctx } });
   }),
 );
 
@@ -71,18 +63,14 @@ export const architectProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    if (!ctx.user) {
+    const role = ctx.auth?.role ?? ctx.user?.role;
+    if (!role) {
       throw new TRPCError({ code: 'UNAUTHORIZED', message: UNAUTHED_ERR_MSG });
     }
-    if (ctx.user.role !== 'buyer' && ctx.user.role !== 'admin') {
+    if (role !== 'buyer' && role !== 'admin') {
       throw new TRPCError({ code: 'FORBIDDEN', message: 'Architect access required.' });
     }
 
-    return next({
-      ctx: {
-        ...ctx,
-        user: ctx.user,
-      },
-    });
+    return next({ ctx: { ...ctx } });
   }),
 );
