@@ -71,9 +71,9 @@ export const rfqRouter = router({
 
       void auditLog.record({
         action: AuditAction.RFQ_CREATED,
-        actorUserId: ctx.user?.id ?? ctx.auth?.userId,
-        actorEmail: ctx.user?.email ?? ctx.auth?.email ?? null,
-        actorRole: ctx.auth?.role ?? ctx.user?.role,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
         resourceType: "rfq",
         resourceId: inserted.id,
         metadata: {
@@ -104,7 +104,7 @@ export const rfqRouter = router({
       const limit = input?.limit ?? 20;
       const offset = (page - 1) * limit;
       const userId = ctx.user.id;
-      const role = ctx.user.role;
+      const role = ctx.auth?.role;
 
       let rows: Array<Record<string, unknown>>;
 
@@ -216,7 +216,7 @@ export const rfqRouter = router({
       if (
         row.architectId !== ctx.user.id &&
         row.supplierId !== ctx.user.id &&
-        ctx.user.role !== "admin"
+        ctx.auth?.role !== "admin"
       ) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
       }
@@ -243,7 +243,7 @@ export const rfqRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "supplier" && ctx.user.role !== "admin") {
+      if (ctx.auth?.role !== "supplier" && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only suppliers can respond to RFQs" });
       }
 
@@ -263,7 +263,7 @@ export const rfqRouter = router({
       }
       const [row] = rows;
 
-      if (row.supplierId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (row.supplierId !== ctx.user.id && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "This RFQ was not assigned to you" });
       }
 
@@ -274,9 +274,9 @@ export const rfqRouter = router({
 
       void auditLog.record({
         action: AuditAction.RFQ_RESPONDED,
-        actorUserId: ctx.user?.id ?? ctx.auth?.userId,
-        actorEmail: ctx.user?.email ?? ctx.auth?.email ?? null,
-        actorRole: ctx.auth?.role ?? ctx.user?.role,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
         resourceType: "rfq",
         resourceId: input.id,
         metadata: { status: input.status },
@@ -305,7 +305,7 @@ export const rfqRouter = router({
       if (!rows.length) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rows[0].architectId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (rows[0].architectId !== ctx.user.id && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the RFQ owner can cancel it" });
       }
 
@@ -316,9 +316,9 @@ export const rfqRouter = router({
 
       void auditLog.record({
         action: AuditAction.RFQ_CANCELLED,
-        actorUserId: ctx.user?.id ?? ctx.auth?.userId,
-        actorEmail: ctx.user?.email ?? ctx.auth?.email ?? null,
-        actorRole: ctx.auth?.role ?? ctx.user?.role,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
         resourceType: "rfq",
         resourceId: input.id,
         req: ctx.req,
@@ -341,7 +341,7 @@ export const rfqRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "supplier" && ctx.user.role !== "admin") {
+      if (ctx.auth?.role !== "supplier" && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only suppliers can submit quotes" });
       }
 
@@ -413,7 +413,7 @@ export const rfqRouter = router({
       if (!rfq) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rfq.userId !== userId && ctx.user.role !== "admin") {
+      if (rfq.userId !== userId && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the RFQ buyer can accept quotes" });
       }
       if (!["submitted", "responded"].includes(rfq.status)) {
@@ -448,7 +448,7 @@ export const rfqRouter = router({
   // rfq_status enum: draft | submitted | responded | awarded | closed
   expire: protectedProcedure
     .mutation(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
+      if (ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Admin only" });
       }
 
@@ -943,7 +943,7 @@ export const rfqRouter = router({
       const engineStart = Date.now();
       const swapResult = await runSwapEngine(intent, {
         userId: ctx.user.id,
-        role: ctx.user.role as "architect" | "admin" | "supplier",
+        role: ctx.auth?.role as "architect" | "admin" | "supplier",
       });
       const engineDurationMs = Date.now() - engineStart;
 
@@ -1002,7 +1002,7 @@ export const rfqRouter = router({
       if (!draft) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
       }
-      if (draft.architectId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (draft.architectId !== ctx.user.id && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
       }
 
@@ -1048,7 +1048,7 @@ export const rfqRouter = router({
       if (!draft) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
       }
-      if (draft.architectId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (draft.architectId !== ctx.user.id && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
       }
       if (draft.status !== "draft") {
@@ -1082,7 +1082,7 @@ export const rfqRouter = router({
             action: AuditAction.RFQ_CREATED,
             actorUserId: ctx.user.id,
             actorEmail: ctx.user.email ?? null,
-            actorRole: ctx.user.role,
+            actorRole: ctx.auth?.role ?? null,
             resourceType: "rfq",
             resourceId: inserted.id,
             metadata: { supplierId, draftId: input.draftId, source: "hitl_approved" },
@@ -1152,7 +1152,7 @@ export const rfqRouter = router({
         .limit(1);
 
       if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
-      if (draft.architectId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (draft.architectId !== ctx.user.id && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
       }
 

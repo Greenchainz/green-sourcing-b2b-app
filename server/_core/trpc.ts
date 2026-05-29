@@ -32,8 +32,7 @@ export const leadCaptureProcedure = t.procedure.use(leadCaptureRateLimitMiddlewa
 const requireUser = t.middleware(async (opts) => {
   const { ctx, next } = opts;
 
-  // Prefer Easy Auth payload; fall back to DB-mapped `ctx.user` (legacy).
-  if (!ctx.auth && !ctx.user) {
+  if (!ctx.auth) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: UNAUTHED_ERR_MSG });
   }
 
@@ -48,7 +47,7 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    const role = ctx.auth?.role ?? ctx.user?.role;
+    const role = ctx.auth?.role;
     if (!role || role !== 'admin') {
       throw new TRPCError({ code: 'FORBIDDEN', message: NOT_ADMIN_ERR_MSG });
     }
@@ -63,7 +62,7 @@ export const architectProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    const role = ctx.auth?.role ?? ctx.user?.role;
+    const role = ctx.auth?.role;
     if (!role) {
       throw new TRPCError({ code: 'UNAUTHORIZED', message: UNAUTHED_ERR_MSG });
     }

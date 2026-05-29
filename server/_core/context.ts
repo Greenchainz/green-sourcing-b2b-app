@@ -1,6 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { sdk } from "./sdk";
 import { getUserByOpenId } from "../db";
 
 export type TrpcContext = {
@@ -30,9 +29,7 @@ export type TrpcContext = {
  *
  * Priority: prefer Easy Auth (`req.auth`) when present. When `req.auth` is
  * available we attempt to map it to a DB user via `getUserByOpenId` and set
- * `ctx.user` accordingly. When Easy Auth is not present (local dev/test), we
- * fall back to the legacy `sdk.authenticateRequest` cookie-based session so
- * developer workflows and tests continue to work.
+ * `ctx.user` accordingly.
  */
 export async function createContext(
   opts: CreateExpressContextOptions
@@ -74,18 +71,10 @@ export async function createContext(
     }
   }
 
-  // Fallback: legacy cookie-based session (kept for local development/tests).
-  let user: User | null = null;
-  try {
-    user = await sdk.authenticateRequest(opts.req).catch(() => null);
-  } catch {
-    user = null;
-  }
-
   return {
     req: opts.req,
     res: opts.res,
-    user,
+    user: null,
     auth: null,
   };
 }

@@ -145,7 +145,7 @@ export const rfqMarketplaceRouter = router({
       if (!rfq) throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
 
       const isOwner = rfq.userId === ctx.user.id;
-      const isAdmin = ctx.user.role === "admin";
+      const isAdmin = ctx.auth?.role === "admin";
 
       if (!isOwner && !isAdmin) {
         // Check if the authenticated user is a supplier with a bid on this RFQ
@@ -262,7 +262,7 @@ export const rfqMarketplaceRouter = router({
 
       const [rfq] = await db.select({ userId: rfqs.userId }).from(rfqs).where(eq(rfqs.id, input.rfqId)).limit(1);
       if (!rfq) throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
-      if (rfq.userId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (rfq.userId !== ctx.user.id && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the RFQ owner can accept a bid" });
       }
 
@@ -317,7 +317,7 @@ export const rfqMarketplaceRouter = router({
       if (!rfq.length) return null;
 
       const isOwner = rfq[0].userId === ctx.user.id;
-      const isAdmin = ctx.user.role === "admin";
+      const isAdmin = ctx.auth?.role === "admin";
 
       if (!isOwner && !isAdmin) {
         const [supplierRecord] = await db

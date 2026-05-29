@@ -49,10 +49,10 @@ export const supplierRfqRouter = router({
       const [supplier] = await db
         .select({ id: suppliers.id })
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user?.id ?? ctx.auth?.userId))
+        .where(eq(suppliers.userId, ctx.user.id))
         .limit(1);
 
-      const role = ctx.auth?.role ?? ctx.user?.role;
+      const role = ctx.auth?.role;
       if (!supplier && role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "A supplier account is required to view available RFQs" });
       }
@@ -131,7 +131,7 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user?.id ?? ctx.auth?.userId))
+        .where(eq(suppliers.userId, ctx.user.id))
         .limit(1);
 
       if (!supplier.length) {

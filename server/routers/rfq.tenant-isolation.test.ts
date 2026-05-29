@@ -60,7 +60,17 @@ const SUPPLIER_D = { id: 40, role: "supplier" as const, email: "d@test.com", ope
 function callerAs(user: typeof USER_A) {
   return rfqRouter.createCaller({
     user: user as any,
-    req: {} as any,
+    auth: {
+      userId: user.openId,
+      email: user.email,
+      role: user.role,
+      tenantId: 'test-tenant',
+      rawRoles: [user.role],
+    },
+    req: {
+      headers: { "x-forwarded-for": "127.0.0.1", "user-agent": "vitest" },
+      socket: { remoteAddress: "127.0.0.1" },
+    } as any,
     res: {} as any,
   });
 }
@@ -231,7 +241,11 @@ describe("RFQ tenant isolation", () => {
     it("rejects unauthenticated getById (UNAUTHORIZED)", async () => {
       const unauthCaller = rfqRouter.createCaller({
         user: null,
-        req: {} as any,
+        auth: null,
+        req: {
+          headers: { "x-forwarded-for": "127.0.0.1", "user-agent": "vitest" },
+          socket: { remoteAddress: "127.0.0.1" },
+        } as any,
         res: {} as any,
       });
 
@@ -243,7 +257,11 @@ describe("RFQ tenant isolation", () => {
     it("rejects unauthenticated listMine (UNAUTHORIZED)", async () => {
       const unauthCaller = rfqRouter.createCaller({
         user: null,
-        req: {} as any,
+        auth: null,
+        req: {
+          headers: { "x-forwarded-for": "127.0.0.1", "user-agent": "vitest" },
+          socket: { remoteAddress: "127.0.0.1" },
+        } as any,
         res: {} as any,
       });
 
