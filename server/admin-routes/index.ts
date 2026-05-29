@@ -3,8 +3,7 @@
  * Registered under /api/admin/* with a shared rate limiter.
  */
 import express from 'express';
-import { sdk } from '../_core/sdk';
-import { requireAdminUser } from '../_core/route-auth-guards';
+import { requireEasyAuthUser } from '../_core/request-auth';
 import { fetchSDAMaterialsForSeed, type SDAProductEpd } from "../autodesk-sda-service";
 
 function createErrorResponse(
@@ -19,6 +18,21 @@ function createErrorResponse(
   };
 }
 
+async function requireEasyAuthAdminUser(req: express.Request, res: express.Response) {
+  const user = await requireEasyAuthUser(req);
+  if (!user) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return null;
+  }
+
+  if (user.role !== 'admin') {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+
+  return user;
+}
+
 export function registerAdminRoutes(
   app: express.Express,
   adminRateLimit: express.RequestHandler
@@ -26,7 +40,7 @@ export function registerAdminRoutes(
   // Trigger scraper outreach pipeline
   app.post('/api/admin/trigger-outreach', adminRateLimit, async (req, res) => {
     try {
-      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      const user = await requireEasyAuthAdminUser(req, res);
       if (!user) return;
       const { runScraperOutreachPipeline } = await import('../scraper-outreach-pipeline');
       const result = await runScraperOutreachPipeline();
@@ -40,7 +54,7 @@ export function registerAdminRoutes(
   // Seed decision_maker_personas with CCPS weights
   app.post('/api/admin/seed-personas', adminRateLimit, async (req, res) => {
     try {
-      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      const user = await requireEasyAuthAdminUser(req, res);
       if (!user) return;
       const { seedPersonas } = await import('../seed-personas');
       const result = await seedPersonas();
@@ -54,7 +68,7 @@ export function registerAdminRoutes(
   // Seed materials catalog from EC3
   app.post('/api/admin/seed-materials', adminRateLimit, async (req, res) => {
     try {
-      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      const user = await requireEasyAuthAdminUser(req, res);
       if (!user) return;
       const { seedMaterialsFromEC3 } = await import('../seed-materials');
       const categories = req.query.categories
@@ -72,7 +86,7 @@ export function registerAdminRoutes(
   // Seed materials from Autodesk SDA
   app.post('/api/admin/seed-materials-autodesk', adminRateLimit, async (req, res) => {
     try {
-      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      const user = await requireEasyAuthAdminUser(req, res);
       if (!user) return;
       const { fetchSDAMaterialsForSeed } = await import('../autodesk-sda-service');
       const results = await fetchSDAMaterialsForSeed();
@@ -95,7 +109,7 @@ export function registerAdminRoutes(
     },
     async (req: any, res: any) => {
       try {
-        const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+        const user = await requireEasyAuthAdminUser(req, res);
         if (!user) return;
 
         if (!req.file) {
@@ -127,7 +141,7 @@ export function registerAdminRoutes(
   // Run supplier scraper (Azure Maps + EPD International)
   app.post('/api/admin/run-supplier-scraper', adminRateLimit, async (req, res) => {
     try {
-      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      const user = await requireEasyAuthAdminUser(req, res);
       if (!user) return;
       const { runSupplierScraper } = await import('../../lib/scrapers/supplier-scraper');
       const result = await runSupplierScraper();
@@ -141,7 +155,7 @@ export function registerAdminRoutes(
   // Run lead scraper (Bing + Azure Maps)
   app.post('/api/admin/run-lead-scraper', adminRateLimit, async (req, res) => {
     try {
-      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      const user = await requireEasyAuthAdminUser(req, res);
       if (!user) return;
       const { runLeadScraper } = await import('../../lib/scrapers/lead-scraper');
       const result = await runLeadScraper();
@@ -155,7 +169,7 @@ export function registerAdminRoutes(
   // Trigger buyer lead outreach pipeline
   app.post('/api/admin/trigger-lead-outreach', adminRateLimit, async (req, res) => {
     try {
-      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      const user = await requireEasyAuthAdminUser(req, res);
       if (!user) return;
       const { runLeadOutreachPipeline } = await import('../lead-outreach-pipeline');
       const result = await runLeadOutreachPipeline();
@@ -169,7 +183,7 @@ export function registerAdminRoutes(
   // Run TxDOT pricing scraper
   app.post('/api/admin/run-txdot-scraper', adminRateLimit, async (req, res) => {
     try {
-      const user = await requireAdminUser(req, res, sdk.authenticateRequest.bind(sdk));
+      const user = await requireEasyAuthAdminUser(req, res);
       if (!user) return;
       const { scrapeTxdotPricingData } = await import('../services/txdotScraper');
       const { storePricingData, updateAllMaterialAveragePricing } = await import('../services/pricingDataService');
