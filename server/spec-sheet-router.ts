@@ -8,13 +8,13 @@ import {
   specSheetTemplate,
   buildSpecSheetInputs,
 } from "./templates/spec-sheet-template";
-import { sdk } from "./_core/sdk";
+import { requireEasyAuthUser } from "./_core/request-auth";
 
 export const specSheetRouter = Router();
 
 specSheetRouter.get("/materials/:id/spec-sheet", async (req, res) => {
   try {
-    const user = await sdk.authenticateRequest(req).catch(() => null);
+    const user = await requireEasyAuthUser(req);
     if (!user) {
       res.status(401).json({ error: "Unauthorized" });
       return;
