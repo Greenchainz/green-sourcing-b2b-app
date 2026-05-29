@@ -274,6 +274,30 @@ async function startServer() {
     }
   });
 
+  app.get("/api/auth/me", async (req, res) => {
+    try {
+      const user = await requireEasyAuthUser(req);
+      if (!user) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
+
+      res.json({
+        user: {
+          id: String(user.id),
+          email: user.email ?? "",
+          name: user.name ?? "",
+          roles: [user.role],
+          isAdmin: user.role === "admin",
+          isSupplier: user.role === "supplier",
+          avatarUrl: (user as Record<string, unknown>).avatarUrl as string | null ?? null,
+        },
+      });
+    } catch {
+      res.status(401).json({ error: "Not authenticated" });
+    }
+  });
+
   app.get("/api/intercom/token", async (req, res) => {
     try {
       const user = await requireEasyAuthUser(req);
