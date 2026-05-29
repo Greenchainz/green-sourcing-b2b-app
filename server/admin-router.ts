@@ -21,7 +21,8 @@ import { publishSupplierEvent } from "./services/event-bus";
 
 // Admin-only procedure (checks if user is admin)
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
+  const role = ctx.auth?.role ?? ctx.user?.role;
+  if (role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({ ctx });
@@ -124,9 +125,9 @@ export const adminRouter = router({
 
       void auditLog.record({
         action: AuditAction.SUPPLIER_VERIFICATION_APPROVED,
-        actorUserId: ctx.user.id,
-        actorEmail: ctx.user.email ?? null,
-        actorRole: ctx.user.role,
+        actorUserId: ctx.user?.id ?? ctx.auth?.userId,
+        actorEmail: ctx.user?.email ?? ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? ctx.user?.role,
         resourceType: "supplier",
         resourceId: input.supplierId,
         metadata: {
@@ -205,9 +206,9 @@ export const adminRouter = router({
 
       void auditLog.record({
         action: AuditAction.SUPPLIER_VERIFICATION_REJECTED,
-        actorUserId: ctx.user.id,
-        actorEmail: ctx.user.email ?? null,
-        actorRole: ctx.user.role,
+        actorUserId: ctx.user?.id ?? ctx.auth?.userId,
+        actorEmail: ctx.user?.email ?? ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? ctx.user?.role,
         resourceType: "supplier",
         resourceId: input.supplierId,
         metadata: {

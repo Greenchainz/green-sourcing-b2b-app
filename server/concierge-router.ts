@@ -23,7 +23,8 @@ import { sendEmail } from "./email-service";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
+  const role = ctx.auth?.role ?? ctx.user?.role;
+  if (role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({ ctx });
@@ -256,11 +257,10 @@ export const conciergeRouter = router({
       View Supplier &amp; Request Bid →
     </a>
   </p>
-  ${
-    input.adminNote
-      ? `<p style="color:#555; font-size:14px;">${input.adminNote}</p>`
-      : ""
-  }
+  ${input.adminNote
+          ? `<p style="color:#555; font-size:14px;">${input.adminNote}</p>`
+          : ""
+        }
   <hr style="border:none; border-top:1px solid #e5e7eb; margin:32px 0;" />
   <p style="font-size:12px; color:#6b7280;">
     GreenChainz · Danville, VA · 

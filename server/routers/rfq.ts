@@ -71,9 +71,9 @@ export const rfqRouter = router({
 
       void auditLog.record({
         action: AuditAction.RFQ_CREATED,
-        actorUserId: ctx.user.id,
-        actorEmail: ctx.user.email ?? null,
-        actorRole: ctx.user.role,
+        actorUserId: ctx.user?.id ?? ctx.auth?.userId,
+        actorEmail: ctx.user?.email ?? ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? ctx.user?.role,
         resourceType: "rfq",
         resourceId: inserted.id,
         metadata: {
@@ -274,9 +274,9 @@ export const rfqRouter = router({
 
       void auditLog.record({
         action: AuditAction.RFQ_RESPONDED,
-        actorUserId: ctx.user.id,
-        actorEmail: ctx.user.email ?? null,
-        actorRole: ctx.user.role,
+        actorUserId: ctx.user?.id ?? ctx.auth?.userId,
+        actorEmail: ctx.user?.email ?? ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? ctx.user?.role,
         resourceType: "rfq",
         resourceId: input.id,
         metadata: { status: input.status },
@@ -316,9 +316,9 @@ export const rfqRouter = router({
 
       void auditLog.record({
         action: AuditAction.RFQ_CANCELLED,
-        actorUserId: ctx.user.id,
-        actorEmail: ctx.user.email ?? null,
-        actorRole: ctx.user.role,
+        actorUserId: ctx.user?.id ?? ctx.auth?.userId,
+        actorEmail: ctx.user?.email ?? ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? ctx.user?.role,
         resourceType: "rfq",
         resourceId: input.id,
         req: ctx.req,
@@ -487,11 +487,11 @@ export const rfqRouter = router({
 
       const rows = input?.search
         ? await baseQuery.where(
-            or(
-              ilike(suppliers.companyName, `%${input.search}%`),
-              ilike(suppliers.city, `%${input.search}%`)
-            )
+          or(
+            ilike(suppliers.companyName, `%${input.search}%`),
+            ilike(suppliers.city, `%${input.search}%`)
           )
+        )
         : await baseQuery;
 
       const verificationBySupplierId = await getSupplierVerificationSnapshots(rows.map((row) => row.id));
@@ -569,13 +569,13 @@ export const rfqRouter = router({
       const locationRows =
         supplierIds.length > 0
           ? await db
-              .select({
-                supplierId: suppliersLocation.supplierId,
-                lat: suppliersLocation.latitude,
-                lng: suppliersLocation.longitude,
-              })
-              .from(suppliersLocation)
-              .where(inArray(suppliersLocation.supplierId, supplierIds))
+            .select({
+              supplierId: suppliersLocation.supplierId,
+              lat: suppliersLocation.latitude,
+              lng: suppliersLocation.longitude,
+            })
+            .from(suppliersLocation)
+            .where(inArray(suppliersLocation.supplierId, supplierIds))
           : [];
 
       const locationMap = new Map<number, { lat: number; lng: number }>();
@@ -645,11 +645,11 @@ export const rfqRouter = router({
         // ── Distance scoring ───────────────────────────────────────────────
         let isLocalSupplier = false;
         if (distanceMiles != null) {
-          if (distanceMiles < 50)       { score += 30; isLocalSupplier = true; }
+          if (distanceMiles < 50) { score += 30; isLocalSupplier = true; }
           else if (distanceMiles < 150) { score += 25; isLocalSupplier = true; }
           else if (distanceMiles < 300) { score += 15; }
           else if (distanceMiles < 500) { score += 8; }
-          else if (eligible)            { score += 2; } // far but within declared service area
+          else if (eligible) { score += 2; } // far but within declared service area
         } else {
           // No coordinates — fall back to state match
           isLocalSupplier = !!(
@@ -970,16 +970,16 @@ export const rfqRouter = router({
       // Append-only audit log for every engine run (fire-and-forget)
       const { logMatchRun } = await import("../services/match-run-logger");
       void logMatchRun({
-        draftId:        draft.id,
-        userId:         ctx.user.id,
-        personaKey:     swapResult.personaKey,
+        draftId: draft.id,
+        userId: ctx.user.id,
+        personaKey: swapResult.personaKey,
         agentAvailable: swapResult.agentAvailable,
-        matchSource:    swapResult.matchSource,
+        matchSource: swapResult.matchSource,
         candidateCount: swapResult.scoreBreakdowns.length,
         shortlistCount: swapResult.candidateSuppliers.length,
         scoreBreakdowns: swapResult.scoreBreakdowns,
-        reasoningTrace:  swapResult.reasoningTrace,
-        durationMs:      engineDurationMs,
+        reasoningTrace: swapResult.reasoningTrace,
+        durationMs: engineDurationMs,
       }).catch((err) => console.error("[rfq.saveDraft] match-run log failed:", err));
 
       return { draftId: draft.id, swapResult };
