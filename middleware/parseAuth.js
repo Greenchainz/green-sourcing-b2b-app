@@ -1,6 +1,12 @@
 // middleware/parseAuth.js
-const EXPECTED_TENANT_ID = "ca4f78d4-c753-4893-9cd8-1b309922b4dc";
-const EXPECTED_CLIENT_ID = "479e2a01-70ab-4df9-baa4-560d317c3423";
+const EXPECTED_TENANT_ID = process.env.AAD_TENANT_ID;
+const EXPECTED_CLIENT_ID = process.env.AAD_CLIENT_ID;
+
+if (!EXPECTED_TENANT_ID || !EXPECTED_CLIENT_ID) {
+  throw new Error(
+    "Missing required auth environment variables: AAD_TENANT_ID, AAD_CLIENT_ID"
+  );
+}
 
 function parseAuth(req, res, next) {
   const clientPrincipal = req.headers["x-ms-client-principal"];
@@ -16,7 +22,12 @@ function parseAuth(req, res, next) {
 
     const { claims = [], userDetails, identityProvider } = decoded;
 
-    if (identityProvider !== "aad") {
+    const normalizedIdentityProvider = String(identityProvider || "").toLowerCase();
+    const isAllowedIdentityProvider =
+      normalizedIdentityProvider === "aad" ||
+      normalizedIdentityProvider.includes("activedirectory");
+
+    if (!isAllowedIdentityProvider) {
       return res.status(401).json({ error: "Invalid identity provider" });
     }
 
@@ -33,6 +44,16 @@ function parseAuth(req, res, next) {
       return res.status(403).json({ error: "Invalid audience" });
     }
 
+    const userId =
+      claims.find((c) => c.typ === "oid")?.val ||
+      claims.find((c) => c.typ === "http://schemas.microsoft.com/identity/claims/objectidentifier")
+        ?.val ||
+      claims.find((c) => c.typ === "sub")?.val;
+
+    if (!userId) {
+      return res.status(403).json({ error: "Missing user identifier" });
+    }
+
     const rawRoles = decoded.userRoles || [];
 
     // Normalize to internal role model
@@ -42,6 +63,7 @@ function parseAuth(req, res, next) {
     else if (rawRoles.includes("supplier")) role = "supplier";
 
     req.auth = {
+      userId,
       email: userDetails,
       tenantId,
       role,
