@@ -8,7 +8,7 @@ if (!EXPECTED_TENANT_ID || !EXPECTED_CLIENT_ID) {
   );
 }
 
-function parseAuth(req, res, next) {
+export function parseAuth(req, res, next) {
   const clientPrincipal = req.headers["x-ms-client-principal"];
 
   if (!clientPrincipal) {
@@ -76,5 +76,3 @@ function parseAuth(req, res, next) {
     return res.status(401).json({ error: "Invalid auth payload" });
   }
 }
-
-module.exports = { parseAuth };
