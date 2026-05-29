@@ -66,7 +66,7 @@ export default function () {
   sleep(0.3);
 
   // ── 3. Auth: login as buyer ───────────────────────────────────────────────
-  const buyerJar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD);
+  const buyerJar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD, "architect");
   sleep(0.5);
 
   if (buyerJar) {
@@ -112,7 +112,7 @@ export default function () {
   }
 
   // ── 9. Auth: login as supplier ────────────────────────────────────────────
-  const supJar = emailLogin(SUP_EMAIL, SUP_PASSWORD);
+  const supJar = emailLogin(SUP_EMAIL, SUP_PASSWORD, "supplier");
   sleep(0.5);
 
   if (supJar) {

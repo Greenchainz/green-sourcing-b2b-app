@@ -7,6 +7,7 @@
 
 import http from "k6/http";
 import { check } from "k6";
+import encoding from "k6/encoding";
 
 // ── Base URL ─────────────────────────────────────────────────────────────────
 // Override with: k6 run -e BASE_URL=https://staging.greenchainz.com load.js
@@ -29,7 +30,11 @@ export function trpcQuery(procedure, input = null, cookieJar = null) {
   const url = `${BASE_URL}/api/trpc/${procedure}?batch=1&input=${inputParam}`;
 
   const params = { headers: JSON_HEADERS, redirects: 0 };
-  if (cookieJar) params.jar = cookieJar;
+  if (cookieJar?.headers) {
+    params.headers = { ...JSON_HEADERS, ...cookieJar.headers };
+  } else if (cookieJar) {
+    params.jar = cookieJar;
+  }
 
   const res = http.get(url, params);
   return parseTrpcResponse(res, procedure);
@@ -44,7 +49,11 @@ export function trpcMutation(procedure, input, cookieJar = null) {
   const body = JSON.stringify({ "0": { json: input } });
 
   const params = { headers: JSON_HEADERS, redirects: 0 };
-  if (cookieJar) params.jar = cookieJar;
+  if (cookieJar?.headers) {
+    params.headers = { ...JSON_HEADERS, ...cookieJar.headers };
+  } else if (cookieJar) {
+    params.jar = cookieJar;
+  }
 
   const res = http.post(url, body, params);
   return parseTrpcResponse(res, procedure);
@@ -74,39 +83,56 @@ function parseTrpcResponse(res, procedure) {
 // ── Auth helpers ─────────────────────────────────────────────────────────────
 
 /**
- * Login with email/password. Returns the jar (with session cookie) or null.
- * Each VU should call this once and reuse the jar across requests.
+ * Build a fake Easy Auth principal header for load tests.
+ * Each VU should call this once and reuse the returned headers across requests.
  */
-export function emailLogin(email, password) {
-  const jar = http.cookieJar();
+export function emailLogin(email, password, role = "architect") {
+  void password;
 
-  const res = http.post(
-    `${BASE_URL}/api/auth/email/login`,
-    JSON.stringify({ email, password }),
-    { headers: JSON_HEADERS, jar, redirects: 0 }
-  );
+  const tenantId = __ENV.AAD_TENANT_ID;
+  const clientId = __ENV.AAD_CLIENT_ID;
+  if (!tenantId || !clientId) {
+    throw new Error("AAD_TENANT_ID and AAD_CLIENT_ID must be set for load tests");
+  }
 
-  const success = check(res, {
-    "login: status 200": (r) => r.status === 200,
-    "login: session cookie set": (r) =>
-      r.cookies["app_session_id"] !== undefined ||
-      (r.headers["Set-Cookie"] || "").includes("app_session_id"),
-  });
+  const payload = {
+    claims: [
+      { typ: "tid", val: tenantId },
+      { typ: "aud", val: clientId },
+      { typ: "oid", val: `loadtest-${role}-${email}` },
+      { typ: "sub", val: `loadtest-${role}-${email}` },
+    ],
+    userDetails: email,
+    userRoles: role === "supplier" ? ["supplier"] : role === "admin" ? ["admin"] : ["architect"],
+    identityProvider: "aad",
+  };
 
-  return success ? jar : null;
+  return {
+    headers: {
+      "x-ms-client-principal": encoding.b64encode(JSON.stringify(payload)),
+    },
+  };
 }
 
 // ── REST helpers ──────────────────────────────────────────────────────────────
 
 export function restGet(path, cookieJar = null) {
   const params = { headers: JSON_HEADERS, redirects: 0 };
-  if (cookieJar) params.jar = cookieJar;
+  if (cookieJar?.headers) {
+    params.headers = { ...JSON_HEADERS, ...cookieJar.headers };
+  } else if (cookieJar) {
+    params.jar = cookieJar;
+  }
   return http.get(`${BASE_URL}${path}`, params);
 }
 
 export function restPost(path, body, cookieJar = null) {
   const params = { headers: JSON_HEADERS, redirects: 0 };
-  if (cookieJar) params.jar = cookieJar;
+  if (cookieJar?.headers) {
+    params.headers = { ...JSON_HEADERS, ...cookieJar.headers };
+  } else if (cookieJar) {
+    params.jar = cookieJar;
+  }
   return http.post(`${BASE_URL}${path}`, JSON.stringify(body), params);
 }
 
