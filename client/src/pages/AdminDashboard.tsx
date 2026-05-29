@@ -1346,7 +1346,7 @@ function CatalogTab() {
                           >
                             <ShieldCheck className="h-3.5 w-3.5" />
                           </Button>
-                          <a href={`/materials/${m.id}`} target="_blank" rel="noreferrer">
+                          <a href={`/materials/${m.id}`} target="_blank" rel="noreferrer" aria-label={`Open ${m.name}`} title={`Open ${m.name}`}>
                             <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-gray-600 hover:text-white">
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
@@ -1400,38 +1400,9 @@ function CatalogTab() {
 
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
-const TEST_USER_ROLES = [
-  {
-    role: 'supplier' as const,
-    label: 'Supplier',
-    desc: 'Brand-new supplier — sees onboarding, empty dashboard, no RFQs',
-    color: 'border-blue-700/40 bg-blue-900/20 text-blue-400 hover:bg-blue-900/40',
-    icon: <Building2 className="h-4 w-4" />,
-    redirect: '/supplier/dashboard',
-  },
-  {
-    role: 'buyer' as const,
-    label: 'Buyer / Architect',
-    desc: 'Fresh architect account — sees empty RFQ list, can browse catalog',
-    color: 'border-purple-700/40 bg-purple-900/20 text-purple-400 hover:bg-purple-900/40',
-    icon: <User className="h-4 w-4" />,
-    redirect: '/',
-  },
-  {
-    role: 'architect' as const,
-    label: 'Architect (Tools)',
-    desc: 'Architect with tools access — Spec Lookup, Carbon Compare, etc.',
-    color: 'border-emerald-700/40 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40',
-    icon: <Zap className="h-4 w-4" />,
-    redirect: '/architect/specs/upload',
-  },
-] as const;
-
 function SystemTab() {
   const { data: statsData, isLoading: statsLoading, isError: statsError } =
     trpc.admin.getSupplierStats.useQuery();
-
-  const [activeRole, setActiveRole] = useState<string | null>(null);
 
   const clearTestUsers = trpc.admin.clearTestUsers.useMutation({
     onSuccess: () => toast.success('Test users cleared from DB'),
