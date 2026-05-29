@@ -29,6 +29,13 @@ describe("Legal Router", () => {
       user: {
         id: 123,
       },
+      auth: {
+        userId: 'test-user-123',
+        email: 'test@example.com',
+        role: 'buyer',
+        tenantId: 'test-tenant',
+        rawRoles: ['buyer'],
+      },
       req: mockReq,
     };
 
@@ -39,6 +46,7 @@ describe("Legal Router", () => {
     it("should reject unauthenticated requests", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        auth: null,
         req: mockReq,
       } as any);
 
@@ -99,6 +107,7 @@ describe("Legal Router", () => {
     it("should throw error when user is not authenticated", async () => {
       const caller = legalRouter.createCaller({
         user: null,
+        auth: null,
         req: mockReq,
       } as any);
 

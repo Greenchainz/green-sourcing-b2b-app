@@ -23,7 +23,7 @@ import { sendEmail } from "./email-service";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  const role = ctx.auth?.role ?? ctx.user?.role;
+  const role = ctx.auth?.role;
   if (role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }

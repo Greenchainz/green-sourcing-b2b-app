@@ -36,6 +36,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
     // Create caller context
     mockCaller = adminRouter.createCaller({
       user: { id: 1, role: 'admin', email: 'admin@test.com', openId: 'admin-123' },
+      auth: { userId: 'admin-123', email: 'admin@test.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
       req: {} as any,
       res: {} as any,
     });
@@ -245,6 +246,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
     it('should deny access to non-admin users', async () => {
       const nonAdminCaller = adminRouter.createCaller({
         user: { id: 2, role: 'user', email: 'user@test.com', openId: 'user-123' },
+        auth: { userId: 'user-123', email: 'user@test.com', role: 'user', tenantId: 'test-tenant', rawRoles: ['user'] },
         req: {} as any,
         res: {} as any,
       });
@@ -257,6 +259,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
     it('should deny access if user is supplier', async () => {
       const supplierCaller = adminRouter.createCaller({
         user: { id: 3, role: 'supplier', email: 'supplier@test.com', openId: 'supplier-123' },
+        auth: { userId: 'supplier-123', email: 'supplier@test.com', role: 'supplier', tenantId: 'test-tenant', rawRoles: ['supplier'] },
         req: {} as any,
         res: {} as any,
       });
@@ -269,6 +272,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
     it('should allow access to admin users', async () => {
       const adminCaller = adminRouter.createCaller({
         user: { id: 1, role: 'admin', email: 'admin@test.com', openId: 'admin-123' },
+        auth: { userId: 'admin-123', email: 'admin@test.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
         req: {} as any,
         res: {} as any,
       });
