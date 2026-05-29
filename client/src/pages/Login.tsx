@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { setUserRole } from "@/lib/api-client";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl, getMicrosoftLoginUrl } from "@/const";
 
 type DesiredRole = "architect" | "supplier" | null;
 
@@ -59,7 +59,7 @@ export default function Login() {
     }, [pendingRole]);
 
     const selectedRole = pendingRole ?? (roleParam === "supplier" ? "supplier" : roleParam === "buyer" ? "architect" : null);
-    const loginUrl = getLoginUrl(returnPath, selectedRole ?? undefined);
+    const loginUrl = getMicrosoftLoginUrl(returnPath, selectedRole ?? undefined);
 
     return (
         <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4 py-8 sm:py-0">
@@ -118,7 +118,7 @@ export default function Login() {
                     </a>
 
                     <div className="mt-5 text-center text-xs text-gray-500">
-                        {roleSyncing ? "Syncing your role after sign-in…" : "You will return here after Easy Auth finishes sign-in."}
+                        {roleSyncing ? "Syncing your role after sign-in…" : "You will return here after Microsoft sign-in finishes."}
                     </div>
                 </div>
             </div>

@@ -25,8 +25,9 @@ import { registerMobileMessagesRoutes } from "../admin-routes/mobile-messages";
 import { startSchedulers } from "../scheduler";
 import { devFounderVideoRouter } from "../dev-founder-video-route";
 import { isLocalMode } from "../../lib/founder-video-storage";
-import { getRequestAuth, requireEasyAuthUser } from "./request-auth";
-import { parseAuth } from "../../middleware/parseAuth";
+import { registerEmailAuthRoutes } from "./email-auth";
+import { registerOAuthProviderRoutes } from "./oauth-providers";
+import { sdk } from "./sdk";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -276,7 +277,7 @@ async function startServer() {
 
   app.get("/api/auth/me", async (req, res) => {
     try {
-      const user = await requireEasyAuthUser(req);
+      const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -300,7 +301,7 @@ async function startServer() {
 
   app.get("/api/intercom/token", async (req, res) => {
     try {
-      const user = await requireEasyAuthUser(req);
+      const user = await sdk.authenticateRequest(req);
       if (!user) {
         res.status(401).json(createErrorResponse("Not authenticated", req.id));
         return;
@@ -328,7 +329,7 @@ async function startServer() {
 
   app.post("/api/user/set-role", async (req, res) => {
     try {
-      const user = await requireEasyAuthUser(req);
+      const user = await sdk.authenticateRequest(req);
       if (!user) {
         res.status(401).json(createErrorResponse("Unauthorized", req.id));
         return;
@@ -369,12 +370,13 @@ async function startServer() {
   // Public REST API for Forma Extension (unauthenticated)
   app.use("/api/public", publicMaterialsRouter);
 
+  registerEmailAuthRoutes(app);
+  registerOAuthProviderRoutes(app);
+
   // ── Delegated route groups ────────────────────────────────────────────────
   registerAdminRoutes(app, adminRateLimit);
   registerPdfRoutes(app, rfqPdfRateLimit, materialScorePdfRateLimit);
   registerMobileMessagesRoutes(app);
-
-  app.use('/api/trpc', parseAuth);
 
   app.use(
     '/api/trpc',
