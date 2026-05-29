@@ -2,17 +2,15 @@
 const EXPECTED_TENANT_ID = process.env.AAD_TENANT_ID;
 const EXPECTED_CLIENT_ID = process.env.AAD_CLIENT_ID;
 
-if (!EXPECTED_TENANT_ID || !EXPECTED_CLIENT_ID) {
-  throw new Error(
-    "Missing required auth environment variables: AAD_TENANT_ID, AAD_CLIENT_ID"
-  );
-}
-
 export function parseAuth(req, res, next) {
   const clientPrincipal = req.headers["x-ms-client-principal"];
 
   if (!clientPrincipal) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return next();
+  }
+
+  if (!EXPECTED_TENANT_ID || !EXPECTED_CLIENT_ID) {
+    return res.status(500).json({ error: "Missing auth configuration" });
   }
 
   try {

@@ -27,6 +27,7 @@ import { startSchedulers } from "../scheduler";
 import { devFounderVideoRouter } from "../dev-founder-video-route";
 import { isLocalMode } from "../../lib/founder-video-storage";
 import { getRequestAuth, requireEasyAuthUser } from "./request-auth";
+import { parseAuth } from "../../middleware/parseAuth";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -374,24 +375,7 @@ async function startServer() {
   registerPdfRoutes(app, rfqPdfRateLimit, materialScorePdfRateLimit);
   registerMobileMessagesRoutes(app);
 
-  // Optional Easy Auth parsing: only attempt to parse when the Azure header
-  // `x-ms-client-principal` is present. We dynamically import the parser so
-  // local development without AAD env vars does not throw at module load.
-  app.use('/api/trpc', (req, _res, next) => {
-    const hasClientPrincipal = Boolean(req.headers['x-ms-client-principal']);
-    if (!hasClientPrincipal) return next();
-
-    import('../../middleware/parseAuth')
-      .then((mod) => {
-        // parseAuth is an express middleware (req, res, next)
-        return mod.parseAuth(req, _res, next as any);
-      })
-      .catch((err) => {
-        console.error('[auth] Failed to load parseAuth middleware:', err);
-        // Fail open: allow request to continue so local dev isn't blocked.
-        next();
-      });
-  });
+  app.use('/api/trpc', parseAuth);
 
   app.use(
     '/api/trpc',
