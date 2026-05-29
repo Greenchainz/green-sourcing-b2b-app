@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { storagePut } from "./storage";
-import { sdk } from "./_core/sdk";
+import { requireEasyAuthUser } from "./_core/request-auth";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -24,7 +24,7 @@ export const uploadRouter = Router();
 // ── Avatar upload ──────────────────────────────────────────────────────────
 uploadRouter.post("/user/avatar", avatarUpload.single("avatar"), async (req, res) => {
   try {
-    const user = await sdk.authenticateRequest(req);
+    const user = await requireEasyAuthUser(req);
     if (!user) {
       res.status(401).json({ error: "Not authenticated" });
       return;
@@ -65,7 +65,7 @@ const materialImageUpload = multer({
 
 uploadRouter.post("/supplier/upload-image", materialImageUpload.single("file"), async (req, res) => {
   try {
-    const user = await sdk.authenticateRequest(req);
+    const user = await requireEasyAuthUser(req);
     if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
 
     if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
@@ -118,7 +118,7 @@ const specUpload = multer({
 
 uploadRouter.post("/rfq/parse-spec", specUpload.single("spec"), async (req, res) => {
   try {
-    const user = await sdk.authenticateRequest(req);
+    const user = await requireEasyAuthUser(req);
     if (!user) {
       res.status(401).json({ error: "Not authenticated" });
       return;
@@ -149,7 +149,7 @@ uploadRouter.post("/rfq/parse-spec", specUpload.single("spec"), async (req, res)
 
 uploadRouter.post("/rfq/parse-text", async (req, res) => {
   try {
-    const user = await sdk.authenticateRequest(req);
+    const user = await requireEasyAuthUser(req);
     if (!user) {
       res.status(401).json({ error: "Not authenticated" });
       return;

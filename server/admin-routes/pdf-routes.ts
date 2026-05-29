@@ -3,10 +3,10 @@
  * Auth + (for material score) subscription entitlement required.
  */
 import express from 'express';
-import { sdk } from '../_core/sdk';
 import { canAccessRfqPdf } from '../_core/route-auth-guards';
 import { checkMaterialScorePdfAccess } from '../services/pdf-access-guard';
 import type { RfqWithBids } from '../rfq-service';
+import { requireEasyAuthUser } from '../_core/request-auth';
 
 function createErrorResponse(
   message: string,
@@ -28,7 +28,7 @@ export function registerPdfRoutes(
   // Material Credit Score PDF — Standard/Premium only
   app.get('/api/pdf/material-score/:materialId', materialScorePdfRateLimit, async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', req.id));
 
       const materialId = parseInt(req.params.materialId as string);
@@ -77,7 +77,7 @@ export function registerPdfRoutes(
   // RFQ summary PDF
   app.get('/api/rfq/:rfqId/pdf/summary', rfqPdfRateLimit, async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', req.id));
       const { generateRfqSummaryPdf } = await import('../rfq-pdf-service');
       const { getRfqWithBids } = await import('../rfq-service');
@@ -117,7 +117,7 @@ export function registerPdfRoutes(
   // RFQ bids comparison PDF
   app.get('/api/rfq/:rfqId/pdf/bids', rfqPdfRateLimit, async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', req.id));
       const { generateBidComparisonPdf } = await import('../rfq-pdf-service');
       const { getRfqWithBids } = await import('../rfq-service');

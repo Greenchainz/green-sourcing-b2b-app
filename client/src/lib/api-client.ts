@@ -124,7 +124,7 @@ export async function checkHealth() {
 
 /**
  * Get current user from the Express backend /api/auth/me endpoint.
- * Session is validated via the app_session_id cookie (JWT).
+ * Identity comes from the Easy Auth principal headers.
  */
 export async function getCurrentUser() {
   const response = await get<{

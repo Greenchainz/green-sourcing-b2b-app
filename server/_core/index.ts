@@ -8,8 +8,6 @@ import { v4 as uuidv4 } from "uuid";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthProviderRoutes } from "./oauth-providers";
-import { registerEmailAuthRoutes } from "./email-auth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -28,6 +26,7 @@ import { registerMobileMessagesRoutes } from "../admin-routes/mobile-messages";
 import { startSchedulers } from "../scheduler";
 import { devFounderVideoRouter } from "../dev-founder-video-route";
 import { isLocalMode } from "../../lib/founder-video-storage";
+import { getRequestAuth, requireEasyAuthUser } from "./request-auth";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -251,13 +250,6 @@ async function startServer() {
   }));
   app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
-  registerEmailAuthRoutes(app);
-  registerOAuthProviderRoutes(app);
-
-  app.get("/api/oauth/callback", (_req, res) => {
-    res.redirect("/");
-  });
-
   app.get("/api/health", (_req, res) => {
     res.status(200).json({ status: "ok", service: "greenchainz-backend", timestamp: new Date().toISOString() });
   });
@@ -284,7 +276,7 @@ async function startServer() {
 
   app.get("/api/intercom/token", async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req);
+      const user = await requireEasyAuthUser(req);
       if (!user) {
         res.status(401).json(createErrorResponse("Not authenticated", req.id));
         return;
@@ -312,7 +304,7 @@ async function startServer() {
 
   app.post("/api/user/set-role", async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) {
         res.status(401).json(createErrorResponse("Unauthorized", req.id));
         return;

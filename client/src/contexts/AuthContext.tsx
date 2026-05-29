@@ -82,8 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Logout via the Express auth endpoint.
-   * Clears the app_session_id cookie and redirects to the home page.
+    * Logout via the Easy Auth sidecar and return to the home page.
    */
   const logout = () => {
     // Clear all local auth state before redirecting
@@ -95,9 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // storage may be unavailable — fail silently
     }
-    // Hit the Express logout endpoint which clears the app_session_id cookie
-    // and redirects to the home page.
-    window.location.href = '/api/auth/logout';
+    window.location.href = '/.auth/logout?post_logout_redirect_uri=%2F';
   };
 
   useEffect(() => {
