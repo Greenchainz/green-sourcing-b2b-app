@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // storage may be unavailable — fail silently
     }
-    window.location.href = '/.auth/logout?post_logout_redirect_uri=%2F';
+    window.location.href = '/api/auth/logout';
   };
 
   useEffect(() => {
