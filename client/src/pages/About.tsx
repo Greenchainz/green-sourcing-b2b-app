@@ -9,6 +9,7 @@ import { trpc } from "../lib/trpc";
 
 export default function About() {
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [useTokenFallback, setUseTokenFallback] = useState(false);
 
   const aboutVideoUrl = String(
     import.meta.env.VITE_ABOUT_VIDEO_URL ?? ""
@@ -21,24 +22,32 @@ export default function About() {
 
   const tokenForQuery =
     aboutVideoToken.length >= 8 ? aboutVideoToken : "00000000";
+  const shouldUseToken =
+    (!aboutVideoUrl || useTokenFallback) && aboutVideoToken.length >= 8;
 
   const founderVideoQuery = trpc.founderVideo.publicGet.useQuery(
     { token: tokenForQuery },
     {
-      enabled: !aboutVideoUrl && aboutVideoToken.length >= 8,
+      enabled: shouldUseToken,
       retry: false,
+      meta: {
+        // Founder video being missing/invalid is expected in some envs.
+        // Avoid global console.error noise from main.tsx query cache subscriber.
+        suppressGlobalErrorLogging: true,
+      },
     }
   );
 
   const resolvedVideoUrl =
-    aboutVideoUrl || founderVideoQuery.data?.videoUrl || "";
+    (aboutVideoUrl && !useTokenFallback ? aboutVideoUrl : "") ||
+    founderVideoQuery.data?.videoUrl ||
+    "";
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(aboutVideoAutoplay);
 
   const showLoading = founderVideoQuery.isLoading;
   const showUnavailable =
-    !aboutVideoUrl &&
-    aboutVideoToken.length >= 8 &&
+    shouldUseToken &&
     (founderVideoQuery.error || (!showLoading && !founderVideoQuery.data));
 
   useEffect(() => {
@@ -46,6 +55,7 @@ export default function About() {
     if (!el) return;
 
     const onVolumeChange = () => setIsMuted(el.muted);
+    setVideoError(null);
     if (aboutVideoAutoplay) {
       el.muted = true;
     }
@@ -123,8 +133,16 @@ export default function About() {
                     {...(aboutVideoAutoplay
                       ? { autoPlay: true, muted: true }
                       : {})}
-                    onError={event => {
-                      console.error("About video error:", event);
+                    onLoadedData={() => setVideoError(null)}
+                    onError={(event) => {
+                      if (import.meta.env.DEV) {
+                        console.warn("About video failed to load:", event);
+                      }
+                      if (!useTokenFallback && aboutVideoToken.length >= 8) {
+                        setUseTokenFallback(true);
+                        setVideoError(null);
+                        return;
+                      }
                       setVideoError(
                         "Video failed to load. The URL may be missing, access-restricted, or blocked by CORS."
                       );
@@ -143,7 +161,11 @@ export default function About() {
                       const el = videoRef.current;
                       if (!el) return;
                       el.muted = false;
-                      void el.play().catch(() => {});
+                      void el.play().catch((error) => {
+                        if (import.meta.env.DEV) {
+                          console.warn("About video playback failed:", error);
+                        }
+                      });
                       setIsMuted(false);
                     }}
                     aria-label="Unmute video"
