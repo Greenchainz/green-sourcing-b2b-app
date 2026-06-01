@@ -10,10 +10,14 @@ import { trpc } from "../lib/trpc";
 export default function About() {
   const [videoError, setVideoError] = useState<string | null>(null);
 
-  const aboutVideoUrl = (import.meta.env.VITE_ABOUT_VIDEO_URL ?? "").trim();
-  const aboutVideoToken = (import.meta.env.VITE_ABOUT_VIDEO_TOKEN ?? "").trim();
+  const aboutVideoUrl = String(
+    import.meta.env.VITE_ABOUT_VIDEO_URL ?? ""
+  ).trim();
+  const aboutVideoToken = String(
+    import.meta.env.VITE_ABOUT_VIDEO_TOKEN ?? ""
+  ).trim();
   const aboutVideoAutoplay =
-    (import.meta.env.VITE_ABOUT_VIDEO_AUTOPLAY ?? "").trim() === "true";
+    String(import.meta.env.VITE_ABOUT_VIDEO_AUTOPLAY ?? "").trim() === "true";
 
   const tokenForQuery =
     aboutVideoToken.length >= 8 ? aboutVideoToken : "00000000";
