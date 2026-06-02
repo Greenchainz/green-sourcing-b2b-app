@@ -1,7 +1,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { submitRfq, getRfqWithBids, submitBid, getOrCreateThread, sendMessage, getThreadMessages, acceptBid, enrichRfqWithCcps } from "./rfq-service";
+import { submitRfq, getRfqWithBids, submitBid, getOrCreateThread, sendMessage, acceptBid } from "./rfq-service";
 import type { RfqSubmissionInput } from "./rfq-service";
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers, users } from "../drizzle/schema";

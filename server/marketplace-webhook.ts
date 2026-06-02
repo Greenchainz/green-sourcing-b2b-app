@@ -19,10 +19,9 @@
 
 import { Request, Response } from "express";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { getMarketplaceAccessToken, getSubscriptionDetails } from "./marketplace-auth";
+import { getSubscriptionDetails } from "./marketplace-auth";
 import type { MarketplaceSubscription } from "./marketplace-landing";
 import {
-  getBuyerSubscription,
   upgradeBuyerSubscription,
   cancelBuyerSubscription,
 } from "./subscription-service";
@@ -246,7 +245,7 @@ async function handleSubscribed(userId: number, subscription: MarketplaceSubscri
  * Handle "Unsubscribed" event
  * Subscription canceled
  */
-async function handleUnsubscribed(userId: number, msSubscriptionId: string) {
+async function handleUnsubscribed(userId: number, _msSubscriptionId: string) {
   console.log("[Marketplace Webhook] Handling Unsubscribed event for user:", userId);
 
   await cancelBuyerSubscription(userId);
@@ -277,7 +276,7 @@ async function handleUnsubscribed(userId: number, msSubscriptionId: string) {
  * Handle "Suspended" event
  * Subscription suspended (payment failed, etc.)
  */
-async function handleSuspended(userId: number, msSubscriptionId: string) {
+async function handleSuspended(userId: number, _msSubscriptionId: string) {
   console.log("[Marketplace Webhook] Handling Suspended event for user:", userId);
 
   const db = await getDb();
@@ -317,7 +316,7 @@ async function handleSuspended(userId: number, msSubscriptionId: string) {
  * Handle "Reinstated" event
  * Suspended subscription reactivated
  */
-async function handleReinstated(userId: number, subscription: MarketplaceSubscription) {
+async function handleReinstated(userId: number, _subscription: MarketplaceSubscription) {
   console.log("[Marketplace Webhook] Handling Reinstated event for user:", userId);
 
   const db = await getDb();

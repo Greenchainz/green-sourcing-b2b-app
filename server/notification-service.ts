@@ -26,7 +26,7 @@ export async function sendInAppNotification(payload: NotificationPayload) {
   }
   
   try {
-    const result = await db.insert(notifications).values({
+    await db.insert(notifications).values({
       userId: payload.userId,
       type: payload.type,
       title: payload.title,

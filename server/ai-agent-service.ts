@@ -1,6 +1,5 @@
 import { invokeLLM } from "./_core/llm";
 import { getRegionalSwapPatterns, getClimateZoneAdjustments, getComplianceRulesForState } from "./location-service";
-import { getDb } from "./db";
 import type { RegionalSwapPatterns, ClimateZoneAdjustments, ComplianceRules } from "../drizzle/schema";
 
 export interface MaterialRecommendation {
@@ -30,7 +29,7 @@ export interface ComplianceValidation {
  * Analyzes material swaps for carbon reduction potential
  */
 export async function optimizeMaterialsForCarbon(
-  rfqId: number,
+  _rfqId: number,
   projectLocation: string,
   materials: string[]
 ): Promise<MaterialRecommendation[]> {

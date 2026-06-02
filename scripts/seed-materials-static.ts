@@ -846,7 +846,6 @@ async function main() {
 
   if (force && existingCount > 0) {
     console.log(`--force: deleting ${existingCount} existing static-seed rows…`);
-    const { sql: rawSql } = await import("drizzle-orm");
     await db.delete(materials).where(eq(materials.dataSource, "static-seed"));
     console.log("Deleted.");
   }
