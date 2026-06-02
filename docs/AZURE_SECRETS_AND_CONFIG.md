@@ -473,3 +473,4 @@ For `JWT_SECRET`, `SESSION_SECRET`, `COOKIE_SECRET`:
 - [Azure Authentication Setup](./OAUTH_SETUP.md)
 - [Deployment Checklist](./deployment-checklist.md)
 - [Backend README](../backend/README.md)
+
