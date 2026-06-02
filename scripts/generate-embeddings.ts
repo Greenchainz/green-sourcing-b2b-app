@@ -22,7 +22,7 @@ if (existsSync(".env.local")) {
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { sql, isNull, eq } from "drizzle-orm";
+import { sql, isNull } from "drizzle-orm";
 import { materials, manufacturers } from "../drizzle/schema";
 import {
   buildSearchText,

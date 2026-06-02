@@ -17,7 +17,7 @@ if (existsSync(".env.local")) {
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { complianceRules } from "../drizzle/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL;
