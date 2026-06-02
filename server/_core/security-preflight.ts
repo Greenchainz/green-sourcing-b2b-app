@@ -19,6 +19,10 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     const checks: CheckResult[] = [];
     const isProduction = process.env.NODE_ENV === "production";
 
+    const hasJwtSecret = hasValue("JWT_SECRET");
+    const hasDatabaseUrl = hasValue("DATABASE_URL");
+    const hasAzureAdClientSecret = hasValue("AZURE_AD_CLIENT_SECRET");
+
     const hasMiClientId = hasValue("AZURE_MI_CLIENT_ID") || hasValue("MANAGED_IDENTITY_CLIENT_ID");
     const hasStorageMi = hasValue("AZURE_STORAGE_ACCOUNT_NAME");
     const hasStorageConn = hasValue("AZURE_STORAGE_CONNECTION_STRING");
@@ -40,6 +44,26 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     const hasRedisUrl = hasValue("REDIS_URL");
     const hasRedisHostPort = hasValue("REDIS_HOST") && hasValue("REDIS_PORT");
     const requireRedisCallSessions = process.env.REQUIRE_REDIS_CALL_SESSIONS !== "false";
+
+    if (!isProduction) {
+        add(checks, "Core API Secrets", "PASS", "Core production secrets check is informational in non-production");
+    } else {
+        const missingCore: string[] = [];
+        if (!hasJwtSecret) missingCore.push("JWT_SECRET");
+        if (!hasDatabaseUrl) missingCore.push("DATABASE_URL");
+        if (!hasAzureAdClientSecret) missingCore.push("AZURE_AD_CLIENT_SECRET");
+
+        if (missingCore.length === 0) {
+            add(checks, "Core API Secrets", "PASS", "JWT_SECRET, DATABASE_URL, and AZURE_AD_CLIENT_SECRET are present");
+        } else {
+            add(
+                checks,
+                "Core API Secrets",
+                "FAIL",
+                `Missing required production secrets: ${missingCore.join(", ")}`
+            );
+        }
+    }
 
     add(
         checks,
@@ -132,6 +156,27 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
         add(checks, "Redis Call Sessions", "PASS", "Redis call-session configuration detected");
     } else {
         add(checks, "Redis Call Sessions", "FAIL", "Redis required for call sessions but no REDIS_URL or REDIS_HOST/REDIS_PORT set");
+    }
+
+    if (!isProduction) {
+        add(checks, "Emergency Overrides", "PASS", "Override flags are informational in non-production");
+    } else {
+        const activeOverrides: string[] = [];
+        if (allowStorageConnInProd) activeOverrides.push("ALLOW_STORAGE_CONNECTION_STRING_IN_PROD");
+        if (allowMapsKeyInProd) activeOverrides.push("ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD");
+        if (allowAcsConnInProd) activeOverrides.push("ALLOW_ACS_CONNECTION_STRING_IN_PROD");
+        if (allowOpenAiKeyInProd) activeOverrides.push("ALLOW_AZURE_OPENAI_API_KEY_IN_PROD");
+
+        if (activeOverrides.length === 0) {
+            add(checks, "Emergency Overrides", "PASS", "No emergency override flags enabled in production");
+        } else {
+            add(
+                checks,
+                "Emergency Overrides",
+                "WARN",
+                `Emergency overrides enabled: ${activeOverrides.join(", ")}`
+            );
+        }
     }
 
     const fails = checks.filter((c) => c.status === "FAIL").length;
