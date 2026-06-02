@@ -271,7 +271,7 @@ export async function uploadBlobFromStream(
   containerName: string,
   blobName: string,
   stream: import("stream").Readable,
-  streamLength: number,
+  _streamLength: number,
   options: BlobUploadOptions = {}
 ): Promise<BlobUploadResult> {
   const container = await getContainer(containerName);
