@@ -12,7 +12,6 @@
 
 import { config } from "dotenv";
 import { existsSync, readFileSync } from "fs";
-import path from "path";
 
 if (existsSync(".env.local")) config({ path: ".env.local", override: true });
 else config();

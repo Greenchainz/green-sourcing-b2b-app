@@ -21,7 +21,7 @@ if (existsSync(".env.local")) {
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { materials } from "../drizzle/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -188,9 +188,6 @@ async function importKBOB(): Promise<{ created: number; updated: number }> {
     const category = mapKbobCategory(m.Materialkategorie || "");
     const ghgTotal = m["Treibhausgasemissionen Total (kg CO2-eq)"];
     const gwp = ghgTotal ? parseFloat(ghgTotal.replace(/'/g, "")) : undefined;
-
-    const densityRaw = m["Rohdichte (kg/m3)"];
-    const density = densityRaw ? parseFloat(densityRaw.replace(/'/g, "")) : undefined;
 
     const result = await upsertMaterial(m.material_name, category, DATA_SOURCE_KBOB, {
       subcategory: m.Materialkategorie || undefined,
