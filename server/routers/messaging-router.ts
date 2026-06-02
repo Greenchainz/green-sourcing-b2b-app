@@ -579,7 +579,7 @@ export const messagingRouter = router({
       const { getCallSession } = await import('../calling-service');
       const { getAcsTokenForUser, getAcsEndpoint } = await import('../acs-service');
 
-      const session = getCallSession(input.callId);
+      const session = await getCallSession(input.callId);
       if (!session) throw new Error('Call session not found or already ended');
 
       const isParticipant =

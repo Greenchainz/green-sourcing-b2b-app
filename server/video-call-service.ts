@@ -1,6 +1,7 @@
 import { videoCalls } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { getDb } from './db';
+import { createDistributedCallSessionStore } from './services/distributed-call-session-store';
 
 export interface VideoCallSignal {
   type: 'offer' | 'answer' | 'ice-candidate';
@@ -10,13 +11,14 @@ export interface VideoCallSignal {
   timestamp: number;
 }
 
-// Store active video calls in memory
-const activeCallsMap = new Map<string, {
+type LegacyCallSession = {
   callerId: number;
   calleeId: number;
   startedAt: number;
   status: 'initiated' | 'ringing' | 'connected' | 'ended' | 'failed';
-}>();
+};
+
+const callSessionStore = createDistributedCallSessionStore<LegacyCallSession>('legacy-video');
 
 /**
  * Initiate a video call
@@ -24,12 +26,12 @@ const activeCallsMap = new Map<string, {
 export async function initiateVideoCall(callerId: number, calleeId: number, conversationId: number) {
   const callId = `${callerId}-${calleeId}-${Date.now()}`;
 
-  activeCallsMap.set(callId, {
+  await callSessionStore.set(callId, {
     callerId,
     calleeId,
     startedAt: Date.now(),
     status: 'initiated',
-  });
+  }, [callerId, calleeId]);
 
   // Store in database
   const db = await getDb();
@@ -60,12 +62,13 @@ export async function initiateVideoCall(callerId: number, calleeId: number, conv
  * Ring a video call (notify recipient)
  */
 export async function ringVideoCall(callId: string) {
-  const call = activeCallsMap.get(callId);
+  const call = await callSessionStore.get(callId);
   if (!call) {
     throw new Error('Call not found');
   }
 
   call.status = 'ringing';
+  await callSessionStore.set(callId, call, [call.callerId, call.calleeId]);
 
   const db = await getDb();
   if (db) {
@@ -85,12 +88,13 @@ export async function ringVideoCall(callId: string) {
  * Accept a video call
  */
 export async function acceptVideoCall(callId: string) {
-  const call = activeCallsMap.get(callId);
+  const call = await callSessionStore.get(callId);
   if (!call) {
     throw new Error('Call not found');
   }
 
   call.status = 'connected';
+  await callSessionStore.set(callId, call, [call.callerId, call.calleeId]);
 
   const db = await getDb();
   if (db) {
@@ -110,13 +114,13 @@ export async function acceptVideoCall(callId: string) {
  * End a video call
  */
 export async function endVideoCall(callId: string) {
-  const call = activeCallsMap.get(callId);
+  const call = await callSessionStore.get(callId);
   if (!call) {
     throw new Error('Call not found');
   }
 
   const duration = Date.now() - call.startedAt;
-  activeCallsMap.delete(callId);
+  await callSessionStore.delete(callId);
 
   const db = await getDb();
   if (db) {
@@ -140,7 +144,7 @@ export async function endVideoCall(callId: string) {
  * Fail a video call
  */
 export async function failVideoCall(callId: string) {
-  activeCallsMap.delete(callId);
+  await callSessionStore.delete(callId);
 
   const db = await getDb();
   if (db) {
@@ -159,19 +163,18 @@ export async function failVideoCall(callId: string) {
 /**
  * Get active call status
  */
-export function getCallStatus(callId: string) {
-  return activeCallsMap.get(callId) || null;
+export async function getCallStatus(callId: string) {
+  return await callSessionStore.get(callId);
 }
 
 /**
  * Get all active calls for a user
  */
-export function getUserActiveCalls(userId: number) {
-  const calls = Array.from(activeCallsMap.entries())
-    .filter(([, call]) => call.callerId === userId || call.calleeId === userId)
-    .map(([callId, call]) => ({ callId, ...call }));
-
-  return calls;
+export async function getUserActiveCalls(userId: number) {
+  const sessions = await callSessionStore.listForUser(userId);
+  return sessions
+    .filter(({ session }) => session.callerId === userId || session.calleeId === userId)
+    .map(({ callId, session }) => ({ callId, ...session }));
 }
 
 /**
