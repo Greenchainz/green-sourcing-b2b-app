@@ -65,7 +65,7 @@ export async function transcribeFounderVideo(videoId: number): Promise<void> {
 
   try {
     // Download the blob — Whisper needs a File-like input.
-    const readUrl = generateReadSasUrl(video.blobKey);
+    const readUrl = await generateReadSasUrl(video.blobKey);
     const response = await fetch(readUrl);
     if (!response.ok) {
       throw new Error(`failed to fetch blob: HTTP ${response.status}`);

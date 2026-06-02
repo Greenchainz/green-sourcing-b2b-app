@@ -83,7 +83,7 @@ export const founderVideoRouter = router({
 
       const blobKey = blobKeyForVideo(inserted.id);
       const blobUrl = buildBlobUrl(blobKey);
-      const uploadUrl = generateUploadSasUrl(blobKey);
+      const uploadUrl = await generateUploadSasUrl(blobKey);
 
       await db
         .update(founderVideos)
@@ -300,7 +300,7 @@ export const founderVideoRouter = router({
         durationSec: video.durationSec,
         transcript: video.transcript,
         createdAt: video.createdAt,
-        videoUrl: generateReadSasUrl(video.blobKey),
+        videoUrl: await generateReadSasUrl(video.blobKey),
       };
     }),
 
@@ -336,14 +336,14 @@ export const founderVideoRouter = router({
         videoIds.length === 0
           ? []
           : await db
-              .select({
-                videoId: founderVideoViews.videoId,
-                viewedAt: founderVideoViews.viewedAt,
-                durationWatchedSec: founderVideoViews.durationWatchedSec,
-              })
-              .from(founderVideoViews)
-              .where(sql`${founderVideoViews.videoId} = ANY(ARRAY[${sql.join(videoIds.map((id) => sql`${id}`), sql`, `)}]::int[])`)
-              .orderBy(desc(founderVideoViews.viewedAt));
+            .select({
+              videoId: founderVideoViews.videoId,
+              viewedAt: founderVideoViews.viewedAt,
+              durationWatchedSec: founderVideoViews.durationWatchedSec,
+            })
+            .from(founderVideoViews)
+            .where(sql`${founderVideoViews.videoId} = ANY(ARRAY[${sql.join(videoIds.map((id) => sql`${id}`), sql`, `)}]::int[])`)
+            .orderBy(desc(founderVideoViews.viewedAt));
 
       const sessionsByVideo = new Map<number, typeof sessions>();
       for (const s of sessions) {
