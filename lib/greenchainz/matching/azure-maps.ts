@@ -4,7 +4,7 @@
  * Provides geocoding, distance calculation, and route planning
  * using Azure Maps REST APIs with Haversine fallback.
  *
- * Requires AZURE_MAPS_SUBSCRIPTION_KEY environment variable.
+ * Uses managed identity auth when configured, with guarded key fallback.
  *
  * Ported from Manus prototype. Framework-agnostic — uses fetch only.
  */
