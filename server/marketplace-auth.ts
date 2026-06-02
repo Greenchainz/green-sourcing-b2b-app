@@ -36,7 +36,6 @@ export async function validateMarketplaceToken(token: string): Promise<boolean> 
       return false;
     }
 
-    const _header = JSON.parse(Buffer.from(parts[0], 'base64').toString());
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
 
     // Basic validation checks

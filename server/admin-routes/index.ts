@@ -4,7 +4,6 @@
  */
 import express from 'express';
 import { requireEasyAuthUser } from '../_core/request-auth';
-import { fetchSDAMaterialsForSeed, type SDAProductEpd } from "../autodesk-sda-service";
 
 function createErrorResponse(
   message: string,

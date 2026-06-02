@@ -10,7 +10,7 @@
 
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
-import { conversations, messages, agentHandoffRules } from "../drizzle/schema";
+import { conversations, agentHandoffRules } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export type AgentType = "material" | "rfq" | "supplier" | "support" | "triage";
@@ -31,7 +31,7 @@ export async function triageMessage(params: {
   messageContent: string;
   conversationContext?: string; // RFQ title, supplier name, etc.
 }): Promise<TriageResult> {
-  const { userId, conversationId, messageContent, conversationContext } = params;
+  const { userId: _userId, conversationId: _conversationId, messageContent, conversationContext } = params;
 
   // Check if user explicitly requests human contact
   const humanRequestKeywords = [
@@ -163,7 +163,7 @@ export async function checkHandoffRules(params: {
   const db = await getDb();
   if (!db) return { shouldHandoff: false };
 
-  const { conversationId, supplierId, agentMessageCount } = params;
+  const { conversationId: _conversationId, supplierId, agentMessageCount } = params;
 
   // Get supplier's handoff rules (if Premium)
   const rules = await db

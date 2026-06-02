@@ -1,6 +1,6 @@
 import { eq, and, gte, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { users, messages, conversations, usageTracking } from "../drizzle/schema";
+import { users, messages, usageTracking } from "../drizzle/schema";
 
 /**
  * Messaging Paywall Service
@@ -32,7 +32,7 @@ async function getUserTier(userId: number): Promise<SubscriptionTier> {
   const db = await getDb();
   if (!db) return "free";
 
-  const user = await db
+  await db
     .select({ role: users.role })
     .from(users)
     .where(eq(users.id, userId))
@@ -54,7 +54,7 @@ async function getUserTier(userId: number): Promise<SubscriptionTier> {
  */
 export async function checkMessageLimit(
   userId: number,
-  conversationId: number
+  _conversationId: number
 ): Promise<MessageLimitResult> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

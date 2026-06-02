@@ -337,7 +337,7 @@ export function calcCostScore(material: Partial<Material>, baseline: Partial<Ccp
  * bonus reduced from 30 to 20 — regional availability is more operationally
  * relevant than country of origin.
  */
-export function calcSupplyChainScore(material: Partial<Material>, baseline: Partial<CcpsBaseline>): number {
+export function calcSupplyChainScore(material: Partial<Material>, _baseline: Partial<CcpsBaseline>): number {
   let score = 0;
 
   // Lead time (40 pts) — relative to 30-day standard

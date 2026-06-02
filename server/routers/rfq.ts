@@ -1,4 +1,4 @@
-import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
+import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { query, queryOne, queryMany, withTransaction } from "../../lib/pg-pool";
@@ -8,7 +8,7 @@ import { publishRfqEvent } from "../services/event-bus";
 import { getSupplierVerificationSnapshots } from "../services/supplier-verification";
 import { rfqRequests, rfqDrafts, suppliers, suppliersLocation } from "../../drizzle/schema";
 import { eq, desc, ilike, or, not, inArray } from "drizzle-orm";
-import { getShippingClass, isWithinServiceArea, DEFAULT_RADIUS_MILES } from "../lib/shipping-classes";
+import { getShippingClass, isWithinServiceArea } from "../lib/shipping-classes";
 
 /**
  * RFQ Marketplace Lifecycle Router
@@ -547,7 +547,6 @@ export const rfqRouter = router({
         .where(not(eq(suppliers.verificationStatus, "rejected")));
 
       const categoryLower = input.category.toLowerCase();
-      const requestedCerts = (input.certifications ?? []).map((c) => c.toLowerCase());
       const projectState = (input.projectState ?? "").toUpperCase();
 
       // ── Shipping class for this RFQ ────────────────────────────────────────
