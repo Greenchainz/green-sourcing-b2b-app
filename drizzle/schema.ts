@@ -536,6 +536,8 @@ export const suppliers = pgTable("suppliers", {
   contactName: varchar("contactName", { length: 255 }),
   materialCategories: json("materialCategories").$type<string[]>(),
   certifications: json("certifications").$type<string[]>(),
+  epdUrl: text("epdUrl"),
+  epdProgramOperator: varchar("epdProgramOperator", { length: 150 }),
   maxOrderValue: decimal("maxOrderValue", { precision: 12, scale: 2 }),
   currentCapacity: integer("currentCapacity").default(100),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),

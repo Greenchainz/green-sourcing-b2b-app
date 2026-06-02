@@ -30,27 +30,69 @@ function buildRedirectUri(_req: Request, provider: string): string {
   return `${baseUrl}/api/auth/callback/${provider}`;
 }
 
-// In-memory state store (good enough for stateless container; use Redis for multi-replica)
-const pendingStates = new Map<string, { returnPath: string; role: string | null; createdAt: number }>();
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
-// Clean up states older than 10 minutes
-setInterval(() => {
-  const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [key, val] of pendingStates.entries()) {
-    if (val.createdAt < cutoff) pendingStates.delete(key);
-  }
-}, 60_000);
+type OAuthRole = "supplier" | "buyer" | null;
 
-function createState(returnPath: string, role: string | null): string {
-  const state = crypto.randomBytes(24).toString("hex");
-  pendingStates.set(state, { returnPath, role, createdAt: Date.now() });
-  return state;
+interface OAuthStatePayload {
+  returnPath: string;
+  role: OAuthRole;
+  createdAt: number;
+  nonce: string;
 }
 
-function consumeState(state: string) {
-  const data = pendingStates.get(state);
-  if (data) pendingStates.delete(state);
-  return data ?? { returnPath: "/", role: null };
+function getOAuthStateSecret(): string {
+  return process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET || "dev-oauth-state-secret";
+}
+
+function signStatePayload(payloadB64: string): string {
+  return crypto
+    .createHmac("sha256", getOAuthStateSecret())
+    .update(payloadB64)
+    .digest("base64url");
+}
+
+function createState(returnPath: string, role: OAuthRole): string {
+  const payload: OAuthStatePayload = {
+    returnPath,
+    role,
+    createdAt: Date.now(),
+    nonce: crypto.randomBytes(12).toString("hex"),
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const signature = signStatePayload(payloadB64);
+  return `${payloadB64}.${signature}`;
+}
+
+function consumeState(state: string): { returnPath: string; role: OAuthRole } | null {
+  const [payloadB64, providedSig] = state.split(".");
+  if (!payloadB64 || !providedSig) {
+    return null;
+  }
+
+  const expectedSig = signStatePayload(payloadB64);
+  const providedBuffer = Buffer.from(providedSig, "utf8");
+  const expectedBuffer = Buffer.from(expectedSig, "utf8");
+
+  if (
+    providedBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+  ) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")) as OAuthStatePayload;
+    if (Date.now() - payload.createdAt > OAUTH_STATE_TTL_MS) {
+      return null;
+    }
+
+    const safeReturnPath = /^\/(?!\/)/.test(payload.returnPath) ? payload.returnPath : "/";
+    const safeRole: OAuthRole = payload.role === "supplier" || payload.role === "buyer" ? payload.role : null;
+    return { returnPath: safeReturnPath, role: safeRole };
+  } catch {
+    return null;
+  }
 }
 
 // ΓöÇΓöÇ Provider configs ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -290,8 +332,10 @@ export function registerOAuthProviderRoutes(app: Express) {
   // ΓöÇΓöÇ Initiate OAuth flow ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   app.get("/api/auth/:provider", (req: Request, res: Response) => {
     const provider = Array.isArray(req.params.provider) ? req.params.provider[0] : req.params.provider;
-    const returnPath = (req.query.returnPath as string) || "/";
-    const role = (req.query.role as string) || null;
+    const rawReturnPath = (req.query.returnPath as string) || "/";
+    const returnPath = /^\/(?!\/)/.test(rawReturnPath) ? rawReturnPath : "/";
+    const requestedRole = (req.query.role as string) || null;
+    const role: OAuthRole = requestedRole === "supplier" || requestedRole === "buyer" ? requestedRole : null;
 
     const state = createState(returnPath, role);
     const redirectUri = buildRedirectUri(req, provider);
@@ -339,7 +383,12 @@ export function registerOAuthProviderRoutes(app: Express) {
       return;
     }
 
-    const { returnPath, role } = consumeState(state);
+    const stateData = consumeState(state);
+    if (!stateData) {
+      res.redirect(302, "/login?error=invalid_state");
+      return;
+    }
+    const { returnPath, role } = stateData;
     const redirectUri = buildRedirectUri(req, provider);
 
     try {
@@ -373,14 +422,26 @@ export function registerOAuthProviderRoutes(app: Express) {
       const existingUser = await db.getUserByOpenId(userInfo.openId);
       const isNewUser = !existingUser;
 
+      // Preserve existing role unless we need to elevate an internal account.
+      let roleForUpsert: "buyer" | "supplier" | "admin" | "user" | undefined = assignedRole;
+      if (existingUser?.role) {
+        if (existingUser.role !== "admin" && userInfo.email?.endsWith("@greenchainz.com")) {
+          roleForUpsert = "admin";
+        } else {
+          roleForUpsert = undefined;
+        }
+      }
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name,
         email: userInfo.email,
         loginMethod: userInfo.provider,
         lastSignedIn: new Date(),
-        role: assignedRole,
+        role: roleForUpsert,
       });
+
+      const effectiveRole = roleForUpsert ?? existingUser?.role ?? assignedRole;
 
       // Send welcome email to new users (non-blocking)
       if (isNewUser && userInfo.email) {
@@ -388,7 +449,7 @@ export function registerOAuthProviderRoutes(app: Express) {
           sendWelcomeEmail({
             name: userInfo.name ?? "there",
             email: userInfo.email!,
-            role: assignedRole,
+            role: effectiveRole,
           }).catch((err: unknown) => console.warn("[Auth] Welcome email failed (non-critical):", err));
         }).catch(() => { });
       }
