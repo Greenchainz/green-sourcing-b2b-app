@@ -52,6 +52,7 @@ import {
   Server,
   Zap,
   ExternalLink,
+  User,
   LayoutDashboard,
   ListFilter,
   Package,
@@ -1375,9 +1376,6 @@ function CatalogTab() {
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
 function SystemTab() {
-  const { data: statsData, isLoading: statsLoading, isError: statsError } =
-    trpc.admin.getSupplierStats.useQuery();
-
   return (
     <div className="space-y-6">
       {/* Test user role switching was removed with the legacy cookie-session flow. */}

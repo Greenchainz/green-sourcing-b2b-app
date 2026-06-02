@@ -12,7 +12,7 @@
  * views are shareable by copying the browser address bar.
  */
 import { useState, useCallback, useMemo, useEffect, type ElementType } from "react";
-import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -58,7 +58,6 @@ import {
   Truck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
 
 // ── 7-Layer Procurement Personas ──────────────────────────────────────────────
 // Source: The Anatomy of Strategic Procurement — Sustainable Built Environment
@@ -89,7 +88,7 @@ const PROCUREMENT_PERSONAS: ProcurementPersona[] = [
     sortBy: "ccps",
     icon: Pen,
     color: "text-violet-700 bg-violet-50 border-violet-200",
-    badgeHints: ["EPD", "CDPH", "Fire Rating", "VOC"],
+    badgeHints: ["EPD", "Code-safe", "Submittal-ready"],
   },
   {
     id: "L2_qs",

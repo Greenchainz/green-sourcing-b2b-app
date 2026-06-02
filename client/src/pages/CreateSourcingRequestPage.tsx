@@ -144,7 +144,6 @@ export default function CreateSourcingRequestPage() {
   };
 
   const handleChangeType = async (type: RequestType) => {
-    setOverriddenType(type);
     // Fetch with the new `type` directly — avoids stale closure on `overriddenType`
     const data = await utils.sourcingRequest.getDefaultFields.fetch({ requestType: type });
     if (data) {

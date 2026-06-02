@@ -1,6 +1,5 @@
-import React from 'react'
 import EmbodiedCarbonChart from '@/components/EmbodiedCarbonChart'
-import { Shield, Zap, TrendingDown, Leaf, Activity, Target, BarChart3, Users, Briefcase, Sparkles, Search, Database } from 'lucide-react'
+import { Zap, Activity, Sparkles, Search, Database } from 'lucide-react'
 
 // Strategic Procurement Data with Agent Intelligence & Interception Metrics
 const STRATEGIC_ASSEMBLIES_DATA = [
