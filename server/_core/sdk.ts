@@ -29,7 +29,7 @@ class SDKServer {
   private getSessionSecret() {
     const secret = ENV.cookieSecret;
     if (!secret) {
-      throw new Error("[Auth] JWT_SECRET is not set ΓÇö refusing to sign/verify sessions with an empty key");
+      throw new Error("[Auth] JWT_SECRET is not set - refusing to sign/verify sessions with an empty key");
     }
     return new TextEncoder().encode(secret);
   }
@@ -85,7 +85,7 @@ class SDKServer {
       });
       const { openId, appId, name } = payload as Record<string, unknown>;
 
-      // Only openId is required ΓÇö appId (VITE_APP_ID) is a build-time var that
+      // Only openId is required - appId (VITE_APP_ID) is a build-time var that
       // is empty at runtime in Container Apps, so we cannot require it here.
       if (!isNonEmptyString(openId)) {
         console.warn("[Auth] Session payload missing required fields");
