@@ -494,13 +494,13 @@ projectLocation: z.string().max(300),
 |-------|-------|
 | **File** | `server/_core/oauth-providers.ts:34` and `server/calling-service.ts:26`, `server/acs-video-service.ts:32`, `server/webrtc-video-service.ts:19` |
 | **Category** | Infrastructure / In-memory state (multi-replica) |
-| **Status** | open |
+| **Status** | fixed — 2026-06-02 |
 | **First seen** | 2026-05-22 |
-| **Last checked** | 2026-05-22 |
+| **Last checked** | 2026-06-02 |
 
-**Problem:** Active call/session state held in `Map` objects across four files. Same multi-replica caveat as 20260522-010. Video call sessions will randomly not be found on reload if Azure scales out.
+**Problem:** Active call/session state was held in in-memory `Map` objects across call services, causing cross-replica session loss after scale-out.
 
-**Fix:** Low priority now (probably no multi-replica video calls yet). Note for when you operationalize these features.
+**Fix:** Replaced process-local maps with a shared distributed call-session store (`server/services/distributed-call-session-store.ts`) backed by Redis when configured, with participant indexing and async retrieval across replicas. Updated call consumers (`messaging-router.ts`) and tests to use async session lookups.
 
 ---
 
