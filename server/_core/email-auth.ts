@@ -9,8 +9,8 @@
  *   - Session is issued as the same app_session_id JWT used by the OAuth flows
  *
  * Routes:
- *   POST /api/auth/email/signup  ΓÇö create account + issue session cookie
- *   POST /api/auth/email/login   ΓÇö verify password + issue session cookie
+ *   POST /api/auth/email/signup  - create account + issue session cookie
+ *   POST /api/auth/email/login   - verify password + issue session cookie
  */
 
 import type { Express, Request, Response } from "express";
@@ -55,7 +55,7 @@ function isRateLimited(
   return { limited: false, retryAfterSeconds: 0 };
 }
 
-// ΓöÇΓöÇ Lazy pg pool (uses same DATABASE_URL as the rest of the app) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Lazy pg pool (uses same DATABASE_URL as the rest of the app)
 
 let _pool: Pool | null = null;
 
@@ -74,7 +74,7 @@ function getPool(): Pool | null {
   return _pool;
 }
 
-// ΓöÇΓöÇ Password helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Password helpers
 
 async function hashPassword(password: string): Promise<{ hash: Buffer; salt: Buffer }> {
   const salt = randomBytes(SALT_BYTES);
@@ -87,7 +87,7 @@ async function verifyPassword(password: string, salt: Buffer, hash: Buffer): Pro
   return timingSafeEqual(derived, hash);
 }
 
-// ΓöÇΓöÇ Table bootstrap ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Table bootstrap
 
 let _tableReady = false;
 
@@ -109,7 +109,7 @@ async function ensureTable(): Promise<void> {
   console.log("[EmailAuth] email_credentials table ready");
 }
 
-// ΓöÇΓöÇ Helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Helpers
 
 function openIdForEmail(email: string): string {
   // Deterministic openId derived from the normalised email
@@ -133,7 +133,7 @@ async function issueSession(
   res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
 }
 
-// ΓöÇΓöÇ Route registration ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Route registration
 
 export function registerEmailAuthRoutes(app: Express): void {
   // Bootstrap table once on startup (non-blocking)
@@ -141,7 +141,7 @@ export function registerEmailAuthRoutes(app: Express): void {
     console.warn("[EmailAuth] Table bootstrap failed (DB may not be available yet):", err)
   );
 
-  // ΓöÇΓöÇ POST /api/auth/email/signup ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // POST /api/auth/email/signup
   app.post("/api/auth/email/signup", async (req: Request, res: Response) => {
     const signupLimit = isRateLimited(signupRateLimit, getRequestIp(req), 5, 60_000);
     if (signupLimit.limited) {
@@ -218,7 +218,7 @@ export function registerEmailAuthRoutes(app: Express): void {
     }
   });
 
-  // ΓöÇΓöÇ POST /api/auth/email/login ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // POST /api/auth/email/login
   app.post("/api/auth/email/login", async (req: Request, res: Response) => {
     const loginLimit = isRateLimited(loginRateLimit, getRequestIp(req), 10, 60_000);
     if (loginLimit.limited) {
