@@ -55,7 +55,6 @@ export function isACSConfigured(): boolean {
  * Get ACS user access token
  * This token is used by the client to connect to Azure Communication Services
  */
-export async function getACSUserToken(userId: number): Promise<{ token: string; userId: string } | { success: false; error: string }> {
 export async function getACSUserToken(_userId: number): Promise<{ token: string; userId: string } | { success: false; error: string }> {
   if (!isACSConfigured()) {
     return {

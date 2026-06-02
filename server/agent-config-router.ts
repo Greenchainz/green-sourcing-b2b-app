@@ -6,11 +6,11 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { agentHandoffRules } from "../drizzle/schema";
 import { suppliers, agentAnalytics, supplierSubscriptions } from "../drizzle/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export const agentConfigRouter = router({
   /**
