@@ -56,6 +56,7 @@ export function isACSConfigured(): boolean {
  * This token is used by the client to connect to Azure Communication Services
  */
 export async function getACSUserToken(userId: number): Promise<{ token: string; userId: string } | { success: false; error: string }> {
+export async function getACSUserToken(_userId: number): Promise<{ token: string; userId: string } | { success: false; error: string }> {
   if (!isACSConfigured()) {
     return {
       success: false,
@@ -211,7 +212,7 @@ export async function startCallRecording(callId: string): Promise<{ recordingId:
 /**
  * Stop call recording
  */
-export async function stopCallRecording(callId: string, recordingId: string): Promise<void | { success: false; error: string }> {
+export async function stopCallRecording(callId: string, _recordingId: string): Promise<void | { success: false; error: string }> {
   const session = await acsCallSessionStore.get(callId);
   if (!session) {
     return {
