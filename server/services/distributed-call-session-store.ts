@@ -19,6 +19,26 @@ let redisClient: ReturnType<typeof createClient> | null = null;
 let redisInitAttempted = false;
 let redisWarned = false;
 
+function isRedisRequiredForCallSessions(): boolean {
+    if (process.env.REQUIRE_REDIS_CALL_SESSIONS === "false") return false;
+    return process.env.NODE_ENV === "production";
+}
+
+function missingRedisConfigError(): Error {
+    return new Error(
+        "[call-session-store] Redis is required for call sessions in production. " +
+        "Set REDIS_URL or REDIS_HOST/REDIS_PORT (and REDIS_PASSWORD if needed)."
+    );
+}
+
+function redisConnectError(err: unknown): Error {
+    const detail = err instanceof Error ? err.message : String(err);
+    return new Error(
+        `[call-session-store] Redis connection failed in production: ${detail}. ` +
+        "Call sessions cannot run safely across replicas without Redis."
+    );
+}
+
 function redisUrlFromEnv(): string | null {
     if (process.env.REDIS_URL) return process.env.REDIS_URL;
 
@@ -38,9 +58,13 @@ async function getRedisClient(): Promise<ReturnType<typeof createClient> | null>
     if (redisInitAttempted) return null;
 
     redisInitAttempted = true;
+    const redisRequired = isRedisRequiredForCallSessions();
 
     const redisUrl = redisUrlFromEnv();
     if (!redisUrl) {
+        if (redisRequired) {
+            throw missingRedisConfigError();
+        }
         return null;
     }
 
@@ -64,6 +88,9 @@ async function getRedisClient(): Promise<ReturnType<typeof createClient> | null>
         console.log("[call-session-store] Using Redis-backed distributed session store");
         return redisClient;
     } catch (err) {
+        if (redisRequired) {
+            throw redisConnectError(err);
+        }
         if (!redisWarned) {
             console.warn("[call-session-store] Failed to connect to Redis, using in-memory store:", err instanceof Error ? err.message : String(err));
             redisWarned = true;
