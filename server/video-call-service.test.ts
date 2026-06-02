@@ -104,7 +104,7 @@ describe('VideoCallService', () => {
       expect(activeCalls.some((c: any) => c.callId === call2.callId)).toBe(true);
     });
 
-    it('should return empty array for user with no active calls', () => {
+    it('should return empty array for user with no active calls', async () => {
       const activeCalls = await getUserActiveCalls(999);
       expect(activeCalls.length).toBe(0);
     });
