@@ -325,15 +325,13 @@ getAvailableRfqs: protectedProcedure
 |-------|-------|
 | **File** | `server/_core/oauth-providers.ts:33-51` |
 | **Category** | Infrastructure / Multi-replica risk |
-| **Status** | open |
+| **Status** | fixed — 2026-06-02 |
 | **First seen** | 2026-05-22 |
-| **Last checked** | 2026-05-22 |
+| **Last checked** | 2026-06-02 |
 
-**Problem:** OAuth CSRF state (`pendingStates`) is stored in an in-memory `Map`. Code already documents this: *"good enough for stateless container; use Redis for multi-replica"*. Azure Container Apps scales horizontally — a second replica won't find the state created by the first, and the login will fail (CSRF validation error) for ~50% of users on load.
+**Problem:** OAuth CSRF state (`pendingStates`) was stored in an in-memory `Map`, which breaks callback validation in multi-replica deployments.
 
-**Fix:** This is a **when-you-scale** blocker, not today-blocker. For now document the scale limit. When you add a second replica: store state in Redis (Azure Cache for Redis) or PostgreSQL with a short TTL.
-
-**Priority escalation trigger:** As soon as Container Apps min-replicas > 1, this becomes P0.
+**Fix:** Replaced in-memory state with signed stateless OAuth state tokens (HMAC + TTL validation), so callback validation no longer depends on a single process instance.
 
 ---
 
@@ -446,13 +444,13 @@ projectLocation: z.string().max(300),
 |-------|-------|
 | **File** | `server/admin-routes/index.ts:82` |
 | **Category** | TypeScript / `any` |
-| **Status** | open |
+| **Status** | fixed — 2026-06-02 |
 | **First seen** | 2026-05-22 |
-| **Last checked** | 2026-05-22 |
+| **Last checked** | 2026-06-02 |
 
-**Problem:** Express route handler typed as `(req: any, res: any)` — loses all type safety. Also `(req as any).id` pattern used throughout file to access a request ID that probably doesn't exist on the standard `Request` type.
+**Problem:** Express route handler was typed as `(req: any, res: any)` and used `(req as any).id` throughout error paths.
 
-**Fix:** Extend the Express `Request` type in `server/_core/types/` to include the `id` field if it's added by middleware. Or use `(req as Request & { id?: string }).id ?? 'unknown'`. Replace `req: any` with `req: Request`.
+**Fix:** Replaced `any` handler types with `express.Request`/`express.Response` and centralized request ID access in a typed helper.
 
 ---
 
@@ -480,16 +478,13 @@ projectLocation: z.string().max(300),
 |-------|-------|
 | **File** | `client/src/pages/SupplierOnboarding.tsx` — missing field |
 | **Category** | Product / Missing RFQ-critical field |
-| **Status** | open |
+| **Status** | fixed — 2026-06-02 |
 | **First seen** | 2026-05-22 |
-| **Last checked** | 2026-05-22 |
+| **Last checked** | 2026-06-02 |
 
-**Problem:** Onboarding captures certifications as free checkboxes (`LEED`, `EPD`, `FSC`, etc.) but does not capture EPD document links or EPD program operator (EC3, EPD International). Architects can't verify certs without a URL. This is the core trust gap the product is supposed to close.
+**Problem:** Onboarding captured certifications as checkboxes but did not capture an EPD document URL or operator.
 
-**Fix:** Add to Step 4 (Certifications):
-
-- A repeatable field: "EPD Link" (URL input, optional, labeled "Add an EPD document from EC3, EPD International, or your product page")
-- At minimum a plain `z.string().url().optional()` field named `epdUrl` to seed the profile, with a note: "You can add more per-material EPDs from your supplier dashboard."
+**Fix:** Added `epdUrl` + `epdProgramOperator` to onboarding schema, persistence layer, supplier profile model, and Step 4 UI, plus DB migration `drizzle/migrations/20260602_add_supplier_epd_profile_fields.sql`.
 
 ---
 
