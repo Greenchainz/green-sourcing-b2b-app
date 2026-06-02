@@ -42,7 +42,7 @@ export interface OpenAIConfig {
   /** API key when authMode is api-key */
   apiKey?: string;
   /** Token provider when authMode is managed-identity */
-  azureADTokenProvider?: ConstructorParameters<typeof AzureOpenAI>[0]["azureADTokenProvider"];
+  azureADTokenProvider?: (...args: unknown[]) => Promise<string>;
 }
 
 export interface ChatOptions {
