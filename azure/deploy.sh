@@ -102,7 +102,7 @@ deploy_frontend() {
         --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
     
     if [ -z "$BACKEND_URL" ]; then
-        BACKEND_URL="greenchainz-container.${LOCATION}.azurecontainerapps.io"
+        BACKEND_URL="https://greenchainz.com"
     fi
     
     # Build from repository root (Next.js)
@@ -302,3 +302,4 @@ main() {
 }
 
 main "$@"
+

@@ -16,7 +16,7 @@ properties:
           weight: 100
       corsPolicy:
         allowedOrigins:
-          - "https://greenchainz-frontend.azurecontainerapps.io"
+          - "https://greenchainz.com"
           - "https://greenchainz.com"
           - "https://www.greenchainz.com"
         allowedMethods:
@@ -275,3 +275,4 @@ properties:
 
   identity:
     type: SystemAssigned
+

@@ -48,7 +48,7 @@
   - [ ] `AZURE_SQL_PASSWORD`
   - [ ] `AZURE_OPENAI_API_KEY`
   - [ ] `NEXT_PUBLIC_API_URL` (production URL)
-- [ ] Test production homepage: https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io
+- [ ] Test production homepage: https://greenchainz.com
 - [ ] Verify all tool links work
 
 ---
@@ -230,4 +230,5 @@ Pick one. Own it. Execute relentlessly.
 **Owner:** You
 
 **Let's go.** 🚀
+
 

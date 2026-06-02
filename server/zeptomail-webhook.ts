@@ -10,7 +10,7 @@
  *
  * Zeptomail webhook setup:
  *   1. Zeptomail dashboard → Mail Agents → your agent → Webhooks
- *   2. Add URL: https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io/api/webhooks/zeptomail
+ *   2. Add URL: https://greenchainz.com/api/webhooks/zeptomail
  *   3. Select events: Bounce, Open, Click, Unsubscribe, Spam
  *   4. Save — no secret key required (Zeptomail uses IP allowlisting)
  *
@@ -191,3 +191,4 @@ export async function isEmailSuppressed(email: string): Promise<boolean> {
     return false; // Fail open — don't block sends if DB check fails
   }
 }
+
