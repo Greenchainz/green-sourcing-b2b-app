@@ -26,7 +26,7 @@ describe('VideoCallService', () => {
 
     it('should store call in active calls map', async () => {
       const result = await initiateVideoCall(callerId, calleeId, conversationId);
-      const status = getCallStatus(result.callId);
+      const status = await getCallStatus(result.callId);
 
       expect(status).toBeDefined();
       expect(status?.callerId).toBe(callerId);
@@ -41,7 +41,7 @@ describe('VideoCallService', () => {
       const ringResult = await ringVideoCall(initResult.callId);
 
       expect(ringResult.status).toBe('ringing');
-      expect(getCallStatus(initResult.callId)?.status).toBe('ringing');
+      expect((await getCallStatus(initResult.callId))?.status).toBe('ringing');
     });
 
     it('should throw error for non-existent call', async () => {
@@ -55,7 +55,7 @@ describe('VideoCallService', () => {
       const acceptResult = await acceptVideoCall(initResult.callId);
 
       expect(acceptResult.status).toBe('connected');
-      expect(getCallStatus(initResult.callId)?.status).toBe('connected');
+      expect((await getCallStatus(initResult.callId))?.status).toBe('connected');
     });
 
     it('should throw error for non-existent call', async () => {
@@ -66,15 +66,15 @@ describe('VideoCallService', () => {
   describe('endVideoCall', () => {
     it('should end call and calculate duration', async () => {
       const initResult = await initiateVideoCall(callerId, calleeId, conversationId);
-      
+
       // Wait a bit to get measurable duration
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const endResult = await endVideoCall(initResult.callId);
 
       expect(endResult.status).toBe('ended');
       expect(endResult.durationSeconds).toBeGreaterThanOrEqual(0);
-      expect(getCallStatus(initResult.callId)).toBeNull();
+      expect(await getCallStatus(initResult.callId)).toBeNull();
     });
 
     it('should throw error for non-existent call', async () => {
@@ -88,7 +88,7 @@ describe('VideoCallService', () => {
       const failResult = await failVideoCall(initResult.callId);
 
       expect(failResult.status).toBe('failed');
-      expect(getCallStatus(initResult.callId)).toBeNull();
+      expect(await getCallStatus(initResult.callId)).toBeNull();
     });
   });
 
@@ -97,7 +97,7 @@ describe('VideoCallService', () => {
       const call1 = await initiateVideoCall(callerId, calleeId, conversationId);
       const call2 = await initiateVideoCall(callerId, 3, conversationId);
 
-      const activeCalls = getUserActiveCalls(callerId);
+      const activeCalls = await getUserActiveCalls(callerId);
 
       expect(activeCalls.length).toBeGreaterThanOrEqual(2);
       expect(activeCalls.some((c: any) => c.callId === call1.callId)).toBe(true);
@@ -105,13 +105,13 @@ describe('VideoCallService', () => {
     });
 
     it('should return empty array for user with no active calls', () => {
-      const activeCalls = getUserActiveCalls(999);
+      const activeCalls = await getUserActiveCalls(999);
       expect(activeCalls.length).toBe(0);
     });
 
     it('should include calls where user is callee', async () => {
       const call = await initiateVideoCall(callerId, calleeId, conversationId);
-      const activeCalls = getUserActiveCalls(calleeId);
+      const activeCalls = await getUserActiveCalls(calleeId);
 
       expect(activeCalls.length).toBeGreaterThanOrEqual(1);
       expect(activeCalls.some((c: any) => c.callId === call.callId)).toBe(true);
@@ -122,20 +122,20 @@ describe('VideoCallService', () => {
     it('should handle full call lifecycle', async () => {
       // Initiate
       const initResult = await initiateVideoCall(callerId, calleeId, conversationId);
-      expect(getCallStatus(initResult.callId)?.status).toBe('initiated');
+      expect((await getCallStatus(initResult.callId))?.status).toBe('initiated');
 
       // Ring
       await ringVideoCall(initResult.callId);
-      expect(getCallStatus(initResult.callId)?.status).toBe('ringing');
+      expect((await getCallStatus(initResult.callId))?.status).toBe('ringing');
 
       // Accept
       await acceptVideoCall(initResult.callId);
-      expect(getCallStatus(initResult.callId)?.status).toBe('connected');
+      expect((await getCallStatus(initResult.callId))?.status).toBe('connected');
 
       // End
       const endResult = await endVideoCall(initResult.callId);
       expect(endResult.status).toBe('ended');
-      expect(getCallStatus(initResult.callId)).toBeNull();
+      expect(await getCallStatus(initResult.callId)).toBeNull();
     });
   });
 });
