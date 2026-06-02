@@ -11,25 +11,36 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { founderVideos } from "../../drizzle/schema";
 import { generateReadSasUrl } from "../../lib/founder-video-storage";
+import { getAzureOpenAIAuthConfig } from "../../lib/azure/openai-auth";
 
 function getWhisperClient(): { client: AzureOpenAI; deployment: string } | null {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const apiKey = process.env.AZURE_OPENAI_API_KEY;
-  const deployment = process.env.AZURE_OPENAI_WHISPER_DEPLOYMENT ?? "whisper";
-
-  if (!endpoint || !apiKey) {
-    console.warn("[founder-video/transcribe] AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_API_KEY not set");
+  let auth;
+  try {
+    auth = getAzureOpenAIAuthConfig({
+      deploymentEnvVar: "AZURE_OPENAI_WHISPER_DEPLOYMENT",
+      defaultDeployment: "whisper",
+      defaultApiVersion: "2024-08-01-preview",
+    });
+  } catch {
+    console.warn("[founder-video/transcribe] Azure OpenAI authentication is not configured");
     return null;
   }
 
-  const client = new AzureOpenAI({
-    endpoint,
-    apiKey,
-    apiVersion: "2024-08-01-preview",
-    deployment,
-  });
+  const options: ConstructorParameters<typeof AzureOpenAI>[0] = {
+    endpoint: auth.endpoint,
+    apiVersion: auth.apiVersion,
+    deployment: auth.deployment,
+  };
 
-  return { client, deployment };
+  if (auth.authMode === "managed-identity" && auth.azureADTokenProvider) {
+    options.azureADTokenProvider = auth.azureADTokenProvider;
+  } else if (auth.apiKey) {
+    options.apiKey = auth.apiKey;
+  }
+
+  const client = new AzureOpenAI(options);
+
+  return { client, deployment: auth.deployment };
 }
 
 /**
