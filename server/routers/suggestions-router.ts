@@ -12,7 +12,7 @@ import { router, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../db";
 import { materials, manufacturers, scrapedSuppliers } from "../../drizzle/schema";
-import { ilike, or, sql, asc } from "drizzle-orm";
+import { ilike, or, asc } from "drizzle-orm";
 
 // ─── Nominatim cache (in-memory, survives server restarts poorly but free) ────
 // Keyed by raw query string; evicted when size > 500.

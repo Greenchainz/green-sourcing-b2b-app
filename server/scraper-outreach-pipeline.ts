@@ -140,7 +140,6 @@ export async function runScraperOutreachPipeline(): Promise<{
 
     // 5. Send outreach email
     const signupUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/supplier/register?utm_source=scraper&utm_medium=email&utm_campaign=outreach&rfq=${bestRfq.id}`;
-    const rfqUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/rfqs/${bestRfq.id}?utm_source=scraper&utm_medium=email`;
 
     // 7-layer persona-aware supplier email generation
     const personaEmail = await generateSupplierEmail(

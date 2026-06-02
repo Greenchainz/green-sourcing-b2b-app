@@ -15,7 +15,7 @@
 import { getDb } from "../db";
 import { architectSpecAssemblies } from "../../drizzle/schema-additions-mcs";
 import { materials, manufacturers } from "../../drizzle/schema";
-import { eq, and, or, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 
 // ── Assembly type → material category mapping ────────────────────────────────
 // Maps EWS assembly type labels to the categories used in the materials table.
