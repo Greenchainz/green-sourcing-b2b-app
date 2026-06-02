@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -186,11 +185,10 @@ export function SupplierRegistration() {
             {[1, 2, 3, 4].map((step) => (
               <div key={step} className="flex flex-col items-center flex-1">
                 <div
-                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold mb-2 transition-all text-sm sm:text-base ${
-                    step <= currentStep
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold mb-2 transition-all text-sm sm:text-base ${step <= currentStep
                       ? "bg-green-600 text-white"
                       : "bg-gray-200 text-gray-600"
-                  }`}
+                    }`}
                 >
                   {step}
                 </div>

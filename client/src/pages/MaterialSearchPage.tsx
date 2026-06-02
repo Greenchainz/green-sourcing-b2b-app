@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { trackSearch, trackClick } from "@/lib/appInsights";
 import Header from "@/components/Header";

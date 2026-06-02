@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ import { Loader2, Save, Bot, TrendingUp, MessageSquare, Clock, CheckCircle, Aler
 import { toast } from "sonner";
 
 export default function SupplierAgentConfig() {
-  const { user } = useAuth();
   const [handoffMode, setHandoffMode] = useState<"always_agent" | "hybrid" | "immediate_human">("hybrid");
   const [maxMessages, setMaxMessages] = useState(5);
   const [customPrompt, setCustomPrompt] = useState("");

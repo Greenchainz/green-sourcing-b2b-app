@@ -72,40 +72,9 @@ interface TCOResult {
 
 const HORIZON = 25;
 
-function calcMaterial(inputs: MaterialInputs, otherAnnualEnergy: number) {
-  const install       = Number(inputs.installCostPerUnit) * Number(inputs.quantity);
-  const annualMaint   = Number(inputs.annualMaintenanceCost);
-  const majorCost     = Number(inputs.majorServiceCost);
-  const majorInterval = Math.max(1, Number(inputs.majorServiceIntervalYears) || 10);
-  const lifespan      = Math.max(1, Number(inputs.replacementLifespanYears) || 25);
-  const replCost      = Number(inputs.replacementCostPerUnit) * Number(inputs.quantity);
-  const energySavings = Number(inputs.annualEnergySavings); // positive = this material saves
-
-  const yearCosts: number[] = [];
-  for (let y = 1; y <= HORIZON; y++) {
-    let cost = annualMaint;
-    // Major service cycle
-    if (y % majorInterval === 0) cost += majorCost;
-    // Replacement (excluding year 0 install, first replacement at end of lifespan)
-    if (y > 0 && y % lifespan === 0 && y < HORIZON) cost += replCost;
-    // Energy savings reduce this material's annual cost
-    cost -= energySavings;
-    // Offset by the other material's energy savings (comparative)
-    cost += otherAnnualEnergy;
-    yearCosts.push(cost);
-  }
-
-  const totalOpEx = yearCosts.reduce((a, b) => a + b, 0);
-  return { install, totalOpEx, yearCosts };
-}
-
 function runTCO(matA: MaterialInputs, matB: MaterialInputs, capRate: number): TCOResult {
   const energyA = Number(matA.annualEnergySavings);
   const energyB = Number(matB.annualEnergySavings);
-
-  // Each material's cost stands alone — energy savings are a direct reduction in opex
-  const a = calcMaterial(matA, 0);
-  const b = calcMaterial(matB, 0);
 
   // Remove the "other" energy offset — we want absolute costs for each
   // Re-run cleanly: annual savings reduce the material's running cost

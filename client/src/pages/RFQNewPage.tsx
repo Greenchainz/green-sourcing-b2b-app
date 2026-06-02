@@ -14,18 +14,16 @@ import Footer from "@/components/Footer";
 import { CarbonForecastPanel } from "@/components/CarbonForecastPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LocationTypeahead, CompanyTypeahead } from "@/components/ui/typeahead-variants";
+import { CompanyTypeahead } from "@/components/ui/typeahead-variants";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
-  FolderOpen,
   Package,
   Building2,
   ClipboardCheck,

@@ -40,7 +40,6 @@ import {
   MessageSquareDashed,
   Mic,
   MicOff,
-  Phone,
   PhoneOff,
   Search,
   Send,
