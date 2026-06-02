@@ -119,7 +119,7 @@ export async function getAcsTokenForUser(userId: number): Promise<AcsTokenResult
 }
 
 /**
- * ACS endpoint URL derived from the connection string.
+ * ACS endpoint URL resolved from endpoint-first settings.
  * Required by the client SDK to know which region to connect to.
  */
 export function getAcsEndpoint(): string {

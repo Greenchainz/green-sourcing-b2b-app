@@ -1,14 +1,14 @@
 /**
- * OAuth Provider Routes ΓÇö Microsoft Entra ID, Google, LinkedIn
+ * OAuth Provider Routes - Microsoft Entra ID, Google, LinkedIn
  *
  * Replaces the Manus OAuth flow with direct provider OAuth 2.0.
- * Session is stored as a signed JWT cookie (same mechanism as before).
+ * Session is stored as a signed JWT cookie.
  *
  * Flow:
- *   1. GET /api/auth/:provider  ΓåÆ redirect to provider
- *   2. GET /api/auth/callback/:provider ΓåÆ exchange code, upsert user, set cookie
- *   3. GET /api/auth/me         ΓåÆ return current user from session
- *   4. POST /api/auth/logout    ΓåÆ clear session cookie
+ *   1. GET /api/auth/:provider -> redirect to provider
+ *   2. GET /api/auth/callback/:provider -> exchange code, upsert user, set cookie
+ *   3. GET /api/auth/me -> return current user from session
+ *   4. POST /api/auth/logout -> clear session cookie
  */
 
 import crypto from "crypto";
@@ -19,11 +19,7 @@ import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
 import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
 
-// ΓöÇΓöÇ Helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-
-function getEnv(key: string): string {
-  return process.env[key] ?? "";
-}
+// Helpers
 
 function buildRedirectUri(_req: Request, provider: string): string {
   // Always use the canonical production domain to avoid Container Apps internal domain mismatch
