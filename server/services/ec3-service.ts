@@ -9,11 +9,10 @@
  */
 
 import type { OpenEPD } from "../../shared/types/openepd";
-import { openEPDToMaterial } from "../../shared/types/openepd";
 import type { EC3EPD } from "../ec3";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

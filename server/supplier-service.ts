@@ -1,6 +1,6 @@
 import { getDb } from "./db";
-import { suppliers, supplierSubscriptions, users } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { suppliers, supplierSubscriptions } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Supplier Registration & Profile Management Service

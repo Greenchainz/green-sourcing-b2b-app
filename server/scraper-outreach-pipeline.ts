@@ -188,7 +188,7 @@ export async function runScraperOutreachPipeline(): Promise<{
 /**
  * Generate the cold outreach email HTML
  */
-function generateOutreachEmail(data: {
+export function generateOutreachEmail(data: {
   companyName: string;
   projectName: string;
   projectLocation: string;

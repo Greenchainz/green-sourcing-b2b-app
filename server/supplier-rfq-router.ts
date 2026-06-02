@@ -2,7 +2,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "./db";
-import { rfqs, rfqItems, rfqBids, materials, suppliers } from "../drizzle/schema";
+import { rfqs, rfqItems, rfqBids, suppliers } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 export const supplierRfqRouter = router({

@@ -1,6 +1,6 @@
-import { eq, and, gte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "./db";
-import { buyerSubscriptions, supplierSubscriptions, users, suppliers } from "../drizzle/schema";
+import { buyerSubscriptions, supplierSubscriptions } from "../drizzle/schema";
 
 // ─── Microsoft Marketplace Pricing ───────────────────────────────────────────────────────
 // Professional: $99/user/mo | $79/user/mo billed annually (save 20%)

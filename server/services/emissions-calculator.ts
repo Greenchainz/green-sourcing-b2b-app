@@ -17,7 +17,6 @@
 
 import {
   type DataQualityLevel,
-  type DataSourceType,
 } from "../lib/sustainability-data-quality";
 
 // ─── Emission factors (2023 US averages) ─────────────────────────────────────

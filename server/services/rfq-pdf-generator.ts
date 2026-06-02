@@ -18,7 +18,7 @@ import { Readable } from "stream";
 import { getDb } from "../db";
 import { epdMaterials } from "../../drizzle/schema";
 import { architectSpecAssemblies, architectUploadedSpecs } from "../../drizzle/schema-additions-mcs";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export interface RFQGeneratorInput {
   specId: number;

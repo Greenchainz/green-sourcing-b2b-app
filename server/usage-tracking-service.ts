@@ -1,4 +1,4 @@
-import { eq, and, gte, sql } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { getDb } from "./db";
 import { usageTracking, buyerSubscriptions } from "../drizzle/schema";
 import { getBuyerTierLimits, getSupplierTierLimits } from "./subscription-service";
@@ -295,7 +295,7 @@ export async function reportUsageToMicrosoft(
   msPlanId: string,
   dimension: string,
   quantity: number,
-  effectiveStartTime: Date
+  _effectiveStartTime: Date
 ): Promise<void> {
   // Import metering API at runtime to avoid circular dependencies
   const { reportBuyerUsage } = await import("./marketplace-metering");

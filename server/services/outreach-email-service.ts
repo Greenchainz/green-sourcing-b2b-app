@@ -619,7 +619,6 @@ export function previewLayerEmail(
   layer: ProcurementLayer,
   contact: { companyName: string; category: string; keyProduct?: string | null }
 ): { subject: string; html: string; layer: ProcurementLayer; driver: string } {
-  const claimUrl = `${BASE_URL}/suppliers/claim?company=${encodeURIComponent(contact.companyName)}&layer=${layer}`;
   const { subject, html } = buildSequenceStep(step, contact, layer);
   return { subject, html, layer, driver: LAYER_PROFILES[layer].financialDriver };
 }
