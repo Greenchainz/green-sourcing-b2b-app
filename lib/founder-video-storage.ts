@@ -10,7 +10,6 @@
  */
 
 import {
-  BlobServiceClient,
   StorageSharedKeyCredential,
   BlobSASPermissions,
   generateBlobSASQueryParameters,
@@ -185,25 +184,6 @@ async function generateSasUrl(
   ).toString();
 
   return `${blobEndpoint}/${CONTAINER_NAME}/${blobKey}?${sas}`;
-}
-
-/**
- * Generate a URL the browser uses to PUT the video blob.
- * Azure: SAS upload URL (30-min window, write-only).
- * Local: /api/dev/fv-upload/<blobKey>
- */
-export function generateUploadSasUrl(blobKey: string): string {
-  if (isLocalMode()) {
-    return `${localBase()}/api/dev/fv-upload/${blobKey}`;
-  }
-  const expiresOn = new Date(Date.now() + 30 * 60 * 1000); // 30min upload window
-
-  return generateSasUrl(
-    blobKey,
-    BlobSASPermissions.parse("cw"),
-    expiresOn,
-    "video/webm"
-  );
 }
 
 /**
