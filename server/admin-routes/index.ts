@@ -33,6 +33,10 @@ async function requireEasyAuthAdminUser(req: express.Request, res: express.Respo
   return user;
 }
 
+function getRequestId(req: express.Request): string {
+  return req.id ?? "unknown";
+}
+
 export function registerAdminRoutes(
   app: express.Express,
   adminRateLimit: express.RequestHandler
@@ -47,7 +51,7 @@ export function registerAdminRoutes(
       res.json({ success: true, ...result });
     } catch (err) {
       console.error('[admin] Outreach pipeline error:', err);
-      res.status(500).json(createErrorResponse('Pipeline failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Pipeline failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -61,7 +65,7 @@ export function registerAdminRoutes(
       res.json({ success: true, ...result });
     } catch (err) {
       console.error('[admin] Seed personas error:', err);
-      res.status(500).json(createErrorResponse('Seed failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Seed failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -79,7 +83,7 @@ export function registerAdminRoutes(
       res.json(result);
     } catch (err) {
       console.error('[admin] Seed materials error:', err);
-      res.status(500).json(createErrorResponse('Seed failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Seed failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -94,7 +98,7 @@ export function registerAdminRoutes(
       res.json({ success: true, totalFetched, categories: results.map(r => ({ category: r.category, fetched: r.fetched })) });
     } catch (err) {
       console.error('[admin] Autodesk SDA seed error:', err);
-      res.status(500).json(createErrorResponse('Autodesk seed failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Autodesk seed failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -107,13 +111,13 @@ export function registerAdminRoutes(
       const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
       upload.single('pdf')(req, res, next);
     },
-    async (req: any, res: any) => {
+    async (req: express.Request, res: express.Response) => {
       try {
         const user = await requireEasyAuthAdminUser(req, res);
         if (!user) return;
 
         if (!req.file) {
-          return res.status(400).json(createErrorResponse("No PDF file uploaded. Use field name 'pdf'.", (req as any).id));
+          return res.status(400).json(createErrorResponse("No PDF file uploaded. Use field name 'pdf'.", getRequestId(req)));
         }
 
         const dryRun = req.query.dryRun === 'true';
@@ -133,7 +137,7 @@ export function registerAdminRoutes(
         res.json({ ...result, filename, textLength: pdfText.length, dryRun });
       } catch (err) {
         console.error('[import-pdf] Error:', err);
-        res.status(500).json(createErrorResponse('PDF import failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+        res.status(500).json(createErrorResponse('PDF import failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
       }
     }
   );
@@ -148,7 +152,7 @@ export function registerAdminRoutes(
       res.json({ success: true, ...result });
     } catch (err) {
       console.error('[admin] Supplier scraper error:', err);
-      res.status(500).json(createErrorResponse('Scraper failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Scraper failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -162,7 +166,7 @@ export function registerAdminRoutes(
       res.json({ success: true, ...result });
     } catch (err) {
       console.error('[admin] Lead scraper error:', err);
-      res.status(500).json(createErrorResponse('Lead scraper failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Lead scraper failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -176,7 +180,7 @@ export function registerAdminRoutes(
       res.json({ success: true, ...result });
     } catch (err) {
       console.error('[admin] Lead outreach error:', err);
-      res.status(500).json(createErrorResponse('Lead outreach failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('Lead outreach failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 
@@ -193,7 +197,7 @@ export function registerAdminRoutes(
       res.json({ ...storeResult, success: true, recordsScraped: scrapedData.length });
     } catch (err) {
       console.error('[admin] TxDOT scraper error:', err);
-      res.status(500).json(createErrorResponse('TxDOT scraper failed', (req as any).id, err instanceof Error ? err.message : String(err)));
+      res.status(500).json(createErrorResponse('TxDOT scraper failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 }
