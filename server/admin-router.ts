@@ -3,7 +3,7 @@ import { runManufacturerPdfIngestion, MANUFACTURER_SPEC_SHEETS } from "./service
 import { getDb } from "./db";
 import {
   suppliers, users, materials, materialCertifications, buyerSubscriptions,
-  rfqs, rfqBids, rfqItems, leads, conversations, messages, notifications,
+  rfqs, rfqBids, leads, conversations, messages,
   subscriptions,
 } from "../drizzle/schema";
 import { eq, and, inArray, desc, count, sql, gte } from "drizzle-orm";
@@ -11,7 +11,7 @@ import type { SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateComplianceReport } from "./compliance-service";
-import { dbUserRoleSchema, uiInputRoleSchema, UI_TO_DB_ROLE } from "../shared/types/roles";
+import { dbUserRoleSchema } from "../shared/types/roles";
 import { auditLog, AuditAction } from "./services/audit-log";
 import { publishSupplierEvent } from "./services/event-bus";
 
@@ -924,7 +924,7 @@ export const adminRouter = router({
 
       if (!user) throw new TRPCError({ code: "NOT_FOUND", message: `No user found with email ${input.email}` });
 
-      const result = await db
+      await db
         .update(subscriptions)
         .set({ status: "cancelled", updatedAt: new Date() })
         .where(

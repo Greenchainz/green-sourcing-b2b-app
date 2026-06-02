@@ -501,7 +501,6 @@ export const materialSwapRouter = router({
         .slice(0, input.limit)
         .map(c => {
           const cPrice = toNum(c.pricePerUnit);
-          const cGwp = toNum(c.gwpValue);
           const priceDelta = origPrice !== null && cPrice !== null
             ? parseFloat((((cPrice - origPrice) / origPrice) * 100).toFixed(1))
             : null;

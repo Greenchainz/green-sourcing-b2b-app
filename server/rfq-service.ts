@@ -1,8 +1,7 @@
 import { getDb } from "./db";
-import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, notifications, rfqAnalytics, materials, users } from "../drizzle/schema";
-import { eq, and, or, gte, lte, desc, sql } from "drizzle-orm";
+import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, rfqAnalytics, materials, users } from "../drizzle/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { calculateCcps, personaToWeights } from "./ccps-engine";
-import type { PersonaWeights } from "./ccps-engine";
 import { geocodeAddress, calculateDistance, getDistanceScore, type Coordinates } from "./azure-maps-service";
 import { findMatchingSuppliers } from "../lib/greenchainz/matching/rfq-supplier-match";
 
@@ -158,7 +157,7 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
 async function matchSuppliersToRfq(
   rfqId: number,
   projectLocation: string,
-  materials: Array<{ materialId: number; quantity: number; quantityUnit: string }>
+  _materials: Array<{ materialId: number; quantity: number; quantityUnit: string }>
 ): Promise<SupplierMatch[]> {
   // Use the full geo-distance + certification + material preference matching engine
   const results = await findMatchingSuppliers(rfqId, projectLocation, 20);
