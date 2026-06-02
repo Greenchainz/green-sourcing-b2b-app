@@ -326,7 +326,7 @@ export function registerOAuthProviderRoutes(app: Express) {
     res.redirect(302, "/");
   });
 
-  // ΓöÇΓöÇ Initiate OAuth flow ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // Initiate OAuth flow
   app.get("/api/auth/:provider", (req: Request, res: Response) => {
     const provider = Array.isArray(req.params.provider) ? req.params.provider[0] : req.params.provider;
     const rawReturnPath = (req.query.returnPath as string) || "/";
@@ -362,7 +362,7 @@ export function registerOAuthProviderRoutes(app: Express) {
     res.redirect(302, authUrl);
   });
 
-  // ΓöÇΓöÇ OAuth callback ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // OAuth callback
   app.get("/api/auth/callback/:provider", async (req: Request, res: Response) => {
     const provider = Array.isArray(req.params.provider) ? req.params.provider[0] : req.params.provider;
     const code = req.query.code as string;
