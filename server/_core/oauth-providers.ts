@@ -92,7 +92,7 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
   }
 }
 
-// ΓöÇΓöÇ Provider configs ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Provider configs
 
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
   const tenantId = getEnvWithDevDefault("AZURE_AD_TENANT_ID", "ca4f78d4-c753-4893-9cd8-1b309922b4dc");
@@ -134,7 +134,7 @@ function getLinkedInAuthUrl(redirectUri: string, state: string): string {
   return `https://www.linkedin.com/oauth/v2/authorization?${params}`;
 }
 
-// ΓöÇΓöÇ Token exchange ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Token exchange
 
 interface OAuthUserInfo {
   openId: string;
@@ -287,10 +287,10 @@ async function exchangeLinkedInCode(code: string, redirectUri: string): Promise<
   };
 }
 
-// ΓöÇΓöÇ Route registration ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Route registration
 
 export function registerOAuthProviderRoutes(app: Express) {
-  // ΓöÇΓöÇ Current user ΓÇö must register BEFORE /:provider wildcard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // Current user route must register before /:provider wildcard
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
       const user = await sdk.authenticateRequest(req);
@@ -313,7 +313,7 @@ export function registerOAuthProviderRoutes(app: Express) {
     }
   });
 
-  // ΓöÇΓöÇ Logout ΓÇö must register BEFORE /:provider wildcard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // Logout route must register before /:provider wildcard
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     const cookieOptions = getSessionCookieOptions(req);
     res.clearCookie("app_session_id", { ...cookieOptions, maxAge: -1 });
