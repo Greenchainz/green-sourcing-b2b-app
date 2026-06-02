@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, CheckCircle, XCircle, AlertCircle, Search, Eye, Mail } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { Textarea } from '@/components/ui/textarea';
@@ -214,7 +214,7 @@ export function AdminSupplierDashboard() {
   const [activeTab, setActiveTab] = useState('pending');
 
   // Fetch data
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getSupplierStats.useQuery();
+  const { data: stats } = trpc.admin.getSupplierStats.useQuery();
   const { data: allSuppliers, isLoading: suppliersLoading, refetch } = trpc.admin.getAllSuppliers.useQuery();
 
   // Mutations

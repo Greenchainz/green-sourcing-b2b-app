@@ -47,8 +47,6 @@ const TIER_INFO = [
 ];
 
 export default function InsiderPage() {
-  const { user } = useAuth();
-
   const { data: leaderboard, isLoading: lbLoading } = trpc.engagement.getLeaderboard.useQuery(
     undefined,
     { staleTime: 60_000 }

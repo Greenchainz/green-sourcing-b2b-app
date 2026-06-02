@@ -78,7 +78,6 @@ export default function MaterialDetail() {
       { enabled: !!m?.name && !!m?.category }
     );
 
-  const [swapAnalysisAttempted, setSwapAnalysisAttempted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [, navigate] = useLocation();
 
@@ -272,18 +271,10 @@ export default function MaterialDetail() {
   });
 
   // ── Derived display values (safe helpers) ──────────────────────────────────
-  const gwpValue = m.gwpValue ? Number(m.gwpValue).toFixed(4) : "—";
   const gwpUnit = m.gwpUnit || "kgCO₂e";
   const embodiedCarbon = m.embodiedCarbonPer1000sf
     ? `${Number(m.embodiedCarbonPer1000sf).toFixed(2)} kgCO₂e`
     : "—";
-  const recycledPct = m.recycledContentPct
-    ? Number(m.recycledContentPct).toFixed(0)
-    : "—";
-  const leadTimeDays = m.leadTimeDays ? String(m.leadTimeDays) : "—";
-  const price = m.pricePerUnit ? Number(m.pricePerUnit).toFixed(2) : "—";
-  const unit = m.priceUnit || "unit";
-  const warrantyYears = m.warrantyYears ? String(m.warrantyYears) : "—";
 
   // ── Carbon comparison chart data ───────────────────────────────────────────
   const gwpNum = m.gwpValue ? Number(m.gwpValue) : null;
@@ -667,7 +658,7 @@ export default function MaterialDetail() {
                                 ]}
                               />
                               <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                                {carbonChartData.map((entry, index) => (
+                                {carbonChartData.map((_, index) => (
                                   <Cell
                                     key={`cell-${index}`}
                                     fill={

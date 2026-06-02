@@ -38,7 +38,7 @@ export default function Materials() {
   const [minGWP, setMinGWP] = useState('');
   const [maxGWP, setMaxGWP] = useState('');
   const [sortBy, setSortBy] = useState('gwp');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortOrder] = useState('asc');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   

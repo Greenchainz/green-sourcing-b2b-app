@@ -52,7 +52,6 @@ import {
   Server,
   Zap,
   ExternalLink,
-  User,
   LayoutDashboard,
   ListFilter,
   Package,
@@ -69,7 +68,6 @@ import {
 
 type UserRole = 'user' | 'admin' | 'buyer' | 'supplier';
 type UserTier = 'free' | 'standard' | 'premium';
-type VerificationStatus = 'pending' | 'approved' | 'rejected';
 
 interface AdminUser {
   id: number;
@@ -80,30 +78,6 @@ interface AdminUser {
   lastSignedIn: Date | string | null;
   tier: string;
   subscriptionStatus: string;
-}
-
-interface AdminSupplier {
-  id: number;
-  companyName: string;
-  email: string;
-  phone: string | null;
-  location: string | null;
-  website: string | null;
-  description: string | null;
-  verificationStatus: string | null;
-  certifications: unknown;
-  sustainabilityScore: unknown;
-  createdAt: Date | string | null;
-  verifiedAt: Date | string | null;
-}
-
-interface SupplierStats {
-  total: number;
-  pending: number;
-  approved: number;
-  rejected: number;
-  premium?: number;
-  avgSustainabilityScore?: string;
 }
 
 // ─── Helper utilities ────────────────────────────────────────────────────────
@@ -1403,18 +1377,6 @@ function CatalogTab() {
 function SystemTab() {
   const { data: statsData, isLoading: statsLoading, isError: statsError } =
     trpc.admin.getSupplierStats.useQuery();
-
-  const clearTestUsers = trpc.admin.clearTestUsers.useMutation({
-    onSuccess: () => toast.success('Test users cleared from DB'),
-    onError: (err) => toast.error(err.message),
-  });
-
-  const dbStatus = statsLoading
-    ? 'Checking…'
-    : statsError
-      ? 'Unavailable'
-      : `OK — ${statsData?.total ?? 0} suppliers`;
-  const dbColor = statsLoading ? 'text-gray-400' : statsError ? 'text-red-400' : 'text-emerald-400';
 
   return (
     <div className="space-y-6">

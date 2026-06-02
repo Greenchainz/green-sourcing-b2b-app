@@ -46,7 +46,7 @@ export function RealTimeMessageThread({
     { refetchOnWindowFocus: false }
   );
 
-  const { data: messageHistory, refetch: refetchMessages } =
+  const { data: messageHistory } =
     trpc.messaging.getThreadMessages.useQuery(
       { threadId, limit: 50, offset: 0 },
       { refetchOnWindowFocus: false }
@@ -290,11 +290,10 @@ export function RealTimeMessageThread({
               className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                  isOwnMessage
+                className={`max-w-[70%] rounded-lg px-4 py-2 ${isOwnMessage
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground"
-                }`}
+                  }`}
               >
                 <p className="text-sm break-words">{msg.content}</p>
                 <div className="flex items-center justify-between gap-2 mt-1">

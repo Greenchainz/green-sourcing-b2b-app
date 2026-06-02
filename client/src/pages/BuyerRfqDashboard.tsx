@@ -406,7 +406,7 @@ export default function BuyerRfqDashboard() {
   const [selectedRfqId, setSelectedRfqId] = useState<number | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
   const [showAiAnalysis, setShowAiAnalysis] = useState(false);
-  const [aiAnalysisData, setAiAnalysisData] = useState<any>(null);
+  const [aiAnalysisData] = useState<any>(null);
 
   const userId = typeof user?.id === "string" ? parseInt(user.id) : (user?.id ?? 0);
 

@@ -26,7 +26,7 @@ import {
   Scale,
   RotateCcw,
 } from "lucide-react";
-import type { SupplierResponseField, RequestType } from "./SmartRfxRecommendationCard";
+import type { SupplierResponseField } from "./SmartRfxRecommendationCard";
 
 export interface ScoringWeights {
   price: number;

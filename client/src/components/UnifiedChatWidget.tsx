@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageCircle, X, Minimize2, Send, Phone, Video, User, Bot, Plus, Paperclip, FileText, Image as ImageIcon, X as XIcon, Smile, Pin, Archive } from "lucide-react";
+import { MessageCircle, X, Minimize2, Send, Phone, User, Bot, Plus, Paperclip, FileText, Image as ImageIcon, X as XIcon, Smile, Pin, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,23 +27,9 @@ interface Message {
   attachmentName?: string | null;
 }
 
-interface Conversation {
-  id: number;
-  rfqId?: number | null;
-  buyerId: number;
-  supplierId: number;
-  agentMode: "agent_first" | "human_only" | "hybrid";
-  isPinned: number;
-  isArchived: number;
-  handoffStatus: "agent" | "pending_handoff" | "human";
-  agentMessageCount: number;
-  otherPartyName?: string;
-  rfqTitle?: string;
-}
-
 export function UnifiedChatWidget() {
   const { user } = useAuth();
-  const { isOpen, selectedConversationId, pendingConversation, openWidget, closeWidget, toggleWidget, selectConversation, clearPendingConversation } = useChatWidget();
+  const { isOpen, selectedConversationId, pendingConversation, openWidget, closeWidget, selectConversation, clearPendingConversation } = useChatWidget();
   const [isMinimized, setIsMinimized] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
@@ -135,9 +121,9 @@ export function UnifiedChatWidget() {
 
   const handleInitiateCall = (callType: "voice" | "video") => {
     if (!selectedConversation) return;
-    
-    const receiverId = selectedConversation.buyerId === Number(user?.id) 
-      ? selectedConversation.supplierId 
+
+    const receiverId = selectedConversation.buyerId === Number(user?.id)
+      ? selectedConversation.supplierId
       : selectedConversation.buyerId;
 
     initiateCallMutation.mutate({
@@ -186,14 +172,14 @@ export function UnifiedChatWidget() {
       // Upload file to S3
       const formData = new FormData();
       formData.append("file", selectedFile);
-      
+
       const uploadResponse = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
       if (!uploadResponse.ok) throw new Error("Upload failed");
-      
+
       const { url } = await uploadResponse.json();
 
       // Send message with attachment
@@ -226,7 +212,7 @@ export function UnifiedChatWidget() {
     },
   });
 
-  const handleSelectSupplier = (supplierId: number, supplierName: string) => {
+  const handleSelectSupplier = (supplierId: number, _supplierName: string) => {
     createDirectConversationMutation.mutate({ supplierId });
   };
 
@@ -279,8 +265,8 @@ export function UnifiedChatWidget() {
     const context = selectedConversation?.rfqTitle
       ? `RFQ: ${selectedConversation.rfqTitle}`
       : selectedConversation?.otherPartyName
-      ? `Conversation with ${selectedConversation.otherPartyName}`
-      : undefined;
+        ? `Conversation with ${selectedConversation.otherPartyName}`
+        : undefined;
 
     sendMessageMutation.mutate({
       conversationId: selectedConversationId,
@@ -342,7 +328,7 @@ export function UnifiedChatWidget() {
       // Pinned conversations always first
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
-      
+
       // Then sort by selected option
       if (conversationSort === "newest") {
         return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
@@ -382,9 +368,8 @@ export function UnifiedChatWidget() {
       {/* Chat Window */}
       {isOpen && (
         <div
-          className={`fixed bottom-6 right-6 w-96 bg-background border border-border rounded-lg shadow-2xl z-50 flex flex-col transition-all duration-200 ${
-            isMinimized ? "h-14" : "h-[600px]"
-          }`}
+          className={`fixed bottom-6 right-6 w-96 bg-background border border-border rounded-lg shadow-2xl z-50 flex flex-col transition-all duration-200 ${isMinimized ? "h-14" : "h-[600px]"
+            }`}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-t-lg">
@@ -495,47 +480,47 @@ export function UnifiedChatWidget() {
 
                   <ScrollArea className="flex-1 px-4 pb-4">
                     {filteredConversations && filteredConversations.length > 0 ? (
-                    <div className="space-y-2">
-                      {filteredConversations.map((conv) => (
-                        <button
-                          key={conv.id}
-                          onClick={() => selectConversation(conv.id)}
-                          className="w-full p-3 rounded-lg border hover:bg-accent transition-colors text-left"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <p className="font-semibold text-sm">{conv.otherPartyName || "Unknown"}</p>
-                                <span className="text-xs text-muted-foreground ml-2">
-                                  {getRelativeTime(conv.lastMessageAt)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                {conv.rfqId ? (
-                                  <Badge variant="outline" className="text-xs">
-                                    📋 RFQ: {conv.rfqTitle}
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-xs bg-blue-50">
-                                    💬 Direct Inquiry
-                                  </Badge>
+                      <div className="space-y-2">
+                        {filteredConversations.map((conv) => (
+                          <button
+                            key={conv.id}
+                            onClick={() => selectConversation(conv.id)}
+                            className="w-full p-3 rounded-lg border hover:bg-accent transition-colors text-left"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <p className="font-semibold text-sm">{conv.otherPartyName || "Unknown"}</p>
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    {getRelativeTime(conv.lastMessageAt)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {conv.rfqId ? (
+                                    <Badge variant="outline" className="text-xs">
+                                      📋 RFQ: {conv.rfqTitle}
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs bg-blue-50">
+                                      💬 Direct Inquiry
+                                    </Badge>
+                                  )}
+                                  {conv.handoffStatus === "agent" && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      🤖 AI
+                                    </Badge>
+                                  )}
+                                </div>
+                                {conv.lastMessage && (
+                                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                                    {conv.lastMessage}
+                                  </p>
                                 )}
-                                {conv.handoffStatus === "agent" && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    🤖 AI
-                                  </Badge>
-                                )}
                               </div>
-                              {conv.lastMessage && (
-                                <p className="text-xs text-muted-foreground mt-1 truncate">
-                                  {conv.lastMessage}
-                                </p>
-                              )}
                             </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                          </button>
+                        ))}
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full text-center px-4">
                         <MessageCircle className="h-12 w-12 text-muted-foreground mb-3" />
@@ -561,21 +546,19 @@ export function UnifiedChatWidget() {
                             <AvatarFallback>{getSenderIcon(msg)}</AvatarFallback>
                           </Avatar>
                           <div
-                            className={`flex-1 max-w-[75%] ${
-                              msg.senderId === Number(user.id) ? "items-end" : "items-start"
-                            } flex flex-col gap-1`}
+                            className={`flex-1 max-w-[75%] ${msg.senderId === Number(user.id) ? "items-end" : "items-start"
+                              } flex flex-col gap-1`}
                           >
                             {msg.senderType === "agent" && getAgentBadge(msg.agentType)}
                             <div
-                              className={`rounded-lg px-4 py-2 ${
-                                msg.senderId === Number(user.id)
+                              className={`rounded-lg px-4 py-2 ${msg.senderId === Number(user.id)
                                   ? "bg-green-500 text-white"
                                   : msg.senderType === "agent"
-                                  ? msg.content.includes("I've handled your initial questions") || msg.content.includes("connect you with a human")
-                                    ? "bg-amber-50 border-2 border-amber-300"
-                                    : "bg-blue-50 border border-blue-200"
-                                  : "bg-muted"
-                              }`}
+                                    ? msg.content.includes("I've handled your initial questions") || msg.content.includes("connect you with a human")
+                                      ? "bg-amber-50 border-2 border-amber-300"
+                                      : "bg-blue-50 border border-blue-200"
+                                    : "bg-muted"
+                                }`}
                             >
                               {msg.attachmentUrl && (
                                 <div className="mb-2">
