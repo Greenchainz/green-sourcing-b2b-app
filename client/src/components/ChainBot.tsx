@@ -5,9 +5,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import {
-  MessageCircle,
   X,
   Send,
   Loader2,
@@ -154,7 +152,7 @@ export function ChainBot() {
       ]);
       if (!isOpen || isMinimized) setHasNewMessage(true);
     },
-    onError: (error) => {
+    onError: () => {
       setMessages((prev) => [
         ...prev,
         {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Clock, DollarSign, MessageSquare, TrendingDown, AlertCircle } from "lucide-react";
 
@@ -33,7 +33,6 @@ export function BidComparison({ rfqId, bids, onAcceptBid, onRejectBid, onMessage
   // Calculate statistics
   const prices = bids.map((b) => b.bidPrice);
   const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
   const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
 
   const leadTimes = bids.map((b) => b.leadDays);

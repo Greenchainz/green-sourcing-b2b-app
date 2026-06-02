@@ -1,7 +1,6 @@
-import { Link, useLocation } from 'wouter';
+import { Link } from 'wouter';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { getLoginUrl } from '../const';
 import { NotificationCenter } from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
 import { trpc } from '../lib/trpc';
@@ -21,7 +20,6 @@ const ARCHITECT_TOOLS = [
 function ToolsDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [, navigate] = useLocation();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

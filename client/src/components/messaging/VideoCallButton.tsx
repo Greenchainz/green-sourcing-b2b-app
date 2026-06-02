@@ -38,7 +38,7 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
       // Route to correct video system based on tier
       if (usageStats.tier === "premium") {
         // Use Azure Communication Services for Premium
-        const result = await initiateACSCall.mutateAsync({
+        await initiateACSCall.mutateAsync({
           calleeId: otherPartyId,
           conversationId,
           recordingEnabled: false,
@@ -49,10 +49,9 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
         });
 
         // TODO: Open ACS video call UI
-        console.log("ACS call initiated:", result);
       } else if (usageStats.tier === "standard") {
         // Use WebRTC for Standard
-        const result = await initiateWebRTCCall.mutateAsync({
+        await initiateWebRTCCall.mutateAsync({
           calleeId: otherPartyId,
           conversationId,
         });
