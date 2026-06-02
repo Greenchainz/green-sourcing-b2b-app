@@ -11,6 +11,12 @@
 
 const AZURE_MAPS_BASE_URL = "https://atlas.microsoft.com";
 const AZURE_MAPS_SUBSCRIPTION_KEY = process.env.AZURE_MAPS_SUBSCRIPTION_KEY || "";
+const AZURE_MAPS_CLIENT_ID = process.env.AZURE_MAPS_CLIENT_ID || "";
+const AZURE_MAPS_SCOPE = "https://atlas.microsoft.com/.default";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const ALLOW_MAPS_KEY_IN_PROD = process.env.ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD === "true";
+
+import { getAzureCredential, isCredentialConfigured } from "../../azure/credentials";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -30,28 +36,73 @@ export interface RouteResult {
   polyline: string; // GeoJSON LineString for map visualization
 }
 
+interface AzureMapsAuth {
+  headers: Record<string, string>;
+  keyParam?: string;
+}
+
+async function getAzureMapsAuth(): Promise<AzureMapsAuth | null> {
+  if (AZURE_MAPS_CLIENT_ID && isCredentialConfigured()) {
+    try {
+      const token = await getAzureCredential().getToken(AZURE_MAPS_SCOPE);
+      if (token?.token) {
+        return {
+          headers: {
+            Authorization: `Bearer ${token.token}`,
+            "x-ms-client-id": AZURE_MAPS_CLIENT_ID,
+          },
+        };
+      }
+    } catch (error) {
+      console.warn("[Azure Maps/matching] Managed identity authentication failed:", error);
+    }
+  }
+
+  if (AZURE_MAPS_SUBSCRIPTION_KEY) {
+    if (!IS_PRODUCTION || ALLOW_MAPS_KEY_IN_PROD) {
+      return {
+        headers: {},
+        keyParam: AZURE_MAPS_SUBSCRIPTION_KEY,
+      };
+    }
+    console.error(
+      "[Azure Maps/matching] Subscription-key auth is blocked in production. " +
+      "Use managed identity or set ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true as emergency override."
+    );
+  }
+
+  return null;
+}
+
 // ─── Geocoding ───────────────────────────────────────────────────────────────
 
 /**
  * Geocode an address to coordinates using Azure Maps Search API.
  */
 export async function geocodeAddress(address: string): Promise<Coordinates | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return null;
   }
 
   try {
     const params = new URLSearchParams({
       "api-version": "1.0",
-      "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
       query: address,
       limit: "1",
       countrySet: "US",
     });
 
+    if (auth.keyParam) {
+      params.set("subscription-key", auth.keyParam);
+    }
+
     const response = await fetch(
-      `${AZURE_MAPS_BASE_URL}/search/address/json?${params}`
+      `${AZURE_MAPS_BASE_URL}/search/address/json?${params}`,
+      {
+        headers: auth.headers,
+      }
     );
     const data = await response.json() as any;
 
@@ -81,22 +132,29 @@ export async function calculateDistance(
   origin: Coordinates,
   destination: Coordinates
 ): Promise<DistanceResult | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return calculateHaversineDistance(origin, destination);
   }
 
   try {
     const params = new URLSearchParams({
       "api-version": "1.0",
-      "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
     });
+
+    if (auth.keyParam) {
+      params.set("subscription-key", auth.keyParam);
+    }
 
     const response = await fetch(
       `${AZURE_MAPS_BASE_URL}/route/matrix/json?${params}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...auth.headers,
+        },
         body: JSON.stringify({
           origins: {
             type: "MultiPoint",
@@ -139,20 +197,27 @@ export async function calculateRoute(
   origin: Coordinates,
   destination: Coordinates
 ): Promise<RouteResult | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return null;
   }
 
   try {
     const params = new URLSearchParams({
       "api-version": "1.0",
-      "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
       query: `${origin.latitude},${origin.longitude}:${destination.latitude},${destination.longitude}`,
     });
 
+    if (auth.keyParam) {
+      params.set("subscription-key", auth.keyParam);
+    }
+
     const response = await fetch(
-      `${AZURE_MAPS_BASE_URL}/route/directions/json?${params}`
+      `${AZURE_MAPS_BASE_URL}/route/directions/json?${params}`,
+      {
+        headers: auth.headers,
+      }
     );
     const data = await response.json() as any;
     const routes = data?.routes;
