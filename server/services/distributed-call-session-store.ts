@@ -1,4 +1,4 @@
-import { createClient, type RedisClientType } from "redis";
+import { createClient } from "redis";
 
 interface StoredSessionRecord<T> {
     session: T;
@@ -15,7 +15,7 @@ const DEFAULT_TTL_SECONDS = 60 * 60;
 const memoryStoreByNamespace = new Map<string, Map<string, StoredSessionRecord<unknown>>>();
 const memoryUserIndexByNamespace = new Map<string, Map<number, Set<string>>>();
 
-let redisClient: RedisClientType | null = null;
+let redisClient: ReturnType<typeof createClient> | null = null;
 let redisInitAttempted = false;
 let redisWarned = false;
 
@@ -33,7 +33,7 @@ function redisUrlFromEnv(): string | null {
     return `redis://${authSegment}${host}:${port}`;
 }
 
-async function getRedisClient(): Promise<RedisClientType | null> {
+async function getRedisClient(): Promise<ReturnType<typeof createClient> | null> {
     if (redisClient) return redisClient;
     if (redisInitAttempted) return null;
 
