@@ -91,7 +91,7 @@ We share your information with third-party service providers who assist us in op
 - **Authentication:** Microsoft Entra ID (SSO and identity management)
 - **Communication APIs:** Azure Web PubSub (real-time messaging)
 - **Maps Services:** Azure Maps (location-based features)
-- **Error Monitoring:** Sentry (application performance and error tracking)
+- **Error Monitoring:** Azure Application Insights (Azure Monitor) for application performance and error tracking
 - **EPD Data:** Building Transparency EC3, EPD International (environmental product data)
 
 All service providers are contractually obligated to use your information only for the purposes of providing services to us and to maintain the confidentiality and security of your data.

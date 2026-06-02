@@ -15,10 +15,10 @@ export const test = base.extend({
     const mockRefreshToken = 'mock-refresh-token';
 
     // Set auth cookies/session before tests run
-    // Using both 'greenchainz-auth-token' and 'token' as seen in azure-callback/route.ts
+    // Canonical session cookie is app_session_id (HttpOnly JWT)
     await page.context().addCookies([
       {
-        name: 'greenchainz-auth-token',
+        name: 'app_session_id',
         value: mockToken,
         domain: 'localhost',
         path: '/',
@@ -87,7 +87,7 @@ export const testSupplier = base.extend({
 
     await page.context().addCookies([
       {
-        name: 'greenchainz-auth-token',
+        name: 'app_session_id',
         value: mockToken,
         domain: 'localhost',
         path: '/',
