@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { getForgeToken } from '../../autodesk-interceptor';
 import { AzureOpenAI } from 'openai';
+import { getAzureOpenAIAuthConfig } from '../../azure/openai-auth';
 
 // Define response types for SDA to use in auditing
 interface SDAProductResponse {
@@ -21,18 +22,31 @@ export class AzureClient {
     private deployment: string;
 
     constructor() {
-        const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-        const apiKey = process.env.AZURE_OPENAI_API_KEY;
         this.deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4';
 
-        if (endpoint && apiKey) {
-            this.client = new AzureOpenAI({
-                endpoint,
-                apiKey,
-                apiVersion: "2024-05-01-preview",
-                deployment: this.deployment
+        try {
+            const auth = getAzureOpenAIAuthConfig({
+                defaultDeployment: this.deployment,
+                defaultApiVersion: "2024-05-01-preview",
             });
-        } else {
+            this.deployment = auth.deployment;
+
+            const options: ConstructorParameters<typeof AzureOpenAI>[0] = {
+                endpoint: auth.endpoint,
+                apiVersion: auth.apiVersion,
+                deployment: this.deployment,
+            };
+
+            if (auth.authMode === "managed-identity" && auth.azureADTokenProvider) {
+                options.azureADTokenProvider = auth.azureADTokenProvider;
+            } else if (auth.apiKey) {
+                options.apiKey = auth.apiKey;
+            }
+
+            this.client = new AzureOpenAI({
+                ...options,
+            });
+        } catch {
             console.warn("Azure OpenAI credentials not found. Auditing will be limited.");
         }
     }
