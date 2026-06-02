@@ -17,6 +17,7 @@ import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
+import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
 
 // ΓöÇΓöÇ Helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
@@ -98,8 +99,8 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
 // ΓöÇΓöÇ Provider configs ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
-  const tenantId = getEnv("AZURE_AD_TENANT_ID") || "ca4f78d4-c753-4893-9cd8-1b309922b4dc";
-  const clientId = getEnv("AZURE_AD_CLIENT_ID") || "479e2a01-70ab-4df9-baa4-560d317c3423";
+  const tenantId = getEnvWithDevDefault("AZURE_AD_TENANT_ID", "ca4f78d4-c753-4893-9cd8-1b309922b4dc");
+  const clientId = getEnvWithDevDefault("AZURE_AD_CLIENT_ID", "479e2a01-70ab-4df9-baa4-560d317c3423");
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
@@ -112,7 +113,7 @@ function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
 }
 
 function getGoogleAuthUrl(redirectUri: string, state: string): string {
-  const clientId = getEnv("GOOGLE_CLIENT_ID") || "856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com";
+  const clientId = getEnvWithDevDefault("GOOGLE_CLIENT_ID", "856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com");
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
@@ -126,7 +127,7 @@ function getGoogleAuthUrl(redirectUri: string, state: string): string {
 }
 
 function getLinkedInAuthUrl(redirectUri: string, state: string): string {
-  const clientId = getEnv("LINKEDIN_CLIENT_ID") || "77lzd3h7nzedke";
+  const clientId = getEnvWithDevDefault("LINKEDIN_CLIENT_ID", "77lzd3h7nzedke");
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
@@ -147,9 +148,9 @@ interface OAuthUserInfo {
 }
 
 async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const tenantId = getEnv("AZURE_AD_TENANT_ID") || "ca4f78d4-c753-4893-9cd8-1b309922b4dc";
-  const clientId = getEnv("AZURE_AD_CLIENT_ID") || "479e2a01-70ab-4df9-baa4-560d317c3423";
-  const clientSecret = getEnv("AZURE_AD_CLIENT_SECRET");
+  const tenantId = getEnvWithDevDefault("AZURE_AD_TENANT_ID", "ca4f78d4-c753-4893-9cd8-1b309922b4dc");
+  const clientId = getEnvWithDevDefault("AZURE_AD_CLIENT_ID", "479e2a01-70ab-4df9-baa4-560d317c3423");
+  const clientSecret = getRequiredEnv("AZURE_AD_CLIENT_SECRET");
 
   const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
     method: "POST",
@@ -196,8 +197,8 @@ async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise
 }
 
 async function exchangeGoogleCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const clientId = getEnv("GOOGLE_CLIENT_ID") || "856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com";
-  const clientSecret = getEnv("GOOGLE_CLIENT_SECRET");
+  const clientId = getEnvWithDevDefault("GOOGLE_CLIENT_ID", "856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com");
+  const clientSecret = getRequiredEnv("GOOGLE_CLIENT_SECRET");
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -243,8 +244,8 @@ async function exchangeGoogleCode(code: string, redirectUri: string): Promise<OA
 }
 
 async function exchangeLinkedInCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const clientId = getEnv("LINKEDIN_CLIENT_ID") || "77lzd3h7nzedke";
-  const clientSecret = getEnv("LINKEDIN_CLIENT_SECRET");
+  const clientId = getEnvWithDevDefault("LINKEDIN_CLIENT_ID", "77lzd3h7nzedke");
+  const clientSecret = getRequiredEnv("LINKEDIN_CLIENT_SECRET");
 
   const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
     method: "POST",
