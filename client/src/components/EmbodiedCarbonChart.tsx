@@ -1,22 +1,19 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import {
-  BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
   ComposedChart,
   Line,
   Area,
-  ReferenceLine,
 } from 'recharts'
 import {
-  ChevronDown, Shield, AlertTriangle, CheckCircle, Clock,
-  DollarSign, Activity, Users, Target, Briefcase, Info,
+  ChevronDown, Shield, Clock,
+  DollarSign, Users, Target, Info,
   Zap, Search, Filter, ArrowRight, Sparkles, Database
 } from 'lucide-react'
 

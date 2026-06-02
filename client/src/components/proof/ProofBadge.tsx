@@ -93,7 +93,7 @@ export function ProofBadge({
   status: statusOverride,
   txHash: txHashOverride,
   explorerUrl: explorerUrlOverride,
-  anchoredAt: anchoredAtOverride,
+  anchoredAt: _anchoredAtOverride,
   size = "md",
   className = "",
 }: ProofBadgeProps) {
