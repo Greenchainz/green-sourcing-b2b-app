@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync } from "fs";
@@ -77,6 +78,8 @@ function createErrorResponse(
 const adminRateLimit = createRateLimiter(20, 60_000);
 const rfqPdfRateLimit = createRateLimiter(30, 60_000);
 const materialScorePdfRateLimit = createRateLimiter(10, 60_000);
+const webhookRateLimit = createRateLimiter(120, 60_000);
+const publicApiRateLimit = createRateLimiter(120, 60_000);
 
 if (process.env.NODE_ENV !== "production") {
   if (existsSync(".env.local")) {
@@ -112,6 +115,7 @@ async function startServer() {
     const required: Record<string, string | undefined> = {
       JWT_SECRET: process.env.JWT_SECRET,
       DATABASE_URL: process.env.DATABASE_URL,
+      AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
     };
     const missing = Object.entries(required)
       .filter(([, v]) => !v)
@@ -358,8 +362,8 @@ async function startServer() {
   app.get("/tools/carbon-compare", (_req, res) => res.redirect(301, "/carbon-compare"));
   app.get("/tools/assemblies", (_req, res) => res.redirect(301, "/assemblies"));
   app.get("/api/marketplace/landing", handleLandingPage);
-  app.post("/api/marketplace/webhook", handleWebhook);
-  app.post("/api/microsoft/subscription-webhook", handleMicrosoftWebhook);
+  app.post("/api/marketplace/webhook", webhookRateLimit, handleWebhook);
+  app.post("/api/microsoft/subscription-webhook", webhookRateLimit, handleMicrosoftWebhook);
   app.use("/api", uploadRouter);
   if (isLocalMode()) {
     app.use("/api/dev", devFounderVideoRouter);
@@ -368,7 +372,7 @@ async function startServer() {
   app.use(zeptomailWebhookRouter);
   app.use("/api", specSheetRouter);
   // Public REST API for Forma Extension (unauthenticated)
-  app.use("/api/public", publicMaterialsRouter);
+  app.use("/api/public", publicApiRateLimit, publicMaterialsRouter);
 
   registerEmailAuthRoutes(app);
   registerOAuthProviderRoutes(app);

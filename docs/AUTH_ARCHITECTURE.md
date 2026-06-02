@@ -71,10 +71,10 @@ These have been tried and removed multiple times. They conflict with the
 existing Express OAuth system and cause redirect loops. The current system
 is simple and works.
 
-### 4. Easy Auth files are legacy — do not use
-`server/_core/easy-auth.ts` and `lib/auth/easy-auth.ts` still exist but
-the frontend does not use `/.auth/*` endpoints. These files can be deleted
-in a future cleanup but are harmless.
+### 4. Legacy auth helpers — do not use
+Older Next.js/Easy-Auth-era helpers should not be used for this app.
+If you find any leftover files under `lib/auth/`, remove them rather than wiring them in.
+This codebase’s canonical auth path is `server/_core/oauth-providers.ts` + `app_session_id`.
 
 ### 5. Secrets come from Azure Key Vault via Managed Identity
 `lib/secrets.ts` loads secrets at startup using the user-assigned managed

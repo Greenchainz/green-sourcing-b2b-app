@@ -63,15 +63,15 @@ The following technologies are **explicitly NOT used** in `green-sourcing-b2b-ap
 ### Authentication Architecture
 ```
 Client → GET /api/auth/microsoft
-       → 302 to login.microsoftonline.com (PKCE)
+       → 302 to login.microsoftonline.com
        → Microsoft auth
        → 302 to /api/auth/callback/microsoft
        → Express: code exchange → upsert user in PostgreSQL
-       → Set greenchainz-auth-token (HttpOnly JWT cookie)
+       → Set app_session_id (HttpOnly JWT cookie)
        → 302 to app
 ```
 
-- **Local dev:** `registerDevAuthShim()` simulates the full flow without a live Azure redirect
+- **Local dev:** set `APP_BASE_URL=http://localhost:3000` and ensure your Entra app redirect URIs include localhost
 - **tRPC protection:** `protectedProcedure` extracts user from verified JWT — use this, never roll your own
 
 ---
@@ -102,11 +102,12 @@ import { NextResponse } from 'next/server';
 
 | Variable | Where | Purpose |
 |----------|-------|---------|
-| `DATABASE_URL` | `.env` or Azure App Settings | PostgreSQL connection string |
+| `DATABASE_URL` | Azure Container App secret (Key Vault ref) | PostgreSQL connection string |
 | `JWT_SECRET` | Azure Key Vault | Session cookie signing |
-| `OAUTH_SERVER_URL` | **`.env` (NOT `.env.local`)** | OAuth base URL — loaded at module init |
-| `MICROSOFT_CLIENT_ID` | `.env.local` | Azure App Registration client ID |
-| `MICROSOFT_CLIENT_SECRET` | Azure Key Vault | OAuth secret |
-| `MANAGED_IDENTITY_CLIENT_ID` | Azure App Settings | Managed identity — NOT the app client ID |
+| `AZURE_AD_TENANT_ID` | Azure Container App env var | Entra tenant ID (public identifier) |
+| `AZURE_AD_CLIENT_ID` | Azure Container App env var | Entra app (client) ID (public identifier) |
+| `AZURE_AD_CLIENT_SECRET` | Azure Key Vault | Entra app client secret |
+| `APP_BASE_URL` | Azure Container App env var | Public base URL used to build OAuth redirect URIs |
+| `AZURE_MI_CLIENT_ID` or `MANAGED_IDENTITY_CLIENT_ID` | Azure Container App env var | Managed identity client ID for Key Vault access |
 
-> **Critical:** `OAUTH_SERVER_URL` must be in `.env`, not `.env.local`. It is read at module initialization before dotenv loads the local override file.
+> **Critical:** `APP_BASE_URL` must match the public domain you configured in Entra redirect URIs (e.g., `https://greenchainz.com`).
