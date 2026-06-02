@@ -2,7 +2,7 @@ import { useRoute, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Download, Loader, Loader2, Search, ArrowLeft } from "lucide-react";
+import { AlertCircle, Download, Loader2, Search, ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

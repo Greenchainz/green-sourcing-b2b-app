@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { setUserRole } from "@/lib/api-client";
-import { getLoginUrl, getMicrosoftLoginUrl } from "@/const";
+import { getMicrosoftLoginUrl } from "@/const";
 
 type DesiredRole = "architect" | "supplier" | null;
 

@@ -1,4 +1,3 @@
-import { Link } from 'wouter';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VideoPlaceholder from '../components/VideoPlaceholder';

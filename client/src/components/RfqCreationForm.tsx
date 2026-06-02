@@ -46,7 +46,6 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
   // microsoftOrderId comes from the Azure Marketplace purchase flow (purchaseToken).
   // Pre-activation: order ID is optional; platform proceeds with dev bypass.
   const [microsoftOrderId] = useState<string | undefined>(undefined);
-  const [accessConfirmed] = useState(true); // true until ISV billing goes live
 
   const { data: materialsData } = trpc.materials.list.useQuery({
     search: "",
@@ -61,7 +60,6 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
     register,
     control,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<RfqFormData>({

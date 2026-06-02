@@ -99,7 +99,6 @@ export default function CreateSourcingRequestPage() {
   const [recommendation, setRecommendation] = useState<SmartRfxRecommendation | null>(null);
   const [fields, setFields] = useState<SupplierResponseField[]>([]);
   const [weights, setWeights] = useState<ScoringWeights>(DEFAULT_WEIGHTS);
-  const [overriddenType, setOverriddenType] = useState<RequestType | null>(null);
 
   // tRPC
   const recommendQuery = trpc.sourcingRequest.recommend.useQuery(

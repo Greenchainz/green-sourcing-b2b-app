@@ -22,11 +22,9 @@ import {
   Activity,
   RefreshCw,
   Send,
-  Clock,
   CheckCircle2,
   XCircle,
   AlertCircle,
-  ChevronRight,
   Zap,
   Layers,
   Eye,
@@ -43,7 +41,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Cell,
 } from "recharts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -62,10 +59,6 @@ const STAGES = [
 ] as const;
 
 type Stage = typeof STAGES[number]["key"];
-
-const STAGE_COLORS: Record<Stage, string> = Object.fromEntries(
-  STAGES.map((s) => [s.key, s.color])
-) as Record<Stage, string>;
 
 function StageBadge({ stage }: { stage: string }) {
   const config = STAGES.find((s) => s.key === stage);
@@ -392,7 +385,7 @@ function ActivityFeed() {
     <div className="space-y-2">
       {isLoading
         ? [...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)
-        : (data ?? []).map(({ event, contactName, contactStage }) => {
+        : (data ?? []).map(({ event, contactName }) => {
             const Icon = EVENT_ICONS[event.eventType] ?? Activity;
             return (
               <div key={event.id} className="flex items-start gap-3 py-2 border-b last:border-0">

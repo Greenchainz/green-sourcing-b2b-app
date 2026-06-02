@@ -469,7 +469,6 @@ function ActiveChips({
 
 export default function MaterialsCatalog() {
   const { user } = useAuth();
-  const [, navigate] = useLocation();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [activePersona, setActivePersona] = useState<PersonaId | null>(null);
 
@@ -480,7 +479,7 @@ export default function MaterialsCatalog() {
       resetFilters();
     } else {
       setActivePersona(persona.id);
-      setFilters((prev) => ({
+      setFilters(() => ({
         ...DEFAULT_FILTERS,
         ...persona.filterPatch,
         sortBy: persona.sortBy,

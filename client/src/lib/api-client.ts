@@ -21,7 +21,7 @@ async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${BACKEND_URL}${endpoint}`;
-  
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -49,7 +49,7 @@ async function apiFetch<T>(
     // Handle empty responses
     const text = await response.text();
     if (!text) return {} as T;
-    
+
     return JSON.parse(text) as T;
   } catch (error) {
     // Only log non-auth errors (401s already handled above)
@@ -75,33 +75,6 @@ function post<T>(endpoint: string, data?: unknown): Promise<T> {
     method: 'POST',
     body: data ? JSON.stringify(data) : undefined,
   });
-}
-
-/**
- * PUT request
- */
-function put<T>(endpoint: string, data?: unknown): Promise<T> {
-  return apiFetch<T>(endpoint, {
-    method: 'PUT',
-    body: data ? JSON.stringify(data) : undefined,
-  });
-}
-
-/**
- * PATCH request
- */
-function patch<T>(endpoint: string, data?: unknown): Promise<T> {
-  return apiFetch<T>(endpoint, {
-    method: 'PATCH',
-    body: data ? JSON.stringify(data) : undefined,
-  });
-}
-
-/**
- * DELETE request
- */
-function del<T>(endpoint: string): Promise<T> {
-  return apiFetch<T>(endpoint, { method: 'DELETE' });
 }
 
 // ============================================================================
@@ -174,7 +147,7 @@ export async function getSuppliers(params?: {
   if (params?.limit) query.set('limit', params.limit.toString());
   if (params?.search) query.set('search', params.search);
   if (params?.verified !== undefined) query.set('verified', params.verified.toString());
-  
+
   const queryString = query.toString();
   return get<{
     suppliers: Array<{
@@ -248,7 +221,7 @@ export async function getSupplierRFQs(params?: {
 }) {
   const query = new URLSearchParams();
   if (params?.status) query.set('status', params.status);
-  
+
   const queryString = query.toString();
   return get<{
     rfqs: Array<{

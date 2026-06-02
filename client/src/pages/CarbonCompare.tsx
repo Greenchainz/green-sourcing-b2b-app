@@ -128,12 +128,6 @@ const ZONE_BG: Record<Zone, string> = {
   EXTERIOR: "bg-emerald-400/20 text-emerald-300 border-emerald-400/30",
 };
 
-const TIER_COLORS: Record<CarbonTier, string> = {
-  LOW: "#10b981",
-  MID: "#eab308",
-  HIGH: "#ef4444",
-};
-
 const TIER_BG: Record<CarbonTier, string> = {
   LOW: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
   MID: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
@@ -1262,7 +1256,7 @@ function MaterialComparePanel({ materialIds, onIdsChange }: MaterialComparePanel
                       <th className="text-left px-3 py-2.5 text-gray-500 font-medium text-xs uppercase tracking-wider min-w-[200px]">
                         LEED Credit
                       </th>
-                      {leedRows.map((row, i) => (
+                      {leedRows.map((row) => (
                         <th
                           key={row.id}
                           className="text-center px-3 py-2.5 text-xs font-medium uppercase tracking-wider"
