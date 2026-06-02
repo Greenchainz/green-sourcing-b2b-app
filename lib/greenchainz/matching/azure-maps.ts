@@ -9,14 +9,14 @@
  * Ported from Manus prototype. Framework-agnostic — uses fetch only.
  */
 
+import { getAzureCredential, isCredentialConfigured } from "../../azure/credentials";
+
 const AZURE_MAPS_BASE_URL = "https://atlas.microsoft.com";
 const AZURE_MAPS_SUBSCRIPTION_KEY = process.env.AZURE_MAPS_SUBSCRIPTION_KEY || "";
 const AZURE_MAPS_CLIENT_ID = process.env.AZURE_MAPS_CLIENT_ID || "";
 const AZURE_MAPS_SCOPE = "https://atlas.microsoft.com/.default";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const ALLOW_MAPS_KEY_IN_PROD = process.env.ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD === "true";
-
-import { getAzureCredential, isCredentialConfigured } from "../../azure/credentials";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
