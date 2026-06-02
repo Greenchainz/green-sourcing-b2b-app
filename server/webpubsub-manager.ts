@@ -1,4 +1,5 @@
 import { WebPubSubServiceClient } from "@azure/web-pubsub";
+import { DefaultAzureCredential } from "@azure/identity";
 import { getDb } from "./db";
 import { rfqMessages, rfqThreads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -14,12 +15,26 @@ let _clientInitialized = false;
 function getClient(): WebPubSubServiceClient | null {
   if (!_clientInitialized) {
     _clientInitialized = true;
+    const endpoint = process.env.AZURE_WEBPUBSUB_ENDPOINT;
     const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
-    if (connectionString) {
+
+    if (endpoint) {
+      try {
+        _client = new WebPubSubServiceClient(endpoint, new DefaultAzureCredential(), hubName);
+        console.log("[WebPubSub] Using managed identity authentication");
+      } catch (error) {
+        console.warn("[WebPubSub] Failed to initialize with managed identity:", error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    if (!_client && connectionString) {
       _client = new WebPubSubServiceClient(connectionString, hubName);
-    } else {
+      console.log("[WebPubSub] Using connection-string authentication fallback");
+    }
+
+    if (!_client) {
       console.warn(
-        "[WebPubSub] AZURE_WEBPUBSUB_CONNECTION_STRING not set — real-time notifications disabled"
+        "[WebPubSub] Neither AZURE_WEBPUBSUB_ENDPOINT nor AZURE_WEBPUBSUB_CONNECTION_STRING is configured — real-time notifications disabled"
       );
     }
   }
@@ -125,23 +140,23 @@ export async function sendMessageToThread(
   const c = getClient();
 
   if (c) {
-  // Deliver to recipient
-  await c.sendToUser(`user-${isBuyer ? threadData.supplierId : threadData.buyerId}`, {
-    type: "message",
-    threadId,
-    senderId: userId,
-    senderType: isBuyer ? "buyer" : "supplier",
-    content: message,
-    timestamp: now.toISOString(),
-  });
+    // Deliver to recipient
+    await c.sendToUser(`user-${isBuyer ? threadData.supplierId : threadData.buyerId}`, {
+      type: "message",
+      threadId,
+      senderId: userId,
+      senderType: isBuyer ? "buyer" : "supplier",
+      content: message,
+      timestamp: now.toISOString(),
+    });
 
-  // Confirm to sender
-  await c.sendToUser(`user-${userId}`, {
-    type: "message_sent",
-    threadId,
-    messageId: insertedMessage?.id,
-    timestamp: now.toISOString(),
-  });
+    // Confirm to sender
+    await c.sendToUser(`user-${userId}`, {
+      type: "message_sent",
+      threadId,
+      messageId: insertedMessage?.id,
+      timestamp: now.toISOString(),
+    });
   } // end if (c)
 
   return {
