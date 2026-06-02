@@ -18,7 +18,6 @@
 
 import { BlobServiceClient } from "@azure/storage-blob";
 import { getAzureCredential } from "./credentials";
-let sql: any;
 
 function getMssqlUnavailableError(): Error {
     return new Error(
@@ -220,29 +219,6 @@ export async function uploadFileToBlob(
 // ============================================================================
 // AZURE SQL DATABASE (Products, Suppliers, Users)
 // ============================================================================
-
-/**
- * Azure SQL configuration with connection pooling
- */
-const sqlConfig: any = {
-    user: process.env.AZURE_SQL_USER,
-    password: process.env.AZURE_SQL_PASSWORD,
-    server: process.env.AZURE_SQL_SERVER || '', // e.g., 'greenchainz.database.windows.net'
-    database: process.env.AZURE_SQL_DATABASE,
-    pool: {
-        max: 20,           // Increased pool size for better concurrency
-        min: 2,
-        idleTimeoutMillis: 30000,
-        acquireTimeoutMillis: 30000,  // Added acquire timeout
-    },
-    options: {
-        encrypt: true,
-        trustServerCertificate: false,
-        connectTimeout: 15000,
-        requestTimeout: 30000,  // Added request timeout
-        enableArithAbort: true,  // Required for newer SQL Server versions
-    },
-};
 
 // Connection pool (singleton)
 let sqlPool: any | null = null;
