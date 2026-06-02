@@ -5,21 +5,72 @@
  * they join a call, then persists it in users.acs_user_id so subsequent
  * calls reuse the same identity (preserving display name history, etc.).
  *
- * Required env var: AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING
+ * Preferred env vars: AZURE_COMMUNICATION_SERVICES_ENDPOINT + AZURE_MI_CLIENT_ID
+ * Fallback env var (dev/emergency): AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING
  */
 
 import { CommunicationIdentityClient } from '@azure/communication-identity';
+import { getAzureCredential } from '../lib/azure/credentials';
 import { getDb } from './db';
 import { users } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
 
 let _client: CommunicationIdentityClient | null = null;
 
+function getAcsEndpointFromConnectionString(connectionString: string): string {
+  const match = connectionString.match(/endpoint=([^;]+)/i);
+  if (!match?.[1]) {
+    throw new Error('Cannot parse ACS endpoint from connection string');
+  }
+  return match[1];
+}
+
+function getAcsSettings(): { endpoint: string; connectionString?: string } {
+  const endpoint =
+    process.env.AZURE_COMMUNICATION_SERVICES_ENDPOINT ||
+    process.env.ACS_ENDPOINT_URL ||
+    '';
+  const connectionString = process.env.AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const allowConnectionStringInProd =
+    process.env.ALLOW_ACS_CONNECTION_STRING_IN_PROD === 'true';
+
+  if (endpoint) {
+    return { endpoint, connectionString };
+  }
+
+  if (connectionString) {
+    if (isProduction && !allowConnectionStringInProd) {
+      throw new Error(
+        'ACS connection-string auth is blocked in production. ' +
+        'Use AZURE_COMMUNICATION_SERVICES_ENDPOINT + managed identity or set ' +
+        'ALLOW_ACS_CONNECTION_STRING_IN_PROD=true as an emergency override.'
+      );
+    }
+
+    return {
+      endpoint: getAcsEndpointFromConnectionString(connectionString),
+      connectionString,
+    };
+  }
+
+  throw new Error(
+    'ACS is not configured. Set AZURE_COMMUNICATION_SERVICES_ENDPOINT for managed identity, ' +
+    'or AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING for local development.'
+  );
+}
+
 function getClient(): CommunicationIdentityClient {
   if (!_client) {
-    const cs = process.env.AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING;
-    if (!cs) throw new Error('AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING is not set');
-    _client = new CommunicationIdentityClient(cs);
+    const { endpoint, connectionString } = getAcsSettings();
+
+    if (connectionString) {
+      _client = new CommunicationIdentityClient(connectionString);
+      console.log('[ACS] Using connection-string authentication fallback');
+    } else {
+      _client = new CommunicationIdentityClient(endpoint, getAzureCredential());
+      console.log('[ACS] Using managed identity authentication');
+    }
   }
   return _client;
 }
@@ -72,9 +123,5 @@ export async function getAcsTokenForUser(userId: number): Promise<AcsTokenResult
  * Required by the client SDK to know which region to connect to.
  */
 export function getAcsEndpoint(): string {
-  const cs = process.env.AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING ?? '';
-  // Connection string format: endpoint=https://<resource>.communication.azure.com/;accesskey=...
-  const match = cs.match(/endpoint=([^;]+)/i);
-  if (!match) throw new Error('Cannot parse ACS endpoint from connection string');
-  return match[1];
+  return getAcsSettings().endpoint;
 }
