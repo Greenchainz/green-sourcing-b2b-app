@@ -29,6 +29,7 @@ import { isLocalMode } from "../../lib/founder-video-storage";
 import { registerEmailAuthRoutes } from "./email-auth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { sdk } from "./sdk";
+import { runStartupSecurityPreflight } from "./security-preflight";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -110,6 +111,12 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const { loadSecrets } = await import("../../lib/secrets");
   await loadSecrets();
+
+  const preflight = runStartupSecurityPreflight();
+  if (process.env.NODE_ENV === "production" && preflight.hasFailures) {
+    console.error("[startup] FATAL: Security preflight failed in production");
+    process.exit(1);
+  }
 
   if (process.env.NODE_ENV === "production") {
     const required: Record<string, string | undefined> = {
