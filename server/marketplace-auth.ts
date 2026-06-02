@@ -9,6 +9,7 @@
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { MarketplaceSubscription } from "./marketplace-landing";
+import { getRequiredEnv } from "./_core/oauth-env";
 
 const AZURE_AD_JWKS = createRemoteJWKSet(
   new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys")
@@ -56,7 +57,7 @@ export async function validateMarketplaceToken(token: string): Promise<boolean> 
       `https://sts.windows.net/${process.env.AZURE_AD_TENANT_ID}/`,
       `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
     ];
-    
+
     if (!validIssuers.some(issuer => payload.iss.startsWith(issuer))) {
       console.error("[Marketplace Auth] Invalid issuer:", payload.iss);
       return false;
@@ -133,12 +134,15 @@ export async function resolveSubscription(token: string): Promise<MarketplaceSub
  * (activating subscriptions, reporting usage, etc.)
  */
 export async function getMarketplaceAccessToken(): Promise<string> {
-  const tokenUrl = `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/oauth2/v2.0/token`;
+  const tenantId = getRequiredEnv("AZURE_AD_TENANT_ID");
+  const clientId = getRequiredEnv("AZURE_AD_CLIENT_ID");
+  const clientSecret = getRequiredEnv("AZURE_AD_CLIENT_SECRET");
+  const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
   const params = new URLSearchParams({
     grant_type: "client_credentials",
-    client_id: process.env.AZURE_AD_CLIENT_ID || "",
-    client_secret: process.env.AZURE_AD_CLIENT_SECRET || "",
+    client_id: clientId,
+    client_secret: clientSecret,
     scope: "https://marketplaceapi.microsoft.com/.default",
   });
 
