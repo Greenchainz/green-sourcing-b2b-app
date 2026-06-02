@@ -7,6 +7,9 @@ import { getAzureCredential } from "./azure/credentials";
 function getQueueServiceClient(): QueueServiceClient {
   const storageAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
   const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  const isProduction = process.env.NODE_ENV === "production";
+  const allowConnectionStringInProd =
+    process.env.ALLOW_STORAGE_CONNECTION_STRING_IN_PROD === "true";
 
   if (!storageAccountName && !connectionString) {
     throw new Error(
@@ -25,6 +28,14 @@ function getQueueServiceClient(): QueueServiceClient {
 
   // Fallback to connection string (local development)
   if (connectionString) {
+    if (isProduction && !allowConnectionStringInProd) {
+      throw new Error(
+        "Connection-string queue auth is blocked in production. " +
+        "Use managed identity (AZURE_STORAGE_ACCOUNT_NAME + AZURE_MI_CLIENT_ID) or set " +
+        "ALLOW_STORAGE_CONNECTION_STRING_IN_PROD=true as an emergency override."
+      );
+    }
+
     return QueueServiceClient.fromConnectionString(connectionString);
   }
 

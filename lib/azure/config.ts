@@ -150,6 +150,9 @@ export function getBlobServiceClient(): BlobServiceClient {
     if (!blobService) {
         const storageAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
         const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+        const isProduction = process.env.NODE_ENV === "production";
+        const allowConnectionStringInProd =
+            process.env.ALLOW_STORAGE_CONNECTION_STRING_IN_PROD === "true";
 
         if (!storageAccountName && !connectionString) {
             throw new Error(
@@ -166,6 +169,14 @@ export function getBlobServiceClient(): BlobServiceClient {
             blobService = new BlobServiceClient(accountUrl, credential);
             console.log("✅ Legacy blob service client initialized with Managed Identity");
         } else if (connectionString) {
+            if (isProduction && !allowConnectionStringInProd) {
+                throw new Error(
+                    "Connection-string blob auth is blocked in production. " +
+                    "Use managed identity (AZURE_STORAGE_ACCOUNT_NAME + AZURE_MI_CLIENT_ID) or set " +
+                    "ALLOW_STORAGE_CONNECTION_STRING_IN_PROD=true as an emergency override."
+                );
+            }
+
             // Fallback to connection string (local development)
             blobService = BlobServiceClient.fromConnectionString(connectionString);
             console.log("✅ Legacy blob service client initialized with connection string (local dev)");
