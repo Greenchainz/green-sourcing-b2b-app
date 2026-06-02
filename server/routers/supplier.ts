@@ -18,10 +18,10 @@ import { getSupplierVerificationSnapshot } from "../services/supplier-verificati
  */
 
 const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
-  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
-  "VA","WA","WV","WI","WY",
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
+  "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT",
+  "VA", "WA", "WV", "WI", "WY",
 ] as const;
 
 const onboardingInput = z.object({
@@ -33,6 +33,8 @@ const onboardingInput = z.object({
   description: z.string().optional(),
   materialCategories: z.array(z.string()).min(1, "Select at least one material category"),
   certifications: z.array(z.string()).optional(),
+  epdUrl: z.string().url("Valid EPD URL required").optional().or(z.literal("")),
+  epdProgramOperator: z.string().max(150).optional(),
   // ── Supplier location — required for distance-based RFQ routing ──────────
   // Without state, isWithinServiceArea() can't do a state-match fallback and
   // the supplier becomes invisible to all radius-based routing.
@@ -75,6 +77,8 @@ export const supplierOnboardingRouter = router({
             description: input.description ?? null,
             materialCategories: input.materialCategories,
             certifications: input.certifications ?? [],
+            epdUrl: input.epdUrl || null,
+            epdProgramOperator: input.epdProgramOperator ?? null,
             city: input.city ?? null,
             state: input.state ?? null,
             zipCode: input.zipCode ?? null,
@@ -103,6 +107,8 @@ export const supplierOnboardingRouter = router({
           description: input.description ?? null,
           materialCategories: input.materialCategories,
           certifications: input.certifications ?? [],
+          epdUrl: input.epdUrl || null,
+          epdProgramOperator: input.epdProgramOperator ?? null,
           city: input.city ?? null,
           state: input.state ?? null,
           zipCode: input.zipCode ?? null,
@@ -153,6 +159,8 @@ export const supplierOnboardingRouter = router({
         description: suppliers.description,
         materialCategories: suppliers.materialCategories,
         certifications: suppliers.certifications,
+        epdUrl: suppliers.epdUrl,
+        epdProgramOperator: suppliers.epdProgramOperator,
         verificationStatus: suppliers.verificationStatus,
         verified: suppliers.verified,
         verifiedSupplierStatus: suppliers.verifiedSupplierStatus,
@@ -190,17 +198,17 @@ export const supplierOnboardingRouter = router({
 
   // ── Read-only computed supplier verification badge snapshot ───────────────
   getVerificationBadge: publicProcedure
-  .input(
-    z.object({
-      supplierId: z.number().int().positive(),
-      forceRefresh: z.boolean().optional(),
-    })
-  )
-  .query(async ({ input }) => {
-    return getSupplierVerificationSnapshot(input.supplierId, {
-      forceRefresh: input.forceRefresh ?? false,
-    });
-  }),
+    .input(
+      z.object({
+        supplierId: z.number().int().positive(),
+        forceRefresh: z.boolean().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      return getSupplierVerificationSnapshot(input.supplierId, {
+        forceRefresh: input.forceRefresh ?? false,
+      });
+    }),
 
   // ── Update an existing supplier profile ──────────────────────────────────
   updateProfile: protectedProcedure
@@ -222,6 +230,8 @@ export const supplierOnboardingRouter = router({
         .set({
           ...input,
           website: input.website || null,
+          epdUrl: input.epdUrl || null,
+          epdProgramOperator: input.epdProgramOperator ?? null,
           // decimal columns must be coerced to string for Drizzle
           minOrderQuantity: input.minOrderQuantity != null ? String(input.minOrderQuantity) : null,
           maxOrderQuantity: input.maxOrderQuantity != null ? String(input.maxOrderQuantity) : null,

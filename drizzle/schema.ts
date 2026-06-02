@@ -1966,8 +1966,8 @@ export type ConciergeRoute = typeof conciergeRoutes.$inferSelect;
 export type InsertConciergeRoute = typeof conciergeRoutes.$inferInsert;
 // ── App Settings (key-value store for OAuth tokens, feature flags, etc.) ──────
 export const appSettings = pgTable("app_settings", {
-  key:       text("key").primaryKey(),
-  value:     text("value").notNull(),
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -2072,8 +2072,8 @@ export const rfqMatchRuns = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
-    draftIdx:     index("idx_match_runs_draft").on(table.draftId),
-    userIdx:      index("idx_match_runs_user").on(table.userId),
+    draftIdx: index("idx_match_runs_draft").on(table.draftId),
+    userIdx: index("idx_match_runs_user").on(table.userId),
     createdAtIdx: index("idx_match_runs_created_at").on(table.createdAt),
   }),
 );
@@ -2088,19 +2088,19 @@ export type InsertRfqMatchRun = typeof rfqMatchRuns.$inferInsert;
 export const rfqSupplierInvites = pgTable(
   "rfq_supplier_invites",
   {
-    id:          serial("id").primaryKey(),
-    rfqId:       integer("rfq_id").notNull(),
-    supplierId:  integer("supplier_id").notNull(),
-    matchScore:  decimal("match_score", { precision: 5, scale: 2 }),
-    emailSent:   boolean("email_sent").default(false).notNull(),
-    inAppSent:   boolean("in_app_sent").default(false).notNull(),
+    id: serial("id").primaryKey(),
+    rfqId: integer("rfq_id").notNull(),
+    supplierId: integer("supplier_id").notNull(),
+    matchScore: decimal("match_score", { precision: 5, scale: 2 }),
+    emailSent: boolean("email_sent").default(false).notNull(),
+    inAppSent: boolean("in_app_sent").default(false).notNull(),
     respondedAt: timestamp("responded_at"),   // set when rfqBid is inserted
-    notifiedAt:  timestamp("notified_at").defaultNow().notNull(),
+    notifiedAt: timestamp("notified_at").defaultNow().notNull(),
   },
   (table) => ({
-    rfqIdx:      index("idx_rsi_rfq").on(table.rfqId),
+    rfqIdx: index("idx_rsi_rfq").on(table.rfqId),
     supplierIdx: index("idx_rsi_supplier").on(table.supplierId),
-    uniquePair:  uniqueIndex("idx_rsi_unique").on(table.rfqId, table.supplierId),
+    uniquePair: uniqueIndex("idx_rsi_unique").on(table.rfqId, table.supplierId),
   }),
 );
 
@@ -2114,49 +2114,49 @@ export type RfqSupplierInvite = typeof rfqSupplierInvites.$inferSelect;
 export const supplierSustainabilityProfiles = pgTable(
   "supplier_sustainability_profiles",
   {
-    id:           serial("id").primaryKey(),
-    supplierId:   integer("supplier_id").notNull().unique(),
+    id: serial("id").primaryKey(),
+    supplierId: integer("supplier_id").notNull().unique(),
 
     // ── Data ladder ─────────────────────────────────────────────────────────
     // Inferred by the server from the combination of fields below.
     // L0 = proxy/none · L1 = self-reported · L2 = third-party · L3 = EPD
     dataQualityLevel: varchar("data_quality_level", { length: 2 }).default("L0").notNull(),
-    dataSourceType:   varchar("data_source_type",   { length: 50 }),
+    dataSourceType: varchar("data_source_type", { length: 50 }),
 
     // ── EPD / product documentation ─────────────────────────────────────────
-    hasEpd:       boolean("has_epd").default(false).notNull(),
+    hasEpd: boolean("has_epd").default(false).notNull(),
     epdReference: text("epd_reference"),
 
     // ── Scope 1 + 2 emissions (tCO₂e) ──────────────────────────────────────
     // Computed by emissions-calculator.ts from energy inputs below
     scope1Emissions: decimal("scope1_emissions", { precision: 14, scale: 4 }),
     scope2Emissions: decimal("scope2_emissions", { precision: 14, scale: 4 }),
-    totalEmissions:  decimal("total_emissions",  { precision: 14, scale: 4 }),
+    totalEmissions: decimal("total_emissions", { precision: 14, scale: 4 }),
 
     // ── SME-friendly calculator inputs ───────────────────────────────────────
     // Suppliers enter their annual utility bill numbers — we do the math.
-    electricityKwh:    decimal("electricity_kwh",    { precision: 14, scale: 2 }),
-    naturalGasMmbtu:   decimal("natural_gas_mmbtu",  { precision: 14, scale: 2 }),
-    dieselGallons:     decimal("diesel_gallons",      { precision: 14, scale: 2 }),
+    electricityKwh: decimal("electricity_kwh", { precision: 14, scale: 2 }),
+    naturalGasMmbtu: decimal("natural_gas_mmbtu", { precision: 14, scale: 2 }),
+    dieselGallons: decimal("diesel_gallons", { precision: 14, scale: 2 }),
 
     // ── Spend-based fallback (L0 only) ───────────────────────────────────────
-    annualRevenue:  decimal("annual_revenue", { precision: 16, scale: 2 }),
+    annualRevenue: decimal("annual_revenue", { precision: 16, scale: 2 }),
 
     // ── Certifications ────────────────────────────────────────────────────────
     certifications: json("certifications").$type<string[]>().default([]),
 
     // ── Audit trail (required for all value changes) ─────────────────────────
     calculationMethod: varchar("calculation_method", { length: 100 }),  // "energy_bill" | "spend_based" | "epd" | "manual"
-    lastUpdatedBy:     integer("last_updated_by"),  // users.id of who last saved
-    verifiedAt:        timestamp("verified_at"),
-    verifiedBy:        integer("verified_by"),      // admin users.id
+    lastUpdatedBy: integer("last_updated_by"),  // users.id of who last saved
+    verifiedAt: timestamp("verified_at"),
+    verifiedBy: integer("verified_by"),      // admin users.id
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     supplierIdx: index("idx_ssp_supplier").on(table.supplierId),
-    qualityIdx:  index("idx_ssp_quality").on(table.dataQualityLevel),
+    qualityIdx: index("idx_ssp_quality").on(table.dataQualityLevel),
   }),
 );
 
@@ -2188,17 +2188,17 @@ export const blockchainAnchors = pgTable(
 
     // What was anchored
     artifactType: varchar("artifact_type", { length: 64 }).notNull(),
-    artifactId:   varchar("artifact_id",   { length: 255 }).notNull(),
+    artifactId: varchar("artifact_id", { length: 255 }).notNull(),
 
     // Cryptographic proof — keccak256 hashes (66 chars: "0x" + 64 hex)
     artifactHash: varchar("artifact_hash", { length: 66 }).notNull(),
-    contextHash:  varchar("context_hash",  { length: 66 }).notNull(),
+    contextHash: varchar("context_hash", { length: 66 }).notNull(),
 
     // Chain location
-    chainId:         integer("chain_id").notNull(),
+    chainId: integer("chain_id").notNull(),
     contractAddress: varchar("contract_address", { length: 42 }).notNull(),
-    txHash:          varchar("tx_hash", { length: 66 }).notNull().unique(),
-    blockNumber:     integer("block_number"),
+    txHash: varchar("tx_hash", { length: 66 }).notNull().unique(),
+    blockNumber: integer("block_number"),
 
     // Internal state — never alter historical proof records
     verificationStatus: varchar("verification_status", { length: 32 })
@@ -2206,13 +2206,13 @@ export const blockchainAnchors = pgTable(
       .default("anchored"),
 
     anchoredAt: timestamp("anchored_at", { withTimezone: true }).notNull(),
-    createdAt:  timestamp("created_at",  { withTimezone: true }).notNull().defaultNow(),
-    updatedAt:  timestamp("updated_at",  { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    artifactIdx:  index("idx_bc_anchors_artifact").on(table.artifactType, table.artifactId),
-    txHashIdx:    index("idx_bc_anchors_tx_hash").on(table.txHash),
-    userIdx:      index("idx_bc_anchors_user").on(table.anchoredByUserId),
+    artifactIdx: index("idx_bc_anchors_artifact").on(table.artifactType, table.artifactId),
+    txHashIdx: index("idx_bc_anchors_tx_hash").on(table.txHash),
+    userIdx: index("idx_bc_anchors_user").on(table.anchoredByUserId),
     anchoredAtIdx: index("idx_bc_anchors_anchored_at").on(table.anchoredAt),
   })
 );
