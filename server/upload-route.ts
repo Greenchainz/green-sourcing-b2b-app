@@ -83,7 +83,10 @@ uploadRouter.post("/supplier/upload-image", materialImageUpload.single("file"), 
       imageUrl = url;
     } catch (storageErr) {
       console.warn("[material-image] Azure storage not configured, skipping blob upload");
-      res.status(503).json({ error: "Image storage not configured. Set AZURE_STORAGE_CONNECTION_STRING." });
+      res.status(503).json({
+        error:
+          "Image storage not configured. Use managed identity (AZURE_STORAGE_ACCOUNT_NAME + AZURE_MI_CLIENT_ID) or set AZURE_STORAGE_CONNECTION_STRING for local development.",
+      });
       return;
     }
 
