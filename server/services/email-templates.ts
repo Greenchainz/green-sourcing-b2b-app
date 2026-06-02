@@ -6,7 +6,6 @@
  */
 
 const BRAND_GREEN = "#15803d";
-const BRAND_GREEN_LIGHT = "#16a34a";
 const BRAND_BG = "#f8faf8";
 const TEXT_PRIMARY = "#1a1a1a";
 const TEXT_MUTED = "#6b7280";

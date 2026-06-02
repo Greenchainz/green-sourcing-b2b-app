@@ -11,7 +11,7 @@
 
 import { getDb } from "../db";
 import { priceIndices, scraperRuns } from "../../drizzle/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 // ─── FRED Series → GreenChainz category mapping ───────────────────────────────
 // PPI series IDs from FRED (all public, no key needed up to 120 req/min)

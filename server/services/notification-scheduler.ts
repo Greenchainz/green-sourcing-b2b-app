@@ -18,7 +18,6 @@ import {
   type StreakReminderData,
   type NewMaterialAlertData,
 } from "./email-templates";
-import { query, queryMany } from "../../lib/pg-pool";
 
 interface EmailPayload {
   to: string;

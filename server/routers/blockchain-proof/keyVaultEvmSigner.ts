@@ -46,7 +46,7 @@ function buildLocalSigner(privateKey: `0x${string}`): EvmSigner {
       return account.address;
     },
 
-    async writeContract(_args) {
+    async writeContract(args) {
       return walletClient.writeContract({
         account,
         chain: polygonChain,
