@@ -45,9 +45,9 @@ docs/archive/    DEAD historical docs — do not code from these
 
 ## Auth — Read This Before Touching Anything Auth-Related
 
-- **Production:** Custom Express OAuth (Microsoft Entra ID PKCE flow) — `server/_core/oauth-providers.ts`
-- **Local dev:** `registerDevAuthShim()` in `server/_core/easy-auth.ts` simulates the flow
-- **Session:** HttpOnly JWT cookie (`greenchainz-auth-token`), verified server-side via `sdk.authenticateRequest(req)`
+- **Production:** Custom Express OAuth (Microsoft Entra ID OAuth 2.0) — `server/_core/oauth-providers.ts`
+- **Local dev:** set `APP_BASE_URL=http://localhost:3000` and ensure Entra redirect URIs include localhost
+- **Session:** HttpOnly JWT cookie (`app_session_id`), verified server-side via `sdk.authenticateRequest(req)`
 - **tRPC guard:** `protectedProcedure` in `server/_core/trpc.ts` — use this, never roll your own
 - **Role hierarchy:** `admin > architect > supplier > public`
 - Client ID: `8b597068-9347-4e99-8860-8c4e9a9bc112`

@@ -156,12 +156,12 @@ export function getSecret(key: string): string | undefined {
  * Call after loadSecrets() to confirm the app is properly configured.
  */
 export function validateSecrets(): boolean {
-  // With Easy Auth enabled, OAuth client secrets are managed by the Azure
-  // Container Apps sidecar — we no longer need them in our process.env.
-  // Only DATABASE_URL and JWT_SECRET (for legacy session compat) are required.
+  // This app performs OAuth code exchange server-side, so the Entra client secret
+  // must be available at runtime (Key Vault in prod, env vars in dev).
   const requiredSecrets = [
     "DATABASE_URL",
     "JWT_SECRET",
+    "AZURE_AD_CLIENT_SECRET",
   ];
 
   const missing = requiredSecrets.filter((key) => !getSecret(key));

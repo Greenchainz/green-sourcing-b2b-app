@@ -25,7 +25,7 @@ export async function setupVite(app: Express, server: Server) {
   app.use("{*path}", async (req, res, next) => {
     const url = req.originalUrl;
 
-    // Skip /api and /.auth routes — Easy Auth sidecar handles /.auth/*
+    // Skip /api routes (Express) and /.auth (legacy/reserved path)
     if (url.startsWith("/api") || url.startsWith("/.auth")) {
       res.status(404).json({ error: "Route not found", path: url });
       return;

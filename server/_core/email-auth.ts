@@ -1,8 +1,8 @@
 /**
  * Email/Password Authentication
  *
- * Additive auth path for suppliers who don't have a Google or Microsoft account.
- * Does NOT replace Easy Auth ΓÇö production SSO users continue through /.auth/*.
+ * Additive auth path for users who don't (or can't) use an OAuth provider.
+ * This app uses custom Express OAuth routes + JWT session cookies (no Azure Easy Auth sidecar).
  *
  * Stores credentials in a separate `email_credentials` table:
  *   - Password is hashed with scrypt (Node built-in, no extra deps)
