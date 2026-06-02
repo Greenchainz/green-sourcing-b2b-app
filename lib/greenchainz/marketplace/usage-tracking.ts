@@ -6,7 +6,7 @@
  *
  * Ported from Manus prototype. Uses PostgreSQL via lib/db.ts.
  */
-import { query, queryOne, queryMany } from "../../db";
+import { query, queryMany } from "../../db";
 import { getBuyerTierLimits, getSupplierTierLimits } from "./subscription-service";
 
 // ─── Track Usage ─────────────────────────────────────────────────────────────
