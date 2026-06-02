@@ -10,8 +10,8 @@
  * 
  * Note: Requires Azure Communication Services credentials
  * Set these environment variables:
- * - ACS_CONNECTION_STRING
- * - ACS_ENDPOINT_URL
+ * - Preferred: AZURE_COMMUNICATION_SERVICES_ENDPOINT (+ managed identity)
+ * - Fallback: AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING
  */
 
 import { broadcastNotification } from "./webpubsub-manager";
@@ -36,7 +36,19 @@ const acsCallSessionStore = createDistributedCallSessionStore<ACSVideoCallSessio
  * Check if Azure Communication Services is configured
  */
 export function isACSConfigured(): boolean {
-  return !!(process.env.ACS_CONNECTION_STRING && process.env.ACS_ENDPOINT_URL);
+  const endpoint =
+    process.env.AZURE_COMMUNICATION_SERVICES_ENDPOINT ||
+    process.env.ACS_ENDPOINT_URL;
+  const connectionString = process.env.AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING;
+  const isProduction = process.env.NODE_ENV === "production";
+  const allowConnectionStringInProd =
+    process.env.ALLOW_ACS_CONNECTION_STRING_IN_PROD === "true";
+
+  if (endpoint) return true;
+  if (connectionString) {
+    return !isProduction || allowConnectionStringInProd;
+  }
+  return false;
 }
 
 /**
