@@ -68,14 +68,14 @@ const CERTIFICATIONS = [
 ];
 
 const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
-  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
-  "VA","WA","WV","WI","WY",
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
+  "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT",
+  "VA", "WA", "WV", "WI", "WY",
 ] as const;
 
 const SERVICE_RADIUS_OPTIONS = [
-  { value: 50,  label: "50 miles — very local" },
+  { value: 50, label: "50 miles — very local" },
   { value: 100, label: "100 miles" },
   { value: 250, label: "250 miles" },
   { value: 500, label: "500 miles — regional" },
@@ -116,6 +116,13 @@ const schema = z.object({
     .array(z.string())
     .min(1, "Select at least one category"),
   certifications: z.array(z.string()).optional(),
+  epdUrl: z
+    .string()
+    .transform(normalizeWebsite)
+    .refine(isValidUrlOrEmpty, {
+      message: "Enter a valid EPD URL",
+    }),
+  epdProgramOperator: z.string().optional(),
   // ── Location — drives distance-based RFQ routing fallback ───────────────
   city: z.string().optional(),
   state: z.string().optional(),   // 2-char state code
@@ -140,6 +147,8 @@ type SupplierProfile = {
   description?: string;
   materialCategories?: string[];
   certifications?: string[];
+  epdUrl?: string | null;
+  epdProgramOperator?: string | null;
   city?: string | null;
   state?: string | null;
   zipCode?: string | null;
@@ -183,33 +192,30 @@ function StepIndicator({ current }: { current: number }) {
           <div key={i} className="flex items-center">
             <div className="flex flex-col items-center gap-1.5">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all text-sm font-semibold ${
-                  done
+                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all text-sm font-semibold ${done
                     ? "border-emerald-700 bg-emerald-700 text-white"
                     : active
-                    ? "border-emerald-700 bg-white text-emerald-700"
-                    : "border-gray-300 bg-white text-gray-400"
-                }`}
+                      ? "border-emerald-700 bg-white text-emerald-700"
+                      : "border-gray-300 bg-white text-gray-400"
+                  }`}
               >
                 {done ? <CheckCircle className="w-5 h-5" /> : i + 1}
               </div>
               <span
-                className={`text-xs font-medium hidden sm:block ${
-                  active
+                className={`text-xs font-medium hidden sm:block ${active
                     ? "text-emerald-700"
                     : done
-                    ? "text-emerald-700"
-                    : "text-gray-400"
-                }`}
+                      ? "text-emerald-700"
+                      : "text-gray-400"
+                  }`}
               >
                 {step.label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
               <div
-                className={`h-0.5 w-8 sm:w-14 mx-1 transition-all ${
-                  i < current ? "bg-emerald-700" : "bg-gray-200"
-                }`}
+                className={`h-0.5 w-8 sm:w-14 mx-1 transition-all ${i < current ? "bg-emerald-700" : "bg-gray-200"
+                  }`}
               />
             )}
           </div>
@@ -245,11 +251,10 @@ function CheckboxGroup({
         {options.map((opt) => (
           <label
             key={opt}
-            className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all hover:border-emerald-700/50 hover:bg-emerald-700/5 text-sm ${
-              value.includes(opt)
+            className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all hover:border-emerald-700/50 hover:bg-emerald-700/5 text-sm ${value.includes(opt)
                 ? "border-emerald-700 bg-emerald-700/10"
                 : "border-gray-200"
-            }`}
+              }`}
           >
             <Checkbox
               checked={value.includes(opt)}
@@ -304,6 +309,8 @@ export default function SupplierOnboarding() {
       description: "",
       materialCategories: [],
       certifications: [],
+      epdUrl: "",
+      epdProgramOperator: "",
     },
   });
 
@@ -320,6 +327,8 @@ export default function SupplierOnboarding() {
       description: p.description ?? "",
       materialCategories: p.materialCategories ?? [],
       certifications: p.certifications ?? [],
+      epdUrl: p.epdUrl ?? "",
+      epdProgramOperator: p.epdProgramOperator ?? "",
       city: p.city ?? "",
       state: p.state ?? "",
       zipCode: p.zipCode ?? "",
@@ -577,6 +586,32 @@ export default function SupplierOnboarding() {
                     value={certifications}
                     onChange={(v) => setValue("certifications", v)}
                   />
+                  <div className="mt-5 space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="epdUrl">EPD Link</Label>
+                      <Input
+                        id="epdUrl"
+                        type="url"
+                        placeholder="https://buildingtransparency.org/..."
+                        {...register("epdUrl")}
+                        className={errors.epdUrl ? "border-red-500" : ""}
+                      />
+                      {errors.epdUrl && (
+                        <p className="text-sm text-red-500">{errors.epdUrl.message}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Add one public EPD URL from EC3, EPD International, or your product page. You can add per-material EPDs later in your dashboard.
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="epdProgramOperator">EPD Program Operator</Label>
+                      <Input
+                        id="epdProgramOperator"
+                        placeholder="e.g. EC3, EPD International"
+                        {...register("epdProgramOperator")}
+                      />
+                    </div>
+                  </div>
                   <p className="text-sm font-medium text-muted-foreground mt-3">
                     Certifications are optional — you can add them later.
                   </p>
@@ -687,11 +722,10 @@ export default function SupplierOnboarding() {
                                 onClick={() =>
                                   setValue("serviceRadiusMiles", selected ? null : opt.value)
                                 }
-                                className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
-                                  selected
+                                className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${selected
                                     ? "bg-emerald-700 text-white border-emerald-700"
                                     : "border-border hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                                }`}
+                                  }`}
                               >
                                 {opt.label}
                               </button>
@@ -720,11 +754,10 @@ export default function SupplierOnboarding() {
                                     : [...current, state];
                                   setValue("statesServed", next.length > 0 ? next : null);
                                 }}
-                                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                                  selected
+                                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${selected
                                     ? "bg-emerald-700 text-white"
                                     : "bg-muted text-muted-foreground hover:bg-emerald-100 dark:hover:bg-emerald-900/20"
-                                }`}
+                                  }`}
                               >
                                 {state}
                               </button>
@@ -945,6 +978,16 @@ export default function SupplierOnboarding() {
                         </span>
                       )}
                     </div>
+                    <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div className="sm:col-span-2">
+                        <dt className="text-muted-foreground">EPD Link</dt>
+                        <dd className="font-medium break-all">{allValues.epdUrl || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">EPD Program Operator</dt>
+                        <dd className="font-medium">{allValues.epdProgramOperator || "—"}</dd>
+                      </div>
+                    </dl>
                   </div>
 
                   {/* Service Area Summary */}
@@ -972,10 +1015,10 @@ export default function SupplierOnboarding() {
                           {[allValues.city, allValues.state, allValues.zipCode]
                             .filter(Boolean)
                             .join(", ") || (
-                            <span className="text-amber-600 font-normal text-xs">
-                              ⚠ Not set — RFQ routing will be limited
-                            </span>
-                          )}
+                              <span className="text-amber-600 font-normal text-xs">
+                                ⚠ Not set — RFQ routing will be limited
+                              </span>
+                            )}
                         </dd>
                       </div>
                       <div>
@@ -984,10 +1027,10 @@ export default function SupplierOnboarding() {
                           {allValues.shipsNationwide
                             ? "Nationwide"
                             : allValues.serviceRadiusMiles
-                            ? `${allValues.serviceRadiusMiles} mile radius`
-                            : ((allValues.statesServed ?? []) as string[]).length > 0
-                            ? `${((allValues.statesServed ?? []) as string[]).join(", ")}`
-                            : "Default (by material type)"}
+                              ? `${allValues.serviceRadiusMiles} mile radius`
+                              : ((allValues.statesServed ?? []) as string[]).length > 0
+                                ? `${((allValues.statesServed ?? []) as string[]).join(", ")}`
+                                : "Default (by material type)"}
                         </dd>
                       </div>
                     </dl>
@@ -1012,9 +1055,8 @@ export default function SupplierOnboarding() {
               {step < STEPS.length - 1 && (
                 <Button
                   type="button"
-                  className={`flex-1 bg-emerald-700 hover:bg-emerald-800 text-white ${
-                    step === 0 ? "w-full" : ""
-                  }`}
+                  className={`flex-1 bg-emerald-700 hover:bg-emerald-800 text-white ${step === 0 ? "w-full" : ""
+                    }`}
                   onClick={nextStep}
                 >
                   Next
