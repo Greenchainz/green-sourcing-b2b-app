@@ -15,7 +15,6 @@ import {
   scrapedSuppliers,
   scrapedLeads,
   rfqs,
-  rfqItems,
   conciergeRoutes,
 } from "../drizzle/schema";
 import { eq, desc, ilike, or, and, isNotNull, sql } from "drizzle-orm";

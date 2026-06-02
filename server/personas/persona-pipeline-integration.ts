@@ -19,7 +19,7 @@
  */
 
 import { detectPersona, type PersonaDetectionInput } from "./persona-detector";
-import { generatePersonaCopy, type CopyType } from "./persona-copy-generator";
+import { generatePersonaCopy } from "./persona-copy-generator";
 import { type PersonaDetectionResult } from "./persona-detector";
 
 // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ interface StaticTemplate {
 function getStaticTemplate(
   persona: PersonaDetectionResult,
   recipientName: string | null,
-  recipientCompany: string,
+  _recipientCompany: string,
   ctaUrl: string
 ): StaticTemplate {
   const greeting = recipientName ? `Hi ${recipientName},` : "Hi,";
@@ -367,7 +367,7 @@ ${ctaUrl}
 }
 
 function generateFallbackSupplierEmail(
-  supplier: { company_name: string },
+  _supplier: { company_name: string },
   ctaUrl: string
 ): PersonaEmailResult {
   const body = `Hi,

@@ -9,7 +9,7 @@ import {
   ccpsBaselines,
   decisionMakerPersonas,
 } from '../../drizzle/schema';
-import { eq, like, ilike, and, lte, asc, sql, or, not, getTableColumns } from 'drizzle-orm';
+import { eq, like, ilike, and, lte, sql, or, not, getTableColumns } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';

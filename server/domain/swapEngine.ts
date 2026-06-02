@@ -24,11 +24,11 @@
  */
 
 import type { ParsedRfqTextFields } from "../services/document-intelligence";
-import { rankSuppliersWithAgent, type SupplierCandidate, type RfqRequirements } from "../services/rfq-agent";
+import { rankSuppliersWithAgent, type RfqRequirements } from "../services/rfq-agent";
 import { getDb } from "../db";
 import { suppliers, suppliersLocation, supplierMaterialEpds, supplierBuyerFitInputs } from "../../drizzle/schema";
 import { eq, or, inArray, and, gt, isNull, desc } from "drizzle-orm";
-import { getShippingClass, isWithinServiceArea, DEFAULT_RADIUS_MILES } from "../lib/shipping-classes";
+import { getShippingClass, isWithinServiceArea } from "../lib/shipping-classes";
 import { calculateDistance as haversineMiles } from "../location-service";
 import {
   scoreCandidate,

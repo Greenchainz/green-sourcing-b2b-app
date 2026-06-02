@@ -10,7 +10,7 @@
  */
 
 import { invokeLLM } from "./_core/llm";
-import type { Message, InvokeParams, TextContent } from "./_core/llm";
+import type { Message, InvokeParams } from "./_core/llm";
 import { getDb } from "./db";
 import {
   materials,
@@ -18,7 +18,6 @@ import {
   assemblies,
   assemblyComponents,
   ccpsBaselines,
-  decisionMakerPersonas,
   materialCertifications,
   agentConversations,
   agentAnalytics,
@@ -26,8 +25,7 @@ import {
 import type { Material, CcpsBaseline } from "../drizzle/schema";
 import { eq, like, and, or, asc, sql, desc } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
-import { calculateCcps, personaToWeights, calcCarbonDelta } from "./ccps-engine";
-import type { PersonaWeights } from "./ccps-engine";
+import { calculateCcps, calcCarbonDelta } from "./ccps-engine";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -642,7 +640,7 @@ ${context.userName ? `\nThe user's name is: ${context.userName}.` : ""}`;
 async function routeMessage(
   message: string,
   context: ChatContext,
-  history: Array<{ role: string; content: string }>
+  _history: Array<{ role: string; content: string }>
 ): Promise<RouterResult> {
   // Fast keyword-based routing for obvious cases
   const lower = message.toLowerCase();

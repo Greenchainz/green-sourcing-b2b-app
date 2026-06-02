@@ -25,9 +25,7 @@ import {
   recommendRequestType,
   REQUEST_TYPES,
   DEFAULT_FIELDS,
-  type SupplierResponseField,
 } from "../lib/smart-rfx-classifier";
-import type { RfxScoringWeights } from "../lib/rfx-response-scorer";
 
 // ─── Zod schemas shared with client via tRPC type inference ──────────────────
 

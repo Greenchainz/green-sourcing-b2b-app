@@ -46,7 +46,7 @@ function buildLocalSigner(privateKey: `0x${string}`): EvmSigner {
       return account.address;
     },
 
-    async writeContract(args) {
+    async writeContract(_args) {
       return walletClient.writeContract({
         account,
         chain: polygonChain,
@@ -114,7 +114,7 @@ async function buildKeyVaultSigner(): Promise<EvmSigner> {
       return address;
     },
 
-    async writeContract(args) {
+    async writeContract(_args) {
       // Build and send via public client with a custom signer
       // This is a simplified path — for production, use a full tx-signing loop:
       // 1. eth_getTransactionCount → nonce
