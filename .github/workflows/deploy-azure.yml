@@ -74,7 +74,11 @@ jobs:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: Run unit tests
-        run: pnpm test
+        run: pnpm vitest run --reporter=default --reporter=json --outputFile=vitest-results.json
+
+      - name: Enforce zero skipped tests in CI
+        run: |
+          node -e "const fs=require('fs');const p='vitest-results.json';if(!fs.existsSync(p)){console.error('Missing vitest report:',p);process.exit(1)};const r=JSON.parse(fs.readFileSync(p,'utf8'));const skipped=Number(r.numSkippedTests||0);const passed=Number(r.numPassedTests||0);const failed=Number(r.numFailedTests||0);console.log('Vitest summary => passed:',passed,'failed:',failed,'skipped:',skipped);if(skipped>0){console.error('❌ Production gate failed: skipped tests are not allowed in CI. Ensure required test env/secrets are configured so suites execute.');process.exit(1)}"
 
   # ── Job 2: Build + push both Docker images ──────────────────────────────────────────
   build:
