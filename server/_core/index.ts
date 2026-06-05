@@ -81,6 +81,11 @@ const rfqPdfRateLimit = createRateLimiter(30, 60_000);
 const materialScorePdfRateLimit = createRateLimiter(10, 60_000);
 const webhookRateLimit = createRateLimiter(120, 60_000);
 const publicApiRateLimit = createRateLimiter(120, 60_000);
+const CANONICAL_HOST = "greenchainz.com";
+
+function isHealthEndpoint(path: string): boolean {
+  return path === "/health" || path === "/healthz" || path === "/ready" || path === "/api/health";
+}
 
 if (process.env.NODE_ENV !== "production") {
   if (existsSync(".env.local")) {
@@ -159,6 +164,29 @@ async function startServer() {
   const app = express();
   app.set("trust proxy", true);
   const server = createServer(app);
+
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV !== "production" || isHealthEndpoint(req.path)) {
+      next();
+      return;
+    }
+
+    const host = String(req.headers.host ?? "").toLowerCase();
+    const forwardedProtoHeader = req.headers["x-forwarded-proto"];
+    const forwardedProto = Array.isArray(forwardedProtoHeader)
+      ? forwardedProtoHeader[0]
+      : String(forwardedProtoHeader ?? "").split(",")[0].trim();
+    const isHttps = req.secure || forwardedProto === "https";
+    const needsCanonicalHost = host !== CANONICAL_HOST;
+
+    if (isHttps && !needsCanonicalHost) {
+      next();
+      return;
+    }
+
+    const redirectUrl = `https://${CANONICAL_HOST}${req.originalUrl}`;
+    res.redirect(308, redirectUrl);
+  });
 
   // ── Security headers ──────────────────────────────────────────────────────
   const isDev = process.env.NODE_ENV === "development";
@@ -369,6 +397,7 @@ async function startServer() {
   app.get("/legal/infosec-policy", (_req, res) => res.redirect(301, "/legal/infosec-policy.html"));
   app.get("/tools/carbon-compare", (_req, res) => res.redirect(301, "/carbon-compare"));
   app.get("/tools/assemblies", (_req, res) => res.redirect(301, "/assemblies"));
+  app.get("/tools/excel", (_req, res) => res.redirect(301, "/excel-audit"));
   app.get("/api/marketplace/landing", handleLandingPage);
   app.post("/api/marketplace/webhook", webhookRateLimit, handleWebhook);
   app.post("/api/microsoft/subscription-webhook", webhookRateLimit, handleMicrosoftWebhook);

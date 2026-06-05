@@ -18,10 +18,107 @@ import { useWebPubSub } from "./hooks/useWebPubSub";
 import { useAuth } from "./contexts/AuthContext";
 import { trpc } from "./lib/trpc";
 import { initGoogleAnalytics, trackGooglePageView } from "./lib/analytics";
+import SEOHead from "./components/SEOHead";
 import Home from "./pages/Home";
 import About from "./pages/About";
 
 const HUBSPOT_SCRIPT_SRC = "https://js-na2.hs-scripts.com/244354228.js";
+const TRAILING_SLASH_REGEX = /\/+$/;
+const ROUTE_SEO_FALLBACKS: Record<string, { title: string; description: string; canonicalPath: string }> = {
+  "/assemblies": {
+    title: "Assemblies Carbon Compare Tool | GreenChainz",
+    description:
+      "Compare full building assemblies by embodied carbon and compliance readiness. Find lower-carbon, specification-ready alternatives.",
+    canonicalPath: "/assemblies",
+  },
+  "/carbon-compare": {
+    title: "Carbon Compare for Building Materials | GreenChainz",
+    description:
+      "Benchmark assembly and material carbon impact with verified EPD data, then identify practical lower-carbon substitutions.",
+    canonicalPath: "/carbon-compare",
+  },
+  "/compare": {
+    title: "Compare Sustainable Materials Side by Side | GreenChainz",
+    description:
+      "Compare sustainable building materials side by side using EPD-backed data, compliance signals, and procurement-ready metrics.",
+    canonicalPath: "/compare",
+  },
+  "/excel-audit": {
+    title: "Excel Audit Tool for EPD Compliance | GreenChainz",
+    description:
+      "Upload your material schedule and run a fast EPD and compliance audit to find risks, gaps, and better alternatives.",
+    canonicalPath: "/excel-audit",
+  },
+  "/get-started": {
+    title: "Get Started with GreenChainz",
+    description:
+      "Create your GreenChainz account to source verified sustainable materials, run RFQs, and track procurement compliance.",
+    canonicalPath: "/get-started",
+  },
+  "/insider": {
+    title: "GreenChainz Insider",
+    description:
+      "Access GreenChainz Insider for product updates, sustainability insights, and procurement strategies for building teams.",
+    canonicalPath: "/insider",
+  },
+  "/manufacturers": {
+    title: "Verified Sustainable Manufacturers Directory | GreenChainz",
+    description:
+      "Browse verified sustainable manufacturers, review product documentation, and discover suppliers ready for specification.",
+    canonicalPath: "/manufacturers",
+  },
+  "/privacy": {
+    title: "Privacy Policy | GreenChainz",
+    description:
+      "Read how GreenChainz collects, uses, and protects account and project information across our procurement platform.",
+    canonicalPath: "/privacy",
+  },
+  "/supplier/register": {
+    title: "Supplier Registration | GreenChainz",
+    description:
+      "Register your company as a GreenChainz supplier to showcase verified products and receive matched project RFQs.",
+    canonicalPath: "/supplier/register",
+  },
+  "/support": {
+    title: "Support | GreenChainz",
+    description:
+      "Contact GreenChainz support for onboarding, product help, and procurement workflow questions from your team.",
+    canonicalPath: "/support",
+  },
+  "/terms": {
+    title: "Terms of Service | GreenChainz",
+    description:
+      "Review GreenChainz terms of service, platform use requirements, and supplier and buyer responsibilities.",
+    canonicalPath: "/terms",
+  },
+  "/tools": {
+    title: "Sustainable Procurement Tools | GreenChainz",
+    description:
+      "Explore GreenChainz tools for carbon comparison, Excel auditing, submittals, and digital procurement workflows.",
+    canonicalPath: "/tools",
+  },
+  "/tools/extension": {
+    title: "Browser Extension for Greenwashing Detection | GreenChainz",
+    description:
+      "Use the GreenChainz browser extension to surface sustainability claim risks and verify material data in real time.",
+    canonicalPath: "/tools/extension",
+  },
+  "/tools/submittal": {
+    title: "Submittal Generator for Sustainable Materials | GreenChainz",
+    description:
+      "Generate compliance-ready submittal packages with verified material data, EPD context, and documentation links.",
+    canonicalPath: "/tools/submittal",
+  },
+};
+
+function normalizePathname(pathname: string): string {
+  if (!pathname || pathname === "/") {
+    return "/";
+  }
+
+  const withoutQuery = pathname.split(/[?#]/)[0] || "/";
+  return withoutQuery.replace(TRAILING_SLASH_REGEX, "") || "/";
+}
 
 // Lazy-loaded page components — each becomes its own async chunk
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -97,6 +194,27 @@ const CreateSourcingRequestPage = lazy(() => import("./pages/CreateSourcingReque
 const SourcingRequestDetailPage = lazy(() => import("./pages/SourcingRequestDetailPage"));
 const BuyerRequestsPage = lazy(() => import("./pages/BuyerRequestsPage"));
 const SupplierRespondPage = lazy(() => import("./pages/SupplierRespondPage"));
+
+function RouteSeoFallback() {
+  const [location] = useLocation();
+  const normalizedPath = normalizePathname(location);
+  const isAssemblyDetailPath = normalizedPath.startsWith("/assemblies/");
+  const fallback = isAssemblyDetailPath
+    ? ROUTE_SEO_FALLBACKS["/assemblies"]
+    : ROUTE_SEO_FALLBACKS[normalizedPath];
+
+  if (!fallback) {
+    return null;
+  }
+
+  return (
+    <SEOHead
+      title={fallback.title}
+      description={fallback.description}
+      canonicalPath={isAssemblyDetailPath ? normalizedPath : fallback.canonicalPath}
+    />
+  );
+}
 
 function Router() {
   return (
@@ -334,6 +452,7 @@ function AppInner() {
         <SupplierOnboardingGuard />
         <ArchitectOnboardingGuard />
         <AnalyticsTracker />
+        <RouteSeoFallback />
         <HubSpotLoader />
         <Suspense fallback={<div className="flex h-screen items-center justify-center"><span className="text-muted-foreground text-sm">Loading…</span></div>}>
           <Router />
