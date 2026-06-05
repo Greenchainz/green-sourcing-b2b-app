@@ -350,14 +350,32 @@ const STATE_REGION_LABEL: Record<string, string> = {
  * - Falls back to the zip-prefix table (covers 100% of syntactically valid US zips).
  * Never returns null for a valid 5-digit zip.
  */
-async function lookupZip(zip: string): Promise<{ city: string; state: string } | null> {
+async function lookupZip(
+  zip: string
+): Promise<{ city: string; state: string; latitude: number | null; longitude: number | null } | null> {
   // 1. Try live API — fastest, most accurate city name
   try {
     const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
     if (res.ok) {
-      const data = await res.json() as { places?: { "place name": string; "state abbreviation": string }[] };
+      const data = await res.json() as {
+        places?: {
+          "place name": string;
+          "state abbreviation": string;
+          latitude?: string;
+          longitude?: string;
+        }[];
+      };
       const place = data.places?.[0];
-      if (place) return { city: place["place name"], state: place["state abbreviation"] };
+      if (place) {
+        const lat = place.latitude != null ? Number(place.latitude) : NaN;
+        const lng = place.longitude != null ? Number(place.longitude) : NaN;
+        return {
+          city: place["place name"],
+          state: place["state abbreviation"],
+          latitude: Number.isFinite(lat) ? lat : null,
+          longitude: Number.isFinite(lng) ? lng : null,
+        };
+      }
     }
   } catch { /* fall through to offline table */ }
 
@@ -365,7 +383,12 @@ async function lookupZip(zip: string): Promise<{ city: string; state: string } |
   const prefix = zip.slice(0, 3);
   const state = ZIP_PREFIX_STATE[prefix];
   if (state) {
-    return { city: STATE_REGION_LABEL[state] ?? state, state };
+    return {
+      city: STATE_REGION_LABEL[state] ?? state,
+      state,
+      latitude: null,
+      longitude: null,
+    };
   }
 
   // 3. Genuinely unrecognized prefix (non-US zip entered) — caller handles
@@ -1043,6 +1066,11 @@ export default function RFQNewPage() {
         if (loc) {
           setValue("projectCity", loc.city, { shouldValidate: true });
           setValue("projectState", loc.state, { shouldValidate: true });
+          setValue("projectLat", loc.latitude ?? undefined);
+          setValue("projectLng", loc.longitude ?? undefined);
+        } else {
+          setValue("projectLat", undefined);
+          setValue("projectLng", undefined);
         }
       });
       filled.push("Location");
@@ -1142,6 +1170,11 @@ export default function RFQNewPage() {
         if (loc) {
           setValue("projectCity", loc.city, { shouldValidate: true });
           setValue("projectState", loc.state, { shouldValidate: true });
+          setValue("projectLat", loc.latitude ?? undefined);
+          setValue("projectLng", loc.longitude ?? undefined);
+        } else {
+          setValue("projectLat", undefined);
+          setValue("projectLng", undefined);
         }
         setClarifyInput("");
         setTimeout(() => {
@@ -1727,8 +1760,16 @@ export default function RFQNewPage() {
                               if (loc) {
                                 setValue("projectCity", loc.city, { shouldValidate: true });
                                 setValue("projectState", loc.state, { shouldValidate: true });
+                                setValue("projectLat", loc.latitude ?? undefined);
+                                setValue("projectLng", loc.longitude ?? undefined);
+                              } else {
+                                setValue("projectLat", undefined);
+                                setValue("projectLng", undefined);
                               }
                             });
+                          } else {
+                            setValue("projectLat", undefined);
+                            setValue("projectLng", undefined);
                           }
                         }}
                         className={errors.projectZip ?? errors.projectCity ?? errors.projectState ? "border-red-500" : ""}

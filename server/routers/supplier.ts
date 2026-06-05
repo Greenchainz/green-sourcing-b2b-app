@@ -2,7 +2,7 @@ import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { suppliers } from "../../drizzle/schema";
+import { suppliers, suppliersLocation } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sendSupplierWelcomeEmail, sendFounderNewSupplierAlert } from "../email-service";
 import { parseEpdPdf } from "../services/epd-intelligence";
@@ -49,6 +49,79 @@ const onboardingInput = z.object({
   maxOrderQuantity: z.number().positive().nullable().optional(),
 });
 
+type Database = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+interface SupplierLocationSyncInput {
+  companyName: string;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  materialCategories?: string[] | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
+async function syncSupplierLocationRecord(
+  db: Database,
+  supplierId: number,
+  input: SupplierLocationSyncInput
+): Promise<void> {
+  if (!input.city || !input.state || !input.zipCode) return;
+
+  const { geocodeProjectLocation } = await import("../services/geocode-project-location");
+  const geocode = await geocodeProjectLocation({
+    city: input.city,
+    state: input.state,
+    zip: input.zipCode,
+  });
+
+  if (geocode.latitude == null || geocode.longitude == null) return;
+
+  const latitude = String(geocode.latitude);
+  const longitude = String(geocode.longitude);
+
+  await db
+    .update(suppliers)
+    .set({
+      latitude,
+      longitude,
+      updatedAt: new Date(),
+    })
+    .where(eq(suppliers.id, supplierId));
+
+  const [existingLocation] = await db
+    .select({ id: suppliersLocation.id })
+    .from(suppliersLocation)
+    .where(eq(suppliersLocation.supplierId, supplierId))
+    .limit(1);
+
+  const locationPayload = {
+    name: input.companyName,
+    state: input.state,
+    city: input.city,
+    zipCode: input.zipCode,
+    latitude,
+    longitude,
+    materialsAvailable: input.materialCategories ?? [],
+    contactEmail: input.email ?? null,
+    contactPhone: input.phone ?? null,
+    updatedAt: new Date(),
+  };
+
+  if (existingLocation) {
+    await db
+      .update(suppliersLocation)
+      .set(locationPayload)
+      .where(eq(suppliersLocation.id, existingLocation.id));
+    return;
+  }
+
+  await db.insert(suppliersLocation).values({
+    supplierId,
+    ...locationPayload,
+  });
+}
+
 export const supplierOnboardingRouter = router({
   // ── Create or upsert supplier profile ────────────────────────────────────
   submitOnboarding: protectedProcedure
@@ -91,6 +164,16 @@ export const supplierOnboardingRouter = router({
           })
           .where(eq(suppliers.id, existing.id));
 
+        await syncSupplierLocationRecord(db, existing.id, {
+          companyName: input.companyName,
+          city: input.city ?? null,
+          state: input.state ?? null,
+          zipCode: input.zipCode ?? null,
+          materialCategories: input.materialCategories ?? [],
+          email: input.email ?? null,
+          phone: input.phone ?? null,
+        });
+
         return { id: existing.id, created: false };
       }
 
@@ -120,6 +203,16 @@ export const supplierOnboardingRouter = router({
           verificationStatus: "pending",
         })
         .returning({ id: suppliers.id });
+
+      await syncSupplierLocationRecord(db, row.id, {
+        companyName: input.companyName,
+        city: input.city ?? null,
+        state: input.state ?? null,
+        zipCode: input.zipCode ?? null,
+        materialCategories: input.materialCategories ?? [],
+        email: input.email ?? null,
+        phone: input.phone ?? null,
+      });
 
       // Fire-and-forget: welcome email to supplier + alert to founder
       void Promise.all([
@@ -218,7 +311,16 @@ export const supplierOnboardingRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
       const [existing] = await db
-        .select({ id: suppliers.id })
+        .select({
+          id: suppliers.id,
+          companyName: suppliers.companyName,
+          city: suppliers.city,
+          state: suppliers.state,
+          zipCode: suppliers.zipCode,
+          materialCategories: suppliers.materialCategories,
+          email: suppliers.email,
+          phone: suppliers.phone,
+        })
         .from(suppliers)
         .where(eq(suppliers.userId, ctx.user.id))
         .limit(1);
@@ -238,6 +340,16 @@ export const supplierOnboardingRouter = router({
           updatedAt: new Date(),
         })
         .where(eq(suppliers.id, existing.id));
+
+      await syncSupplierLocationRecord(db, existing.id, {
+        companyName: input.companyName ?? existing.companyName,
+        city: input.city ?? existing.city,
+        state: input.state ?? existing.state,
+        zipCode: input.zipCode ?? existing.zipCode,
+        materialCategories: input.materialCategories ?? existing.materialCategories ?? [],
+        email: input.email ?? existing.email,
+        phone: input.phone ?? existing.phone,
+      });
 
       return { success: true };
     }),
