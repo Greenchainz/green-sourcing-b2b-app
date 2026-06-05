@@ -18,13 +18,13 @@ import { useWebPubSub } from "./hooks/useWebPubSub";
 import { useAuth } from "./contexts/AuthContext";
 import { trpc } from "./lib/trpc";
 import { initGoogleAnalytics, trackGooglePageView } from "./lib/analytics";
+import Home from "./pages/Home";
+import About from "./pages/About";
 
 // Lazy-loaded page components — each becomes its own async chunk
 const NotFound = lazy(() => import("@/pages/NotFound"));
-const Home = lazy(() => import("./pages/Home"));
 const ExcelAudit = lazy(() => import("./pages/ExcelAudit"));
 const ExcelAuditWorkingTool = lazy(() => import("./pages/ExcelAuditWorkingTool"));
-const About = lazy(() => import("./pages/About"));
 const BrowserExtension = lazy(() => import("./pages/BrowserExtension"));
 const RevitPlugin = lazy(() => import("./pages/RevitPlugin"));
 const SubmittalGenerator = lazy(() => import("./pages/SubmittalGenerator"));
@@ -214,8 +214,19 @@ function AnalyticsTracker() {
   const [location] = useLocation();
 
   useEffect(() => {
-    initGoogleAnalytics();
-    trackGooglePageView(location);
+    let cancelled = false;
+
+    const sendPageView = () => {
+      if (cancelled) return;
+      initGoogleAnalytics();
+      trackGooglePageView(location);
+    };
+
+    const timer = globalThis.setTimeout(sendPageView, 800);
+    return () => {
+      cancelled = true;
+      globalThis.clearTimeout(timer);
+    };
   }, [location]);
 
   return null;
