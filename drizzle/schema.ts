@@ -89,6 +89,19 @@ export const annualProjectVolumeEnum = pgEnum("annual_project_volume", [
   "under_1m", "1m_10m", "10m_50m", "over_50m",
 ]);
 export const architectStatusEnum = pgEnum("architect_status", ["pending", "active"]);
+export const submittalStatusEnum = pgEnum("submittal_status", [
+  "draft",
+  "submitted",
+  "approved_as_noted",
+  "revise_and_resubmit",
+  "rejected",
+  "closed",
+]);
+export const submittalBallInCourtEnum = pgEnum("submittal_ball_in_court", [
+  "buyer",
+  "architect",
+  "supplier",
+]);
 
 // ─── Users ──────────────────────────────────────────────────────────────────
 
@@ -1335,6 +1348,60 @@ export const swapValidations = pgTable(
 
 export type SwapValidation = typeof swapValidations.$inferSelect;
 export type InsertSwapValidation = typeof swapValidations.$inferInsert;
+
+export const submittals = pgTable(
+  "submittals",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id"),
+    specSection: varchar("spec_section", { length: 50 }),
+    masterformatCode: varchar("masterformat_code", { length: 20 }),
+    submittalNumber: varchar("submittal_number", { length: 100 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    status: submittalStatusEnum("status").notNull().default("draft"),
+    ballInCourt: submittalBallInCourtEnum("ball_in_court").notNull().default("buyer"),
+    submittedAt: timestamp("submitted_at"),
+    dueAt: timestamp("due_at"),
+    requiredOnSiteAt: timestamp("required_on_site_at"),
+    returnedAt: timestamp("returned_at"),
+    relatedRfqId: integer("related_rfq_id").references(() => rfqs.id, { onDelete: "set null" }),
+    relatedSwapValidationId: integer("related_swap_validation_id").references(() => swapValidations.id, { onDelete: "set null" }),
+    createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdByIdx: index("idx_submittals_created_by").on(table.createdBy),
+    projectIdx: index("idx_submittals_project").on(table.projectId),
+    statusIdx: index("idx_submittals_status").on(table.status),
+    relatedRfqIdx: index("idx_submittals_related_rfq").on(table.relatedRfqId),
+    relatedValidationIdx: index("idx_submittals_related_validation").on(table.relatedSwapValidationId),
+  })
+);
+
+export type Submittal = typeof submittals.$inferSelect;
+export type InsertSubmittal = typeof submittals.$inferInsert;
+
+export const submittalItems = pgTable(
+  "submittal_items",
+  {
+    id: serial("id").primaryKey(),
+    submittalId: integer("submittal_id").notNull().references(() => submittals.id, { onDelete: "cascade" }),
+    materialId: integer("material_id").references(() => materials.id, { onDelete: "set null" }),
+    supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    submittalIdx: index("idx_submittal_items_submittal").on(table.submittalId),
+    materialIdx: index("idx_submittal_items_material").on(table.materialId),
+    supplierIdx: index("idx_submittal_items_supplier").on(table.supplierId),
+  })
+);
+
+export type SubmittalItem = typeof submittalItems.$inferSelect;
+export type InsertSubmittalItem = typeof submittalItems.$inferInsert;
 
 export const materialAssemblySpecs = pgTable(
   "material_assembly_specs",

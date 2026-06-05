@@ -130,6 +130,7 @@ export async function generateRfqPdf(
     doc.fontSize(10).font("Helvetica");
     doc.text(`Assembly Code: ${assembly.assemblyCode || "N/A"}`);
     doc.text(`Assembly Type: ${assembly.assemblyType || "N/A"}`);
+    doc.text(`MasterFormat Section: ${assembly.masterformatSection || "N/A"}`);
     doc.text(
       `Current GWP: ${assembly.gwpPer1000sf ? `${assembly.gwpPer1000sf} kg CO₂e/1000 SF` : "Not specified"}`,
     );
@@ -362,6 +363,7 @@ export async function streamRfqPdf(input: RFQGeneratorInput): Promise<Readable> 
     doc.fontSize(10).font("Helvetica");
     doc.text(`Assembly Code: ${assembly.assemblyCode || "N/A"}`);
     doc.text(`Assembly Type: ${assembly.assemblyType || "N/A"}`);
+    doc.text(`MasterFormat Section: ${assembly.masterformatSection || "N/A"}`);
 
     doc.fontSize(12).font("Helvetica-Bold").text("RECOMMENDED ALTERNATIVE");
     doc.fontSize(10).font("Helvetica");

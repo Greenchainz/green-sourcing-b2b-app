@@ -32,6 +32,7 @@ export const architectSpecAssemblies = pgTable("architect_spec_assemblies", {
   specId:               integer("spec_id").notNull(),
   assemblyCode:         varchar("assembly_code", { length: 20 }),
   assemblyType:         varchar("assembly_type", { length: 120 }),
+  masterformatSection:  varchar("masterformat_section", { length: 20 }),
   structuralOption:     integer("structural_option"),
   declaredUnit:         varchar("declared_unit", { length: 100 }),
   gwpValue:             decimal("gwp_value", { precision: 14, scale: 4 }),

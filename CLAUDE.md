@@ -126,6 +126,7 @@ or marketplace-matching, read:
 2. [`docs/research/PROCUREMENT_DECISION_MAKERS.md`](./docs/research/PROCUREMENT_DECISION_MAKERS.md) — the 8 tiers × 35+ roles who specify sustainable materials and why
 3. [`docs/research/SUPPLIER_ECOSYSTEM.md`](./docs/research/SUPPLIER_ECOSYSTEM.md) — 100+ suppliers across 7 categories with pitch angles + readiness
 4. [`docs/research/SALES_PSYCHOLOGY.md`](./docs/research/SALES_PSYCHOLOGY.md) — the 4 frameworks (Trojan Horse, Interceptor, Tiered Membership, Hard Sell Counter)
+5. [`docs/AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md`](./docs/AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md) — **binding**: compliance is a hard gate, sustainability is only the ranking; the Submittal Log tracks GreenChainz substitution packets only (not the whole job)
 
 Every feature should resolve to one or more of:
 - a `DecisionMakerTier` / `Role` — `import { ... } from "@/lib/research"`
@@ -147,8 +148,9 @@ toward that or you are building something else.
 1. Read this file ✅
 2. Read `docs/research/README.md` if touching supplier/architect features
 3. Read `docs/AUTH_ARCHITECTURE.md` if touching auth
-4. Read `docs/STACK.md` for the authoritative stack reference
-5. Run `npm run dev` and confirm the server starts before editing
-6. Scope every DB query to `ctx.user.id`
-7. Use `protectedProcedure` — never roll your own auth check
-8. Import domain types from `@/lib/research` — do not redefine
+4. Read `docs/AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md` if touching CSI 1.5C/13.1A generators, the Submittal Log, or swap validation/ranking
+5. Read `docs/STACK.md` for the authoritative stack reference
+6. Run `npm run dev` and confirm the server starts before editing
+7. Scope every DB query to `ctx.user.id`
+8. Use `protectedProcedure` — never roll your own auth check
+9. Import domain types from `@/lib/research` — do not redefine

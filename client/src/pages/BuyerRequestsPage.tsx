@@ -81,13 +81,22 @@ export default function BuyerRequestsPage() {
               All your RFIs, RFQs, RFPs, and supplier qualification requests.
             </p>
           </div>
-          <Button
-            onClick={() => navigate("/buyer/new-request")}
-            className="bg-green-600 hover:bg-green-700 text-white shrink-0"
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
-            New request
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/buyer/submittals")}
+            >
+              <FolderOpen className="w-4 h-4 mr-1.5" />
+              Submittal log
+            </Button>
+            <Button
+              onClick={() => navigate("/buyer/new-request")}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              New request
+            </Button>
+          </div>
         </div>
 
         {/* Loading */}
