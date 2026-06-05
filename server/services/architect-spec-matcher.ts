@@ -16,29 +16,7 @@ import { getDb } from "../db";
 import { architectSpecAssemblies } from "../../drizzle/schema-additions-mcs";
 import { materials, manufacturers } from "../../drizzle/schema";
 import { eq, and, sql, inArray } from "drizzle-orm";
-
-// ── Assembly type → material category mapping ────────────────────────────────
-// Maps EWS assembly type labels to the categories used in the materials table.
-
-const ASSEMBLY_TYPE_CATEGORIES: Record<string, string[]> = {
-  "Unitized Curtain Wall (Vision/Shadow/Spandrel)": [
-    "CurtainWalls", "Glass", "Aluminum", "Aluminium",
-    "FenestrationFraming", "Windows", "ProcessedNonInsulatingGlassPanes",
-  ],
-  "Unitized Vision Fitted": [
-    "CurtainWalls", "Windows", "Glass",
-    "FenestrationFraming", "ProcessedNonInsulatingGlassPanes",
-  ],
-  "Granite Panel": ["StoneCladding", "Cladding", "Masonry"],
-  "Natural Stone (Limestone/Sandstone)": ["StoneCladding", "Masonry", "Cladding"],
-  "Terracotta": ["Masonry", "CeramicTile", "Cladding", "StoneCladding"],
-  "UHPC": ["Concrete", "PrecastConcrete", "ArchitecturalPrecast", "StructuralPrecast"],
-  "GFRC": ["Concrete", "ArchitecturalPrecast", "PrecastConcrete", "AutoclavedAeratedConcrete"],
-  "Aluminum Metal Panel": [
-    "Aluminum", "Aluminium", "AluminiumSheetGoods",
-    "AluminiumBillets", "Cladding", "MiscMetalFabrication",
-  ],
-};
+import { getAssemblyMappingByType } from "./masterformat-mapping";
 
 // ── CCPS inline scorer ───────────────────────────────────────────────────────
 
@@ -143,6 +121,7 @@ export interface MatchedAlternative {
 export interface MatchResultForRow {
   specAssemblyId: number;
   originalAssemblyCode: string | null;
+  masterformatSection: string | null;
   originalGwpPer1000sf: number | null;
   alternatives: MatchedAlternative[];
 }
@@ -174,9 +153,8 @@ export async function matchSpecAlternatives(
     const original = row.gwpPer1000sf == null ? null : parseFloat(row.gwpPer1000sf);
 
     // Map assembly type to material categories
-    const targetCategories: string[] = row.assemblyType
-      ? (ASSEMBLY_TYPE_CATEGORIES[row.assemblyType] ?? [])
-      : [];
+    const assemblyMapping = getAssemblyMappingByType(row.assemblyType);
+    const targetCategories: string[] = assemblyMapping?.categories ?? [];
 
     // Build category filter
     const categoryFilter = targetCategories.length > 0
@@ -277,6 +255,7 @@ export async function matchSpecAlternatives(
     results.push({
       specAssemblyId: row.id,
       originalAssemblyCode: row.assemblyCode,
+      masterformatSection: row.masterformatSection ?? assemblyMapping?.masterformatSection ?? null,
       originalGwpPer1000sf: original,
       alternatives,
     });

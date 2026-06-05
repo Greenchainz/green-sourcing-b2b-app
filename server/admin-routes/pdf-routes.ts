@@ -7,6 +7,7 @@ import { canAccessRfqPdf } from '../_core/route-auth-guards';
 import { checkMaterialScorePdfAccess } from '../services/pdf-access-guard';
 import type { RfqWithBids } from '../rfq-service';
 import { requireEasyAuthUser } from '../_core/request-auth';
+import { z } from "zod";
 
 function createErrorResponse(
   message: string,
@@ -71,6 +72,70 @@ export function registerPdfRoutes(
     } catch (err) {
       console.error('[pdf] Material score PDF error:', err);
       res.status(500).json(createErrorResponse('Failed to generate PDF', req.id, err instanceof Error ? err.message : String(err)));
+    }
+  });
+
+  // RFQ summary PDF
+  app.get('/api/swap-validation/:validationId/export-csi-1-5c', rfqPdfRateLimit, materialScorePdfRateLimit, async (req, res) => {
+    try {
+      const user = await requireEasyAuthUser(req);
+      if (!user) return res.status(401).json(createErrorResponse('Unauthorized', req.id));
+
+      const validationId = parseInt(req.params.validationId as string);
+      if (isNaN(validationId)) return res.status(400).json(createErrorResponse('Invalid validation ID', req.id));
+
+      const { getDb } = await import('../db');
+      const { swapValidations, materials } = await import('../../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      const { generateCsiForm15CPdf, buildCsi15CFilename } = await import('../services/csi-form-1-5c-generator');
+      const db = await getDb();
+      if (!db) return res.status(500).json(createErrorResponse('Database unavailable', req.id));
+
+      const [validation] = await db
+        .select()
+        .from(swapValidations)
+        .where(eq(swapValidations.id, validationId))
+        .limit(1);
+      if (!validation) return res.status(404).json(createErrorResponse('Validation not found', req.id));
+
+      const [incumbent, sustainable] = await Promise.all([
+        db.select().from(materials).where(eq(materials.id, validation.incumbentMaterialId)).limit(1),
+        db.select().from(materials).where(eq(materials.id, validation.sustainableMaterialId)).limit(1),
+      ]);
+      if (!incumbent[0] || !sustainable[0]) {
+        return res.status(404).json(createErrorResponse('Validation materials not found', req.id));
+      }
+
+      const querySchema = z.object({
+        projectName: z.string().trim().max(120).optional(),
+        specSection: z.string().trim().max(40).optional(),
+      });
+      const parsedQuery = querySchema.safeParse({
+        projectName: typeof req.query.projectName === "string" ? req.query.projectName : undefined,
+        specSection: typeof req.query.specSection === "string" ? req.query.specSection : undefined,
+      });
+      if (!parsedQuery.success) {
+        return res.status(400).json(createErrorResponse('Invalid query parameters', req.id));
+      }
+      const { projectName, specSection } = parsedQuery.data;
+      const requestedBy = user.name || user.email || "GreenChainz User";
+
+      const pdfBuffer = await generateCsiForm15CPdf({
+        validation,
+        incumbent: incumbent[0],
+        sustainable: sustainable[0],
+        projectName,
+        specSection,
+        requestedBy,
+      });
+
+      const filename = buildCsi15CFilename(projectName, validationId);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (err) {
+      console.error('[pdf] CSI 1.5C export error:', err);
+      res.status(500).json(createErrorResponse('Failed to generate CSI Form 1.5C PDF', req.id, err instanceof Error ? err.message : String(err)));
     }
   });
 
