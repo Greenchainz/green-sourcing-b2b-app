@@ -1,5 +1,16 @@
 # CSI Form 13.1A PDF Generator
 
+> [!IMPORTANT]
+> **Binding invariants apply to this generator.** Before changing the 1.5C / 13.1A
+> generators, the Submittal Log, or swap validation, read
+> [`docs/AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md`](./AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md):
+> 1. **Compliance is a hard GATE; sustainability is only the RANKING.** Never place a
+>    material that fails a showstopper check (ASTM, fire, structural, R-value, STC,
+>    UL/ICC-ES) into a packet, regardless of carbon. Sort greenest-first only among
+>    candidates that already passed, and include the showstopper-check summary as evidence.
+> 2. **The Submittal Log tracks GreenChainz-generated substitution packets ONLY** — no
+>    RFIs (G716), no payment certs (G702/G703), no whole-job submittals.
+
 ## Overview
 
 The CSI Form 13.1A PDF Generator automatically creates AIA-standard substitution request forms from swap validation results. This feature enables architects and contractors to quickly generate professional documentation for material substitution requests with comprehensive technical specifications, cost analysis, and environmental impact data.
