@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const APP_ID = "cqtm1euj";
+const INTERCOM_SCRIPT_SRC = "https://widget.intercom.io/widget/cqtm1euj";
 const LAUNCHER_POSITION = {
   horizontal_padding: 20,
   vertical_padding: 92,
@@ -13,6 +14,36 @@ declare global {
     Intercom?: (command: string, props?: Record<string, unknown>) => void;
   }
 }
+
+let intercomScriptPromise: Promise<boolean> | null = null;
+
+const loadIntercomScript = async () => {
+  if (window.Intercom) return true;
+  if (intercomScriptPromise) return intercomScriptPromise;
+
+  intercomScriptPromise = new Promise<boolean>((resolve) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      `script[src="${INTERCOM_SCRIPT_SRC}"]`
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(true), { once: true });
+      existingScript.addEventListener("error", () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = INTERCOM_SCRIPT_SRC;
+    script.async = true;
+    script.defer = true;
+    script.dataset.intercomLoader = "deferred";
+    script.addEventListener("load", () => resolve(true), { once: true });
+    script.addEventListener("error", () => resolve(false), { once: true });
+    document.body.appendChild(script);
+  });
+
+  return intercomScriptPromise;
+};
 
 /**
  * Intercom Messenger with JWT identity verification.
@@ -26,31 +57,8 @@ export default function IntercomWidget() {
   useEffect(() => {
     let cancelled = false;
 
-    const waitForIntercom = () =>
-      new Promise<boolean>((resolve) => {
-        if (window.Intercom) {
-          resolve(true);
-          return;
-        }
-
-        let attempts = 0;
-        const timer = window.setInterval(() => {
-          if (window.Intercom) {
-            window.clearInterval(timer);
-            resolve(true);
-            return;
-          }
-
-          attempts += 1;
-          if (attempts >= 50) {
-            window.clearInterval(timer);
-            resolve(false);
-          }
-        }, 100);
-      });
-
     const bootIntercom = async () => {
-      const loaded = await waitForIntercom();
+      const loaded = await loadIntercomScript();
       if (!loaded || cancelled) return;
 
       if (user && bootedUserId.current !== user.id) {
@@ -96,10 +104,16 @@ export default function IntercomWidget() {
       }
     };
 
-    void bootIntercom();
+    const scheduleBoot = () => {
+      if (cancelled) return;
+      void bootIntercom();
+    };
+
+    const timer = globalThis.setTimeout(scheduleBoot, 1200);
 
     return () => {
       cancelled = true;
+      globalThis.clearTimeout(timer);
     };
   }, [user]);
 
