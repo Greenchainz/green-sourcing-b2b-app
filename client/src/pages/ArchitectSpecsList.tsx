@@ -41,13 +41,22 @@ export default function ArchitectSpecsList() {
             <h1 className="text-3xl font-bold text-gray-900">Embodied Carbon Specs</h1>
             <p className="text-gray-600 mt-2">Upload and analyze your project's material carbon footprint</p>
           </div>
-          <Button
-            onClick={() => navigate("/architect/specs/upload")}
-            className="bg-green-600 hover:bg-green-700 gap-2 min-h-[44px]"
-          >
-            <Plus className="h-4 w-4" />
-            New Spec
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/architect/submittals")}
+              className="min-h-[44px]"
+            >
+              Submittal Log
+            </Button>
+            <Button
+              onClick={() => navigate("/architect/specs/upload")}
+              className="bg-green-600 hover:bg-green-700 gap-2 min-h-[44px]"
+            >
+              <Plus className="h-4 w-4" />
+              New Spec
+            </Button>
+          </div>
         </div>
 
         {/* Specs List */}

@@ -167,6 +167,14 @@ Always branch from `main`. Never commit directly to `main`.
 
 ## For AI Coding Agents (Copilot, Claude, etc.)
 
+> **AEC scope & compliance invariants are binding.** Before touching the CSI 1.5C /
+> 13.1A generators, the Submittal Log, or swap validation/ranking, read and follow
+> [`docs/AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md`](./docs/AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md).
+> Two non-negotiable rules: (1) compliance is a hard gate — never surface a material that
+> fails a showstopper check, no matter how green; sustainability only sorts the survivors.
+> (2) The Submittal Log tracks GreenChainz-generated substitution packets only — not RFIs,
+> payment certs, or the whole job (that's Procore territory).
+
 1. **Use `pnpm` for all package operations** — no exceptions.
 2. **Check imports in `drizzle/schema.ts`** whenever you add a column type.
 3. **Do not re-enable SDA API calls** — the service is stubbed and returns empty arrays by design.

@@ -117,6 +117,7 @@ export async function generateRfqExcel(
   const specData = [
     ["Assembly Code", assembly.assemblyCode || "N/A"],
     ["Assembly Type", assembly.assemblyType || "N/A"],
+    ["MasterFormat Section", assembly.masterformatSection || "N/A"],
     [
       "Current GWP",
       assembly.gwpPer1000sf
