@@ -97,6 +97,7 @@ const CreateSourcingRequestPage = lazy(() => import("./pages/CreateSourcingReque
 const SourcingRequestDetailPage = lazy(() => import("./pages/SourcingRequestDetailPage"));
 const BuyerRequestsPage = lazy(() => import("./pages/BuyerRequestsPage"));
 const SupplierRespondPage = lazy(() => import("./pages/SupplierRespondPage"));
+const SubmittalLogPage = lazy(() => import("./pages/SubmittalLogPage"));
 
 function Router() {
   return (
@@ -172,6 +173,8 @@ function Router() {
       <Route path="/buyer/new-request" component={CreateSourcingRequestPage} />
       <Route path="/buyer/requests" component={BuyerRequestsPage} />
       <Route path="/buyer/requests/:id" component={SourcingRequestDetailPage} />
+      <Route path="/buyer/submittals" component={SubmittalLogPage} />
+      <Route path="/architect/submittals" component={SubmittalLogPage} />
       <Route path="/supplier/respond/:rfqId" component={SupplierRespondPage} />
       <Route path={"404"} component={NotFound} />
       <Route component={NotFound} />
