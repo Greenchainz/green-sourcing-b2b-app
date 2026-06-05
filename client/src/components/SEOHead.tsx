@@ -30,7 +30,15 @@ export default function SEOHead({
   ogDescription,
   ogImage = 'https://greenchainz.com/images/og-image-homepage.jpg',
 }: SEOHeadProps) {
-  const canonicalUrl = `https://greenchainz.com${canonicalPath}`;
+  const canonicalPathWithoutQuery = canonicalPath.split(/[?#]/)[0] || "/";
+  const canonicalPathWithSlash = canonicalPathWithoutQuery.startsWith("/")
+    ? canonicalPathWithoutQuery
+    : `/${canonicalPathWithoutQuery}`;
+  const normalizedCanonicalPath =
+    canonicalPathWithSlash === "/"
+      ? "/"
+      : canonicalPathWithSlash.replace(/\/+$/, "");
+  const canonicalUrl = `https://greenchainz.com${normalizedCanonicalPath}`;
   const resolvedOgTitle = ogTitle || title;
   const resolvedOgDescription = ogDescription || description;
 

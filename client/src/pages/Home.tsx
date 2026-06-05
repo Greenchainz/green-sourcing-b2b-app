@@ -163,7 +163,15 @@ export default function Home() {
             <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Trusted by</p>
             <div className="flex flex-wrap items-center justify-center gap-8">
               <div className="flex items-center gap-2 text-muted-foreground">
-                <img src="/brand/autodesk-logo-white.png" alt="Autodesk" className="h-5 w-auto opacity-60" />
+                <img
+                  src="/brand/autodesk-logo-white.png"
+                  alt="Autodesk"
+                  className="h-5 w-auto opacity-60"
+                  width={110}
+                  height={20}
+                  loading="lazy"
+                  decoding="async"
+                />
                 <span className="text-xs">Works with Forma Carbon Insights</span>
               </div>
               <div className="text-sm text-muted-foreground font-medium">Building Transparency / EC3</div>
