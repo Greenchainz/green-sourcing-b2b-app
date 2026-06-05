@@ -3,8 +3,10 @@ import { materials, swapValidations } from "../../drizzle/schema";
 
 type SwapValidationRow = typeof swapValidations.$inferSelect;
 type MaterialRow = typeof materials.$inferSelect;
+const MAX_FAILED_CHECKS_IN_PDF = 8;
 
 export function buildCsi15CFilename(projectName: string | undefined, validationId: number): string {
+  // Keep filenames filesystem-safe across browser/OS download behavior.
   const safeProjectName = (projectName || "Project")
     .replace(/[^a-zA-Z0-9-_]+/g, "-")
     .replace(/-+/g, "-")
@@ -37,7 +39,7 @@ function extractShowstopperSummary(validation: SwapValidationRow): {
     passed: validation.passedChecks,
     failed: validation.failedChecks,
     skipped: validation.skippedChecks,
-    failedChecks: failedChecks.slice(0, 8),
+    failedChecks: failedChecks.slice(0, MAX_FAILED_CHECKS_IN_PDF),
   };
 }
 

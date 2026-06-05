@@ -7,6 +7,7 @@ import { canAccessRfqPdf } from '../_core/route-auth-guards';
 import { checkMaterialScorePdfAccess } from '../services/pdf-access-guard';
 import type { RfqWithBids } from '../rfq-service';
 import { requireEasyAuthUser } from '../_core/request-auth';
+import { z } from "zod";
 
 function createErrorResponse(
   message: string,
@@ -75,7 +76,7 @@ export function registerPdfRoutes(
   });
 
   // RFQ summary PDF
-  app.get('/api/swap-validation/:validationId/export-csi-1-5c', materialScorePdfRateLimit, async (req, res) => {
+  app.get('/api/swap-validation/:validationId/export-csi-1-5c', rfqPdfRateLimit, materialScorePdfRateLimit, async (req, res) => {
     try {
       const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', req.id));
@@ -105,8 +106,18 @@ export function registerPdfRoutes(
         return res.status(404).json(createErrorResponse('Validation materials not found', req.id));
       }
 
-      const projectName = typeof req.query.projectName === 'string' ? req.query.projectName : undefined;
-      const specSection = typeof req.query.specSection === 'string' ? req.query.specSection : undefined;
+      const querySchema = z.object({
+        projectName: z.string().trim().max(120).optional(),
+        specSection: z.string().trim().max(40).optional(),
+      });
+      const parsedQuery = querySchema.safeParse({
+        projectName: typeof req.query.projectName === "string" ? req.query.projectName : undefined,
+        specSection: typeof req.query.specSection === "string" ? req.query.specSection : undefined,
+      });
+      if (!parsedQuery.success) {
+        return res.status(400).json(createErrorResponse('Invalid query parameters', req.id));
+      }
+      const { projectName, specSection } = parsedQuery.data;
       const requestedBy = user.name || user.email || "GreenChainz User";
 
       const pdfBuffer = await generateCsiForm15CPdf({

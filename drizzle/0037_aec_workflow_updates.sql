@@ -40,7 +40,10 @@ CREATE TABLE IF NOT EXISTS "submittals" (
   "related_swap_validation_id" integer,
   "created_by" integer NOT NULL,
   "created_at" timestamp DEFAULT now() NOT NULL,
-  "updated_at" timestamp DEFAULT now() NOT NULL
+  "updated_at" timestamp DEFAULT now() NOT NULL,
+  CONSTRAINT "submittals_related_rfq_id_fk" FOREIGN KEY ("related_rfq_id") REFERENCES "public"."rfqs"("id") ON DELETE set null ON UPDATE no action,
+  CONSTRAINT "submittals_related_swap_validation_id_fk" FOREIGN KEY ("related_swap_validation_id") REFERENCES "public"."swap_validations"("id") ON DELETE set null ON UPDATE no action,
+  CONSTRAINT "submittals_created_by_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action
 );
 
 CREATE TABLE IF NOT EXISTS "submittal_items" (
@@ -49,7 +52,10 @@ CREATE TABLE IF NOT EXISTS "submittal_items" (
   "material_id" integer,
   "supplier_id" integer,
   "notes" text,
-  "created_at" timestamp DEFAULT now() NOT NULL
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  CONSTRAINT "submittal_items_submittal_id_fk" FOREIGN KEY ("submittal_id") REFERENCES "public"."submittals"("id") ON DELETE cascade ON UPDATE no action,
+  CONSTRAINT "submittal_items_material_id_fk" FOREIGN KEY ("material_id") REFERENCES "public"."materials"("id") ON DELETE set null ON UPDATE no action,
+  CONSTRAINT "submittal_items_supplier_id_fk" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id") ON DELETE set null ON UPDATE no action
 );
 
 CREATE INDEX IF NOT EXISTS "idx_submittals_created_by" ON "submittals" USING btree ("created_by");
