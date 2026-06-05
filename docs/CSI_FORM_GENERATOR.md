@@ -18,7 +18,7 @@ The CSI Form 13.1A PDF Generator automatically creates AIA-standard substitution
 - **Technical Specifications**: Side-by-side comparison of ASTM codes, fire ratings, structural properties
 - **Automated Justification**: Context-aware justification text based on validation status
 
-## API Endpoint
+## API Endpoints
 
 ### Export CSI Form
 ```
@@ -36,6 +36,30 @@ GET /api/swap-validation/[id]/export-csi-form
 ```bash
 curl -O https://greenchainz.com/api/swap-validation/abc123/export-csi-form
 ```
+
+### Export CSI Form 1.5C (During Bidding/Negotiating)
+```
+GET /api/swap-validation/[id]/export-csi-1-5c
+```
+
+**Optional Query Parameters:**
+- `projectName`: project name used in the form and filename
+- `specSection`: CSI spec section shown in the header
+
+**Response:**
+- Content-Type: `application/pdf`
+- Content-Disposition: `attachment; filename="CSI-1.5C_{ProjectName}_Validation-{id}_{Date}.pdf"`
+
+**Example:**
+```bash
+curl -L -o csi-1-5c.pdf "https://greenchainz.com/api/swap-validation/123/export-csi-1-5c?projectName=Tower-A&specSection=08%2044%2013"
+```
+
+The 1.5C export reuses swap validation data and includes:
+- Standard bidding-stage substitution request metadata
+- Product/manufacturer details for specified and proposed materials
+- Cost impact summary
+- GreenChainz enhancement section (validation status, showstopper summary, carbon delta)
 
 ## PDF Structure
 
