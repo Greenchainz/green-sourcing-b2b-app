@@ -147,9 +147,13 @@ export default function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
           <img 
-            src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663343505136/zgZDqySaTSwFXoZl.png" 
+            src="/brand/greenchainz-icon.png" 
             alt="GreenChainz Logo" 
             className="h-12 w-auto"
+            width={48}
+            height={48}
+            loading="eager"
+            decoding="async"
           />
           <div className="flex flex-col">
             <span className="text-lg font-bold text-foreground">GreenChainz</span>

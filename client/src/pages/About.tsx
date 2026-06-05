@@ -67,8 +67,8 @@ export default function About() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="About GreenChainz — Verified Decision Engine for Sustainable Building Materials"
-        description="GreenChainz is not a material directory. It is a verified decision engine that surfaces validated swaps, routes RFQs to suppliers who can actually deliver, and generates CSI-formatted submittals."
+        title="About GreenChainz | Verified Materials Decision Platform"
+        description="GreenChainz helps teams find validated low-carbon material swaps, route RFQs to qualified suppliers, and generate CSI-ready submittals."
         canonicalPath="/about"
       />
       <StructuredData data={aboutPageSchema} />

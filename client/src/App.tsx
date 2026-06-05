@@ -21,6 +21,8 @@ import { initGoogleAnalytics, trackGooglePageView } from "./lib/analytics";
 import Home from "./pages/Home";
 import About from "./pages/About";
 
+const HUBSPOT_SCRIPT_SRC = "https://js-na2.hs-scripts.com/244354228.js";
+
 // Lazy-loaded page components — each becomes its own async chunk
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const ExcelAudit = lazy(() => import("./pages/ExcelAudit"));
@@ -232,6 +234,29 @@ function AnalyticsTracker() {
   return null;
 }
 
+function HubSpotLoader() {
+  useEffect(() => {
+    const timer = globalThis.setTimeout(() => {
+      const existingScript = document.getElementById("hs-script-loader");
+      if (existingScript) return;
+
+      const script = document.createElement("script");
+      script.type = "text/javascript";
+      script.id = "hs-script-loader";
+      script.async = true;
+      script.defer = true;
+      script.src = HUBSPOT_SCRIPT_SRC;
+      document.head.appendChild(script);
+    }, 1600);
+
+    return () => {
+      globalThis.clearTimeout(timer);
+    };
+  }, []);
+
+  return null;
+}
+
 // Redirect supplier users who haven't completed onboarding
 function SupplierOnboardingGuard() {
   const { user } = useAuth();
@@ -309,6 +334,7 @@ function AppInner() {
         <SupplierOnboardingGuard />
         <ArchitectOnboardingGuard />
         <AnalyticsTracker />
+        <HubSpotLoader />
         <Suspense fallback={<div className="flex h-screen items-center justify-center"><span className="text-muted-foreground text-sm">Loading…</span></div>}>
           <Router />
         </Suspense>
