@@ -45,7 +45,7 @@ GreenChainz uses a **custom, self-managed authentication model**.
 | `/api/auth/callback/:provider` | GET | None | OAuth provider | Receives code, exchanges token, sets cookie, redirects |
 | `/api/auth/email/signup` | POST | None | Browser (fetch) | Creates account + issues session cookie |
 | `/api/auth/email/login` | POST | None | Browser (fetch) | Validates password + issues session cookie |
-| `/api/auth/me` | GET | JWT cookie | Browser (fetch) | Returns current user from session |
+| `/api/auth/me` | GET | None | Browser (fetch) | Returns `{ authenticated, user }`; anonymous callers get `200` with `user: null` |
 | `/api/auth/logout` | GET/POST | JWT cookie | Browser | Clears session cookie, redirects to `/` |
 
 ---

@@ -290,11 +290,12 @@ async function startServer() {
     try {
       const user = await sdk.authenticateRequest(req).catch(() => null);
       if (!user) {
-        res.status(401).json({ error: "Not authenticated" });
+        res.status(200).json({ authenticated: false, user: null });
         return;
       }
 
-      res.json({
+      res.status(200).json({
+        authenticated: true,
         user: {
           id: String(user.id),
           email: user.email ?? "",
@@ -306,7 +307,7 @@ async function startServer() {
         },
       });
     } catch {
-      res.status(401).json({ error: "Not authenticated" });
+      res.status(200).json({ authenticated: false, user: null });
     }
   });
 

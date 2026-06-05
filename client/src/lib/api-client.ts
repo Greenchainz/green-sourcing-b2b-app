@@ -101,6 +101,7 @@ export async function checkHealth() {
  */
 export async function getCurrentUser() {
   const response = await get<{
+    authenticated: boolean;
     user: {
       id: string;
       email: string;
@@ -109,10 +110,11 @@ export async function getCurrentUser() {
       isAdmin: boolean;
       isSupplier: boolean;
       avatarUrl: string | null;
-    };
+    } | null;
   }>('/api/auth/me');
 
   const { user } = response;
+  if (!user) return null;
   return {
     id: user.id,
     email: user.email,

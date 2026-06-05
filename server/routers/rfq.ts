@@ -538,6 +538,8 @@ export const rfqRouter = router({
           sustainabilityScore: suppliers.sustainabilityScore,
           weightedRankScore: suppliers.weightedRankScore,
           tier: suppliers.tier,
+          latitude: suppliers.latitude,
+          longitude: suppliers.longitude,
           // ── Service area fields (shipping-class routing) ──────────────────
           serviceRadiusMiles: suppliers.serviceRadiusMiles,
           statesServed: suppliers.statesServed,
@@ -578,13 +580,18 @@ export const rfqRouter = router({
           : [];
 
       const locationMap = new Map<number, { lat: number; lng: number }>();
-      for (const loc of locationRows) {
-        if (!locationMap.has(loc.supplierId)) {
-          locationMap.set(loc.supplierId, {
-            lat: parseFloat(String(loc.lat)),
-            lng: parseFloat(String(loc.lng)),
-          });
+      for (const row of rows) {
+        const lat = row.latitude != null ? parseFloat(String(row.latitude)) : NaN;
+        const lng = row.longitude != null ? parseFloat(String(row.longitude)) : NaN;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          locationMap.set(row.id, { lat, lng });
         }
+      }
+      for (const loc of locationRows) {
+        locationMap.set(loc.supplierId, {
+          lat: parseFloat(String(loc.lat)),
+          lng: parseFloat(String(loc.lng)),
+        });
       }
 
       const projectLat = input.projectLat;

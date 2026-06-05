@@ -153,6 +153,10 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<EnrichedCandida
       state: suppliersLocation.state,
       latitude: suppliersLocation.latitude,
       longitude: suppliersLocation.longitude,
+      fallbackCity: suppliers.city,
+      fallbackState: suppliers.state,
+      fallbackLatitude: suppliers.latitude,
+      fallbackLongitude: suppliers.longitude,
       materialCategories: suppliers.materialCategories,
       certifications: suppliers.certifications,
       sustainabilityScore: suppliers.sustainabilityScore,
@@ -222,6 +226,11 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<EnrichedCandida
   const shippingClass = getShippingClass(category);
 
   const enriched: EnrichedCandidate[] = rows.map((s) => {
+    const city = s.city ?? s.fallbackCity ?? null;
+    const state = s.state ?? s.fallbackState ?? null;
+    const latitude = s.latitude ?? s.fallbackLatitude;
+    const longitude = s.longitude ?? s.fallbackLongitude;
+
     const cats: string[] = Array.isArray(s.materialCategories) ? (s.materialCategories as string[]) : [];
     const certs: string[] = Array.isArray(s.certifications) ? (s.certifications as string[]) : [];
     const sustainScore = s.sustainabilityScore != null ? parseFloat(s.sustainabilityScore) : null;
@@ -233,14 +242,14 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<EnrichedCandida
     if (
       intent.projectLatitude != null &&
       intent.projectLongitude != null &&
-      s.latitude != null &&
-      s.longitude != null
+      latitude != null &&
+      longitude != null
     ) {
       distanceMiles = haversineMiles(
         intent.projectLatitude,
         intent.projectLongitude,
-        Number(s.latitude),
-        Number(s.longitude),
+        Number(latitude),
+        Number(longitude),
       );
     }
 
@@ -249,7 +258,7 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<EnrichedCandida
       isLocal = isWithinServiceArea({
         distanceMiles,
         projectState: intent.projectState,
-        supplierState: s.state ?? null,
+        supplierState: state,
         shipsNationwide: s.shipsNationwide ?? false,
         statesServed: Array.isArray(s.statesServed) ? (s.statesServed as string[]) : null,
         serviceRadiusMiles: s.serviceRadiusMiles != null ? Number(s.serviceRadiusMiles) : null,
@@ -261,8 +270,8 @@ async function fetchCandidates(intent: ParsedRfqIntent): Promise<EnrichedCandida
       // Core identity
       id: s.id,
       companyName: s.companyName ?? `Supplier #${s.id}`,
-      city: s.city ?? null,
-      state: s.state ?? null,
+      city,
+      state,
       materialCategories: cats,
       certifications: certs,
       sustainabilityScore: sustainScore,
