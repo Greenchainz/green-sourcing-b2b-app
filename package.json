@@ -172,7 +172,8 @@
       "undici": ">=7.24.0",
       "kysely": ">=0.28.14",
       "nodemailer": ">=8.0.0",
-      "protobufjs": ">=8.0.2"
+      "protobufjs": ">=8.0.2",
+      "ox": "0.14.29"
     }
   }
 }
