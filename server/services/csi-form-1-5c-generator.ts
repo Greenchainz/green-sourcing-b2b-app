@@ -53,6 +53,8 @@ export async function generateCsiForm15CPdf(params: {
   validation: SwapValidationRow;
   incumbent: MaterialRow;
   sustainable: MaterialRow;
+  incumbentManufacturer?: string;
+  sustainableManufacturer?: string;
   projectName?: string;
   specSection?: string;
   requestedBy?: string;
@@ -65,6 +67,8 @@ export async function generateCsiForm15CPdf(params: {
     validation,
     incumbent,
     sustainable,
+    incumbentManufacturer,
+    sustainableManufacturer,
     projectName,
     specSection,
     requestedBy,
@@ -90,9 +94,9 @@ export async function generateCsiForm15CPdf(params: {
   doc.font("Helvetica-Bold").fontSize(11).text("1) Product Information");
   doc.font("Helvetica").fontSize(10);
   doc.text(`Specified Product: ${incumbent.productName || incumbent.name}`);
-  doc.text(`Specified Manufacturer: ${incumbent.manufacturerName || "N/A"}`);
+  doc.text(`Specified Manufacturer: ${incumbentManufacturer || "N/A"}`);
   doc.text(`Proposed Product: ${sustainable.productName || sustainable.name}`);
-  doc.text(`Proposed Manufacturer: ${sustainable.manufacturerName || "N/A"}`);
+  doc.text(`Proposed Manufacturer: ${sustainableManufacturer || "N/A"}`);
   doc.text(`Category: ${sustainable.category}`);
   doc.text(`EPD Number: ${sustainable.epdNumber || "N/A"}`);
 

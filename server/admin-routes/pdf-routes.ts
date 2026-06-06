@@ -85,7 +85,7 @@ export function registerPdfRoutes(
       if (isNaN(validationId)) return res.status(400).json(createErrorResponse('Invalid validation ID', req.id));
 
       const { getDb } = await import('../db');
-      const { swapValidations, materials } = await import('../../drizzle/schema');
+      const { swapValidations, materials, manufacturers } = await import('../../drizzle/schema');
       const { eq } = await import('drizzle-orm');
       const { generateCsiForm15CPdf, buildCsi15CFilename } = await import('../services/csi-form-1-5c-generator');
       const db = await getDb();
@@ -106,6 +106,25 @@ export function registerPdfRoutes(
         return res.status(404).json(createErrorResponse('Validation materials not found', req.id));
       }
 
+      const [incumbentManufacturer, sustainableManufacturer] = await Promise.all([
+        incumbent[0].manufacturerId == null
+          ? Promise.resolve(undefined)
+          : db
+              .select({ name: manufacturers.name })
+              .from(manufacturers)
+              .where(eq(manufacturers.id, incumbent[0].manufacturerId))
+              .limit(1)
+              .then((rows) => rows[0]?.name),
+        sustainable[0].manufacturerId == null
+          ? Promise.resolve(undefined)
+          : db
+              .select({ name: manufacturers.name })
+              .from(manufacturers)
+              .where(eq(manufacturers.id, sustainable[0].manufacturerId))
+              .limit(1)
+              .then((rows) => rows[0]?.name),
+      ]);
+
       const querySchema = z.object({
         projectName: z.string().trim().max(120).optional(),
         specSection: z.string().trim().max(40).optional(),
@@ -124,6 +143,8 @@ export function registerPdfRoutes(
         validation,
         incumbent: incumbent[0],
         sustainable: sustainable[0],
+        incumbentManufacturer,
+        sustainableManufacturer,
         projectName,
         specSection,
         requestedBy,
