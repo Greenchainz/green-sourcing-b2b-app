@@ -111,6 +111,7 @@ export const manufacturerRouter = router({
 
       const dbResults = rows.map((r) => ({
         ...r.manufacturer,
+        companyName: r.manufacturer.name,
         materialCount: Number(r.materialCount),
       }));
 
