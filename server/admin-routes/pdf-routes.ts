@@ -107,7 +107,7 @@ export function registerPdfRoutes(
       }
 
       const [incumbentManufacturer, sustainableManufacturer] = await Promise.all([
-        incumbent[0].manufacturerId == null
+        incumbent[0].manufacturerId === null || incumbent[0].manufacturerId === undefined
           ? Promise.resolve(undefined)
           : db
               .select({ name: manufacturers.name })
@@ -115,7 +115,7 @@ export function registerPdfRoutes(
               .where(eq(manufacturers.id, incumbent[0].manufacturerId))
               .limit(1)
               .then((rows) => rows[0]?.name),
-        sustainable[0].manufacturerId == null
+        sustainable[0].manufacturerId === null || sustainable[0].manufacturerId === undefined
           ? Promise.resolve(undefined)
           : db
               .select({ name: manufacturers.name })
