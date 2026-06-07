@@ -57,7 +57,6 @@ async function getRedisClient(): Promise<ReturnType<typeof createClient> | null>
     if (redisClient) return redisClient;
     if (redisInitAttempted) return null;
 
-    redisInitAttempted = true;
     const redisRequired = isRedisRequiredForCallSessions();
 
     const redisUrl = redisUrlFromEnv();
@@ -65,8 +64,11 @@ async function getRedisClient(): Promise<ReturnType<typeof createClient> | null>
         if (redisRequired) {
             throw missingRedisConfigError();
         }
+        // Do not set redisInitAttempted so the next call retries once env vars are populated.
         return null;
     }
+
+    redisInitAttempted = true;
 
     try {
         const client = createClient({
