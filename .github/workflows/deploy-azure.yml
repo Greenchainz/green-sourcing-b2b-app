@@ -322,6 +322,10 @@ jobs:
           get_secret fred-api-key
           get_secret resend-api-key
           get_secret ec3-api-key
+          # Core auth secrets — stored as Container App secrets so the backend can
+          # start successfully even before system-assigned MI RBAC fully propagates.
+          get_secret jwt-secret
+          get_secret microsoft-client-secret
 
       - name: Remove stale user-assigned identities from backend
         run: |
@@ -365,6 +369,8 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
           FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
           RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
+          JWT_SECRET: ${{ steps.kv.outputs.jwt-secret }}
+          AZURE_AD_CLIENT_SECRET: ${{ steps.kv.outputs.microsoft-client-secret }}
         run: |
           set -euo pipefail
           if [ -z "$DATABASE_URL" ]; then
@@ -377,6 +383,18 @@ jobs:
           fi
           if [ -n "$RESEND_API_KEY" ]; then
             SECRET_ARGS+=("resend-api-key=$RESEND_API_KEY")
+          fi
+          # Store core auth secrets directly so the container can start even if
+          # Key Vault RBAC hasn't propagated by the time the new revision boots.
+          if [ -n "$JWT_SECRET" ]; then
+            SECRET_ARGS+=("jwt-secret=$JWT_SECRET")
+          else
+            echo "⚠️  jwt-secret not found in Key Vault — backend will rely on KV load at runtime"
+          fi
+          if [ -n "$AZURE_AD_CLIENT_SECRET" ]; then
+            SECRET_ARGS+=("microsoft-client-secret=$AZURE_AD_CLIENT_SECRET")
+          else
+            echo "⚠️  microsoft-client-secret not found in Key Vault — backend will rely on KV load at runtime"
           fi
           # Bounded retry window with capped exponential backoff to cover overlap
           # while Azure finalizes a prior Container App provisioning op.
@@ -591,6 +609,11 @@ jobs:
             "FRONTEND_URL=https://greenchainz.com"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
             "DATABASE_URL=secretref:database-url"
+            # Bind core auth secrets directly from Container App secrets so the
+            # server can pass the required-env-vars check on first boot, before
+            # the system-assigned MI RBAC assignment has fully propagated to KV.
+            "JWT_SECRET=secretref:jwt-secret"
+            "AZURE_AD_CLIENT_SECRET=secretref:microsoft-client-secret"
             "AZURE_STORAGE_ACCOUNT_NAME=revitfiles"
             "ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true"
             # Allow server to start during the brief window before system-assigned
@@ -679,7 +702,6 @@ jobs:
       - name: Deploy frontend
         env:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
-          AZURE_MI_CLIENT_ID: ${{ secrets.AZURE_MI_CLIENT_ID }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
@@ -724,7 +746,8 @@ jobs:
             "NODE_ENV=production"
             "PORT=3000"
             "DATABASE_URL=secretref:database-url"
-            "AZURE_MI_CLIENT_ID=$AZURE_MI_CLIENT_ID"
+            "AZURE_STORAGE_ACCOUNT_NAME=revitfiles"
+            "REQUIRE_REDIS_CALL_SESSIONS=false"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
@@ -737,6 +760,7 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}" \
+            --remove-env-vars AZURE_MI_CLIENT_ID MANAGED_IDENTITY_CLIENT_ID AZURE_CLIENT_ID \
             --min-replicas 1 \
             --max-replicas 3
           # Ensure ingress target port is always 3000 — guards against portal
