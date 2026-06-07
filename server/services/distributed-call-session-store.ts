@@ -64,6 +64,8 @@ async function getRedisClient(): Promise<ReturnType<typeof createClient> | null>
         if (redisRequired) {
             throw missingRedisConfigError();
         }
+        // Don't set redisInitAttempted here: config may not be populated yet
+        // (e.g. Key Vault secrets haven't loaded). Allow a retry on the next call.
         // Do not set redisInitAttempted so the next call retries once env vars are populated.
         return null;
     }
