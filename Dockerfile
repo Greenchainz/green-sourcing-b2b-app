@@ -44,7 +44,7 @@ ENV VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
 RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY pnpm run build
 
 # Stage 3: Runtime — node:22-bookworm-slim (Debian 12, actively patched glibc, non-root node user)
-FROM node:22-bookworm-slim AS runtime
+FROM node:22.22.3-trixie-slim AS runtime
 WORKDIR /app
 # Patch all OS packages (including glibc) at image build time
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
