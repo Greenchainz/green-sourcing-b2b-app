@@ -362,14 +362,21 @@ jobs:
 
       - name: Upsert backend runtime secrets in Container App
         env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
           FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
           RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
         run: |
           set -euo pipefail
-          if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
-            echo "⚠️  fred-api-key or resend-api-key not found in Key Vault '${{ env.KEY_VAULT }}' — skipping Container App secret upsert."
-            echo "ℹ️  These secrets are loaded at runtime by loadSecrets() via system-assigned managed identity."
-            exit 0
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          SECRET_ARGS=("database-url=$DATABASE_URL")
+          if [ -n "$FRED_API_KEY" ]; then
+            SECRET_ARGS+=("fred-api-key=$FRED_API_KEY")
+          fi
+          if [ -n "$RESEND_API_KEY" ]; then
+            SECRET_ARGS+=("resend-api-key=$RESEND_API_KEY")
           fi
           # Bounded retry window with capped exponential backoff to cover overlap
           # while Azure finalizes a prior Container App provisioning op.
@@ -385,9 +392,7 @@ jobs:
             if az containerapp secret set \
               --name ${{ env.BACKEND_APP }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
-              --secrets \
-                "fred-api-key=$FRED_API_KEY" \
-                "resend-api-key=$RESEND_API_KEY" 2>"$SECRET_ERR_FILE"; then
+              --secrets "${SECRET_ARGS[@]}" 2>"$SECRET_ERR_FILE"; then
               echo "Backend runtime secrets updated."
               exit 0
             fi
