@@ -593,14 +593,11 @@ jobs:
             "DATABASE_URL=secretref:database-url"
             "AZURE_STORAGE_ACCOUNT_NAME=revitfiles"
             "ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true"
-            # Clear the stale user-assigned identity client ID — backend now uses
-            # system-assigned managed identity. ManagedIdentityCredential() with no
-            # clientId automatically selects the system-assigned identity.
-            "AZURE_MI_CLIENT_ID="
-            "MANAGED_IDENTITY_CLIENT_ID="
-            # Prevent Azure SDK fallback from treating app/OIDC client IDs as a
-            # managed identity selector when no explicit MI client ID is intended.
-            "AZURE_CLIENT_ID="
+            # Allow server to start during the brief window before system-assigned
+            # identity has full Key Vault access (Redis config is loaded from KV).
+            # Once KV is reachable the app uses Redis normally; this flag just
+            # prevents a FATAL crash when REDIS_HOST/REDIS_PORT are not yet set.
+            "REQUIRE_REDIS_CALL_SESSIONS=false"
           )
           # EC3 API key — powers the 24h material sync scheduler
           if [ -n "${{ steps.kv.outputs.ec3-api-key }}" ]; then
@@ -616,11 +613,17 @@ jobs:
               "SENTRY_RELEASE=${{ github.sha }}"
             )
           fi
+          # Use --remove-env-vars to properly delete stale identity vars.
+          # Setting KEY= (empty) via --set-env-vars is silently ignored by the
+          # Azure CLI, leaving the old user-assigned identity client ID in place.
+          # --remove-env-vars performs an explicit deletion, ensuring
+          # ManagedIdentityCredential() falls back to the system-assigned identity.
           az containerapp update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars "${ENV_VARS[@]}"
+            --set-env-vars "${ENV_VARS[@]}" \
+            --remove-env-vars AZURE_MI_CLIENT_ID MANAGED_IDENTITY_CLIENT_ID AZURE_CLIENT_ID
 
       - name: Ensure backend ingress targetPort is 3000
         run: |
