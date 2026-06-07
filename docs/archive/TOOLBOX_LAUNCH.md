@@ -30,10 +30,8 @@ Everything is built. You are **ready to launch**.
 6. **Config:**
    - `public/manifest.xml` (Office add-in registration)
    - `package.json` (✅ Added mssql, lucide-react, @types/office-js)
-7. **Documentation (5 files):**
-   - `EXCEL_ADDIN_SETUP.md` - Complete setup guide
+7. **Documentation (4 files):**
    - `EXCEL_SCRAPER_INTEGRATION.md` - How scraper plugs in
-   - `TOOLBOX_LAUNCH_SUMMARY.md` - Strategic overview
    - `QUICK_START.md` - 5-minute quick start
    - `TOOLBOX_LAUNCH_CHECKLIST.md` - Pre-flight checklist
    - `WHAT_WE_BUILT.md` - Visual summary
@@ -288,4 +286,3 @@ Otherwise, **you've got this.**
 Go build. Go sell. Go win.
 
 🚀
-
