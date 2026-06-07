@@ -591,6 +591,8 @@ jobs:
             "FRONTEND_URL=https://greenchainz.com"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
             "DATABASE_URL=secretref:database-url"
+            "AZURE_STORAGE_ACCOUNT_NAME=revitfiles"
+            "ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true"
             # Clear the stale user-assigned identity client ID — backend now uses
             # system-assigned managed identity. ManagedIdentityCredential() with no
             # clientId automatically selects the system-assigned identity.
