@@ -205,9 +205,7 @@ Set baseline before launch, then track:
 - ✅ `package.json` - Updated dependencies
 
 ### Documentation
-- ✅ `docs/EXCEL_ADDIN_SETUP.md`
 - ✅ `docs/EXCEL_SCRAPER_INTEGRATION.md`
-- ✅ `docs/TOOLBOX_LAUNCH_SUMMARY.md`
 - ✅ `docs/QUICK_START.md`
 - ✅ `docs/TOOLBOX_LAUNCH_CHECKLIST.md` (this file)
 
@@ -230,5 +228,4 @@ Pick one. Own it. Execute relentlessly.
 **Owner:** You
 
 **Let's go.** 🚀
-
 
