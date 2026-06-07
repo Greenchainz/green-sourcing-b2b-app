@@ -43,14 +43,14 @@ ENV VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
 #   - esbuild     → dist/index.js (server bundle)
 RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY pnpm run build
 
-# Stage 3: Runtime — node:22-bookworm-slim (Debian 12, actively patched glibc, non-root node user)
+# Stage 3: Runtime — node:22.22.3-trixie-slim (Debian trixie, actively patched glibc, non-root node user)
 FROM node:22.22.3-trixie-slim AS runtime
 WORKDIR /app
 # Patch all OS packages (including glibc) at image build time
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 # Copy dumb-init binary from deps stage
 COPY --from=deps /usr/bin/dumb-init /usr/bin/dumb-init
-# node:22-bookworm-slim includes non-root user 'node' (uid 1000)
+# node:22.22.3-trixie-slim includes non-root user 'node' (uid 1000)
 # Copy the production build output
 # dist/index.js  = Express server bundle (esbuild --packages=external output)
 # dist/public/   = Vite client build (static assets served by Express)
