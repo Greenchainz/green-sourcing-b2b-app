@@ -26,16 +26,66 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
 
+          // Core React runtime — must be synchronously available
           if (/\/node_modules\/react(-dom)?\//i.test(id)) {
             return "vendor-react";
           }
 
+          // tRPC + data-fetching stack
           if (
             id.includes("@trpc") ||
             id.includes("@tanstack/react-query") ||
             id.includes("superjson")
           ) {
             return "vendor-trpc";
+          }
+
+          // Radix UI primitives — large collection, defer to its own chunk
+          if (id.includes("@radix-ui/")) {
+            return "vendor-radix";
+          }
+
+          // Charting — recharts + d3 deps — only used on dashboard pages
+          if (
+            id.includes("recharts") ||
+            id.includes("/d3-") ||
+            id.includes("victory-")
+          ) {
+            return "vendor-charts";
+          }
+
+          // Icon library — large but tree-shakeable; keep separate so it can
+          // be cached independently of UI primitives
+          if (id.includes("lucide-react")) {
+            return "vendor-icons";
+          }
+
+          // Form handling
+          if (
+            id.includes("react-hook-form") ||
+            id.includes("@hookform/")
+          ) {
+            return "vendor-forms";
+          }
+
+          // Date / time utilities
+          if (id.includes("date-fns")) {
+            return "vendor-dates";
+          }
+
+          // PDF generation — heavy, only used in a few pages
+          if (id.includes("@pdfme/") || id.includes("pdfkit")) {
+            return "vendor-pdf";
+          }
+
+          // Routing + styling utilities — small, but keep separate from React
+          if (
+            id.includes("wouter") ||
+            id.includes("clsx") ||
+            id.includes("class-variance-authority") ||
+            id.includes("tailwind-merge")
+          ) {
+            return "vendor-utils";
           }
         },
       },

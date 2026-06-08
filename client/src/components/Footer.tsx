@@ -16,13 +16,15 @@ export default function Footer() {
           {/* Company Info */}
           <div className="col-span-2 md:col-span-1 space-y-4">
             <div className="flex items-center space-x-3">
-              <img
-                src="/brand/greenchainz-icon.png"
-                alt="GreenChainz Logo"
-                className="h-10 w-auto"
-                width={40}
-                height={40}
-              />
+              <picture>
+                <source srcSet="/brand/greenchainz-icon.webp" type="image/webp" />
+                <img
+                  src="/brand/greenchainz-icon.png"
+                  alt="GreenChainz Logo"
+                  className="h-10 w-auto"
+                  width={40}
+                  height={40}
+                /></picture>
               <span className="text-lg font-bold text-foreground">GreenChainz</span>
             </div>
             <p className="text-sm text-muted-foreground">
