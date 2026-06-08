@@ -166,26 +166,34 @@ async function startServer() {
   const server = createServer(app);
 
   app.use((req, res, next) => {
-    if (process.env.NODE_ENV !== "production" || isHealthEndpoint(req.path)) {
+    // Never redirect API or health traffic. Behind Azure Front Door the origin
+    // Host header is rewritten to the container FQDN, which can create a 308 loop.
+    if (
+      process.env.NODE_ENV !== "production" ||
+      isHealthEndpoint(req.path) ||
+      req.path.startsWith("/api/")
+    ) {
       next();
       return;
     }
 
-    const host = String(req.headers.host ?? "").toLowerCase();
+    const forwardedHostHeader = req.headers["x-forwarded-host"];
+    const forwardedHost = Array.isArray(forwardedHostHeader)
+      ? forwardedHostHeader[0]
+      : String(forwardedHostHeader ?? "").split(",")[0].trim();
+    const host = (forwardedHost || String(req.headers.host ?? "")).toLowerCase();
     const forwardedProtoHeader = req.headers["x-forwarded-proto"];
     const forwardedProto = Array.isArray(forwardedProtoHeader)
       ? forwardedProtoHeader[0]
       : String(forwardedProtoHeader ?? "").split(",")[0].trim();
     const isHttps = req.secure || forwardedProto === "https";
-    const needsCanonicalHost = host !== CANONICAL_HOST;
 
-    if (isHttps && !needsCanonicalHost) {
+    if (isHttps && host === CANONICAL_HOST) {
       next();
       return;
     }
 
-    const redirectUrl = `https://${CANONICAL_HOST}${req.originalUrl}`;
-    res.redirect(308, redirectUrl);
+    res.redirect(308, `https://${CANONICAL_HOST}${req.originalUrl}`);
   });
 
   // ── Security headers ──────────────────────────────────────────────────────
