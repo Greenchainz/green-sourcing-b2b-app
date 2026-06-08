@@ -1,12 +1,7 @@
 import axios from "axios";
-import { getAzureCredential, isCredentialConfigured } from "../lib/azure/credentials";
+import { getAzureMapsAuth } from "../lib/azure/azure-maps-auth";
 
-const AZURE_MAPS_SUBSCRIPTION_KEY = process.env.AZURE_MAPS_SUBSCRIPTION_KEY || "";
-const AZURE_MAPS_CLIENT_ID = process.env.AZURE_MAPS_CLIENT_ID || "";
 const AZURE_MAPS_BASE_URL = "https://atlas.microsoft.com";
-const AZURE_MAPS_SCOPE = "https://atlas.microsoft.com/.default";
-const ALLOW_MAPS_KEY_IN_PROD = process.env.ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD === "true";
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 export interface Coordinates {
   latitude: number;
@@ -16,46 +11,6 @@ export interface Coordinates {
 export interface DistanceResult {
   distanceMiles: number;
   durationMinutes: number;
-}
-
-interface AzureMapsAuth {
-  headers: Record<string, string>;
-  keyParam?: string;
-}
-
-async function getAzureMapsAuth(): Promise<AzureMapsAuth | null> {
-  if (AZURE_MAPS_CLIENT_ID && isCredentialConfigured()) {
-    try {
-      const token = await getAzureCredential().getToken(AZURE_MAPS_SCOPE);
-      if (token?.token) {
-        return {
-          headers: {
-            Authorization: `Bearer ${token.token}`,
-            "x-ms-client-id": AZURE_MAPS_CLIENT_ID,
-          },
-        };
-      }
-    } catch (error) {
-      console.warn("[Azure Maps] Managed identity authentication failed:", error);
-    }
-  }
-
-  if (AZURE_MAPS_SUBSCRIPTION_KEY) {
-    if (!IS_PRODUCTION || ALLOW_MAPS_KEY_IN_PROD) {
-      return {
-        headers: {},
-        keyParam: AZURE_MAPS_SUBSCRIPTION_KEY,
-      };
-    }
-
-    console.error(
-      "[Azure Maps] Subscription-key auth is blocked in production. " +
-      "Use managed identity (AZURE_MAPS_CLIENT_ID + AZURE_MI_CLIENT_ID) or set " +
-      "ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true as an emergency override."
-    );
-  }
-
-  return null;
 }
 
 /**

@@ -12,7 +12,7 @@
  *
  * Env vars:
  *   BING_SEARCH_API_KEY, BING_SEARCH_ENDPOINT
- *   AZURE_MAPS_SUBSCRIPTION_KEY
+ *   AZURE_MAPS_CLIENT_ID (managed identity preferred)
  */
 
 import axios from "axios";
@@ -20,6 +20,7 @@ import { getDb } from "../../server/db";
 import { scrapedLeads, crmContacts, crmEmailSequences } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { ROLE_CONFIGS, type RoleConfig } from "./lead-role-config";
+import { getAzureMapsAuth } from "../azure/azure-maps-auth";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -91,12 +92,22 @@ async function searchMaps(
   query: string,
   state: string
 ): Promise<Array<{ company: string; phone?: string; website?: string; city?: string; state: string }>> {
-  const key = process.env.AZURE_MAPS_SUBSCRIPTION_KEY;
-  if (!key) return [];
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("[lead-scraper] Azure Maps auth unavailable — skipping query");
+    return [];
+  }
+
   try {
     const response = await axios.get("https://atlas.microsoft.com/search/poi/json", {
-      params: { "api-version": "1.0", "subscription-key": key,
-                query: `${query} ${state}`, countrySet: "US", limit: 20 },
+      params: {
+        "api-version": "1.0",
+        query: `${query} ${state}`,
+        countrySet: "US",
+        limit: 20,
+        ...(auth.keyParam ? { "subscription-key": auth.keyParam } : {}),
+      },
+      headers: auth.headers,
       timeout: 10_000,
     });
     return (response.data?.results ?? []).map((r: any) => ({

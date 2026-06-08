@@ -63,7 +63,16 @@ const materialImageUpload = multer({
   },
 });
 
-uploadRouter.post("/supplier/upload-image", materialImageUpload.single("file"), async (req, res) => {
+uploadRouter.post("/supplier/upload-image", (req, res, next) => {
+  materialImageUpload.single("file")(req, res, (err) => {
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: "File too large — max 5 MB for images" });
+      return;
+    }
+    if (err) { next(err); return; }
+    next();
+  });
+}, async (req, res) => {
   try {
     const user = await requireEasyAuthUser(req);
     if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
@@ -112,14 +121,23 @@ uploadRouter.post("/supplier/upload-image", materialImageUpload.single("file"), 
 // ── RFQ Spec PDF parser (Document Intelligence → LLM → ParsedRfqFields) ────────
 const specUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB — spec books can be large
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB — spec books / submittal packages can be large
   fileFilter: (_req, file, cb) => {
     if (file.mimetype === "application/pdf") cb(null, true);
     else cb(new Error("Only PDF files are accepted for spec parsing"));
   },
 });
 
-uploadRouter.post("/rfq/parse-spec", specUpload.single("spec"), async (req, res) => {
+uploadRouter.post("/rfq/parse-spec", (req, res, next) => {
+  specUpload.single("spec")(req, res, (err) => {
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: "File too large — max 50 MB" });
+      return;
+    }
+    if (err) { next(err); return; }
+    next();
+  });
+}, async (req, res) => {
   try {
     const user = await requireEasyAuthUser(req);
     if (!user) {

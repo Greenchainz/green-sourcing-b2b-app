@@ -182,7 +182,4 @@ CREATE TABLE Products (
 ## Questions?
 
 See full documentation:
-- [Excel Add-in Setup](EXCEL_ADDIN_SETUP.md)
 - [Scraper Integration](EXCEL_SCRAPER_INTEGRATION.md)
-- [Strategic Overview](TOOLBOX_LAUNCH_SUMMARY.md)
-
