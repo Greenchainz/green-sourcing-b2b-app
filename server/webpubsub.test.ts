@@ -32,8 +32,12 @@ describe("webpubsub-manager", () => {
     delete process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
     delete process.env.WEBPUBSUB_HUB;
 
-    defaultAzureCredentialCtor.mockImplementation(() => ({ kind: "managed-identity" }));
-    webPubSubClientCtor.mockImplementation(() => createMockClient());
+    defaultAzureCredentialCtor.mockImplementation(function () {
+      return { kind: "managed-identity" };
+    });
+    webPubSubClientCtor.mockImplementation(function () {
+      return createMockClient();
+    });
   });
 
   afterEach(() => {
@@ -76,10 +80,12 @@ describe("webpubsub-manager", () => {
     process.env.AZURE_WEBPUBSUB_CONNECTION_STRING =
       "Endpoint=https://greenchainz.webpubsub.azure.com;AccessKey=secret;Version=1.0;";
     webPubSubClientCtor
-      .mockImplementationOnce(() => {
+      .mockImplementationOnce(function () {
         throw new Error("managed identity initialization failed");
       })
-      .mockImplementation(() => createMockClient());
+      .mockImplementation(function () {
+        return createMockClient();
+      });
     mockGetClientAccessToken.mockResolvedValue({
       url: "wss://greenchainz.webpubsub.azure.com/client/hubs/greenchainz-hub?access_token=fallback",
     });
