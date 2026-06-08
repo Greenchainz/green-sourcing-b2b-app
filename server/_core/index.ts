@@ -178,10 +178,12 @@ async function startServer() {
     }
 
     const forwardedHostHeader = req.headers["x-forwarded-host"];
-    const forwardedHost = Array.isArray(forwardedHostHeader)
+    const rawForwardedHost = Array.isArray(forwardedHostHeader)
       ? forwardedHostHeader[0]
       : String(forwardedHostHeader ?? "").split(",")[0].trim();
-    const host = (forwardedHost || String(req.headers.host ?? "")).toLowerCase();
+    const forwardedHost = rawForwardedHost.toLowerCase();
+    const safeForwardedHost = /^[a-z0-9.-]+(?::\d+)?$/.test(forwardedHost) ? forwardedHost : "";
+    const host = (safeForwardedHost || String(req.headers.host ?? "")).toLowerCase();
     const forwardedProtoHeader = req.headers["x-forwarded-proto"];
     const forwardedProto = Array.isArray(forwardedProtoHeader)
       ? forwardedProtoHeader[0]
