@@ -1,8 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { trpc } from "@/lib/trpc";
+import {
+  buildMaterialCategoryOptions,
+  normalizeMaterialCategoryInput,
+} from "@/lib/material-categories";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -43,19 +47,6 @@ import {
 } from "lucide-react";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-
-const MATERIAL_CATEGORIES = [
-  "Concrete",
-  "Steel",
-  "Timber",
-  "Glass",
-  "Insulation",
-  "Roofing",
-  "Flooring",
-  "Cladding",
-  "MEP",
-  "Other",
-];
 
 const CERTIFICATIONS = [
   "LEED",
@@ -275,11 +266,13 @@ export default function SupplierOnboarding() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [step, setStep] = useState(0);
+  const [customMaterialCategory, setCustomMaterialCategory] = useState("");
 
   const profileQuery = trpc.supplierOnboarding.getMyProfile.useQuery(
     undefined,
     { enabled: !!user }
   );
+  const materialCategoriesQuery = trpc.materials.categories.useQuery();
 
   const submitOnboarding =
     trpc.supplierOnboarding.submitOnboarding.useMutation({
@@ -343,6 +336,10 @@ export default function SupplierOnboarding() {
   const materialCategories = watch("materialCategories") ?? [];
   const certifications = watch("certifications") ?? [];
   const allValues = watch();
+  const materialCategoryOptions = useMemo(
+    () => buildMaterialCategoryOptions(materialCategoriesQuery.data, materialCategories),
+    [materialCategoriesQuery.data, materialCategories]
+  );
 
   // Location is shown as required in the UI and drives RFQ routing.
   // Block submission if city, state, AND zipCode are all blank.
@@ -359,6 +356,17 @@ export default function SupplierOnboarding() {
   };
 
   const prevStep = () => setStep((s) => Math.max(s - 1, 0));
+
+  const addCustomMaterialCategory = () => {
+    const normalized = normalizeMaterialCategoryInput(customMaterialCategory);
+    if (!normalized) return;
+    if (!materialCategories.some((category) => category.toLowerCase() === normalized.toLowerCase())) {
+      setValue("materialCategories", [...materialCategories, normalized], {
+        shouldValidate: true,
+      });
+    }
+    setCustomMaterialCategory("");
+  };
 
   // state is a validated 2-char code from a dropdown — cast to satisfy the
   // server-side z.enum(US_STATES) type which can't be imported on the client.
@@ -550,8 +558,27 @@ export default function SupplierOnboarding() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-4">
+                    <Label className="text-xs">Add custom category</Label>
+                    <div className="mt-1 flex gap-2">
+                      <Input
+                        value={customMaterialCategory}
+                        onChange={(event) => setCustomMaterialCategory(event.target.value)}
+                        placeholder="e.g. Terracotta, UHPC, Mass Timber"
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            addCustomMaterialCategory();
+                          }
+                        }}
+                      />
+                      <Button type="button" variant="outline" onClick={addCustomMaterialCategory}>
+                        Add
+                      </Button>
+                    </div>
+                  </div>
                   <CheckboxGroup
-                    options={MATERIAL_CATEGORIES}
+                    options={materialCategoryOptions}
                     value={materialCategories}
                     onChange={(v) =>
                       setValue("materialCategories", v, {

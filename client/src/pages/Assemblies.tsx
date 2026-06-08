@@ -66,6 +66,7 @@ const DEFAULT_MATERIAL_PICKER_FILTERS: MaterialPickerFilters = {
   maxPrice: "",
   maxLeadTime: "",
 };
+const MATERIAL_FETCH_BATCH_SIZE = 250;
 
 type LayerDraft = {
   layerOrder: number;
@@ -264,13 +265,14 @@ function AssemblyDetailPage() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const [materialFilters, setMaterialFilters] = useState<MaterialPickerFilters>(DEFAULT_MATERIAL_PICKER_FILTERS);
+  const [materialFetchLimit, setMaterialFetchLimit] = useState(MATERIAL_FETCH_BATCH_SIZE);
   const { data: assembly, isLoading } = trpc.assemblies.getById.useQuery({ id }, { enabled: !!id });
   const { data: materialResults, isLoading: materialsLoading } = trpc.materials.list.useQuery({
     category: materialFilters.category || undefined,
     categorySearch: materialFilters.categorySearch || undefined,
     hasEpd: materialFilters.hasEpd || undefined,
     usManufactured: materialFilters.usManufactured || undefined,
-    limit: 100,
+    limit: materialFetchLimit,
     sortBy: "name",
     sortOrder: "asc",
   });
@@ -294,6 +296,15 @@ function AssemblyDetailPage() {
     setTier((assembly.sustainabilityTier as AssemblyTier) || "good");
     setLayers((assembly.components || []).map((component: any, index: number) => toLayerDraft(component, index)));
   }, [assembly]);
+
+  useEffect(() => {
+    setMaterialFetchLimit(MATERIAL_FETCH_BATCH_SIZE);
+  }, [
+    materialFilters.category,
+    materialFilters.categorySearch,
+    materialFilters.hasEpd,
+    materialFilters.usManufactured,
+  ]);
 
   const updateMaterialFilters = (patch: Partial<MaterialPickerFilters>) => {
     setMaterialFilters((current) => ({ ...current, ...patch }));
@@ -331,6 +342,8 @@ function AssemblyDetailPage() {
       return true;
     });
   }, [materialOptions, materialFilters]);
+  const totalMaterialMatches = materialResults?.total ?? 0;
+  const canLoadMoreMaterials = materialFetchLimit < totalMaterialMatches;
 
   const totals = useMemo(() => {
     const totalGwpPer1000Sqft = layers.reduce((sum, layer) => sum + parseNumber(layer.gwpContribution || layer.materialEmbodiedCarbonPer1000sf), 0);
@@ -611,8 +624,23 @@ function AssemblyDetailPage() {
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{materialsLoading ? "Loading materials..." : `${filteredMaterialOptions.length} matching materials`}</span>
-                  <span>Top 100 catalog results in current filter set</span>
+                  <span>{materialsLoading ? "Loading..." : `${Math.min(materialOptions.length, totalMaterialMatches)} of ${totalMaterialMatches} loaded`}</span>
                 </div>
+                {canLoadMoreMaterials && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() =>
+                      setMaterialFetchLimit((current) =>
+                        Math.min(current + MATERIAL_FETCH_BATCH_SIZE, totalMaterialMatches)
+                      )
+                    }
+                    disabled={materialsLoading}
+                  >
+                    Load more catalog materials
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
