@@ -3,6 +3,7 @@ import "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync } from "fs";
+import path from "path";
 import express from "express";
 import helmet from "helmet";
 import { v4 as uuidv4 } from "uuid";
@@ -87,6 +88,13 @@ function isHealthEndpoint(path: string): boolean {
   return path === "/health" || path === "/healthz" || path === "/ready" || path === "/api/health";
 }
 
+// Crawl-critical static files that must never be intercepted by the canonical
+// redirect — if they were, search engines would see a 308 redirect loop on
+// https://greenchainz.com/robots.txt and fail to fetch the file at all.
+function isCrawlCriticalFile(path: string): boolean {
+  return path === "/robots.txt" || path === "/sitemap.xml";
+}
+
 if (process.env.NODE_ENV !== "production") {
   if (existsSync(".env.local")) {
     config({ path: ".env.local", override: true });
@@ -166,11 +174,14 @@ async function startServer() {
   const server = createServer(app);
 
   app.use((req, res, next) => {
-    // Never redirect API or health traffic. Behind Azure Front Door the origin
-    // Host header is rewritten to the container FQDN, which can create a 308 loop.
+    // Never redirect API, health, or crawl-critical files. Behind Azure Front
+    // Door the origin Host header is rewritten to the container FQDN, which can
+    // create a 308 loop. robots.txt and sitemap.xml must always pass through so
+    // search engines can fetch them on any protocol/host combination.
     if (
       process.env.NODE_ENV !== "production" ||
       isHealthEndpoint(req.path) ||
+      isCrawlCriticalFile(req.path) ||
       req.path.startsWith("/api/")
     ) {
       next();
@@ -311,6 +322,39 @@ async function startServer() {
   app.get("/healthz", (_req, res) => {
     res.status(200).send("ok");
   });
+
+  // ── Crawl-critical static files ───────────────────────────────────────────
+  // Serve robots.txt and sitemap.xml explicitly from the client public dir so
+  // that search engines can always reach them — even when a www→apex or
+  // http→https redirect is in effect, they bypass the canonical redirect above.
+  // Serving them this way also guarantees the correct Content-Type and prevents
+  // the SPA catch-all from returning index.html for these paths.
+  {
+    const clientPublicDir =
+      process.env.NODE_ENV === "production"
+        ? path.resolve(import.meta.dirname, "public")
+        : path.resolve(import.meta.dirname, "../..", "dist", "public");
+
+    app.get("/robots.txt", (_req, res) => {
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.sendFile("robots.txt", { root: clientPublicDir }, (err) => {
+        if (err) {
+          res.status(404).end();
+        }
+      });
+    });
+
+    app.get("/sitemap.xml", (_req, res) => {
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.sendFile("sitemap.xml", { root: clientPublicDir }, (err) => {
+        if (err) {
+          res.status(404).end();
+        }
+      });
+    });
+  }
 
   app.get("/ready", async (_req, res) => {
     try {
