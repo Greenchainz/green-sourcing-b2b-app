@@ -796,6 +796,7 @@ jobs:
             local curl_exit_code=0
 
             for i in $(seq 1 "$attempts"); do
+              # Keep -4/--http1.1 to avoid intermittent GitHub runner -> Azure endpoint connectivity failures.
               status=$(curl -4 --http1.1 -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
               curl_exit_code=$?
               if [ "$curl_exit_code" -ne 0 ]; then
