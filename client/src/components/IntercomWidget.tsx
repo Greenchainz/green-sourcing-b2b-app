@@ -52,6 +52,10 @@ const loadIntercomScript = async () => {
  */
 export default function IntercomWidget() {
   const { user } = useAuth();
+  // Tracks boot state: null = not booted, "anonymous" = anonymous boot, "<id>" = user boot.
+  // Using "anonymous" as a sentinel ensures shutdown() is called before re-booting
+  // as an authenticated user — without this, boot() is a no-op on an already-booted
+  // anonymous session and the widget disappears after login.
   const bootedUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -62,6 +66,7 @@ export default function IntercomWidget() {
       if (!loaded || cancelled) return;
 
       if (user && bootedUserId.current !== user.id) {
+        // Shutdown any existing session (anonymous or a different user)
         if (bootedUserId.current) {
           window.Intercom?.("shutdown");
         }
@@ -95,12 +100,13 @@ export default function IntercomWidget() {
       if (!user && bootedUserId.current) {
         window.Intercom?.("shutdown");
         window.Intercom?.("boot", { app_id: APP_ID, ...LAUNCHER_POSITION });
-        bootedUserId.current = null;
+        bootedUserId.current = "anonymous";
         return;
       }
 
       if (!user && !bootedUserId.current) {
         window.Intercom?.("boot", { app_id: APP_ID, ...LAUNCHER_POSITION });
+        bootedUserId.current = "anonymous";
       }
     };
 
