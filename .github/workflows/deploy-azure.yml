@@ -792,10 +792,18 @@ jobs:
             local method="${4:-GET}"
             local attempts="${5:-24}"
             local sleep_seconds="${6:-10}"
+            # Default to IPv4 + HTTP/1.1 for Azure CI stability; override via
+            # SMOKE_CURL_FLAGS (for example: "--http2" or "") when needed.
+            local smoke_curl_flags="${SMOKE_CURL_FLAGS--4 --http1.1}"
+            local -a smoke_curl_flag_args=()
+            if [ -n "$smoke_curl_flags" ]; then
+              read -r -a smoke_curl_flag_args <<< "$smoke_curl_flags"
+            fi
             local status=""
             local curl_exit_code=0
 
             for i in $(seq 1 "$attempts"); do
+              status=$(curl "${smoke_curl_flag_args[@]}" -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
               # Keep -4/--http1.1 to avoid intermittent GitHub runner -> Azure endpoint connectivity failures.
               status=$(curl -4 --http1.1 -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
               curl_exit_code=$?
