@@ -38,6 +38,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run Snyk dependency scan
+        if: secrets.SNYK_TOKEN != ''
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
