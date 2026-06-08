@@ -1212,8 +1212,8 @@ export default function RFQNewPage() {
       setSpecError("Please upload a PDF file (spec section, CSI division, etc.)");
       return;
     }
-    if (file.size > 25 * 1024 * 1024) {
-      setSpecError("File too large — max 25 MB");
+    if (file.size > 50 * 1024 * 1024) {
+      setSpecError("File too large — max 50 MB");
       return;
     }
 
@@ -1294,8 +1294,8 @@ export default function RFQNewPage() {
       setSpecError("Please upload a PDF file (spec section, CSI division, etc.)");
       return;
     }
-    if (file.size > 25 * 1024 * 1024) {
-      setSpecError("File too large — max 25 MB");
+    if (file.size > 50 * 1024 * 1024) {
+      setSpecError("File too large — max 50 MB");
       return;
     }
 
@@ -1583,7 +1583,7 @@ export default function RFQNewPage() {
                             <p className="text-sm text-muted-foreground">
                               <span className="font-medium text-foreground">Drop a spec PDF</span> or click to browse
                             </p>
-                            <p className="text-xs text-muted-foreground">CSI spec section, product data sheet · Max 25 MB</p>
+                            <p className="text-xs text-muted-foreground">CSI spec section, product data sheet · Max 50 MB</p>
                           </>
                         )}
                       </div>
@@ -1901,7 +1901,7 @@ export default function RFQNewPage() {
                         <p className="text-sm text-muted-foreground">
                           <span className="font-medium text-foreground">Drop a spec PDF</span> or click to browse
                         </p>
-                        <p className="text-xs text-muted-foreground">CSI spec section, product data sheet, or any PDF with material requirements · Max 25 MB</p>
+                        <p className="text-xs text-muted-foreground">CSI spec section, product data sheet, or any PDF with material requirements · Max 50 MB</p>
                       </>
                     )}
                   </div>

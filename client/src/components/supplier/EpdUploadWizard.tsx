@@ -70,8 +70,8 @@ export function EpdUploadWizard({ onExtracted, className = "" }: EpdUploadWizard
       setError("Only PDF files are supported");
       return;
     }
-    if (f.size > 20 * 1024 * 1024) {
-      setError("File too large — maximum 20 MB");
+    if (f.size > 50 * 1024 * 1024) {
+      setError("File too large — maximum 50 MB");
       return;
     }
     setFile(f);

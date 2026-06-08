@@ -232,9 +232,7 @@ package.json                              ← Updated dependencies
 
 ### Documentation
 ```
-docs/EXCEL_ADDIN_SETUP.md                 ← Setup guide
 docs/EXCEL_SCRAPER_INTEGRATION.md         ← Integration guide
-docs/TOOLBOX_LAUNCH_SUMMARY.md            ← Strategic overview
 docs/QUICK_START.md                       ← 5-minute quick start
 docs/TOOLBOX_LAUNCH_CHECKLIST.md          ← Pre-flight checklist
 ```
@@ -266,4 +264,3 @@ docs/TOOLBOX_LAUNCH_CHECKLIST.md          ← Pre-flight checklist
 **Timeline:** 2 weeks to production
 
 **The toolbox is built. Now go sell it.** 🚀
-

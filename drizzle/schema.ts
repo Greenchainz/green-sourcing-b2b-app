@@ -133,7 +133,6 @@ export type InsertUser = typeof users.$inferInsert;
 export const manufacturers = pgTable("manufacturers", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  companyName: varchar("name", { length: 255 }).notNull().default(""),
   website: text("website"),
   logoUrl: text("logoUrl"),
   phone: varchar("phone", { length: 50 }),

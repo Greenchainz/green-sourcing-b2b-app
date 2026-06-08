@@ -25,7 +25,7 @@ container_apps:
     name: greenchainz-frontend
     url: https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io
     image: acrgreenchainzprod916.azurecr.io/greenchainz-frontend:latest
-    tech: Next.js 15.5.9, React 19.2.3
+    tech: Vite + React 19 SPA (wouter client-side routing)
     port: 3000
     cpu: 0.5
     memory: 1.0Gi
@@ -332,13 +332,13 @@ priority: After RFQ system
 
 ### **Environment Variables (Never Commit)**
 ```bash
-# Frontend (.env.local)
-NEXT_PUBLIC_BACKEND_URL=https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
-NEXT_PUBLIC_AZURE_TENANT=ca4f78d4-c753-4893-9cd8-1b309922b4dc
-NEXT_PUBLIC_AZURE_CLIENT_ID=479e2a01-70ab-4df9-baa4-560d317c3423
-NEXT_PUBLIC_AZURE_REDIRECT_URI=https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io/login/callback
-NEXT_PUBLIC_GA_ID=<Google Analytics ID>
-NEXT_PUBLIC_INTERCOM_APP_ID=<Intercom App ID>
+# Frontend (.env) — Vite exposes only vars prefixed with VITE_
+VITE_BACKEND_URL=https://greenchainz-container.jollyrock-a66f2da6.eastus.azurecontainerapps.io
+VITE_AZURE_TENANT=ca4f78d4-c753-4893-9cd8-1b309922b4dc
+VITE_AZURE_CLIENT_ID=479e2a01-70ab-4df9-baa4-560d317c3423
+VITE_AZURE_REDIRECT_URI=https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io/login/callback
+VITE_GA_ID=<Google Analytics ID>
+VITE_INTERCOM_APP_ID=<Intercom App ID>
 
 # Backend (.env)
 DATABASE_URL=postgresql://user:pass@greenchainz-db-prod.postgres.database.azure.com:5432/greenchainz
@@ -386,10 +386,10 @@ data_privacy:
 
 ```bash
 green-sourcing-b2b-app/
-├── frontend/               # Next.js 15 app
+├── client/                 # Vite + React 19 SPA
 │   ├── src/
 │   │   ├── components/    # React components (max 300 lines)
-│   │   ├── pages/         # Page routes
+│   │   ├── pages/         # Page components (wouter routing, not file-based)
 │   │   ├── hooks/         # Custom hooks (prefix: use*)
 │   │   ├── utils/         # Pure utility functions
 │   │   ├── types/         # TypeScript interfaces

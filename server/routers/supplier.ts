@@ -369,10 +369,10 @@ export const supplierOnboardingRouter = router({
     .mutation(async ({ input }) => {
       const buffer = Buffer.from(input.fileBase64, "base64");
 
-      if (buffer.length > 20 * 1024 * 1024) {
+      if (buffer.length > 50 * 1024 * 1024) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "File too large — maximum 20 MB",
+          message: "File too large — maximum 50 MB",
         });
       }
 

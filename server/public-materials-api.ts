@@ -90,7 +90,7 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
         epdUrl:              materials.epdUrl,
         ec3Id:               materials.ec3Id,
         isVerified:          materials.hasEpd,
-        manufacturerName:    manufacturers.companyName,
+        manufacturerName:    manufacturers.name,
       })
       .from(materials)
       .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
@@ -152,7 +152,7 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
         epdUrl:              materials.epdUrl,
         ec3Id:               materials.ec3Id,
         isVerified:          materials.hasEpd,
-        manufacturerName:    manufacturers.companyName,
+        manufacturerName:    manufacturers.name,
       })
       .from(materials)
       .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))

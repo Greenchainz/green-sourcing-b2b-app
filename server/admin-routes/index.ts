@@ -107,8 +107,15 @@ export function registerAdminRoutes(
     adminRateLimit,
     (req, res, next) => {
       const multer = require('multer');
-      const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
-      upload.single('pdf')(req, res, next);
+      const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+      upload.single('pdf')(req, res, (err: unknown) => {
+        if (err && typeof err === 'object' && (err as any).code === 'LIMIT_FILE_SIZE') {
+          res.status(413).json(createErrorResponse('File too large — max 50 MB', getRequestId(req)));
+          return;
+        }
+        if (err) { next(err); return; }
+        next();
+      });
     },
     async (req: express.Request, res: express.Response) => {
       try {
