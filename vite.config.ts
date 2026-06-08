@@ -90,6 +90,23 @@ export default defineConfig({
         },
       },
     },
+    // Only preload chunks needed on every initial page load.
+    // vendor-charts (recharts 465 KiB), vendor-radix (168 KiB), and
+    // vendor-icons (32 KiB) are only used by specific pages/components —
+    // removing them from preload saves ~665 KiB on the critical path.
+    // They still load on-demand when the pages that need them are visited.
+    modulePreload: {
+      resolveDependencies: (_filename: string, deps: string[]) =>
+        deps.filter(
+          (dep) =>
+            !dep.includes("vendor-charts") &&
+            !dep.includes("vendor-radix") &&
+            !dep.includes("vendor-icons") &&
+            !dep.includes("vendor-forms") &&
+            !dep.includes("vendor-dates") &&
+            !dep.includes("vendor-pdf")
+        ),
+    },
   },
   server: {
     host: true,

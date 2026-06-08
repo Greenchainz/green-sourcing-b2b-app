@@ -66,7 +66,7 @@ export default function Login() {
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center gap-3 mb-4">
-                        <img src="/brand/greenchainz-icon.png" alt="GreenChainz" className="w-10 h-10 shrink-0" width="40" height="40" />
+                        <img src="/brand/greenchainz-icon.webp" alt="GreenChainz" className="w-10 h-10 shrink-0" width="40" height="40" />
                         <span className="text-xl sm:text-2xl font-bold text-white">GreenChainz</span>
                     </div>
                     <p className="text-gray-400 text-sm">Verified Sustainable Sourcing</p>
@@ -125,3 +125,4 @@ export default function Login() {
         </div>
     );
 }
+
