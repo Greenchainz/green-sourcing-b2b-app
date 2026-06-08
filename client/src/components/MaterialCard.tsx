@@ -104,31 +104,38 @@ function materialAvatar(name: string, category: string) {
 
 // ── Carbon context helper (plain-language GWP summary) ────────────────────────
 
+// Card-level preferred baseline for sustainable-first ranking.
+const MIN_MCS_SCORE_FOR_PREFERRED = 60;
+
+type CarbonContext = {
+  label: string;
+  color: string;
+  pct: number;
+  bucket: "top" | "below" | "near" | "above";
+};
+
 function carbonContext(
   gwp: string | null | undefined,
   median: string | null | undefined
-): { label: string; color: string } | null {
+): CarbonContext | null {
   const g = parseFloat(gwp ?? "");
   const m = parseFloat(median ?? "");
   if (isNaN(g) || isNaN(m) || m === 0) return null;
   const pct = Math.round(((m - g) / m) * 100); // positive = better than median
-  if (pct >= 40) return { label: "Top 25% in class", color: "text-green-600" };
-  if (pct >= 15) return { label: `${pct}% below avg`, color: "text-green-600" };
-  if (pct >= -10) return { label: "Near avg", color: "text-amber-600" };
-  return { label: `${Math.abs(pct)}% above avg`, color: "text-red-500" };
+  if (pct >= 40) return { label: "Top 25% in class", color: "text-green-600", pct, bucket: "top" };
+  if (pct >= 15) return { label: `${pct}% below avg`, color: "text-green-600", pct, bucket: "below" };
+  if (pct >= -10) return { label: "Near avg", color: "text-amber-600", pct, bucket: "near" };
+  return { label: `${Math.abs(pct)}% above avg`, color: "text-red-500", pct, bucket: "above" };
 }
 
 function isNonSustainableOption(
   mcsScore: number,
   hasEpd: boolean | null | undefined,
-  carbCtx: { label: string; color: string } | null
+  carbCtx: CarbonContext | null
 ) {
-  // Card-level preferred baseline: hide items below this MCS in sustainable-first flows.
-  const MIN_MCS_SCORE_FOR_PREFERRED = 60;
-
   if (!hasEpd) return true;
   if (mcsScore < MIN_MCS_SCORE_FOR_PREFERRED) return true;
-  return !!carbCtx && carbCtx.label.includes("above avg");
+  return carbCtx?.bucket === "above";
 }
 
 // ── Cert definitions ──────────────────────────────────────────────────────────
