@@ -66,5 +66,10 @@ export function resetAzureCredential(): void {
  * @returns true if configuration is valid
  */
 export function isCredentialConfigured(): boolean {
-  return !!(process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID);
+  if (process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID) {
+    return true;
+  }
+
+  // System-assigned managed identity has no client-id env var but is still valid in Azure.
+  return process.env.NODE_ENV === "production";
 }
