@@ -747,6 +747,7 @@ jobs:
             "PORT=3000"
             "DATABASE_URL=secretref:database-url"
             "AZURE_STORAGE_ACCOUNT_NAME=revitfiles"
+            "ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true"
             "REQUIRE_REDIS_CALL_SESSIONS=false"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
@@ -826,11 +827,13 @@ jobs:
           fi
 
           # Public endpoint should return 200.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/health" "200" "/api/health" || exit 1
-          wait_for_expected_status "https://${BACKEND_FQDN}/health" "200" "/health" || exit 1
+          # Use 36 attempts (6 min) to handle cold-start image pulls that can take ~6 min
+          # before Azure ingress routing propagates to the new revision.
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/health" "200" "/api/health" "GET" "36" || exit 1
+          wait_for_expected_status "https://${BACKEND_FQDN}/health" "200" "/health" "GET" "36" || exit 1
 
           # Auth status endpoint should return 200 for anonymous callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/auth/me" "200" "/api/auth/me" || exit 1
+          wait_for_expected_status "https://${BACKEND_FQDN}/api/auth/me" "200" "/api/auth/me" "GET" "36" || exit 1
 
           # Admin REST routes must reject unauthenticated callers.
           wait_for_expected_status "https://${BACKEND_FQDN}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST" "1" || exit 1
