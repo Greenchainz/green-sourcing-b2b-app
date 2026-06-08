@@ -216,7 +216,7 @@ export default function Features() {
               <picture>
                 <source srcSet="/brand/autodesk-logo-white.webp" type="image/webp" />
                 <img
-                  src="/brand/autodesk-logo-white.png"
+                  src="/brand/autodesk-logo-white.webp"
                   alt="Autodesk"
                   className="h-4 w-auto opacity-80"
                   width={88}
@@ -302,3 +302,4 @@ export default function Features() {
     </div>
   );
 }
+

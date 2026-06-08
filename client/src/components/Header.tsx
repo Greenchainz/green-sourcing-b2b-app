@@ -149,7 +149,7 @@ export default function Header() {
           <picture>
             <source srcSet="/brand/greenchainz-icon.webp" type="image/webp" />
             <img
-              src="/brand/greenchainz-icon.png"
+              src="/brand/greenchainz-icon.webp"
               alt="GreenChainz Logo"
               className="h-12 w-auto"
               width={30}
@@ -409,3 +409,4 @@ export default function Header() {
     </header>
   );
 }
+

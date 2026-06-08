@@ -166,7 +166,7 @@ export default function Home() {
                 <picture>
                   <source srcSet="/brand/autodesk-logo-white.webp" type="image/webp" />
                   <img
-                    src="/brand/autodesk-logo-white.png"
+                    src="/brand/autodesk-logo-white.webp"
                     alt="Autodesk"
                     className="h-5 w-auto opacity-60"
                     width={110}
@@ -615,3 +615,4 @@ export default function Home() {
     </div>
   );
 }
+
