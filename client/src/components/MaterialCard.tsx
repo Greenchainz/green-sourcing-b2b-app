@@ -114,7 +114,13 @@ type CarbonContext = {
   bucket: "top" | "below" | "near" | "above";
 };
 
-function carbonContext(
+const NON_PREFERRED_COPY = {
+  shortLabel: "Not preferred",
+  accessibleLabel: "Not preferred low-carbon option",
+  tooltip: "Data is shown for transparency, but this option is not a preferred low-carbon choice.",
+} as const;
+
+export function carbonContext(
   gwp: string | null | undefined,
   median: string | null | undefined
 ): CarbonContext | null {
@@ -128,7 +134,7 @@ function carbonContext(
   return { label: `${Math.abs(pct)}% above avg`, color: "text-red-500", pct, bucket: "above" };
 }
 
-function isNonSustainableOption(
+export function isNonSustainableOption(
   mcsScore: number,
   hasEpd: boolean | null | undefined,
   carbCtx: CarbonContext | null
@@ -136,6 +142,33 @@ function isNonSustainableOption(
   if (!hasEpd) return true;
   if (mcsScore < MIN_MCS_SCORE_FOR_PREFERRED) return true;
   return carbCtx?.bucket === "above";
+}
+
+function NonPreferredLabel({ variant }: { variant: "list" | "grid" }) {
+  if (variant === "list") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[9px] px-1 py-0 h-4 border-amber-300 text-amber-800 bg-amber-50 shrink-0"
+        title={NON_PREFERRED_COPY.tooltip}
+        aria-label={NON_PREFERRED_COPY.accessibleLabel}
+      >
+        <Frown className="w-2.5 h-2.5 mr-0.5" aria-hidden="true" />
+        {NON_PREFERRED_COPY.shortLabel}
+      </Badge>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700"
+      title={NON_PREFERRED_COPY.tooltip}
+      aria-label={NON_PREFERRED_COPY.accessibleLabel}
+    >
+      <Frown className="w-3 h-3" aria-hidden="true" />
+      {NON_PREFERRED_COPY.shortLabel}
+    </span>
+  );
 }
 
 // ── Cert definitions ──────────────────────────────────────────────────────────
@@ -235,13 +268,7 @@ export default function MaterialCard(props: MaterialCardProps) {
               </Badge>
             )}
             {nonSustainableOption && (
-              <Badge
-                variant="outline"
-                className="text-[9px] px-1 py-0 h-4 border-amber-300 text-amber-800 bg-amber-50 shrink-0"
-                title="Data is shown for transparency, but this option is not a preferred low-carbon choice."
-              >
-                <Frown className="w-2.5 h-2.5 mr-0.5" />:( Not preferred
-              </Badge>
+              <NonPreferredLabel variant="list" />
             )}
           </div>
         </div>
@@ -444,12 +471,7 @@ export default function MaterialCard(props: MaterialCardProps) {
           )}
 
           {nonSustainableOption && (
-            <span
-              className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700"
-              title="We keep this visible for comparison, but recommend greener alternatives first."
-            >
-              <Frown className="w-3 h-3" />:( Higher-carbon
-            </span>
+            <NonPreferredLabel variant="grid" />
           )}
 
           {/* Carbon Score — only rendered when gwpValue is populated */}
