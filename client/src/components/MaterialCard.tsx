@@ -123,8 +123,11 @@ function isNonSustainableOption(
   hasEpd: boolean | null | undefined,
   carbCtx: { label: string; color: string } | null
 ) {
+  // Card-level preferred baseline: hide items below this MCS in sustainable-first flows.
+  const MIN_MCS_SCORE_FOR_PREFERRED = 60;
+
   if (!hasEpd) return true;
-  if (mcsScore < 60) return true;
+  if (mcsScore < MIN_MCS_SCORE_FOR_PREFERRED) return true;
   return !!carbCtx && carbCtx.label.includes("above avg");
 }
 
