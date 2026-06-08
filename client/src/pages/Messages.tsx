@@ -13,7 +13,7 @@
  *   supplier           → threads labelled "Buyer: <name>" to highlight inbound leads
  *
  * Video calling:
- *   - useWebPubSub() at page root establishes WS for real-time call notifications
+ *   - App-level useWebPubSub() establishes WS for real-time call notifications
  *   - IncomingCallNotification handles callee-side incoming call dialog
  *   - VideoCallModal handles WebRTC peer connection + video streams
  *   - Call initiation button lives in ThreadPanel header
@@ -30,7 +30,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useWebPubSub } from "@/hooks/useWebPubSub";
 import { IncomingCallNotification } from "@/components/messaging/IncomingCallNotification";
 import {
   ArrowLeft,
@@ -737,9 +736,6 @@ export default function Messages() {
   const [selectedId, setSelectedId] = useState<number | undefined>();
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const utils = trpc.useUtils();
-
-  // Establish WebSocket for real-time call notifications
-  useWebPubSub();
 
   const { data: rawConvs } = trpc.messaging.getConversations.useQuery(undefined, {
     refetchInterval: 15_000,

@@ -58,6 +58,22 @@ export async function broadcastNotification(userId: number, notification: Record
 }
 
 /**
+ * Get access URL for user-level notification stream.
+ */
+export async function getNotificationAccessToken(userId: number): Promise<{ url: string } | null> {
+  const c = getClient();
+  if (!c) return null;
+
+  const token = await c.getClientAccessToken({
+    userId: `user-${userId}`,
+    expirationTimeInMinutes: 60,
+  });
+
+  const url = token.url ?? `${token.baseUrl}?access_token=${token.token}`;
+  return { url };
+}
+
+/**
  * Get access token for WebSocket client connection
  */
 export async function getWebSocketAccessToken(userId: number, threadId: number) {

@@ -508,20 +508,9 @@ export const messagingRouter = router({
     }),
 
   getNotificationToken: protectedProcedure.query(async ({ ctx }) => {
-    const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
-    const hub = process.env.WEBPUBSUB_HUB ?? 'greenchainz-hub';
-    // Return null URL when WebPubSub is not configured — client degrades gracefully
-    if (!connectionString) {
-      return { url: null };
-    }
-    const { WebPubSubServiceClient } = await import('@azure/web-pubsub');
-    const client = new WebPubSubServiceClient(connectionString, hub);
-    const tokenResponse = await client.getClientAccessToken({
-      userId: `user-${ctx.user.id}`,
-      expirationTimeInMinutes: 60,
-    });
-    // tokenResponse.url is the full wss:// URL with access_token already embedded
-    return { url: tokenResponse.url };
+    const { getNotificationAccessToken } = await import('../webpubsub-manager');
+    const tokenResponse = await getNotificationAccessToken(ctx.user.id);
+    return { url: tokenResponse?.url ?? null };
   }),
 
   checkCallLimit: protectedProcedure.query(async ({ ctx }) => {
