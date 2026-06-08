@@ -869,16 +869,9 @@ jobs:
           # shellcheck source=/dev/null
           source /tmp/smoke_helpers.sh
 
-          FRONTEND_FQDN=$(az containerapp show \
-            --name ${{ env.FRONTEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query properties.configuration.ingress.fqdn -o tsv)
-          if [ -z "$FRONTEND_FQDN" ]; then
-            echo "❌ Could not resolve frontend ingress FQDN"
-            exit 1
-          fi
-
-          wait_for_expected_status "https://${FRONTEND_FQDN}/healthz" "200" "Frontend /healthz" || exit 1
+          # The frontend *.azurecontainerapps.io FQDN is locked behind Front Door.
+          # Smoke test via the public host and verify the SPA root is reachable.
+          wait_for_expected_status "https://greenchainz.com/" "200" "Frontend root" "GET" "36" || exit 1
 
       - name: Dump container logs on failure
         if: failure()
