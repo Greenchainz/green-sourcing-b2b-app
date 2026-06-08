@@ -9,14 +9,9 @@
  * Ported from Manus prototype. Framework-agnostic — uses fetch only.
  */
 
-import { getAzureCredential, isCredentialConfigured } from "../../azure/credentials";
+import { getAzureMapsAuth } from "../../azure/azure-maps-auth";
 
 const AZURE_MAPS_BASE_URL = "https://atlas.microsoft.com";
-const AZURE_MAPS_SUBSCRIPTION_KEY = process.env.AZURE_MAPS_SUBSCRIPTION_KEY || "";
-const AZURE_MAPS_CLIENT_ID = process.env.AZURE_MAPS_CLIENT_ID || "";
-const AZURE_MAPS_SCOPE = "https://atlas.microsoft.com/.default";
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
-const ALLOW_MAPS_KEY_IN_PROD = process.env.ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD === "true";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -34,44 +29,6 @@ export interface RouteResult {
   distanceMiles: number;
   durationMinutes: number;
   polyline: string; // GeoJSON LineString for map visualization
-}
-
-interface AzureMapsAuth {
-  headers: Record<string, string>;
-  keyParam?: string;
-}
-
-async function getAzureMapsAuth(): Promise<AzureMapsAuth | null> {
-  if (AZURE_MAPS_CLIENT_ID && isCredentialConfigured()) {
-    try {
-      const token = await getAzureCredential().getToken(AZURE_MAPS_SCOPE);
-      if (token?.token) {
-        return {
-          headers: {
-            Authorization: `Bearer ${token.token}`,
-            "x-ms-client-id": AZURE_MAPS_CLIENT_ID,
-          },
-        };
-      }
-    } catch (error) {
-      console.warn("[Azure Maps/matching] Managed identity authentication failed:", error);
-    }
-  }
-
-  if (AZURE_MAPS_SUBSCRIPTION_KEY) {
-    if (!IS_PRODUCTION || ALLOW_MAPS_KEY_IN_PROD) {
-      return {
-        headers: {},
-        keyParam: AZURE_MAPS_SUBSCRIPTION_KEY,
-      };
-    }
-    console.error(
-      "[Azure Maps/matching] Subscription-key auth is blocked in production. " +
-      "Use managed identity or set ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true as emergency override."
-    );
-  }
-
-  return null;
 }
 
 // ─── Geocoding ───────────────────────────────────────────────────────────────
