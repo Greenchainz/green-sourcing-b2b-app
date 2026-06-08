@@ -6,21 +6,17 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatWidgetProvider } from "./contexts/ChatWidgetContext";
-import IntercomWidget from "./components/IntercomWidget";
 // CookieConsentBanner removed — CookieYes (index.html) handles consent
 // VIDEO CALLING — cut for launch, restore when ACS is implemented
 // import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
 // import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
-import { ChatWidget } from "./components/ChatWidget";
 import { SupplierLayout } from "./components/SupplierLayout";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
 import { useAuth } from "./contexts/AuthContext";
 import { trpc } from "./lib/trpc";
 import { initGoogleAnalytics, trackGooglePageView } from "./lib/analytics";
 import SEOHead from "./components/SEOHead";
-import Home from "./pages/Home";
-import About from "./pages/About";
 
 const HUBSPOT_SCRIPT_SRC = "https://js-na2.hs-scripts.com/244354228.js";
 const TRAILING_SLASH_REGEX = /\/+$/;
@@ -122,6 +118,8 @@ function normalizePathname(pathname: string): string {
 
 // Lazy-loaded page components — each becomes its own async chunk
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const Home = lazy(() => import("./pages/Home"));
+const About = lazy(() => import("./pages/About"));
 const ExcelAudit = lazy(() => import("./pages/ExcelAudit"));
 const ExcelAuditWorkingTool = lazy(() => import("./pages/ExcelAuditWorkingTool"));
 const BrowserExtension = lazy(() => import("./pages/BrowserExtension"));
@@ -195,6 +193,8 @@ const SourcingRequestDetailPage = lazy(() => import("./pages/SourcingRequestDeta
 const BuyerRequestsPage = lazy(() => import("./pages/BuyerRequestsPage"));
 const SupplierRespondPage = lazy(() => import("./pages/SupplierRespondPage"));
 const SubmittalLogPage = lazy(() => import("./pages/SubmittalLogPage"));
+const IntercomWidget = lazy(() => import("./components/IntercomWidget"));
+const ChatWidget = lazy(() => import("./components/ChatWidget").then((m) => ({ default: m.ChatWidget })));
 
 function RouteSeoFallback() {
   const [location] = useLocation();
@@ -279,7 +279,7 @@ function Router() {
       <Route path={"/tools/assemblies"} component={Assemblies} />
       <Route path={"/tools/assemblies/:id"} component={Assemblies} />
       <Route path={"/tools/tco"} component={TCOCalculatorPage} />
-       <Route path={"/terms"} component={Terms} />
+      <Route path={"/terms"} component={Terms} />
       <Route path={"/privacy"} component={Privacy} />
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
@@ -439,13 +439,42 @@ function ArchitectOnboardingGuard() {
 
 // Inner component that uses hooks requiring AuthProvider context
 function AppInner() {
-  // Initialize WebPubSub connection for real-time notifications
-  // This hook calls useAuth() so it MUST be inside AuthProvider
-  useWebPubSub();
-
   // VIDEO CALLING — cut for launch, restore when ACS is implemented
   // const [activeCall, setActiveCall] = useState<{...} | null>(null);
   // const handleAcceptCall = (callData: any) => { ... };
+
+  const { user } = useAuth();
+  const [showDeferredWidgets, setShowDeferredWidgets] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fallbackTimer = globalThis.setTimeout(() => {
+      if (!cancelled) {
+        setShowDeferredWidgets(true);
+      }
+    }, 2500);
+
+    const onIdle = () => {
+      if (!cancelled) {
+        setShowDeferredWidgets(true);
+      }
+    };
+
+    const idleHandle =
+      "requestIdleCallback" in globalThis
+        ? globalThis.requestIdleCallback(onIdle, { timeout: 3000 })
+        : null;
+
+    return () => {
+      cancelled = true;
+      globalThis.clearTimeout(fallbackTimer);
+      if (idleHandle !== null && "cancelIdleCallback" in globalThis) {
+        globalThis.cancelIdleCallback(idleHandle);
+      }
+    };
+  }, []);
+
+  useWebPubSub();
 
   return (
     <ChatWidgetProvider>
@@ -461,10 +490,18 @@ function AppInner() {
           <Router />
         </Suspense>
         {/* Intercom support widget */}
-        <IntercomWidget />
+        {showDeferredWidgets ? (
+          <Suspense fallback={null}>
+            <IntercomWidget />
+          </Suspense>
+        ) : null}
         {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
         {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
-        <ChatWidget />
+        {showDeferredWidgets && user ? (
+          <Suspense fallback={null}>
+            <ChatWidget />
+          </Suspense>
+        ) : null}
         {/* CookieYes in index.html handles cookie consent */}
       </TooltipProvider>
     </ChatWidgetProvider>

@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import {
   ShieldCheck,
   ShieldAlert,
+  Frown,
   ArrowRight,
   FileText,
   BarChart3,
@@ -117,6 +118,16 @@ function carbonContext(
   return { label: `${Math.abs(pct)}% above avg`, color: "text-red-500" };
 }
 
+function isNonSustainableOption(
+  mcsScore: number,
+  hasEpd: boolean | null | undefined,
+  carbCtx: { label: string; color: string } | null
+) {
+  if (!hasEpd) return true;
+  if (mcsScore < 60) return true;
+  return !!carbCtx && carbCtx.label.includes("above avg");
+}
+
 // ── Cert definitions ──────────────────────────────────────────────────────────
 
 const CERT_DEFS = [
@@ -143,6 +154,7 @@ export default function MaterialCard(props: MaterialCardProps) {
   const mcsScore = ccps.ccpsTotal;
   const carbCtx = carbonContext(gwpValue, ec3IndustryMedian);
   const activeCerts = CERT_DEFS.filter((c) => !!props[c.key]);
+  const nonSustainableOption = isNonSustainableOption(mcsScore, props.hasEpd, carbCtx);
 
   const handleRequestQuote = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -210,6 +222,15 @@ export default function MaterialCard(props: MaterialCardProps) {
             {usManufactured && (
               <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50 shrink-0">
                 🇺🇸 US Made
+              </Badge>
+            )}
+            {nonSustainableOption && (
+              <Badge
+                variant="outline"
+                className="text-[9px] px-1 py-0 h-4 border-amber-300 text-amber-800 bg-amber-50 shrink-0"
+                title="Data is shown for transparency, but this option is not a preferred low-carbon choice."
+              >
+                <Frown className="w-2.5 h-2.5 mr-0.5" />:( Not preferred
               </Badge>
             )}
           </div>
@@ -409,6 +430,15 @@ export default function MaterialCard(props: MaterialCardProps) {
           ) : (
             <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
               <ShieldAlert className="w-3 h-3" />No EPD
+            </span>
+          )}
+
+          {nonSustainableOption && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700"
+              title="We keep this visible for comparison, but recommend greener alternatives first."
+            >
+              <Frown className="w-3 h-3" />:( Higher-carbon
             </span>
           )}
 
