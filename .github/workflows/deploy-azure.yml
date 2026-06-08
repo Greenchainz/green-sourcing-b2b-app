@@ -322,6 +322,7 @@ jobs:
           get_secret fred-api-key
           get_secret resend-api-key
           get_secret ec3-api-key
+          get_secret azure-maps-client-id
           # Core auth secrets — stored as Container App secrets so the backend can
           # start successfully even before system-assigned MI RBAC fully propagates.
           get_secret jwt-secret
@@ -628,6 +629,14 @@ jobs:
           else
             echo "⚠️  ec3-api-key not found in Key Vault — EC3 sync will be skipped"
           fi
+          # Founder note: store the Azure Maps account Client ID (Portal → Maps account
+          # → Authentication → Client ID) in Key Vault as "azure-maps-client-id".
+          # This is a non-secret GUID, stored in KV for config consistency.
+          if [ -n "${{ steps.kv.outputs.azure-maps-client-id }}" ]; then
+            ENV_VARS+=("AZURE_MAPS_CLIENT_ID=${{ steps.kv.outputs.azure-maps-client-id }}")
+          else
+            echo "⚠️ azure-maps-client-id not found in Key Vault — Azure Maps managed-identity auth will be unavailable"
+          fi
           # FRED_API_KEY and RESEND_API_KEY are loaded at runtime from Key Vault
           # by loadSecrets() using the system-assigned managed identity
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
@@ -795,6 +804,8 @@ jobs:
 
             for i in $(seq 1 "$attempts"); do
               status=$(curl "${smoke_curl_flag_args[@]}" -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
+              # Keep -4/--http1.1 to avoid intermittent GitHub runner -> Azure endpoint connectivity failures.
+              status=$(curl -4 --http1.1 -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
               curl_exit_code=$?
               if [ "$curl_exit_code" -ne 0 ]; then
                 status="CURL_EXIT_${curl_exit_code}"
@@ -824,29 +835,23 @@ jobs:
           # shellcheck source=/dev/null
           source /tmp/smoke_helpers.sh
 
-          BACKEND_FQDN=$(az containerapp show \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query properties.configuration.ingress.fqdn -o tsv)
-          if [ -z "$BACKEND_FQDN" ]; then
-            echo "❌ Could not resolve backend ingress FQDN"
-            exit 1
-          fi
+          # The backend *.azurecontainerapps.io FQDN is locked behind Front Door.
+          # Smoke test via canonical host, where /api/* is routed to the backend.
+          BACKEND_PUBLIC="https://greenchainz.com"
 
           # Public endpoint should return 200.
           # Use 36 attempts (6 min) to handle cold-start image pulls that can take ~6 min
           # before Azure ingress routing propagates to the new revision.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/health" "200" "/api/health" "GET" "36" || exit 1
-          wait_for_expected_status "https://${BACKEND_FQDN}/health" "200" "/health" "GET" "36" || exit 1
+          wait_for_expected_status "${BACKEND_PUBLIC}/api/health" "200" "/api/health" "GET" "36" || exit 1
 
           # Auth status endpoint should return 200 for anonymous callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/auth/me" "200" "/api/auth/me" "GET" "36" || exit 1
+          wait_for_expected_status "${BACKEND_PUBLIC}/api/auth/me" "200" "/api/auth/me" "GET" "36" || exit 1
 
           # Admin REST routes must reject unauthenticated callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST" "1" || exit 1
+          wait_for_expected_status "${BACKEND_PUBLIC}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST" "1" || exit 1
 
           # RFQ PDF routes must reject unauthenticated callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/rfq/1/pdf/summary" "401" "/api/rfq/:rfqId/pdf/summary" || exit 1
+          wait_for_expected_status "${BACKEND_PUBLIC}/api/rfq/1/pdf/summary" "401" "/api/rfq/:rfqId/pdf/summary" || exit 1
 
       - name: Verify backend runtime frontend origin
         run: |
