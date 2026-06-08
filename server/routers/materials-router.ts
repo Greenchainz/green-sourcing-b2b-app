@@ -25,7 +25,7 @@ export const materialsRouter = router({
         persona: z.string().default('default'),
         sortBy: z.enum(['ccps', 'carbon', 'price', 'name', 'leadTime']).default('ccps'),
         sortOrder: z.enum(['asc', 'desc']).default('desc'),
-        limit: z.number().min(1).max(100).default(20),
+        limit: z.number().min(1).max(5000).default(20),
         offset: z.number().min(0).default(0),
         hasEpd: z.boolean().optional(),
         usManufactured: z.boolean().optional(),

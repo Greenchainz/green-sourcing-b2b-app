@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { buildMaterialCategoryOptions } from "@/lib/material-categories";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -39,19 +40,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const MATERIAL_CATEGORIES = [
-  { id: "Concrete", label: "Concrete & Masonry" },
-  { id: "Steel", label: "Steel & Metal" },
-  { id: "Timber", label: "Timber & Lumber" },
-  { id: "Glass", label: "Glass & Glazing" },
-  { id: "Insulation", label: "Insulation" },
-  { id: "Roofing", label: "Roofing" },
-  { id: "Flooring", label: "Flooring" },
-  { id: "Cladding", label: "Cladding & Facades" },
-  { id: "MEP", label: "MEP (Mechanical, Electrical, Plumbing)" },
-  { id: "Other", label: "Other Materials" },
-];
 
 const CERTIFICATIONS = [
   { id: "LEED", label: "LEED Certified" },
@@ -132,6 +120,7 @@ export function SupplierProfileDashboard() {
   const profile = trpc.supplierOnboarding.getMyProfile.useQuery(undefined, {
     enabled: !!user,
   });
+  const materialCategoriesQuery = trpc.materials.categories.useQuery();
 
   const updateProfile = trpc.supplierOnboarding.updateProfile.useMutation({
     onSuccess: () => {
@@ -196,6 +185,11 @@ export function SupplierProfileDashboard() {
     const filled = fields.filter(Boolean).length;
     return Math.round((filled / fields.length) * 100);
   }, [profile.data]);
+
+  const materialCategoryOptions = useMemo(
+    () => buildMaterialCategoryOptions(materialCategoriesQuery.data, form.materialCategories),
+    [materialCategoriesQuery.data, form.materialCategories]
+  );
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -625,21 +619,21 @@ export function SupplierProfileDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                    {MATERIAL_CATEGORIES.map((cat) => (
+                    {materialCategoryOptions.map((category) => (
                       <label
-                        key={cat.id}
+                        key={category}
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                          form.materialCategories.includes(cat.id)
+                          form.materialCategories.includes(category)
                             ? "border-[#2D6A4F] bg-[#2D6A4F]/5"
                             : "border-gray-200 hover:bg-gray-50"
                         }`}
                       >
                         <Checkbox
-                          checked={form.materialCategories.includes(cat.id)}
-                          onCheckedChange={() => toggleMaterialCategory(cat.id)}
+                          checked={form.materialCategories.includes(category)}
+                          onCheckedChange={() => toggleMaterialCategory(category)}
                         />
                         <span className="text-sm font-medium text-gray-700">
-                          {cat.label}
+                          {category}
                         </span>
                       </label>
                     ))}
