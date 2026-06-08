@@ -322,6 +322,7 @@ jobs:
           get_secret fred-api-key
           get_secret resend-api-key
           get_secret ec3-api-key
+          get_secret azure-maps-client-id
           # Core auth secrets — stored as Container App secrets so the backend can
           # start successfully even before system-assigned MI RBAC fully propagates.
           get_secret jwt-secret
@@ -627,6 +628,14 @@ jobs:
             ENV_VARS+=("EC3_API_KEY=${{ steps.kv.outputs.ec3-api-key }}")
           else
             echo "⚠️  ec3-api-key not found in Key Vault — EC3 sync will be skipped"
+          fi
+          # Founder note: store the Azure Maps account Client ID (Portal → Maps account
+          # → Authentication → Client ID) in Key Vault as "azure-maps-client-id".
+          # This is a non-secret GUID, stored in KV for config consistency.
+          if [ -n "${{ steps.kv.outputs.azure-maps-client-id }}" ]; then
+            ENV_VARS+=("AZURE_MAPS_CLIENT_ID=${{ steps.kv.outputs.azure-maps-client-id }}")
+          else
+            echo "⚠️ azure-maps-client-id not found in Key Vault — Azure Maps managed-identity auth will be unavailable"
           fi
           # FRED_API_KEY and RESEND_API_KEY are loaded at runtime from Key Vault
           # by loadSecrets() using the system-assigned managed identity

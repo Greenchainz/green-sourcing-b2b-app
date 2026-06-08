@@ -2,6 +2,7 @@ import axios from 'axios';
 import { getDb } from '../../server/db';
 import { scrapedSuppliers } from '../../drizzle/schema';
 import { isNull, and, ne, isNotNull, eq } from 'drizzle-orm';
+import { getAzureMapsAuth } from '../azure/azure-maps-auth';
 
 export interface ScrapedSupplier {
   companyName: string;
@@ -108,20 +109,26 @@ export async function scrapeAzureMaps(
   materialTypes: string[],
   state?: string
 ): Promise<ScrapedSupplier[]> {
-  const subscriptionKey = process.env.AZURE_MAPS_SUBSCRIPTION_KEY;
-  if (!subscriptionKey) throw new Error('AZURE_MAPS_SUBSCRIPTION_KEY not configured');
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn('[supplier-scraper] Azure Maps auth unavailable — skipping query');
+    return [];
+  }
 
   const fullQuery = state ? `${searchQuery} ${state}` : searchQuery;
-  const url =
-    `https://atlas.microsoft.com/search/poi/json` +
-    `?api-version=1.0` +
-    `&subscription-key=${encodeURIComponent(subscriptionKey)}` +
-    `&query=${encodeURIComponent(fullQuery)}` +
-    `&countrySet=US` +
-    `&limit=100`;
+  const params = new URLSearchParams({
+    'api-version': '1.0',
+    query: fullQuery,
+    countrySet: 'US',
+    limit: '100',
+  });
+  if (auth.keyParam) {
+    params.set('subscription-key', auth.keyParam);
+  }
+  const url = `https://atlas.microsoft.com/search/poi/json?${params.toString()}`;
 
   const data = await withRetry(
-    () => axios.get<{ results: unknown[] }>(url, { timeout: 10000 }).then((r) => r.data),
+    () => axios.get<{ results: unknown[] }>(url, { headers: auth.headers, timeout: 10000 }).then((r) => r.data),
     3,
     800,
     `AzureMaps '${fullQuery}'`
