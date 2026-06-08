@@ -4,6 +4,7 @@ import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import path from "path";
+import compression from "compression";
 import express from "express";
 import helmet from "helmet";
 import { v4 as uuidv4 } from "uuid";
@@ -208,6 +209,11 @@ async function startServer() {
 
     res.redirect(308, `https://${CANONICAL_HOST}${req.originalUrl}`);
   });
+
+  // ── Gzip compression ─────────────────────────────────────────────────────
+  // Compress all responses (CSS, JS, JSON, HTML). Without this Express sends
+  // static assets raw — Tailwind CSS alone is 500+ KiB uncompressed.
+  app.use(compression());
 
   // ── Security headers ──────────────────────────────────────────────────────
   const isDev = process.env.NODE_ENV === "development";

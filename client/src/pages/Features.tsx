@@ -213,15 +213,18 @@ export default function Features() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-2">
-              <img
-                src="/brand/autodesk-logo-white.png"
-                alt="Autodesk"
-                className="h-4 w-auto opacity-80"
-                width={88}
-                height={16}
-                loading="lazy"
-                decoding="async"
-              />
+              <picture>
+                <source srcSet="/brand/autodesk-logo-white.webp" type="image/webp" />
+                <img
+                  src="/brand/autodesk-logo-white.png"
+                  alt="Autodesk"
+                  className="h-4 w-auto opacity-80"
+                  width={88}
+                  height={16}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
               Works with Forma Carbon Insights — the missing procurement layer
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground">

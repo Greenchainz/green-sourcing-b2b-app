@@ -9,12 +9,12 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 
 const ARCHITECT_TOOLS = [
-  { href: "/buyer/new-request",      icon: Zap,          label: "Smart RFx Builder", desc: "Turn a material need into a structured RFI, RFQ, or RFP in seconds", highlight: true },
-  { href: "/architect/specs/upload", icon: FileSearch,   label: "Spec Lookup",       desc: "Find green alternatives for one assembly or a full project" },
-  { href: "/architect/specs",        icon: ClipboardList, label: "My Specs",          desc: "View past lookups and uploaded specs" },
-  { href: "/assemblies",             icon: Layers,        label: "Assemblies",        desc: "Build and compare wall assembly systems" },
-  { href: "/carbon-compare",         icon: GitCompare,    label: "Carbon Compare",    desc: "Side-by-side embodied carbon comparison" },
-  { href: "/carbon-dashboard",       icon: BarChart2,     label: "Carbon Dashboard",  desc: "Track carbon across your projects" },
+  { href: "/buyer/new-request", icon: Zap, label: "Smart RFx Builder", desc: "Turn a material need into a structured RFI, RFQ, or RFP in seconds", highlight: true },
+  { href: "/architect/specs/upload", icon: FileSearch, label: "Spec Lookup", desc: "Find green alternatives for one assembly or a full project" },
+  { href: "/architect/specs", icon: ClipboardList, label: "My Specs", desc: "View past lookups and uploaded specs" },
+  { href: "/assemblies", icon: Layers, label: "Assemblies", desc: "Build and compare wall assembly systems" },
+  { href: "/carbon-compare", icon: GitCompare, label: "Carbon Compare", desc: "Side-by-side embodied carbon comparison" },
+  { href: "/carbon-dashboard", icon: BarChart2, label: "Carbon Dashboard", desc: "Track carbon across your projects" },
 ];
 
 function ToolsDropdown() {
@@ -146,15 +146,19 @@ export default function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-          <img 
-            src="/brand/greenchainz-icon.png" 
-            alt="GreenChainz Logo" 
-            className="h-12 w-auto"
-            width={48}
-            height={48}
-            loading="eager"
-            decoding="async"
-          />
+          <picture>
+            <source srcSet="/brand/greenchainz-icon.webp" type="image/webp" />
+            <img
+              src="/brand/greenchainz-icon.png"
+              alt="GreenChainz Logo"
+              className="h-12 w-auto"
+              width={30}
+              height={48}
+              loading="eager"
+              decoding="sync"
+              fetchPriority="high"
+            />
+          </picture>
           <div className="flex flex-col">
             <span className="text-lg font-bold text-foreground">GreenChainz</span>
             <span className="text-xs text-muted-foreground">The Digital Interceptor</span>
@@ -294,15 +298,15 @@ export default function Header() {
         <div className="md:hidden border-t border-border bg-background">
           <nav className="container py-4 flex flex-col space-y-3">
             <Link href="/about" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
+              onClick={() => setMobileMenuOpen(false)}>
               About
             </Link>
             <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
+              onClick={() => setMobileMenuOpen(false)}>
               Explore Materials
             </Link>
             <Link href="/manufacturers" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
+              onClick={() => setMobileMenuOpen(false)}>
               Suppliers
             </Link>
             {user?.role !== 'supplier' && (
@@ -337,27 +341,27 @@ export default function Header() {
             {user?.role !== 'supplier' && (
               <>
                 <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                   onClick={() => setMobileMenuOpen(false)}>
+                  onClick={() => setMobileMenuOpen(false)}>
                   My RFQs
                 </Link>
                 <Link href="/buyer/requests" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                   onClick={() => setMobileMenuOpen(false)}>
+                  onClick={() => setMobileMenuOpen(false)}>
                   My Requests
                 </Link>
               </>
             )}
             <Link href="/insider" className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
+              onClick={() => setMobileMenuOpen(false)}>
               Insider
             </Link>
             {user?.role === 'admin' && (
               <Link href="/admin" className="text-sm font-medium text-red-400 hover:text-red-300 transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
+                onClick={() => setMobileMenuOpen(false)}>
                 Admin
               </Link>
             )}
             <Link href="/messages" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md flex items-center justify-between"
-               onClick={() => setMobileMenuOpen(false)}>
+              onClick={() => setMobileMenuOpen(false)}>
               Messages
               {unreadCount > 0 && (
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-[10px] font-bold text-white">
@@ -366,17 +370,17 @@ export default function Header() {
               )}
             </Link>
             <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-               onClick={() => setMobileMenuOpen(false)}>
+              onClick={() => setMobileMenuOpen(false)}>
               Pricing
             </Link>
             {user?.role === 'supplier' ? (
               <Link href="/supplier/dashboard" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
+                onClick={() => setMobileMenuOpen(false)}>
                 My Hub
               </Link>
             ) : (
               <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
-                 onClick={() => setMobileMenuOpen(false)}>
+                onClick={() => setMobileMenuOpen(false)}>
                 Supplier Hub
               </Link>
             )}
