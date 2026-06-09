@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "./log-scrubber"; // must be second — scrubs all subsequent console.* calls
 import "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
