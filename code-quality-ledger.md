@@ -539,11 +539,9 @@ The rest can be batched into a follow-up PR.
 |-------|-------|
 | **File** | `server/rfq-router.ts`, `server/rfq-service.ts`, any delete path |
 | **Category** | Compliance / Data retention |
-| **Status** | open |
+| **Status** | fixed — 2026-06-10 |
 | **First seen** | 2026-05-22 |
-| **Last checked** | 2026-05-22 |
-
-**Problem:** Published privacy policy commits to 7-year retention for RFQ data and messaging. If any route performs a hard `DELETE` on `rfqs`, `rfqBids`, `rfqItems`, or message tables, you're violating your own policy. Treating RFQs as inbox-deletable also breaks your "trust layer" pitch — buyers need an audit trail of awards and specs.
+| **Last checked** | 2026-06-10 |
 
 **Fix:**
 
@@ -560,9 +558,9 @@ The rest can be batched into a follow-up PR.
 |-------|-------|
 | **File** | No file — missing feature |
 | **Category** | Compliance / CCPA + privacy |
-| **Status** | open |
+| **Status** | fixed — 2026-06-10 |
 | **First seen** | 2026-05-22 |
-| **Last checked** | 2026-05-22 |
+| **Last checked** | 2026-06-10 |
 
 **Problem:** Privacy policy publishes `privacy@greenchainz.com` and `dpo@greenchainz.com` for access, correction, and deletion requests with stated response timelines. There is no back-office flow in the app to actually service these requests. Until one exists, any CCPA or GDPR data subject request has to be handled manually with raw SQL — slow, error-prone, and auditable only if documented.
 
@@ -585,9 +583,9 @@ The rest can be batched into a follow-up PR.
 |-------|-------|
 | **File** | `drizzle/schema.ts` — `rfqs` and `rfqBids` tables |
 | **Category** | Product / Missing first-class fields |
-| **Status** | open |
+| **Status** | fixed — 2026-06-10 |
 | **First seen** | 2026-05-22 |
-| **Last checked** | 2026-05-22 |
+| **Last checked** | 2026-06-10 |
 
 **Problem:** RFQ data model treats carbon/sustainability as optional notes (`notes: text`), not first-class fields. This means GWP caps, EPD requirements, and per-material carbon targets are freeform strings that can't be queried, scored, or compared across bids. The product doctrine requires cost–schedule–carbon as co-equal decision fields.
 
@@ -613,4 +611,4 @@ These fields enable the composite bid scoring UI and make "show all materials wi
 
 ---
 
-*Last full scan: 2026-05-22 | Next scheduled rescan: 2026-05-29*
+*Last full scan: 2026-06-10 | Next scheduled rescan: 2026-06-17*
