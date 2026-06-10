@@ -94,9 +94,28 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
 
 // Provider configs
 
+// Public Entra app registration for GreenChainz user sign-in (OAuth2/OIDC).
+// These are NOT secrets — they are the same public identifiers baked into the
+// frontend container and documented in .env.example. Only the client *secret*
+// is sensitive (see getRequiredEnv("AZURE_AD_CLIENT_SECRET")). We fall back to
+// the known-correct values when the env var is missing so the OAuth initiate
+// route degrades gracefully instead of returning a 500.
+const MICROSOFT_TENANT_ID = "1d04bf50-8175-40af-a9d5-f8e441460b06";
+const MICROSOFT_CLIENT_ID = "8b597068-9347-4e99-8860-8c4e9a9bc112";
+
+function getMicrosoftTenantId(): string {
+  const value = process.env.AZURE_AD_TENANT_ID;
+  return value && value.length > 0 ? value : MICROSOFT_TENANT_ID;
+}
+
+function getMicrosoftClientId(): string {
+  const value = process.env.AZURE_AD_CLIENT_ID;
+  return value && value.length > 0 ? value : MICROSOFT_CLIENT_ID;
+}
+
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
-  const tenantId = getEnvWithDevDefault("AZURE_AD_TENANT_ID", "ca4f78d4-c753-4893-9cd8-1b309922b4dc");
-  const clientId = getEnvWithDevDefault("AZURE_AD_CLIENT_ID", "479e2a01-70ab-4df9-baa4-560d317c3423");
+  const tenantId = getMicrosoftTenantId();
+  const clientId = getMicrosoftClientId();
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
@@ -144,8 +163,8 @@ interface OAuthUserInfo {
 }
 
 async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const tenantId = getEnvWithDevDefault("AZURE_AD_TENANT_ID", "ca4f78d4-c753-4893-9cd8-1b309922b4dc");
-  const clientId = getEnvWithDevDefault("AZURE_AD_CLIENT_ID", "479e2a01-70ab-4df9-baa4-560d317c3423");
+  const tenantId = getMicrosoftTenantId();
+  const clientId = getMicrosoftClientId();
   const clientSecret = getRequiredEnv("AZURE_AD_CLIENT_SECRET");
 
   const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
