@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, suppliers } from "../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 
 export const supplierRfqRouter = router({
   /**
@@ -67,7 +67,7 @@ export const supplierRfqRouter = router({
           createdAt: rfqs.createdAt,
         })
         .from(rfqs)
-        .where(eq(rfqs.status, "submitted"))
+        .where(and(eq(rfqs.status, "submitted"), isNull(rfqs.deletedAt)))
         .limit(input.limit)
         .offset(input.offset);
 
@@ -86,7 +86,7 @@ export const supplierRfqRouter = router({
       const rfq = await db
         .select()
         .from(rfqs)
-        .where(eq(rfqs.id, input.rfqId))
+        .where(and(eq(rfqs.id, input.rfqId), isNull(rfqs.deletedAt)))
         .limit(1);
 
       if (!rfq.length) {
@@ -103,7 +103,7 @@ export const supplierRfqRouter = router({
           notes: rfqItems.notes,
         })
         .from(rfqItems)
-        .where(eq(rfqItems.rfqId, input.rfqId));
+        .where(and(eq(rfqItems.rfqId, input.rfqId), isNull(rfqItems.deletedAt)));
 
       return {
         ...rfq[0],
@@ -223,7 +223,7 @@ export const supplierRfqRouter = router({
         })
         .from(rfqBids)
         .leftJoin(rfqs, eq(rfqBids.rfqId, rfqs.id))
-        .where(eq(rfqBids.supplierId, supplier[0].id))
+        .where(and(eq(rfqBids.supplierId, supplier[0].id), isNull(rfqBids.deletedAt)))
         .orderBy(desc(rfqBids.createdAt))
         .limit(input.limit)
         .offset(input.offset);
