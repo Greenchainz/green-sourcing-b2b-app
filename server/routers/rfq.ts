@@ -9,6 +9,7 @@ import { getSupplierVerificationSnapshots } from "../services/supplier-verificat
 import { rfqRequests, rfqDrafts, suppliers, suppliersLocation } from "../../drizzle/schema";
 import { eq, desc, ilike, or, not, inArray } from "drizzle-orm";
 import { getShippingClass, isWithinServiceArea } from "../lib/shipping-classes";
+import { recordSupplierViews } from "../services/supplier-profile-views";
 
 /**
  * RFQ Marketplace Lifecycle Router
@@ -520,7 +521,7 @@ export const rfqRouter = router({
         projectLng: z.number().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
 
@@ -753,7 +754,7 @@ export const rfqRouter = router({
       );
 
       // Return only buyer-safe fields — strip internal tier and rank score
-      return results.map(({ weightedRankScore: _wr, tier: _tier, ...s }) => ({
+      const mapped = results.map(({ weightedRankScore: _wr, tier: _tier, ...s }) => ({
         ...s,
         isHighSustainability: highIds.has(s.id),
         isFallback: fallbackIds.has(s.id),
@@ -763,6 +764,18 @@ export const rfqRouter = router({
           verificationBySupplierId.get(s.id)?.reasons ?? [],
         _agentSource: agentRanking.source, // dev signal — stripped by tRPC serialisation if needed
       }));
+
+      // Record architect → supplier "hits" for the matched suppliers shown.
+      if (ctx.user?.role === "buyer" && mapped.length > 0) {
+        void recordSupplierViews({
+          supplierIds: mapped.map((s) => s.id),
+          viewerUserId: ctx.user.id,
+          viewerRole: ctx.user.role,
+          source: "rfq_match",
+        });
+      }
+
+      return mapped;
     }),
 
   // ── Create RFQ requests for multiple suppliers at once ────────────────────

@@ -43,12 +43,14 @@ import { supplierResponseRouter } from './routers/supplier-response-router';
 import { supplierSustainabilityRouter } from './routers/supplier-sustainability-router';
 import { proofRouter } from './routers/blockchain-proof/proofRouter';
 import { submittalsRouter } from './routers/submittals-router';
+import { supplierAnalyticsRouter } from './routers/supplier-analytics-router';
 
 export const appRouter = router({
   system: systemRouter,
   rfqMarketplace: rfqMarketplaceRouter,
   supplier: supplierRouter,
   supplierRfq: supplierRfqRouter,
+  supplierAnalytics: supplierAnalyticsRouter,
   subscription: subscriptionRouter,
   admin: adminRouter,
   ec3: ec3Router,

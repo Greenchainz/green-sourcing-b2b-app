@@ -216,6 +216,21 @@ export async function startSchedulers(): Promise<void> {
     }
   }, 7 * 24 * 60 * 60 * 1000);
 
+  // ── Supplier "profile hits" digest — first run: 3min, then weekly ─────────
+  // Emails suppliers who had architect views in the last 7 days. Free tier gets
+  // an upgrade CTA to unlock viewer identities; premium gets the firms inline.
+  async function runHitsDigest(): Promise<void> {
+    try {
+      const { runSupplierHitsDigest } = await import('./services/supplier-hits-digest');
+      await runSupplierHitsDigest();
+    } catch (e) {
+      console.error('[Hits Digest] run failed:', e);
+    }
+  }
+
+  setTimeout(runHitsDigest, 3 * 60 * 1000);
+  setInterval(runHitsDigest, 7 * 24 * 60 * 60 * 1000);
+
   // ── EPD Sync Scheduler (Autodesk SDA) — DISABLED (SDA shut down April 2026) ─
   // SDA was decommissioned. The stub in autodesk-sda-service.ts returns empty
   // arrays / throws. Re-enable if a replacement EPD source is wired in.

@@ -577,12 +577,39 @@ export const suppliers = pgTable("suppliers", {
   supplierZScore: decimal("supplier_z_score", { precision: 5, scale: 2 }),   // Altman Z-score proxy for financial health
   inventoryVisibility: boolean("inventory_visibility").default(false),        // true = real-time stock visibility available
   vetLastUpdatedAt: timestamp("vet_last_updated_at"),                         // when reliability data was last refreshed
+  // ── Profile-hits outreach ────────────────────────────────────────────────
+  // Last time the weekly "you got X profile views" digest was emailed to this
+  // supplier. Used by runSupplierHitsDigest() to throttle to one email/week.
+  hitsDigestLastSentAt: timestamp("hits_digest_last_sent_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = typeof suppliers.$inferInsert;
+
+// ─── Supplier Profile Views ("hits") ─────────────────────────────────────────
+// One row per (supplier, architect, day). The unique index dedupes repeated
+// views by the same architect on the same day, so a "hit" = a unique architect
+// who looked at the supplier on a given day. Only architect (role='buyer')
+// views are recorded — that is the money-lane signal a supplier pays to see.
+
+export const supplierProfileViews = pgTable("supplier_profile_views", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").notNull(),
+  viewerUserId: integer("viewer_user_id").notNull(),
+  viewerRole: varchar("viewer_role", { length: 32 }),
+  source: varchar("source", { length: 48 }),
+  viewDate: date("view_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  uniqDay: uniqueIndex("supplier_profile_views_unique_day").on(t.supplierId, t.viewerUserId, t.viewDate),
+  bySupplier: index("supplier_profile_views_supplier_idx").on(t.supplierId),
+  byViewer: index("supplier_profile_views_viewer_idx").on(t.viewerUserId),
+}));
+
+export type SupplierProfileView = typeof supplierProfileViews.$inferSelect;
+export type InsertSupplierProfileView = typeof supplierProfileViews.$inferInsert;
 
 // ─── Architects ──────────────────────────────────────────────────────────────
 
