@@ -251,27 +251,34 @@ export function registerAdminRoutes(
       }
 
       // Collect all data associated with the user — scoped strictly to userId.
+      // NOTE: CCPA/GDPR "right to access" requires disclosing ALL data held,
+      // including soft-deleted RFQs (deletedAt IS NOT NULL). The rfqs query
+      // therefore intentionally omits the deletedAt filter used in normal reads.
       const [
         supplierRows,
         rfqRows,
-        leadRows,
         messageRows,
         notificationRows,
         dsrRows,
       ] = await Promise.all([
         db.select().from(schema.suppliers).where(eq(schema.suppliers.userId, userId)),
         db.select().from(schema.rfqs).where(eq(schema.rfqs.userId, userId)),
-        db.select().from(schema.leads).where(eq(schema.leads.email, userRow.email ?? '')),
         db.select().from(schema.messages).where(eq(schema.messages.senderId, userId)),
         db.select().from(schema.notifications).where(eq(schema.notifications.userId, userId)),
         db.select().from(schema.dataSubjectRequests).where(eq(schema.dataSubjectRequests.targetUserId, userId)),
       ]);
+
+      // Leads are keyed by email — only query when the user has an email address.
+      const leadRows = userRow.email
+        ? await db.select().from(schema.leads).where(eq(schema.leads.email, userRow.email))
+        : [];
 
       res.json({
         exportedAt: new Date().toISOString(),
         userId,
         profile: userRow,
         suppliers: supplierRows,
+        // Includes soft-deleted RFQs — required for CCPA right-to-access disclosure.
         rfqs: rfqRows,
         leads: leadRows,
         messages: messageRows,

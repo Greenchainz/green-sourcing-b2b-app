@@ -454,13 +454,15 @@ export const rfqs = pgTable("rfqs", {
   shadowCarbonPrice: decimal("shadow_carbon_price", { precision: 10, scale: 2 }),
   // ── First-class carbon / sustainability gate fields ──────────────────────────
   // Hard cap: bids above this GWP are flagged non-compliant (null = no cap).
+  // Typical concrete values: 200–500 kgCO2e/m3; steel: 1,000–3,000 kgCO2e/tonne.
+  // Negative values are not meaningful — validate > 0 at the application layer.
   gwpCapPerUnit: decimal("gwp_cap_per_unit", { precision: 10, scale: 4 }),
   // Unit string for gwpCapPerUnit, e.g. "kgCO2e/m3" or "kgCO2e/tonne".
   gwpCapUnit: varchar("gwp_cap_unit", { length: 50 }),
   // Percentage reduction below regional baseline buyer is targeting (null = not set).
   gwpReductionTarget: decimal("gwp_reduction_target", { precision: 5, scale: 2 }),
   // When true, bids without a valid EPD link are treated as non-compliant.
-  epdRequired: boolean("epd_required").default(false),
+  epdRequired: boolean("epd_required").default(false).notNull(),
   // ── Compliance / Data Retention ──────────────────────────────────────────────
   // Soft-delete timestamp. Rows where this is non-null are logically deleted.
   // Hard deletes are prohibited per the 7-year retention policy.
