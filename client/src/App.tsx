@@ -381,138 +381,138 @@ function HubSpotLoader() {
 
 // Redirect supplier users who haven't completed onboarding
 function SupplierOnboardingGuard() {
-      const { user } = useAuth();
-      const [, navigate] = useLocation();
-      const isSupplierUser = user?.role === "supplier";
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const isSupplierUser = user?.role === "supplier";
 
-      const { data: profile, isLoading } = trpc.supplierOnboarding.getMyProfile.useQuery(undefined, {
-        enabled: !!isSupplierUser,
-        staleTime: 60_000,
-      });
+  const { data: profile, isLoading } = trpc.supplierOnboarding.getMyProfile.useQuery(undefined, {
+    enabled: !!isSupplierUser,
+    staleTime: 60_000,
+  });
 
-      useEffect(() => {
-        if (!isSupplierUser || isLoading) return;
-        if (profile === null) {
-          const path = window.location.pathname;
-          if (!path.startsWith("/supplier/onboarding")) {
-            navigate("/supplier/onboarding");
-          }
-        }
-      }, [isSupplierUser, isLoading, profile, navigate]);
-
-      return null;
+  useEffect(() => {
+    if (!isSupplierUser || isLoading) return;
+    if (profile === null) {
+      const path = window.location.pathname;
+      if (!path.startsWith("/supplier/onboarding")) {
+        navigate("/supplier/onboarding");
+      }
     }
+  }, [isSupplierUser, isLoading, profile, navigate]);
+
+  return null;
+}
 
 // Redirect architect users who haven't completed onboarding.
 // Architects are the default role — virtually all new SSO users land here.
 // Skips the check if the user selected "supplier" as their pending role (sessionStorage),
 // since they'll be handled by SupplierOnboardingGuard instead.
 function ArchitectOnboardingGuard() {
-      const { user } = useAuth();
-      const [, navigate] = useLocation();
-      const isArchitectUser = user?.role === "architect";
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const isArchitectUser = user?.role === "architect";
 
-      const { data: profile, isLoading } = trpc.architect.getMyProfile.useQuery(undefined, {
-        enabled: !!isArchitectUser,
-        staleTime: 60_000,
-      });
+  const { data: profile, isLoading } = trpc.architect.getMyProfile.useQuery(undefined, {
+    enabled: !!isArchitectUser,
+    staleTime: 60_000,
+  });
 
-      useEffect(() => {
-        if (!isArchitectUser || isLoading) return;
-        if (profile === null) {
-          const path = window.location.pathname;
-          // Don't redirect if already on an onboarding page or login/public pages
-          if (
-            path.startsWith("/architect/onboarding") ||
-            path.startsWith("/supplier/") ||
-            path === "/login" ||
-            path === "/" ||
-            path === "/get-started"
-          ) {
-            return;
-          }
-          navigate("/architect/onboarding");
-        }
-      }, [isArchitectUser, isLoading, profile, navigate]);
-
-      return null;
+  useEffect(() => {
+    if (!isArchitectUser || isLoading) return;
+    if (profile === null) {
+      const path = window.location.pathname;
+      // Don't redirect if already on an onboarding page or login/public pages
+      if (
+        path.startsWith("/architect/onboarding") ||
+        path.startsWith("/supplier/") ||
+        path === "/login" ||
+        path === "/" ||
+        path === "/get-started"
+      ) {
+        return;
+      }
+      navigate("/architect/onboarding");
     }
+  }, [isArchitectUser, isLoading, profile, navigate]);
+
+  return null;
+}
 
 // Inner component that uses hooks requiring AuthProvider context
 function AppInner() {
-      // VIDEO CALLING — cut for launch, restore when ACS is implemented
-      // const [activeCall, setActiveCall] = useState<{...} | null>(null);
-      // const handleAcceptCall = (callData: any) => { ... };
+  // VIDEO CALLING — cut for launch, restore when ACS is implemented
+  // const [activeCall, setActiveCall] = useState<{...} | null>(null);
+  // const handleAcceptCall = (callData: any) => { ... };
 
-      const { user } = useAuth();
-      const [showDeferredWidgets, setShowDeferredWidgets] = useState(false);
+  const { user } = useAuth();
+  const [showDeferredWidgets, setShowDeferredWidgets] = useState(false);
 
-      useEffect(() => {
-        let fired = false;
-        const activate = () => {
-          if (fired) return;
-          fired = true;
-          cleanup(); // eslint-disable-line @typescript-eslint/no-use-before-define
-          setShowDeferredWidgets(true);
-        };
+  useEffect(() => {
+    let fired = false;
+    const activate = () => {
+      if (fired) return;
+      fired = true;
+      cleanup(); // eslint-disable-line @typescript-eslint/no-use-before-define
+      setShowDeferredWidgets(true);
+    };
 
-        // Load Intercom/ChatWidget only on first user interaction.
-        // This keeps them completely off the main thread during Lighthouse
-        // measurement (no interaction → no Intercom JS → no TBT contribution).
-        // Real users trigger this within milliseconds of engaging the page.
-        const events = ["mousemove", "touchstart", "keydown", "scroll", "click"] as const;
-        events.forEach((e) => window.addEventListener(e, activate, { once: true, passive: true }));
+    // Load Intercom/ChatWidget only on first user interaction.
+    // This keeps them completely off the main thread during Lighthouse
+    // measurement (no interaction → no Intercom JS → no TBT contribution).
+    // Real users trigger this within milliseconds of engaging the page.
+    const events = ["mousemove", "touchstart", "keydown", "scroll", "click"] as const;
+    events.forEach((e) => window.addEventListener(e, activate, { once: true, passive: true }));
 
-        const cleanup = () => events.forEach((e) => window.removeEventListener(e, activate));
-        return cleanup;
-      }, []);
+    const cleanup = () => events.forEach((e) => window.removeEventListener(e, activate));
+    return cleanup;
+  }, []);
 
-      useWebPubSub();
+  useWebPubSub();
 
-      return (
-        <ChatWidgetProvider>
-          <TooltipProvider>
-            <Toaster />
-            <AuthGuard />
-            <SupplierOnboardingGuard />
-            <ArchitectOnboardingGuard />
-            <AnalyticsTracker />
-            <RouteSeoFallback />
-            <HubSpotLoader />
-            <Suspense fallback={<div className="flex h-screen items-center justify-center"><span className="text-muted-foreground text-sm">Loading…</span></div>}>
-              <Router />
-            </Suspense>
-            {/* Intercom support widget */}
-            {showDeferredWidgets ? (
-              <Suspense fallback={null}>
-                <IntercomWidget />
-              </Suspense>
-            ) : null}
-            {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
-            {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
-            {showDeferredWidgets && user ? (
-              <Suspense fallback={null}>
-                <ChatWidget />
-              </Suspense>
-            ) : null}
-            {/* CookieYes in index.html handles cookie consent */}
-          </TooltipProvider>
-        </ChatWidgetProvider>
-      );
-    }
+  return (
+    <ChatWidgetProvider>
+      <TooltipProvider>
+        <Toaster />
+        <AuthGuard />
+        <SupplierOnboardingGuard />
+        <ArchitectOnboardingGuard />
+        <AnalyticsTracker />
+        <RouteSeoFallback />
+        <HubSpotLoader />
+        <Suspense fallback={<div className="flex h-screen items-center justify-center"><span className="text-muted-foreground text-sm">Loading…</span></div>}>
+          <Router />
+        </Suspense>
+        {/* Intercom support widget */}
+        {showDeferredWidgets ? (
+          <Suspense fallback={null}>
+            <IntercomWidget />
+          </Suspense>
+        ) : null}
+        {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
+        {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
+        {showDeferredWidgets && user ? (
+          <Suspense fallback={null}>
+            <ChatWidget />
+          </Suspense>
+        ) : null}
+        {/* CookieYes in index.html handles cookie consent */}
+      </TooltipProvider>
+    </ChatWidgetProvider>
+  );
+}
 
 function App() {
-      return (
-        <ErrorBoundary>
-          <HelmetProvider>
-            <ThemeProvider defaultTheme="dark">
-              <AuthProvider>
-                <AppInner />
-              </AuthProvider>
-            </ThemeProvider>
-          </HelmetProvider>
-        </ErrorBoundary>
-      );
-    }
+  return (
+    <ErrorBoundary>
+      <HelmetProvider>
+        <ThemeProvider defaultTheme="dark">
+          <AuthProvider>
+            <AppInner />
+          </AuthProvider>
+        </ThemeProvider>
+      </HelmetProvider>
+    </ErrorBoundary>
+  );
+}
 
 export default App;
