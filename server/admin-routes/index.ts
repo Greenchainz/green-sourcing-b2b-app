@@ -206,4 +206,139 @@ export function registerAdminRoutes(
       res.status(500).json(createErrorResponse('TxDOT scraper failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
+
+  // ── CCPA / GDPR Data Subject Request routes ────────────────────────────────
+
+  /**
+   * GET /api/admin/user-data-export?userId=X
+   *
+   * Returns a JSON bundle of all personal data held for the specified user.
+   * Used to service CCPA "right to know" / GDPR "data access" requests.
+   * Response is intentionally verbose — the admin decides what to send to the
+   * requestor.
+   */
+  app.get('/api/admin/user-data-export', adminRateLimit, async (req, res) => {
+    try {
+      const admin = await requireEasyAuthAdminUser(req, res);
+      if (!admin) return;
+
+      const rawUserId = req.query.userId;
+      const userId = parseInt(String(rawUserId ?? ''), 10);
+      if (!userId || isNaN(userId)) {
+        res.status(400).json(createErrorResponse('userId query parameter is required and must be an integer', getRequestId(req)));
+        return;
+      }
+
+      const { getDb } = await import('../db');
+      const { eq, or } = await import('drizzle-orm');
+      const schema = await import('../../drizzle/schema');
+
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json(createErrorResponse('Database unavailable', getRequestId(req)));
+        return;
+      }
+
+      const [userRow] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, userId))
+        .limit(1);
+
+      if (!userRow) {
+        res.status(404).json(createErrorResponse('User not found', getRequestId(req)));
+        return;
+      }
+
+      // Collect all data associated with the user — scoped strictly to userId.
+      const [
+        supplierRows,
+        rfqRows,
+        leadRows,
+        messageRows,
+        notificationRows,
+        dsrRows,
+      ] = await Promise.all([
+        db.select().from(schema.suppliers).where(eq(schema.suppliers.userId, userId)),
+        db.select().from(schema.rfqs).where(eq(schema.rfqs.userId, userId)),
+        db.select().from(schema.leads).where(eq(schema.leads.email, userRow.email ?? '')),
+        db.select().from(schema.messages).where(eq(schema.messages.senderId, userId)),
+        db.select().from(schema.notifications).where(eq(schema.notifications.userId, userId)),
+        db.select().from(schema.dataSubjectRequests).where(eq(schema.dataSubjectRequests.targetUserId, userId)),
+      ]);
+
+      res.json({
+        exportedAt: new Date().toISOString(),
+        userId,
+        profile: userRow,
+        suppliers: supplierRows,
+        rfqs: rfqRows,
+        leads: leadRows,
+        messages: messageRows,
+        notifications: notificationRows,
+        dataSubjectRequests: dsrRows,
+      });
+    } catch (err) {
+      console.error('[admin] user-data-export error:', err);
+      res.status(500).json(createErrorResponse('Export failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
+    }
+  });
+
+  /**
+   * POST /api/admin/user-data-deletion-request
+   *
+   * Body: { targetUserId: number, type: "access"|"correction"|"deletion", notes?: string }
+   *
+   * Creates a tracked data-subject request entry so the privacy team can
+   * service CCPA / GDPR requests in a fully auditable way.  Actual PII
+   * anonymisation must be performed separately via a privileged migration
+   * after the 7-year retention window has elapsed.
+   */
+  app.post('/api/admin/user-data-deletion-request', adminRateLimit, async (req, res) => {
+    try {
+      const admin = await requireEasyAuthAdminUser(req, res);
+      if (!admin) return;
+
+      const body = req.body as { targetUserId?: unknown; type?: unknown; notes?: unknown };
+      const targetUserId = typeof body.targetUserId === 'number' ? body.targetUserId : parseInt(String(body.targetUserId ?? ''), 10);
+      const type = String(body.type ?? '');
+      const notes = typeof body.notes === 'string' ? body.notes : undefined;
+
+      if (!targetUserId || isNaN(targetUserId)) {
+        res.status(400).json(createErrorResponse('targetUserId is required', getRequestId(req)));
+        return;
+      }
+      if (!['access', 'correction', 'deletion'].includes(type)) {
+        res.status(400).json(createErrorResponse('type must be "access", "correction", or "deletion"', getRequestId(req)));
+        return;
+      }
+
+      const { getDb } = await import('../db');
+      const schema = await import('../../drizzle/schema');
+
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json(createErrorResponse('Database unavailable', getRequestId(req)));
+        return;
+      }
+
+      const [inserted] = await db
+        .insert(schema.dataSubjectRequests)
+        .values({
+          requestedByAdminId: admin.id,
+          targetUserId,
+          type: type as 'access' | 'correction' | 'deletion',
+          status: 'pending',
+          notes: notes ?? null,
+        })
+        .returning();
+
+      console.log(`[admin] DSR created id=${inserted.id} type=${type} targetUser=${targetUserId} by admin=${admin.id}`);
+
+      res.status(201).json({ success: true, request: inserted });
+    } catch (err) {
+      console.error('[admin] user-data-deletion-request error:', err);
+      res.status(500).json(createErrorResponse('Request creation failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
+    }
+  });
 }
