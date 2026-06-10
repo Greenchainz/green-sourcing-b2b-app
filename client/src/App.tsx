@@ -427,7 +427,17 @@ function ArchitectOnboardingGuard() {
         path.startsWith("/supplier/") ||
         path === "/login" ||
         path === "/" ||
-        path === "/get-started"
+        path === "/get-started" ||
+        path === "/pricing" ||
+        path === "/features" ||
+        path === "/about" ||
+        path === "/terms" ||
+        path === "/privacy" ||
+        path === "/support" ||
+        path === "/how-it-works" ||
+        path === "/manufacturers" ||
+        path.startsWith("/manufacturers/") ||
+        path === "/insider"
       ) {
         return;
       }
