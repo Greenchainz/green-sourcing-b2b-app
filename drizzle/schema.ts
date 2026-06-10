@@ -8,7 +8,6 @@ import {
   decimal,
   boolean,
   integer,
-  smallint,
   real,
   date,
   json,

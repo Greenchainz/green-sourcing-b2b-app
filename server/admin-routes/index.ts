@@ -36,6 +36,15 @@ function getRequestId(req: express.Request): string {
   return req.id ?? "unknown";
 }
 
+/**
+ * Parse a userId from a raw query/body value.
+ * Returns the integer on success, or null if missing / not a valid integer.
+ */
+function parseAdminUserId(value: unknown): number | null {
+  const n = parseInt(String(value ?? ''), 10);
+  return isNaN(n) || n <= 0 ? null : n;
+}
+
 export function registerAdminRoutes(
   app: express.Express,
   adminRateLimit: express.RequestHandler
@@ -222,15 +231,14 @@ export function registerAdminRoutes(
       const admin = await requireEasyAuthAdminUser(req, res);
       if (!admin) return;
 
-      const rawUserId = req.query.userId;
-      const userId = parseInt(String(rawUserId ?? ''), 10);
-      if (!userId || isNaN(userId)) {
-        res.status(400).json(createErrorResponse('userId query parameter is required and must be an integer', getRequestId(req)));
+      const userId = parseAdminUserId(req.query.userId);
+      if (!userId) {
+        res.status(400).json(createErrorResponse('userId query parameter is required and must be a positive integer', getRequestId(req)));
         return;
       }
 
       const { getDb } = await import('../db');
-      const { eq, or } = await import('drizzle-orm');
+      const { eq } = await import('drizzle-orm');
       const schema = await import('../../drizzle/schema');
 
       const db = await getDb();
@@ -269,6 +277,9 @@ export function registerAdminRoutes(
       ]);
 
       // Leads are keyed by email — only query when the user has an email address.
+      // Known limitation: the leads table has no userId FK, so this matches any
+      // lead captured with the same email. For shared organisational addresses
+      // this may include leads from other users. Admin should review carefully.
       const leadRows = userRow.email
         ? await db.select().from(schema.leads).where(eq(schema.leads.email, userRow.email))
         : [];
@@ -307,12 +318,12 @@ export function registerAdminRoutes(
       if (!admin) return;
 
       const body = req.body as { targetUserId?: unknown; type?: unknown; notes?: unknown };
-      const targetUserId = typeof body.targetUserId === 'number' ? body.targetUserId : parseInt(String(body.targetUserId ?? ''), 10);
+      const targetUserId = parseAdminUserId(body.targetUserId);
       const type = String(body.type ?? '');
       const notes = typeof body.notes === 'string' ? body.notes : undefined;
 
-      if (!targetUserId || isNaN(targetUserId)) {
-        res.status(400).json(createErrorResponse('targetUserId is required', getRequestId(req)));
+      if (!targetUserId) {
+        res.status(400).json(createErrorResponse('targetUserId is required and must be a positive integer', getRequestId(req)));
         return;
       }
       if (!['access', 'correction', 'deletion'].includes(type)) {
