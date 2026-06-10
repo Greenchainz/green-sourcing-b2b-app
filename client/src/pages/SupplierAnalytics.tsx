@@ -2,6 +2,8 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 import {
   TrendingUp,
   TrendingDown,
@@ -10,10 +12,19 @@ import {
   CheckCircle,
   Target,
   Loader2,
+  Eye,
+  Lock,
+  Building2,
+  Sparkles,
 } from "lucide-react";
 
 export default function SupplierAnalytics() {
   const { user } = useAuth();
+
+  const { data: hits, isLoading: hitsLoading } = trpc.supplierAnalytics.getMyHits.useQuery(
+    undefined,
+    { enabled: !!user }
+  );
 
   const { data: stats, isLoading: statsLoading } = trpc.supplierRfq.getStats.useQuery(undefined, {
     enabled: !!user,
@@ -77,6 +88,135 @@ export default function SupplierAnalytics() {
           <p className="text-muted-foreground mt-1">
             Performance insights for your GreenChainz supplier profile
           </p>
+        </div>
+
+        {/* ── Profile Visibility ("Your Hits") ─────────────────────────────── */}
+        <section className="mb-10">
+          <div className="flex items-center gap-2 mb-4">
+            <Eye className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Profile Visibility</h2>
+            <span className="text-sm text-muted-foreground">— architects viewing your profile</span>
+          </div>
+
+          {hitsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-7 h-7 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                {[
+                  { label: "Views this week", value: hits?.hitsThisWeek ?? 0, sub: "architects this week" },
+                  { label: "Views this month", value: hits?.hitsThisMonth ?? 0, sub: "last 30 days" },
+                  { label: "Total views", value: hits?.totalHits ?? 0, sub: "all-time" },
+                ].map((kpi) => (
+                  <Card key={kpi.label} className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                        <p className="text-3xl font-bold text-foreground mt-1">{kpi.value}</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-primary" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">{kpi.sub}</p>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Who's viewing you — gated behind premium */}
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-primary" />
+                    Who's viewing you
+                  </h3>
+                  {hits?.viewerIdentitiesUnlocked ? (
+                    <Badge className="bg-green-100 text-green-800 text-[10px]">Premium</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Locked
+                    </Badge>
+                  )}
+                </div>
+
+                {hits?.viewerIdentitiesUnlocked ? (
+                  hits.viewers.length > 0 ? (
+                    <div className="space-y-3">
+                      {hits.viewers.map((v, i) => (
+                        <div
+                          key={`${v.firmName}-${i}`}
+                          className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{v.firmName}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {[v.firmType?.replace(/_/g, " "), [v.city, v.state].filter(Boolean).join(", ")]
+                                .filter(Boolean)
+                                .join(" · ") || "Architecture firm"}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold text-foreground">
+                              {v.views} view{v.views === 1 ? "" : "s"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(v.lastViewedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-6 text-center">
+                      No profile views yet. As architects discover your materials, they'll show up here.
+                    </p>
+                  )
+                ) : (
+                  // Locked state — blurred teaser + upgrade CTA
+                  <div className="relative">
+                    <div className="space-y-3 blur-sm select-none pointer-events-none" aria-hidden="true">
+                      {["Gensler", "Perkins&Will", "HOK"].map((name, i) => (
+                        <div
+                          key={name}
+                          className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Architecture firm</p>
+                          </div>
+                          <p className="text-sm font-semibold text-foreground">{3 - i} views</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                      <Lock className="w-8 h-8 text-muted-foreground mb-3" />
+                      <p className="font-semibold text-foreground mb-1">
+                        {(hits?.totalHits ?? 0) > 0
+                          ? `${hits?.totalHits} architects viewed you — see who`
+                          : "See which firms are viewing you"}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                        Upgrade to a verified membership to unlock the names of the architects looking
+                        at your profile — and turn views into specs.
+                      </p>
+                      <Link href="/subscription">
+                        <Button size="sm">
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Unlock who viewed you
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </>
+          )}
+        </section>
+
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-foreground">RFQ &amp; Bid Performance</h2>
         </div>
 
         {/* KPI Cards */}

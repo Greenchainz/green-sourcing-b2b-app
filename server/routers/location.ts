@@ -12,6 +12,7 @@ import {
   isSwapTypicalForRegion,
   getRegionalSwapCarbonReduction,
 } from "../location-service";
+import { recordSupplierViews } from "../services/supplier-profile-views";
 
 export const locationRouter = router({
   /**
@@ -55,7 +56,19 @@ export const locationRouter = router({
    */
   suppliersByState: protectedProcedure
     .input(z.object({ state: z.string().length(2) }))
-    .query(({ input }) => getSuppliersByState(input.state)),
+    .query(async ({ ctx, input }) => {
+      const result = await getSuppliersByState(input.state);
+      // Record architect → supplier "hits" for the suppliers surfaced here.
+      if (ctx.user?.role === "buyer" && result.length > 0) {
+        void recordSupplierViews({
+          supplierIds: result.map((s) => s.id),
+          viewerUserId: ctx.user.id,
+          viewerRole: ctx.user.role,
+          source: "state_directory",
+        });
+      }
+      return result;
+    }),
 
   /**
    * State-specific building code compliance rules

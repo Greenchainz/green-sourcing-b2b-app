@@ -21,6 +21,7 @@ import { handleWebhook } from "../marketplace-webhook";
 import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 import { uploadRouter } from "../upload-route";
 import { zeptomailWebhookRouter } from "../zeptomail-webhook";
+import { unsubscribeRouter } from "../unsubscribe-route";
 import { specSheetRouter } from "../spec-sheet-router";
 import { registerAdminRoutes } from "../admin-routes/index";
 import { publicMaterialsRouter } from "../public-materials-api";
@@ -468,6 +469,7 @@ async function startServer() {
     console.log("[dev-fv] Local video storage active — videos saved to tmp/founder-videos/");
   }
   app.use(zeptomailWebhookRouter);
+  app.use(unsubscribeRouter);
   app.use("/api", specSheetRouter);
   // Public REST API for Forma Extension (unauthenticated)
   app.use("/api/public", publicApiRateLimit, publicMaterialsRouter);

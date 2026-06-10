@@ -32,6 +32,9 @@ import {
   MapPin,
   Truck,
   Info,
+  Eye,
+  Lock,
+  Sparkles,
 } from "lucide-react";
 import {
   Select,
@@ -118,6 +121,9 @@ export function SupplierProfileDashboard() {
   });
 
   const profile = trpc.supplierOnboarding.getMyProfile.useQuery(undefined, {
+    enabled: !!user,
+  });
+  const hits = trpc.supplierAnalytics.getMyHits.useQuery(undefined, {
     enabled: !!user,
   });
   const materialCategoriesQuery = trpc.materials.categories.useQuery();
@@ -384,6 +390,67 @@ export function SupplierProfileDashboard() {
               {completeness < 100 && (
                 <p className="text-xs text-gray-500 mt-2">
                   Complete your profile to improve visibility and RFQ match quality
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Profile Visibility — architect "hits" */}
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-[#2D6A4F]" />
+                  <span className="text-sm font-medium text-gray-700">Profile Visibility</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/supplier/analytics")}
+                  className="text-xs font-medium text-[#2D6A4F] hover:underline"
+                >
+                  View analytics →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "This week", value: hits.data?.hitsThisWeek ?? 0 },
+                  { label: "This month", value: hits.data?.hitsThisMonth ?? 0 },
+                  { label: "All-time", value: hits.data?.totalHits ?? 0 },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-lg bg-gray-50 p-3 text-center">
+                    <p className="text-2xl font-bold text-gray-900">
+                      {hits.isLoading ? "—" : s.value}
+                    </p>
+                    <p className="text-[11px] text-gray-500 uppercase tracking-wide mt-0.5">
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {hits.data && !hits.data.viewerIdentitiesUnlocked && (hits.data.totalHits ?? 0) > 0 && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/subscription")}
+                  className="mt-3 w-full flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  {hits.data.totalHits} architects viewed you — unlock who
+                  <Sparkles className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {hits.data?.viewerIdentitiesUnlocked && (
+                <p className="mt-3 text-xs text-gray-500 text-center">
+                  Premium: see which firms are viewing you in{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/supplier/analytics")}
+                    className="text-[#2D6A4F] font-medium hover:underline"
+                  >
+                    Analytics
+                  </button>
+                  .
                 </p>
               )}
             </CardContent>

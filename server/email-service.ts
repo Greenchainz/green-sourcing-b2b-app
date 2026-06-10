@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
+import { buildUnsubscribeUrl } from "./unsubscribe-route";
 
 /**
  * Email Service
@@ -17,6 +18,7 @@ interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  headers?: Record<string, string>;
 }
 
 /** Send via Zeptomail SMTP. Returns true on success. */
@@ -42,6 +44,7 @@ async function sendViaZeptomail(options: EmailOptions): Promise<boolean> {
       subject: options.subject,
       html: options.html,
       text: options.text,
+      headers: options.headers,
     });
     console.log(`[email/zeptomail] Sent to ${options.to}: ${options.subject}`);
     return true;
@@ -63,6 +66,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         subject: options.subject,
         html: options.html,
         text: options.text,
+        headers: options.headers,
       });
 
       if (!error) {
@@ -1094,5 +1098,155 @@ GreenChainz — Sustainable Material Procurement`;
     subject: `New project match: ${data.projectName} — GreenChainz`,
     html,
     text,
+  });
+}
+
+/**
+ * Send the weekly "profile hits" digest to a supplier.
+ *
+ * Free suppliers see the view counts plus an upgrade CTA to unlock which firms
+ * are viewing them. Premium suppliers see the top viewing firms inline.
+ */
+export async function sendSupplierHitsDigestEmail(data: {
+  supplierEmail: string;
+  contactName?: string | null;
+  companyName: string;
+  hitsThisWeek: number;
+  totalHits: number;
+  isPremium: boolean;
+  topViewers?: { firmName: string; location?: string | null }[];
+}): Promise<boolean> {
+  const base = process.env.FRONTEND_URL || "https://greenchainz.com";
+  const dashboardUrl = `${base}/supplier/analytics`;
+  const upgradeUrl = `${base}/subscription`;
+  const aboutUrl = `${base}/about`;
+  const unsubscribeUrl = buildUnsubscribeUrl(data.supplierEmail);
+  const greetingName = data.contactName?.trim() || data.companyName;
+  const weekLabel = `${data.hitsThisWeek} ${data.hitsThisWeek === 1 ? "architect" : "architects"}`;
+
+  const viewersBlock =
+    data.isPremium && data.topViewers && data.topViewers.length > 0
+      ? `
+    <div class="card">
+      <p style="margin:0 0 10px 0;font-weight:600;color:#065f46;">Who's looking at you</p>
+      ${data.topViewers
+          .slice(0, 8)
+          .map(
+            (v) =>
+              `<p style="margin:4px 0;">🏢 <strong>${v.firmName}</strong>${
+                v.location ? ` <span style="color:#6b7280;">· ${v.location}</span>` : ""
+              }</p>`
+          )
+          .join("")}
+    </div>
+    <center><a href="${dashboardUrl}" class="button">View full analytics</a></center>`
+      : `
+    <div class="card" style="border-left-color:#f59e0b;">
+      <p style="margin:0;font-weight:600;color:#92400e;">🔒 See which firms are viewing you</p>
+      <p style="margin:8px 0 0 0;color:#6b7280;font-size:14px;">
+        Upgrade your GreenChainz membership to view firm identities and follow up
+        on active project interest.
+      </p>
+    </div>
+    <center><a href="${upgradeUrl}" class="button">Unlock who viewed you</a></center>`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your GreenChainz profile this week</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+    .stat { display: inline-block; text-align: center; margin: 0 16px; }
+    .stat .num { font-size: 36px; font-weight: 700; color: #059669; line-height: 1; }
+    .stat .lbl { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .card { background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #10b981; }
+    .button { display: inline-block; background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+    .footer { text-align: center; color: #6b7280; font-size: 13px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 style="margin: 0; font-size: 26px;">👀 You're getting noticed</h1>
+    <p style="margin: 10px 0 0 0; opacity: 0.9;">${data.companyName} — your week on GreenChainz</p>
+  </div>
+  <div class="content">
+    <p>Hi ${greetingName},</p>
+    <p>Architects are looking at your profile. Here's how this week went:</p>
+    <center>
+      <div class="stat"><div class="num">${data.hitsThisWeek}</div><div class="lbl">Views this week</div></div>
+      <div class="stat"><div class="num">${data.totalHits}</div><div class="lbl">Views all-time</div></div>
+    </center>
+    <p style="text-align:center;color:#6b7280;font-size:14px;">
+      ${weekLabel} viewed your profile while sourcing sustainable materials.
+    </p>
+    ${viewersBlock}
+    <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+      <strong>💡 Tip:</strong> Keep your materials, certifications, and EPDs up to
+      date — complete profiles win more specs.
+    </p>
+    <p style="font-size: 13px; color: #6b7280; margin-top: 10px;">
+      If you're considering opting out, please reach out to me directly at
+      <a href="mailto:${FOUNDER_EMAIL}" style="color:#10b981;">${FOUNDER_EMAIL}</a>.
+      I can personally walk through how GreenChainz can help your team get in front of
+      buyer teams actively sourcing sustainable materials. You can also watch my short
+      overview here: <a href="${aboutUrl}" style="color:#10b981;">About GreenChainz</a>.
+    </p>
+    <p style="font-size: 13px; color: #6b7280; margin-top: 8px;">
+      You can unsubscribe instantly at any time. If you unsubscribe, you will stop
+      receiving profile visibility alerts that may indicate active project interest.
+    </p>
+  </div>
+  <div class="footer">
+    <p>© ${new Date().getFullYear()} GreenChainz. All rights reserved.</p>
+    <p>
+      <a href="${unsubscribeUrl}" style="color: #6b7280;">Unsubscribe instantly</a> |
+      <a href="${dashboardUrl}" style="color: #6b7280;">Your dashboard</a>
+    </p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = `Hi ${greetingName},
+
+Architects are looking at your GreenChainz profile.
+
+Views this week: ${data.hitsThisWeek}
+Views all-time:  ${data.totalHits}
+
+${
+    data.isPremium && data.topViewers && data.topViewers.length > 0
+      ? `Who's looking at you:\n${data.topViewers
+          .slice(0, 8)
+          .map((v) => `- ${v.firmName}${v.location ? ` (${v.location})` : ""}`)
+          .join("\n")}\n\nView full analytics: ${dashboardUrl}`
+      : `Upgrade to see which firms are viewing you: ${upgradeUrl}`
+  }
+
+If you're considering opting out, please reach out to me directly at ${FOUNDER_EMAIL}.
+I can personally explain how GreenChainz can help your team get in front of buyer teams actively sourcing sustainable materials.
+You can also watch my short overview here: ${aboutUrl}
+
+You can unsubscribe instantly at any time: ${unsubscribeUrl}
+If you unsubscribe, you will stop receiving profile visibility alerts that may indicate active project interest.
+
+© ${new Date().getFullYear()} GreenChainz`;
+
+  return sendEmail({
+    to: data.supplierEmail,
+    subject: `${data.companyName}: ${data.hitsThisWeek} ${
+      data.hitsThisWeek === 1 ? "architect" : "architects"
+    } viewed your profile this week`,
+    html,
+    text,
+    headers: {
+      "List-Unsubscribe": `<${unsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
   });
 }
