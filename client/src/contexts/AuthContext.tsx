@@ -58,9 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Initialise from cache so the user is available synchronously on first render.
   // This eliminates the blink: cached user → isLoading=false immediately,
   // then we revalidate in the background to keep the session fresh.
-  const cached = getCachedUser();
-  const [user, setUser] = useState<User | null>(cached);
-  const [isLoading, setIsLoading] = useState(cached === null); // only show loading if no cache
+  // Lazy initialisers (() => ...) ensure sessionStorage is only read once on mount.
+  const [user, setUser] = useState<User | null>(() => getCachedUser());
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // Show loading only if there's no cached user to display immediately
+    return getCachedUser() === null;
+  });
   const [error, setError] = useState<Error | null>(null);
 
   const fetchUser = async () => {

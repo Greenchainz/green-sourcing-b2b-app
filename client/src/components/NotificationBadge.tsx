@@ -1,13 +1,16 @@
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NotificationBadgeProps {
   onClick: () => void;
 }
 
 export function NotificationBadge({ onClick }: NotificationBadgeProps) {
+  const { user } = useAuth();
   const { data: unreadCount = 0 } = trpc.notifications.getUnreadCount.useQuery(undefined, {
+    enabled: !!user,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 

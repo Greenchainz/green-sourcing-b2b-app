@@ -50,6 +50,17 @@ async function apiFetch<T>(
     const text = await response.text();
     if (!text) return {} as T;
 
+    // Guard against HTML responses (e.g. proxy error pages, server restarts).
+    // JSON.parse on HTML produces the cryptic "Unexpected token '<'" error.
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+      // Only warn — don't expose the full HTML body in the error message
+      const preview = text.slice(0, 120).replace(/\n/g, ' ');
+      throw new Error(
+        `Server returned non-JSON response (${contentType || 'unknown content-type'}): ${preview}`
+      );
+    }
+
     return JSON.parse(text) as T;
   } catch (error) {
     // Only log non-auth errors (401s already handled above)
