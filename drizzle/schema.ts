@@ -451,6 +451,21 @@ export const rfqs = pgTable("rfqs", {
   // Buyer-set $/tonne CO₂e — used to compute carbon-adjusted cost in comparison table.
   // Formula: Carbon-Adjusted Cost = Bid Price + (GWP_kg / 1000 × shadowCarbonPrice)
   shadowCarbonPrice: decimal("shadow_carbon_price", { precision: 10, scale: 2 }),
+  // ── First-class carbon / sustainability gate fields ──────────────────────────
+  // Hard cap: bids above this GWP are flagged non-compliant (null = no cap).
+  // Typical concrete values: 200–500 kgCO2e/m3; steel: 1,000–3,000 kgCO2e/tonne.
+  // Negative values are not meaningful — validate > 0 at the application layer.
+  gwpCapPerUnit: decimal("gwp_cap_per_unit", { precision: 10, scale: 4 }),
+  // Unit string for gwpCapPerUnit, e.g. "kgCO2e/m3" or "kgCO2e/tonne".
+  gwpCapUnit: varchar("gwp_cap_unit", { length: 50 }),
+  // Percentage reduction below regional baseline buyer is targeting (null = not set).
+  gwpReductionTarget: decimal("gwp_reduction_target", { precision: 5, scale: 2 }),
+  // When true, bids without a valid EPD link are treated as non-compliant.
+  epdRequired: boolean("epd_required").default(false).notNull(),
+  // ── Compliance / Data Retention ──────────────────────────────────────────────
+  // Soft-delete timestamp. Rows where this is non-null are logically deleted.
+  // Hard deletes are prohibited per the 7-year retention policy.
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -468,6 +483,8 @@ export const rfqItems = pgTable("rfq_items", {
   quantityUnit: varchar("quantityUnit", { length: 50 }),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  // Soft-delete — see retention policy note on rfqs table.
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type RfqItem = typeof rfqItems.$inferSelect;
@@ -843,6 +860,13 @@ export const rfqBids = pgTable("rfq_bids", {
   // ── Data quality (set server-side, never from client) ─────────────────────
   // L0 = proxy/none, L1 = self-reported, L2 = third-party, L3 = EPD verified
   dataQualityLevel: varchar("data_quality_level", { length: 2 }),
+  // ── Compliance gate (computed server-side on bid submission) ──────────────
+  // true  → gwpValue ≤ rfqs.gwpCapPerUnit (or no cap set)
+  // false → gwpValue exceeds rfqs.gwpCapPerUnit
+  // null  → no gwpValue provided or no cap on the parent RFQ
+  gwpMeetsTarget: boolean("gwp_meets_target"),
+  // Soft-delete — see retention policy note on rfqs table.
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -2311,3 +2335,44 @@ export const blockchainAnchors = pgTable(
 
 export type BlockchainAnchor = typeof blockchainAnchors.$inferSelect;
 export type InsertBlockchainAnchor = typeof blockchainAnchors.$inferInsert;
+
+// ─── Data Subject Requests (CCPA / GDPR) ────────────────────────────────────
+// Tracks privacy requests (access, correction, deletion) so they can be
+// serviced and audited. Required before any enterprise supplier MSA can be signed.
+
+export const dataSubjectRequestTypeEnum = pgEnum("data_subject_request_type", [
+  "access",
+  "correction",
+  "deletion",
+]);
+
+export const dataSubjectRequestStatusEnum = pgEnum("data_subject_request_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "rejected",
+]);
+
+export const dataSubjectRequests = pgTable(
+  "data_subject_requests",
+  {
+    id: serial("id").primaryKey(),
+    // Admin who created this request record (null if submitted via public form).
+    requestedByAdminId: integer("requested_by_admin_id"),
+    // The user whose data is being acted on.
+    targetUserId: integer("target_user_id").notNull(),
+    type: dataSubjectRequestTypeEnum("type").notNull(),
+    status: dataSubjectRequestStatusEnum("status").default("pending").notNull(),
+    // Free-form notes from the handling admin (e.g. "email received 2026-06-10").
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    completedAt: timestamp("completed_at"),
+  },
+  (table) => ({
+    targetUserIdx: index("idx_dsr_target_user").on(table.targetUserId),
+    statusIdx: index("idx_dsr_status").on(table.status),
+  })
+);
+
+export type DataSubjectRequest = typeof dataSubjectRequests.$inferSelect;
+export type InsertDataSubjectRequest = typeof dataSubjectRequests.$inferInsert;
