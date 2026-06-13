@@ -90,6 +90,7 @@
     "jose": "6.1.0",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.453.0",
     "mssql": "^11.0.1",
     "multer": "^2.1.1",
