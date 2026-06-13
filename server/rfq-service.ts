@@ -105,6 +105,7 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
         rfqId: rfqId || null,
         buyerId: userId,
         supplierId: match.supplierId,
+        requestingUserId: userId,
       });
 
       // Send in-app notification
@@ -292,6 +293,7 @@ export async function submitBid(
       rfqId: rfqId || null,
       buyerId,
       supplierId,
+      requestingUserId: buyerId,
     });
 
     // Notify buyer of new bid

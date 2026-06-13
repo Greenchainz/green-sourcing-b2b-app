@@ -70,7 +70,7 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
       const threadId = parseInt(req.params.threadId);
       if (isNaN(threadId)) return res.status(400).json(createErrorResponse('Invalid thread ID', (req as any).id));
       const { getConversationMessages } = await import('../messaging-service');
-      const msgs = await getConversationMessages(threadId);
+      const msgs = await getConversationMessages(threadId, user.id);
       const mobileMsgs = msgs.map((m: any) => ({
         id: String(m.id),
         content: m.content as string,
@@ -101,6 +101,7 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
         rfqId: rfqId ?? null,
         buyerId: Number(buyerId),
         supplierId: Number(supplierId),
+        requestingUserId: user.id,
       });
       res.json(conv);
     } catch (err) {

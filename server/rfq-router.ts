@@ -205,7 +205,12 @@ export const rfqMarketplaceRouter = router({
   // Get or create messaging thread for RFQ
   getOrCreateThread: protectedProcedure
     .input(z.object({ rfqId: z.number(), supplierId: z.number(), buyerId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      // Object-level authZ: the caller must be one of the thread participants.
+      // buyerId/supplierId are user ids (see rfqThreads schema).
+      if (ctx.user.id !== input.buyerId && ctx.user.id !== input.supplierId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not a participant of this thread" });
+      }
       return getOrCreateThread(input.rfqId, input.supplierId, input.buyerId);
     }),
 
@@ -232,17 +237,17 @@ export const rfqMarketplaceRouter = router({
         offset: z.number().default(0),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { getThreadMessages: getMessages } = await import("./webpubsub-manager");
-      return getMessages(input.threadId, input.limit, input.offset);
+      return getMessages(input.threadId, ctx.user.id, input.limit, input.offset);
     }),
 
   // Mark a message as read
   markMessageAsRead: protectedProcedure
     .input(z.object({ messageId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { markMessageAsRead } = await import("./webpubsub-manager");
-      return markMessageAsRead(input.messageId);
+      return markMessageAsRead(input.messageId, ctx.user.id);
     }),
 
   // Get WebSocket access token for real-time chat (Azure Web PubSub)

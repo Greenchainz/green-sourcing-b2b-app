@@ -222,9 +222,29 @@ export async function broadcastTypingIndicator(
 /**
  * Mark message as read
  */
-export async function markMessageAsRead(messageId: number) {
+export async function markMessageAsRead(messageId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
+
+  // Verify the requesting user is a participant in the thread that owns this message
+  const rows = await db
+    .select({
+      buyerId: rfqThreads.buyerId,
+      supplierId: rfqThreads.supplierId,
+    })
+    .from(rfqMessages)
+    .innerJoin(rfqThreads, eq(rfqMessages.threadId, rfqThreads.id))
+    .where(eq(rfqMessages.id, messageId))
+    .limit(1);
+
+  if (!rows || rows.length === 0) {
+    throw new Error("Message not found");
+  }
+
+  const row = rows[0];
+  if (row.buyerId !== userId && row.supplierId !== userId) {
+    throw new Error("User does not have access to this message");
+  }
 
   await db
     .update(rfqMessages)
@@ -239,11 +259,27 @@ export async function markMessageAsRead(messageId: number) {
  */
 export async function getThreadMessages(
   threadId: number,
+  userId: number,
   limit: number = 50,
   offset: number = 0
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
+
+  const thread = await db
+    .select()
+    .from(rfqThreads)
+    .where(eq(rfqThreads.id, threadId))
+    .limit(1);
+
+  if (!thread || thread.length === 0) {
+    throw new Error("Thread not found");
+  }
+
+  const threadData = thread[0];
+  if (threadData.buyerId !== userId && threadData.supplierId !== userId) {
+    throw new Error("User does not have access to this thread");
+  }
 
   const messages = await db
     .select()
@@ -259,9 +295,23 @@ export async function getThreadMessages(
 /**
  * Close a thread (no more messages allowed)
  */
-export async function closeThread(threadId: number) {
+export async function closeThread(threadId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
+
+  const existing = await db
+    .select()
+    .from(rfqThreads)
+    .where(eq(rfqThreads.id, threadId))
+    .limit(1);
+
+  if (!existing || existing.length === 0) {
+    throw new Error("Thread not found");
+  }
+
+  if (existing[0].buyerId !== userId && existing[0].supplierId !== userId) {
+    throw new Error("User does not have access to this thread");
+  }
 
   await db
     .update(rfqThreads)
