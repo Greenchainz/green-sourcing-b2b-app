@@ -193,6 +193,7 @@ const SourcingRequestDetailPage = lazy(() => import("./pages/SourcingRequestDeta
 const BuyerRequestsPage = lazy(() => import("./pages/BuyerRequestsPage"));
 const SupplierRespondPage = lazy(() => import("./pages/SupplierRespondPage"));
 const SubmittalLogPage = lazy(() => import("./pages/SubmittalLogPage"));
+const CADocumentsPage = lazy(() => import("./pages/CADocumentsPage"));
 const IntercomWidget = lazy(() => import("./components/IntercomWidget"));
 const ChatWidget = lazy(() => import("./components/ChatWidget").then((m) => ({ default: m.ChatWidget })));
 
@@ -293,6 +294,8 @@ function Router() {
       <Route path="/buyer/requests/:id" component={SourcingRequestDetailPage} />
       <Route path="/buyer/submittals" component={SubmittalLogPage} />
       <Route path="/architect/submittals" component={SubmittalLogPage} />
+      <Route path="/buyer/ca" component={CADocumentsPage} />
+      <Route path="/architect/ca" component={CADocumentsPage} />
       <Route path="/supplier/respond/:rfqId" component={SupplierRespondPage} />
       <Route path={"404"} component={NotFound} />
       <Route component={NotFound} />
