@@ -102,6 +102,16 @@ export const submittalBallInCourtEnum = pgEnum("submittal_ball_in_court", [
   "architect",
   "supplier",
 ]);
+export const caDocumentTypeEnum = pgEnum("ca_document_type", ["rfi", "change_request"]);
+export const caDocumentStatusEnum = pgEnum("ca_document_status", [
+  "draft",
+  "open",
+  "answered",
+  "pending_approval",
+  "approved",
+  "rejected",
+  "closed",
+]);
 
 // ─── Users ──────────────────────────────────────────────────────────────────
 
@@ -1452,6 +1462,69 @@ export const submittalItems = pgTable(
 
 export type SubmittalItem = typeof submittalItems.$inferSelect;
 export type InsertSubmittalItem = typeof submittalItems.$inferInsert;
+
+export const caDocuments = pgTable(
+  "ca_documents",
+  {
+    id: serial("id").primaryKey(),
+    type: caDocumentTypeEnum("type").notNull(),
+    status: caDocumentStatusEnum("status").notNull().default("draft"),
+    ballInCourt: submittalBallInCourtEnum("ball_in_court").notNull().default("buyer"),
+    documentNumber: varchar("document_number", { length: 100 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    projectId: integer("project_id"),
+    submittalId: integer("submittal_id").references(() => submittals.id, { onDelete: "set null" }),
+    relatedRfqId: integer("related_rfq_id").references(() => rfqs.id, { onDelete: "set null" }),
+    relatedSwapValidationId: integer("related_swap_validation_id").references(() => swapValidations.id, { onDelete: "set null" }),
+    // RFI-specific fields
+    question: text("question"),
+    officialResponse: text("official_response"),
+    responseAt: timestamp("response_at"),
+    // Change-request specific fields
+    proposedResolution: text("proposed_resolution"),
+    costImpact: decimal("cost_impact", { precision: 12, scale: 2 }),
+    scheduleImpactDays: integer("schedule_impact_days"),
+    approvedAt: timestamp("approved_at"),
+    closedAt: timestamp("closed_at"),
+    dueAt: timestamp("due_at"),
+    createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    typeIdx: index("idx_ca_documents_type").on(table.type),
+    statusIdx: index("idx_ca_documents_status").on(table.status),
+    createdByIdx: index("idx_ca_documents_created_by").on(table.createdBy),
+    submittalIdx: index("idx_ca_documents_submittal").on(table.submittalId),
+    rfqIdx: index("idx_ca_documents_related_rfq").on(table.relatedRfqId),
+  }),
+);
+
+export type CaDocument = typeof caDocuments.$inferSelect;
+export type InsertCaDocument = typeof caDocuments.$inferInsert;
+
+export const caDocumentMessages = pgTable(
+  "ca_document_messages",
+  {
+    id: serial("id").primaryKey(),
+    documentId: integer("document_id")
+      .notNull()
+      .references(() => caDocuments.id, { onDelete: "cascade" }),
+    authorUserId: integer("author_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: text("message").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    documentIdx: index("idx_ca_document_messages_document").on(table.documentId),
+    authorIdx: index("idx_ca_document_messages_author").on(table.authorUserId),
+  }),
+);
+
+export type CaDocumentMessage = typeof caDocumentMessages.$inferSelect;
+export type InsertCaDocumentMessage = typeof caDocumentMessages.$inferInsert;
 
 export const materialAssemblySpecs = pgTable(
   "material_assembly_specs",

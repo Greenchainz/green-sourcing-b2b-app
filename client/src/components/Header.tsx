@@ -201,6 +201,11 @@ export default function Header() {
             </Link>
           )}
           {user?.role !== 'supplier' && (
+            <Link href="/buyer/ca" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              CA Docs
+            </Link>
+          )}
+          {user?.role !== 'supplier' && (
             <Link href="/rfq-status" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               My RFQs
             </Link>
@@ -328,6 +333,11 @@ export default function Header() {
                   onClick={() => setMobileMenuOpen(false)}>
                   Generate Submittal Pack
                 </Link>
+                <Link href="/buyer/ca"
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+                  onClick={() => setMobileMenuOpen(false)}>
+                  CA Docs
+                </Link>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-4 pt-2">Tools</p>
                 {ARCHITECT_TOOLS.map(({ href, label }) => (
                   <Link key={href} href={href}
@@ -409,4 +419,3 @@ export default function Header() {
     </header>
   );
 }
-
