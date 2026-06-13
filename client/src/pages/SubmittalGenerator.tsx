@@ -6,7 +6,8 @@
  * selected material via GET /api/materials/:id/spec-sheet
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import JSZip from "jszip";
 import { trpc } from "@/lib/trpc";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -29,6 +30,8 @@ import {
   Package,
   Loader2,
   ChevronRight,
+  Upload,
+  FileArchive,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -52,12 +55,55 @@ interface ProjectInfo {
   contractorName: string;
 }
 
+type SubmittalDocType =
+  | "product_data"
+  | "epd"
+  | "compliance"
+  | "shop_drawings"
+  | "warranty"
+  | "other";
+
+interface UploadedSubmittalDoc {
+  id: string;
+  file: File;
+  docType: SubmittalDocType;
+}
+
+const DOC_TYPE_LABELS: Record<SubmittalDocType, string> = {
+  product_data: "Product Data",
+  epd: "EPD",
+  compliance: "Code/Compliance",
+  shop_drawings: "Shop Drawings",
+  warranty: "Warranty/Installation",
+  other: "Other",
+};
+
+const REQUIRED_DOC_TYPES: SubmittalDocType[] = ["product_data", "epd"];
+
+function sanitizeFilename(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, "_");
+}
+
+function detectDocType(fileName: string): SubmittalDocType {
+  const lower = fileName.toLowerCase();
+  if (/\bepd\b/.test(lower)) return "epd";
+  if (/\b(shop|drawing)\b/.test(lower)) return "shop_drawings";
+  if (/\b(warranty|install|installation)\b/.test(lower)) return "warranty";
+  if (/\b(code|ul|icc|compliance|report)\b/.test(lower)) return "compliance";
+  if (/\b(data|datasheet|spec)\b/.test(lower)) return "product_data";
+  return "other";
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function SubmittalGenerator() {
   const [searchQuery, setSearchQuery] = useState("");
   const [queue, setQueue] = useState<MaterialResult[]>([]);
   const [downloading, setDownloading] = useState<Set<number>>(new Set());
+  const [uploadedDocs, setUploadedDocs] = useState<UploadedSubmittalDoc[]>([]);
+  const [isDraggingDocs, setIsDraggingDocs] = useState(false);
+  const [isBundling, setIsBundling] = useState(false);
+  const docInputRef = useRef<HTMLInputElement | null>(null);
   const [projectInfo, setProjectInfo] = useState<ProjectInfo>({
     projectName: "",
     projectNumber: "",
@@ -101,18 +147,60 @@ export default function SubmittalGenerator() {
     setQueue((prev) => prev.filter((m) => m.id !== id));
   };
 
+  const addDocs = (files: FileList | File[]) => {
+    const incoming = Array.from(files);
+    const accepted = incoming.filter((file) => {
+      const ext = file.name.toLowerCase();
+      return (
+        file.type === "application/pdf" ||
+        ext.endsWith(".pdf") ||
+        ext.endsWith(".doc") ||
+        ext.endsWith(".docx")
+      );
+    });
+
+    if (accepted.length === 0) {
+      toast.error("Upload PDF, DOC, or DOCX files.");
+      return;
+    }
+
+    setUploadedDocs((prev) => [
+      ...prev,
+      ...accepted.map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        docType: detectDocType(file.name),
+      })),
+    ]);
+    toast.success(`Added ${accepted.length} document${accepted.length === 1 ? "" : "s"} to package.`);
+  };
+
+  const removeDoc = (id: string) => {
+    setUploadedDocs((prev) => prev.filter((doc) => doc.id !== id));
+  };
+
+  const updateDocType = (id: string, docType: SubmittalDocType) => {
+    setUploadedDocs((prev) => prev.map((doc) => (doc.id === id ? { ...doc, docType } : doc)));
+  };
+
+  const getSpecPdfBlob = async (mat: MaterialResult): Promise<Blob> => {
+    const params = new URLSearchParams();
+    if (projectInfo.projectName) params.set("projectName", projectInfo.projectName);
+    if (projectInfo.projectNumber) params.set("projectNumber", projectInfo.projectNumber);
+    if (projectInfo.specSection) params.set("specSection", projectInfo.specSection);
+    if (projectInfo.architectName) params.set("architectName", projectInfo.architectName);
+    if (projectInfo.contractorName) params.set("contractorName", projectInfo.contractorName);
+
+    const url = `/api/materials/${mat.id}/spec-sheet?${params.toString()}`;
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    return res.blob();
+  };
+
   const downloadSpec = async (mat: MaterialResult) => {
     setDownloading((prev) => new Set(prev).add(mat.id));
     try {
-      const params = new URLSearchParams();
-      if (projectInfo.projectName) params.set("projectName", projectInfo.projectName);
-      if (projectInfo.projectNumber) params.set("projectNumber", projectInfo.projectNumber);
-      if (projectInfo.specSection) params.set("specSection", projectInfo.specSection);
-
-      const url = `/api/materials/${mat.id}/spec-sheet?${params.toString()}`;
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const blob = await res.blob();
+      const blob = await getSpecPdfBlob(mat);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `SpecSheet-${mat.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
@@ -127,6 +215,77 @@ export default function SubmittalGenerator() {
         next.delete(mat.id);
         return next;
       });
+    }
+  };
+
+  const downloadBundle = async () => {
+    if (queue.length === 0 && uploadedDocs.length === 0) {
+      toast.error("Add at least one material or one document before bundling.");
+      return;
+    }
+
+    const missingRequired = REQUIRED_DOC_TYPES.filter(
+      (requiredType) => !uploadedDocs.some((doc) => doc.docType === requiredType)
+    );
+    if (missingRequired.length > 0) {
+      toast.error(
+        `Missing required docs: ${missingRequired.map((key) => DOC_TYPE_LABELS[key]).join(", ")}`
+      );
+      return;
+    }
+
+    setIsBundling(true);
+    try {
+      const zip = new JSZip();
+      const nowIso = new Date().toISOString();
+      const safeProject = sanitizeFilename(projectInfo.projectName || "Project");
+
+      const coverSheet = [
+        "GREENCHAINZ SUBMITTAL PACKAGE",
+        `Generated: ${nowIso}`,
+        "",
+        `Project Name: ${projectInfo.projectName || "N/A"}`,
+        `Project Number: ${projectInfo.projectNumber || "N/A"}`,
+        `CSI Section: ${projectInfo.specSection || "N/A"}`,
+        `Architect of Record: ${projectInfo.architectName || "N/A"}`,
+        `General Contractor: ${projectInfo.contractorName || "N/A"}`,
+        "",
+        `Included Product Spec Sheets: ${queue.length}`,
+        `Included Uploaded Docs: ${uploadedDocs.length}`,
+        "",
+        "Uploaded Documents:",
+        ...uploadedDocs.map(
+          (doc, index) => `  ${index + 1}. [${DOC_TYPE_LABELS[doc.docType]}] ${doc.file.name}`
+        ),
+      ].join("\n");
+      zip.file("00-Cover-Sheet.txt", coverSheet);
+
+      const docsFolder = zip.folder("uploaded-docs");
+      for (let i = 0; i < uploadedDocs.length; i += 1) {
+        const doc = uploadedDocs[i];
+        const name = `${String(i + 1).padStart(2, "0")}-${doc.docType}-${sanitizeFilename(doc.file.name)}`;
+        docsFolder?.file(name, doc.file);
+      }
+
+      const specFolder = zip.folder("spec-sheets");
+      for (let i = 0; i < queue.length; i += 1) {
+        const mat = queue[i];
+        const blob = await getSpecPdfBlob(mat);
+        const specName = `${String(i + 1).padStart(2, "0")}-${sanitizeFilename(mat.name)}.pdf`;
+        specFolder?.file(specName, blob);
+      }
+
+      const bundleBlob = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(bundleBlob);
+      link.download = `GreenChainz-Submittal-Package-${safeProject}-${nowIso.slice(0, 10)}.zip`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toast.success("Submittal package downloaded.");
+    } catch {
+      toast.error("Failed to generate submittal package.");
+    } finally {
+      setIsBundling(false);
     }
   };
 
@@ -155,8 +314,8 @@ export default function SubmittalGenerator() {
             <span className="text-primary">Instant Download</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Search the GreenChainz catalog, build your submittal queue, and download
-            formatted CSI spec sheets ready for your project package.
+            Search catalog materials, upload contractor documents, and export one
+            bundled submittal package with CSI spec sheets and supporting files.
           </p>
         </div>
       </section>
@@ -331,6 +490,94 @@ export default function SubmittalGenerator() {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader className="pb-3">
+                <CardTitle className="text-base">Upload Submittal Documents</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Drag and drop PDFs/DOCs (EPD, product data, compliance letters, shop drawings, warranty docs).
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div
+                  className={`rounded-lg border-2 border-dashed p-5 text-center transition-colors ${
+                    isDraggingDocs ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDraggingDocs(true);
+                  }}
+                  onDragLeave={(event) => {
+                    event.preventDefault();
+                    setIsDraggingDocs(false);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDraggingDocs(false);
+                    addDocs(event.dataTransfer.files);
+                  }}
+                >
+                  <Upload className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium">Drop files here</p>
+                  <p className="text-xs text-muted-foreground mb-3">or</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => docInputRef.current?.click()}
+                  >
+                    Select files
+                  </Button>
+                  <input
+                    ref={docInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      const files = event.target.files;
+                      if (files && files.length > 0) addDocs(files);
+                      event.target.value = "";
+                    }}
+                  />
+                </div>
+
+                {uploadedDocs.length > 0 && (
+                  <div className="space-y-2">
+                    {uploadedDocs.map((doc) => (
+                      <div key={doc.id} className="p-2 border border-border rounded-md bg-card/50">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{doc.file.name}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {(doc.file.size / 1024).toFixed(0)} KB
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeDoc(doc.id)}
+                            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <select
+                          className="mt-2 w-full h-8 rounded-md border border-input bg-background px-2 text-xs"
+                          value={doc.docType}
+                          onChange={(event) => updateDocType(doc.id, event.target.value as SubmittalDocType)}
+                        >
+                          {Object.entries(DOC_TYPE_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
                 <CardTitle className="text-base">Project Information</CardTitle>
                 <p className="text-xs text-muted-foreground">
                   Optional — included in the generated PDF header.
@@ -385,11 +632,21 @@ export default function SubmittalGenerator() {
               </CardContent>
             </Card>
 
+            <Button
+              className="w-full gap-2"
+              size="lg"
+              onClick={downloadBundle}
+              disabled={isBundling}
+            >
+              {isBundling ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileArchive className="w-4 h-4" />}
+              Download Submittal Package (.zip)
+              <ChevronRight className="w-4 h-4 ml-auto" />
+            </Button>
+
             {queue.length > 0 && (
-              <Button className="w-full gap-2" size="lg" onClick={downloadAll}>
+              <Button className="w-full gap-2" size="lg" onClick={downloadAll} variant="outline">
                 <Download className="w-4 h-4" />
                 Download {queue.length} Spec Sheet{queue.length > 1 ? "s" : ""}
-                <ChevronRight className="w-4 h-4 ml-auto" />
               </Button>
             )}
           </div>
