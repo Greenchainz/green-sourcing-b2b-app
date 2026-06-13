@@ -45,6 +45,8 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     const hasRedisHostPort = hasValue("REDIS_HOST") && hasValue("REDIS_PORT");
     const requireRedisCallSessions = process.env.REQUIRE_REDIS_CALL_SESSIONS !== "false";
 
+    const hasMicrosoftWebhookSecret = hasValue("MICROSOFT_WEBHOOK_SECRET");
+
     if (!isProduction) {
         add(checks, "Core API Secrets", "PASS", "Core production secrets check is informational in non-production");
     } else {
@@ -156,6 +158,19 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
         add(checks, "Redis Call Sessions", "PASS", "Redis call-session configuration detected");
     } else {
         add(checks, "Redis Call Sessions", "FAIL", "Redis required for call sessions but no REDIS_URL or REDIS_HOST/REDIS_PORT set");
+    }
+
+    if (hasMicrosoftWebhookSecret) {
+        add(checks, "Microsoft Webhook Secret", "PASS", "MICROSOFT_WEBHOOK_SECRET is present (billing webhook signature verification enabled)");
+    } else if (isProduction) {
+        add(
+            checks,
+            "Microsoft Webhook Secret",
+            "FAIL",
+            "MICROSOFT_WEBHOOK_SECRET not set — Microsoft Marketplace billing webhooks will be rejected (fail-closed)"
+        );
+    } else {
+        add(checks, "Microsoft Webhook Secret", "WARN", "MICROSOFT_WEBHOOK_SECRET not set — billing webhooks will be rejected (fail-closed)");
     }
 
     if (!isProduction) {

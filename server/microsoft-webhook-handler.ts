@@ -164,13 +164,15 @@ export async function handleMicrosoftWebhook(req: Request, res: Response): Promi
  * configured in Partner Center → Technical Configuration → Webhook.
  * The signature is base64-encoded and sent in the `x-ms-signature` header.
  *
- * If MICROSOFT_WEBHOOK_SECRET is not set the check is skipped (dev mode).
+ * Fails CLOSED: if MICROSOFT_WEBHOOK_SECRET is not set, verification is
+ * rejected. The secret is enforced at startup (security-preflight.ts) so a
+ * misconfigured deployment never silently accepts unsigned billing webhooks.
  */
 export function verifyMicrosoftWebhookSignature(req: Request): boolean {
   const secret = process.env.MICROSOFT_WEBHOOK_SECRET;
   if (!secret) {
-    console.warn("[MS Webhook] MICROSOFT_WEBHOOK_SECRET not set — skipping signature check");
-    return true;
+    console.error("[MS Webhook] MICROSOFT_WEBHOOK_SECRET not set — rejecting webhook (fail-closed)");
+    return false;
   }
 
   const signature = req.headers["x-ms-signature"] as string | undefined;

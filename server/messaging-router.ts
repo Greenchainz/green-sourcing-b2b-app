@@ -21,8 +21,8 @@ export const messagingRouter = router({
         supplierId: z.number(),
       })
     )
-    .mutation(async ({ input }) => {
-      return await getOrCreateConversation(input);
+    .mutation(async ({ input, ctx }) => {
+      return await getOrCreateConversation({ ...input, requestingUserId: ctx.user.id });
     }),
 
   /**
@@ -37,8 +37,8 @@ export const messagingRouter = router({
    */
   getMessages: protectedProcedure
     .input(z.object({ conversationId: z.number() }))
-    .query(async ({ input }) => {
-      return await getConversationMessages(input.conversationId);
+    .query(async ({ input, ctx }) => {
+      return await getConversationMessages(input.conversationId, ctx.user.id);
     }),
 
   /**

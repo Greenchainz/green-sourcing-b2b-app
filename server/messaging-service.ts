@@ -11,11 +11,18 @@ export async function getOrCreateConversation(params: {
   rfqId?: number | null;
   buyerId: number;
   supplierId: number;
+  requestingUserId: number;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const { rfqId, buyerId, supplierId } = params;
+  const { rfqId, buyerId, supplierId, requestingUserId } = params;
+
+  // Object-level authZ: the caller must be one of the two participants.
+  // buyerId/supplierId are user ids (see conversations schema).
+  if (requestingUserId !== buyerId && requestingUserId !== supplierId) {
+    throw new Error("User does not have access to this conversation");
+  }
 
   // Check if conversation already exists
   const whereConditions = [
@@ -103,9 +110,24 @@ export async function getUserConversations(userId: number) {
 /**
  * Get messages for a conversation
  */
-export async function getConversationMessages(conversationId: number) {
+export async function getConversationMessages(conversationId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // Object-level authZ: caller must be a participant of the conversation.
+  const convo = await db
+    .select({ buyerId: conversations.buyerId, supplierId: conversations.supplierId })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
+  if (convo.length === 0) {
+    throw new Error("Conversation not found");
+  }
+
+  if (convo[0].buyerId !== userId && convo[0].supplierId !== userId) {
+    throw new Error("User does not have access to this conversation");
+  }
 
   const conversationMessages = await db
     .select({
@@ -144,6 +166,21 @@ export async function sendMessage(params: {
   if (!db) throw new Error("Database not available");
 
   const { conversationId, senderId, content } = params;
+
+  // Object-level authZ: the sender (derived from ctx) must be a participant.
+  const ownerCheck = await db
+    .select({ buyerId: conversations.buyerId, supplierId: conversations.supplierId })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
+  if (ownerCheck.length === 0) {
+    throw new Error("Conversation not found");
+  }
+
+  if (ownerCheck[0].buyerId !== senderId && ownerCheck[0].supplierId !== senderId) {
+    throw new Error("User does not have access to this conversation");
+  }
 
   // Insert message (use .returning() for PostgreSQL — insertId is MySQL-only)
   const [inserted] = await db

@@ -520,6 +520,42 @@ async function startServer() {
     console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 
+  // ── Graceful shutdown ───────────────────────────────────────────────────────
+  // Azure Container Apps sends SIGTERM before terminating a replica (scale-in,
+  // revision swap, deploy). Stop accepting connections, drain in-flight requests,
+  // then close the PG pool so connections are released cleanly.
+  let shuttingDown = false;
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[shutdown] ${signal} received — closing server gracefully`);
+
+    // Force-exit safety net if draining hangs.
+    const forceExit = setTimeout(() => {
+      console.error("[shutdown] Graceful shutdown timed out — forcing exit");
+      process.exit(1);
+    }, 15000);
+    forceExit.unref();
+
+    server.close(async (err?: Error) => {
+      if (err) {
+        console.error("[shutdown] Error while closing HTTP server:", err);
+      }
+      try {
+        const { closePool } = await import("../../lib/pg-pool");
+        await closePool();
+      } catch (poolErr) {
+        console.error("[shutdown] Error while closing PG pool:", poolErr);
+      }
+      clearTimeout(forceExit);
+      console.log("[shutdown] Clean shutdown complete");
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+
   // Fire-and-forget — scheduler failures must not kill the server process.
   startSchedulers().catch(err => console.error('[Schedulers] Failed to start:', err));
 }
