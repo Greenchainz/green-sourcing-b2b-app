@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, rfqAnalytics, materials, users } from "../drizzle/schema";
-import { eq, and, desc, sql, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, inArray } from "drizzle-orm";
 import { calculateCcps, personaToWeights } from "./ccps-engine";
 import { geocodeAddress, calculateDistance, getDistanceScore, type Coordinates } from "./azure-maps-service";
 import { findMatchingSuppliers } from "../lib/greenchainz/matching/rfq-supplier-match";
@@ -194,6 +194,7 @@ export async function getRfqWithBids(rfqId: number): Promise<RfqWithBids | null>
       quantityUnit: rfqItems.quantityUnit,
       notes: rfqItems.notes,
       createdAt: rfqItems.createdAt,
+      deletedAt: rfqItems.deletedAt,
       materialName: materials.name,
     })
     .from(rfqItems)
@@ -689,7 +690,7 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       createdAt: rfqs.createdAt,
     })
     .from(rfqs)
-    .where(and(eq(rfqs.status, "open"), isNull(rfqs.deletedAt)))
+    .where(and(inArray(rfqs.status, ["submitted", "responded"]), isNull(rfqs.deletedAt)))
     .execute();
 
   // Get supplier's existing bids (exclude soft-deleted bids)

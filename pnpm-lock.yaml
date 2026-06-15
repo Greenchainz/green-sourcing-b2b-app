@@ -76,6 +76,12 @@ importers:
       '@intercom/messenger-js-sdk':
         specifier: ^0.0.18
         version: 0.0.18
+      '@opentelemetry/api':
+        specifier: ^1.9.1
+        version: 1.9.1
+      '@opentelemetry/sdk-trace-base':
+        specifier: ^2.7.1
+        version: 2.7.1(@opentelemetry/api@1.9.1)
       '@pdfme/common':
         specifier: ^5.5.10
         version: 5.5.10(antd@5.29.3(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(form-render@2.5.6(@types/react@19.2.14)(antd@5.29.3(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(immer@10.1.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
