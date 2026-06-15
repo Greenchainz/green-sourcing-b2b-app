@@ -23,7 +23,7 @@ overrides:
   nodemailer: '>=8.0.0'
   protobufjs: '>=8.0.2'
   ox: 0.14.29
-  '@grpc/grpc-js': '>=1.14.4'
+  '@grpc/grpc-js': 1.14.4
 
 importers:
 
