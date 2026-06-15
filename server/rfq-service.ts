@@ -33,12 +33,19 @@ export interface SupplierMatch {
   exclusiveWindowExpiresAt?: Date;
 }
 
+type RfqItemWithMaterialName = Pick<
+  typeof rfqItems.$inferSelect,
+  "id" | "rfqId" | "materialId" | "assemblyId" | "quantity" | "quantityUnit" | "notes" | "createdAt"
+> & { materialName?: string | null };
+
 export interface RfqWithBids {
   rfq: typeof rfqs.$inferSelect;
-  items: (typeof rfqItems.$inferSelect & { materialName?: string | null })[];
+  items: RfqItemWithMaterialName[];
   bids: Array<typeof rfqBids.$inferSelect & { supplierName: string; supplierEmail: string }>;
   analytics?: typeof rfqAnalytics.$inferSelect;
 }
+
+const OPEN_RFQ_STATUSES = ["submitted", "responded"] as const;
 
 /**
  * Submit an RFQ and automatically match to suppliers
@@ -194,7 +201,6 @@ export async function getRfqWithBids(rfqId: number): Promise<RfqWithBids | null>
       quantityUnit: rfqItems.quantityUnit,
       notes: rfqItems.notes,
       createdAt: rfqItems.createdAt,
-      deletedAt: rfqItems.deletedAt,
       materialName: materials.name,
     })
     .from(rfqItems)
@@ -690,7 +696,7 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       createdAt: rfqs.createdAt,
     })
     .from(rfqs)
-    .where(and(inArray(rfqs.status, ["submitted", "responded"]), isNull(rfqs.deletedAt)))
+    .where(and(inArray(rfqs.status, OPEN_RFQ_STATUSES), isNull(rfqs.deletedAt)))
     .execute();
 
   // Get supplier's existing bids (exclude soft-deleted bids)
