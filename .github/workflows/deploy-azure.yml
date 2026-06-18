@@ -146,6 +146,7 @@ jobs:
           sleep 30
 
       - name: Log in to ACR
+        id: acr_login
         run: |
           set -euo pipefail
           # Retry up to 5 times with 15 s back-off.
@@ -180,6 +181,9 @@ jobs:
           fi
 
           echo "⚠️ Falling back to temporary ACR admin credentials"
+          # Record prior admin state before enabling so cleanup can restore it exactly
+          ACR_ADMIN_WAS_ENABLED=$(az acr show --name ${{ env.ACR }} --query adminUserEnabled --output tsv 2>/dev/null || echo "unknown")
+          echo "admin-was-enabled=${ACR_ADMIN_WAS_ENABLED}" >> $GITHUB_OUTPUT
           if ! az acr update --name ${{ env.ACR }} --admin-enabled true; then
             echo "❌ Failed to enable temporary ACR admin credentials"
             exit 1
@@ -244,6 +248,23 @@ jobs:
       - name: Disable ACR admin account
         if: always()
         run: |
+          PRIOR="${{ steps.acr_login.outputs.admin-was-enabled }}"
+          if [ -z "$PRIOR" ]; then
+            # Fallback path was not taken — admin state was never changed by this workflow.
+            echo "ℹ️ ACR admin state was not changed by this workflow; skipping cleanup."
+            exit 0
+          fi
+          if [ "$PRIOR" = "true" ]; then
+            # Admin was already enabled before this workflow ran — leave it as-is.
+            echo "ℹ️ ACR admin was already enabled before this workflow ran; leaving state unchanged."
+            exit 0
+          fi
+          if [ "$PRIOR" = "unknown" ]; then
+            # Prior state could not be determined — cannot safely restore; leave state as-is.
+            echo "⚠️ Could not determine prior ACR admin state; leaving current state unchanged to avoid unintended side-effects."
+            exit 0
+          fi
+          # Prior state was "false" — this workflow enabled admin; restore to disabled.
           if ! ADMIN_ENABLED=$(az acr show --name ${{ env.ACR }} --query adminUserEnabled --output tsv 2>/dev/null); then
             echo "⚠️ Could not query ACR adminUserEnabled during cleanup; attempting best-effort disable"
             az acr update --name ${{ env.ACR }} --admin-enabled false || true
