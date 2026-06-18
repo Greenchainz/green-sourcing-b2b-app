@@ -126,6 +126,22 @@ jobs:
       - name: Set up Docker Buildx (layer caching)
         uses: docker/setup-buildx-action@v4
 
+      - name: Allow runner IP in ACR firewall
+        id: acr_firewall
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          if [ -z "$RUNNER_IP" ]; then
+            echo "❌ Could not determine runner IP"
+            exit 1
+          fi
+          echo "Runner IP: $RUNNER_IP"
+          az acr network-rule add \
+            --name ${{ env.ACR }} \
+            --ip-address "$RUNNER_IP"
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          # Allow firewall rule to propagate
+          sleep 15
+
       - name: Log in to ACR (token-based — no username/password)
         run: |
           TOKEN=$(az acr login --name ${{ env.ACR }} --expose-token --output tsv --query accessToken)
@@ -161,6 +177,13 @@ jobs:
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:latest
           cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache,mode=max
+
+      - name: Remove runner IP from ACR firewall
+        if: always()
+        run: |
+          az acr network-rule remove \
+            --name ${{ env.ACR }} \
+            --ip-address "${{ steps.acr_firewall.outputs.runner-ip }}" || true
 
       - name: Azure logout
         run: az logout || true
