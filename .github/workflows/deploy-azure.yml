@@ -116,12 +116,11 @@ jobs:
           get_secret sentry-org
           get_secret sentry-project
 
-      - name: Validate required build secrets
+      - name: Validate build secrets
         run: |
           AZURE_MAPS_KEY="${{ steps.kv.outputs.azure-maps-key }}"
           if [ -z "$AZURE_MAPS_KEY" ]; then
-            echo "❌ azure-maps-key secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
-            exit 1
+            echo "⚠️ azure-maps-key secret is missing from Key Vault '${{ env.KEY_VAULT }}' — frontend map features using subscription-key auth may be unavailable"
           fi
 
       - name: Set up Docker Buildx (layer caching)
