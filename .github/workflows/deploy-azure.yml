@@ -139,12 +139,27 @@ jobs:
             --name ${{ env.ACR }} \
             --ip-address "$RUNNER_IP"
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
-          # Allow firewall rule to propagate
-          sleep 15
+          # Allow firewall rule to propagate.
+          # ARM provisioningState flips to Succeeded quickly, but the data-plane
+          # firewall (which gates the /oauth2/exchange token endpoint) can take
+          # 30–120 s to enforce the change on all Azure edge nodes.
+          sleep 30
 
       - name: Log in to ACR (token-based — no username/password)
         run: |
-          TOKEN=$(az acr login --name ${{ env.ACR }} --expose-token --output tsv --query accessToken)
+          # Retry up to 5 times with 15 s back-off.
+          # The ACR IP-allowlist rule may still be propagating at this point, and
+          # traffic proxied via Azure Front Door / WAF can cause the first attempt
+          # to see a 403 even after the rule shows Succeeded in ARM.
+          for attempt in 1 2 3 4 5; do
+            TOKEN=$(az acr login --name ${{ env.ACR }} --expose-token --output tsv --query accessToken 2>/dev/null) && break
+            echo "⚠️  ACR token request failed (attempt ${attempt}/5) — waiting 15 s before retry..."
+            sleep 15
+          done
+          if [ -z "$TOKEN" ]; then
+            echo "❌ Failed to obtain ACR access token after 5 attempts"
+            exit 1
+          fi
           docker login ${{ env.ACR }}.azurecr.io \
             --username 00000000-0000-0000-0000-000000000000 \
             --password-stdin <<< "$TOKEN"
