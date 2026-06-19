@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, rfqAnalytics, materials, users } from "../drizzle/schema";
-import { eq, and, desc, sql, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, inArray } from "drizzle-orm";
 import { calculateCcps, personaToWeights } from "./ccps-engine";
 import { geocodeAddress, calculateDistance, getDistanceScore, type Coordinates } from "./azure-maps-service";
 import { findMatchingSuppliers } from "../lib/greenchainz/matching/rfq-supplier-match";
@@ -33,12 +33,19 @@ export interface SupplierMatch {
   exclusiveWindowExpiresAt?: Date;
 }
 
+type RfqItemWithMaterialName = Pick<
+  typeof rfqItems.$inferSelect,
+  "id" | "rfqId" | "materialId" | "assemblyId" | "quantity" | "quantityUnit" | "notes" | "createdAt"
+> & { materialName?: string | null };
+
 export interface RfqWithBids {
   rfq: typeof rfqs.$inferSelect;
-  items: (typeof rfqItems.$inferSelect & { materialName?: string | null })[];
+  items: RfqItemWithMaterialName[];
   bids: Array<typeof rfqBids.$inferSelect & { supplierName: string; supplierEmail: string }>;
   analytics?: typeof rfqAnalytics.$inferSelect;
 }
+
+const OPEN_RFQ_STATUSES = ["submitted", "responded"] as const;
 
 /**
  * Submit an RFQ and automatically match to suppliers
@@ -689,7 +696,7 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       createdAt: rfqs.createdAt,
     })
     .from(rfqs)
-    .where(and(eq(rfqs.status, "open"), isNull(rfqs.deletedAt)))
+    .where(and(inArray(rfqs.status, OPEN_RFQ_STATUSES), isNull(rfqs.deletedAt)))
     .execute();
 
   // Get supplier's existing bids (exclude soft-deleted bids)

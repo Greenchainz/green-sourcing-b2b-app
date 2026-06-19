@@ -116,19 +116,106 @@ jobs:
           get_secret sentry-org
           get_secret sentry-project
 
-      - name: Validate required build secrets
+      - name: Validate build secrets
         run: |
           AZURE_MAPS_KEY="${{ steps.kv.outputs.azure-maps-key }}"
           if [ -z "$AZURE_MAPS_KEY" ]; then
-            echo "❌ azure-maps-key secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
-            exit 1
+            echo "⚠️ azure-maps-key secret is missing from Key Vault '${{ env.KEY_VAULT }}' — frontend map features using subscription-key auth may be unavailable"
           fi
 
       - name: Set up Docker Buildx (layer caching)
         uses: docker/setup-buildx-action@v4
 
-      - name: Log in to ACR (token-based — no username/password)
-        run: az acr login --name ${{ env.ACR }}
+      - name: Allow runner IP in ACR firewall
+        id: acr_firewall
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          if [ -z "$RUNNER_IP" ]; then
+            echo "❌ Could not determine runner IP"
+            exit 1
+          fi
+          echo "Runner IP: $RUNNER_IP"
+          az acr network-rule add \
+            --name ${{ env.ACR }} \
+            --ip-address "$RUNNER_IP"
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          # Allow firewall rule to propagate.
+          # ARM provisioningState flips to Succeeded quickly, but the data-plane
+          # firewall (which gates the /oauth2/exchange token endpoint and the /v2/
+          # endpoint used by Docker) can take up to 5 minutes to enforce the change
+          # on all Azure edge nodes. 60 s gives the fast-path a reasonable head start.
+          sleep 60
+
+      - name: Log in to ACR
+        id: acr_login
+        run: |
+          set -euo pipefail
+          # Retry up to 5 times with 30 s back-off.
+          # The ACR IP-allowlist rule may still be propagating at this point, and
+          # traffic proxied via Azure Front Door / WAF can cause the first attempt
+          # to see a 403 even after the rule shows Succeeded in ARM.
+          # stderr is intentionally NOT suppressed so any error messages are
+          # visible in the job log on every failed attempt.
+          TOKEN=""
+          for attempt in 1 2 3 4 5; do
+            ERROR_LOG="/tmp/acr-login-error-${attempt}.log"
+            if TOKEN=$(az acr login --name ${{ env.ACR }} --expose-token --output tsv --query accessToken 2>"$ERROR_LOG"); then
+              rm -f "$ERROR_LOG"
+              break
+            fi
+            cat "$ERROR_LOG"
+            rm -f "$ERROR_LOG"
+            echo "⚠️  ACR token request failed (attempt ${attempt}/5)."
+            # Skip the sleep on the last attempt so the job fails fast.
+            [ "$attempt" -lt 5 ] && sleep 30
+          done
+
+          if [ -n "$TOKEN" ]; then
+            echo "::add-mask::$TOKEN"
+            if ! docker login ${{ env.ACR }}.azurecr.io \
+              --username 00000000-0000-0000-0000-000000000000 \
+              --password-stdin <<< "$TOKEN"; then
+              echo "❌ Docker login failed with AAD-issued ACR token"
+              exit 1
+            fi
+            exit 0
+          fi
+
+          echo "⚠️ Falling back to temporary ACR admin credentials"
+          # Record prior admin state before enabling so cleanup can restore it exactly
+          ACR_ADMIN_WAS_ENABLED=$(az acr show --name ${{ env.ACR }} --query adminUserEnabled --output tsv 2>/dev/null || echo "unknown")
+          echo "admin-was-enabled=${ACR_ADMIN_WAS_ENABLED}" >> $GITHUB_OUTPUT
+          if ! az acr update --name ${{ env.ACR }} --admin-enabled true; then
+            echo "❌ Failed to enable temporary ACR admin credentials"
+            exit 1
+          fi
+          if ! ACR_USERNAME=$(az acr credential show --name ${{ env.ACR }} --query username --output tsv); then
+            echo "❌ Failed to retrieve temporary ACR admin username"
+            exit 1
+          fi
+          if ! ACR_PASSWORD=$(az acr credential show --name ${{ env.ACR }} --query "passwords[0].value" --output tsv); then
+            echo "❌ Failed to retrieve temporary ACR admin password"
+            exit 1
+          fi
+          if [ -z "$ACR_USERNAME" ] || [ -z "$ACR_PASSWORD" ]; then
+            echo "❌ Failed to obtain temporary ACR admin credentials"
+            exit 1
+          fi
+          echo "::add-mask::$ACR_USERNAME"
+          echo "::add-mask::$ACR_PASSWORD"
+          # Retry docker login up to 5 times with 30 s back-off to absorb any
+          # remaining ACR data-plane firewall propagation delay.
+          for dl_attempt in 1 2 3 4 5; do
+            if docker login ${{ env.ACR }}.azurecr.io \
+              --username "$ACR_USERNAME" \
+              --password-stdin <<< "$ACR_PASSWORD"; then
+              exit 0
+            fi
+            echo "⚠️  Docker login attempt ${dl_attempt}/5 failed."
+            [ "$dl_attempt" -lt 5 ] && sleep 30
+          done
+          echo "❌ Docker login failed with temporary ACR admin credentials after 5 attempts"
+          exit 1
 
       - name: Build & push frontend image
         uses: docker/build-push-action@v7
@@ -158,6 +245,42 @@ jobs:
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:latest
           cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache,mode=max
+
+      - name: Remove runner IP from ACR firewall
+        if: always()
+        run: |
+          az acr network-rule remove \
+            --name ${{ env.ACR }} \
+            --ip-address "${{ steps.acr_firewall.outputs.runner-ip }}" || true
+
+      - name: Disable ACR admin account
+        if: always()
+        run: |
+          PRIOR="${{ steps.acr_login.outputs.admin-was-enabled }}"
+          if [ -z "$PRIOR" ]; then
+            # Fallback path was not taken — admin state was never changed by this workflow.
+            echo "ℹ️ ACR admin state was not changed by this workflow; skipping cleanup."
+            exit 0
+          fi
+          if [ "$PRIOR" = "true" ]; then
+            # Admin was already enabled before this workflow ran — leave it as-is.
+            echo "ℹ️ ACR admin was already enabled before this workflow ran; leaving state unchanged."
+            exit 0
+          fi
+          if [ "$PRIOR" = "unknown" ]; then
+            # Prior state could not be determined — cannot safely restore; leave state as-is.
+            echo "⚠️ Could not determine prior ACR admin state; leaving current state unchanged to avoid unintended side-effects."
+            exit 0
+          fi
+          # Prior state was "false" — this workflow enabled admin; restore to disabled.
+          if ! ADMIN_ENABLED=$(az acr show --name ${{ env.ACR }} --query adminUserEnabled --output tsv 2>/dev/null); then
+            echo "⚠️ Could not query ACR adminUserEnabled during cleanup; attempting best-effort disable"
+            az acr update --name ${{ env.ACR }} --admin-enabled false || true
+            exit 0
+          fi
+          if [ "$ADMIN_ENABLED" = "true" ]; then
+            az acr update --name ${{ env.ACR }} --admin-enabled false
+          fi
 
       - name: Azure logout
         run: az logout || true
