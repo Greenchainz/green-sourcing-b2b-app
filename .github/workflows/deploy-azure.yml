@@ -381,8 +381,8 @@ jobs:
           echo "Runner IP: $RUNNER_IP"
           az postgres flexible-server firewall-rule create \
             --resource-group ${{ env.DB_SERVER_RG }} \
-            --name ${{ env.DB_SERVER_NAME }} \
-            --rule-name "github-actions-${{ github.run_id }}" \
+            --server-name ${{ env.DB_SERVER_NAME }} \
+            --name "github-actions-${{ github.run_id }}" \
             --start-ip-address "$RUNNER_IP" \
             --end-ip-address "$RUNNER_IP"
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
@@ -442,8 +442,8 @@ jobs:
         run: |
           az postgres flexible-server firewall-rule delete \
             --resource-group ${{ env.DB_SERVER_RG }} \
-            --name ${{ env.DB_SERVER_NAME }} \
-            --rule-name "github-actions-${{ github.run_id }}" \
+            --server-name ${{ env.DB_SERVER_NAME }} \
+            --name "github-actions-${{ github.run_id }}" \
             --yes || true
 
       - name: Azure logout
