@@ -135,6 +135,20 @@ jobs:
             exit 1
           fi
           echo "Runner IP: $RUNNER_IP"
+          # Record the prior publicNetworkAccess state so cleanup can restore it exactly.
+          # When publicNetworkAccess is "Disabled", IP allowlist rules are bypassed entirely
+          # and all public traffic is denied regardless of networkRuleSet entries.
+          # We must enable public network access before adding the IP rule so that the
+          # rule actually takes effect for the Docker login that follows.
+          if ! ACR_PUBLIC_ACCESS_WAS=$(az acr show --name ${{ env.ACR }} --query publicNetworkAccess --output tsv 2>&1); then
+            echo "❌ Could not query ACR publicNetworkAccess state: ${ACR_PUBLIC_ACCESS_WAS}"
+            exit 1
+          fi
+          echo "public-access-was=${ACR_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
+          if [ "$ACR_PUBLIC_ACCESS_WAS" != "Enabled" ]; then
+            echo "ℹ️ ACR publicNetworkAccess is '${ACR_PUBLIC_ACCESS_WAS}' — enabling temporarily for this workflow run"
+            az acr update --name ${{ env.ACR }} --public-network-enabled true
+          fi
           az acr network-rule add \
             --name ${{ env.ACR }} \
             --ip-address "$RUNNER_IP"
@@ -252,6 +266,17 @@ jobs:
           az acr network-rule remove \
             --name ${{ env.ACR }} \
             --ip-address "${{ steps.acr_firewall.outputs.runner-ip }}" || true
+          # Restore publicNetworkAccess to its state before this workflow ran.
+          PRIOR_ACCESS="${{ steps.acr_firewall.outputs.public-access-was }}"
+          if [ "$PRIOR_ACCESS" = "Disabled" ]; then
+            echo "ℹ️ Restoring ACR publicNetworkAccess to Disabled"
+            az acr update --name ${{ env.ACR }} --public-network-enabled false || true
+          elif [ "$PRIOR_ACCESS" = "Enabled" ]; then
+            echo "ℹ️ ACR publicNetworkAccess was already Enabled before this workflow ran; no change needed"
+          else
+            # Empty: the acr_firewall step failed before the state was recorded or changed — no cleanup needed.
+            echo "ℹ️ ACR publicNetworkAccess was not modified by this workflow; no cleanup needed"
+          fi
 
       - name: Disable ACR admin account
         if: always()
