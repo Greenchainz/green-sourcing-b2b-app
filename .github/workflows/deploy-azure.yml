@@ -27,6 +27,7 @@ env:
   KEY_VAULT: Greenchainz-vault
   DB_SERVER_RG: rg-greenchainz
   DB_SERVER_NAME: greenchainz-db-prod
+  DB_NAME: greenchainz_prod
   # OIDC login — referenced by azure/login in the build, migrate, and deploy jobs.
   AZURE_CLIENT_ID: 8b597068-9347-4e99-8860-8c4e9a9bc112
   AZURE_TENANT_ID: 1d04bf50-8175-40af-a9d5-f8e441460b06
@@ -363,11 +364,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Pull DATABASE_URL from Key Vault
+      - name: Build DATABASE_URL via AAD token (no stored secret)
         id: kv
         run: |
-          DB_URL=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "Database-URL" --query value -o tsv 2>/dev/null) || DB_URL=""
-          [ -n "$DB_URL" ] && echo "::add-mask::$DB_URL"
+          # Mint a short-lived AAD token for PostgreSQL — no Key Vault secret needed.
+          # The OIDC-authenticated service principal must be registered as an Entra ID
+          # user in the PostgreSQL Flexible Server (see Azure portal → PostgreSQL →
+          # Authentication → Microsoft Entra admins).
+          TOKEN=$(az account get-access-token \
+            --resource https://ossrdbms-aad.database.windows.net/ \
+            --query accessToken -o tsv)
+          echo "::add-mask::$TOKEN"
+
+          # URL-encode the token so it is safe embedded in a postgresql:// URL.
+          ENCODED_TOKEN=$(python3 -c \
+            "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" \
+            "$TOKEN")
+
+          # The PostgreSQL Entra ID username is the service principal's display name.
+          SP_NAME=$(az ad sp show \
+            --id "${{ env.AZURE_CLIENT_ID }}" \
+            --query displayName -o tsv)
+          ENCODED_SP_NAME=$(python3 -c \
+            "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" \
+            "$SP_NAME")
+
+          DB_URL="postgresql://${ENCODED_SP_NAME}:${ENCODED_TOKEN}@${{ env.DB_SERVER_NAME }}.postgres.database.azure.com:5432/${{ env.DB_NAME }}?sslmode=require"
+          echo "::add-mask::$DB_URL"
           echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
 
       - name: Open PostgreSQL firewall for runner
@@ -394,7 +417,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "❌ DATABASE_URL is empty — AAD token step must have failed"
             exit 1
           fi
           pnpm db:migrate
@@ -404,7 +427,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "❌ DATABASE_URL is empty — AAD token step must have failed"
             exit 1
           fi
           if [ ! -f "greenchainz-supplier-targets.csv" ]; then
@@ -420,7 +443,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "❌ DATABASE_URL is empty — AAD token step must have failed"
             exit 1
           fi
           echo "🌱 Seeding lead time estimates..."
@@ -431,7 +454,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "❌ DATABASE_URL is empty — AAD token step must have failed"
             exit 1
           fi
           echo "🌱 Seeding static materials catalog..."
