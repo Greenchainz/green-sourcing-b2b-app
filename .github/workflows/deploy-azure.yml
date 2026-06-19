@@ -374,20 +374,34 @@ jobs:
           TOKEN=$(az account get-access-token \
             --resource https://ossrdbms-aad.database.windows.net/ \
             --query accessToken -o tsv)
+          if [ -z "$TOKEN" ]; then
+            echo "❌ Failed to acquire AAD token for PostgreSQL — check OIDC login and subscription"
+            exit 1
+          fi
           echo "::add-mask::$TOKEN"
 
-          # URL-encode the token so it is safe embedded in a postgresql:// URL.
-          ENCODED_TOKEN=$(python3 -c \
-            "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" \
-            "$TOKEN")
+          # URL-encode the token via env var (avoids token appearing in process list).
+          ENCODED_TOKEN=$(INPUT="$TOKEN" python3 -c \
+            "import urllib.parse,os; print(urllib.parse.quote(os.environ['INPUT'], safe=''))")
+          if [ -z "$ENCODED_TOKEN" ]; then
+            echo "❌ Failed to URL-encode AAD token"
+            exit 1
+          fi
 
           # The PostgreSQL Entra ID username is the service principal's display name.
           SP_NAME=$(az ad sp show \
             --id "${{ env.AZURE_CLIENT_ID }}" \
             --query displayName -o tsv)
-          ENCODED_SP_NAME=$(python3 -c \
-            "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" \
-            "$SP_NAME")
+          if [ -z "$SP_NAME" ]; then
+            echo "❌ Failed to resolve service principal display name for client ID '${{ env.AZURE_CLIENT_ID }}'"
+            exit 1
+          fi
+          ENCODED_SP_NAME=$(INPUT="$SP_NAME" python3 -c \
+            "import urllib.parse,os; print(urllib.parse.quote(os.environ['INPUT'], safe=''))")
+          if [ -z "$ENCODED_SP_NAME" ]; then
+            echo "❌ Failed to URL-encode service principal name"
+            exit 1
+          fi
 
           DB_URL="postgresql://${ENCODED_SP_NAME}:${ENCODED_TOKEN}@${{ env.DB_SERVER_NAME }}.postgres.database.azure.com:5432/${{ env.DB_NAME }}?sslmode=require"
           echo "::add-mask::$DB_URL"
