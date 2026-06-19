@@ -164,25 +164,45 @@ jobs:
         id: acr_login
         run: |
           set -euo pipefail
-          # Retry up to 5 times with 30 s back-off.
-          # The ACR IP-allowlist rule may still be propagating at this point, and
-          # traffic proxied via Azure Front Door / WAF can cause the first attempt
-          # to see a 403 even after the rule shows Succeeded in ARM.
-          # stderr is intentionally NOT suppressed so any error messages are
-          # visible in the job log on every failed attempt.
+          # When ACR roleAssignmentMode is AbacRepositoryPermissions, push
+          # permissions are enforced via ABAC conditions at the repository level.
+          # In this mode az acr login --expose-token succeeds (the OIDC token is
+          # valid for authentication) but ACR only issues pull-scoped repository
+          # tokens for the service principal, causing docker/build-push-action to
+          # fail with "push access denied: insufficient_scope".  Detect ABAC mode
+          # up-front and skip the OIDC path so the step goes straight to admin
+          # credentials, which bypass ABAC and always grant push access.
+          ROLE_MODE=$(az acr show --name ${{ env.ACR }} --query roleAssignmentMode --output tsv 2>/dev/null || echo "")
+          if [ -z "$ROLE_MODE" ]; then
+            echo "⚠️ Could not determine ACR roleAssignmentMode; assuming standard RBAC mode"
+          else
+            echo "ACR roleAssignmentMode: ${ROLE_MODE}"
+          fi
+
           TOKEN=""
-          for attempt in 1 2 3 4 5; do
-            ERROR_LOG="/tmp/acr-login-error-${attempt}.log"
-            if TOKEN=$(az acr login --name ${{ env.ACR }} --expose-token --output tsv --query accessToken 2>"$ERROR_LOG"); then
+          if [ "$ROLE_MODE" != "AbacRepositoryPermissions" ]; then
+            # Standard RBAC mode — try OIDC token first.
+            # Retry up to 5 times with 30 s back-off.
+            # The ACR IP-allowlist rule may still be propagating at this point, and
+            # traffic proxied via Azure Front Door / WAF can cause the first attempt
+            # to see a 403 even after the rule shows Succeeded in ARM.
+            # stderr is intentionally NOT suppressed so any error messages are
+            # visible in the job log on every failed attempt.
+            for attempt in 1 2 3 4 5; do
+              ERROR_LOG="/tmp/acr-login-error-${attempt}.log"
+              if TOKEN=$(az acr login --name ${{ env.ACR }} --expose-token --output tsv --query accessToken 2>"$ERROR_LOG"); then
+                rm -f "$ERROR_LOG"
+                break
+              fi
+              cat "$ERROR_LOG"
               rm -f "$ERROR_LOG"
-              break
-            fi
-            cat "$ERROR_LOG"
-            rm -f "$ERROR_LOG"
-            echo "⚠️  ACR token request failed (attempt ${attempt}/5)."
-            # Skip the sleep on the last attempt so the job fails fast.
-            [ "$attempt" -lt 5 ] && sleep 30
-          done
+              echo "⚠️  ACR token request failed (attempt ${attempt}/5)."
+              # Skip the sleep on the last attempt so the job fails fast.
+              [ "$attempt" -lt 5 ] && sleep 30
+            done
+          else
+            echo "ℹ️ ABAC mode detected — skipping OIDC token path (would yield pull-only scope); using admin credentials directly"
+          fi
 
           if [ -n "$TOKEN" ]; then
             echo "::add-mask::$TOKEN"
@@ -195,7 +215,7 @@ jobs:
             exit 0
           fi
 
-          echo "⚠️ Falling back to temporary ACR admin credentials"
+          echo "ℹ️ Using temporary ACR admin credentials"
           # Record prior admin state before enabling so cleanup can restore it exactly
           ACR_ADMIN_WAS_ENABLED=$(az acr show --name ${{ env.ACR }} --query adminUserEnabled --output tsv 2>/dev/null || echo "unknown")
           echo "admin-was-enabled=${ACR_ADMIN_WAS_ENABLED}" >> $GITHUB_OUTPUT
