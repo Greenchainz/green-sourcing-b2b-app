@@ -141,15 +141,16 @@ jobs:
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
           # Allow firewall rule to propagate.
           # ARM provisioningState flips to Succeeded quickly, but the data-plane
-          # firewall (which gates the /oauth2/exchange token endpoint) can take
-          # 30–120 s to enforce the change on all Azure edge nodes.
-          sleep 30
+          # firewall (which gates the /oauth2/exchange token endpoint and the /v2/
+          # endpoint used by Docker) can take up to 5 minutes to enforce the change
+          # on all Azure edge nodes. 60 s gives the fast-path a reasonable head start.
+          sleep 60
 
       - name: Log in to ACR
         id: acr_login
         run: |
           set -euo pipefail
-          # Retry up to 5 times with 15 s back-off.
+          # Retry up to 5 times with 30 s back-off.
           # The ACR IP-allowlist rule may still be propagating at this point, and
           # traffic proxied via Azure Front Door / WAF can cause the first attempt
           # to see a 403 even after the rule shows Succeeded in ARM.
@@ -166,7 +167,7 @@ jobs:
             rm -f "$ERROR_LOG"
             echo "⚠️  ACR token request failed (attempt ${attempt}/5)."
             # Skip the sleep on the last attempt so the job fails fast.
-            [ "$attempt" -lt 5 ] && sleep 15
+            [ "$attempt" -lt 5 ] && sleep 30
           done
 
           if [ -n "$TOKEN" ]; then
@@ -202,12 +203,19 @@ jobs:
           fi
           echo "::add-mask::$ACR_USERNAME"
           echo "::add-mask::$ACR_PASSWORD"
-          if ! docker login ${{ env.ACR }}.azurecr.io \
-            --username "$ACR_USERNAME" \
-            --password-stdin <<< "$ACR_PASSWORD"; then
-            echo "❌ Docker login failed with temporary ACR admin credentials"
-            exit 1
-          fi
+          # Retry docker login up to 5 times with 30 s back-off to absorb any
+          # remaining ACR data-plane firewall propagation delay.
+          for dl_attempt in 1 2 3 4 5; do
+            if docker login ${{ env.ACR }}.azurecr.io \
+              --username "$ACR_USERNAME" \
+              --password-stdin <<< "$ACR_PASSWORD"; then
+              exit 0
+            fi
+            echo "⚠️  Docker login attempt ${dl_attempt}/5 failed."
+            [ "$dl_attempt" -lt 5 ] && sleep 30
+          done
+          echo "❌ Docker login failed with temporary ACR admin credentials after 5 attempts"
+          exit 1
 
       - name: Build & push frontend image
         uses: docker/build-push-action@v7
