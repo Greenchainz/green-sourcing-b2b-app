@@ -606,6 +606,71 @@ jobs:
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Allow runner IP in Key Vault firewall
+        id: kv_firewall
+        run: |
+          KV_QUERY_STDERR=$(mktemp)
+          if ! KV_PUBLIC_ACCESS_WAS=$(az keyvault show \
+            --name "${{ env.KEY_VAULT }}" \
+            --query properties.publicNetworkAccess \
+            --output tsv 2>"$KV_QUERY_STDERR"); then
+            KV_QUERY_EXIT=$?
+            echo "❌ Could not query Key Vault public network access state for '${{ env.KEY_VAULT }}' (exit code: $KV_QUERY_EXIT)"
+            echo "   Azure CLI error output:"
+            cat "$KV_QUERY_STDERR"
+            rm -f "$KV_QUERY_STDERR"
+            exit "$KV_QUERY_EXIT"
+          fi
+          rm -f "$KV_QUERY_STDERR"
+          if [ -z "$KV_PUBLIC_ACCESS_WAS" ]; then
+            echo "❌ Could not query Key Vault public network access state for '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          echo "kv-public-access-was=${KV_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
+          if [ "$KV_PUBLIC_ACCESS_WAS" = "Disabled" ]; then
+            echo "ℹ️ Key Vault publicNetworkAccess is Disabled — enabling temporarily for this workflow run"
+            az keyvault update \
+              --name "${{ env.KEY_VAULT }}" \
+              --public-network-access Enabled \
+              --output none
+            echo "kv-public-access-toggled=true" >> $GITHUB_OUTPUT
+          else
+            echo "kv-public-access-toggled=false" >> $GITHUB_OUTPUT
+          fi
+
+          if ! RUNNER_IP=$(curl -sf https://api.ipify.org); then
+            CURL_EXIT=$?
+            echo "❌ Could not determine runner IP (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
+          if [ -z "$RUNNER_IP" ]; then
+            echo "❌ Could not determine runner IP (empty response from api.ipify.org)"
+            exit 1
+          fi
+          echo "Runner IP: $RUNNER_IP"
+          az keyvault network-rule add \
+            --name "${{ env.KEY_VAULT }}" \
+            --ip-address "$RUNNER_IP" \
+            --output none
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          # Wait for Key Vault firewall rule to propagate — bounded retry with exponential backoff (max 60s)
+          KV_MAX_WAIT=60
+          KV_DELAY=5
+          KV_MAX_DELAY=20
+          KV_ELAPSED=0
+          echo "⏳ Waiting for Key Vault firewall rule to propagate..."
+          until az keyvault secret list --vault-name "${{ env.KEY_VAULT }}" --query "length(@)" -o tsv >/dev/null 2>&1; do
+            if [ "$KV_ELAPSED" -ge "$KV_MAX_WAIT" ]; then
+              echo "⚠️ Key Vault firewall propagation wait exceeded ${KV_MAX_WAIT}s — proceeding anyway"
+              break
+            fi
+            echo "⏳ Not reachable yet — retrying in ${KV_DELAY}s (elapsed: ${KV_ELAPSED}s / max: ${KV_MAX_WAIT}s)..."
+            sleep "$KV_DELAY"
+            KV_ELAPSED=$((KV_ELAPSED + KV_DELAY))
+            KV_DELAY=$((KV_DELAY * 2))
+            [ "$KV_DELAY" -gt "$KV_MAX_DELAY" ] && KV_DELAY=$KV_MAX_DELAY
+          done
+
       - name: Pull build secrets from Key Vault
         id: kv
         run: |
@@ -1202,6 +1267,29 @@ jobs:
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --tail 100 2>/dev/null || echo "(log fetch failed)"
+
+      - name: Close Key Vault firewall for runner
+        if: always()
+        run: |
+          RUNNER_IP="${{ steps.kv_firewall.outputs.runner-ip }}"
+          if [ -n "$RUNNER_IP" ]; then
+            az keyvault network-rule remove \
+              --name "${{ env.KEY_VAULT }}" \
+              --ip-address "$RUNNER_IP" \
+              --output none || true
+          fi
+
+          if [ "${{ steps.kv_firewall.outputs.kv-public-access-toggled }}" = "true" ] && [ -n "${{ steps.kv_firewall.outputs.kv-public-access-was }}" ]; then
+            echo "ℹ️ Restoring Key Vault publicNetworkAccess to '${{ steps.kv_firewall.outputs.kv-public-access-was }}'"
+            if ! az keyvault update \
+              --name "${{ env.KEY_VAULT }}" \
+              --public-network-access "${{ steps.kv_firewall.outputs.kv-public-access-was }}" \
+              --output none; then
+              RESTORE_EXIT=$?
+              echo "⚠️ Failed to restore Key Vault publicNetworkAccess to '${{ steps.kv_firewall.outputs.kv-public-access-was }}' (exit code: $RESTORE_EXIT)"
+              echo "   ⚠️ Manual intervention may be required: az keyvault update --name ${{ env.KEY_VAULT }} --public-network-access ${{ steps.kv_firewall.outputs.kv-public-access-was }}"
+            fi
+          fi
 
       - name: Azure logout
         run: az logout || true
