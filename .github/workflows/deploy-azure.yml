@@ -371,10 +371,20 @@ jobs:
           # The OIDC azure/login step above gives the runner permission to read secrets.
           # The secret must be a standard postgresql:// URL using a real Postgres role
           # with a password and DDL rights (not an Entra/AAD principal).
+          KV_STDERR=$(mktemp)
           DB_URL=$(az keyvault secret show \
             --vault-name "${{ env.KEY_VAULT }}" \
             --name "Database-URL" \
-            --query value -o tsv 2>/dev/null)
+            --query value -o tsv 2>"$KV_STDERR")
+          KV_EXIT=$?
+          if [ $KV_EXIT -ne 0 ]; then
+            echo "❌ 'az keyvault secret show' failed (exit $KV_EXIT) for vault '${{ env.KEY_VAULT }}'"
+            echo "   Azure CLI error output:"
+            cat "$KV_STDERR"
+            rm -f "$KV_STDERR"
+            exit 1
+          fi
+          rm -f "$KV_STDERR"
           if [ -z "$DB_URL" ]; then
             echo "❌ Database-URL secret not found in Key Vault '${{ env.KEY_VAULT }}'"
             echo "   Ensure the secret exists and contains a password-based postgresql:// connection string."
