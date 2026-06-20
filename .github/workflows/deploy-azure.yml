@@ -372,13 +372,11 @@ jobs:
           # The secret must be a standard postgresql:// URL using a real Postgres role
           # with a password and DDL rights (not an Entra/AAD principal).
           KV_STDERR=$(mktemp)
-          DB_URL=$(az keyvault secret show \
+          if ! DB_URL=$(az keyvault secret show \
             --vault-name "${{ env.KEY_VAULT }}" \
             --name "Database-URL" \
-            --query value -o tsv 2>"$KV_STDERR")
-          KV_EXIT=$?
-          if [ $KV_EXIT -ne 0 ]; then
-            echo "❌ 'az keyvault secret show' failed (exit $KV_EXIT) for vault '${{ env.KEY_VAULT }}'"
+            --query value -o tsv 2>"$KV_STDERR"); then
+            echo "❌ 'az keyvault secret show' failed for vault '${{ env.KEY_VAULT }}'"
             echo "   Azure CLI error output:"
             cat "$KV_STDERR"
             rm -f "$KV_STDERR"
