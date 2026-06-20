@@ -402,7 +402,8 @@ jobs:
             --ip-address "$RUNNER_IP" \
             --output none
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
-          # Allow Key Vault firewall rule changes to propagate before secret read.
+          # 10s mirrors the existing ACR firewall propagation wait in this workflow
+          # and has been sufficient in prior runs to avoid immediate 403 reads.
           KV_FIREWALL_PROPAGATION_SECONDS=10
           sleep "$KV_FIREWALL_PROPAGATION_SECONDS"
 
@@ -441,9 +442,13 @@ jobs:
       - name: Open PostgreSQL firewall for runner
         id: firewall
         run: |
-          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          if ! RUNNER_IP=$(curl -sf https://api.ipify.org); then
+            CURL_EXIT=$?
+            echo "❌ Could not determine runner IP (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
           if [ -z "$RUNNER_IP" ]; then
-            echo "❌ Could not determine runner IP"
+            echo "❌ Could not determine runner IP (empty response from api.ipify.org)"
             exit 1
           fi
           echo "Runner IP: $RUNNER_IP"
