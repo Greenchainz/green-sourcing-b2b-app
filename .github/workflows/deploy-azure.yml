@@ -1107,14 +1107,12 @@ jobs:
             echo "Skipping registry identity update because current state could not be read."
           elif [ "$CURRENT_REGISTRY_IDENTITY" = "system" ]; then
             echo "Frontend registry identity already set to 'system' — skipping update."
-          elif [ -z "$CURRENT_REGISTRY_IDENTITY" ]; then
-            echo "No registry identity currently configured for $ACR_SERVER — setting to 'system'."
-            az containerapp registry set \
-              --name ${{ env.FRONTEND_APP }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
-              --server "$ACR_SERVER" \
-              --identity system
           else
+            if [ -z "$CURRENT_REGISTRY_IDENTITY" ]; then
+              echo "No registry identity currently configured for $ACR_SERVER — setting to 'system'."
+            else
+              echo "Frontend registry identity is '$CURRENT_REGISTRY_IDENTITY' — updating to 'system'."
+            fi
             az containerapp registry set \
               --name ${{ env.FRONTEND_APP }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
