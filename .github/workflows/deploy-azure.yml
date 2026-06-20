@@ -1088,11 +1088,15 @@ jobs:
           # Point the registry config at the system identity (not the dead user-assigned one).
           # Skip no-op updates because they can trigger a long-running revision operation.
           ACR_SERVER="${{ env.ACR }}.azurecr.io"
-          CURRENT_REGISTRY_IDENTITY=$(az containerapp show \
+          if ! CURRENT_REGISTRY_IDENTITY=$(az containerapp show \
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query "properties.configuration.registries[?server=='${ACR_SERVER}'] | [0].identity" \
-            -o tsv 2>/dev/null || echo "")
+            -o tsv 2>&1); then
+            echo "⚠️ Could not read current frontend registry identity. Continuing with registry set. Details: $CURRENT_REGISTRY_IDENTITY" >&2
+            CURRENT_REGISTRY_IDENTITY=""
+          fi
+          # Normalize case defensively to avoid reconfiguration if Azure ever returns mixed-case values.
           CURRENT_REGISTRY_IDENTITY=$(printf '%s' "$CURRENT_REGISTRY_IDENTITY" | tr '[:upper:]' '[:lower:]')
           if [ "$CURRENT_REGISTRY_IDENTITY" = "system" ]; then
             echo "Frontend registry identity already set to 'system' — skipping update."
