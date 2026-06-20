@@ -130,9 +130,13 @@ jobs:
       - name: Allow runner IP in ACR firewall
         id: acr_firewall
         run: |
-          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          if ! RUNNER_IP=$(curl -sf https://api.ipify.org); then
+            CURL_EXIT=$?
+            echo "❌ Could not determine runner IP (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
           if [ -z "$RUNNER_IP" ]; then
-            echo "❌ Could not determine runner IP"
+            echo "❌ Could not determine runner IP (empty response from api.ipify.org)"
             exit 1
           fi
           echo "Runner IP: $RUNNER_IP"
@@ -398,8 +402,9 @@ jobs:
             --ip-address "$RUNNER_IP" \
             --output none
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
-          # Allow Key Vault firewall rule changes to propagate.
-          sleep 10
+          # Allow Key Vault firewall rule changes to propagate before secret read.
+          KV_FIREWALL_PROPAGATION_SECONDS=10
+          sleep "$KV_FIREWALL_PROPAGATION_SECONDS"
 
       - name: Read DATABASE_URL from Key Vault
         id: kv
@@ -520,7 +525,7 @@ jobs:
               --output none || true
           fi
 
-          if [ "${{ steps.kv_firewall.outputs.kv-public-access-toggled }}" = "true" ]; then
+          if [ "${{ steps.kv_firewall.outputs.kv-public-access-toggled }}" = "true" ] && [ -n "${{ steps.kv_firewall.outputs.kv-public-access-was }}" ]; then
             echo "ℹ️ Restoring Key Vault publicNetworkAccess to '${{ steps.kv_firewall.outputs.kv-public-access-was }}'"
             az keyvault update \
               --name "${{ env.KEY_VAULT }}" \
