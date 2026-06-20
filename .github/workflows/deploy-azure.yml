@@ -364,46 +364,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build DATABASE_URL via AAD token (no stored secret)
+      - name: Read DATABASE_URL from Key Vault
         id: kv
         run: |
-          # Mint a short-lived AAD token for PostgreSQL — no Key Vault secret needed.
-          # The OIDC-authenticated service principal must be registered as an Entra ID
-          # user in the PostgreSQL Flexible Server (see Azure portal → PostgreSQL →
-          # Authentication → Microsoft Entra admins).
-          TOKEN=$(az account get-access-token \
-            --resource https://ossrdbms-aad.database.windows.net/ \
-            --query accessToken -o tsv)
-          if [ -z "$TOKEN" ]; then
-            echo "❌ Failed to acquire AAD token for PostgreSQL — check OIDC login and subscription"
+          # Read the password-based connection string stored in Key Vault.
+          # The OIDC azure/login step above gives the runner permission to read secrets.
+          # The secret must be a standard postgresql:// URL using a real Postgres role
+          # with a password and DDL rights (not an Entra/AAD principal).
+          DB_URL=$(az keyvault secret show \
+            --vault-name "${{ env.KEY_VAULT }}" \
+            --name "Database-URL" \
+            --query value -o tsv 2>/dev/null)
+          if [ -z "$DB_URL" ]; then
+            echo "❌ Database-URL secret not found in Key Vault '${{ env.KEY_VAULT }}'"
+            echo "   Ensure the secret exists and contains a password-based postgresql:// connection string."
             exit 1
           fi
-          echo "::add-mask::$TOKEN"
-
-          # URL-encode the token via env var (avoids token appearing in process list).
-          ENCODED_TOKEN=$(INPUT="$TOKEN" python3 -c \
-            "import urllib.parse,os; print(urllib.parse.quote(os.environ['INPUT'], safe=''))")
-          if [ -z "$ENCODED_TOKEN" ]; then
-            echo "❌ Failed to URL-encode AAD token"
-            exit 1
-          fi
-
-          # The PostgreSQL Entra ID username is the service principal's display name.
-          SP_NAME=$(az ad sp show \
-            --id "${{ env.AZURE_CLIENT_ID }}" \
-            --query displayName -o tsv)
-          if [ -z "$SP_NAME" ]; then
-            echo "❌ Failed to resolve service principal display name for client ID '${{ env.AZURE_CLIENT_ID }}'"
-            exit 1
-          fi
-          ENCODED_SP_NAME=$(INPUT="$SP_NAME" python3 -c \
-            "import urllib.parse,os; print(urllib.parse.quote(os.environ['INPUT'], safe=''))")
-          if [ -z "$ENCODED_SP_NAME" ]; then
-            echo "❌ Failed to URL-encode service principal name"
-            exit 1
-          fi
-
-          DB_URL="postgresql://${ENCODED_SP_NAME}:${ENCODED_TOKEN}@${{ env.DB_SERVER_NAME }}.postgres.database.azure.com:5432/${{ env.DB_NAME }}?sslmode=require"
           echo "::add-mask::$DB_URL"
           echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
 
@@ -431,7 +407,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ DATABASE_URL is empty — AAD token step must have failed"
+            echo "❌ DATABASE_URL is empty — Key Vault read must have failed"
             exit 1
           fi
           pnpm db:migrate
@@ -441,7 +417,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ DATABASE_URL is empty — AAD token step must have failed"
+            echo "❌ DATABASE_URL is empty — Key Vault read must have failed"
             exit 1
           fi
           if [ ! -f "greenchainz-supplier-targets.csv" ]; then
@@ -457,7 +433,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ DATABASE_URL is empty — AAD token step must have failed"
+            echo "❌ DATABASE_URL is empty — Key Vault read must have failed"
             exit 1
           fi
           echo "🌱 Seeding lead time estimates..."
@@ -468,7 +444,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ DATABASE_URL is empty — AAD token step must have failed"
+            echo "❌ DATABASE_URL is empty — Key Vault read must have failed"
             exit 1
           fi
           echo "🌱 Seeding static materials catalog..."
