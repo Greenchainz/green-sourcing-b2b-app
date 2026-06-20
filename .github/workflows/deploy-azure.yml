@@ -402,10 +402,6 @@ jobs:
             --ip-address "$RUNNER_IP" \
             --output none
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
-          # 10s mirrors the existing ACR firewall propagation wait in this workflow
-          # and has been sufficient in prior runs to avoid immediate 403 reads.
-          KV_FIREWALL_PROPAGATION_SECONDS=10
-          sleep "$KV_FIREWALL_PROPAGATION_SECONDS"
 
       - name: Read DATABASE_URL from Key Vault
         id: kv
@@ -414,23 +410,37 @@ jobs:
           # The OIDC azure/login step above gives the runner permission to read secrets.
           # The secret must be a standard postgresql:// URL using a real Postgres role
           # with a password and DDL rights (not an Entra/AAD principal).
-          KV_STDERR=$(mktemp)
-          if DB_URL=$(az keyvault secret show \
-            --vault-name "${{ env.KEY_VAULT }}" \
-            --name "Database-URL" \
-            --query value -o tsv 2>"$KV_STDERR"); then
-            :
-          else
+          # Retry with exponential backoff to handle Key Vault firewall propagation delay
+          # (avoids the flakiness of a fixed sleep while bounding total sleep time).
+          # KV_MAX_WAIT caps cumulative sleep seconds; actual wall-clock time is higher
+          # due to az keyvault secret show execution time.
+          KV_MAX_WAIT=60
+          KV_BACKOFF=5
+          KV_ELAPSED=0
+          while true; do
+            KV_STDERR=$(mktemp)
+            if DB_URL=$(az keyvault secret show \
+              --vault-name "${{ env.KEY_VAULT }}" \
+              --name "Database-URL" \
+              --query value -o tsv 2>"$KV_STDERR"); then
+              rm -f "$KV_STDERR"
+              break
+            fi
             KV_EXIT=$?
-            echo "❌ 'az keyvault secret show' failed for vault '${{ env.KEY_VAULT }}' (exit code: $KV_EXIT)"
-            az_exit_code=$?
-            echo "❌ 'az keyvault secret show' failed for vault '${{ env.KEY_VAULT }}' (exit code: ${az_exit_code})"
-            echo "   Azure CLI error output:"
-            cat "$KV_STDERR"
+            KV_ERR=$(cat "$KV_STDERR")
             rm -f "$KV_STDERR"
+            if [ $((KV_ELAPSED + KV_BACKOFF)) -le "$KV_MAX_WAIT" ] && echo "$KV_ERR" | grep -qiE "\b403\b|ForbiddenByFirewall|NetworkAclsViolation"; then
+              echo "⏳ Key Vault firewall not yet propagated (exit $KV_EXIT), retrying in ${KV_BACKOFF}s… (${KV_ELAPSED}s elapsed)"
+              sleep "$KV_BACKOFF"
+              KV_ELAPSED=$((KV_ELAPSED + KV_BACKOFF))
+              KV_BACKOFF=$((KV_BACKOFF * 2))
+              continue
+            fi
+            echo "❌ 'az keyvault secret show' failed for vault '${{ env.KEY_VAULT }}' (exit code: $KV_EXIT)"
+            echo "   Azure CLI error output:"
+            echo "$KV_ERR"
             exit "$KV_EXIT"
-          fi
-          rm -f "$KV_STDERR"
+          done
           if [ -z "$DB_URL" ]; then
             echo "❌ Database-URL secret not found in Key Vault '${{ env.KEY_VAULT }}'"
             echo "   Ensure the secret exists and contains a password-based postgresql:// connection string."
