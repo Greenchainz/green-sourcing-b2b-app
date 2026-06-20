@@ -1060,6 +1060,7 @@ jobs:
 
       - name: Fix frontend ACR registry (system identity)
         run: |
+          set -euo pipefail
           # Ensure the frontend system-assigned identity exists.
           # Same || true guard as the backend step — a stale user-assigned identity
           # reference causes BadRequest even when the system identity is already present.
@@ -1085,11 +1086,23 @@ jobs:
             --scope "$ACR_ID" || true
 
           # Point the registry config at the system identity (not the dead user-assigned one).
-          az containerapp registry set \
+          # Skip no-op updates because they can trigger a long-running revision operation.
+          ACR_SERVER="${{ env.ACR }}.azurecr.io"
+          CURRENT_REGISTRY_IDENTITY=$(az containerapp show \
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --server ${{ env.ACR }}.azurecr.io \
-            --identity system
+            --query "properties.configuration.registries[?server=='${ACR_SERVER}'] | [0].identity" \
+            -o tsv 2>/dev/null || echo "")
+          CURRENT_REGISTRY_IDENTITY=$(printf '%s' "$CURRENT_REGISTRY_IDENTITY" | tr '[:upper:]' '[:lower:]')
+          if [ "$CURRENT_REGISTRY_IDENTITY" = "system" ]; then
+            echo "Frontend registry identity already set to 'system' — skipping update."
+          else
+            az containerapp registry set \
+              --name ${{ env.FRONTEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --server "$ACR_SERVER" \
+              --identity system
+          fi
 
       - name: Deploy frontend
         env:
