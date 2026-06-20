@@ -380,6 +380,8 @@ jobs:
           else
             KV_EXIT=$?
             echo "❌ 'az keyvault secret show' failed for vault '${{ env.KEY_VAULT }}' (exit code: $KV_EXIT)"
+            az_exit_code=$?
+            echo "❌ 'az keyvault secret show' failed for vault '${{ env.KEY_VAULT }}' (exit code: ${az_exit_code})"
             echo "   Azure CLI error output:"
             cat "$KV_STDERR"
             rm -f "$KV_STDERR"
