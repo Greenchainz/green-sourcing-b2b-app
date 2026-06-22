@@ -13,13 +13,13 @@
     "@azure/identity": "^4.13.1",
     "@azure/storage-queue": "^12.23.0",
     "@azure/keyvault-secrets": "^4.9.0",
-    "pg": "^8.13.1",
+    "pg": "^8.22.0",
     "axios": "^1.18.0",
     "nodemailer": "^9.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/pg": "^8.11.10",
+    "@types/pg": "^8.20.0",
     "@types/nodemailer": "^6.4.17",
     "typescript": "^5.6.3"
   }
