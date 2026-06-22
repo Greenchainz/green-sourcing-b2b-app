@@ -51,10 +51,6 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
       countrySet: "US",
     });
 
-    if (auth.keyParam) {
-      params.set("subscription-key", auth.keyParam);
-    }
-
     const response = await fetch(
       `${AZURE_MAPS_BASE_URL}/search/address/json?${params}`,
       {
@@ -99,10 +95,6 @@ export async function calculateDistance(
     const params = new URLSearchParams({
       "api-version": "1.0",
     });
-
-    if (auth.keyParam) {
-      params.set("subscription-key", auth.keyParam);
-    }
 
     const response = await fetch(
       `${AZURE_MAPS_BASE_URL}/route/matrix/json?${params}`,
@@ -165,10 +157,6 @@ export async function calculateRoute(
       "api-version": "1.0",
       query: `${origin.latitude},${origin.longitude}:${destination.latitude},${destination.longitude}`,
     });
-
-    if (auth.keyParam) {
-      params.set("subscription-key", auth.keyParam);
-    }
 
     const response = await fetch(
       `${AZURE_MAPS_BASE_URL}/route/directions/json?${params}`,

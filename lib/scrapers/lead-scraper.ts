@@ -90,11 +90,12 @@ function guessEmail(websiteUrl: string): string | undefined {
 
 async function searchMaps(
   query: string,
-  state: string
+  state: string,
+  authOverride?: Awaited<ReturnType<typeof getAzureMapsAuth>>
 ): Promise<Array<{ company: string; phone?: string; website?: string; city?: string; state: string }>> {
-  const auth = await getAzureMapsAuth();
+  const auth = authOverride ?? await getAzureMapsAuth();
   if (!auth) {
-    console.warn("[lead-scraper] Azure Maps auth unavailable — skipping query");
+    console.warn("[lead-scraper] Azure Maps auth unavailable — skipping Maps phase");
     return [];
   }
 
@@ -105,7 +106,6 @@ async function searchMaps(
         query: `${query} ${state}`,
         countrySet: "US",
         limit: 20,
-        ...(auth.keyParam ? { "subscription-key": auth.keyParam } : {}),
       },
       headers: auth.headers,
       timeout: 10_000,
@@ -266,14 +266,19 @@ export async function runLeadScraper(): Promise<{
 
   // ── Azure Maps phase ──────────────────────────────────────────────────────
   console.log("[lead-scraper] Maps phase...");
+  const azureMapsAuth = await getAzureMapsAuth();
+  if (!azureMapsAuth) {
+    console.warn("[lead-scraper] Azure Maps credentials not configured/usable — skipping Maps phase");
+  }
 
   for (const { query, crmCategory } of MAPS_QUERIES) {
+    if (!azureMapsAuth) break;
     const role = ROLE_CONFIGS.find((r) => r.crmCategory === crmCategory);
     if (!role) continue;
 
     for (const state of STATES) {
       try {
-        const results = await searchMaps(query, state);
+        const results = await searchMaps(query, state, azureMapsAuth);
         for (const r of results) {
           const email = r.website ? guessEmail(r.website) : undefined;
           const outcome = await saveLead(

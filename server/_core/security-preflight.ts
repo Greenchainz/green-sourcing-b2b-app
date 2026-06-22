@@ -29,8 +29,6 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     const allowStorageConnInProd = process.env.ALLOW_STORAGE_CONNECTION_STRING_IN_PROD === "true";
 
     const hasMapsClientId = hasValue("AZURE_MAPS_CLIENT_ID");
-    const hasMapsKey = hasValue("AZURE_MAPS_SUBSCRIPTION_KEY");
-    const allowMapsKeyInProd = process.env.ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD === "true";
 
     const hasAcsEndpoint =
         hasValue("AZURE_COMMUNICATION_SERVICES_ENDPOINT") || hasValue("ACS_ENDPOINT_URL");
@@ -97,21 +95,8 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
 
     if (hasMapsClientId && hasMiClientId) {
         add(checks, "Azure Maps Auth", "PASS", "Using managed identity + AZURE_MAPS_CLIENT_ID");
-    } else if (hasMapsKey) {
-        if (!isProduction) {
-            add(checks, "Azure Maps Auth", "WARN", "Using subscription key in non-production");
-        } else if (allowMapsKeyInProd) {
-            add(checks, "Azure Maps Auth", "WARN", "Using emergency production maps key override");
-        } else {
-            add(
-                checks,
-                "Azure Maps Auth",
-                "FAIL",
-                "Subscription key present in production without ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true"
-            );
-        }
     } else {
-        add(checks, "Azure Maps Auth", "WARN", "Maps auth not configured (feature-dependent)");
+        add(checks, "Azure Maps Auth", "WARN", "Managed identity Maps auth not fully configured (requires AZURE_MAPS_CLIENT_ID + MI client id)");
     }
 
     if (hasAcsEndpoint) {
@@ -178,7 +163,6 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     } else {
         const activeOverrides: string[] = [];
         if (allowStorageConnInProd) activeOverrides.push("ALLOW_STORAGE_CONNECTION_STRING_IN_PROD");
-        if (allowMapsKeyInProd) activeOverrides.push("ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD");
         if (allowAcsConnInProd) activeOverrides.push("ALLOW_ACS_CONNECTION_STRING_IN_PROD");
         if (allowOpenAiKeyInProd) activeOverrides.push("ALLOW_AZURE_OPENAI_API_KEY_IN_PROD");
 

@@ -12,12 +12,14 @@ import "./index.css";
 const queryClient = new QueryClient();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
-  if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
+  const isUnauthorizedTrpcError =
+    error instanceof TRPCClientError && error.message === UNAUTHED_ERR_MSG;
+  const isUnauthorizedGenericError =
+    error instanceof Error && error.message === UNAUTHED_ERR_MSG;
 
-  if (!isUnauthorized) return;
+  if (!isUnauthorizedTrpcError && !isUnauthorizedGenericError) return;
 
   window.location.href = getLoginUrl();
 };
@@ -52,11 +54,24 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
-      fetch(input, init) {
-        return globalThis.fetch(input, {
+      async fetch(input, init) {
+        const response = await globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
         });
+
+        // Some upstream auth layers return HTML for 401/403 instead of tRPC JSON.
+        // That causes "Unexpected token '<' ... not valid JSON" noise in the client.
+        const contentType = response.headers.get("content-type") ?? "";
+        const isJson =
+          contentType.includes("application/json") ||
+          contentType.includes("application/problem+json");
+
+        if ((response.status === 401 || response.status === 403) && !isJson) {
+          throw new TRPCClientError(UNAUTHED_ERR_MSG);
+        }
+
+        return response;
       },
     }),
   ],
