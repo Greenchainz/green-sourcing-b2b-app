@@ -15,11 +15,14 @@
     "@azure/keyvault-secrets": "^4.11.2",
     "@azure/storage-queue": "^12.30.0",
     "@azure/keyvault-secrets": "^4.9.0",
-    "pg": "^8.13.1",
+    "pg": "^8.22.0",
     "axios": "^1.18.0",
     "nodemailer": "^9.0.1"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.20.0",
+    "@types/nodemailer": "^6.4.17",
     "@types/node": "^26.0.0",
     "@types/pg": "^8.11.10",
     "@types/nodemailer": "^8.0.1",
