@@ -336,8 +336,8 @@ importers:
         specifier: ^1.13.3
         version: 1.13.3
       svix:
-        specifier: ^1.92.2
-        version: 1.92.2
+        specifier: ^1.96.0
+        version: 1.96.0
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -6388,8 +6388,8 @@ packages:
   svix@1.90.0:
     resolution: {integrity: sha512-ljkZuyy2+IBEoESkIpn8sLM+sxJHQcPxlZFxU+nVDhltNfUMisMBzWX/UR8SjEnzoI28ZjCzMbmYAPwSTucoMw==}
 
-  svix@1.92.2:
-    resolution: {integrity: sha512-ZmuA3UVvlnF9EgxlzmPtF7CKjQb64Z6OFlyfdDfU0sdcC7dJa+3aOYX5B9mA+RS6ch1AxBa4UP/l6KmqfGtWBQ==}
+  svix@1.96.0:
+    resolution: {integrity: sha512-bypvS7RhYYysD/AAnQzV7EIM08rP9aI394VPr2LGb63K17n4hYFfZPWCpFCFs7ZhYEfdO6Rtci16zxfw14ygCg==}
 
   tabster@8.8.0:
     resolution: {integrity: sha512-eGFXgtvKOQP5BywDI9Ngs+Atm6TRj45epAAqWKyVoi+HmOmdamEB//1H/FttLdNly/+Cz+GJ4RN8TnXTw0KwfA==}
@@ -14519,7 +14519,7 @@ snapshots:
       standardwebhooks: 1.0.0
       uuid: 14.0.0
 
-  svix@1.92.2:
+  svix@1.96.0:
     dependencies:
       standardwebhooks: 1.0.0
 
