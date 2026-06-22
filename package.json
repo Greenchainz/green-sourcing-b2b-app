@@ -102,7 +102,7 @@
     "openai": "^6.35.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.7.284",
-    "pdfkit": "^0.17.2",
+    "pdfkit": "^0.19.1",
     "pg": "^8.20.0",
     "pgvector": "^0.2.1",
     "react": "^19.2.5",
@@ -128,7 +128,7 @@
     "zod": "^4.4.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.4",
+    "@tailwindcss/postcss": "^4.3.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.4",
     "@types/compression": "^1.8.1",
