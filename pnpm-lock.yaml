@@ -354,8 +354,8 @@ importers:
         specifier: ^2.53.1
         version: 2.53.1(typescript@5.9.3)(zod@4.4.1)
       wouter:
-        specifier: ^3.9.0
-        version: 3.9.0(react@19.2.5)
+        specifier: ^3.10.0
+        version: 3.10.0(react@19.2.5)
       zod:
         specifier: ^4.4.1
         version: 4.4.1
@@ -6776,8 +6776,8 @@ packages:
     resolution: {integrity: sha512-8drMJ4rkgaPo1Me4zD/3WLfI/zPdA9o2IipKODunnGDcuqbHwjsbB79ylv04LCGGzU0xQ6vTznOMpQGaLhhm6A==}
     engines: {node: '>= 12.0.0'}
 
-  wouter@3.9.0:
-    resolution: {integrity: sha512-sF/od/PIgqEQBQcrN7a2x3MX6MQE6nW0ygCfy9hQuUkuB28wEZuu/6M5GyqkrrEu9M6jxdkgE12yDFsQMKos4Q==}
+  wouter@3.10.0:
+    resolution: {integrity: sha512-zTfddD80zc2/J5l8JKcdvzOK6AwP0kpyHEI3DxRN2bn8U1oJPnrSVm8v+X3WwDamvLAOxTO7ZvkxkpRWlyeJ1Q==}
     peerDependencies:
       react: '>=16.8.0'
 
@@ -14906,7 +14906,7 @@ snapshots:
       readable-stream: 3.6.2
       triple-beam: 1.4.1
 
-  wouter@3.9.0(react@19.2.5):
+  wouter@3.10.0(react@19.2.5):
     dependencies:
       mitt: 3.0.1
       react: 19.2.5
