@@ -5,12 +5,26 @@ import { getMicrosoftLoginUrl } from "@/const";
 
 type DesiredRole = "architect" | "supplier" | null;
 
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+    invalid_state: "Sign-in session expired or was tampered with. Please try again.",
+    missing_code: "Sign-in was cancelled or didn't complete. Please try again.",
+    callback_failed: "Sign-in failed on the server. Please try again — if this keeps happening, contact support.",
+    unknown_provider: "Unknown sign-in provider. Please use the button below.",
+    access_denied: "You cancelled the sign-in or denied access. Please try again.",
+};
+
+function getOAuthErrorMessage(error: string | null): string | null {
+    if (!error) return null;
+    return OAUTH_ERROR_MESSAGES[error] ?? `Sign-in error: ${error}. Please try again.`;
+}
+
 export default function Login() {
     const { user, isLoading } = useAuth();
 
     const params = new URLSearchParams(window.location.search);
     const returnPath = params.get("returnPath") || "/dashboard";
     const roleParam = params.get("role");
+    const oauthError = getOAuthErrorMessage(params.get("error"));
 
     const [pendingRole, setPendingRole] = useState<DesiredRole>(() => {
         try {
@@ -81,6 +95,12 @@ export default function Login() {
                                 ? "Continue as an Architect"
                                 : "Choose how you'd like to sign in"}
                     </p>
+
+                    {oauthError && (
+                        <div className="mb-5 rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300" role="alert" aria-live="polite">
+                            {oauthError}
+                        </div>
+                    )}
 
                     <div className="mb-6">
                         <p className="text-xs text-gray-500 text-center mb-3">I am…</p>
