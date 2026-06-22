@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { getDb } from '../../server/db';
 import { scrapedSuppliers } from '../../drizzle/schema';
-import { isNull, and, ne, isNotNull, eq } from 'drizzle-orm';
 import { getAzureMapsAuth } from '../azure/azure-maps-auth';
 
 export interface ScrapedSupplier {
@@ -44,20 +43,6 @@ const STATES = [
   'NH', 'RI', 'DE', 'CT', 'SD', 'ND', 'WY', 'AK', 'HI', 'VT',
 ];
 
-// Apollo job titles to search for decision-makers at building materials companies
-const APOLLO_TITLES = [
-  'sustainability director',
-  'director of sustainability',
-  'VP sustainability',
-  'director of sales',
-  'VP sales',
-  'national sales manager',
-  'regional sales manager',
-  'business development manager',
-  'procurement manager',
-  'marketing director',
-];
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function extractDomain(website: string): string | null {
@@ -79,7 +64,8 @@ async function withRetry<T>(
   fn: () => Promise<T>,
   retries = 3,
   delayMs = 500,
-  label = 'request'
+  label = 'request',
+  onClientError?: (status: number) => void
 ): Promise<T | null> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -89,6 +75,7 @@ async function withRetry<T>(
       const status = axios.isAxiosError(err) ? err.response?.status : null;
       // Don't retry 4xx (bad request / auth) — only transient errors
       if (status && status >= 400 && status < 500) {
+        onClientError?.(status);
         console.error(`[supplier-scraper] ${label} → ${status}, not retrying`);
         return null;
       }
@@ -107,11 +94,13 @@ async function withRetry<T>(
 export async function scrapeAzureMaps(
   searchQuery: string,
   materialTypes: string[],
-  state?: string
+  state?: string,
+  authOverride?: Awaited<ReturnType<typeof getAzureMapsAuth>>,
+  onAuthFailure?: (status: number) => void
 ): Promise<ScrapedSupplier[]> {
-  const auth = await getAzureMapsAuth();
+  const auth = authOverride ?? await getAzureMapsAuth();
   if (!auth) {
-    console.warn('[supplier-scraper] Azure Maps auth unavailable — skipping query');
+    console.warn('[supplier-scraper] Azure Maps auth unavailable — skipping Azure Maps phase');
     return [];
   }
 
@@ -122,17 +111,23 @@ export async function scrapeAzureMaps(
     countrySet: 'US',
     limit: '100',
   });
-  if (auth.keyParam) {
-    params.set('subscription-key', auth.keyParam);
-  }
   const url = `https://atlas.microsoft.com/search/poi/json?${params.toString()}`;
+
+  let authFailed = false;
 
   const data = await withRetry(
     () => axios.get<{ results: unknown[] }>(url, { headers: auth.headers, timeout: 10000 }).then((r) => r.data),
     3,
     800,
-    `AzureMaps '${fullQuery}'`
+    `AzureMaps '${fullQuery}'`,
+    (status) => {
+      if (status === 401 || status === 403) {
+        authFailed = true;
+        onAuthFailure?.(status);
+      }
+    }
   );
+  if (authFailed) return [];
   if (!data) return [];
 
   const suppliers: ScrapedSupplier[] = [];
@@ -200,53 +195,14 @@ export async function scrapeEPDManufacturers(): Promise<ScrapedSupplier[]> {
 
 // ── Apollo enrichment ─────────────────────────────────────────────────────────
 
-interface ApolloContact {
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-  title?: string;
-}
-
-interface ApolloPeopleSearchResponse {
-  contacts?: ApolloContact[];
-  people?: ApolloContact[];
-}
-
 /**
  * Use Apollo People Search to find a decision-maker email for a given domain.
  * Returns the first verified email found, or null.
  */
 export async function findEmailViaApollo(domain: string): Promise<string | null> {
-  const apiKey = process.env.APOLLO_API_KEY;
-  if (!apiKey) return null;
-
-  const data = await withRetry(
-    () =>
-      axios
-        .post<ApolloPeopleSearchResponse>(
-          'https://api.apollo.io/v1/mixed_people/search',
-          {
-            api_key: apiKey,
-            q_organization_domains: domain,
-            person_titles:          APOLLO_TITLES,
-            contact_email_status:   ['verified', 'likely to engage'],
-            per_page:               3,
-          },
-          { timeout: 15000 }
-        )
-        .then((r) => r.data),
-    2,
-    1000,
-    `Apollo enrich ${domain}`
-  );
-  if (!data) return null;
-
-  const contacts: ApolloContact[] = data.contacts ?? data.people ?? [];
-  const contact = contacts.find((c) => c.email && c.email.includes('@'));
-  if (contact?.email) {
-    console.log(`[supplier-scraper] Apollo → found ${contact.title ?? 'contact'} at ${domain}`);
-    return contact.email;
-  }
+  // Policy: external secret-based enrichment is disabled.
+  // This system uses managed identity + RBAC for Azure resource access.
+  void domain;
   return null;
 }
 
@@ -264,57 +220,9 @@ export async function enrichSuppliersWithApollo(maxBatch = 200): Promise<{
   checked: number;
   noEmail: number;
 }> {
-  const apiKey = process.env.APOLLO_API_KEY;
-  if (!apiKey) {
-    console.log('[supplier-scraper] APOLLO_API_KEY not set — skipping enrichment');
-    return { enriched: 0, checked: 0, noEmail: 0 };
-  }
-
-  const db = await getDb();
-  if (!db) return { enriched: 0, checked: 0, noEmail: 0 };
-
-  // Find suppliers with websites but no email
-  const targets = await db
-    .select({
-      id:      scrapedSuppliers.id,
-      company: scrapedSuppliers.companyName,
-      website: scrapedSuppliers.website,
-    })
-    .from(scrapedSuppliers)
-    .where(
-      and(
-        isNull(scrapedSuppliers.email),
-        isNotNull(scrapedSuppliers.website),
-        ne(scrapedSuppliers.emailStatus, 'invalid'),
-      )
-    )
-    .limit(maxBatch);
-
-  console.log(`[supplier-scraper] Apollo enrichment: ${targets.length} suppliers to check`);
-
-  let enriched = 0;
-  let noEmail  = 0;
-
-  for (const target of targets) {
-    const domain = target.website ? extractDomain(target.website) : null;
-    if (!domain) { noEmail++; continue; }
-
-    const email = await findEmailViaApollo(domain);
-    if (email) {
-      await db
-        .update(scrapedSuppliers)
-        .set({ email, updatedAt: new Date() })
-        .where(eq(scrapedSuppliers.id, target.id));
-      enriched++;
-    } else {
-      noEmail++;
-    }
-
-    await sleep(300); // ~200 req/min max on Apollo free tier
-  }
-
-  console.log(`[supplier-scraper] Apollo enrichment done — enriched: ${enriched}, no email found: ${noEmail}`);
-  return { enriched, checked: targets.length, noEmail };
+  void maxBatch;
+  console.log('[supplier-scraper] Apollo enrichment disabled by policy (managed identity + RBAC only)');
+  return { enriched: 0, checked: 0, noEmail: 0 };
 }
 
 // ── Save helpers ──────────────────────────────────────────────────────────────
@@ -379,13 +287,36 @@ export async function runSupplierScraper(opts: {
   let azureMapsSaved  = 0;
   let epdSaved        = 0;
   let apolloEnriched  = 0;
+  let disableAzureMapsForRun = false;
 
   // ── Azure Maps ──────────────────────────────────────────────────────────────
   if (!opts.skipAzureMaps) {
+    const azureMapsAuth = await getAzureMapsAuth();
+    if (!azureMapsAuth) {
+      console.warn('[supplier-scraper] Azure Maps credentials not configured/usable — skipping Azure Maps phase');
+      disableAzureMapsForRun = true;
+    }
+
     console.log(`[supplier-scraper] Starting Azure Maps scrape — ${STATES.length} states × ${MATERIAL_QUERIES.length} queries`);
     for (const { query, materialTypes } of MATERIAL_QUERIES) {
+      if (disableAzureMapsForRun) break;
       for (const state of STATES) {
-        const results = await scrapeAzureMaps(query, materialTypes, state);
+        if (disableAzureMapsForRun) break;
+
+        const results = await scrapeAzureMaps(
+          query,
+          materialTypes,
+          state,
+          azureMapsAuth,
+          (status) => {
+            disableAzureMapsForRun = true;
+            console.error(
+              `[supplier-scraper] Azure Maps authorization failed (${status}). ` +
+              'Stopping Azure Maps phase for this run. Verify AZURE_MAPS_CLIENT_ID/AZURE_MAPS_SUBSCRIPTION_KEY configuration.'
+            );
+          }
+        );
+
         if (results.length > 0) {
           const { saved, duplicates } = await saveSuppliers(results);
           totalSaved      += saved;

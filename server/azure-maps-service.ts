@@ -33,7 +33,6 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
         "api-version": "1.0",
         query: address,
         limit: 1,
-        ...(auth.keyParam ? { "subscription-key": auth.keyParam } : {}),
       },
       headers: auth.headers,
     });
@@ -84,7 +83,6 @@ export async function calculateDistance(
       {
         params: {
           "api-version": "1.0",
-          ...(auth.keyParam ? { "subscription-key": auth.keyParam } : {}),
         },
         headers: auth.headers,
       }
@@ -194,7 +192,6 @@ export async function calculateRoute(
       params: {
         "api-version": "1.0",
         query: `${origin.latitude},${origin.longitude}:${destination.latitude},${destination.longitude}`,
-        ...(auth.keyParam ? { "subscription-key": auth.keyParam } : {}),
       },
       headers: auth.headers,
     });

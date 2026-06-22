@@ -35,29 +35,28 @@ describe("getAzureMapsAuth", () => {
     expect(getTokenMock).toHaveBeenCalledWith("https://atlas.microsoft.com/.default");
     expect(auth?.headers.Authorization).toContain("aad-token");
     expect(auth?.headers["x-ms-client-id"]).toBe("maps-client-id");
-    expect(auth?.keyParam).toBeUndefined();
   });
 
-  it("falls back to subscription key in non-production when token fails", async () => {
+  it("returns null when managed identity token acquisition fails", async () => {
     process.env.AZURE_MAPS_CLIENT_ID = "maps-client-id";
-    process.env.AZURE_MAPS_SUBSCRIPTION_KEY = "maps-sub-key";
     getTokenMock.mockRejectedValue(new Error("token failure"));
 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const auth = await getAzureMapsAuth();
 
-    expect(auth).toEqual({ headers: {}, keyParam: "maps-sub-key" });
+    expect(auth).toBeNull();
+    expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });
 
-  it("blocks subscription key fallback in production without override", async () => {
-    process.env.NODE_ENV = "production";
-    process.env.AZURE_MAPS_SUBSCRIPTION_KEY = "maps-sub-key";
+  it("returns null and logs an error when AZURE_MAPS_CLIENT_ID is missing", async () => {
+    delete process.env.AZURE_MAPS_CLIENT_ID;
 
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const auth = await getAzureMapsAuth();
 
     expect(auth).toBeNull();
+    expect(getTokenMock).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
   });

@@ -112,6 +112,12 @@ export async function loadSecrets(): Promise<void> {
         "fred-api-key": "FRED_API_KEY",
         // Resend (transactional email)
         "resend-api-key": "RESEND_API_KEY",
+        // Microsoft Marketplace billing webhook HMAC secret
+        // Used by /api/microsoft/subscription-webhook to verify x-ms-signature.
+        // Set this to the shared secret from Partner Center → Technical
+        // Configuration → Webhook. Enforced fail-closed at startup
+        // (security-preflight.ts) so the endpoint never accepts unsigned events.
+        "microsoft-webhook-secret": "MICROSOFT_WEBHOOK_SECRET",
       };
 
       for (const [vaultKey, envKey] of Object.entries(secretMappings)) {
