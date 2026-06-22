@@ -118,7 +118,7 @@
     "sonner": "^2.0.7",
     "streamdown": "^1.6.11",
     "superjson": "^1.13.3",
-    "svix": "^1.92.2",
+    "svix": "^1.96.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^14.0.0",
