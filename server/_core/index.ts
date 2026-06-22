@@ -274,7 +274,6 @@ async function startServer() {
             "https:",
             "http://localhost",
             "http://127.0.0.1",
-            "http://[::1]",
             "https://*.blob.core.windows.net",
           ],
           connectSrc: [
@@ -292,6 +291,8 @@ async function startServer() {
             "wss://*.intercom.io",
             // WebPubSub real-time messaging
             "wss://greenchainz.webpubsub.azure.com",
+            // CookieYes consent banner fetches its config from the CDN
+            "https://cdn-cookieyes.com",
           ],
           // OSM iframe used in RFQ location preview
           frameSrc: ["https://www.openstreetmap.org"],
