@@ -27,6 +27,10 @@ yarn-error.log*
 
 # Editor / OS
 .vscode
+.vs
+*.vsidx
+*.suo
+*.user
 .idea
 .DS_Store
 Thumbs.db

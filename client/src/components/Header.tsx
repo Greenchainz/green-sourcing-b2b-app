@@ -235,7 +235,7 @@ export default function Header() {
               </span>
             )}
           </Link>
-          <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+          <Link href="/pricing" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Pricing
           </Link>
           {user?.role === 'supplier' ? (
@@ -379,7 +379,7 @@ export default function Header() {
                 </span>
               )}
             </Link>
-            <Link href="/subscription" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+            <Link href="/pricing" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
               onClick={() => setMobileMenuOpen(false)}>
               Pricing
             </Link>
