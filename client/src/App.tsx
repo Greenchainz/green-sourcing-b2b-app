@@ -360,8 +360,9 @@ function AnalyticsTracker() {
 
 function HubSpotLoader() {
   useEffect(() => {
-    // Delay past the LCP window (~3 s) so HubSpot doesn't block initial paint
-    const timer = globalThis.setTimeout(() => {
+    // Use requestIdleCallback to defer HubSpot until the browser is idle,
+    // preventing it from competing with initial render and hydration.
+    const load = () => {
       const existingScript = document.getElementById("hs-script-loader");
       if (existingScript) return;
 
@@ -372,10 +373,22 @@ function HubSpotLoader() {
       script.defer = true;
       script.src = HUBSPOT_SCRIPT_SRC;
       document.head.appendChild(script);
-    }, 3000);
+    };
+
+    let handle: number | undefined;
+    if ("requestIdleCallback" in globalThis) {
+      handle = globalThis.requestIdleCallback(load, { timeout: 5000 });
+    } else {
+      // Fallback for Safari (no rIC): use 4s timeout past LCP window
+      handle = globalThis.setTimeout(load, 4000) as unknown as number;
+    }
 
     return () => {
-      globalThis.clearTimeout(timer);
+      if ("cancelIdleCallback" in globalThis && handle !== undefined) {
+        globalThis.cancelIdleCallback(handle);
+      } else {
+        globalThis.clearTimeout(handle);
+      }
     };
   }, []);
 
