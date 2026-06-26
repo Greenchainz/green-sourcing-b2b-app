@@ -28,6 +28,7 @@ import { publicMaterialsRouter } from "../public-materials-api";
 import { registerPdfRoutes } from "../admin-routes/pdf-routes";
 import { registerMobileMessagesRoutes } from "../admin-routes/mobile-messages";
 import { startSchedulers } from "../scheduler";
+import { startLearningScheduler } from "../services/learning-scheduler";
 import { devFounderVideoRouter } from "../dev-founder-video-route";
 import { isLocalMode } from "../../lib/founder-video-storage";
 import { registerEmailAuthRoutes } from "./email-auth";
@@ -559,6 +560,7 @@ async function startServer() {
 
   // Fire-and-forget — scheduler failures must not kill the server process.
   startSchedulers().catch(err => console.error('[Schedulers] Failed to start:', err));
+  startLearningScheduler();
 }
 
 startServer().catch((err) => {

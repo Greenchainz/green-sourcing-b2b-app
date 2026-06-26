@@ -2449,3 +2449,39 @@ export const dataSubjectRequests = pgTable(
 
 export type DataSubjectRequest = typeof dataSubjectRequests.$inferSelect;
 export type InsertDataSubjectRequest = typeof dataSubjectRequests.$inferInsert;
+
+// ─── Learning Pipeline ──────────────────────────────────────────────────────
+
+export const learningEvents = pgTable(
+  "learning_events",
+  {
+    id: serial("id").primaryKey(),
+    type: varchar("type", { length: 50 }).notNull(),
+    userId: integer("user_id"),
+    orgId: integer("org_id"),
+    materialId: integer("material_id"),
+    supplierId: integer("supplier_id"),
+    query: text("query"),
+    metadata: json("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    typeIdx: index("idx_learning_events_type").on(table.type),
+    createdIdx: index("idx_learning_events_created").on(table.createdAt),
+    materialIdx: index("idx_learning_events_material").on(table.materialId),
+    typeCreatedIdx: index("idx_learning_events_type_created").on(
+      table.type,
+      table.createdAt
+    ),
+  })
+);
+
+export type LearningEvent = typeof learningEvents.$inferSelect;
+
+export const learningSynthesis = pgTable("learning_synthesis", {
+  id: serial("id").primaryKey(),
+  report: json("report").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type LearningSynthesis = typeof learningSynthesis.$inferSelect;
