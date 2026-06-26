@@ -59,7 +59,7 @@ This transforms sustainability from a reporting exercise into a real-time decisi
 
 | Field | Value |
 |-------|-------|
-| URL | `https://app.greenchainz.com` |
+| URL | `https://greenchainz.com` |
 | Email | `demo@greenchainz.com` |
 | Password | `GreenchainzDemo123!` |
 
