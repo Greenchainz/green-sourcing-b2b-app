@@ -115,11 +115,21 @@ export default function IntercomWidget() {
       void bootIntercom();
     };
 
-    const timer = globalThis.setTimeout(scheduleBoot, 1200);
+    // Defer Intercom boot to idle time — avoids competing with initial render
+    let handle: number | undefined;
+    if ("requestIdleCallback" in globalThis) {
+      handle = globalThis.requestIdleCallback(scheduleBoot, { timeout: 5000 });
+    } else {
+      handle = globalThis.setTimeout(scheduleBoot, 2000) as unknown as number;
+    }
 
     return () => {
       cancelled = true;
-      globalThis.clearTimeout(timer);
+      if ("cancelIdleCallback" in globalThis && handle !== undefined) {
+        globalThis.cancelIdleCallback(handle);
+      } else {
+        globalThis.clearTimeout(handle);
+      }
     };
   }, [user]);
 
