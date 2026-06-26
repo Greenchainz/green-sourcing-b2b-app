@@ -1,3 +1,5 @@
+import { captureEvent } from "./services/learning-pipeline";
+
 /**
  * Public Materials API — unauthenticated REST endpoints for the Forma Extension.
  *
@@ -110,6 +112,13 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
       isVerified:          r.isVerified ?? false,
       certifications:      [] as string[],
     }));
+
+    // Passive learning: capture what users search for
+    void captureEvent({
+      type: shaped.length > 0 ? "search_query" : "search_zero_results",
+      query: q ?? category ?? undefined,
+      metadata: { category, resultCount: shaped.length, maxGwp, minMcs },
+    }).catch(() => {});
 
     return res.json({ materials: shaped });
   } catch (err) {
