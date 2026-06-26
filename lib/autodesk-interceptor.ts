@@ -490,3 +490,136 @@ export function mockRevitExtraction(fileName: string): RevitExtractionResult {
     extractedAt: new Date(),
   };
 }
+
+// ── APS Model Derivative API helpers (used by carbon audit pipeline) ──────
+
+const APS_BASE = 'https://developer.api.autodesk.com';
+
+/** Cached APS 2-legged OAuth token (separate from Forge v1 token above). */
+let _apsToken: { token: string; expiresAt: number } | null = null;
+
+/**
+ * Obtains a 2-legged OAuth token from Autodesk APS (v2 auth endpoint).
+ * Caches until 60 seconds before expiry.
+ */
+async function getApsToken(): Promise<string> {
+  const now = Date.now();
+  if (_apsToken && _apsToken.expiresAt > now) {
+    return _apsToken.token;
+  }
+
+  const { getSecret } = await import('./secrets');
+  const clientId = getSecret('AUTODESK_CLIENT_ID') || process.env.APS_CLIENT_ID;
+  const clientSecret = getSecret('AUTODESK_CLIENT_SECRET') || process.env.APS_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('APS_CLIENT_ID and APS_CLIENT_SECRET must be set');
+  }
+
+  const { data } = await axios.post(
+    `${APS_BASE}/authentication/v2/token`,
+    new URLSearchParams({
+      grant_type: 'client_credentials',
+      scope: 'data:read viewables:read',
+    }),
+    {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      auth: { username: clientId, password: clientSecret },
+    }
+  );
+
+  _apsToken = {
+    token: data.access_token,
+    expiresAt: now + (data.expires_in - 60) * 1000,
+  };
+
+  return _apsToken.token;
+}
+
+/**
+ * Fetches element properties from the Autodesk Model Derivative API v2.
+ * Returns an array of objects containing objectid, name, and properties.
+ */
+export async function getModelProperties(
+  modelUrn: string
+): Promise<
+  Array<{
+    objectid: number;
+    name: string;
+    properties: Record<string, Record<string, string>>;
+  }>
+> {
+  const token = await getApsToken();
+  const encodedUrn = encodeURIComponent(modelUrn);
+
+  const metaRes = await axios.get(
+    `${APS_BASE}/modelderivative/v2/designdata/${encodedUrn}/metadata`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  const viewable = metaRes.data?.data?.metadata?.[0];
+  if (!viewable) {
+    throw new Error('No viewable found in model metadata');
+  }
+
+  const guid = viewable.guid;
+
+  const propsRes = await axios.get(
+    `${APS_BASE}/modelderivative/v2/designdata/${encodedUrn}/metadata/${guid}/properties`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  return propsRes.data?.data?.collection || [];
+}
+
+/**
+ * Fetches bounding-box geometry data for model elements.
+ * Returns a map of objectId → { min: [x,y,z], max: [x,y,z] }.
+ */
+export async function getModelGeometry(
+  modelUrn: string
+): Promise<Map<number, { min: number[]; max: number[] }>> {
+  const token = await getApsToken();
+  const encodedUrn = encodeURIComponent(modelUrn);
+
+  const metaRes = await axios.get(
+    `${APS_BASE}/modelderivative/v2/designdata/${encodedUrn}/metadata`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  const viewable = metaRes.data?.data?.metadata?.[0];
+  if (!viewable) {
+    return new Map();
+  }
+
+  const guid = viewable.guid;
+
+  const treeRes = await axios.get(
+    `${APS_BASE}/modelderivative/v2/designdata/${encodedUrn}/metadata/${guid}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { forceget: true },
+    }
+  );
+
+  const geometryMap = new Map<number, { min: number[]; max: number[] }>();
+  const objects = treeRes.data?.data?.objects || [];
+
+  function walkTree(nodes: any[]): void {
+    for (const node of nodes) {
+      if (node.objectid && node.bbox) {
+        const bb = node.bbox;
+        geometryMap.set(node.objectid, {
+          min: [bb[0], bb[1], bb[2]],
+          max: [bb[3], bb[4], bb[5]],
+        });
+      }
+      if (node.objects) {
+        walkTree(node.objects);
+      }
+    }
+  }
+
+  walkTree(objects);
+  return geometryMap;
+}
