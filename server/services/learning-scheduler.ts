@@ -17,7 +17,6 @@ let nightlyTimer: ReturnType<typeof setInterval> | null = null;
 let weeklyTimer: ReturnType<typeof setInterval> | null = null;
 
 const ONE_HOUR = 60 * 60 * 1000;
-const ONE_DAY = 24 * ONE_HOUR;
 
 /**
  * Start the learning scheduler. Call once at server boot.

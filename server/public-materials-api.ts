@@ -114,11 +114,11 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
     }));
 
     // Passive learning: capture what users search for
-    void captureEvent({
+    void Promise.resolve(captureEvent({
       type: shaped.length > 0 ? "search_query" : "search_zero_results",
       query: q ?? category ?? undefined,
       metadata: { category, resultCount: shaped.length, maxGwp, minMcs },
-    }).catch(() => {});
+    })).catch(() => {});
 
     return res.json({ materials: shaped });
   } catch (err) {

@@ -24,16 +24,8 @@
  */
 
 import { getDb } from "../db";
-import {
-  materials,
-  suppliers,
-  agentConversations,
-  agentAnalytics,
-  learningEvents,
-  learningSynthesis,
-} from "../../drizzle/schema";
-import { eq, desc, sql, gte, and, isNull, count } from "drizzle-orm";
-import { generateEmbedding, generateEmbeddingsBatch, buildSearchText } from "./embedding-service";
+import { sql } from "drizzle-orm";
+import { generateEmbeddingsBatch, buildSearchText } from "./embedding-service";
 
 // ─── Learning Events Schema ───────────────────────────────────────────────────
 
