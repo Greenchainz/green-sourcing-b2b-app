@@ -9,46 +9,19 @@ import { trpc } from "../lib/trpc";
 
 export default function About() {
   const [videoError, setVideoError] = useState<string | null>(null);
-  const [useTokenFallback, setUseTokenFallback] = useState(false);
 
-  const aboutVideoUrl = String(
-    import.meta.env.VITE_ABOUT_VIDEO_URL ?? ""
-  ).trim();
-  const aboutVideoToken = String(
-    import.meta.env.VITE_ABOUT_VIDEO_TOKEN ?? ""
-  ).trim();
-  const aboutVideoAutoplay =
-    String(import.meta.env.VITE_ABOUT_VIDEO_AUTOPLAY ?? "").trim() === "true";
+  const aboutVideoQuery = trpc.founderVideo.aboutVideo.useQuery(undefined, {
+    retry: false,
+    meta: { suppressGlobalErrorLogging: true },
+  });
 
-  const tokenForQuery =
-    aboutVideoToken.length >= 8 ? aboutVideoToken : "00000000";
-  const shouldUseToken =
-    (!aboutVideoUrl || useTokenFallback) && aboutVideoToken.length >= 8;
-
-  const founderVideoQuery = trpc.founderVideo.publicGet.useQuery(
-    { token: tokenForQuery },
-    {
-      enabled: shouldUseToken,
-      retry: false,
-      meta: {
-        // Founder video being missing/invalid is expected in some envs.
-        // Avoid global console.error noise from main.tsx query cache subscriber.
-        suppressGlobalErrorLogging: true,
-      },
-    }
-  );
-
-  const resolvedVideoUrl =
-    (aboutVideoUrl && !useTokenFallback ? aboutVideoUrl : "") ||
-    founderVideoQuery.data?.videoUrl ||
-    "";
+  const resolvedVideoUrl = aboutVideoQuery.data?.videoUrl ?? "";
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isMuted, setIsMuted] = useState(aboutVideoAutoplay);
+  const [isMuted, setIsMuted] = useState(false);
 
-  const showLoading = founderVideoQuery.isLoading;
+  const showLoading = aboutVideoQuery.isLoading;
   const showUnavailable =
-    shouldUseToken &&
-    (founderVideoQuery.error || (!showLoading && !founderVideoQuery.data));
+    !showLoading && !resolvedVideoUrl && !aboutVideoQuery.error;
 
   useEffect(() => {
     const el = videoRef.current;
@@ -56,13 +29,10 @@ export default function About() {
 
     const onVolumeChange = () => setIsMuted(el.muted);
     setVideoError(null);
-    if (aboutVideoAutoplay) {
-      el.muted = true;
-    }
     setIsMuted(el.muted);
     el.addEventListener("volumechange", onVolumeChange);
     return () => el.removeEventListener("volumechange", onVolumeChange);
-  }, [aboutVideoAutoplay, resolvedVideoUrl]);
+  }, [resolvedVideoUrl]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -130,21 +100,13 @@ export default function About() {
                     preload="metadata"
                     playsInline
                     src={resolvedVideoUrl}
-                    {...(aboutVideoAutoplay
-                      ? { autoPlay: true, muted: true }
-                      : {})}
                     onLoadedData={() => setVideoError(null)}
                     onError={(event) => {
                       if (import.meta.env.DEV) {
                         console.warn("About video failed to load:", event);
                       }
-                      if (!useTokenFallback && aboutVideoToken.length >= 8) {
-                        setUseTokenFallback(true);
-                        setVideoError(null);
-                        return;
-                      }
                       setVideoError(
-                        "Video failed to load. The URL may be missing, access-restricted, or blocked by CORS."
+                        "Video failed to load. The URL may be expired or access-restricted."
                       );
                     }}
                   />
@@ -182,8 +144,8 @@ export default function About() {
                       <p className="font-medium">Video unavailable</p>
                       <p className="opacity-90">
                         {videoError ??
-                          founderVideoQuery.error?.message ??
-                          "This video could not be loaded. Check VITE_ABOUT_VIDEO_URL or VITE_ABOUT_VIDEO_TOKEN."}
+                          aboutVideoQuery.error?.message ??
+                          "This video could not be loaded. Ensure ABOUT_VIDEO_BLOB_KEY is configured on the server."}
                       </p>
                     </div>
                   </div>

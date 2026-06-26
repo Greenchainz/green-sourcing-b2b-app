@@ -258,6 +258,22 @@ export const founderVideoRouter = router({
       return { ok: true };
     }),
 
+  // ── Public: About page video — returns a SAS URL for the static about video ──
+  aboutVideo: publicProcedure.query(async () => {
+    const blobKey = process.env.ABOUT_VIDEO_BLOB_KEY;
+    if (!blobKey) {
+      return { videoUrl: null };
+    }
+
+    try {
+      const videoUrl = await generateReadSasUrl(blobKey);
+      return { videoUrl };
+    } catch (err) {
+      console.error("[founderVideo.aboutVideo] SAS generation failed:", err);
+      return { videoUrl: null };
+    }
+  }),
+
   // ── Public: watch page metadata + short-lived read SAS URL ────────────────
   publicGet: publicProcedure
     .input(z.object({ token: z.string().min(8).max(32) }))
