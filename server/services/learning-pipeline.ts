@@ -69,7 +69,8 @@ export function captureEvent(event: LearningEvent): void {
 }
 
 async function _persistEvent(event: LearningEvent): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
+  if (!db) return;
   await db.execute(sql`
     INSERT INTO learning_events (type, user_id, org_id, material_id, supplier_id, query, metadata)
     VALUES (
@@ -97,7 +98,8 @@ async function _persistEvent(event: LearningEvent): Promise<void> {
  *   4. Updates material popularity rankings
  */
 export async function runNightlyEnrichment(): Promise<NightlyReport> {
-  const db = getDb();
+  const db = await getDb();
+  if (!db) throw new Error("[learning] Database not available");
   const report: NightlyReport = {
     materialsEmbedded: 0,
     gapsIdentified: [],
@@ -189,7 +191,8 @@ export async function runNightlyEnrichment(): Promise<NightlyReport> {
  * Cost: ~$0.05-0.10 per run (one GPT-4o call with structured output)
  */
 export async function runWeeklySynthesis(): Promise<WeeklySynthesisReport> {
-  const db = getDb();
+  const db = await getDb();
+  if (!db) throw new Error("[learning] Database not available");
 
   // Gather the week's intelligence signals
   const [topSearches, topGaps, topSwaps, topRfqMaterials, agentFallbacks] =
@@ -255,14 +258,17 @@ export async function runWeeklySynthesis(): Promise<WeeklySynthesisReport> {
       },
     ],
     response_format: { type: "json_object" },
-    temperature: 0.3,
     max_tokens: 2000,
   });
+
+  const rawContent = synthesis.choices[0]?.message.content;
+  if (!rawContent) throw new Error("[learning] LLM response missing content");
+  const contentString = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
 
   const report: WeeklySynthesisReport = {
     timestamp: new Date().toISOString(),
     rawData: synthesisInput,
-    synthesis: JSON.parse(synthesis.content as string),
+    synthesis: JSON.parse(contentString),
   };
 
   // Store the synthesis for admin dashboard
@@ -285,7 +291,8 @@ export async function runWeeklySynthesis(): Promise<WeeklySynthesisReport> {
  * we don't have, we go find it and add it automatically.
  */
 export async function runAutoDiscovery(): Promise<AutoDiscoveryReport> {
-  const db = getDb();
+  const db = await getDb();
+  if (!db) throw new Error("[learning] Database not available");
   const report: AutoDiscoveryReport = { discovered: 0, imported: 0, errors: [] };
 
   // Get top gaps that occurred 3+ times (real demand, not typos)
@@ -303,11 +310,11 @@ export async function runAutoDiscovery(): Promise<AutoDiscoveryReport> {
   if (gaps.rows.length === 0) return report;
 
   // Dynamically import EC3 service
-  const { searchEC3Materials } = await import("../ec3");
+  const { searchEC3EPDs } = await import("../ec3");
 
   for (const gap of gaps.rows as any[]) {
     try {
-      const ec3Results = await searchEC3Materials(gap.query, { limit: 3 });
+      const ec3Results = await searchEC3EPDs(gap.query, 3);
       report.discovered += ec3Results.length;
 
       for (const epd of ec3Results) {
