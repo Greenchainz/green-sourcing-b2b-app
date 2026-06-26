@@ -9,7 +9,16 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000, // 1 min — avoid refetching data that just arrived
+      gcTime: 5 * 60_000, // 5 min — keep inactive cache entries longer
+      refetchOnWindowFocus: false, // prevent cascade of refetches on tab switch
+      retry: 1, // single retry is enough; 3 (default) adds latency on real errors
+    },
+  },
+});
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (typeof window === "undefined") return;
