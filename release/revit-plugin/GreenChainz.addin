@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>GreenChainz</Name>
+    <Assembly>GreenChainz.dll</Assembly>
+    <AddInId>8D83C886-B739-4ACD-A9DB-123456789ABC</AddInId>
+    <FullClassName>GreenChainz.App</FullClassName>
+    <VendorId>GCNZ</VendorId>
+    <VendorDescription>GreenChainz Sustainable Materials Platform</VendorDescription>
+  </AddIn>
+</RevitAddIns>
