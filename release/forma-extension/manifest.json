@@ -1,0 +1,11 @@
+{
+  "name": "GreenChainz Forma Extension",
+  "version": "1.0.0",
+  "description": "Sustainable material insights inside Autodesk Forma – EPD data, embodied carbon, and supplier discovery.",
+  "main": "main.js",
+  "author": "GreenChainz",
+  "permissions": [
+    "network",
+    "storage"
+  ]
+}
