@@ -6,9 +6,9 @@ import {
   manufacturers,
   materialCertifications,
   materialSpecs,
-  ccpsBaselines,
   decisionMakerPersonas,
 } from '../../drizzle/schema';
+import { getCachedBaselines } from '../services/baselines-cache';
 import { eq, like, ilike, and, lte, sql, or, not, getTableColumns } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
@@ -72,26 +72,28 @@ export const materialsRouter = router({
       // needed for semantic search and cause query failures on some DB configs.
       const { embedding, searchText, ...listColumns } = getTableColumns(materials);
 
-      const rows = await db
-        .select({
-          material: listColumns,
-          manufacturerName: manufacturers.name,
-          manufacturerWebsite: manufacturers.website,
-          manufacturerLogoUrl: manufacturers.logoUrl,
-        })
-        .from(materials)
-        .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
-        .where(whereClause)
-        .limit(input.limit)
-        .offset(input.offset);
-
-      const countResult = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(materials)
-        .where(whereClause);
+      // Run data fetch, count, and baselines in parallel — eliminates sequential waterfall
+      const [rows, countResult, baselineRows] = await Promise.all([
+        db
+          .select({
+            material: listColumns,
+            manufacturerName: manufacturers.name,
+            manufacturerWebsite: manufacturers.website,
+            manufacturerLogoUrl: manufacturers.logoUrl,
+          })
+          .from(materials)
+          .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+          .where(whereClause)
+          .limit(input.limit)
+          .offset(input.offset),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(materials)
+          .where(whereClause),
+        getCachedBaselines(),
+      ]);
       const total = Number(countResult[0]?.count) || 0;
 
-      const baselineRows = await db.select().from(ccpsBaselines);
       const baselineMap: Record<string, any> = {};
       for (const b of baselineRows) baselineMap[b.category] = b;
 
@@ -178,17 +180,15 @@ export const materialsRouter = router({
 
     if (rows.length === 0) return null;
 
-    const certs = await db
-      .select()
-      .from(materialCertifications)
-      .where(eq(materialCertifications.materialId, input.id));
+    const [certs, allBaselines] = await Promise.all([
+      db
+        .select()
+        .from(materialCertifications)
+        .where(eq(materialCertifications.materialId, input.id)),
+      getCachedBaselines(),
+    ]);
 
-    const baselineRows = await db
-      .select()
-      .from(ccpsBaselines)
-      .where(eq(ccpsBaselines.category, rows[0].material.category))
-      .limit(1);
-    const baseline = baselineRows[0] || {};
+    const baseline = allBaselines.find(b => b.category === rows[0].material.category) || {} as any;
 
     const personaRows = await db.select().from(decisionMakerPersonas);
     const ccpsByPersona: Record<string, any> = {};
