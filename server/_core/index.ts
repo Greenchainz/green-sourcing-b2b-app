@@ -31,6 +31,7 @@ import { startSchedulers } from "../scheduler";
 import { startLearningScheduler } from "../services/learning-scheduler";
 import { devFounderVideoRouter } from "../dev-founder-video-route";
 import { isLocalMode } from "../../lib/founder-video-storage";
+import { sdaConnectorRouter } from "../sda-connector-routes";
 import { registerEmailAuthRoutes } from "./email-auth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { sdk } from "./sdk";
@@ -475,6 +476,8 @@ async function startServer() {
   app.use("/api", specSheetRouter);
   // Public REST API for Forma Extension (unauthenticated)
   app.use("/api/public", publicApiRateLimit, publicMaterialsRouter);
+  // SDA Connector API (Bearer token auth via api_keys table)
+  app.use("/api", sdaConnectorRouter);
 
   registerEmailAuthRoutes(app);
   registerOAuthProviderRoutes(app);
