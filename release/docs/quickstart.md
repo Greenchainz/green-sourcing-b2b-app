@@ -7,6 +7,7 @@
 Open the GreenChainz panel in Revit or Forma and authenticate with your account credentials.
 
 **Demo Access:**
+- URL: https://greenchainz.com
 - URL: https://app.greenchainz.com
 - Email: demo@greenchainz.com
 - Password: GreenchainzDemo123!
