@@ -30,6 +30,23 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorizedTrpcError && !isUnauthorizedGenericError) return;
 
+  // Prevent infinite redirect loops: if we already redirected within 3 seconds,
+  // the session is genuinely invalid — clear cache and let login page show.
+  const LOOP_GUARD_KEY = "gc_login_redirect_ts";
+  try {
+    const lastRedirect = Number(sessionStorage.getItem(LOOP_GUARD_KEY) || "0");
+    if (Date.now() - lastRedirect < 3000) {
+      console.warn("[Auth] Redirect loop detected — clearing cache, showing login");
+      sessionStorage.removeItem("gc_auth_user");
+      sessionStorage.removeItem(LOOP_GUARD_KEY);
+      // Don't redirect again — Login.tsx will show the login form
+      return;
+    }
+    sessionStorage.setItem(LOOP_GUARD_KEY, String(Date.now()));
+  } catch {
+    // sessionStorage unavailable — proceed with redirect
+  }
+
   window.location.href = getLoginUrl();
 };
 

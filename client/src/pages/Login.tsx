@@ -37,6 +37,25 @@ export default function Login() {
 
     useEffect(() => {
         if (!isLoading && user) {
+            // Prevent redirect loops: if we just arrived from the dashboard within the
+            // last 3 seconds, don't immediately redirect back — the user is likely in a
+            // loop where tRPC queries fail and bounce them back here.
+            const LOOP_GUARD_KEY = "gc_login_redirect_ts";
+            const now = Date.now();
+            try {
+                const lastRedirect = Number(sessionStorage.getItem(LOOP_GUARD_KEY) || "0");
+                if (now - lastRedirect < 3000) {
+                    // We're in a loop — clear cache and show login page instead of looping.
+                    console.warn("[Login] Redirect loop detected — staying on login page");
+                    sessionStorage.removeItem("gc_auth_user");
+                    sessionStorage.removeItem(LOOP_GUARD_KEY);
+                    return;
+                }
+                sessionStorage.setItem(LOOP_GUARD_KEY, String(now));
+            } catch {
+                // sessionStorage unavailable — proceed normally
+            }
+
             const desiredRole = pendingRole ?? (roleParam === "supplier" ? "supplier" : roleParam === "buyer" ? "architect" : null);
 
             if (!desiredRole || user.role === desiredRole) {
