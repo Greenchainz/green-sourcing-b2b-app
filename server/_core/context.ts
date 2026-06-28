@@ -40,8 +40,14 @@ export async function createContext(
         rawRoles: [user.role],
       },
     };
-  } catch {
-    // Unauthenticated requests are expected on public routes.
+  } catch (err) {
+    // Log unexpected errors (not just "missing cookie") to help debug auth issues.
+    // Only log at warn level when a cookie WAS present but auth still failed —
+    // that indicates a real problem (expired JWT, DB failure, etc.).
+    const hasCookie = opts.req.headers.cookie?.includes("app_session_id");
+    if (hasCookie) {
+      console.warn("[tRPC Context] Auth failed despite cookie present:", String(err));
+    }
   }
 
   return {

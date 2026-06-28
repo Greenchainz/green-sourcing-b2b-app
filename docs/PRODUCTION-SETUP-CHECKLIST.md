@@ -35,10 +35,7 @@ Ensure the following are set in your `Container App` configuration:
 
 Optional (About page video):
 
-- `VITE_ABOUT_VIDEO_URL`: Public MP4 URL to embed on `/about` (best compatibility).
-- `VITE_ABOUT_VIDEO_TOKEN`: Share token for a Founder Video (`/v/:token`). Used to fetch a short-lived streaming URL when `VITE_ABOUT_VIDEO_URL` isn’t set.
-
-> Note: `VITE_*` variables are read at **Vite build time**.
+- `ABOUT_VIDEO_BLOB_KEY`: Blob key in the `founder-videos` Azure Storage container (e.g. `about/about-video-faststart.mp4`). Server-side only — the tRPC `founderVideo.aboutVideo` endpoint generates a short-lived SAS URL at runtime.
 
 ---
 
