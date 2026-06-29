@@ -16,8 +16,8 @@ REDIS_NAME="greenchainz"
 REDIS_RG="greenchainz-production"
 LOG_ANALYTICS="workspace-rggreenchainzprodcontainer5PZ8"
 APP_INSIGHTS="greenchainz-platform"
-STORAGE_ACCOUNT="revitfiles"
-STORAGE_RG="rg-greenchainz"
+STORAGE_ACCOUNT="greencontent"
+STORAGE_RG="DefaultResourceGroup-EUS"
 
 # Colors
 RED='\033[0;31m'

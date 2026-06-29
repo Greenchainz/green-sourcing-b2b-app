@@ -22,6 +22,11 @@ build-output.txt
 token.txt
 *.token
 
+# Large media files — stored in Azure Blob Storage, not git
+*.mp4
+*.mov
+*.avi
+
 # IDE and editor files
 .vscode/
 .idea/
