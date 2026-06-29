@@ -11,7 +11,6 @@ interface CallModalProps {
   callId: string;
   otherPartyName: string;
   isOutgoing: boolean;
-  currentUserName?: string;
 }
 
 type CallStatus = "connecting" | "ringing" | "active" | "ended";
