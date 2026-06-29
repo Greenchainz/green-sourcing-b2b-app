@@ -375,7 +375,7 @@ async function startServer() {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[readiness] DB check failed:", message);
-      res.status(503).json({ status: "not_ready", reason: "database_unavailable", detail: message });
+      res.status(503).json({ status: "not_ready", reason: "database_unavailable" });
     }
   });
 
