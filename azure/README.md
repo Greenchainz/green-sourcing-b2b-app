@@ -37,7 +37,7 @@ Configure these in **greenchainz-vault** Key Vault:
 | greenchainz-frontend | Container App (Frontend) | East US | rg-greenchainz-prod-container |
 | greenchainz | Redis Cache | East US 2 | greenchainz-production |
 | greenchainz-vault | Key Vault | East US | greenchainz-production |
-| revitfiles | Storage Account | East US | rg-greenchainz |
+| greencontent | Storage Account | East US | DefaultResourceGroup-EUS |
 
 ## Quick Start
 

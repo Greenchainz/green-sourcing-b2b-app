@@ -224,7 +224,7 @@ properties:
           - name: AZURE_KEY_VAULT_URL
             value: https://greenchainz-vault.vault.azure.net/
           - name: AZURE_STORAGE_ACCOUNT_NAME
-            value: revitfiles
+            value: greencontent
           - name: AZURE_STORAGE_CONTAINER_NAME
             value: greenchainz-uploads
         

@@ -22,7 +22,9 @@ export default function Login() {
     const { user, isLoading } = useAuth();
 
     const params = new URLSearchParams(window.location.search);
-    const returnPath = params.get("returnPath") || "/dashboard";
+    const rawReturnPath = params.get("returnPath") || "/dashboard";
+    // Validate returnPath is a safe relative path (prevent open redirect)
+    const returnPath = /^\/(?!\/)/.test(rawReturnPath) ? rawReturnPath : "/dashboard";
     const roleParam = params.get("role");
     const oauthError = getOAuthErrorMessage(params.get("error"));
 
