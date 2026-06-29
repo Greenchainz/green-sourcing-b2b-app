@@ -194,6 +194,7 @@ const BuyerRequestsPage = lazy(() => import("./pages/BuyerRequestsPage"));
 const SupplierRespondPage = lazy(() => import("./pages/SupplierRespondPage"));
 const SubmittalLogPage = lazy(() => import("./pages/SubmittalLogPage"));
 const CADocumentsPage = lazy(() => import("./pages/CADocumentsPage"));
+const ClaimProfile = lazy(() => import("./pages/ClaimProfile"));
 const IntercomWidget = lazy(() => import("./components/IntercomWidget"));
 const ChatWidget = lazy(() => import("./components/ChatWidget").then((m) => ({ default: m.ChatWidget })));
 
@@ -250,6 +251,7 @@ function Router() {
       <Route path="/architect/specs/:specId" component={ArchitectSpecDetail} />
       <Route path="/search" component={MaterialSearchPage} />
       <Route path="/supplier/register" component={SupplierRegistration} />
+      <Route path="/suppliers/claim" component={ClaimProfile} />
       <Route path="/supplier/dashboard">{() => <SupplierLayout><SupplierProfileDashboard /></SupplierLayout>}</Route>
       <Route path="/supplier/rfqs">{() => <SupplierLayout><SupplierRfqDashboard /></SupplierLayout>}</Route>
       <Route path="/supplier/submit-spec">{() => <SupplierLayout><SupplierSpecSubmission /></SupplierLayout>}</Route>
