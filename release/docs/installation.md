@@ -28,7 +28,7 @@
 
 - **Panel not visible:** Check that `.addin` file is in the correct Addins folder for your Revit version
 - **Login fails:** Ensure your firewall allows HTTPS to `greenchainz.com`
-- **Login fails:** Ensure your firewall allows HTTPS to `app.greenchainz.com`
+- **Login fails:** Ensure your firewall allows HTTPS to `greenchainz.com`
 - **Data not loading:** Verify internet connection and API status
 
 ---
