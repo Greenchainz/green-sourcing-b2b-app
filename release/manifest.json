@@ -12,15 +12,14 @@
   "vendor": {
     "name": "GreenChainz",
     "id": "GCNZ",
-    "url": "https://www.greenchainz.com",
+    "url": "https://greenchainz.com",
     "contact": "support@greenchainz.com"
   },
   "author": "Jerit Norville",
   "license": "Proprietary",
   "pricing": "Free",
   "demoUrl": "https://greenchainz.com",
-  "demoUrl": "https://app.greenchainz.com",
   "documentationUrl": "https://docs.greenchainz.com",
-  "privacyPolicyUrl": "https://www.greenchainz.com/privacy",
-  "termsOfServiceUrl": "https://www.greenchainz.com/terms"
+  "privacyPolicyUrl": "https://greenchainz.com/privacy",
+  "termsOfServiceUrl": "https://greenchainz.com/terms"
 }
