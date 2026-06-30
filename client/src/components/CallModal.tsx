@@ -1,13 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { Phone, PhoneOff, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Phone, PhoneOff, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-
-// @azure/communication-react and its peer deps are lazy-imported so they
-// only load when a video call is actually initiated (~2 MB savings on initial bundle).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type CallCompositeType = React.ComponentType<{ adapter: any; options?: Record<string, unknown> }>;
 
 interface CallModalProps {
   isOpen: boolean;
@@ -16,7 +11,6 @@ interface CallModalProps {
   callId: string;
   otherPartyName: string;
   isOutgoing: boolean;
-  currentUserName?: string;
 }
 
 type CallStatus = "connecting" | "ringing" | "active" | "ended";
@@ -28,26 +22,13 @@ export function CallModal({
   callId,
   otherPartyName,
   isOutgoing,
-  currentUserName = "You",
 }: CallModalProps) {
   const [callStatus, setCallStatus] = useState<CallStatus>(isOutgoing ? "ringing" : "connecting");
   const [callDuration, setCallDuration] = useState(0);
 
-  // ACS adapter state
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [acsAdapter, setAcsAdapter] = useState<any>(null);
-  const [acsLoading, setAcsLoading] = useState(false);
-  const [acsError, setAcsError] = useState<string | null>(null);
-  const [CallComposite, setCallComposite] = useState<CallCompositeType | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adapterRef = useRef<any>(null);
-
-  const utils = trpc.useUtils();
-
   const endCallMutation = trpc.messaging.endCall.useMutation({
     onSuccess: () => {
       setCallStatus("ended");
-      adapterRef.current?.dispose?.();
       setTimeout(onClose, 2000);
     },
   });
@@ -75,53 +56,6 @@ export function CallModal({
     }
   }, [isOutgoing, callStatus]);
 
-  // When call becomes active + it's video, fetch ACS token and boot the compositor
-  useEffect(() => {
-    if (callStatus !== "active" || callType !== "video" || acsAdapter) return;
-
-    setAcsLoading(true);
-    setAcsError(null);
-
-    void (async () => {
-      try {
-        const tokenData = await utils.messaging.getCallToken.fetch({ callId });
-
-        const [
-          { createAzureCommunicationCallAdapter, CallComposite: Composite },
-          { AzureCommunicationTokenCredential },
-        ] = await Promise.all([
-          import("@azure/communication-react"),
-          import("@azure/communication-common"),
-        ]);
-
-        // Store component in state (wrapped in arrow so React doesn't call it as init fn)
-        setCallComposite(() => Composite as CallCompositeType);
-
-        const adapter = await createAzureCommunicationCallAdapter({
-          userId: { communicationUserId: tokenData.acsUserId },
-          displayName: currentUserName,
-          credential: new AzureCommunicationTokenCredential(tokenData.token),
-          locator: { groupId: tokenData.groupCallId },
-        });
-
-        adapterRef.current = adapter;
-        setAcsAdapter(adapter);
-      } catch (err) {
-        setAcsError(err instanceof Error ? err.message : "Failed to start video call");
-      } finally {
-        setAcsLoading(false);
-      }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callStatus, callType, callId]);
-
-  // Dispose adapter on unmount
-  useEffect(() => {
-    return () => {
-      adapterRef.current?.dispose?.();
-    };
-  }, []);
-
   const formatDuration = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
@@ -145,33 +79,13 @@ export function CallModal({
             {callStatus === "ended" && "Call ended"}
           </p>
 
-          {/* ── Video: real ACS CallComposite ─────────────────────── */}
+          {/* ── Video: unavailable (ACS packages removed) ──────────── */}
           {callType === "video" && callStatus === "active" && (
-            <div className="w-full rounded-lg overflow-hidden" style={{ height: 480 }}>
-              {acsLoading && (
-                <div className="flex h-full items-center justify-center bg-gray-900">
-                  <Loader2 className="h-8 w-8 animate-spin text-white" />
-                  <span className="ml-3 text-white text-sm">Starting video…</span>
-                </div>
-              )}
-
-              {acsError && (
-                <div className="flex h-full items-center justify-center bg-gray-900">
-                  <p className="text-red-400 text-sm px-6 text-center">{acsError}</p>
-                </div>
-              )}
-
-              {!acsLoading && !acsError && acsAdapter && CallComposite && (
-                <CallComposite
-                  adapter={acsAdapter}
-                  options={{
-                    callControls: {
-                      // We render our own End Call button below for consistency
-                      endCallButton: false,
-                    },
-                  }}
-                />
-              )}
+            <div className="w-full rounded-lg overflow-hidden flex items-center justify-center bg-gray-900" style={{ height: 480 }}>
+              <div className="flex flex-col items-center gap-3 text-white">
+                <VideoOff className="h-12 w-12 text-gray-400" />
+                <p className="text-sm text-gray-400">Video calling is not available</p>
+              </div>
             </div>
           )}
 
