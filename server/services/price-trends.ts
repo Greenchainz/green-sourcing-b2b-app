@@ -291,7 +291,7 @@ export async function getCategoryTrends(
 export async function getPriceVolatility(materialId: number): Promise<VolatilityData> {
   const emptyResult: VolatilityData = { materialId, volatility: 'low', cv: 0, stdDev: 0 };
 
-  let row: VolatilityRow | undefined;
+  let row: VolatilityRow | null;
   try {
     row = await queryOne<VolatilityRow>(
       `SELECT
