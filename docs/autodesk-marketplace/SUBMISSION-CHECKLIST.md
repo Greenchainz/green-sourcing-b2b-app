@@ -18,7 +18,6 @@
 - [ ] Forma extension built and deployable (Forma extension repo)
 - [ ] Revit plugin packaged as `.bundle` or installer (Revit plugin repo)
 - [ ] Demo environment live at `https://greenchainz.com`
-- [ ] Demo environment live at `https://greenchainz.com`
 - [ ] Demo credentials working (`demo@greenchainz.com` / `GreenchainzDemo123!`)
 - [ ] All SDA API endpoints returning valid responses
 - [ ] End-to-end flow tested: Revit/Forma → main app API → material data
@@ -76,7 +75,6 @@
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Demo URL readiness | ❓ | Confirm `greenchainz.com` is live |
 | Demo URL readiness | ❓ | Confirm `greenchainz.com` is live |
 | SDA endpoints in main app | ❓ | Confirm SDA routes are deployed in `green-sourcing-b2b-app` |
 | Revit plugin build | ❓ | Is the `.bundle` packaged and signed? |
