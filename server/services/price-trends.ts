@@ -175,7 +175,7 @@ async function getPriceTrendFromDb(
 
   const movingAvg7d: PriceTrendDataPoint[] = ma7rows.map(r => ({
     date: r.recordDate,
-    avgPrice: parseFloat(parseFloat(r.moving_avg).toFixed(2)),
+    avgPrice: Math.round(parseFloat(r.moving_avg) * 100) / 100,
   }));
 
   // 30-day moving average
@@ -191,7 +191,7 @@ async function getPriceTrendFromDb(
 
   const movingAvg30d: PriceTrendDataPoint[] = ma30rows.map(r => ({
     date: r.recordDate,
-    avgPrice: parseFloat(parseFloat(r.moving_avg).toFixed(2)),
+    avgPrice: Math.round(parseFloat(r.moving_avg) * 100) / 100,
   }));
 
   return {
@@ -392,15 +392,31 @@ export async function getAllPriceTrendsFromDb(): Promise<Record<string, LegacyPr
   let rows: Row[];
   try {
     rows = await queryMany<Row>(
-      `SELECT m.category,
-              MIN(ph."avgPrice")::TEXT AS first_price,
-              MAX(ph."avgPrice")::TEXT AS last_price,
-              MAX(ph."recordDate")::TEXT AS last_date
+      `WITH ranked AS (
+         SELECT
+           m.category,
+           ph."avgPrice",
+           ph."recordDate",
+           ROW_NUMBER() OVER (
+             PARTITION BY m.category
+             ORDER BY ph."recordDate" ASC, ph.id ASC
+           ) AS rn_first,
+           ROW_NUMBER() OVER (
+             PARTITION BY m.category
+             ORDER BY ph."recordDate" DESC, ph.id DESC
+           ) AS rn_last
          FROM price_history ph
          JOIN materials m ON m.id = ph."materialId"
-        WHERE ph."recordDate" >= CURRENT_DATE - INTERVAL '1 year'
-          AND m.category IS NOT NULL
-        GROUP BY m.category
+         WHERE ph."recordDate" >= CURRENT_DATE - INTERVAL '1 year'
+           AND m.category IS NOT NULL
+       )
+       SELECT
+         category,
+         MAX(CASE WHEN rn_first = 1 THEN "avgPrice" END)::TEXT AS first_price,
+         MAX(CASE WHEN rn_last = 1 THEN "avgPrice" END)::TEXT AS last_price,
+         MAX("recordDate")::TEXT AS last_date
+       FROM ranked
+       GROUP BY category
        HAVING COUNT(*) >= 2`,
       []
     );
@@ -440,14 +456,34 @@ export async function getPriceTrendByCategory(category: string): Promise<LegacyP
   let rows: Row[];
   try {
     rows = await queryMany<Row>(
-      `SELECT MIN(ph."avgPrice")::TEXT AS first_price,
-              MAX(ph."avgPrice")::TEXT AS last_price,
-              MAX(ph."recordDate")::TEXT AS last_date
-         FROM price_history ph
-         JOIN materials m ON m.id = ph."materialId"
-        WHERE ph."recordDate" >= CURRENT_DATE - INTERVAL '1 year'
-          AND LOWER(m.category) = LOWER($1)
-       HAVING COUNT(*) >= 2`,
+      `WITH filtered AS (
+         SELECT ph.id, ph."avgPrice", ph."recordDate"
+           FROM price_history ph
+           JOIN materials m ON m.id = ph."materialId"
+          WHERE ph."recordDate" >= CURRENT_DATE - INTERVAL '1 year'
+            AND LOWER(m.category) = LOWER($1)
+       )
+       SELECT
+         (
+           SELECT f."avgPrice"::TEXT
+             FROM filtered f
+            ORDER BY f."recordDate" ASC, f.id ASC
+            LIMIT 1
+         ) AS first_price,
+         (
+           SELECT f."avgPrice"::TEXT
+             FROM filtered f
+            ORDER BY f."recordDate" DESC, f.id DESC
+            LIMIT 1
+         ) AS last_price,
+         (
+           SELECT f."recordDate"::TEXT
+             FROM filtered f
+            ORDER BY f."recordDate" DESC, f.id DESC
+            LIMIT 1
+         ) AS last_date
+       -- Only return a row when the CTE contains at least 2 records
+       WHERE EXISTS (SELECT 1 FROM filtered OFFSET 1)`,
       [category]
     );
   } catch {
