@@ -39,7 +39,7 @@ This transforms sustainability from a reporting exercise into a real-time decisi
 
 | Product | Integration Type | Versions |
 |---------|-----------------|----------|
-| Autodesk Revit | Plugin (via SDA) | 2024, 2025 |
+| Autodesk Revit | Plugin | 2024, 2025 |
 | Autodesk Forma | Extension | Current |
 
 ---
