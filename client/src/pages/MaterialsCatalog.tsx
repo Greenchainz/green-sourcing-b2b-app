@@ -14,6 +14,7 @@
 import { useState, useCallback, useMemo, useEffect, type ElementType } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { useDebounce } from "@/hooks/use-debounce";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
@@ -496,6 +497,7 @@ export default function MaterialsCatalog() {
   }, []);
 
   const resetFilters = useCallback(() => setFilters(DEFAULT_FILTERS), []);
+  const debouncedSearch = useDebounce(filters.search, 300);
 
   // Sync filters → URL (replace so back button works naturally)
   useEffect(() => {
@@ -517,7 +519,7 @@ export default function MaterialsCatalog() {
 
   const { data, isLoading } = trpc.materials.list.useQuery(
     {
-      search: filters.search || undefined,
+      search: debouncedSearch || undefined,
       category: filters.category || undefined,
       categorySearch: filters.categorySearch || undefined,
       persona: "default",
@@ -537,14 +539,14 @@ export default function MaterialsCatalog() {
   );
 
   // Semantic search: fires when search text has 3+ words
-  const searchWords = (filters.search || "").trim().split(/\s+/).filter(Boolean);
+  const searchWords = debouncedSearch.trim().split(/\s+/).filter(Boolean);
   const useSemanticMode = searchWords.length >= 3;
 
   const { data: semanticData, isLoading: semanticLoading } =
     trpc.materials.semanticSearch.useQuery(
-      { query: filters.search || "", limit: 48 },
+      { query: debouncedSearch, limit: 48 },
       {
-        enabled: useSemanticMode && !!filters.search,
+        enabled: useSemanticMode && !!debouncedSearch,
         placeholderData: (prev) => prev,
         staleTime: 30_000,
       }
