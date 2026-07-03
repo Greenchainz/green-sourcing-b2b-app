@@ -9,7 +9,7 @@ import {
   decisionMakerPersonas,
 } from '../../drizzle/schema';
 import { getCachedBaselines } from '../services/baselines-cache';
-import { eq, like, ilike, and, lte, sql, or, not, getTableColumns } from 'drizzle-orm';
+import { eq, like, ilike, and, lte, sql, or, not, getTableColumns, asc, desc, inArray } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
@@ -25,7 +25,7 @@ export const materialsRouter = router({
         persona: z.string().default('default'),
         sortBy: z.enum(['ccps', 'carbon', 'price', 'name', 'leadTime']).default('ccps'),
         sortOrder: z.enum(['asc', 'desc']).default('desc'),
-        limit: z.number().min(1).max(5000).default(20),
+        limit: z.number().min(1).max(200).default(20),
         offset: z.number().min(0).default(0),
         hasEpd: z.boolean().optional(),
         usManufactured: z.boolean().optional(),
@@ -59,6 +59,9 @@ export const materialsRouter = router({
       if (input.usManufactured !== undefined) conditions.push(eq(materials.usManufactured, input.usManufactured));
       if (input.maxGwp !== undefined) conditions.push(lte(materials.gwpValue, String(input.maxGwp)));
       if (input.categorySearch) conditions.push(ilike(materials.category, `%${input.categorySearch}%`));
+      if (input.minScore !== undefined) {
+        conditions.push(sql`COALESCE(${materials.ccpsScore}, 0) >= ${input.minScore}`);
+      }
       if (input.certifications?.includes('EPD')) conditions.push(eq(materials.hasEpd, true));
       if (input.certifications?.includes('HPD')) conditions.push(eq(materials.hasHpd, true));
       if (input.certifications?.includes('FSC')) conditions.push(eq(materials.hasFsc, true));
@@ -73,6 +76,22 @@ export const materialsRouter = router({
       const { embedding, searchText, ...listColumns } = getTableColumns(materials);
 
       // Run data fetch, count, and baselines in parallel — eliminates sequential waterfall
+      const orderByExpr = (() => {
+        switch (input.sortBy) {
+          case 'carbon':
+            return input.sortOrder === 'asc' ? asc(materials.gwpValue) : desc(materials.gwpValue);
+          case 'price':
+            return input.sortOrder === 'asc' ? asc(materials.pricePerUnit) : desc(materials.pricePerUnit);
+          case 'name':
+            return input.sortOrder === 'asc' ? asc(materials.name) : desc(materials.name);
+          case 'leadTime':
+            return input.sortOrder === 'asc' ? asc(materials.leadTimeDays) : desc(materials.leadTimeDays);
+          case 'ccps':
+          default:
+            return input.sortOrder === 'asc' ? asc(materials.ccpsScore) : desc(materials.ccpsScore);
+        }
+      })();
+
       const [rows, countResult, baselineRows] = await Promise.all([
         db
           .select({
@@ -84,6 +103,7 @@ export const materialsRouter = router({
           .from(materials)
           .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
           .where(whereClause)
+          .orderBy(orderByExpr)
           .limit(input.limit)
           .offset(input.offset),
         db
@@ -94,8 +114,10 @@ export const materialsRouter = router({
       ]);
       const total = Number(countResult[0]?.count) || 0;
 
-      const baselineMap: Record<string, any> = {};
-      for (const b of baselineRows) baselineMap[b.category] = b;
+      const baselineMap = new Map<string, Record<string, unknown>>();
+      for (const baselineRow of baselineRows) {
+        baselineMap.set(baselineRow.category, baselineRow as Record<string, unknown>);
+      }
 
       let weights: PersonaWeights | undefined;
       if (input.persona && input.persona !== 'default') {
@@ -108,7 +130,7 @@ export const materialsRouter = router({
       }
 
       const items = rows.map((row) => {
-        const baseline = baselineMap[row.material.category] || {};
+        const baseline = baselineMap.get(row.material.category) ?? {};
         const ccps = calculateCcps(row.material, baseline, weights);
         return {
           ...row.material,
@@ -119,43 +141,7 @@ export const materialsRouter = router({
         };
       });
 
-      const scoredItems = input.minScore !== undefined
-        ? items.filter((item) => item.ccps.ccpsTotal >= (input.minScore ?? 0))
-        : items;
-
-      if (input.sortBy === 'ccps') {
-        scoredItems.sort((a, b) =>
-          input.sortOrder === 'desc'
-            ? b.ccps.ccpsTotal - a.ccps.ccpsTotal
-            : a.ccps.ccpsTotal - b.ccps.ccpsTotal
-        );
-      } else if (input.sortBy === 'carbon') {
-        scoredItems.sort((a, b) => {
-          const aVal = Number(a.gwpValue) || 0;
-          const bVal = Number(b.gwpValue) || 0;
-          return input.sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-        });
-      } else if (input.sortBy === 'price') {
-        scoredItems.sort((a, b) => {
-          const aVal = Number(a.pricePerUnit) || 0;
-          const bVal = Number(b.pricePerUnit) || 0;
-          return input.sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-        });
-      } else if (input.sortBy === 'name') {
-        scoredItems.sort((a, b) =>
-          input.sortOrder === 'asc'
-            ? a.name.localeCompare(b.name)
-            : b.name.localeCompare(a.name)
-        );
-      } else if (input.sortBy === 'leadTime') {
-        scoredItems.sort((a, b) => {
-          const aVal = a.leadTimeDays || 0;
-          const bVal = b.leadTimeDays || 0;
-          return input.sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-        });
-      }
-
-      return { items: scoredItems, total };
+      return { items, total };
     }),
 
   getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
@@ -239,6 +225,60 @@ export const materialsRouter = router({
       alternatives,
     };
   }),
+
+  getByIds: publicProcedure
+    .input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(4) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const ids = Array.from(new Set(input.ids));
+      if (ids.length === 0) return [];
+
+      const { embedding: _emb, searchText: _st, ...detailColumns } = getTableColumns(materials);
+      const [rows, allBaselines] = await Promise.all([
+        db
+          .select({
+            material: detailColumns,
+            manufacturerName: manufacturers.name,
+            manufacturerWebsite: manufacturers.website,
+            manufacturerLogoUrl: manufacturers.logoUrl,
+            manufacturerPhone: manufacturers.phone,
+            manufacturerEmail: manufacturers.email,
+          })
+          .from(materials)
+          .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+          .where(inArray(materials.id, ids)),
+        getCachedBaselines(),
+      ]);
+
+      const baselineMap = new Map<string, Record<string, unknown>>();
+      for (const baselineRow of allBaselines) {
+        baselineMap.set(baselineRow.category, baselineRow as Record<string, unknown>);
+      }
+
+      const byId = new Map(
+        rows.map((row) => {
+          const baseline = baselineMap.get(row.material.category) ?? {};
+          const ccpsDefault = calculateCcps(row.material, baseline);
+          return [row.material.id, {
+            ...row.material,
+            manufacturerName: row.manufacturerName,
+            manufacturerWebsite: row.manufacturerWebsite,
+            manufacturerLogoUrl: row.manufacturerLogoUrl,
+            manufacturerPhone: row.manufacturerPhone,
+            manufacturerEmail: row.manufacturerEmail,
+            ccpsByPersona: { default: ccpsDefault },
+            alternatives: [],
+            certifications: [],
+          }];
+        }),
+      );
+
+      return ids
+        .map((id) => byId.get(id))
+        .filter((item): item is NonNullable<typeof item> => item !== undefined);
+    }),
 
   categories: publicProcedure.query(async () => {
     const db = await getDb();
