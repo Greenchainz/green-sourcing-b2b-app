@@ -71,8 +71,8 @@ export default function Subscription() {
       price: "$99/month",
       color: "bg-blue-500",
       features: [
-        { text: "50 messages per month", included: true },
-        { text: "10 hours WebRTC video per month", included: true },
+        { text: "300 messages per month", included: true },
+        { text: "15 hours WebRTC video per month", included: true },
         { text: "Advanced material search", included: true },
         { text: "Priority RFQ matching", included: true },
         { text: "Material swap recommendations", included: true },
