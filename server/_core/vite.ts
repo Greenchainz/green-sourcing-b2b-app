@@ -68,7 +68,24 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        const normalized = filePath.replace(/\\/g, "/");
+        const fileName = path.basename(normalized);
+        const isHashedAsset =
+          normalized.includes("/assets/") &&
+          /[-.][A-Za-z0-9_-]{8,}\.(js|css|png|jpg|jpeg|svg|gif|webp|ico|woff2?|ttf)$/.test(fileName);
+
+        if (isHashedAsset) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return;
+        }
+
+        res.setHeader("Cache-Control", "no-cache");
+      },
+    })
+  );
 
   // fall through to index.html if the file doesn't exist
   // IMPORTANT: skip /api routes so they are handled by Express, not the SPA catch-all

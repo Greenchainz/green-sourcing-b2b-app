@@ -17,10 +17,28 @@ import { captureEvent } from "./services/learning-pipeline";
 import { Router, type Request, type Response } from 'express';
 import { getDb } from './db';
 import { materials, manufacturers, rfqRequests, suppliers, users } from '../drizzle/schema';
-import { eq, like, and, lte, or, desc, sql } from 'drizzle-orm';
+import { eq, like, and, lte, or, desc, sql, ilike } from 'drizzle-orm';
 import { sdk } from './_core/sdk';
 
 export const publicMaterialsRouter = Router();
+const SEARCH_CACHE_TTL_MS = 60_000;
+const SWAPS_CACHE_TTL_MS = 90_000;
+
+const responseCache = new Map<string, { expiresAt: number; payload: unknown }>();
+
+function getCachedResponse<T>(key: string): T | null {
+  const cached = responseCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    responseCache.delete(key);
+    return null;
+  }
+  return cached.payload as T;
+}
+
+function setCachedResponse(key: string, payload: unknown, ttlMs: number): void {
+  responseCache.set(key, { expiresAt: Date.now() + ttlMs, payload });
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -49,6 +67,10 @@ async function verifyExtensionToken(req: Request): Promise<string | null> {
 
 publicMaterialsRouter.get('/materials/search', async (req: Request, res: Response) => {
   try {
+    const cacheKey = `materials-search:${JSON.stringify(req.query)}`;
+    const cached = getCachedResponse<{ materials: unknown[] }>(cacheKey);
+    if (cached) return res.json(cached);
+
     const db = await getDb();
     if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -120,7 +142,9 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
       metadata: { category, resultCount: shaped.length, maxGwp, minMcs },
     })).catch(() => {});
 
-    return res.json({ materials: shaped });
+    const responseBody = { materials: shaped };
+    setCachedResponse(cacheKey, responseBody, SEARCH_CACHE_TTL_MS);
+    return res.json(responseBody);
   } catch (err) {
     console.error('[public-api] materials/search error:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -131,6 +155,10 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
 
 publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Response) => {
   try {
+    const cacheKey = `materials-swaps:${req.params.id}`;
+    const cached = getCachedResponse<{ alternatives: unknown[] }>(cacheKey);
+    if (cached) return res.json(cached);
+
     const db = await getDb();
     if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -191,7 +219,9 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
         certifications:      [] as string[],
       }));
 
-    return res.json({ alternatives: shaped });
+    const responseBody = { alternatives: shaped };
+    setCachedResponse(cacheKey, responseBody, SWAPS_CACHE_TTL_MS);
+    return res.json(responseBody);
   } catch (err) {
     console.error('[public-api] materials/swaps error:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -238,8 +268,33 @@ publicMaterialsRouter.get('/suppliers', async (req: Request, res: Response) => {
     if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
     const { category, region } = req.query as { category?: string; region?: string };
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 100);
+    const offset = Math.max(Number(req.query.offset ?? 0), 0);
 
-    const rows = await db
+    const conditions = [eq(suppliers.verified, true)];
+    if (category?.trim()) {
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements_text(${suppliers.materialCategories}::jsonb) AS category_item
+          WHERE category_item ILIKE ${`%${category.trim()}%`}
+        )`
+      );
+    }
+    if (region?.trim()) {
+      const regionTerm = `%${region.trim()}%`;
+      conditions.push(
+        or(
+          ilike(suppliers.city, regionTerm),
+          ilike(suppliers.state, regionTerm),
+          ilike(suppliers.country, regionTerm)
+        )!
+      );
+    }
+
+    const whereClause = and(...conditions);
+    const [rows, countResult] = await Promise.all([
+      db
       .select({
         id:                   suppliers.id,
         companyName:          suppliers.companyName,
@@ -260,24 +315,18 @@ publicMaterialsRouter.get('/suppliers', async (req: Request, res: Response) => {
         inventoryVisibility:  suppliers.inventoryVisibility,
       })
       .from(suppliers)
-      .where(eq(suppliers.verified, true))
-      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore));
+      .where(whereClause)
+      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
+      .limit(limit)
+      .offset(offset),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(suppliers)
+        .where(whereClause),
+    ]);
 
-    let filtered = rows;
-
-    if (category) {
-      filtered = filtered.filter(s =>
-        s.materialCategories?.some(c => c.toLowerCase().includes(category.toLowerCase()))
-      );
-    }
-
-    if (region) {
-      filtered = filtered.filter(s =>
-        [s.city, s.state, s.country].some(f => f?.toLowerCase().includes(region.toLowerCase()))
-      );
-    }
-
-    return res.json({ count: filtered.length, suppliers: filtered });
+    const count = Number(countResult[0]?.count) || 0;
+    return res.json({ count, limit, offset, suppliers: rows });
   } catch (err) {
     console.error('[public-api] suppliers error:', err);
     return res.status(500).json({ error: 'Internal server error' });
