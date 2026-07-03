@@ -18,6 +18,7 @@ const METRICS = [
   { key: "supplyChainScore" as const, icon: Truck, color: "text-orange-600", label: "Supply Chain" },
   { key: "healthScore" as const, icon: Heart, color: "text-red-600", label: "Health" },
 ];
+const MAX_COMPARE_ITEMS = 4;
 
 export default function Compare() {
   const [ids, setIds] = useState<number[]>([]);
@@ -26,7 +27,7 @@ export default function Compare() {
   const removeId = (id: number) => { const n = ids.filter((i) => i !== id); setIds(n); localStorage.setItem("compare-ids", JSON.stringify(n)); toast.success("Removed"); };
   const clearAll = () => { setIds([]); localStorage.removeItem("compare-ids"); toast.success("Cleared"); };
 
-  const compareIds = ids.slice(0, 4);
+  const compareIds = ids.slice(0, MAX_COMPARE_ITEMS);
   const compareQuery = trpc.materials.getByIds.useQuery(
     { ids: compareIds },
     { enabled: compareIds.length > 0 }

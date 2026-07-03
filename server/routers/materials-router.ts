@@ -76,16 +76,21 @@ export const materialsRouter = router({
       const { embedding, searchText, ...listColumns } = getTableColumns(materials);
 
       // Run data fetch, count, and baselines in parallel — eliminates sequential waterfall
-      const orderByExpr =
-        input.sortBy === 'carbon'
-          ? (input.sortOrder === 'asc' ? asc(materials.gwpValue) : desc(materials.gwpValue))
-          : input.sortBy === 'price'
-            ? (input.sortOrder === 'asc' ? asc(materials.pricePerUnit) : desc(materials.pricePerUnit))
-            : input.sortBy === 'name'
-              ? (input.sortOrder === 'asc' ? asc(materials.name) : desc(materials.name))
-              : input.sortBy === 'leadTime'
-                ? (input.sortOrder === 'asc' ? asc(materials.leadTimeDays) : desc(materials.leadTimeDays))
-                : (input.sortOrder === 'asc' ? asc(materials.ccpsScore) : desc(materials.ccpsScore));
+      const orderByExpr = (() => {
+        switch (input.sortBy) {
+          case 'carbon':
+            return input.sortOrder === 'asc' ? asc(materials.gwpValue) : desc(materials.gwpValue);
+          case 'price':
+            return input.sortOrder === 'asc' ? asc(materials.pricePerUnit) : desc(materials.pricePerUnit);
+          case 'name':
+            return input.sortOrder === 'asc' ? asc(materials.name) : desc(materials.name);
+          case 'leadTime':
+            return input.sortOrder === 'asc' ? asc(materials.leadTimeDays) : desc(materials.leadTimeDays);
+          case 'ccps':
+          default:
+            return input.sortOrder === 'asc' ? asc(materials.ccpsScore) : desc(materials.ccpsScore);
+        }
+      })();
 
       const [rows, countResult, baselineRows] = await Promise.all([
         db
@@ -109,8 +114,10 @@ export const materialsRouter = router({
       ]);
       const total = Number(countResult[0]?.count) || 0;
 
-      const baselineMap: Record<string, any> = {};
-      for (const b of baselineRows) baselineMap[b.category] = b;
+      const baselineMap = new Map<string, Record<string, unknown>>();
+      for (const baselineRow of baselineRows) {
+        baselineMap.set(baselineRow.category, baselineRow as Record<string, unknown>);
+      }
 
       let weights: PersonaWeights | undefined;
       if (input.persona && input.persona !== 'default') {
@@ -123,7 +130,7 @@ export const materialsRouter = router({
       }
 
       const items = rows.map((row) => {
-        const baseline = baselineMap[row.material.category] || {};
+        const baseline = baselineMap.get(row.material.category) ?? {};
         const ccps = calculateCcps(row.material, baseline, weights);
         return {
           ...row.material,
@@ -245,12 +252,14 @@ export const materialsRouter = router({
         getCachedBaselines(),
       ]);
 
-      const baselineMap: Record<string, any> = {};
-      for (const b of allBaselines) baselineMap[b.category] = b;
+      const baselineMap = new Map<string, Record<string, unknown>>();
+      for (const baselineRow of allBaselines) {
+        baselineMap.set(baselineRow.category, baselineRow as Record<string, unknown>);
+      }
 
       const byId = new Map(
         rows.map((row) => {
-          const baseline = baselineMap[row.material.category] || {};
+          const baseline = baselineMap.get(row.material.category) ?? {};
           const ccpsDefault = calculateCcps(row.material, baseline);
           return [row.material.id, {
             ...row.material,
@@ -266,7 +275,9 @@ export const materialsRouter = router({
         }),
       );
 
-      return ids.map((id) => byId.get(id)).filter(Boolean);
+      return ids
+        .map((id) => byId.get(id))
+        .filter((item): item is NonNullable<typeof item> => item !== undefined);
     }),
 
   categories: publicProcedure.query(async () => {

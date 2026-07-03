@@ -23,20 +23,53 @@ import { sdk } from './_core/sdk';
 export const publicMaterialsRouter = Router();
 const SEARCH_CACHE_TTL_MS = 60_000;
 const SWAPS_CACHE_TTL_MS = 90_000;
+const MAX_CACHE_ENTRIES = 500;
 
 const responseCache = new Map<string, { expiresAt: number; payload: unknown }>();
 
+function pruneExpiredCacheEntries(): void {
+  const now = Date.now();
+  for (const [key, value] of responseCache.entries()) {
+    if (value.expiresAt <= now) responseCache.delete(key);
+  }
+}
+
+function stableQueryString(query: Request['query']): string {
+  const entries: [string, string][] = [];
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const arrayValue of value) entries.push([key, String(arrayValue)]);
+      continue;
+    }
+    entries.push([key, String(value)]);
+  }
+
+  entries.sort((a, b) => {
+    if (a[0] === b[0]) return a[1].localeCompare(b[1]);
+    return a[0].localeCompare(b[0]);
+  });
+
+  return new URLSearchParams(entries).toString();
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
 function getCachedResponse<T>(key: string): T | null {
+  pruneExpiredCacheEntries();
   const cached = responseCache.get(key);
   if (!cached) return null;
-  if (cached.expiresAt <= Date.now()) {
-    responseCache.delete(key);
-    return null;
-  }
   return cached.payload as T;
 }
 
 function setCachedResponse(key: string, payload: unknown, ttlMs: number): void {
+  pruneExpiredCacheEntries();
+  if (responseCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = responseCache.keys().next().value;
+    if (oldestKey) responseCache.delete(oldestKey);
+  }
   responseCache.set(key, { expiresAt: Date.now() + ttlMs, payload });
 }
 
@@ -67,7 +100,7 @@ async function verifyExtensionToken(req: Request): Promise<string | null> {
 
 publicMaterialsRouter.get('/materials/search', async (req: Request, res: Response) => {
   try {
-    const cacheKey = `materials-search:${JSON.stringify(req.query)}`;
+    const cacheKey = `materials-search:${stableQueryString(req.query)}`;
     const cached = getCachedResponse<{ materials: unknown[] }>(cacheKey);
     if (cached) return res.json(cached);
 
@@ -273,16 +306,17 @@ publicMaterialsRouter.get('/suppliers', async (req: Request, res: Response) => {
 
     const conditions = [eq(suppliers.verified, true)];
     if (category?.trim()) {
+      const escapedCategory = `%${escapeLikePattern(category.trim())}%`;
       conditions.push(
         sql`EXISTS (
           SELECT 1
           FROM jsonb_array_elements_text(${suppliers.materialCategories}::jsonb) AS category_item
-          WHERE category_item ILIKE ${`%${category.trim()}%`}
+          WHERE category_item ILIKE ${escapedCategory} ESCAPE '\\'
         )`
       );
     }
     if (region?.trim()) {
-      const regionTerm = `%${region.trim()}%`;
+      const regionTerm = `%${escapeLikePattern(region.trim())}%`;
       conditions.push(
         or(
           ilike(suppliers.city, regionTerm),
