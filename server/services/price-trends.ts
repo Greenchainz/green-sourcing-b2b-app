@@ -482,6 +482,7 @@ export async function getPriceTrendByCategory(category: string): Promise<LegacyP
             ORDER BY f."recordDate" DESC, f.id DESC
             LIMIT 1
          ) AS last_date
+       -- Only return a row when the CTE contains at least 2 records
        WHERE EXISTS (SELECT 1 FROM filtered OFFSET 1)`,
       [category]
     );
