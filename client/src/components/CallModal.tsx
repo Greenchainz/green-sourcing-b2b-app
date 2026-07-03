@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 
+const VIDEO_CONTAINER_HEIGHT = 480;
+
 interface CallModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -14,6 +16,9 @@ interface CallModalProps {
 }
 
 type CallStatus = "connecting" | "ringing" | "active" | "ended";
+
+const CALL_END_MODAL_DELAY_MS = 2000;
+const CALL_ANSWER_DELAY_MS = 3000;
 
 export function CallModal({
   isOpen,
@@ -26,10 +31,17 @@ export function CallModal({
   const [callStatus, setCallStatus] = useState<CallStatus>(isOutgoing ? "ringing" : "connecting");
   const [callDuration, setCallDuration] = useState(0);
 
+  // Reset timer when a new call is loaded or the modal is reopened.
+  useEffect(() => {
+    if (isOpen) {
+      setCallDuration(0);
+    }
+  }, [callId, isOpen]);
+
   const endCallMutation = trpc.messaging.endCall.useMutation({
     onSuccess: () => {
       setCallStatus("ended");
-      setTimeout(onClose, 2000);
+      setTimeout(onClose, CALL_END_MODAL_DELAY_MS);
     },
   });
 
@@ -43,15 +55,15 @@ export function CallModal({
 
   // Duration timer (voice calls / active state)
   useEffect(() => {
-    if (callStatus !== "active") return;
+    if (callStatus !== "active" || callType !== "voice") return;
     const interval = setInterval(() => setCallDuration((d) => d + 1), 1000);
     return () => clearInterval(interval);
-  }, [callStatus]);
+  }, [callStatus, callType]);
 
   // Outgoing: auto-transition ringing → active (real accept via WebPubSub in prod)
   useEffect(() => {
     if (isOutgoing && callStatus === "ringing") {
-      const t = setTimeout(() => setCallStatus("active"), 3000);
+      const t = setTimeout(() => setCallStatus("active"), CALL_ANSWER_DELAY_MS);
       return () => clearTimeout(t);
     }
   }, [isOutgoing, callStatus]);
@@ -81,7 +93,7 @@ export function CallModal({
 
           {/* ── Video: unavailable (ACS packages removed) ──────────── */}
           {callType === "video" && callStatus === "active" && (
-            <div className="w-full rounded-lg overflow-hidden flex items-center justify-center bg-gray-900" style={{ height: 480 }}>
+            <div className="w-full rounded-lg overflow-hidden flex items-center justify-center bg-gray-900" style={{ height: VIDEO_CONTAINER_HEIGHT }}>
               <div className="flex flex-col items-center gap-3 text-white">
                 <VideoOff className="h-12 w-12 text-gray-400" />
                 <p className="text-sm text-gray-400">Video calling is not available</p>
