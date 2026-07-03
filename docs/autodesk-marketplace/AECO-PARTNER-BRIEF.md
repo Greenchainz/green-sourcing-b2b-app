@@ -17,14 +17,14 @@ Unlike static analysis tools, GreenChainz enables:
 |---------------|--------------------------|
 | Sustainability in design workflows | Embeds EPD + carbon data at point of decision |
 | Connected construction ecosystem | Bridges design → procurement → supply chain |
-| Platform extensibility | Native SDA integration + Forma extension |
+| Platform extensibility | Native Revit plugin + Forma extension integrations |
 | Industry digitization | Digitizes sustainable procurement workflows |
 
 ---
 
 ## Technical Integration
 
-- **Autodesk SDA endpoints** – Hosted within the main GreenChainz platform (`green-sourcing-b2b-app`)
+- **Autodesk integration endpoints** – Hosted within the main GreenChainz platform (`green-sourcing-b2b-app`)
 - **Revit Plugin** – Native ribbon panel for material sustainability data
 - **Forma Extension** – Early-stage design sustainability insights
 - **Backend** – Azure-hosted API, PostgreSQL, secure OAuth
