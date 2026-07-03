@@ -17,22 +17,24 @@ import {
 export default function ManufacturerDirectory() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const { data: allManufacturers, isLoading } = trpc.manufacturer.getAll.useQuery(
-    selectedCategory ? { category: selectedCategory } : undefined
-  );
+  const { data: allManufacturers, isLoading } = trpc.manufacturer.getAll.useQuery(undefined);
 
-  // Extract unique categories for the filter bar
-  const { data: allForCategories } = trpc.manufacturer.getAll.useQuery(undefined);
   const categories = useMemo(() => {
-    if (!allForCategories) return [];
+    if (!allManufacturers) return [];
     const cats = new Set<string>();
-    allForCategories.forEach((m) => {
+    allManufacturers.forEach((m) => {
       if (m.category) cats.add(m.category);
     });
     return Array.from(cats).sort();
-  }, [allForCategories]);
+  }, [allManufacturers]);
 
-  const manufacturers = allManufacturers ?? [];
+  const manufacturers = useMemo(
+    () =>
+      (allManufacturers ?? []).filter(
+        (m) => !selectedCategory || m.category === selectedCategory
+      ),
+    [allManufacturers, selectedCategory]
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
