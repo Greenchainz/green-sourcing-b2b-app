@@ -11,6 +11,7 @@ import {
   real,
   date,
   json,
+  uuid,
   index,
   uniqueIndex,
   customType,
@@ -1972,6 +1973,9 @@ export const crmContacts = pgTable(
     source: varchar("source", { length: 100 }),
     linkedinUrl: varchar("linkedin_url", { length: 500 }),
     supplierId: integer("supplier_id"), // populated when they claim profile
+    claimToken: uuid("claim_token").defaultRandom(), // secure one-time token for claim emails
+    claimTokenExpiresAt: timestamp("claim_token_expires_at"),
+    claimTokenUsedAt: timestamp("claim_token_used_at"),
     lastContactedAt: timestamp("last_contacted_at"),
     nextFollowUpAt: timestamp("next_follow_up_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -89,6 +89,14 @@ export function useWebPubSub() {
               );
             }
 
+            if (data.type === "video_call_ended") {
+              window.dispatchEvent(
+                new CustomEvent("video-call-ended", {
+                  detail: { callId: data.callId, durationMinutes: data.durationMinutes },
+                })
+              );
+            }
+
             if (data.type === "webrtc_signaling") {
               window.dispatchEvent(
                 new CustomEvent("webrtc-signal", {

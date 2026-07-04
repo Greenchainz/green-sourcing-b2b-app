@@ -1,4 +1,4 @@
-# Autodesk Design & Make Marketplace – Final Submission Checklist
+# Autodesk Design & Make Marketplace - Final Submission Checklist
 
 ## Status Key
 - [ ] Manual-final item pending
@@ -26,6 +26,7 @@
 ### Compliance / Trust Verification
 - [ ] Verify privacy policy URL: `https://greenchainz.com/privacy`
 - [ ] Verify terms URL: `https://greenchainz.com/terms`
+- [ ] Verify documentation URL: `https://greenchainz.com/docs`
 - [ ] Confirm security claims in `release/security.md` match current production behavior
 
 ### Technical Review Confirmation
