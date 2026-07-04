@@ -67,6 +67,7 @@ release/
 - [ ] API reachable externally (HTTPS)
 - [ ] Auth working (no MFA blocking reviewers)
 - [ ] Data loads (EPD, carbon, suppliers)
+- [ ] `documentationUrl` from `release/manifest.json` returns HTTP 200 (no redirect loop or 404)
 
 ### UX
 - [ ] No broken buttons
