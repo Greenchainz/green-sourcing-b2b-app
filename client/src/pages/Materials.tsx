@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, TrendingDown, Award } from 'lucide-react';
+import { useDebounce } from '@/hooks/use-debounce';
 
 interface Material {
   id: string;
@@ -43,6 +44,7 @@ export default function Materials() {
   const [totalPages, setTotalPages] = useState(1);
   
   const limit = 20;
+  const debouncedSearch = useDebounce(search, 300);
 
   // Fetch materials
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function Materials() {
         setError('');
         
         const params = new URLSearchParams({
-          search,
+          search: debouncedSearch,
           category,
           certification,
           sortBy,
@@ -89,7 +91,7 @@ export default function Materials() {
     };
 
     fetchMaterials();
-  }, [search, category, certification, minGWP, maxGWP, sortBy, sortOrder, page]);
+  }, [debouncedSearch, category, certification, minGWP, maxGWP, sortBy, sortOrder, page]);
 
   const certificationColors: Record<string, string> = {
     'EPD': 'bg-blue-100 text-blue-800',

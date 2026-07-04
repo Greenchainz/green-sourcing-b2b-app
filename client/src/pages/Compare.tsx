@@ -18,6 +18,7 @@ const METRICS = [
   { key: "supplyChainScore" as const, icon: Truck, color: "text-orange-600", label: "Supply Chain" },
   { key: "healthScore" as const, icon: Heart, color: "text-red-600", label: "Health" },
 ];
+const MAX_COMPARE_ITEMS = 4;
 
 export default function Compare() {
   const [ids, setIds] = useState<number[]>([]);
@@ -26,12 +27,13 @@ export default function Compare() {
   const removeId = (id: number) => { const n = ids.filter((i) => i !== id); setIds(n); localStorage.setItem("compare-ids", JSON.stringify(n)); toast.success("Removed"); };
   const clearAll = () => { setIds([]); localStorage.removeItem("compare-ids"); toast.success("Cleared"); };
 
-  const q1 = trpc.materials.getById.useQuery({ id: ids[0] || 0 }, { enabled: ids.length > 0 });
-  const q2 = trpc.materials.getById.useQuery({ id: ids[1] || 0 }, { enabled: ids.length > 1 });
-  const q3 = trpc.materials.getById.useQuery({ id: ids[2] || 0 }, { enabled: ids.length > 2 });
-  const q4 = trpc.materials.getById.useQuery({ id: ids[3] || 0 }, { enabled: ids.length > 3 });
-  const allMats = [q1.data, q2.data, q3.data, q4.data].filter(Boolean) as any[];
-  const isLoading = [q1, q2, q3, q4].some((q) => q.isLoading && q.fetchStatus !== "idle");
+  const compareIds = ids.slice(0, MAX_COMPARE_ITEMS);
+  const compareQuery = trpc.materials.getByIds.useQuery(
+    { ids: compareIds },
+    { enabled: compareIds.length > 0 }
+  );
+  const allMats = (compareQuery.data ?? []) as any[];
+  const isLoading = compareQuery.isLoading && compareQuery.fetchStatus !== "idle";
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

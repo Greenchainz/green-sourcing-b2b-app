@@ -3,7 +3,7 @@
 # This Dockerfile uses standard Node images for ACR cloud build compatibility
 
 # Stage 1: Dependencies
-FROM node:22-bookworm AS deps
+FROM node:22-trixie AS deps
 WORKDIR /app
 # Enable corepack (built into Node 22) to install pnpm without hitting npm registry
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
@@ -16,7 +16,7 @@ COPY patches/ ./patches/
 RUN pnpm install --frozen-lockfile
 
 # Stage 2: Builder
-FROM node:22-bookworm AS builder
+FROM node:22-trixie AS builder
 WORKDIR /app
 # Enable corepack for pnpm
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
@@ -39,8 +39,8 @@ ENV VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
 #   - esbuild     → dist/index.js (server bundle)
 RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY pnpm run build
 
-# Stage 3: Runtime
-FROM node:22-bookworm-slim AS runtime
+# Stage 3: Runtime — Debian 13 (trixie) for newer glibc baseline
+FROM node:22.22.3-trixie-slim AS runtime
 WORKDIR /app
 # Patch all OS packages at image build time
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
