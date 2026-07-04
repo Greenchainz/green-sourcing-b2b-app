@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import { EpdProofBadge } from "@/components/proof/ProofBadge";
 
 export default function ManufacturerProfile() {
   const params = useParams<{ id: string }>();
@@ -212,17 +213,19 @@ export default function ManufacturerProfile() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">EPD Status</span>
-                    {manufacturer.hasEpd ? (
-                      <span className="inline-flex items-center gap-1 text-sm text-emerald-500">
-                        <ShieldCheck className="h-4 w-4" />
-                        Verified
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-                        <ShieldAlert className="h-4 w-4" />
-                        Unknown
-                      </span>
-                    )}
+                    <span className="inline-flex items-center gap-2">
+                      {manufacturer.hasEpd ? (
+                        <span className="inline-flex items-center gap-1 text-sm text-emerald-500">
+                          <ShieldCheck className="h-4 w-4" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                          <ShieldAlert className="h-4 w-4" />
+                          Unknown
+                        </span>
+                      )}
+                    </span>
                   </div>
                   {manufacturer.readinessLevel && (
                     <div className="flex items-center justify-between">
@@ -286,9 +289,12 @@ export default function ManufacturerProfile() {
                         </p>
                         <div className="flex items-center gap-3 mt-3 flex-wrap">
                           {mat.hasEpd && (
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-500">
-                              <ShieldCheck className="h-3 w-3" />
-                              EPD
+                            <span className="inline-flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1 text-xs text-emerald-500">
+                                <ShieldCheck className="h-3 w-3" />
+                                EPD
+                              </span>
+                              {mat.epdNumber && <EpdProofBadge epdId={mat.epdNumber} size="sm" />}
                             </span>
                           )}
                           {mat.gwpValue && (

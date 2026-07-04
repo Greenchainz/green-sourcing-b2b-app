@@ -73,7 +73,7 @@ cast send $ANCHOR_REGISTRY_ADDRESS \
 ## 4. Run the database migration
 
 ```bash
-npm run db:push
+pnpm run db:push
 ```
 
 This creates the `blockchain_anchors` table from the schema added to `drizzle/schema.ts`.

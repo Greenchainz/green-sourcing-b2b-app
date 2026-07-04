@@ -464,6 +464,7 @@ async function startServer() {
   });
 
   app.get("/revit", handleRevitLanding);
+  app.get("/docs", (_req, res) => res.redirect(301, "/docs.html"));
   app.get("/privacy", (_req, res) => res.redirect(301, "/privacy.html"));
   app.get("/terms", (_req, res) => res.redirect(301, "/terms.html"));
   app.get("/security", (_req, res) => res.redirect(301, "/security.html"));

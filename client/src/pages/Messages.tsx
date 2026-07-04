@@ -87,6 +87,12 @@ interface ActiveCall {
   isInitiator: boolean;
 }
 
+interface PendingOutgoingCall {
+  callId: string;
+  remoteUserId: number;
+  remoteName: string;
+}
+
 interface IncomingCallData {
   callId: string;
   callerId: number;
@@ -735,6 +741,7 @@ export default function Messages() {
   const { user } = useAuth();
   const [selectedId, setSelectedId] = useState<number | undefined>();
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+  const [pendingOutgoingCall, setPendingOutgoingCall] = useState<PendingOutgoingCall | null>(null);
   const utils = trpc.useUtils();
 
   const { data: rawConvs } = trpc.messaging.getConversations.useQuery(undefined, {
@@ -753,6 +760,57 @@ export default function Messages() {
   const initiateCallMutation = trpc.videoCalling.initiateWebRTCCall.useMutation();
   const acceptCallMutation = trpc.videoCalling.acceptWebRTCCall.useMutation();
 
+  useEffect(() => {
+    const onCallAccepted = (event: Event) => {
+      const detail = (event as CustomEvent<{ callId: string }>).detail;
+      if (!detail?.callId || !pendingOutgoingCall) return;
+      if (detail.callId !== pendingOutgoingCall.callId) return;
+
+      setActiveCall({
+        callId: pendingOutgoingCall.callId,
+        remoteUserId: pendingOutgoingCall.remoteUserId,
+        remoteName: pendingOutgoingCall.remoteName,
+        isInitiator: true,
+      });
+      setPendingOutgoingCall(null);
+      toast.success(`${pendingOutgoingCall.remoteName} accepted the call`);
+    };
+
+    const onCallRejected = (event: Event) => {
+      const detail = (event as CustomEvent<{ callId: string }>).detail;
+      if (!detail?.callId) return;
+      if (pendingOutgoingCall?.callId === detail.callId) {
+        toast.info(`${pendingOutgoingCall.remoteName} declined the call`);
+        setPendingOutgoingCall(null);
+      }
+      if (activeCall?.callId === detail.callId) {
+        setActiveCall(null);
+      }
+    };
+
+    const onCallEnded = (event: Event) => {
+      const detail = (event as CustomEvent<{ callId: string }>).detail;
+      if (!detail?.callId) return;
+      if (activeCall?.callId === detail.callId) {
+        setActiveCall(null);
+        toast.info("Call ended");
+      }
+      if (pendingOutgoingCall?.callId === detail.callId) {
+        setPendingOutgoingCall(null);
+      }
+    };
+
+    window.addEventListener("video-call-accepted", onCallAccepted);
+    window.addEventListener("video-call-rejected", onCallRejected);
+    window.addEventListener("video-call-ended", onCallEnded);
+
+    return () => {
+      window.removeEventListener("video-call-accepted", onCallAccepted);
+      window.removeEventListener("video-call-rejected", onCallRejected);
+      window.removeEventListener("video-call-ended", onCallEnded);
+    };
+  }, [activeCall?.callId, pendingOutgoingCall]);
+
   const handleSelect = (id: number) => {
     setSelectedId(id);
     markAsRead.mutate({ conversationId: id });
@@ -762,7 +820,7 @@ export default function Messages() {
 
   const handleStartCall = useCallback(
     async (remoteUserId: number, remoteName: string, conversationId: number) => {
-      if (activeCall) {
+      if (activeCall || pendingOutgoingCall) {
         toast.error("You're already in a call");
         return;
       }
@@ -771,18 +829,17 @@ export default function Messages() {
           calleeId: remoteUserId,
           conversationId,
         });
-        setActiveCall({
+        setPendingOutgoingCall({
           callId: session.callId,
           remoteUserId,
           remoteName,
-          isInitiator: true,
         });
         toast.success(`Calling ${remoteName}…`);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "Failed to start call");
       }
     },
-    [activeCall, initiateCallMutation]
+    [activeCall, initiateCallMutation, pendingOutgoingCall]
   );
 
   const handleAcceptCall = useCallback(
@@ -804,6 +861,7 @@ export default function Messages() {
 
   const handleEndCall = useCallback(() => {
     setActiveCall(null);
+    setPendingOutgoingCall(null);
   }, []);
 
   const role = user?.role ?? "architect";
