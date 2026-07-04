@@ -35,7 +35,7 @@ WORKDIR /app
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 # Copy dumb-init binary from deps stage
 COPY --from=deps /usr/bin/dumb-init /usr/bin/dumb-init
-# node:22-bookworm-slim includes non-root user 'node' (uid 1000)
+# node:22.22.3-trixie-slim includes non-root user 'node' (uid 1000)
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/public ./public

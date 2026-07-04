@@ -12,7 +12,7 @@
  *   1. Zeptomail dashboard → Mail Agents → your agent → Webhooks
  *   2. Add URL: https://greenchainz.com/api/webhooks/zeptomail
  *   3. Select events: Bounce, Open, Click, Unsubscribe, Spam
- *   4. Save — no secret key required (Zeptomail uses IP allowlisting)
+ *   4. Add custom header/token matching ZEPTOMAIL_WEBHOOK_TOKEN, then save.
  *
  * Zeptomail webhook IP ranges (allowlist if needed):
  *   https://www.zeptomail.com/help/webhook-ip-allowlist
@@ -21,8 +21,23 @@
 import { Router } from "express";
 import { getDb } from "./db";
 import { sql } from "drizzle-orm";
+import crypto from "node:crypto";
 
 export const zeptomailWebhookRouter = Router();
+
+function hasValidWebhookToken(providedToken: string | undefined): boolean {
+  const expectedToken = process.env.ZEPTOMAIL_WEBHOOK_TOKEN;
+  if (!expectedToken) return false;
+  if (!providedToken) return false;
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(providedToken.trim()),
+      Buffer.from(expectedToken.trim()),
+    );
+  } catch {
+    return false;
+  }
+}
 
 interface ZeptomailEvent {
   event: "bounce" | "open" | "click" | "unsubscribe" | "spam" | "delivered";
@@ -44,6 +59,16 @@ interface ZeptomailEvent {
  */
 zeptomailWebhookRouter.post("/api/webhooks/zeptomail", async (req, res) => {
   try {
+    if (!process.env.ZEPTOMAIL_WEBHOOK_TOKEN) {
+      console.error("[zeptomail-webhook] Missing ZEPTOMAIL_WEBHOOK_TOKEN");
+      return res.status(503).json({ error: "Webhook auth is not configured" });
+    }
+
+    const incomingToken = req.get("x-webhook-token") ?? req.get("authorization")?.replace(/^Bearer\s+/i, "");
+    if (!hasValidWebhookToken(incomingToken)) {
+      return res.status(401).json({ error: "Unauthorized webhook request" });
+    }
+
     // Zeptomail sends either a single event object or an array
     const events: ZeptomailEvent[] = Array.isArray(req.body)
       ? req.body
@@ -191,4 +216,3 @@ export async function isEmailSuppressed(email: string): Promise<boolean> {
     return false; // Fail open — don't block sends if DB check fails
   }
 }
-

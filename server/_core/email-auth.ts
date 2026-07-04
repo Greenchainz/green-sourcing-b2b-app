@@ -117,8 +117,17 @@ function openIdForEmail(email: string): string {
   return `email:${Buffer.from(normalized).toString("base64url")}`;
 }
 
+function isAllowlistedAdminEmail(email: string): boolean {
+  const allowlist = process.env.ADMIN_EMAIL_ALLOWLIST
+    ?.split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowlist || allowlist.length === 0) return false;
+  return allowlist.includes(email.toLowerCase().trim());
+}
+
 function assignRole(email: string, requestedRole?: string): "buyer" | "supplier" | "admin" {
-  if (email.endsWith("@greenchainz.com")) return "admin";
+  if (isAllowlistedAdminEmail(email)) return "admin";
   if (requestedRole === "supplier") return "supplier";
   return "buyer";
 }
