@@ -53,6 +53,9 @@ importers:
       '@azure/identity':
         specifier: ^4.13.1
         version: 4.13.1
+      '@azure/keyvault-keys':
+        specifier: ^4.10.2
+        version: 4.10.2
       '@azure/keyvault-secrets':
         specifier: ^4.11.1
         version: 4.11.2
@@ -6178,20 +6181,20 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
-  roosterjs-content-model-api@9.55.0:
-    resolution: {integrity: sha512-h6O8kr833/cf4Bl7SRP7ya3QTJTq2gYp3fTdsJ5Du4wugnTeI2ql70E+I3+7/3einoUkBAo8ye9onC3j/JqB9g==}
+  roosterjs-content-model-api@9.56.0:
+    resolution: {integrity: sha512-58BvzzE6sjnWCH9+oob4euBD6JgnSsPcjUUPP4SKgrNTMKUUQ7nposr0hSwqOQ/bOfNUtfGL9eo+YSleXXUbxQ==}
 
-  roosterjs-content-model-core@9.55.0:
-    resolution: {integrity: sha512-0DnG3kqzQZFGeplH+77um6Vy9RuqGmn6XVz4IT6zf/JnCOPbHf58f+jicGFtzmxlhz7U7mfuzd090+eHEsBnOA==}
+  roosterjs-content-model-core@9.56.0:
+    resolution: {integrity: sha512-pchBevobN8erd9S7w2EqlcUOanuldYiaP8IDYrn70IH0OTccUzrhVnM1OHo04R65jsUGWoqbrOxEcIWaebx1dg==}
 
-  roosterjs-content-model-dom@9.55.0:
-    resolution: {integrity: sha512-56lVb/1mtfpgiVBEPi4SVSnjUSiCvk91xz48C/qZ+2jFbSrvq9G6gLI3Ca+Z1cs8muvaQIt6y7Nn2Nldzmm/2A==}
+  roosterjs-content-model-dom@9.56.0:
+    resolution: {integrity: sha512-upuyrfbOOVorEMIz+MUR9LWEOLtjxbB9GsabJw9lhuLVu0LFlciVncXOlqU91PT2rbbJHS38wzWIuoTYi7boGQ==}
 
-  roosterjs-content-model-plugins@9.55.0:
-    resolution: {integrity: sha512-iunBVF6ClhzvV/z9GHFx3Ji0+l9r20gI4IzfXNX9c/Fgfcibna1qnfTtqB34xBtia4XaRyWtbjFcrzZUTI/qgw==}
+  roosterjs-content-model-plugins@9.56.0:
+    resolution: {integrity: sha512-gbBPZThBS1eR9VVT5ij5fE1dyyPYB+PGc9RJiElo+2QrXYY93+BsslXAC6oX08qzB6BJ3yIyzFJB/XESMWjY8A==}
 
-  roosterjs-content-model-types@9.55.0:
-    resolution: {integrity: sha512-oeOnRbvg9NDq1iHYSHOCgp4s2yjNJ1bX7RVM9d1u/n9vkJVb09TzILjV5iKwWA5x1GNkm/3rXIXch32HhDC+2g==}
+  roosterjs-content-model-types@9.56.0:
+    resolution: {integrity: sha512-VhjXa0KBFnDRle/h50Kw8V15MAtUNpmJCxls28bpK5JcIqFZU4zX4SKB6xPzOFJofOqTnUZfwROIEnX4z9SL8g==}
 
   roughjs@4.6.6:
     resolution: {integrity: sha512-ZUz/69+SYpFN/g/lUlo2FXcIjRkSu3nDarreVdGGndHEBJ6cXPdKguS8JGxwj5HA5xIbVKSmLgr5b3AWxtRfvQ==}
@@ -7077,11 +7080,11 @@ snapshots:
       react-linkify: 1.0.0-alpha
       react-use-draggable-scroll: 0.4.7(react@19.2.7)
       reselect: 4.1.8
-      roosterjs-content-model-api: 9.55.0
-      roosterjs-content-model-core: 9.55.0
-      roosterjs-content-model-dom: 9.55.0
-      roosterjs-content-model-plugins: 9.55.0
-      roosterjs-content-model-types: 9.55.0
+      roosterjs-content-model-api: 9.56.0
+      roosterjs-content-model-core: 9.56.0
+      roosterjs-content-model-dom: 9.56.0
+      roosterjs-content-model-plugins: 9.56.0
+      roosterjs-content-model-types: 9.56.0
       textarea-caret-ts: 4.1.1
       use-debounce: 10.1.1(react@19.2.7)
       uuid: 14.0.1
@@ -14219,32 +14222,32 @@ snapshots:
       '@rolldown/binding-win32-arm64-msvc': 1.1.3
       '@rolldown/binding-win32-x64-msvc': 1.1.3
 
-  roosterjs-content-model-api@9.55.0:
+  roosterjs-content-model-api@9.56.0:
     dependencies:
-      roosterjs-content-model-dom: 9.55.0
-      roosterjs-content-model-types: 9.55.0
+      roosterjs-content-model-dom: 9.56.0
+      roosterjs-content-model-types: 9.56.0
       tslib: 2.8.1
 
-  roosterjs-content-model-core@9.55.0:
+  roosterjs-content-model-core@9.56.0:
     dependencies:
-      roosterjs-content-model-dom: 9.55.0
-      roosterjs-content-model-types: 9.55.0
+      roosterjs-content-model-dom: 9.56.0
+      roosterjs-content-model-types: 9.56.0
       tslib: 2.8.1
 
-  roosterjs-content-model-dom@9.55.0:
+  roosterjs-content-model-dom@9.56.0:
     dependencies:
-      roosterjs-content-model-types: 9.55.0
+      roosterjs-content-model-types: 9.56.0
       tslib: 2.8.1
 
-  roosterjs-content-model-plugins@9.55.0:
+  roosterjs-content-model-plugins@9.56.0:
     dependencies:
-      roosterjs-content-model-api: 9.55.0
-      roosterjs-content-model-core: 9.55.0
-      roosterjs-content-model-dom: 9.55.0
-      roosterjs-content-model-types: 9.55.0
+      roosterjs-content-model-api: 9.56.0
+      roosterjs-content-model-core: 9.56.0
+      roosterjs-content-model-dom: 9.56.0
+      roosterjs-content-model-types: 9.56.0
       tslib: 2.8.1
 
-  roosterjs-content-model-types@9.55.0: {}
+  roosterjs-content-model-types@9.56.0: {}
 
   roughjs@4.6.6:
     dependencies:
