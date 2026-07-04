@@ -187,7 +187,14 @@ async function buildKeyVaultSigner(): Promise<EvmSigner> {
         throw new Error("[blockchain-proof] Key Vault returned an empty signature");
       }
 
-      const { r, s } = parseDerEcdsaSignature(signResult.result);
+      const sig = signResult.result;
+      if (sig.length !== 64) {
+        throw new Error(
+          `[blockchain-proof] Expected a 64-byte IEEE P1363 signature from Key Vault, got ${sig.length}`
+        );
+      }
+      const r = bytesToBigInt(sig.slice(0, 32));
+      const s = bytesToBigInt(sig.slice(32, 64));
       const normalizedPairs = normalizeAndExpandSignatures(r, s);
 
       let finalSignature:
