@@ -29,7 +29,6 @@ release/
 3. Capture screenshots → drop PNGs in `screenshots/`
 4. Record demo video → place MP4 in `videos/`
 5. Verify demo login works at https://greenchainz.com
-5. Verify demo login works at https://greenchainz.com
 6. Run the QA checklist below
 7. Zip this folder and submit
 
@@ -37,7 +36,6 @@ release/
 
 | Field | Value |
 |-------|-------|
-| URL | https://greenchainz.com |
 | URL | https://greenchainz.com |
 | Email | demo@greenchainz.com |
 | Password | GreenchainzDemo123! |
