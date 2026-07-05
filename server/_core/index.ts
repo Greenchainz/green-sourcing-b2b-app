@@ -375,13 +375,22 @@ async function startServer() {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[readiness] DB check failed:", message);
-      res.status(503).json({ status: "not_ready", reason: "database_unavailable", detail: message });
+      res.status(503).json({ status: "not_ready", reason: "database_unavailable" });
     }
   });
 
   app.get("/api/auth/me", async (req, res) => {
+    // Prevent browsers/CDNs from caching auth state — every call must hit the server.
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.set("Pragma", "no-cache");
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await sdk.authenticateRequest(req).catch((err) => {
+        // Log when cookie IS present but auth fails — helps diagnose redirect loops
+        if (req.headers.cookie?.includes("app_session_id")) {
+          console.warn("[/api/auth/me] Auth failed with cookie present:", String(err));
+        }
+        return null;
+      });
       if (!user) {
         res.status(200).json({ authenticated: false, user: null });
         return;
@@ -455,6 +464,7 @@ async function startServer() {
   });
 
   app.get("/revit", handleRevitLanding);
+  app.get("/docs", (_req, res) => res.redirect(301, "/docs.html"));
   app.get("/privacy", (_req, res) => res.redirect(301, "/privacy.html"));
   app.get("/terms", (_req, res) => res.redirect(301, "/terms.html"));
   app.get("/security", (_req, res) => res.redirect(301, "/security.html"));

@@ -28,15 +28,31 @@ release/
 2. Build Forma extension → place output in `forma-extension/`
 3. Capture screenshots → drop PNGs in `screenshots/`
 4. Record demo video → place MP4 in `videos/`
-5. Verify demo login works at https://app.greenchainz.com
+5. Verify demo login works at https://greenchainz.com
 6. Run the QA checklist below
 7. Zip this folder and submit
+
+## Submission Readiness Snapshot
+
+### Completed in this package
+- [x] Revit and Forma release scaffolding present in `release/`
+- [x] Installation, quickstart, and architecture docs included in `release/docs/`
+- [x] Security and trust statement included (`release/security.md`)
+- [x] Marketplace metadata normalized to `greenchainz.com` domain only
+
+### Manual-final items before upload
+- [ ] Capture and place final screenshots in `release/screenshots/`
+- [ ] Record and place final demo video in `release/videos/`
+- [ ] Complete compliance/trust verification against final deployed behavior
+- [ ] Complete technical review confirmation for Revit + Forma production builds
+- [ ] Finalize business asset pack (icon, listing copy sign-off, partner-ready materials)
+- [ ] Assemble final zip from this `release/` package after all manual items are complete
 
 ## Demo Access
 
 | Field | Value |
 |-------|-------|
-| URL | https://app.greenchainz.com |
+| URL | https://greenchainz.com |
 | Email | demo@greenchainz.com |
 | Password | GreenchainzDemo123! |
 
@@ -51,6 +67,7 @@ release/
 - [ ] API reachable externally (HTTPS)
 - [ ] Auth working (no MFA blocking reviewers)
 - [ ] Data loads (EPD, carbon, suppliers)
+- [ ] `documentationUrl` from `release/manifest.json` returns HTTP 200 (no redirect loop or 404)
 
 ### UX
 - [ ] No broken buttons

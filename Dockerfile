@@ -13,7 +13,7 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get inst
 COPY package.json pnpm-lock.yaml ./
 COPY patches/ ./patches/
 # Install dependencies
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Stage 2: Builder
 FROM dhi.io/node:22-debian13-dev AS builder

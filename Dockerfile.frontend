@@ -28,14 +28,14 @@ ENV VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
     NODE_ENV=production
 RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY corepack pnpm run build
 
-# Stage 3: Runtime — node:22-bookworm-slim (Debian 12, actively patched glibc, non-root node user)
-FROM node:22-bookworm-slim AS runtime
+# Stage 3: Runtime — node:22.22.3-trixie-slim (Debian 13, actively patched glibc, non-root node user)
+FROM node:22.22.3-trixie-slim AS runtime
 WORKDIR /app
 # Patch all OS packages (including glibc) at image build time
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 # Copy dumb-init binary from deps stage
 COPY --from=deps /usr/bin/dumb-init /usr/bin/dumb-init
-# node:22-bookworm-slim includes non-root user 'node' (uid 1000)
+# node:22.22.3-trixie-slim includes non-root user 'node' (uid 1000)
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/public ./public

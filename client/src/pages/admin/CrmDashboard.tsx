@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -763,7 +764,7 @@ function OutreachCommandCenter() {
                   </div>
                   <div
                     className="p-4 text-sm max-h-96 overflow-y-auto prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: preview.data.html }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(preview.data.html) }}
                   />
                 </>
               )}

@@ -39,7 +39,14 @@ interface OAuthStatePayload {
 }
 
 function getOAuthStateSecret(): string {
-  return process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET || "dev-oauth-state-secret";
+  const secret = process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("OAUTH_STATE_SECRET or JWT_SECRET must be set in production");
+    }
+    return "dev-oauth-state-secret";
+  }
+  return secret;
 }
 
 function signStatePayload(payloadB64: string): string {
