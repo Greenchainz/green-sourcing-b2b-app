@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "GreenChainz Interceptor",
+  "version": "0.1.0",
+  "description": "Intercept purchase intent pages and suggest greener material alternatives in real time.",
+  "action": {
+    "default_title": "GreenChainz Interceptor",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://app.greenchainz.com/*",
+    "http://localhost:3000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
