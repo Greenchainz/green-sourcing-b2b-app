@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GreenChainz Interceptor</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>GreenChainz Interceptor</h1>
+      <p class="muted">Catch purchase intent and surface greener alternatives instantly.</p>
+
+      <section class="panel">
+        <label class="inline">
+          <input id="enabled" type="checkbox" />
+          <span>Enable page interceptor</span>
+        </label>
+      </section>
+
+      <section class="panel">
+        <label for="apiBaseUrl">Public API base URL</label>
+        <input id="apiBaseUrl" type="url" placeholder="https://app.greenchainz.com/api/public" />
+        <button id="saveSettings" type="button">Save settings</button>
+        <p id="settingsStatus" class="status"></p>
+      </section>
+
+      <section class="panel">
+        <label for="searchInput">Quick material search</label>
+        <input id="searchInput" type="text" placeholder="e.g., concrete slab, drywall, insulation" />
+        <button id="runSearch" type="button">Search</button>
+        <p id="searchStatus" class="status"></p>
+        <ul id="searchResults"></ul>
+      </section>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
