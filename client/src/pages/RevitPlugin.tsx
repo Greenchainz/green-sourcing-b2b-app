@@ -19,8 +19,10 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
-const DOWNLOAD_URL = "https://github.com/Greenchainz/greenchainz-revit-plugin/releases/latest";
-const FORMA_INSTALL_URL = "https://apps.autodesk.com/FORMA/en/Detail/Index?id=greenchainz";
+const REVIT_MARKETPLACE_URL = "https://apps.autodesk.com/RVT/en/List/Search?isAppSearch=True&searchboxstore=greenchainz";
+const FORMA_MARKETPLACE_URL = "https://apps.autodesk.com/FORMA/en/List/Search?isAppSearch=True&searchboxstore=greenchainz";
+const REVIT_GITHUB_URL = "https://github.com/Greenchainz/greenchainz-revit-plugin/releases/latest";
+const FORMA_GITHUB_URL = "https://github.com/Greenchainz/greenchainz-forma-extension";
 
 const REVIT_FEATURES = [
   {
@@ -152,23 +154,23 @@ export default function RevitPlugin() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <a href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              <a href={REVIT_MARKETPLACE_URL} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   className="w-full text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300 gap-2"
                 >
                   <Download className="w-5 h-5" />
-                  Get the Revit Plugin
+                  Get the Revit Plugin (Autodesk)
                 </Button>
               </a>
-              <a href={FORMA_INSTALL_URL} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              <a href={FORMA_MARKETPLACE_URL} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   variant="outline"
                   className="w-full text-lg px-8 py-6 gap-2"
                 >
                   <ExternalLink className="w-5 h-5" />
-                  Get the Forma Extension
+                  Get the Forma Extension (Autodesk)
                 </Button>
               </a>
             </div>
@@ -265,15 +267,22 @@ export default function RevitPlugin() {
               ))}
             </div>
 
-            <a href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
+            <a href={REVIT_MARKETPLACE_URL} target="_blank" rel="noopener noreferrer">
               <Button
                 size="lg"
                 className="text-lg px-10 py-6 bg-primary text-primary-foreground hover:bg-primary/90 gap-2 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300"
               >
                 <Download className="w-5 h-5" />
-                Download Revit Plugin — Free
+                Install from Autodesk — Revit
               </Button>
             </a>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Can't find it in Autodesk?{" "}
+              <a href={REVIT_GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                Use the GitHub release
+              </a>
+              .
+            </p>
           </div>
         </div>
       </section>
@@ -350,16 +359,23 @@ export default function RevitPlugin() {
               ))}
             </div>
 
-            <a href={FORMA_INSTALL_URL} target="_blank" rel="noopener noreferrer">
+            <a href={FORMA_MARKETPLACE_URL} target="_blank" rel="noopener noreferrer">
               <Button
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 py-6 gap-2 border-primary/30 hover:bg-primary/5"
               >
                 <ExternalLink className="w-5 h-5" />
-                Install the Forma Extension — Free
+                Install from Autodesk — Forma
               </Button>
             </a>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Can't find it in Autodesk?{" "}
+              <a href={FORMA_GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                Open the GitHub repo
+              </a>
+              .
+            </p>
           </div>
         </div>
       </section>
@@ -376,13 +392,13 @@ export default function RevitPlugin() {
               Free to install. Works inside the Revit versions and Forma projects you already have.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
+              <a href={REVIT_MARKETPLACE_URL} target="_blank" rel="noopener noreferrer">
                 <Button
                   size="lg"
                   className="text-lg px-10 py-6 bg-primary text-primary-foreground hover:bg-primary/90 gap-2 hover:shadow-[0_0_20px_rgba(159,232,112,0.6)] transition-all duration-300"
                 >
                   <Download className="w-5 h-5" />
-                  Get the Revit Plugin
+                  Get the Revit Plugin (Autodesk)
                 </Button>
               </a>
               <Link href="/rfq">
