@@ -17,7 +17,7 @@ permissions:
   security-events: write   # required to upload SARIF results to GitHub Security tab
 
 jobs:
-  # ── Job 1: Dependency vulnerability scan (Snyk) ─────────────────────────
+  # --- Job 1: Dependency vulnerability scan (Snyk) ---
   dependency-scan:
     name: Dependency Scan (Snyk)
     runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
           sarif_file: snyk-deps.sarif
           category: snyk-dependencies
 
-  # ── Job 2: Container image scan (Trivy) ────────────────────────────────
+  # --- Job 2: Container image scan (Trivy) ---
   container-scan:
     name: Container Image Scan (Trivy)
     runs-on: ubuntu-latest
@@ -93,7 +93,7 @@ jobs:
           sarif_file: trivy-container-${{ matrix.image_name }}.sarif
           category: ${{ matrix.category }}
 
-  # ── Job 3: pnpm audit (no token needed, always runs) ──────────────────────
+  # --- Job 3: pnpm audit (no token needed, always runs) ---
   npm-audit:
     name: pnpm audit
     runs-on: ubuntu-latest
@@ -122,15 +122,15 @@ jobs:
         with:
           name: npm-audit-${{ github.run_number }}
           path: npm-audit.json
-          retention-days: 90         # keep 90 days — satisfies log retention requirement
+          retention-days: 90         # keep 90 days - satisfies log retention requirement
 
-  # ── Job 4: Unsafe identity pattern guards ───────────────────────────────
+  # --- Job 4: Unsafe identity pattern guards ---
   # Catches code that reads user identity from client-supplied input instead
   # of from the server-side JWT context (ctx.user.*).
   #
   # Two tiers:
-  #   HARD FAIL — patterns with zero legitimate uses (will block merge)
-  #   ADVISORY  — patterns with rare legitimate uses (reported, not blocking)
+  #   HARD FAIL - patterns with zero legitimate uses (will block merge)
+  #   ADVISORY  - patterns with rare legitimate uses (reported, not blocking)
   #
   # To opt out of a specific line (admin-targeting only, never for tenant scoping):
   #   append "// gcz-allow: <reason>" to the line
@@ -141,7 +141,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      # ── Hard-fail patterns ────────────────────────────────────────────────
+      # --- Hard-fail patterns ---
       # These have NO legitimate uses anywhere in the server codebase.
       - name: Check for forbidden identity patterns (hard fail)
         run: |
@@ -167,7 +167,7 @@ jobs:
               | grep -v "\.test\." \
               | grep -v "\.spec\." || true)
             if [ -n "$matches" ]; then
-              echo "❌ FORBIDDEN PATTERN: $pattern"
+              echo "? FORBIDDEN PATTERN: $pattern"
               echo "$matches"
               echo ""
               FOUND=$((FOUND + 1))
@@ -176,7 +176,7 @@ jobs:
 
           if [ $FOUND -gt 0 ]; then
             echo ""
-            echo "──────────────────────────────────────────────────────────────"
+            echo "---"
             echo "FAIL: $FOUND forbidden identity pattern(s) found."
             echo "User identity must come from ctx.user (server-side JWT),"
             echo "never from client-supplied request body, query, or headers."
@@ -184,13 +184,13 @@ jobs:
             echo "If this is a legitimate admin-targeting use, add:"
             echo "  // gcz-allow: admin-targeting <reason>"
             echo "to the specific line."
-            echo "──────────────────────────────────────────────────────────────"
+            echo "---"
             exit 1
           fi
 
-          echo "✅ No forbidden identity patterns found."
+          echo "? No forbidden identity patterns found."
 
-      # ── Advisory patterns ─────────────────────────────────────────────────
+      # --- Advisory patterns ---
       # These have rare legitimate uses (e.g. admin targeting another user).
       # Reports findings but does NOT fail the build.
       - name: Check for advisory identity patterns (informational)
@@ -208,7 +208,7 @@ jobs:
               | grep -v "\.test\." \
               | grep -v "\.spec\." || true)
             if [ -n "$matches" ]; then
-              echo "⚠️  ADVISORY PATTERN: $pattern"
+              echo "??  ADVISORY PATTERN: $pattern"
               echo "$matches"
               echo ""
               FOUND=$((FOUND + 1))
@@ -216,17 +216,17 @@ jobs:
           done
 
           if [ $FOUND -gt 0 ]; then
-            echo "──────────────────────────────────────────────────────────────"
+            echo "---"
             echo "ADVISORY: $FOUND pattern(s) found for manual review."
             echo "Verify these are NOT used for tenant-scoping your own data."
             echo "If they are admin-targeting a different user's record, add:"
             echo "  // gcz-allow: admin-targeting <reason>"
-            echo "──────────────────────────────────────────────────────────────"
+            echo "---"
           else
-            echo "✅ No advisory identity patterns found."
+            echo "? No advisory identity patterns found."
           fi
 
-  # ── Job 5: Summary notification ─────────────────────────────────────────
+  # --- Job 5: Summary notification ---
   scan-summary:
     name: Scan Summary
     runs-on: ubuntu-latest
