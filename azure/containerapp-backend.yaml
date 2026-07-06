@@ -17,7 +17,6 @@ properties:
       corsPolicy:
         allowedOrigins:
           - "https://greenchainz.com"
-          - "https://greenchainz.com"
           - "https://www.greenchainz.com"
         allowedMethods:
           - GET
@@ -26,7 +25,10 @@ properties:
           - DELETE
           - OPTIONS
         allowedHeaders:
-          - "*"
+          - "Content-Type"
+          - "Authorization"
+          - "X-Requested-With"
+          - "X-CSRF-Token"
         allowCredentials: true
     
     registries:
@@ -275,4 +277,3 @@ properties:
 
   identity:
     type: SystemAssigned
-

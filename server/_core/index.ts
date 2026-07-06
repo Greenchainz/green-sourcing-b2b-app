@@ -88,6 +88,45 @@ const materialScorePdfRateLimit = createRateLimiter(10, 60_000);
 const webhookRateLimit = createRateLimiter(120, 60_000);
 const publicApiRateLimit = createRateLimiter(120, 60_000);
 const CANONICAL_HOST = "greenchainz.com";
+const ALLOWED_PUBLIC_HOSTS = new Set([
+  CANONICAL_HOST,
+  "www.greenchainz.com",
+]);
+
+function getForwardedHost(req: express.Request): string {
+  const forwardedHostHeader = req.headers["x-forwarded-host"];
+  const rawForwardedHost = Array.isArray(forwardedHostHeader)
+    ? forwardedHostHeader[0]
+    : String(forwardedHostHeader ?? "").split(",")[0].trim();
+  const forwardedHost = rawForwardedHost.toLowerCase();
+  return /^[a-z0-9.-]+(?::\d+)?$/.test(forwardedHost) ? forwardedHost : "";
+}
+
+function getRequestHost(req: express.Request): string {
+  const host = String(req.headers.host ?? "").toLowerCase();
+  return /^[a-z0-9.-]+(?::\d+)?$/.test(host) ? host : "";
+}
+
+function isHostAllowedForPublicApi(req: express.Request): boolean {
+  const forwardedHost = getForwardedHost(req);
+  const host = getRequestHost(req);
+
+  if (forwardedHost) {
+    return ALLOWED_PUBLIC_HOSTS.has(forwardedHost);
+  }
+
+  // Local development and internal container health checks.
+  if (
+    host.startsWith("localhost:") ||
+    host === "localhost" ||
+    host.startsWith("127.0.0.1:") ||
+    host === "127.0.0.1"
+  ) {
+    return true;
+  }
+
+  return ALLOWED_PUBLIC_HOSTS.has(host);
+}
 
 function isHealthEndpoint(path: string): boolean {
   return path === "/health" || path === "/healthz" || path === "/ready" || path === "/api/health";
@@ -193,13 +232,8 @@ async function startServer() {
       return;
     }
 
-    const forwardedHostHeader = req.headers["x-forwarded-host"];
-    const rawForwardedHost = Array.isArray(forwardedHostHeader)
-      ? forwardedHostHeader[0]
-      : String(forwardedHostHeader ?? "").split(",")[0].trim();
-    const forwardedHost = rawForwardedHost.toLowerCase();
-    const safeForwardedHost = /^[a-z0-9.-]+(?::\d+)?$/.test(forwardedHost) ? forwardedHost : "";
-    const host = (safeForwardedHost || String(req.headers.host ?? "")).toLowerCase();
+    const safeForwardedHost = getForwardedHost(req);
+    const host = (safeForwardedHost || getRequestHost(req)).toLowerCase();
     const forwardedProtoHeader = req.headers["x-forwarded-proto"];
     const forwardedProto = Array.isArray(forwardedProtoHeader)
       ? forwardedProtoHeader[0]
@@ -212,6 +246,36 @@ async function startServer() {
     }
 
     res.redirect(308, `https://${CANONICAL_HOST}${req.originalUrl}`);
+  });
+
+  // In production, block direct public API traffic to containerapp FQDNs.
+  // Requests must arrive via the canonical hosts routed through Front Door.
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV !== "production") {
+      next();
+      return;
+    }
+
+    if (isHealthEndpoint(req.path)) {
+      next();
+      return;
+    }
+
+    const isPublicApiSurface = req.path.startsWith("/api/") || req.path === "/unsubscribe";
+    if (!isPublicApiSurface) {
+      next();
+      return;
+    }
+
+    if (isHostAllowedForPublicApi(req)) {
+      next();
+      return;
+    }
+
+    console.warn(
+      `[network-guard] Rejected direct backend request host=${String(req.headers.host ?? "")} path=${req.path}`
+    );
+    res.status(403).json(createErrorResponse("Forbidden", req.id, "Request host is not allowed."));
   });
 
   // ── Gzip compression ─────────────────────────────────────────────────────
