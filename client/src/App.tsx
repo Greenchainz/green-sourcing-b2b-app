@@ -197,6 +197,7 @@ const CADocumentsPage = lazy(() => import("./pages/CADocumentsPage"));
 const ClaimProfile = lazy(() => import("./pages/ClaimProfile"));
 const IntercomWidget = lazy(() => import("./components/IntercomWidget"));
 const ChatWidget = lazy(() => import("./components/ChatWidget").then((m) => ({ default: m.ChatWidget })));
+const ArcadeHost = lazy(() => import("./components/arcade/ArcadeHost"));
 
 function RouteSeoFallback() {
   const [location] = useLocation();
@@ -523,6 +524,10 @@ function AppInner() {
             <ChatWidget />
           </Suspense>
         ) : null}
+        {/* GreenChainz Arcade — hidden easter egg (Konami code + launcher). Client-only. */}
+        <Suspense fallback={null}>
+          <ArcadeHost />
+        </Suspense>
         {/* CookieYes in index.html handles cookie consent */}
       </TooltipProvider>
     </ChatWidgetProvider>
