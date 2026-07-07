@@ -513,6 +513,33 @@ export const leads = pgTable("leads", {
 
 export type Lead = typeof leads.$inferSelect;
 
+// ─── Arcade Scores (global leaderboard) ─────────────────────────────────────
+// Cross-user leaderboard for the GreenChainz Arcade. `eventKey` is the seam for
+// tournaments / charity events (casual board = eventKey IS NULL). When a player
+// claims their rank with an email, the arcade router also seeds a CRM lead.
+
+export const arcadeScores = pgTable(
+  "arcade_scores",
+  {
+    id: serial("id").primaryKey(),
+    gameId: varchar("gameId", { length: 64 }).notNull(),
+    initials: varchar("initials", { length: 12 }).notNull(),
+    score: integer("score").notNull(),
+    playerName: varchar("playerName", { length: 120 }),
+    email: varchar("email", { length: 320 }),
+    company: varchar("company", { length: 160 }),
+    eventKey: varchar("eventKey", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => ({
+    boardIdx: index("arcade_scores_board_idx").on(t.gameId, t.score),
+    eventIdx: index("arcade_scores_event_idx").on(t.eventKey),
+  }),
+);
+
+export type ArcadeScore = typeof arcadeScores.$inferSelect;
+export type InsertArcadeScore = typeof arcadeScores.$inferInsert;
+
 // ─── Agent Conversations ───────────────────────────────────────────────────
 
 export const agentConversations = pgTable("agent_conversations", {
