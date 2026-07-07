@@ -68,6 +68,7 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
     meterPhase: "idle" as MeterPhase,
     resultLabel: null as string | null,
     resultPoints: 0,
+    resultPrecision: 0,
   });
 
   // aim the ball at the cup to start
@@ -361,6 +362,7 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
 
       const resultLabel = s.phase === "sunk" && s.lastResult ? s.lastResult.label : null;
       const resultPoints = s.phase === "sunk" && s.lastResult ? s.lastResult.points : 0;
+      const resultPrecision = s.phase === "sunk" && s.lastResult ? s.lastResult.precision : 0;
       setHud((h) =>
         h.holeNumber === s.holeNumber &&
         h.par === s.par &&
@@ -369,7 +371,8 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
         h.phase === s.phase &&
         h.meterPhase === m.phase &&
         h.resultLabel === resultLabel &&
-        h.resultPoints === resultPoints
+        h.resultPoints === resultPoints &&
+        h.resultPrecision === resultPrecision
           ? h
           : {
               holeNumber: s.holeNumber,
@@ -380,6 +383,7 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
               meterPhase: m.phase,
               resultLabel,
               resultPoints,
+              resultPrecision,
             },
       );
 
@@ -434,6 +438,11 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
             <p className="mt-1 font-mono text-lg font-bold text-white/90">
               +{hud.resultPoints.toLocaleString()}
             </p>
+            {hud.resultPrecision > 0 && (
+              <p className="mt-0.5 font-mono text-xs font-semibold uppercase tracking-wide text-white/70">
+                finesse +{hud.resultPrecision.toLocaleString()}
+              </p>
+            )}
           </div>
         )}
       </div>

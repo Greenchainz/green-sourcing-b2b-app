@@ -57,6 +57,8 @@ export interface HoleResult {
   strokes: number;
   label: string;
   points: number;
+  /** finesse bonus folded into `points` — reward for draining the cup softly */
+  precision: number;
 }
 
 export type GolfEvent =
@@ -137,12 +139,20 @@ function rectHasPoint(w: Wall, p: Vec2, pad: number): boolean {
 /**
  * Points + label for finishing a hole. Higher = better so it fits the shared
  * leaderboard; later holes are worth slightly more to reward endurance.
+ *
+ * `approachSpeed` (the ball's speed as it drops, px/ms) adds a continuous
+ * finesse bonus: softly draining the cup beats rattling it in at full tilt.
+ * That spreads otherwise-identical stroke results across a wide range, so
+ * leaderboard totals rarely tie — skill breaks the tie, not submission time.
+ * Omit it (the legacy 3-arg call) for a pure stroke-based score.
  */
 export function scoreHole(
   par: number,
   strokes: number,
   holeNumber: number,
-): { points: number; label: string } {
+  approachSpeed?: number,
+  captureSpeed: number = defaultGolfConfig.captureSpeed,
+): { points: number; label: string; precision: number } {
   const diff = strokes - par;
   let base: number;
   let label: string;
@@ -173,8 +183,16 @@ export function scoreHole(
   if (strokes === 1) label = "Ace!";
 
   const scale = 1 + (holeNumber - 1) * 0.05;
-  const points = Math.round((base + aceBonus) * scale);
-  return { points, label };
+
+  let precision = 0;
+  if (approachSpeed !== undefined && Number.isFinite(approachSpeed)) {
+    const cap = Math.max(captureSpeed, 1e-6);
+    const softness = clamp(1 - approachSpeed / cap, 0, 1);
+    precision = Math.round(softness * 140 * scale);
+  }
+
+  const points = Math.round((base + aceBonus) * scale) + precision;
+  return { points, label, precision };
 }
 
 /**
@@ -361,7 +379,14 @@ function reflectWall(
 }
 
 function sink(state: GolfState): void {
-  const res = scoreHole(state.par, state.strokes, state.holeNumber);
+  const approachSpeed = Math.hypot(state.ball.vx, state.ball.vy);
+  const res = scoreHole(
+    state.par,
+    state.strokes,
+    state.holeNumber,
+    approachSpeed,
+    state.config.captureSpeed,
+  );
   state.score += res.points;
   state.ball.x = state.hole.x;
   state.ball.y = state.hole.y;
@@ -373,6 +398,7 @@ function sink(state: GolfState): void {
     strokes: state.strokes,
     label: res.label,
     points: res.points,
+    precision: res.precision,
   };
   state.phase = "sunk";
   state.sinkTimer = SINK_REVEAL_MS;
