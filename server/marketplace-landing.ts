@@ -59,6 +59,62 @@ export interface MarketplaceSubscription {
   saasSubscriptionStatus: string;
 }
 
+const DEFAULT_FRONTEND_URL = "https://greenchainz.com";
+
+function getFrontendBaseUrl(req: Request): string {
+  const appBase = process.env.APP_BASE_URL;
+  if (appBase && appBase.length > 0) {
+    return appBase;
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (frontendUrl && frontendUrl.length > 0) {
+    return frontendUrl;
+  }
+
+  const host = req.headers.host;
+  if (host) {
+    const protocol = req.protocol || "https";
+    return `${protocol}://${host}`;
+  }
+
+  return DEFAULT_FRONTEND_URL;
+}
+
+function respondMarketplaceError(
+  req: Request,
+  res: Response,
+  status: number,
+  errorCode:
+    | "missing_token"
+    | "invalid_token"
+    | "resolve_failed"
+    | "provision_failed"
+    | "activation_failed"
+    | "internal_error",
+  message: string
+) {
+  const acceptsJson = req.accepts(["html", "json"]) === "json";
+  if (acceptsJson) {
+    return res.status(status).json({
+      error: "Marketplace activation failed",
+      code: errorCode,
+      message,
+      recovery: {
+        signOutUrl: "/api/auth/logout",
+        loginUrl: "/login",
+      },
+    });
+  }
+
+  const frontendUrl = getFrontendBaseUrl(req);
+  const redirectUrl = new URL("/login", frontendUrl);
+  redirectUrl.searchParams.set("error", `marketplace_${errorCode}`);
+  redirectUrl.searchParams.set("returnPath", "/dashboard");
+
+  return res.redirect(302, redirectUrl.toString());
+}
+
 /**
  * Landing page handler
  * GET /api/marketplace/landing?token=<marketplace_token>
@@ -68,10 +124,13 @@ export async function handleLandingPage(req: Request, res: Response) {
     const { token } = req.query;
 
     if (!token || typeof token !== "string") {
-      return res.status(400).json({
-        error: "Missing marketplace token",
-        message: "The 'token' query parameter is required",
-      });
+      return respondMarketplaceError(
+        req,
+        res,
+        400,
+        "missing_token",
+        "The marketplace token is missing from the activation callback."
+      );
     }
 
     console.log("[Marketplace Landing] Received token:", token.substring(0, 20) + "...");
@@ -79,19 +138,25 @@ export async function handleLandingPage(req: Request, res: Response) {
     // Step 1: Validate the marketplace token with Azure AD
     const isValid = await validateMarketplaceToken(token);
     if (!isValid) {
-      return res.status(401).json({
-        error: "Invalid marketplace token",
-        message: "The provided token could not be validated",
-      });
+      return respondMarketplaceError(
+        req,
+        res,
+        401,
+        "invalid_token",
+        "The marketplace token could not be validated."
+      );
     }
 
     // Step 2: Resolve the token to get subscription details
     const subscription = await resolveSubscription(token);
     if (!subscription) {
-      return res.status(500).json({
-        error: "Failed to resolve subscription",
-        message: "Could not retrieve subscription details from Microsoft",
-      });
+      return respondMarketplaceError(
+        req,
+        res,
+        502,
+        "resolve_failed",
+        "We could not resolve your Microsoft Marketplace subscription."
+      );
     }
 
     console.log("[Marketplace Landing] Resolved subscription:", {
@@ -112,18 +177,29 @@ export async function handleLandingPage(req: Request, res: Response) {
     // First check if subscription exists
     const existingSubscription = await getBuyerSubscription(userId);
 
-    if (!existingSubscription) {
-      // Create new subscription
-      await createBuyerSubscription(userId, tier as "free" | "standard" | "premium");
-    }
+    try {
+      if (!existingSubscription) {
+        // Create new subscription
+        await createBuyerSubscription(userId, tier as "free" | "standard" | "premium");
+      }
 
-    // Update with Microsoft marketplace details
-    if (tier !== "free") {
-      await upgradeBuyerSubscription(
-        userId,
-        tier as "standard" | "premium",
-        subscription.id,
-        subscription.planId
+      // Update with Microsoft marketplace details
+      if (tier !== "free") {
+        await upgradeBuyerSubscription(
+          userId,
+          tier as "standard" | "premium",
+          subscription.id,
+          subscription.planId
+        );
+      }
+    } catch (provisionError) {
+      console.error("[Marketplace Landing] Provisioning error:", provisionError);
+      return respondMarketplaceError(
+        req,
+        res,
+        500,
+        "provision_failed",
+        "We could not finish provisioning your subscription in GreenChainz."
       );
     }
 
@@ -135,7 +211,18 @@ export async function handleLandingPage(req: Request, res: Response) {
 
     // Step 6: Activate the subscription with Microsoft
     // This tells Microsoft that we've successfully provisioned the subscription
-    await activateSubscription(subscription.id, subscription.planId);
+    try {
+      await activateSubscription(subscription.id, subscription.planId);
+    } catch (activationError) {
+      console.error("[Marketplace Landing] Activation handshake error:", activationError);
+      return respondMarketplaceError(
+        req,
+        res,
+        502,
+        "activation_failed",
+        "Your subscription was created, but marketplace activation confirmation failed."
+      );
+    }
 
     // Step 7: Redirect to user dashboard
     const dashboardUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/dashboard?welcome=true`;
@@ -143,10 +230,13 @@ export async function handleLandingPage(req: Request, res: Response) {
 
   } catch (error) {
     console.error("[Marketplace Landing] Error:", error);
-    return res.status(500).json({
-      error: "Internal server error",
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
+    return respondMarketplaceError(
+      req,
+      res,
+      500,
+      "internal_error",
+      error instanceof Error ? error.message : "Unexpected marketplace error."
+    );
   }
 }
 
