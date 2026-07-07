@@ -44,10 +44,33 @@ export interface Wall {
   height: number;
 }
 
+/**
+ * Pinball-style scoring ring on the fairway. Roll (or carry) the ball through
+ * one and it lights up and pops its point value — once per hole. Purely a
+ * score pickup: it does NOT deflect the ball, so it never changes the physics.
+ * Farther / tighter rings are worth more, so a bold, well-aimed drive that
+ * threads them all is worth chasing.
+ */
+export interface Target {
+  x: number;
+  y: number;
+  radius: number;
+  /** points added on contact — positive for a green win, negative for a hazard */
+  value: number;
+  /** flips true the first time the ball passes through it (scored once) */
+  hit: boolean;
+  /** "good" = a green-win ring (points); "bad" = dirty-energy muck (penalty) */
+  kind: "good" | "bad";
+  /** cheesy on-brand tag the renderer pops on contact, e.g. "SOLAR" / "OIL SLICK" */
+  label: string;
+}
+
 export interface HoleLayout {
   tee: Vec2;
   hole: Hole;
   walls: Wall[];
+  /** pinball scoring rings down the fairway (empty on flat practice holes) */
+  targets: Target[];
   par: number;
   /**
    * Green break: a constant acceleration (px/ms^2) that bends a rolling ball,
@@ -73,7 +96,11 @@ export type GolfEvent =
   | { type: "wall" }
   | { type: "rest"; strokes: number }
   | { type: "sunk"; result: HoleResult }
-  | { type: "game_over"; score: number };
+  | { type: "game_over"; score: number }
+  /** ball lit a ring / hit dirty-energy muck — renderer pops the tag at (x,y) */
+  | { type: "target"; value: number; x: number; y: number; kind: "good" | "bad"; label: string }
+  /** ball banked off a bumper for bonus points — renderer flashes at (x,y) */
+  | { type: "bank"; value: number; x: number; y: number };
 
 export interface GolfConfig {
   /** strokes allowed beyond par before the run ends on that hole */
@@ -96,12 +123,16 @@ export interface GolfState {
   tee: Vec2;
   hole: Hole;
   walls: Wall[];
+  /** pinball scoring rings for this hole (see HoleLayout.targets) */
+  targets: Target[];
   par: number;
   /** green break (px/ms^2) applied to a rolling ball — see HoleLayout.slope */
   slope: Vec2;
   strokes: number;
   holeNumber: number;
   score: number;
+  /** banks scored on this hole so far (capped by MAX_BANKS) — resets per hole */
+  bankScored: number;
   /** result of the hole just sunk, drives the reveal flash + board */
   lastResult: HoleResult | null;
   /** counts down the sink celebration before the next hole loads */
@@ -127,6 +158,10 @@ const MARGIN = 42;
 const MAX_DT = 32;
 const SINK_REVEAL_MS = 1300;
 const MAX_OBSTACLES = 4;
+
+/** points awarded per bank off a bumper, and how many banks score per hole */
+const BANK_VALUE = 25;
+const MAX_BANKS = 4;
 
 /**
  * Break only nudges a ball moving faster than stopSpeed * this factor. Below it
@@ -279,7 +314,7 @@ export function buildHole(
     y: Math.sin(breakAngle) * breakMag,
   };
 
-  return { tee, hole, walls, par, slope };
+  return { tee, hole, walls, targets: [], par, slope };
 }
 
 function ballAtTee(tee: Vec2): GolfBall {
@@ -302,6 +337,8 @@ export function createGolfState(
     strokes: 0,
     holeNumber: 1,
     score: 0,
+    bankScored: 0,
+    targets: layout.targets,
     lastResult: null,
     sinkTimer: 0,
     config,
@@ -329,15 +366,64 @@ export function buildLongHole(rng: () => number = Math.random): HoleLayout {
     radius: HOLE_RADIUS,
   };
 
-  // Two fairway rails offset above/below the straight line — reward a placed
-  // drive, but a well-aimed shot sails the lane between them untouched.
-  const candidateWalls: Wall[] = [
-    { x: FIELD_WIDTH * 0.42, y: MARGIN, width: 20, height: 120 },
-    { x: FIELD_WIDTH * 0.6, y: FIELD_HEIGHT - MARGIN - 120, width: 20, height: 120 },
+  // Pinball scoring strung along the tee->cup line. GOOD "green win" rings light
+  // up for points — aim true and a big drive threads all three for a combo, and
+  // the deeper ring pays the most. BAD "dirty energy" zones sit OFF the line, so
+  // only a sprayed shot finds the muck and gets docked. Cheesy on purpose: the
+  // game literally rewards keeping it clean and green.
+  const ring = (
+    t: number,
+    radius: number,
+    value: number,
+    label: string,
+  ): Target => ({
+    x: tee.x + (hole.x - tee.x) * t,
+    y: tee.y + (hole.y - tee.y) * t,
+    radius,
+    value,
+    hit: false,
+    kind: "good",
+    label,
+  });
+  const badZone = (
+    fx: number,
+    fy: number,
+    radius: number,
+    value: number,
+    label: string,
+  ): Target => ({
+    x: FIELD_WIDTH * fx,
+    y: FIELD_HEIGHT * fy,
+    radius,
+    value,
+    hit: false,
+    kind: "bad",
+    label,
+  });
+  const targets: Target[] = [
+    ring(0.28, 30, 50, "SOLAR"),
+    ring(0.5, 27, 100, "RECYCLE"),
+    ring(0.66, 25, 175, "NET-ZERO"),
+    badZone(0.44, 0.8, 34, -50, "OIL SLICK"),
+    badZone(0.6, 0.19, 32, -40, "LANDFILL"),
   ];
-  const walls = candidateWalls.filter(
-    (w) => !rectHasPoint(w, tee, 70) && !rectHasPoint(w, hole, 70),
-  );
+
+  // Two lit green-side bumpers flanking the cup approach: bank a hot shot off
+  // one for bonus points (capped), or thread the gap straight into the pin.
+  const walls: Wall[] = [
+    {
+      x: hole.x - 74,
+      y: clamp(hole.y - 82, MARGIN, FIELD_HEIGHT - MARGIN - 62),
+      width: 16,
+      height: 62,
+    },
+    {
+      x: hole.x - 74,
+      y: clamp(hole.y + 20, MARGIN, FIELD_HEIGHT - MARGIN - 62),
+      width: 16,
+      height: 62,
+    },
+  ];
 
   // A definite, readable green break so the "hills" matter on the putt.
   const breakAngle = rng() * Math.PI * 2;
@@ -347,7 +433,7 @@ export function buildLongHole(rng: () => number = Math.random): HoleLayout {
     y: Math.sin(breakAngle) * breakMag,
   };
 
-  return { tee, hole, walls, par: 4, slope };
+  return { tee, hole, walls, targets, par: 4, slope };
 }
 
 /**
@@ -370,6 +456,8 @@ export function createRoundState(
     strokes: 0,
     holeNumber: 1,
     score: 0,
+    bankScored: 0,
+    targets: layout.targets,
     lastResult: null,
     sinkTimer: 0,
     config,
@@ -385,6 +473,8 @@ export function nextHole(state: GolfState): void {
   state.tee = layout.tee;
   state.hole = layout.hole;
   state.walls = layout.walls;
+  state.targets = layout.targets;
+  state.bankScored = 0;
   state.par = layout.par;
   state.slope = layout.slope;
   state.ball = ballAtTee(layout.tee);
@@ -527,9 +617,38 @@ function integrate(state: GolfState, subDt: number): void {
   ball.x += ball.vx * subDt;
   ball.y += ball.vy * subDt;
 
+  const evBefore = state.events.length;
   reflectBorders(ball, c.wallRestitution, state.events);
   for (const w of state.walls) {
     if (reflectWall(ball, w, c.wallRestitution, state.events)) break;
+  }
+  // Pinball bumper juice: award a capped bonus each time the ball banks off a
+  // green-side bumper this hole, and flag it so the renderer flashes the pop.
+  if (state.events.length > evBefore && state.bankScored < MAX_BANKS) {
+    state.score += BANK_VALUE;
+    state.bankScored += 1;
+    state.events.push({ type: "bank", value: BANK_VALUE, x: ball.x, y: ball.y });
+  }
+
+  // Green-win rings + dirty-energy zones — non-physical pickups scored once
+  // each. A green win adds points; the muck (oil slick / landfill) docks them.
+  // Live score never dips below zero, so the board stays clean.
+  for (const t of state.targets) {
+    if (t.hit) continue;
+    const tx = ball.x - t.x;
+    const ty = ball.y - t.y;
+    if (tx * tx + ty * ty <= t.radius * t.radius) {
+      t.hit = true;
+      state.score = Math.max(0, state.score + t.value);
+      state.events.push({
+        type: "target",
+        value: t.value,
+        x: t.x,
+        y: t.y,
+        kind: t.kind,
+        label: t.label,
+      });
+    }
   }
 
   const dx = ball.x - state.hole.x;

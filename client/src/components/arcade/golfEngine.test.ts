@@ -373,3 +373,88 @@ describe("The Round (single long hole)", () => {
     expect(s.holeNumber).toBe(2);
   });
 });
+
+describe("Golf-Pinball scoring (rings, muck & bank bonus)", () => {
+  it("strings green-win rings down the fairway plus off-line dirty-energy zones", () => {
+    const l = buildLongHole(mulberry32(5));
+    const goods = l.targets.filter((t) => t.kind === "good");
+    const bads = l.targets.filter((t) => t.kind === "bad");
+    expect(goods.length).toBe(3);
+    expect(bads.length).toBeGreaterThanOrEqual(1);
+    // green wins pay points and sit on the tee -> cup line; deeper pays more
+    for (const g of goods) {
+      expect(g.value).toBeGreaterThan(0);
+      expect(g.x).toBeGreaterThan(l.tee.x);
+      expect(g.x).toBeLessThan(l.hole.x);
+    }
+    expect(goods[goods.length - 1].value).toBeGreaterThan(goods[0].value);
+    // dirty energy docks points
+    for (const b of bads) expect(b.value).toBeLessThan(0);
+  });
+
+  it("lights a green-win ring once, banking its points (never twice)", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    const ring = s.targets.find((t) => t.kind === "good")!;
+    s.score = 0;
+    s.ball.x = ring.x;
+    s.ball.y = ring.y;
+    s.ball.vx = 0.1;
+    s.ball.vy = 0;
+    s.phase = "rolling";
+
+    stepGolf(s, 16);
+    expect(ring.hit).toBe(true);
+    expect(s.score).toBe(ring.value);
+    expect(
+      s.events.some(
+        (e) => e.type === "target" && e.kind === "good" && e.value === ring.value,
+      ),
+    ).toBe(true);
+
+    stepGolf(s, 16); // rolling through the same ring must not re-score
+    expect(s.score).toBe(ring.value);
+  });
+
+  it("docks points in a dirty-energy zone and never lets the score go negative", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    const muck = s.targets.find((t) => t.kind === "bad")!;
+    s.score = 500;
+    s.ball.x = muck.x;
+    s.ball.y = muck.y;
+    s.ball.vx = 0.1;
+    s.ball.vy = 0;
+    s.phase = "rolling";
+    stepGolf(s, 16);
+    expect(s.score).toBe(500 + muck.value); // muck.value is negative
+    expect(
+      s.events.some((e) => e.type === "target" && e.kind === "bad"),
+    ).toBe(true);
+
+    // a small score can't be dragged below zero
+    const s2 = createRoundState(defaultGolfConfig, mulberry32(5));
+    const muck2 = s2.targets.find((t) => t.kind === "bad")!;
+    s2.score = 10;
+    s2.ball.x = muck2.x;
+    s2.ball.y = muck2.y;
+    s2.ball.vx = 0.1;
+    s2.ball.vy = 0;
+    s2.phase = "rolling";
+    stepGolf(s2, 16);
+    expect(s2.score).toBe(0);
+  });
+
+  it("awards a capped bonus for banking off a green-side bumper", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    const bump = s.walls[0];
+    s.score = 0;
+    s.ball.x = bump.x - BALL_RADIUS - 3; // just left of the bumper
+    s.ball.y = bump.y + bump.height / 2; // mid-face so it strikes square
+    s.ball.vx = 0.8; // driven into it
+    s.ball.vy = 0;
+    s.phase = "rolling";
+    stepGolf(s, 16);
+    expect(s.bankScored).toBe(1);
+    expect(s.score).toBeGreaterThan(0);
+    expect(s.events.some((e) => e.type === "bank")).toBe(true);
+  });
+});

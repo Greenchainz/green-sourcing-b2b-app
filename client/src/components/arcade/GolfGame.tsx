@@ -100,6 +100,11 @@ export default function GolfGame({
     hold: 0,
   });
 
+  // floating "+points" pops for ring hits, muck penalties & bumper banks
+  const popsRef = useRef<
+    Array<{ x: number; y: number; text: string; color: string; life: number; max: number }>
+  >([]);
+
   const [hud, setHud] = useState({
     holeNumber: 1,
     par: stateRef.current.par,
@@ -270,12 +275,75 @@ export default function GolfGame({
       ctx.fillRect(x, 0, 48, FIELD_HEIGHT);
     }
 
-    // bumpers (mini-golf rails)
+    // pinball scoring rings (green wins) + dirty-energy zones (avoid the muck!)
+    const nowMs = performance.now();
+    for (const t of s.targets) {
+      const good = t.kind === "good";
+      if (t.hit) {
+        // spent: faint ghost so the course still reads after you tag it
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.strokeStyle = good ? "#8affc0" : "#ff8f8f";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+      const pulse = 0.55 + 0.45 * Math.sin(nowMs / 320 + t.x * 0.05);
+      ctx.save();
+      ctx.textAlign = "center";
+      if (good) {
+        ctx.shadowColor = "#39d98a";
+        ctx.shadowBlur = 12 + pulse * 10;
+        ctx.strokeStyle = `rgba(120,255,180,${0.5 + pulse * 0.4})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(140,255,190,0.10)";
+        ctx.fill();
+        ctx.fillStyle = "#eafff0";
+        ctx.font = "800 15px ui-monospace, monospace";
+        ctx.fillText(`+${t.value}`, t.x, t.y + 5);
+        ctx.font = "700 9px ui-monospace, monospace";
+        ctx.fillStyle = "rgba(180,255,210,0.85)";
+        ctx.fillText(t.label, t.x, t.y + t.radius + 12);
+      } else {
+        const g = ctx.createRadialGradient(t.x, t.y, 2, t.x, t.y, t.radius);
+        g.addColorStop(0, "rgba(46,26,12,0.92)");
+        g.addColorStop(1, "rgba(12,6,22,0.35)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = `rgba(255,120,80,${0.4 + pulse * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(255,186,158,0.95)";
+        ctx.font = "800 9px ui-monospace, monospace";
+        ctx.fillText(t.label, t.x, t.y + 3);
+      }
+      ctx.restore();
+    }
+
+    // green-side bumpers — lit like pinball rails; bank a shot off one for bonus
     for (const w of s.walls) {
-      ctx.fillStyle = "#6b4a32";
+      ctx.save();
+      ctx.shadowColor = accentRef.current;
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = "#20321f";
       ctx.fillRect(w.x, w.y, w.width, w.height);
-      ctx.fillStyle = "rgba(255,255,255,0.14)";
-      ctx.fillRect(w.x, w.y, w.width, 3);
+      ctx.restore();
+      ctx.fillStyle = accentRef.current;
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(w.x, w.y, w.width, 4);
+      ctx.fillRect(w.x, w.y + w.height - 4, w.width, 4);
+      ctx.globalAlpha = 1;
     }
 
     // cup + flag
@@ -379,6 +447,22 @@ export default function GolfGame({
     ctx.fill();
     ctx.restore();
 
+    // floating point pops (rise + fade) for rings, muck and banks
+    for (const p of popsRef.current) {
+      const k = clamp(p.life / p.max, 0, 1);
+      const rise = (1 - k) * 26;
+      ctx.save();
+      ctx.globalAlpha = k;
+      ctx.textAlign = "center";
+      ctx.font = "800 15px ui-monospace, monospace";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.strokeText(p.text, p.x, p.y - 14 - rise);
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.text, p.x, p.y - 14 - rise);
+      ctx.restore();
+    }
+
     // tee-shot carry drum-roll: the number climbs while the ball is in the air,
     // then freezes and fades so you feel the distance land.
     if (drive.active || drive.hold > 0) {
@@ -464,6 +548,34 @@ export default function GolfGame({
         aimRef.current = Math.atan2(s.hole.y - s.ball.y, s.hole.x - s.ball.x);
       }
       prevPhaseRef.current = s.phase;
+
+      // pinball juice: turn ring hits, muck penalties and bumper banks into
+      // floating point pops the player can feel land.
+      for (const ev of s.events) {
+        if (ev.type === "target") {
+          popsRef.current.push({
+            x: ev.x,
+            y: ev.y,
+            text: ev.kind === "good" ? `+${ev.value} ${ev.label}` : `${ev.value} ${ev.label}`,
+            color: ev.kind === "good" ? "#8affc0" : "#ff7a6b",
+            life: 900,
+            max: 900,
+          });
+        } else if (ev.type === "bank") {
+          popsRef.current.push({
+            x: ev.x,
+            y: ev.y,
+            text: `BANK +${ev.value}`,
+            color: accentRef.current,
+            life: 800,
+            max: 800,
+          });
+        }
+      }
+      for (const p of popsRef.current) p.life -= dt;
+      if (popsRef.current.some((p) => p.life <= 0)) {
+        popsRef.current = popsRef.current.filter((p) => p.life > 0);
+      }
 
       // advance the tee-shot sail (visual only): climb the carry read while the
       // ball is aloft, then hold the final number briefly after it lands.
