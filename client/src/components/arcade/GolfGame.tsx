@@ -32,6 +32,9 @@ const AIM_SPEED = 0.0021;
 const METER_SPEED = 0.0016;
 /** max angular error (radians) a fully mishit accuracy adds */
 const MAX_ACC_ERR = 0.26;
+/** tee-shot loft: screen px of height per unit power + a live carry read.
+ *  Pure flourish layered over the roll — no physics/scoring change. */
+const YDS_PER_PX = 0.46;
 
 type MeterPhase = "idle" | "power" | "accuracy";
 
@@ -82,6 +85,20 @@ export default function GolfGame({
   const meterRef = useRef<MeterState>({ phase: "idle", value: 0, dir: 1, power: 0 });
   const prevPhaseRef = useRef<GolfPhase>("aim");
   const trailRef = useRef<{ x: number; y: number }[]>([]);
+
+  // Tee-shot "sail": a time-based loft + live carry count-up layered over the
+  // existing roll so a big drive visibly hangs and climbs (drum-roll tension)
+  // instead of skidding flat. Purely visual — the sim and scoring are untouched.
+  const driveRef = useRef({
+    active: false,
+    t: 0,
+    airMs: 0,
+    maxH: 0,
+    tx: 0,
+    ty: 0,
+    carry: 0,
+    hold: 0,
+  });
 
   const [hud, setHud] = useState({
     holeNumber: 1,
@@ -137,8 +154,23 @@ export default function GolfGame({
     } else {
       const dev = m.value - 0.5; // 0 = dead center = pure strike
       const angleErr = dev * MAX_ACC_ERR;
+      const isTeeShot = s.strokes === 0;
+      const power = m.power;
       launchGolf(s, aimRef.current + angleErr, m.power);
       trailRef.current = [];
+      if (isTeeShot) {
+        // Only the tee shot sails. Bigger swings hang longer and fly higher, so
+        // the bomb looks like a bomb; a stock swing just gets a gentle hop.
+        const d = driveRef.current;
+        d.active = true;
+        d.t = 0;
+        d.airMs = 640 + power * 720;
+        d.maxH = 24 + power * 108;
+        d.tx = s.ball.x;
+        d.ty = s.ball.y;
+        d.carry = 0;
+        d.hold = 0;
+      }
       m.phase = "idle";
       m.value = 0;
       m.power = 0;
@@ -321,16 +353,48 @@ export default function GolfGame({
       ctx.globalAlpha = 1;
     }
 
-    // ball
+    // ball — on the tee shot it sails: a shadow stays on the turf while the ball
+    // lofts on a time-based arc, so a big drive visibly hangs and climbs.
+    const drive = driveRef.current;
+    const loft =
+      drive.active && drive.airMs > 0
+        ? Math.sin(clamp(drive.t / drive.airMs, 0, 1) * Math.PI) * drive.maxH
+        : 0;
+    if (loft > 0.5) {
+      ctx.save();
+      ctx.globalAlpha = clamp(0.3 - loft / 700, 0.07, 0.3);
+      ctx.fillStyle = "#000000";
+      ctx.beginPath();
+      ctx.ellipse(s.ball.x, s.ball.y, s.ball.radius * 1.15, s.ball.radius * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.5)";
     ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowOffsetY = 2 + loft * 0.12;
     ctx.fillStyle = "#f8fff4";
     ctx.beginPath();
-    ctx.arc(s.ball.x, s.ball.y, s.ball.radius, 0, Math.PI * 2);
+    ctx.arc(s.ball.x, s.ball.y - loft, s.ball.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+
+    // tee-shot carry drum-roll: the number climbs while the ball is in the air,
+    // then freezes and fades so you feel the distance land.
+    if (drive.active || drive.hold > 0) {
+      const yds = Math.max(0, Math.round(drive.carry));
+      const fading = !drive.active && drive.hold > 0;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.globalAlpha = fading ? clamp(drive.hold / 850, 0, 1) : 1;
+      ctx.fillStyle = drive.active ? accentRef.current : "#f8fff4";
+      ctx.font = "800 46px ui-monospace, monospace";
+      ctx.fillText(String(yds), FIELD_WIDTH / 2, 70);
+      ctx.font = "700 12px ui-monospace, monospace";
+      ctx.fillStyle = "rgba(255,255,255,0.72)";
+      ctx.fillText("CARRY · YDS", FIELD_WIDTH / 2, 88);
+      ctx.restore();
+    }
 
     // celebration fireworks (draws its own additive-glow layer, self-contained)
     fxRef.current.draw(ctx, logoRef.current);
@@ -400,6 +464,20 @@ export default function GolfGame({
         aimRef.current = Math.atan2(s.hole.y - s.ball.y, s.hole.x - s.ball.x);
       }
       prevPhaseRef.current = s.phase;
+
+      // advance the tee-shot sail (visual only): climb the carry read while the
+      // ball is aloft, then hold the final number briefly after it lands.
+      const drive = driveRef.current;
+      if (drive.active) {
+        drive.t += dt;
+        drive.carry = Math.hypot(s.ball.x - drive.tx, s.ball.y - drive.ty) * YDS_PER_PX;
+        if (drive.t >= drive.airMs || s.phase !== "rolling") {
+          drive.active = false;
+          drive.hold = 850;
+        }
+      } else if (drive.hold > 0) {
+        drive.hold -= dt;
+      }
 
       // motion trail sampling
       if (s.phase === "rolling" && !reducedRef.current) {
@@ -495,10 +573,10 @@ export default function GolfGame({
         {hud.phase === "aim" && hud.meterPhase === "idle" && hud.strokes === 0 && (
           <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center text-center">
             <p className="animate-pulse font-mono text-sm font-semibold uppercase tracking-widest text-white/90">
-              ← → aim · Space / click to swing
+              ← → aim · Space / click to DRIVE
             </p>
             <p className="mt-1 font-mono text-[11px] text-white/50">
-              Bank it off the rails — get on the green.
+              Grip it and rip it — send it sailing down the fairway.
             </p>
           </div>
         )}
