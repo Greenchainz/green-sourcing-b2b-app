@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { arcadeScores, leads } from "../../drizzle/schema";
@@ -109,6 +109,7 @@ export const arcadeRouter = router({
       }
 
       const initials = normalizeInitials(input.initials);
+      const createdAt = new Date();
 
       await db.insert(arcadeScores).values({
         gameId: input.gameId,
@@ -118,6 +119,7 @@ export const arcadeRouter = router({
         email: input.email || null,
         company: input.company || null,
         eventKey: input.eventKey || null,
+        createdAt,
       });
 
       // Feed the existing CRM lead pipeline - deduped by email so replaying the
@@ -140,7 +142,7 @@ export const arcadeRouter = router({
         }
       }
 
-      // Rank = number of strictly-higher scores on this board, + 1.
+      // Rank = number of scores that outrank this submission on this board, + 1.
       const scope = input.eventKey
         ? and(
             eq(arcadeScores.gameId, input.gameId),
@@ -154,7 +156,18 @@ export const arcadeRouter = router({
       const betterRows = await db
         .select({ better: sql<number>`count(*)::int` })
         .from(arcadeScores)
-        .where(and(scope, sql`${arcadeScores.score} > ${input.score}`));
+        .where(
+          and(
+            scope,
+            or(
+              sql`${arcadeScores.score} > ${input.score}`,
+              and(
+                eq(arcadeScores.score, input.score),
+                sql`${arcadeScores.createdAt} < ${createdAt}`,
+              ),
+            ),
+          ),
+        );
 
       const better = betterRows[0]?.better ?? 0;
 

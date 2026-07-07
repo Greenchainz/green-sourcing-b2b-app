@@ -20,6 +20,20 @@ const mockReq = {
 
 const baseCtx = { user: null, auth: null, req: mockReq };
 
+const containsNestedValue = (
+  value: unknown,
+  expected: unknown,
+  seen = new WeakSet<object>(),
+): boolean => {
+  if (value === expected) return true;
+  if (!value || typeof value !== "object") return false;
+  if (seen.has(value)) return false;
+  seen.add(value);
+  return Object.values(value).some((nested) =>
+    containsNestedValue(nested, expected, seen),
+  );
+};
+
 describe("shared arcade scoring", () => {
   it("rejects non-integer, negative, and over-cap scores", () => {
     expect(isValidArcadeScore("green-approach", 1.5)).toBe(false);
@@ -117,6 +131,44 @@ describe("arcadeRouter.submitScore", () => {
     expect(result.leadCaptured).toBe(true);
     // one insert for arcade_scores + one insert for the new lead
     expect(insert).toHaveBeenCalledTimes(2);
+  });
+
+  it("ranks tied submissions behind earlier equal scores", async () => {
+    const createdAt = new Date("2026-02-03T04:05:06.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(createdAt);
+
+    try {
+      const insertValues = vi.fn().mockResolvedValue({});
+      const insert = vi.fn().mockReturnValue({ values: insertValues });
+      const rankWhere = vi.fn().mockResolvedValue([{ better: 4 }]);
+      const select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: rankWhere,
+        }),
+      });
+
+      vi.mocked(getDb).mockResolvedValue({ insert, select } as any);
+
+      const caller = arcadeRouter.createCaller(baseCtx as any);
+      const result = await caller.submitScore({
+        gameId: "spec-breaker",
+        score: 500,
+        initials: "TIE",
+      });
+
+      expect(result.rank).toBe(5); // one higher score + three earlier ties + 1
+      const insertedCreatedAt = insertValues.mock.calls[0]?.[0]?.createdAt;
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ score: 500, createdAt }),
+      );
+      expect(insertedCreatedAt).toEqual(createdAt);
+      expect(containsNestedValue(rankWhere.mock.calls[0]?.[0], insertedCreatedAt)).toBe(
+        true,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not create a duplicate lead when the email already exists", async () => {
