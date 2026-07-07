@@ -63,7 +63,7 @@ export const CarbonBudgetContext = createContext<CarbonBudgetCtx | null>(null);
 //   ≥40%  → 4 pts
 //   ≥50%  → 5 pts
 
-function calcLeedPoints(pctBelowBaseline: number): number {
+export function calcLeedPoints(pctBelowBaseline: number): number {
   if (pctBelowBaseline >= 50) return 5;
   if (pctBelowBaseline >= 40) return 4;
   if (pctBelowBaseline >= 30) return 3;

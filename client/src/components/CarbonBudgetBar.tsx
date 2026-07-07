@@ -9,7 +9,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useCarbonBudget } from "@/contexts/CarbonBudgetContext";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -70,7 +69,9 @@ export default function CarbonBudgetBar() {
 
   const handleSendToRfq = () => {
     if (items.length === 0) return;
-    navigate(`/rfq/new?materialId=${items[0].id}`);
+    const qs = new URLSearchParams();
+    items.forEach((i) => qs.append("materialIds", String(i.id)));
+    navigate(`/rfq/new?${qs.toString()}`);
   };
 
   return (
@@ -137,7 +138,7 @@ export default function CarbonBudgetBar() {
                       variant="ghost"
                       size="sm"
                       className="h-5 px-1.5 text-[10px] text-amber-700 hover:text-amber-800 hover:bg-amber-50 shrink-0"
-                      onClick={() => navigate(`/materials/${item.id}/swap`)}
+                      onClick={() => navigate(`/materials/${item.id}`)}
                     >
                       Swap ↗
                     </Button>
