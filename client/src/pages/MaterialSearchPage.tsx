@@ -4,6 +4,8 @@ import { trackSearch, trackClick } from "@/lib/appInsights";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MaterialCard from "@/components/MaterialCard";
+import CarbonBudgetBar from "@/components/CarbonBudgetBar";
+import { CarbonBudgetProvider } from "@/contexts/CarbonBudgetContext";
 import { Input } from "@/components/ui/input";
 import { MaterialTypeahead } from "@/components/ui/typeahead-variants";
 import { Button } from "@/components/ui/button";
@@ -352,7 +354,8 @@ export default function MaterialSearchPage() {
   ].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <CarbonBudgetProvider>
+      <div className="min-h-screen flex flex-col bg-background pb-20">
       <Header />
 
       <div className="border-b bg-card/50 sticky top-0 z-10 backdrop-blur">
@@ -515,6 +518,8 @@ export default function MaterialSearchPage() {
         </div>
       </div>
       <Footer />
+      <CarbonBudgetBar />
     </div>
+    </CarbonBudgetProvider>
   );
 }
