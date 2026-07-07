@@ -225,7 +225,7 @@ export async function handleLandingPage(req: Request, res: Response) {
     }
 
     // Step 7: Redirect to user dashboard
-    const dashboardUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}/dashboard?welcome=true`;
+    const dashboardUrl = `${getFrontendBaseUrl(req)}/dashboard?welcome=true`;
     return res.redirect(dashboardUrl);
 
   } catch (error) {
