@@ -12,6 +12,7 @@ import type { ArcadeGameId } from "@shared/arcadeScoring";
 import { cn } from "@/lib/utils";
 
 type View = "picker" | "playing" | "gameover";
+type LeaderboardView = "global" | "global-empty" | "local";
 
 interface Props {
   onClose: () => void;
@@ -21,6 +22,18 @@ interface Props {
 
 const LIME = "#9FE870";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function getLeaderboardView({
+  hasGlobalScores,
+  globalBoardSucceeded,
+}: {
+  hasGlobalScores: boolean;
+  globalBoardSucceeded: boolean;
+}): LeaderboardView {
+  if (hasGlobalScores) return "global";
+  if (globalBoardSucceeded) return "global-empty";
+  return "local";
+}
 
 export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
   const [view, setView] = useState<View>(initialGameId ? "playing" : "picker");
@@ -193,9 +206,13 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
   const localRanked = useMemo(() => localBoard.slice(0, 10), [localBoard]);
 
   // Prefer the live global board; fall back to the local board when the backend
-  // is unreachable or has no scores yet for this game.
+  // is unreachable. A reachable-but-empty global board gets its own empty state.
   const globalScores = globalBoard.data?.scores ?? [];
-  const showingGlobal = globalScores.length > 0;
+  const leaderboardView = getLeaderboardView({
+    hasGlobalScores: globalScores.length > 0,
+    globalBoardSucceeded: globalBoard.isSuccess,
+  });
+  const showingGlobal = leaderboardView !== "local";
 
   return (
     <div
@@ -422,7 +439,7 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
                   )}
                 </div>
 
-                {showingGlobal ? (
+                {leaderboardView === "global" ? (
                   <ol className="flex flex-col gap-1">
                     {globalScores.map((entry) => {
                       const isYou =
@@ -453,6 +470,10 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
                       );
                     })}
                   </ol>
+                ) : leaderboardView === "global-empty" ? (
+                  <div className="py-3 text-center text-sm text-white/40">
+                    Be the first in the world.
+                  </div>
                 ) : localRanked.length === 0 ? (
                   <div className="py-3 text-center text-sm text-white/40">
                     Be the first on the board.
