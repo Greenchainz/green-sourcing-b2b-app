@@ -114,6 +114,27 @@ describe("scoreHole", () => {
   it("scales points up on later holes", () => {
     expect(scoreHole(4, 4, 10).points).toBeGreaterThan(scoreHole(4, 4, 1).points);
   });
+
+  it("stays backward-compatible: the legacy 3-arg call earns no finesse bonus", () => {
+    const r = scoreHole(4, 4, 1);
+    expect(r.precision).toBe(0);
+  });
+
+  it("rewards softly draining the cup over rattling it in hot", () => {
+    const cap = defaultGolfConfig.captureSpeed;
+    const soft = scoreHole(4, 4, 1, 0.01, cap); // barely moving as it drops
+    const hard = scoreHole(4, 4, 1, cap, cap); // arrives at the capture ceiling
+    expect(soft.precision).toBeGreaterThan(hard.precision);
+    expect(soft.points).toBeGreaterThan(hard.points);
+    expect(hard.precision).toBe(0);
+  });
+
+  it("breaks ties: identical stroke lines diverge by approach finesse", () => {
+    const cap = defaultGolfConfig.captureSpeed;
+    const a = scoreHole(4, 4, 3, 0.02, cap);
+    const b = scoreHole(4, 4, 3, 0.2, cap);
+    expect(a.points).not.toBe(b.points);
+  });
 });
 
 describe("launchGolf", () => {
