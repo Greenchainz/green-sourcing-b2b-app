@@ -49,6 +49,13 @@ export interface HoleLayout {
   hole: Hole;
   walls: Wall[];
   par: number;
+  /**
+   * Green break: a constant acceleration (px/ms^2) that bends a rolling ball,
+   * like putting across a tilted green. Zero on early holes (dead flat), it
+   * grows on later holes so players have to "read the break". Only nudges a
+   * ball that is genuinely rolling — a ball at rest does not creep downhill.
+   */
+  slope: Vec2;
 }
 
 export interface HoleResult {
@@ -90,6 +97,8 @@ export interface GolfState {
   hole: Hole;
   walls: Wall[];
   par: number;
+  /** green break (px/ms^2) applied to a rolling ball — see HoleLayout.slope */
+  slope: Vec2;
   strokes: number;
   holeNumber: number;
   score: number;
@@ -100,6 +109,12 @@ export interface GolfState {
   config: GolfConfig;
   events: GolfEvent[];
   rng: () => number;
+  /**
+   * Endless progression (the default, "Green Approach"): sink a hole and the
+   * next one loads. Set false for a single-hole run ("The Round") — sinking the
+   * one hole ends the round instead of loading another. Omitted === endless.
+   */
+  endless?: boolean;
 }
 
 export const FIELD_WIDTH = 800;
@@ -112,6 +127,13 @@ const MARGIN = 42;
 const MAX_DT = 32;
 const SINK_REVEAL_MS = 1300;
 const MAX_OBSTACLES = 4;
+
+/**
+ * Break only nudges a ball moving faster than stopSpeed * this factor. Below it
+ * the ball is "settling", so friction wins and it comes to rest instead of
+ * creeping downhill forever — keeps the sim terminating on any slope.
+ */
+const SLOPE_STOP_FACTOR = 4;
 
 export const defaultGolfConfig: GolfConfig = {
   maxOverPar: 3,
@@ -246,7 +268,18 @@ export function buildHole(
     if (clearTee && clearHole) walls.push(w);
   }
 
-  return { tee, hole, walls, par };
+  // Green break: dead flat for the first couple of holes, then a growing tilt
+  // in a random direction so later holes have to be "read". Small magnitudes —
+  // this bends a putt, it does not sling the ball across the green.
+  const breakMag =
+    holeNumber >= 3 ? Math.min(0.00003 + (holeNumber - 3) * 0.000008, 0.00007) : 0;
+  const breakAngle = rng() * Math.PI * 2;
+  const slope: Vec2 = {
+    x: Math.cos(breakAngle) * breakMag,
+    y: Math.sin(breakAngle) * breakMag,
+  };
+
+  return { tee, hole, walls, par, slope };
 }
 
 function ballAtTee(tee: Vec2): GolfBall {
@@ -265,6 +298,7 @@ export function createGolfState(
     hole: layout.hole,
     walls: layout.walls,
     par: layout.par,
+    slope: layout.slope,
     strokes: 0,
     holeNumber: 1,
     score: 0,
@@ -276,6 +310,75 @@ export function createGolfState(
   };
 }
 
+/**
+ * A single long championship hole for "The Round" — GreenChainz's daily main
+ * show. One wide tee-to-cup fairway: stroke 1 is a real drive (a full-power
+ * swing carries most of the way down), then an approach and a breaking putt to
+ * the pin. Always completable — the two fairway rails sit off the direct line
+ * and never seal off the tee or cup, so there is always a lane through.
+ */
+export function buildLongHole(rng: () => number = Math.random): HoleLayout {
+  const tee: Vec2 = { x: MARGIN + 20, y: FIELD_HEIGHT / 2 };
+  const hole: Hole = {
+    x: FIELD_WIDTH - MARGIN - 24,
+    y: clamp(
+      FIELD_HEIGHT / 2 + (rng() - 0.5) * 200,
+      MARGIN + 24,
+      FIELD_HEIGHT - MARGIN - 24,
+    ),
+    radius: HOLE_RADIUS,
+  };
+
+  // Two fairway rails offset above/below the straight line — reward a placed
+  // drive, but a well-aimed shot sails the lane between them untouched.
+  const candidateWalls: Wall[] = [
+    { x: FIELD_WIDTH * 0.42, y: MARGIN, width: 20, height: 120 },
+    { x: FIELD_WIDTH * 0.6, y: FIELD_HEIGHT - MARGIN - 120, width: 20, height: 120 },
+  ];
+  const walls = candidateWalls.filter(
+    (w) => !rectHasPoint(w, tee, 70) && !rectHasPoint(w, hole, 70),
+  );
+
+  // A definite, readable green break so the "hills" matter on the putt.
+  const breakAngle = rng() * Math.PI * 2;
+  const breakMag = 0.00006;
+  const slope: Vec2 = {
+    x: Math.cos(breakAngle) * breakMag,
+    y: Math.sin(breakAngle) * breakMag,
+  };
+
+  return { tee, hole, walls, par: 4, slope };
+}
+
+/**
+ * A single-hole run: play "The Round" once, tee to cup, and it ends. Reuses the
+ * whole golf engine + renderer; only the {@link GolfState.endless} flag differs.
+ */
+export function createRoundState(
+  config: GolfConfig = defaultGolfConfig,
+  rng: () => number = Math.random,
+): GolfState {
+  const layout = buildLongHole(rng);
+  return {
+    phase: "aim",
+    ball: ballAtTee(layout.tee),
+    tee: layout.tee,
+    hole: layout.hole,
+    walls: layout.walls,
+    par: layout.par,
+    slope: layout.slope,
+    strokes: 0,
+    holeNumber: 1,
+    score: 0,
+    lastResult: null,
+    sinkTimer: 0,
+    config,
+    events: [],
+    rng,
+    endless: false,
+  };
+}
+
 export function nextHole(state: GolfState): void {
   const layout = buildHole(state.holeNumber + 1, state.rng);
   state.holeNumber += 1;
@@ -283,6 +386,7 @@ export function nextHole(state: GolfState): void {
   state.hole = layout.hole;
   state.walls = layout.walls;
   state.par = layout.par;
+  state.slope = layout.slope;
   state.ball = ballAtTee(layout.tee);
   state.strokes = 0;
   state.sinkTimer = 0;
@@ -409,6 +513,14 @@ function integrate(state: GolfState, subDt: number): void {
   const ball = state.ball;
   const c = state.config;
 
+  // Green break: accelerate a genuinely-rolling ball downhill. Gated on speed so
+  // a ball that is settling comes to rest instead of creeping downhill forever.
+  const preSpeed = Math.hypot(ball.vx, ball.vy);
+  if (preSpeed > c.stopSpeed * SLOPE_STOP_FACTOR) {
+    ball.vx += state.slope.x * subDt;
+    ball.vy += state.slope.y * subDt;
+  }
+
   const damp = Math.pow(c.frictionPerMs, subDt);
   ball.vx *= damp;
   ball.vy *= damp;
@@ -440,7 +552,15 @@ export function stepGolf(state: GolfState, dtMs: number): GolfState {
 
   if (state.phase === "sunk") {
     state.sinkTimer -= dt;
-    if (state.sinkTimer <= 0) nextHole(state);
+    if (state.sinkTimer <= 0) {
+      if (state.endless === false) {
+        // Single-hole run ("The Round"): the hole you just sank was the round.
+        state.phase = "game_over";
+        state.events.push({ type: "game_over", score: state.score });
+      } else {
+        nextHole(state);
+      }
+    }
     return state;
   }
 

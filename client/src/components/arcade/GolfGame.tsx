@@ -14,6 +14,17 @@ import type { ArcadeGameProps } from "./types";
 
 const ACCENT = "#EC6A5E";
 
+interface GolfGameProps extends ArcadeGameProps {
+  /**
+   * Builds the initial state. Defaults to {@link createGolfState} (the endless
+   * "Green Approach" run); "The Round" injects {@link createRoundState} for a
+   * single long championship hole. Read once on mount.
+   */
+  stateFactory?: () => GolfState;
+  /** In-game accent (hex) for the flag, HUD and result flash. */
+  accent?: string;
+}
+
 /** radians the aim swings per ms while a turn key is held */
 const AIM_SPEED = 0.0021;
 /** meter fill fraction per ms (one full sweep ~ 620ms) */
@@ -45,9 +56,16 @@ function powerColor(v: number): string {
   return "#EC6A5E";
 }
 
-export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProps) {
+export default function GolfGame({
+  paused,
+  onScore,
+  onGameOver,
+  stateFactory,
+  accent = ACCENT,
+}: GolfGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const stateRef = useRef<GolfState>(createGolfState());
+  const stateRef = useRef<GolfState>(stateFactory ? stateFactory() : createGolfState());
+  const accentRef = useRef(accent);
   const dprRef = useRef(1);
   const reducedRef = useRef(false);
   const prevScoreRef = useRef(0);
@@ -229,7 +247,7 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
     ctx.moveTo(s.hole.x, s.hole.y);
     ctx.lineTo(s.hole.x, s.hole.y - 42);
     ctx.stroke();
-    ctx.fillStyle = ACCENT;
+    ctx.fillStyle = accentRef.current;
     ctx.beginPath();
     ctx.moveTo(s.hole.x, s.hole.y - 42);
     ctx.lineTo(s.hole.x + 22, s.hole.y - 35);
@@ -243,12 +261,32 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
     ctx.arc(s.tee.x, s.tee.y, 4, 0, Math.PI * 2);
     ctx.fill();
 
+    // green break — chevrons by the cup point downhill so players can read the putt
+    const slopeMag = Math.hypot(s.slope.x, s.slope.y);
+    if (slopeMag > 1e-6) {
+      const ang = Math.atan2(s.slope.y, s.slope.x);
+      ctx.save();
+      ctx.translate(s.hole.x, s.hole.y);
+      ctx.rotate(ang);
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const ox = s.hole.radius + 12 + i * 9;
+        ctx.beginPath();
+        ctx.moveTo(ox - 5, -5);
+        ctx.lineTo(ox, 0);
+        ctx.lineTo(ox - 5, 5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // aim guide (dotted) while lining up a shot
     if (s.phase === "aim" && m.phase !== "idle") {
       // during the swing meter keep the committed aim visible
-      drawAim(ctx, s.ball.x, s.ball.y, aimRef.current, true);
+      drawAim(ctx, s.ball.x, s.ball.y, aimRef.current, true, accentRef.current);
     } else if (s.phase === "aim") {
-      drawAim(ctx, s.ball.x, s.ball.y, aimRef.current, false);
+      drawAim(ctx, s.ball.x, s.ball.y, aimRef.current, false, accentRef.current);
     }
 
     // motion trail
@@ -399,7 +437,10 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
 
   return (
     <div className="relative mx-auto w-full max-w-[720px] select-none">
-      <div className="mb-2 flex items-center justify-between font-mono text-xs uppercase tracking-widest text-[#EC6A5E]/85">
+      <div
+        className="mb-2 flex items-center justify-between font-mono text-xs uppercase tracking-widest"
+        style={{ color: accent }}
+      >
         <span>
           Hole {hud.holeNumber} · Par {hud.par}
         </span>
@@ -431,7 +472,7 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
             <p
               className="font-mono text-4xl font-black uppercase tracking-tight drop-shadow-lg"
-              style={{ color: ACCENT }}
+              style={{ color: accent }}
             >
               {hud.resultLabel}
             </p>
@@ -456,6 +497,7 @@ function drawAim(
   y: number,
   angle: number,
   committed: boolean,
+  accent: string,
 ): void {
   const dots = 7;
   const gap = 15;
@@ -464,7 +506,7 @@ function drawAim(
     const dx = x + Math.cos(angle) * gap * i;
     const dy = y + Math.sin(angle) * gap * i;
     ctx.globalAlpha = (1 - i / (dots + 1)) * (committed ? 0.9 : 0.55);
-    ctx.fillStyle = committed ? "#ffffff" : ACCENT;
+    ctx.fillStyle = committed ? "#ffffff" : accent;
     ctx.beginPath();
     ctx.arc(dx, dy, committed ? 2.6 : 2.2, 0, Math.PI * 2);
     ctx.fill();

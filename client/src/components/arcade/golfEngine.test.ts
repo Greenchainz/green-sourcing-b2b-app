@@ -4,8 +4,10 @@ import {
   FIELD_HEIGHT,
   FIELD_WIDTH,
   buildHole,
+  buildLongHole,
   clamp,
   createGolfState,
+  createRoundState,
   defaultGolfConfig,
   launchGolf,
   nextHole,
@@ -268,5 +270,106 @@ describe("nextHole", () => {
     expect(s.strokes).toBe(0);
     expect(s.ball.x).toBeCloseTo(s.tee.x);
     expect(s.ball.y).toBeCloseTo(s.tee.y);
+  });
+});
+
+describe("green break (slope)", () => {
+  it("is dead flat on the opening holes and tilts on later ones", () => {
+    const mag = (l: { slope: { x: number; y: number } }) =>
+      Math.hypot(l.slope.x, l.slope.y);
+    expect(mag(buildHole(1, mulberry32(7)))).toBe(0);
+    expect(mag(buildHole(2, mulberry32(7)))).toBe(0);
+    expect(mag(buildHole(6, mulberry32(7)))).toBeGreaterThan(0);
+  });
+
+  it("bends a rolling ball toward the break direction", () => {
+    const s = createGolfState(defaultGolfConfig, mulberry32(3));
+    s.slope = { x: 0.0005, y: 0 }; // clear rightward break
+    s.ball.x = 200;
+    s.ball.y = 300;
+    s.ball.vx = 0;
+    s.ball.vy = -0.3; // rolling up the field, away from the cup
+    s.strokes = 1;
+    s.phase = "rolling";
+    advance(s, 300);
+    expect(s.ball.vx).toBeGreaterThan(0); // gained rightward speed
+    expect(s.ball.x).toBeGreaterThan(200); // drifted right
+  });
+
+  it("does not move a ball at rest on the tee (no downhill creep)", () => {
+    const s = createGolfState(defaultGolfConfig, mulberry32(3));
+    s.slope = { x: 0.001, y: 0.001 }; // steep, but the ball is aiming
+    const { x, y } = s.ball;
+    for (let i = 0; i < 30; i++) stepGolf(s, 16);
+    expect(s.ball.x).toBe(x);
+    expect(s.ball.y).toBe(y);
+    expect(s.phase).toBe("aim");
+  });
+
+  it("still settles to rest on a slope (the sim always terminates)", () => {
+    const s = createGolfState(defaultGolfConfig, mulberry32(3));
+    s.slope = { x: 0.0006, y: 0 };
+    s.ball.x = 200;
+    s.ball.y = 300;
+    s.ball.vx = 0;
+    s.ball.vy = -0.5;
+    s.strokes = 1;
+    s.phase = "rolling";
+    advance(s, 8000);
+    expect(s.phase).not.toBe("rolling");
+    expect(s.ball.vx).toBe(0);
+    expect(s.ball.vy).toBe(0);
+  });
+});
+
+describe("The Round (single long hole)", () => {
+  it("builds one long par-4 hole with a readable break, tee-left to cup-right", () => {
+    const l = buildLongHole(mulberry32(5));
+    expect(l.par).toBe(4);
+    expect(l.tee.x).toBeLessThan(l.hole.x); // the drive plays left -> right
+    expect(l.hole.x).toBeGreaterThan(FIELD_WIDTH * 0.7); // cup near the far edge
+    expect(Math.hypot(l.slope.x, l.slope.y)).toBeGreaterThan(0); // hills matter
+  });
+
+  it("starts a single-hole run at rest on the tee", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    expect(s.phase).toBe("aim");
+    expect(s.holeNumber).toBe(1);
+    expect(s.strokes).toBe(0);
+    expect(s.endless).toBe(false);
+    expect(s.ball.x).toBeCloseTo(s.tee.x);
+    expect(s.ball.y).toBeCloseTo(s.tee.y);
+  });
+
+  it("ends the run when the hole is sunk instead of loading another hole", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    // drop the ball softly into the cup
+    s.strokes = 2;
+    s.ball.x = s.hole.x;
+    s.ball.y = s.hole.y;
+    s.ball.vx = 0.12; // under captureSpeed (0.3)
+    s.ball.vy = 0;
+    s.phase = "rolling";
+    stepGolf(s, 16);
+    expect(s.phase).toBe("sunk");
+    expect(s.score).toBeGreaterThan(0);
+    advance(s, 2000); // let the sink reveal elapse
+    expect(s.phase).toBe("game_over");
+    expect(s.holeNumber).toBe(1); // never advanced to a hole 2
+  });
+
+  it("regression: an endless run still advances to the next hole on a sink", () => {
+    const s = createGolfState(defaultGolfConfig, mulberry32(5));
+    s.strokes = 2;
+    s.ball.x = s.hole.x;
+    s.ball.y = s.hole.y;
+    s.ball.vx = 0.12;
+    s.ball.vy = 0;
+    s.phase = "rolling";
+    stepGolf(s, 16);
+    expect(s.phase).toBe("sunk");
+    advance(s, 2000);
+    expect(s.phase).toBe("aim");
+    expect(s.holeNumber).toBe(2);
   });
 });

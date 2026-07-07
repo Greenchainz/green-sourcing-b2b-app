@@ -13,6 +13,8 @@ export const ARCADE_GAME_IDS = [
   "supply-snake",
   "green-iq",
   "green-approach",
+  "green-drive",
+  "green-round",
 ] as const;
 
 export type ArcadeGameId = (typeof ARCADE_GAME_IDS)[number];
@@ -33,6 +35,12 @@ export const MAX_PLAUSIBLE_SCORE: Record<ArcadeGameId, number> = {
   "supply-snake": 50_000,
   "green-iq": 25_000,
   "green-approach": 2_000_000,
+  // Long Drive: a 6-ball run of carry-yards. A perfect set of full-power pure
+  // strikes tops out near ~2,400 with bonuses; the cap stays generous.
+  "green-drive": 20_000,
+  // The Round: a single championship hole. A perfect drain (ace-scaled + full
+  // finesse) tops out near ~1,900; the cap stays generous for future tuning.
+  "green-round": 10_000,
 };
 
 /** True when a score is a non-negative integer within the game's plausible cap. */

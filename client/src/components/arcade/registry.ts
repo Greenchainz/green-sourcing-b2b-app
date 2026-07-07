@@ -3,6 +3,8 @@ import BreakoutGame from "./BreakoutGame";
 import SnakeGame from "./SnakeGame";
 import TriviaGame from "./TriviaGame";
 import GolfGame from "./GolfGame";
+import DriveGame from "./DriveGame";
+import TheRoundGame from "./TheRoundGame";
 
 /**
  * The GreenChainz Arcade line-up.
@@ -16,6 +18,14 @@ import GolfGame from "./GolfGame";
  * copyrighted characters or level layouts.
  */
 export const ARCADE_GAMES: ArcadeGameMeta[] = [
+  {
+    id: "green-round",
+    name: "The Round",
+    classic: "Golf",
+    tagline: "One hole, tee to cup. Bomb the drive, read the break, sink your card.",
+    accent: "#FFCC33",
+    Component: TheRoundGame,
+  },
   {
     id: "spec-breaker",
     name: "Spec Breaker",
@@ -47,6 +57,14 @@ export const ARCADE_GAMES: ArcadeGameMeta[] = [
     tagline: "Read the break, bank the birdie — get on the green.",
     accent: "#EC6A5E",
     Component: GolfGame,
+  },
+  {
+    id: "green-drive",
+    name: "Long Drive",
+    classic: "Golf",
+    tagline: "Two taps, one bomb — grip it and rip it down the range.",
+    accent: "#FFCC33",
+    Component: DriveGame,
   },
 ];
 

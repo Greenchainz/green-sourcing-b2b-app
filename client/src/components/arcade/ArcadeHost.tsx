@@ -5,6 +5,9 @@ import { onOpenArcade, onArcadeNudge, type ArcadeOpenDetail } from "./arcadeBus"
 import { cn } from "@/lib/utils";
 
 const LIME = "#9FE870";
+// Gold launcher — premium, obvious, and on-theme with the golf / grand-slam angle.
+const GOLD = "#FFCC33";
+const GOLD_DEEP = "#E6A012";
 const NUDGE_TIMEOUT_MS = 14_000;
 
 /**
@@ -56,21 +59,36 @@ export default function ArcadeHost() {
 
   return (
     <>
-      {/* Discreet launcher — bottom-left so it never fights the chat widgets. */}
-      <button
-        type="button"
-        onClick={() => openArcade()}
-        aria-label="Open GreenChainz Arcade"
-        title="GreenChainz Arcade"
-        className={cn(
-          "fixed bottom-4 left-4 z-[9990] flex h-10 w-10 items-center justify-center rounded-full",
-          "border border-white/10 bg-black/40 text-lg opacity-40 shadow-lg backdrop-blur-sm",
-          "transition-all hover:scale-110 hover:opacity-100",
-          "focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-white/40",
-        )}
-      >
-        <span aria-hidden>🕹️</span>
-      </button>
+      {/* Prominent gold launcher — bottom-left so it never fights the chat widgets. */}
+      {!open && (
+        <div className="fixed bottom-4 left-4 z-[9990]">
+          {/* Soft pulsing halo to draw the eye toward the game. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -inset-1 animate-pulse rounded-full blur-md"
+            style={{ backgroundColor: `${GOLD}55` }}
+          />
+          <button
+            type="button"
+            onClick={() => openArcade()}
+            aria-label="Open GreenChainz Arcade"
+            title="GreenChainz Arcade — play now"
+            className={cn(
+              "relative flex items-center gap-2 rounded-full px-4 py-2.5",
+              "text-sm font-extrabold tracking-tight text-black shadow-lg",
+              "transition-all hover:scale-105 hover:brightness-110",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
+            )}
+            style={{
+              background: `linear-gradient(135deg, ${GOLD} 0%, ${GOLD_DEEP} 100%)`,
+              boxShadow: `0 10px 30px -8px ${GOLD}cc`,
+            }}
+          >
+            <span aria-hidden className="text-lg">🕹️</span>
+            <span>Arcade</span>
+          </button>
+        </div>
+      )}
 
       {/* Post-RFQ nudge */}
       {nudge && !open && (
