@@ -130,7 +130,7 @@ function UserAvatar() {
 }
 
 export default function Header() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   useNotifications(); // Initialize real-time notifications
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -270,6 +270,9 @@ export default function Header() {
                 </Link>
               )}
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={logout}>
+                  Sign out
+                </Button>
                 <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide border border-border text-muted-foreground bg-muted/50">
                   {user.role ?? "user"}
                 </span>
@@ -393,6 +396,18 @@ export default function Header() {
                 onClick={() => setMobileMenuOpen(false)}>
                 Supplier Hub
               </Link>
+            )}
+            {user && (
+              <button
+                type="button"
+                className="text-sm font-medium text-destructive hover:text-destructive/80 transition-colors py-2 px-4 hover:bg-accent rounded-md text-left"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  logout();
+                }}
+              >
+                Sign out
+              </button>
             )}
             {!user && (
               <div className="flex flex-col space-y-2 pt-2">
