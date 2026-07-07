@@ -23,4 +23,4 @@ CREATE TABLE IF NOT EXISTS "arcade_scores" (
 
 -- Board reads filter by game + event scope, then rank by score and createdAt.
 CREATE INDEX IF NOT EXISTS "arcade_scores_board_idx"
-  ON "arcade_scores" ("gameId", "eventKey", "score", "createdAt");
+  ON "arcade_scores" ("gameId", "eventKey", "score" DESC, "createdAt" ASC);

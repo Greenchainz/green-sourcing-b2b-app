@@ -535,8 +535,8 @@ export const arcadeScores = pgTable(
     boardIdx: index("arcade_scores_board_idx").on(
       t.gameId,
       t.eventKey,
-      t.score,
-      t.createdAt,
+      t.score.desc(),
+      t.createdAt.asc(),
     ),
   }),
 );
