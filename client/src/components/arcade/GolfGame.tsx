@@ -11,6 +11,7 @@ import {
   type GolfState,
 } from "./golfEngine";
 import type { ArcadeGameProps } from "./types";
+import { createCelebrationFx } from "./fireworks";
 
 const ACCENT = "#EC6A5E";
 
@@ -71,6 +72,11 @@ export default function GolfGame({
   const prevScoreRef = useRef(0);
   const gameOverSentRef = useRef(false);
 
+  // celebration fireworks that fire the moment a putt drops
+  const fxRef = useRef(createCelebrationFx());
+  const logoRef = useRef<HTMLImageElement | null>(null);
+  const sunkFxRef = useRef(false);
+
   const aimRef = useRef(0);
   const inputRef = useRef({ left: false, right: false });
   const meterRef = useRef<MeterState>({ phase: "idle", value: 0, dir: 1, power: 0 });
@@ -103,6 +109,16 @@ export default function GolfGame({
     dprRef.current = dpr;
     canvas.width = FIELD_WIDTH * dpr;
     canvas.height = FIELD_HEIGHT * dpr;
+  }, []);
+
+  // preload the GreenChainz mark so the win burst can blow up the real logo
+  useEffect(() => {
+    if (typeof Image === "undefined") return;
+    const img = new Image();
+    img.onload = () => {
+      logoRef.current = img;
+    };
+    img.src = "/brand/greenchainz-icon.webp";
   }, []);
 
   const advanceMeter = useCallback(() => {
@@ -316,6 +332,9 @@ export default function GolfGame({
     ctx.fill();
     ctx.restore();
 
+    // celebration fireworks (draws its own additive-glow layer, self-contained)
+    fxRef.current.draw(ctx, logoRef.current);
+
     // swing meter
     if (m.phase !== "idle") {
       const barW = 320;
@@ -390,6 +409,22 @@ export default function GolfGame({
       } else if (s.phase !== "rolling" && trailRef.current.length) {
         trailRef.current = [];
       }
+
+      // fire the win celebration once, on the frame the putt drops
+      if (s.phase === "sunk") {
+        if (!sunkFxRef.current) {
+          sunkFxRef.current = true;
+          const points = s.lastResult ? s.lastResult.points : 0;
+          fxRef.current.celebrate(s.hole.x, s.hole.y, {
+            accent: accentRef.current,
+            reduced: reducedRef.current,
+            intensity: clamp(points / 1200, 0.35, 1),
+          });
+        }
+      } else {
+        sunkFxRef.current = false;
+      }
+      fxRef.current.update(dt);
 
       draw();
 
