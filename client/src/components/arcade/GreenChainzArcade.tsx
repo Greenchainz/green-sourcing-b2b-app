@@ -9,6 +9,8 @@ import {
 } from "./highScores";
 import { trpc } from "@/lib/trpc";
 import type { ArcadeGameId } from "@shared/arcadeScoring";
+import type { BoardPeriod } from "@shared/arcadePeriods";
+import { getShowtimeStatus, recordShowtime, type ShowtimeStatus } from "./showtime";
 import { cn } from "@/lib/utils";
 
 type View = "picker" | "playing" | "gameover";
@@ -21,6 +23,8 @@ interface Props {
 }
 
 const LIME = "#9FE870";
+// The Round is the daily "main show" - the only game gated by Showtime + streaks.
+const THE_ROUND = "green-round";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function getLeaderboardView({
@@ -55,6 +59,18 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
   const [submitRank, setSubmitRank] = useState<number | null>(null);
   const [submitOffline, setSubmitOffline] = useState(false);
 
+  // The Round's daily board tab + Showtime gate. `boardPeriod` picks which window
+  // the leaderboard shows; `roundShowtime` (captured when a round starts) says
+  // whether the round the player is in counts on today's board. `recordedStreak`
+  // holds the streak locked in the moment a Showtime run completes.
+  const [boardPeriod, setBoardPeriod] = useState<BoardPeriod>(
+    initialGameId === THE_ROUND ? "day" : "all",
+  );
+  const [roundShowtime, setRoundShowtime] = useState<ShowtimeStatus | null>(
+    initialGameId === THE_ROUND ? getShowtimeStatus(THE_ROUND) : null,
+  );
+  const [recordedStreak, setRecordedStreak] = useState<number | null>(null);
+
   const panelRef = useRef<HTMLDivElement | null>(null);
   const initialsRef = useRef<HTMLInputElement | null>(null);
 
@@ -64,7 +80,7 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
   // playing so the board is ready the moment the run ends. Fails quietly when
   // there is no backend (e.g. static/offline) - localStorage is the fallback.
   const globalBoard = trpc.arcade.topScores.useQuery(
-    { gameId: (gameId ?? "spec-breaker") as ArcadeGameId, limit: 10 },
+    { gameId: (gameId ?? "spec-breaker") as ArcadeGameId, limit: 10, period: boardPeriod },
     {
       enabled: !!gameId,
       retry: 0,
@@ -116,12 +132,24 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
     }
   }, [view, submitted]);
 
-  const startGame = useCallback((id: string) => {
-    setGameId(id);
-    setGameKey((k) => k + 1);
-    setFinalScore(0);
-    setView("playing");
+  // Arm (or clear) the Showtime gate for a fresh round of `id`. The Round reads
+  // today's status; every other game is ungated free-play.
+  const armShowtime = useCallback((id: string) => {
+    setRecordedStreak(null);
+    setRoundShowtime(id === THE_ROUND ? getShowtimeStatus(id) : null);
   }, []);
+
+  const startGame = useCallback(
+    (id: string) => {
+      setGameId(id);
+      setGameKey((k) => k + 1);
+      setFinalScore(0);
+      setBoardPeriod(id === THE_ROUND ? "day" : "all");
+      armShowtime(id);
+      setView("playing");
+    },
+    [armShowtime],
+  );
 
   const handleGameOver = useCallback(
     (score: number) => {
@@ -132,9 +160,14 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
       setSubmitRank(null);
       setSubmitOffline(false);
       setLocalBoard(getHighScores(gameId));
+      // The Round's first run of the UTC day is "Showtime" - completing it is the
+      // daily check-in that locks the streak, whether or not initials get posted.
+      if (gameId === THE_ROUND && roundShowtime?.mode === "showtime") {
+        setRecordedStreak(recordShowtime(gameId).streak);
+      }
       setView("gameover");
     },
-    [gameId],
+    [gameId, roundShowtime],
   );
 
   const emailTrimmed = email.trim();
@@ -142,6 +175,8 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
 
   const submitScore = useCallback(() => {
     if (!gameId || submitted) return;
+    // Practice runs (The Round, after today's Showtime) never touch the board.
+    if (gameId === THE_ROUND && roundShowtime?.mode === "practice") return;
     const ini = normalizeInitials(initials || "AAA");
     const roundedScore = Math.round(finalScore);
 
@@ -151,6 +186,10 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
     setMadeBoard(false);
 
     const emailToSend = emailValid ? emailTrimmed : undefined;
+    // A Showtime run posts to TODAY's board (the returned rank is today's);
+    // everything else posts to the all-time board.
+    const period: BoardPeriod =
+      gameId === THE_ROUND && roundShowtime?.mode === "showtime" ? "day" : "all";
 
     submitMutation.mutate(
       {
@@ -160,6 +199,7 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
         playerName: playerName.trim() || undefined,
         company: company.trim() || undefined,
         email: emailToSend,
+        period,
       },
       {
         onSuccess: (data) => {
@@ -175,6 +215,7 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
   }, [
     gameId,
     submitted,
+    roundShowtime,
     initials,
     finalScore,
     playerName,
@@ -189,8 +230,9 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
     if (!gameId) return;
     setGameKey((k) => k + 1);
     setFinalScore(0);
+    armShowtime(gameId);
     setView("playing");
-  }, [gameId]);
+  }, [gameId, armShowtime]);
 
   const backToPicker = useCallback(() => {
     setView("picker");
@@ -213,6 +255,12 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
     globalBoardSucceeded: globalBoard.isSuccess,
   });
   const showingGlobal = leaderboardView !== "local";
+
+  // The Round's Showtime state for the run just finished.
+  const isRoundGame = gameId === THE_ROUND;
+  const isShowtimeRound = isRoundGame && roundShowtime?.mode === "showtime";
+  const isPracticeRound = isRoundGame && roundShowtime?.mode === "practice";
+  const shownStreak = recordedStreak ?? roundShowtime?.streak ?? 0;
 
   return (
     <div
@@ -278,6 +326,9 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {ARCADE_GAMES.map((g) => {
                   const best = getHighScores(g.id)[0]?.score ?? 0;
+                  // The Round wears its daily hook right on the shelf: is today's
+                  // Showtime still up for grabs, and what's the live streak?
+                  const gate = g.id === THE_ROUND ? getShowtimeStatus(g.id) : null;
                   return (
                     <button
                       key={g.id}
@@ -293,9 +344,22 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
                       </span>
                       <span className="text-lg font-bold text-white">{g.name}</span>
                       <span className="text-xs leading-snug text-white/50">{g.tagline}</span>
-                      <span className="mt-1 text-[11px] text-white/30">
-                        {best > 0 ? `Best ${best.toLocaleString()}` : "No high score yet"}
-                      </span>
+                      {gate ? (
+                        <span className="mt-1 flex items-center gap-1.5 text-[11px] font-bold">
+                          {gate.mode === "showtime" ? (
+                            <span style={{ color: g.accent }}>▶ SHOWTIME READY</span>
+                          ) : (
+                            <span className="text-white/40">Showtime done · back tomorrow</span>
+                          )}
+                          {gate.streak > 0 && (
+                            <span className="text-white/50">· 🔥 {gate.streak}</span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="mt-1 text-[11px] text-white/30">
+                          {best > 0 ? `Best ${best.toLocaleString()}` : "No high score yet"}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -320,7 +384,22 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
               </div>
 
               {/* Post-to-leaderboard flow */}
-              {!submitted ? (
+              {isPracticeRound ? (
+                <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
+                  <div className="text-sm font-semibold text-white">🎯 Practice round</div>
+                  <div className="mt-1 text-xs leading-snug text-white/50">
+                    Your Showtime is done for today — practice runs don&apos;t hit the board.
+                  </div>
+                  {shownStreak > 0 && (
+                    <div className="mt-2 text-sm font-black" style={{ color: accent }}>
+                      🔥 {shownStreak}-day streak
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-white/40">
+                    Come back tomorrow to keep it alive.
+                  </div>
+                </div>
+              ) : !submitted ? (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -328,9 +407,19 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
                   }}
                   className="mb-5 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"
                 >
+                  {isShowtimeRound && (
+                    <div
+                      className="text-center text-xs font-black uppercase tracking-wider"
+                      style={{ color: accent }}
+                    >
+                      ▶ Showtime — this one counts on today&apos;s board
+                    </div>
+                  )}
                   <div className="text-center text-sm font-semibold text-white">
                     {madeBoard ? "🏆 New personal best!" : "📮 Post your score"}
-                    <span className="ml-1 font-normal text-white/50">to the global board</span>
+                    <span className="ml-1 font-normal text-white/50">
+                      {isShowtimeRound ? "to today’s board" : "to the global board"}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-center gap-3">
@@ -409,8 +498,9 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
                     </div>
                   ) : submitRank != null ? (
                     <div className="text-sm font-semibold text-white">
-                      🌍 You&apos;re{" "}
-                      <span style={{ color: accent }}>#{submitRank}</span> in the world
+                      {isShowtimeRound ? "🏆 You’re " : "🌍 You’re "}
+                      <span style={{ color: accent }}>#{submitRank}</span>
+                      {isShowtimeRound ? " on today’s board" : " in the world"}
                       {company.trim() ? (
                         <>
                           {" "}
@@ -418,6 +508,11 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
                         </>
                       ) : null}
                       !
+                      {isShowtimeRound && shownStreak > 0 && (
+                        <div className="mt-1 text-xs font-black" style={{ color: accent }}>
+                          🔥 {shownStreak}-day streak — see you tomorrow.
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-sm text-white/70">Posting your score…</div>
@@ -428,9 +523,30 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
               {/* Leaderboard */}
               <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.02] p-4">
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-white/40">
-                    {showingGlobal ? "🌍 Global Top 10" : "Your scores"}
-                  </div>
+                  {isRoundGame ? (
+                    <div className="flex items-center gap-1">
+                      {(["day", "all"] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setBoardPeriod(p)}
+                          className={cn(
+                            "rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition",
+                            boardPeriod === p
+                              ? "text-black"
+                              : "text-white/40 hover:text-white/70",
+                          )}
+                          style={boardPeriod === p ? { backgroundColor: accent } : undefined}
+                        >
+                          {p === "day" ? "🏆 Today" : "🌍 All-Time"}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-white/40">
+                      {showingGlobal ? "🌍 Global Top 10" : "Your scores"}
+                    </div>
+                  )}
                   {globalBoard.isFetching && (
                     <div className="text-[10px] text-white/30">syncing…</div>
                   )}
@@ -472,7 +588,9 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
                   </ol>
                 ) : leaderboardView === "global-empty" ? (
                   <div className="py-3 text-center text-sm text-white/40">
-                    Be the first in the world.
+                    {isRoundGame && boardPeriod === "day"
+                      ? "No one's posted today. Take the top spot."
+                      : "Be the first in the world."}
                   </div>
                 ) : localRanked.length === 0 ? (
                   <div className="py-3 text-center text-sm text-white/40">
