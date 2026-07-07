@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { arcadeScores, leads } from "../../drizzle/schema";
@@ -109,24 +109,24 @@ export const arcadeRouter = router({
       }
 
       const initials = normalizeInitials(input.initials);
-      const createdAt = new Date();
+      const submittedAt = new Date();
+      const normalizedEmail = input.email?.toLowerCase();
 
       await db.insert(arcadeScores).values({
         gameId: input.gameId,
         initials,
         score: input.score,
         playerName: input.playerName || null,
-        email: input.email || null,
+        email: normalizedEmail || null,
         company: input.company || null,
         eventKey: input.eventKey || null,
-        createdAt,
+        createdAt: submittedAt,
       });
 
       // Feed the existing CRM lead pipeline - deduped by email so replaying the
       // game doesn't flood the leads table with the same person.
       let leadCaptured = false;
-      if (input.email) {
-        const normalizedEmail = input.email.toLowerCase();
+      if (normalizedEmail) {
         const existing = await db
           .select({ id: leads.id })
           .from(leads)
@@ -143,7 +143,8 @@ export const arcadeRouter = router({
         }
       }
 
-      // Rank = number of scores that outrank this submission on this board, + 1.
+      // Rank = number of better scores on this board (+ ties with earlier submit
+      // time), + 1.
       const scope = input.eventKey
         ? and(
             eq(arcadeScores.gameId, input.gameId),
@@ -161,10 +162,10 @@ export const arcadeRouter = router({
           and(
             scope,
             or(
-              sql`${arcadeScores.score} > ${input.score}`,
+              gt(arcadeScores.score, input.score),
               and(
                 eq(arcadeScores.score, input.score),
-                sql`${arcadeScores.createdAt} < ${createdAt}`,
+                lt(arcadeScores.createdAt, submittedAt),
               ),
             ),
           ),

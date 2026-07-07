@@ -133,7 +133,7 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
     const roundedScore = Math.round(finalScore);
 
     // Always save locally first - the board must work offline no matter what.
-    setLocalBoard(addHighScore(gameId, ini, finalScore));
+    setLocalBoard(addHighScore(gameId, ini, roundedScore));
     setSubmitted(true);
     setMadeBoard(false);
 
@@ -417,7 +417,7 @@ export default function GreenChainzArcade({ onClose, initialGameId }: Props) {
                   {globalBoard.isFetching && (
                     <div className="text-[10px] text-white/30">syncing…</div>
                   )}
-                  {!showingGlobal && !globalBoard.isFetching && (
+                  {!showingGlobal && !globalBoard.isFetching && globalBoard.isError && (
                     <div className="text-[10px] text-white/30">global offline</div>
                   )}
                 </div>

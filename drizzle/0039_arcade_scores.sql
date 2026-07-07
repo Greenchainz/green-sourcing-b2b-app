@@ -21,10 +21,6 @@ CREATE TABLE IF NOT EXISTS "arcade_scores" (
   "createdAt"  timestamp    NOT NULL DEFAULT now()
 );
 
--- Board reads are "top N by score for a game" - index the ordering columns.
+-- Board reads filter by game + event scope, then rank by score and createdAt.
 CREATE INDEX IF NOT EXISTS "arcade_scores_board_idx"
-  ON "arcade_scores" ("gameId", "score");
-
--- Tournament/event boards filter by eventKey first.
-CREATE INDEX IF NOT EXISTS "arcade_scores_event_idx"
-  ON "arcade_scores" ("eventKey");
+  ON "arcade_scores" ("gameId", "eventKey", "score", "createdAt");
