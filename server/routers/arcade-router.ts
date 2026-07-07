@@ -126,14 +126,15 @@ export const arcadeRouter = router({
       // game doesn't flood the leads table with the same person.
       let leadCaptured = false;
       if (input.email) {
+        const normalizedEmail = input.email.toLowerCase();
         const existing = await db
           .select({ id: leads.id })
           .from(leads)
-          .where(eq(leads.email, input.email))
+          .where(sql`lower(${leads.email}) = ${normalizedEmail}`)
           .limit(1);
         if (existing.length === 0) {
           await db.insert(leads).values({
-            email: input.email,
+            email: normalizedEmail,
             name: input.playerName || null,
             company: input.company || null,
             source: `arcade:${input.gameId}`,

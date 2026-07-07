@@ -122,7 +122,7 @@ describe("arcadeRouter.submitScore", () => {
       score: 3400,
       initials: "JON",
       playerName: "Jon",
-      email: "jon@example.com",
+      email: "Jon@Example.COM",
       company: "Greenchainz",
     });
 
@@ -131,6 +131,9 @@ describe("arcadeRouter.submitScore", () => {
     expect(result.leadCaptured).toBe(true);
     // one insert for arcade_scores + one insert for the new lead
     expect(insert).toHaveBeenCalledTimes(2);
+    expect(insertValues.mock.calls[1]?.[0]).toMatchObject({
+      email: "jon@example.com",
+    });
   });
 
   it("ranks tied submissions behind earlier equal scores", async () => {
@@ -171,9 +174,13 @@ describe("arcadeRouter.submitScore", () => {
     }
   });
 
-  it("does not create a duplicate lead when the email already exists", async () => {
+  it("dedupes existing leads case-insensitively", async () => {
     const insertValues = vi.fn().mockResolvedValue({});
     const insert = vi.fn().mockReturnValue({ values: insertValues });
+    const leadWhere = vi.fn().mockReturnValue({
+      // lead already present, with stored casing that differs from the input
+      limit: vi.fn().mockResolvedValue([{ id: 7 }]),
+    });
 
     let selectCall = 0;
     const select = vi.fn().mockImplementation(() => {
@@ -181,10 +188,7 @@ describe("arcadeRouter.submitScore", () => {
       if (selectCall === 1) {
         return {
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              // lead already present
-              limit: vi.fn().mockResolvedValue([{ id: 7 }]),
-            }),
+            where: leadWhere,
           }),
         };
       }
@@ -202,7 +206,7 @@ describe("arcadeRouter.submitScore", () => {
       gameId: "spec-breaker",
       score: 5000,
       initials: "AAA",
-      email: "existing@example.com",
+      email: "Existing@Example.COM",
     });
 
     expect(result.persisted).toBe(true);
@@ -210,6 +214,9 @@ describe("arcadeRouter.submitScore", () => {
     expect(result.leadCaptured).toBe(false);
     // only the arcade_scores insert - no lead insert
     expect(insert).toHaveBeenCalledTimes(1);
+    expect(containsNestedValue(leadWhere.mock.calls[0]?.[0], "existing@example.com")).toBe(
+      true,
+    );
   });
 });
 
