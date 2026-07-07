@@ -3,6 +3,7 @@ import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { trpc } from "@/lib/trpc";
+import { openArcadeNudge } from "@/components/arcade/arcadeBus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,6 +91,8 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
 
       alert(`RFQ #${result.rfqId} has been created and suppliers have been matched.`);
       reset();
+      // Easter egg: invite the buyer to the arcade while suppliers respond.
+      openArcadeNudge({ reason: "rfq-sent" });
       setTimeout(() => {
         setSubmitStatus(null);
         onSuccess?.();
