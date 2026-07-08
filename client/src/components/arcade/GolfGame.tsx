@@ -11,8 +11,20 @@ import {
   type GolfState,
 } from "./golfEngine";
 import type { ArcadeGameProps } from "./types";
+import { createCelebrationFx } from "./fireworks";
 
 const ACCENT = "#EC6A5E";
+
+interface GolfGameProps extends ArcadeGameProps {
+  /**
+   * Builds the initial state. Defaults to {@link createGolfState} (the endless
+   * "Green Approach" run); "The Round" injects {@link createRoundState} for a
+   * single long championship hole. Read once on mount.
+   */
+  stateFactory?: () => GolfState;
+  /** In-game accent (hex) for the flag, HUD and result flash. */
+  accent?: string;
+}
 
 /** radians the aim swings per ms while a turn key is held */
 const AIM_SPEED = 0.0021;
@@ -20,6 +32,9 @@ const AIM_SPEED = 0.0021;
 const METER_SPEED = 0.0016;
 /** max angular error (radians) a fully mishit accuracy adds */
 const MAX_ACC_ERR = 0.26;
+/** tee-shot loft: screen px of height per unit power + a live carry read.
+ *  Pure flourish layered over the roll — no physics/scoring change. */
+const YDS_PER_PX = 0.46;
 
 type MeterPhase = "idle" | "power" | "accuracy";
 
@@ -45,19 +60,50 @@ function powerColor(v: number): string {
   return "#EC6A5E";
 }
 
-export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProps) {
+export default function GolfGame({
+  paused,
+  onScore,
+  onGameOver,
+  stateFactory,
+  accent = ACCENT,
+}: GolfGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const stateRef = useRef<GolfState>(createGolfState());
+  const stateRef = useRef<GolfState>(stateFactory ? stateFactory() : createGolfState());
+  const accentRef = useRef(accent);
   const dprRef = useRef(1);
   const reducedRef = useRef(false);
   const prevScoreRef = useRef(0);
   const gameOverSentRef = useRef(false);
+
+  // celebration fireworks that fire the moment a putt drops
+  const fxRef = useRef(createCelebrationFx());
+  const logoRef = useRef<HTMLImageElement | null>(null);
+  const sunkFxRef = useRef(false);
 
   const aimRef = useRef(0);
   const inputRef = useRef({ left: false, right: false });
   const meterRef = useRef<MeterState>({ phase: "idle", value: 0, dir: 1, power: 0 });
   const prevPhaseRef = useRef<GolfPhase>("aim");
   const trailRef = useRef<{ x: number; y: number }[]>([]);
+
+  // Tee-shot "sail": a time-based loft + live carry count-up layered over the
+  // existing roll so a big drive visibly hangs and climbs (drum-roll tension)
+  // instead of skidding flat. Purely visual — the sim and scoring are untouched.
+  const driveRef = useRef({
+    active: false,
+    t: 0,
+    airMs: 0,
+    maxH: 0,
+    tx: 0,
+    ty: 0,
+    carry: 0,
+    hold: 0,
+  });
+
+  // floating "+points" pops for ring hits, muck penalties & bumper banks
+  const popsRef = useRef<
+    Array<{ x: number; y: number; text: string; color: string; life: number; max: number }>
+  >([]);
 
   const [hud, setHud] = useState({
     holeNumber: 1,
@@ -87,6 +133,16 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
     canvas.height = FIELD_HEIGHT * dpr;
   }, []);
 
+  // preload the GreenChainz mark so the win burst can blow up the real logo
+  useEffect(() => {
+    if (typeof Image === "undefined") return;
+    const img = new Image();
+    img.onload = () => {
+      logoRef.current = img;
+    };
+    img.src = "/brand/greenchainz-icon.webp";
+  }, []);
+
   const advanceMeter = useCallback(() => {
     const s = stateRef.current;
     if (s.phase !== "aim") return;
@@ -103,8 +159,23 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
     } else {
       const dev = m.value - 0.5; // 0 = dead center = pure strike
       const angleErr = dev * MAX_ACC_ERR;
+      const isTeeShot = s.strokes === 0;
+      const power = m.power;
       launchGolf(s, aimRef.current + angleErr, m.power);
       trailRef.current = [];
+      if (isTeeShot) {
+        // Only the tee shot sails. Bigger swings hang longer and fly higher, so
+        // the bomb looks like a bomb; a stock swing just gets a gentle hop.
+        const d = driveRef.current;
+        d.active = true;
+        d.t = 0;
+        d.airMs = 640 + power * 720;
+        d.maxH = 24 + power * 108;
+        d.tx = s.ball.x;
+        d.ty = s.ball.y;
+        d.carry = 0;
+        d.hold = 0;
+      }
       m.phase = "idle";
       m.value = 0;
       m.power = 0;
@@ -204,12 +275,75 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
       ctx.fillRect(x, 0, 48, FIELD_HEIGHT);
     }
 
-    // bumpers (mini-golf rails)
+    // pinball scoring rings (green wins) + dirty-energy zones (avoid the muck!)
+    const nowMs = performance.now();
+    for (const t of s.targets) {
+      const good = t.kind === "good";
+      if (t.hit) {
+        // spent: faint ghost so the course still reads after you tag it
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.strokeStyle = good ? "#8affc0" : "#ff8f8f";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+      const pulse = 0.55 + 0.45 * Math.sin(nowMs / 320 + t.x * 0.05);
+      ctx.save();
+      ctx.textAlign = "center";
+      if (good) {
+        ctx.shadowColor = "#39d98a";
+        ctx.shadowBlur = 12 + pulse * 10;
+        ctx.strokeStyle = `rgba(120,255,180,${0.5 + pulse * 0.4})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(140,255,190,0.10)";
+        ctx.fill();
+        ctx.fillStyle = "#eafff0";
+        ctx.font = "800 15px ui-monospace, monospace";
+        ctx.fillText(`+${t.value}`, t.x, t.y + 5);
+        ctx.font = "700 9px ui-monospace, monospace";
+        ctx.fillStyle = "rgba(180,255,210,0.85)";
+        ctx.fillText(t.label, t.x, t.y + t.radius + 12);
+      } else {
+        const g = ctx.createRadialGradient(t.x, t.y, 2, t.x, t.y, t.radius);
+        g.addColorStop(0, "rgba(46,26,12,0.92)");
+        g.addColorStop(1, "rgba(12,6,22,0.35)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = `rgba(255,120,80,${0.4 + pulse * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(255,186,158,0.95)";
+        ctx.font = "800 9px ui-monospace, monospace";
+        ctx.fillText(t.label, t.x, t.y + 3);
+      }
+      ctx.restore();
+    }
+
+    // green-side bumpers — lit like pinball rails; bank a shot off one for bonus
     for (const w of s.walls) {
-      ctx.fillStyle = "#6b4a32";
+      ctx.save();
+      ctx.shadowColor = accentRef.current;
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = "#20321f";
       ctx.fillRect(w.x, w.y, w.width, w.height);
-      ctx.fillStyle = "rgba(255,255,255,0.14)";
-      ctx.fillRect(w.x, w.y, w.width, 3);
+      ctx.restore();
+      ctx.fillStyle = accentRef.current;
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(w.x, w.y, w.width, 4);
+      ctx.fillRect(w.x, w.y + w.height - 4, w.width, 4);
+      ctx.globalAlpha = 1;
     }
 
     // cup + flag
@@ -229,7 +363,7 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
     ctx.moveTo(s.hole.x, s.hole.y);
     ctx.lineTo(s.hole.x, s.hole.y - 42);
     ctx.stroke();
-    ctx.fillStyle = ACCENT;
+    ctx.fillStyle = accentRef.current;
     ctx.beginPath();
     ctx.moveTo(s.hole.x, s.hole.y - 42);
     ctx.lineTo(s.hole.x + 22, s.hole.y - 35);
@@ -243,12 +377,32 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
     ctx.arc(s.tee.x, s.tee.y, 4, 0, Math.PI * 2);
     ctx.fill();
 
+    // green break — chevrons by the cup point downhill so players can read the putt
+    const slopeMag = Math.hypot(s.slope.x, s.slope.y);
+    if (slopeMag > 1e-6) {
+      const ang = Math.atan2(s.slope.y, s.slope.x);
+      ctx.save();
+      ctx.translate(s.hole.x, s.hole.y);
+      ctx.rotate(ang);
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const ox = s.hole.radius + 12 + i * 9;
+        ctx.beginPath();
+        ctx.moveTo(ox - 5, -5);
+        ctx.lineTo(ox, 0);
+        ctx.lineTo(ox - 5, 5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // aim guide (dotted) while lining up a shot
     if (s.phase === "aim" && m.phase !== "idle") {
       // during the swing meter keep the committed aim visible
-      drawAim(ctx, s.ball.x, s.ball.y, aimRef.current, true);
+      drawAim(ctx, s.ball.x, s.ball.y, aimRef.current, true, accentRef.current);
     } else if (s.phase === "aim") {
-      drawAim(ctx, s.ball.x, s.ball.y, aimRef.current, false);
+      drawAim(ctx, s.ball.x, s.ball.y, aimRef.current, false, accentRef.current);
     }
 
     // motion trail
@@ -267,16 +421,67 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
       ctx.globalAlpha = 1;
     }
 
-    // ball
+    // ball — on the tee shot it sails: a shadow stays on the turf while the ball
+    // lofts on a time-based arc, so a big drive visibly hangs and climbs.
+    const drive = driveRef.current;
+    const loft =
+      drive.active && drive.airMs > 0
+        ? Math.sin(clamp(drive.t / drive.airMs, 0, 1) * Math.PI) * drive.maxH
+        : 0;
+    if (loft > 0.5) {
+      ctx.save();
+      ctx.globalAlpha = clamp(0.3 - loft / 700, 0.07, 0.3);
+      ctx.fillStyle = "#000000";
+      ctx.beginPath();
+      ctx.ellipse(s.ball.x, s.ball.y, s.ball.radius * 1.15, s.ball.radius * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.5)";
     ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowOffsetY = 2 + loft * 0.12;
     ctx.fillStyle = "#f8fff4";
     ctx.beginPath();
-    ctx.arc(s.ball.x, s.ball.y, s.ball.radius, 0, Math.PI * 2);
+    ctx.arc(s.ball.x, s.ball.y - loft, s.ball.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+
+    // floating point pops (rise + fade) for rings, muck and banks
+    for (const p of popsRef.current) {
+      const k = clamp(p.life / p.max, 0, 1);
+      const rise = (1 - k) * 26;
+      ctx.save();
+      ctx.globalAlpha = k;
+      ctx.textAlign = "center";
+      ctx.font = "800 15px ui-monospace, monospace";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.strokeText(p.text, p.x, p.y - 14 - rise);
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.text, p.x, p.y - 14 - rise);
+      ctx.restore();
+    }
+
+    // tee-shot carry drum-roll: the number climbs while the ball is in the air,
+    // then freezes and fades so you feel the distance land.
+    if (drive.active || drive.hold > 0) {
+      const yds = Math.max(0, Math.round(drive.carry));
+      const fading = !drive.active && drive.hold > 0;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.globalAlpha = fading ? clamp(drive.hold / 850, 0, 1) : 1;
+      ctx.fillStyle = drive.active ? accentRef.current : "#f8fff4";
+      ctx.font = "800 46px ui-monospace, monospace";
+      ctx.fillText(String(yds), FIELD_WIDTH / 2, 70);
+      ctx.font = "700 12px ui-monospace, monospace";
+      ctx.fillStyle = "rgba(255,255,255,0.72)";
+      ctx.fillText("CARRY · YDS", FIELD_WIDTH / 2, 88);
+      ctx.restore();
+    }
+
+    // celebration fireworks (draws its own additive-glow layer, self-contained)
+    fxRef.current.draw(ctx, logoRef.current);
 
     // swing meter
     if (m.phase !== "idle") {
@@ -344,6 +549,48 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
       }
       prevPhaseRef.current = s.phase;
 
+      // pinball juice: turn ring hits, muck penalties and bumper banks into
+      // floating point pops the player can feel land.
+      for (const ev of s.events) {
+        if (ev.type === "target") {
+          popsRef.current.push({
+            x: ev.x,
+            y: ev.y,
+            text: ev.kind === "good" ? `+${ev.value} ${ev.label}` : `${ev.value} ${ev.label}`,
+            color: ev.kind === "good" ? "#8affc0" : "#ff7a6b",
+            life: 900,
+            max: 900,
+          });
+        } else if (ev.type === "bank") {
+          popsRef.current.push({
+            x: ev.x,
+            y: ev.y,
+            text: `BANK +${ev.value}`,
+            color: accentRef.current,
+            life: 800,
+            max: 800,
+          });
+        }
+      }
+      for (const p of popsRef.current) p.life -= dt;
+      if (popsRef.current.some((p) => p.life <= 0)) {
+        popsRef.current = popsRef.current.filter((p) => p.life > 0);
+      }
+
+      // advance the tee-shot sail (visual only): climb the carry read while the
+      // ball is aloft, then hold the final number briefly after it lands.
+      const drive = driveRef.current;
+      if (drive.active) {
+        drive.t += dt;
+        drive.carry = Math.hypot(s.ball.x - drive.tx, s.ball.y - drive.ty) * YDS_PER_PX;
+        if (drive.t >= drive.airMs || s.phase !== "rolling") {
+          drive.active = false;
+          drive.hold = 850;
+        }
+      } else if (drive.hold > 0) {
+        drive.hold -= dt;
+      }
+
       // motion trail sampling
       if (s.phase === "rolling" && !reducedRef.current) {
         const trail = trailRef.current;
@@ -352,6 +599,22 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
       } else if (s.phase !== "rolling" && trailRef.current.length) {
         trailRef.current = [];
       }
+
+      // fire the win celebration once, on the frame the putt drops
+      if (s.phase === "sunk") {
+        if (!sunkFxRef.current) {
+          sunkFxRef.current = true;
+          const points = s.lastResult ? s.lastResult.points : 0;
+          fxRef.current.celebrate(s.hole.x, s.hole.y, {
+            accent: accentRef.current,
+            reduced: reducedRef.current,
+            intensity: clamp(points / 1200, 0.35, 1),
+          });
+        }
+      } else {
+        sunkFxRef.current = false;
+      }
+      fxRef.current.update(dt);
 
       draw();
 
@@ -399,7 +662,10 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
 
   return (
     <div className="relative mx-auto w-full max-w-[720px] select-none">
-      <div className="mb-2 flex items-center justify-between font-mono text-xs uppercase tracking-widest text-[#EC6A5E]/85">
+      <div
+        className="mb-2 flex items-center justify-between font-mono text-xs uppercase tracking-widest"
+        style={{ color: accent }}
+      >
         <span>
           Hole {hud.holeNumber} · Par {hud.par}
         </span>
@@ -419,10 +685,10 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
         {hud.phase === "aim" && hud.meterPhase === "idle" && hud.strokes === 0 && (
           <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center text-center">
             <p className="animate-pulse font-mono text-sm font-semibold uppercase tracking-widest text-white/90">
-              ← → aim · Space / click to swing
+              ← → aim · Space / click to DRIVE
             </p>
             <p className="mt-1 font-mono text-[11px] text-white/50">
-              Bank it off the rails — get on the green.
+              Grip it and rip it — send it sailing down the fairway.
             </p>
           </div>
         )}
@@ -431,7 +697,7 @@ export default function GolfGame({ paused, onScore, onGameOver }: ArcadeGameProp
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
             <p
               className="font-mono text-4xl font-black uppercase tracking-tight drop-shadow-lg"
-              style={{ color: ACCENT }}
+              style={{ color: accent }}
             >
               {hud.resultLabel}
             </p>
@@ -456,6 +722,7 @@ function drawAim(
   y: number,
   angle: number,
   committed: boolean,
+  accent: string,
 ): void {
   const dots = 7;
   const gap = 15;
@@ -464,7 +731,7 @@ function drawAim(
     const dx = x + Math.cos(angle) * gap * i;
     const dy = y + Math.sin(angle) * gap * i;
     ctx.globalAlpha = (1 - i / (dots + 1)) * (committed ? 0.9 : 0.55);
-    ctx.fillStyle = committed ? "#ffffff" : ACCENT;
+    ctx.fillStyle = committed ? "#ffffff" : accent;
     ctx.beginPath();
     ctx.arc(dx, dy, committed ? 2.6 : 2.2, 0, Math.PI * 2);
     ctx.fill();

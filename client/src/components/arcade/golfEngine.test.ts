@@ -4,8 +4,10 @@ import {
   FIELD_HEIGHT,
   FIELD_WIDTH,
   buildHole,
+  buildLongHole,
   clamp,
   createGolfState,
+  createRoundState,
   defaultGolfConfig,
   launchGolf,
   nextHole,
@@ -268,5 +270,191 @@ describe("nextHole", () => {
     expect(s.strokes).toBe(0);
     expect(s.ball.x).toBeCloseTo(s.tee.x);
     expect(s.ball.y).toBeCloseTo(s.tee.y);
+  });
+});
+
+describe("green break (slope)", () => {
+  it("is dead flat on the opening holes and tilts on later ones", () => {
+    const mag = (l: { slope: { x: number; y: number } }) =>
+      Math.hypot(l.slope.x, l.slope.y);
+    expect(mag(buildHole(1, mulberry32(7)))).toBe(0);
+    expect(mag(buildHole(2, mulberry32(7)))).toBe(0);
+    expect(mag(buildHole(6, mulberry32(7)))).toBeGreaterThan(0);
+  });
+
+  it("bends a rolling ball toward the break direction", () => {
+    const s = createGolfState(defaultGolfConfig, mulberry32(3));
+    s.slope = { x: 0.0005, y: 0 }; // clear rightward break
+    s.ball.x = 200;
+    s.ball.y = 300;
+    s.ball.vx = 0;
+    s.ball.vy = -0.3; // rolling up the field, away from the cup
+    s.strokes = 1;
+    s.phase = "rolling";
+    advance(s, 300);
+    expect(s.ball.vx).toBeGreaterThan(0); // gained rightward speed
+    expect(s.ball.x).toBeGreaterThan(200); // drifted right
+  });
+
+  it("does not move a ball at rest on the tee (no downhill creep)", () => {
+    const s = createGolfState(defaultGolfConfig, mulberry32(3));
+    s.slope = { x: 0.001, y: 0.001 }; // steep, but the ball is aiming
+    const { x, y } = s.ball;
+    for (let i = 0; i < 30; i++) stepGolf(s, 16);
+    expect(s.ball.x).toBe(x);
+    expect(s.ball.y).toBe(y);
+    expect(s.phase).toBe("aim");
+  });
+
+  it("still settles to rest on a slope (the sim always terminates)", () => {
+    const s = createGolfState(defaultGolfConfig, mulberry32(3));
+    s.slope = { x: 0.0006, y: 0 };
+    s.ball.x = 200;
+    s.ball.y = 300;
+    s.ball.vx = 0;
+    s.ball.vy = -0.5;
+    s.strokes = 1;
+    s.phase = "rolling";
+    advance(s, 8000);
+    expect(s.phase).not.toBe("rolling");
+    expect(s.ball.vx).toBe(0);
+    expect(s.ball.vy).toBe(0);
+  });
+});
+
+describe("The Round (single long hole)", () => {
+  it("builds one long par-4 hole with a readable break, tee-left to cup-right", () => {
+    const l = buildLongHole(mulberry32(5));
+    expect(l.par).toBe(4);
+    expect(l.tee.x).toBeLessThan(l.hole.x); // the drive plays left -> right
+    expect(l.hole.x).toBeGreaterThan(FIELD_WIDTH * 0.7); // cup near the far edge
+    expect(Math.hypot(l.slope.x, l.slope.y)).toBeGreaterThan(0); // hills matter
+  });
+
+  it("starts a single-hole run at rest on the tee", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    expect(s.phase).toBe("aim");
+    expect(s.holeNumber).toBe(1);
+    expect(s.strokes).toBe(0);
+    expect(s.endless).toBe(false);
+    expect(s.ball.x).toBeCloseTo(s.tee.x);
+    expect(s.ball.y).toBeCloseTo(s.tee.y);
+  });
+
+  it("ends the run when the hole is sunk instead of loading another hole", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    // drop the ball softly into the cup
+    s.strokes = 2;
+    s.ball.x = s.hole.x;
+    s.ball.y = s.hole.y;
+    s.ball.vx = 0.12; // under captureSpeed (0.3)
+    s.ball.vy = 0;
+    s.phase = "rolling";
+    stepGolf(s, 16);
+    expect(s.phase).toBe("sunk");
+    expect(s.score).toBeGreaterThan(0);
+    advance(s, 2000); // let the sink reveal elapse
+    expect(s.phase).toBe("game_over");
+    expect(s.holeNumber).toBe(1); // never advanced to a hole 2
+  });
+
+  it("regression: an endless run still advances to the next hole on a sink", () => {
+    const s = createGolfState(defaultGolfConfig, mulberry32(5));
+    s.strokes = 2;
+    s.ball.x = s.hole.x;
+    s.ball.y = s.hole.y;
+    s.ball.vx = 0.12;
+    s.ball.vy = 0;
+    s.phase = "rolling";
+    stepGolf(s, 16);
+    expect(s.phase).toBe("sunk");
+    advance(s, 2000);
+    expect(s.phase).toBe("aim");
+    expect(s.holeNumber).toBe(2);
+  });
+});
+
+describe("Golf-Pinball scoring (rings, muck & bank bonus)", () => {
+  it("strings green-win rings down the fairway plus off-line dirty-energy zones", () => {
+    const l = buildLongHole(mulberry32(5));
+    const goods = l.targets.filter((t) => t.kind === "good");
+    const bads = l.targets.filter((t) => t.kind === "bad");
+    expect(goods.length).toBe(3);
+    expect(bads.length).toBeGreaterThanOrEqual(1);
+    // green wins pay points and sit on the tee -> cup line; deeper pays more
+    for (const g of goods) {
+      expect(g.value).toBeGreaterThan(0);
+      expect(g.x).toBeGreaterThan(l.tee.x);
+      expect(g.x).toBeLessThan(l.hole.x);
+    }
+    expect(goods[goods.length - 1].value).toBeGreaterThan(goods[0].value);
+    // dirty energy docks points
+    for (const b of bads) expect(b.value).toBeLessThan(0);
+  });
+
+  it("lights a green-win ring once, banking its points (never twice)", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    const ring = s.targets.find((t) => t.kind === "good")!;
+    s.score = 0;
+    s.ball.x = ring.x;
+    s.ball.y = ring.y;
+    s.ball.vx = 0.1;
+    s.ball.vy = 0;
+    s.phase = "rolling";
+
+    stepGolf(s, 16);
+    expect(ring.hit).toBe(true);
+    expect(s.score).toBe(ring.value);
+    expect(
+      s.events.some(
+        (e) => e.type === "target" && e.kind === "good" && e.value === ring.value,
+      ),
+    ).toBe(true);
+
+    stepGolf(s, 16); // rolling through the same ring must not re-score
+    expect(s.score).toBe(ring.value);
+  });
+
+  it("docks points in a dirty-energy zone and never lets the score go negative", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    const muck = s.targets.find((t) => t.kind === "bad")!;
+    s.score = 500;
+    s.ball.x = muck.x;
+    s.ball.y = muck.y;
+    s.ball.vx = 0.1;
+    s.ball.vy = 0;
+    s.phase = "rolling";
+    stepGolf(s, 16);
+    expect(s.score).toBe(500 + muck.value); // muck.value is negative
+    expect(
+      s.events.some((e) => e.type === "target" && e.kind === "bad"),
+    ).toBe(true);
+
+    // a small score can't be dragged below zero
+    const s2 = createRoundState(defaultGolfConfig, mulberry32(5));
+    const muck2 = s2.targets.find((t) => t.kind === "bad")!;
+    s2.score = 10;
+    s2.ball.x = muck2.x;
+    s2.ball.y = muck2.y;
+    s2.ball.vx = 0.1;
+    s2.ball.vy = 0;
+    s2.phase = "rolling";
+    stepGolf(s2, 16);
+    expect(s2.score).toBe(0);
+  });
+
+  it("awards a capped bonus for banking off a green-side bumper", () => {
+    const s = createRoundState(defaultGolfConfig, mulberry32(5));
+    const bump = s.walls[0];
+    s.score = 0;
+    s.ball.x = bump.x - BALL_RADIUS - 3; // just left of the bumper
+    s.ball.y = bump.y + bump.height / 2; // mid-face so it strikes square
+    s.ball.vx = 0.8; // driven into it
+    s.ball.vy = 0;
+    s.phase = "rolling";
+    stepGolf(s, 16);
+    expect(s.bankScored).toBe(1);
+    expect(s.score).toBeGreaterThan(0);
+    expect(s.events.some((e) => e.type === "bank")).toBe(true);
   });
 });

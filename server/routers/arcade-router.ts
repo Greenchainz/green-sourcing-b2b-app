@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNull, lt, or, sql } from "drizzle-orm";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { arcadeScores, leads } from "../../drizzle/schema";
@@ -9,6 +9,7 @@ import {
   isValidArcadeScore,
   normalizeInitials,
 } from "@shared/arcadeScoring";
+import { BOARD_PERIODS, periodStartMs, type BoardPeriod } from "@shared/arcadePeriods";
 
 /**
  * GreenChainz Arcade - global leaderboard API.
@@ -23,6 +24,28 @@ import {
  */
 
 const gameId = z.enum(ARCADE_GAME_IDS);
+const period = z.enum(BOARD_PERIODS).default("all");
+
+/**
+ * The board a score belongs to: one game, either the casual all-time board
+ * (eventKey IS NULL) or a single tournament/event, optionally narrowed to a
+ * daily / monthly time window. The window boundary comes from the SAME shared
+ * helper the client uses for the "Showtime" gate, so today's board and the
+ * "this one counts" prompt can never drift apart.
+ */
+function boardScope(
+  game: (typeof ARCADE_GAME_IDS)[number],
+  eventKey: string | undefined,
+  boardPeriod: BoardPeriod,
+  nowMs: number,
+) {
+  const startMs = periodStartMs(boardPeriod, nowMs);
+  return and(
+    eq(arcadeScores.gameId, game),
+    eventKey ? eq(arcadeScores.eventKey, eventKey) : isNull(arcadeScores.eventKey),
+    startMs !== null ? gte(arcadeScores.createdAt, new Date(startMs)) : undefined,
+  );
+}
 
 /** One row as shown on the board. */
 export interface BoardEntry {
@@ -41,21 +64,15 @@ export const arcadeRouter = router({
         limit: z.number().int().min(1).max(25).default(10),
         // Omit for the casual all-time board; pass to view a tournament/event board.
         eventKey: z.string().trim().min(1).max(64).optional(),
+        // 'day' = today's board, 'month' = this month, 'all' = all-time (default).
+        period,
       }),
     )
     .query(async ({ input }): Promise<{ scores: BoardEntry[] }> => {
       const db = await getDb();
       if (!db) return { scores: [] };
 
-      const scope = input.eventKey
-        ? and(
-            eq(arcadeScores.gameId, input.gameId),
-            eq(arcadeScores.eventKey, input.eventKey),
-          )
-        : and(
-            eq(arcadeScores.gameId, input.gameId),
-            isNull(arcadeScores.eventKey),
-          );
+      const scope = boardScope(input.gameId, input.eventKey, input.period, Date.now());
 
       const rows = await db
         .select({
@@ -92,6 +109,9 @@ export const arcadeRouter = router({
         email: z.string().trim().email().max(320).optional(),
         company: z.string().trim().max(160).optional(),
         eventKey: z.string().trim().min(1).max(64).optional(),
+        // Which board the returned rank is for. A "Showtime" submit passes 'day'
+        // to get today's rank; the row itself always lands on every window.
+        period,
       }),
     )
     .mutation(async ({ input }) => {
@@ -144,16 +164,14 @@ export const arcadeRouter = router({
       }
 
       // Rank = number of better scores on this board (+ ties with earlier submit
-      // time), + 1.
-      const scope = input.eventKey
-        ? and(
-            eq(arcadeScores.gameId, input.gameId),
-            eq(arcadeScores.eventKey, input.eventKey),
-          )
-        : and(
-            eq(arcadeScores.gameId, input.gameId),
-            isNull(arcadeScores.eventKey),
-          );
+      // time), + 1. Scoped to the requested window so a "Showtime" submit gets
+      // today's rank ("you're #3 today"), while the row still lands everywhere.
+      const scope = boardScope(
+        input.gameId,
+        input.eventKey,
+        input.period,
+        submittedAt.getTime(),
+      );
 
       const betterRows = await db
         .select({ better: sql<number>`count(*)::int` })
