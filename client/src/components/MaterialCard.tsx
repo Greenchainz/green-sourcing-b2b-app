@@ -30,6 +30,10 @@ import { Link, useLocation } from "wouter";
 import { ScoreBadge } from "@/components/MaterialCreditScore/ScoreBadge";
 import { PriceTrendBadge } from "@/components/PriceTrendBadge";
 import { getMaterialImage } from "@/lib/material-images";
+import {
+  useOptionalCarbonBudget,
+  type BudgetItem,
+} from "@/contexts/CarbonBudgetContext";
 
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -207,6 +211,26 @@ export default function MaterialCard(props: MaterialCardProps) {
     );
   };
 
+  // ── Carbon budget tracker ────────────────────────────────────────────────────
+  const budget = useOptionalCarbonBudget();
+  const parsedGwp = gwpValue ? parseFloat(gwpValue) : null;
+  const showTracker = budget !== null && parsedGwp !== null && !isNaN(parsedGwp);
+  const isTracked = showTracker && budget.isTracking(id);
+
+  const handleTrackToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!budget || parsedGwp === null) return;
+    const item: BudgetItem = {
+      id,
+      name: productName ?? name,
+      category,
+      gwpValue: parsedGwp,
+      gwpUnit: gwpUnit ?? "kgCO₂e",
+      ec3Median: ec3IndustryMedian ? parseFloat(ec3IndustryMedian) : null,
+    };
+    budget.toggle(item);
+  };
+
   const avatar = materialAvatar(name, category);
   const imageSrc = getMaterialImage(category, props.imageUrl);
 
@@ -322,6 +346,21 @@ export default function MaterialCard(props: MaterialCardProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
+          {showTracker && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 w-7 p-0 transition-colors ${
+                isTracked
+                  ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
+                  : "text-muted-foreground hover:text-emerald-600"
+              }`}
+              onClick={handleTrackToggle}
+              title={isTracked ? "Remove from carbon tracker" : "Track carbon budget"}
+            >
+              <Leaf className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <Button
             size="sm"
             className="h-7 text-[11px] bg-green-700 hover:bg-green-800 text-white gap-1 px-3 font-medium"
@@ -495,6 +534,24 @@ export default function MaterialCard(props: MaterialCardProps) {
                 </>
               )}
             </div>
+          )}
+
+          {/* Track carbon button — only when inside CarbonBudgetProvider */}
+          {showTracker && (
+            <button
+              onClick={handleTrackToggle}
+              className={`inline-flex flex-col items-center gap-0.5 transition-colors shrink-0 ${
+                isTracked
+                  ? "text-emerald-600 hover:text-emerald-700"
+                  : "text-muted-foreground/50 hover:text-emerald-600"
+              }`}
+              title={isTracked ? "Remove from carbon tracker" : "Track this material's carbon impact"}
+            >
+              <Leaf className={`w-3.5 h-3.5 ${isTracked ? "fill-emerald-100" : ""}`} />
+              <span className="text-[8px] uppercase tracking-wider font-medium">
+                {isTracked ? "Tracked" : "+Track"}
+              </span>
+            </button>
           )}
         </div>
 

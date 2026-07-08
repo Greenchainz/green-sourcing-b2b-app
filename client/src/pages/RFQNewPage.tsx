@@ -1,6 +1,6 @@
 /**
  * NewRFQPage — 4-step RFQ submission wizard
- * Route: /rfq/new?supplierId=&materialId=
+ * Route: /rfq/new?supplierId=123&materialIds=1&materialIds=2
  */
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -802,8 +802,9 @@ export default function RFQNewPage() {
   const searchStr = useSearch();
   const params = new URLSearchParams(searchStr);
   const presetSupplierId = params.get("supplierId") ? Number(params.get("supplierId")) : null;
+  const presetMaterialIds = params.getAll("materialIds").map(Number).filter(Boolean);
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(presetMaterialIds.length > 0 ? 1 : 0);
   const [selectedIds, setSelectedIds] = useState<number[]>(presetSupplierId ? [presetSupplierId] : []);
   const [regionAll, setRegionAll] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState("");
