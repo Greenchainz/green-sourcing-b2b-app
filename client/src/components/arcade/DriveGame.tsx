@@ -178,7 +178,7 @@ export default function DriveGame({ paused, onScore, onGameOver }: ArcadeGamePro
       const latNow = shot.lateral * progress;
       const y = yardsToY(dist);
       const x = CENTER_X + (latNow / s.config.fairwayHalf) * corridorHalf(dist);
-      const arc = Math.sin(progress * Math.PI) * (26 + 46 * shot.power);
+      const arc = reducedRef.current ? 0 : Math.sin(progress * Math.PI) * (26 + 46 * shot.power);
       // shadow on the turf
       ctx.fillStyle = "rgba(0,0,0,0.30)";
       ctx.beginPath();
@@ -245,8 +245,8 @@ export default function DriveGame({ paused, onScore, onGameOver }: ArcadeGamePro
         h.longest === s.longest &&
         h.phase === s.phase &&
         h.lastCarry === lastCarry &&
-        h.reveal?.label === (reveal?.label ?? null) &&
-        h.reveal?.points === (reveal?.points ?? null)
+        (h.reveal?.label ?? null) === (reveal?.label ?? null) &&
+        (h.reveal?.points ?? null) === (reveal?.points ?? null)
           ? h
           : {
               ball: currentBall(s),
