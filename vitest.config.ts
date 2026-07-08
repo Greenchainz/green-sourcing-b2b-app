@@ -23,6 +23,7 @@ export default defineConfig({
       "server/**/*.test.ts",
       "server/**/*.spec.ts",
       "lib/**/*.test.ts",
+      "shared/**/*.test.ts",
       "client/**/*.test.ts",
     ],
   },
