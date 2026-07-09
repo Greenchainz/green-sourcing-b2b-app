@@ -29,7 +29,12 @@ import { eq, and, isNull, lte } from "drizzle-orm";
 
 const FROM = "noreply@updates.greenchainz.com";
 const REPLY_TO = "hello@greenchainz.com";
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://greenchainz.com";
+// Base URL for links in outreach emails. Matches the convention used by every
+// other email service in this repo (FRONTEND_URL), with APP_BASE_URL as a
+// secondary so claim links resolve correctly wherever auth already works.
+// NOTE: this is an Express + Vite app — there is no NEXT_PUBLIC_* env here.
+const BASE_URL =
+  process.env.FRONTEND_URL || process.env.APP_BASE_URL || "https://greenchainz.com";
 
 // ─── Procurement Layer Definition ────────────────────────────────────────────
 
