@@ -9,9 +9,11 @@
  *  3. Advances the CRM contact to "engaged" so an admin follows up with account setup
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { trackGoogleEvent } from "@/lib/analytics";
+import { trackEvent as trackAiEvent } from "@/lib/appInsights";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,14 +38,41 @@ export default function ClaimProfile() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  // UTM attribution carried on the claim link from the outreach email.
+  const readUtm = () => ({
+    utm_source: params.get("utm_source") ?? "",
+    utm_medium: params.get("utm_medium") ?? "",
+    utm_campaign: params.get("utm_campaign") ?? "",
+    utm_content: params.get("utm_content") ?? "",
+  });
+
   const { data, isLoading, error } = trpc.crm.claim.verify.useQuery(
     { token },
     { enabled: token.length > 0, retry: false }
   );
 
+  // Fire a funnel "viewed" event once, when a valid token resolves a profile,
+  // so claim-rate (claimed / viewed) is measurable in GA + App Insights.
+  const viewTracked = useRef(false);
+  useEffect(() => {
+    if (data && !viewTracked.current) {
+      viewTracked.current = true;
+      const payload = { ...readUtm(), has_epd: Boolean(data.hasEpd) };
+      trackGoogleEvent("claim_profile_viewed", payload);
+      trackAiEvent("ClaimProfileViewed", payload);
+    }
+    // readUtm only reads stable query params; keyed on data intentionally.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
   const claim = trpc.crm.claim.complete.useMutation({
     onSuccess: (result) => {
       setSubmitted(true);
+      // The money moment: a supplier claimed their profile. Track it as a
+      // conversion so it can be measured against the viewed event above.
+      const payload = { ...readUtm(), company: result.companyName };
+      trackGoogleEvent("supplier_profile_claimed", payload);
+      trackAiEvent("SupplierProfileClaimed", payload);
       toast.success(`Profile claimed for ${result.companyName}! We'll be in touch shortly.`);
     },
     onError: (err) => {
