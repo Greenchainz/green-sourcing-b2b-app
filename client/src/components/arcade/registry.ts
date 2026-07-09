@@ -3,7 +3,6 @@ import BreakoutGame from "./BreakoutGame";
 import SnakeGame from "./SnakeGame";
 import TriviaGame from "./TriviaGame";
 import GolfGame from "./GolfGame";
-import DriveGame from "./DriveGame";
 import TheRoundGame from "./TheRoundGame";
 
 /**
@@ -57,14 +56,6 @@ export const ARCADE_GAMES: ArcadeGameMeta[] = [
     tagline: "Read the break, bank the birdie — get on the green.",
     accent: "#EC6A5E",
     Component: GolfGame,
-  },
-  {
-    id: "green-drive",
-    name: "Long Drive",
-    classic: "Golf",
-    tagline: "Two taps, one bomb — grip it and rip it down the range.",
-    accent: "#FFCC33",
-    Component: DriveGame,
   },
 ];
 
