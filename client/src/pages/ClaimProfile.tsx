@@ -236,8 +236,8 @@ function SuccessScreen({ companyName }: { companyName: string }) {
       <h2 className="text-xl font-bold text-gray-900 mb-2">Claim received!</h2>
       <p className="text-gray-600 max-w-sm">
         We've received your claim for <strong>{companyName}</strong>. Check your email for a
-        confirmation with next steps. Our team will review and verify your credentials, then
-        your profile goes live in the catalog.
+        confirmation with next steps. Our team will review and verify your credentials — once
+        approved, your profile will go live in the catalog.
       </p>
       <p className="text-xs text-gray-400 mt-6">
         Questions? Email <a href="mailto:hello@greenchainz.com" className="underline">hello@greenchainz.com</a>

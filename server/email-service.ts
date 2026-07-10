@@ -498,6 +498,20 @@ Questions? Email founder@greenchainz.com
   });
 }
 
+/** Escape the five unsafe HTML characters to prevent injection in email templates. */
+function escHtml(str: string): string {
+  return str.replace(/[&<>"']/g, (c) => {
+    switch (c) {
+      case "&": return "&amp;";
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case '"': return "&quot;";
+      case "'": return "&#39;";
+      default: return c;
+    }
+  });
+}
+
 /**
  * Send a claim-confirmation email to a supplier who just claimed their scraped CRM profile.
  *
@@ -511,6 +525,10 @@ export async function sendSupplierClaimConfirmationEmail(data: {
   companyName: string;
 }): Promise<boolean> {
   const homeUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}`;
+
+  // Escape dynamic values for HTML to prevent injection; raw values are used in plain-text/subject.
+  const safeContactName = escHtml(data.contactName);
+  const safeCompanyName = escHtml(data.companyName);
 
   const html = `
 <!DOCTYPE html>
@@ -532,16 +550,16 @@ export async function sendSupplierClaimConfirmationEmail(data: {
 <body>
   <div class="header">
     <h1 style="margin:0;font-size:26px;">🌱 Claim received</h1>
-    <p style="margin:10px 0 0;opacity:.9;">We've got your claim for ${data.companyName}</p>
+    <p style="margin:10px 0 0;opacity:.9;">We've got your claim for ${safeCompanyName}</p>
   </div>
   <div class="content">
-    <p>Hi ${data.contactName},</p>
-    <p>Thanks for claiming <strong>${data.companyName}</strong> on GreenChainz. We've received your claim — here's what happens next.</p>
+    <p>Hi ${safeContactName},</p>
+    <p>Thanks for claiming <strong>${safeCompanyName}</strong> on GreenChainz. We've received your claim — here's what happens next.</p>
 
     <div class="card">
       <p style="margin:0 0 12px;font-weight:600;color:#059669;">What happens next</p>
       <div class="step"><span class="step-num">1</span><span>Our team reviews and verifies your sustainability credentials.</span></div>
-      <div class="step"><span class="step-num">2</span><span>Once verified, <strong>${data.companyName}</strong> becomes discoverable in the GreenChainz catalog.</span></div>
+      <div class="step"><span class="step-num">2</span><span>Once verified, <strong>${safeCompanyName}</strong> becomes discoverable in the GreenChainz catalog.</span></div>
       <div class="step"><span class="step-num">3</span><span>Architects and project managers can then send you RFQs directly.</span></div>
     </div>
 
