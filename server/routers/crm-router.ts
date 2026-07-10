@@ -32,6 +32,7 @@ import {
   enrollInClaimSequence,
   sendManualEmail,
 } from "../services/outreach-email-service";
+import { sendSupplierClaimConfirmationEmail } from "../email-service";
 import type { TrpcContext } from "../_core/context";
 
 // ── Guard: admin only ──────────────────────────────────────────────────────────
@@ -585,27 +586,11 @@ export const crmRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
         const now = new Date();
-        const [contact] = await db
-          .select()
-          .from(crmContacts)
-          .where(
-            and(
-              eq(crmContacts.claimToken, input.token),
-              isNull(crmContacts.claimTokenUsedAt),
-              gt(crmContacts.claimTokenExpiresAt, now)
-            )
-          )
-          .limit(1);
 
-        if (!contact) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "This claim link has expired or already been used.",
-          });
-        }
-
-        // Mark token used + advance to "engaged" so admin follows up
-        await db
+        // Atomically consume the token: update only if still unused and unexpired.
+        // Using .returning() means we get the row back only when we won the race;
+        // concurrent requests will see 0 rows returned and throw NOT_FOUND.
+        const claimedRows = await db
           .update(crmContacts)
           .set({
             stage: "engaged",
@@ -614,17 +599,41 @@ export const crmRouter = router({
             email: input.email,
             updatedAt: now,
           })
-          .where(eq(crmContacts.id, contact.id));
+          .where(
+            and(
+              eq(crmContacts.claimToken, input.token),
+              isNull(crmContacts.claimTokenUsedAt),
+              gt(crmContacts.claimTokenExpiresAt, now)
+            )
+          )
+          .returning();
+
+        const claimed = claimedRows[0];
+
+        if (!claimed) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "This claim link has expired or already been used.",
+          });
+        }
 
         await db.insert(crmEvents).values({
-          contactId: contact.id,
+          contactId: claimed.id,
           eventType: "profile_claimed",
-          subject: `${contact.companyName} submitted claim form`,
+          subject: `${claimed.companyName} submitted claim form`,
           performedBy: "system",
           metadata: { contactName: input.contactName, email: input.email },
         });
 
-        return { success: true, companyName: contact.companyName };
+        // Fire-and-forget: confirm the claim was received (transactional, not cold outreach).
+        // Safely no-ops in envs without email keys. Copy is honest: claim != verified/live.
+        void sendSupplierClaimConfirmationEmail({
+          supplierEmail: input.email,
+          contactName: input.contactName,
+          companyName: claimed.companyName,
+        }).catch((err) => console.error("claim confirmation email failed", err));
+
+        return { success: true, companyName: claimed.companyName };
       }),
   }),
 });
