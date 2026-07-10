@@ -276,6 +276,70 @@ export default function GolfGame({
     }
 
     // pinball scoring rings (green wins) + dirty-energy zones (avoid the muck!)
+    // FAIRWAY + BULLS-EYE are the drive landing zone — rendered as a gold bullseye.
+    const nowMs = performance.now();
+    // Collect the drive landing zone targets for the bullseye composite render.
+    const fairwayT = s.targets.find((t) => t.label === "FAIRWAY");
+    const bullseyeT = s.targets.find((t) => t.label === "BULLS-EYE");
+    if (fairwayT && !fairwayT.hit && bullseyeT && !bullseyeT.hit) {
+      // Landing zone: draw BEFORE the ball loop so rings sit under the ball.
+      // Outer dashed ring.
+      const lPulse = 0.6 + 0.4 * Math.sin(nowMs / 400 + fairwayT.x * 0.05);
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.setLineDash([8, 5]);
+      ctx.strokeStyle = `rgba(255,204,51,${0.45 + lPulse * 0.35})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(fairwayT.x, fairwayT.y, fairwayT.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = `rgba(255,204,51,${0.06 + lPulse * 0.05})`;
+      ctx.fill();
+      // Inner bulls-eye ring.
+      ctx.shadowColor = "#FFCC33";
+      ctx.shadowBlur = 8 + lPulse * 8;
+      ctx.strokeStyle = `rgba(255,220,100,${0.7 + lPulse * 0.25})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(bullseyeT.x, bullseyeT.y, bullseyeT.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Crosshair lines through the center.
+      ctx.strokeStyle = `rgba(255,204,51,${0.3 + lPulse * 0.2})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bullseyeT.x - bullseyeT.radius, bullseyeT.y);
+      ctx.lineTo(bullseyeT.x + bullseyeT.radius, bullseyeT.y);
+      ctx.moveTo(bullseyeT.x, bullseyeT.y - bullseyeT.radius);
+      ctx.lineTo(bullseyeT.x, bullseyeT.y + bullseyeT.radius);
+      ctx.stroke();
+      // "DRIVE HERE" label — only show before the tee shot.
+      if (s.strokes === 0) {
+        ctx.fillStyle = `rgba(255,220,100,${0.7 + lPulse * 0.25})`;
+        ctx.font = "700 10px ui-monospace, monospace";
+        ctx.fillText("DRIVE HERE", fairwayT.x, fairwayT.y - fairwayT.radius - 7);
+        ctx.fillStyle = `rgba(255,220,100,0.55)`;
+        ctx.font = "600 9px ui-monospace, monospace";
+        ctx.fillText("+350", fairwayT.x, fairwayT.y - fairwayT.radius - 18);
+      }
+      ctx.restore();
+    } else if (fairwayT?.hit && bullseyeT?.hit) {
+      // Both hit — ghost bullseye with a soft star glow.
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.strokeStyle = "#FFCC33";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 5]);
+      ctx.beginPath();
+      ctx.arc(fairwayT.x, fairwayT.y, fairwayT.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    for (const t of s.targets) {
+      // Drive landing zone targets have their own render pass above.
+      if (t.label === "FAIRWAY" || t.label === "BULLS-EYE") continue;
     const nowMs = performance.now();
     for (const t of s.targets) {
       const good = t.kind === "good";
