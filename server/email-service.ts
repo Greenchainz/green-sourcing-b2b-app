@@ -499,6 +499,91 @@ Questions? Email founder@greenchainz.com
 }
 
 /**
+ * Send a claim-confirmation email to a supplier who just claimed their scraped CRM profile.
+ *
+ * IMPORTANT: a *claimed* supplier is NOT yet verified or live. This email only confirms the
+ * claim was received and explains the honest path to getting listed (review → verify → live).
+ * The CTA links to the marketing home — claimants do not (yet) have an authenticated dashboard.
+ */
+export async function sendSupplierClaimConfirmationEmail(data: {
+  supplierEmail: string;
+  contactName: string;
+  companyName: string;
+}): Promise<boolean> {
+  const homeUrl = `${process.env.FRONTEND_URL || "https://greenchainz.com"}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 32px 30px; border-radius: 8px 8px 0 0; text-align: center; }
+    .content { background: #f9fafb; padding: 32px 30px; border-radius: 0 0 8px 8px; }
+    .card { background: white; padding: 20px 24px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #10b981; }
+    .step { display: flex; align-items: flex-start; margin: 12px 0; }
+    .step-num { background: #10b981; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; margin-right: 12px; margin-top: 2px; }
+    .button { display: inline-block; background: #10b981; color: white; padding: 13px 32px; text-decoration: none; border-radius: 6px; margin: 24px 0; font-weight: 600; font-size: 15px; }
+    .footer { text-align: center; color: #6b7280; font-size: 13px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 style="margin:0;font-size:26px;">🌱 Claim received</h1>
+    <p style="margin:10px 0 0;opacity:.9;">We've got your claim for ${data.companyName}</p>
+  </div>
+  <div class="content">
+    <p>Hi ${data.contactName},</p>
+    <p>Thanks for claiming <strong>${data.companyName}</strong> on GreenChainz. We've received your claim — here's what happens next.</p>
+
+    <div class="card">
+      <p style="margin:0 0 12px;font-weight:600;color:#059669;">What happens next</p>
+      <div class="step"><span class="step-num">1</span><span>Our team reviews and verifies your sustainability credentials.</span></div>
+      <div class="step"><span class="step-num">2</span><span>Once verified, <strong>${data.companyName}</strong> becomes discoverable in the GreenChainz catalog.</span></div>
+      <div class="step"><span class="step-num">3</span><span>Architects and project managers can then send you RFQs directly.</span></div>
+    </div>
+
+    <p>We'll email you as soon as your profile is verified and live — no further action is needed from you right now.</p>
+
+    <center><a href="${homeUrl}" class="button">Explore GreenChainz</a></center>
+
+    <p style="font-size:14px;color:#6b7280;">Questions? Reply to this email or reach us at <a href="mailto:founder@greenchainz.com" style="color:#10b981;">founder@greenchainz.com</a></p>
+  </div>
+  <div class="footer">
+    <p>© ${new Date().getFullYear()} GreenChainz · <a href="https://greenchainz.com" style="color:#6b7280;">greenchainz.com</a></p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = `Hi ${data.contactName},
+
+Thanks for claiming ${data.companyName} on GreenChainz. We've received your claim.
+
+What happens next:
+1. Our team reviews and verifies your sustainability credentials.
+2. Once verified, ${data.companyName} becomes discoverable in the GreenChainz catalog.
+3. Architects and project managers can then send you RFQs directly.
+
+We'll email you as soon as your profile is verified and live — no further action is needed right now.
+
+Explore GreenChainz: ${homeUrl}
+
+Questions? Email founder@greenchainz.com
+
+© ${new Date().getFullYear()} GreenChainz`;
+
+  return sendEmail({
+    to: data.supplierEmail,
+    subject: `You've claimed ${data.companyName} on GreenChainz`,
+    html,
+    text,
+  });
+}
+
+/**
  * Send new-supplier alert to the founder (replaces admin dashboard notifications)
  */
 export async function sendFounderNewSupplierAlert(data: {

@@ -32,6 +32,7 @@ import {
   enrollInClaimSequence,
   sendManualEmail,
 } from "../services/outreach-email-service";
+import { sendSupplierClaimConfirmationEmail } from "../email-service";
 import type { TrpcContext } from "../_core/context";
 
 // ── Guard: admin only ──────────────────────────────────────────────────────────
@@ -623,6 +624,14 @@ export const crmRouter = router({
           performedBy: "system",
           metadata: { contactName: input.contactName, email: input.email },
         });
+
+        // Fire-and-forget: confirm the claim was received (transactional, not cold outreach).
+        // Safely no-ops in envs without email keys. Copy is honest: claim != verified/live.
+        void sendSupplierClaimConfirmationEmail({
+          supplierEmail: input.email,
+          contactName: input.contactName,
+          companyName: contact.companyName,
+        }).catch((err) => console.error("claim confirmation email failed", err));
 
         return { success: true, companyName: contact.companyName };
       }),

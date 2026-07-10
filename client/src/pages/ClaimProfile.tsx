@@ -233,10 +233,11 @@ function SuccessScreen({ companyName }: { companyName: string }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 text-center">
       <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-      <h2 className="text-xl font-bold text-gray-900 mb-2">You're in the queue!</h2>
+      <h2 className="text-xl font-bold text-gray-900 mb-2">Claim received!</h2>
       <p className="text-gray-600 max-w-sm">
-        We've received your claim for <strong>{companyName}</strong>. Our team will reach out
-        within one business day to complete your verified supplier profile.
+        We've received your claim for <strong>{companyName}</strong>. Check your email for a
+        confirmation with next steps. Our team will review and verify your credentials, then
+        your profile goes live in the catalog.
       </p>
       <p className="text-xs text-gray-400 mt-6">
         Questions? Email <a href="mailto:hello@greenchainz.com" className="underline">hello@greenchainz.com</a>
