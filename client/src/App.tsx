@@ -183,6 +183,7 @@ const HowItWorks = lazy(() => import("./pages/HowItWorks").then((m) => ({ defaul
 const Support = lazy(() => import("./pages/Support"));
 const Login = lazy(() => import("./pages/Login"));
 const Pricing = lazy(() => import("./pages/Pricing"));
+const ForSuppliers = lazy(() => import("./pages/ForSuppliers"));
 const Features = lazy(() => import("./pages/Features"));
 const FounderVideoNew = lazy(() => import("./pages/FounderVideoNew"));
 const FounderVideoList = lazy(() => import("./pages/FounderVideoList"));
@@ -288,6 +289,7 @@ function Router() {
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
       <Route path={"/pricing"} component={Pricing} />
+      <Route path={"/for-suppliers"} component={ForSuppliers} />
       <Route path={"/features"} component={Features} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={ArchitectDashboard} />

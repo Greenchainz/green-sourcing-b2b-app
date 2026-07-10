@@ -74,4 +74,12 @@ export function getSearchIdFromResponse(response: Response): string {
   return response.headers.get('x-ms-azs-searchid') ?? '';
 }
 
+// ── Generic funnel / conversion event ────────────────────────────────────────
+// Use for product funnel milestones (e.g. a supplier claiming their profile) so
+// they land in App Insights alongside the Search/Click telemetry.
+
+export function trackEvent(name: string, props?: Record<string, unknown>): void {
+  ai()?.trackEvent(name, props);
+}
+
 export { INSTRUMENTATION_KEY };
