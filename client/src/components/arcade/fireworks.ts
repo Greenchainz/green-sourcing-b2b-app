@@ -84,8 +84,6 @@ export interface BurstOpts {
 export interface CelebrationFx {
   celebrate(x: number, y: number, opts: CelebrateOpts): void;
   burst(x: number, y: number, opts: BurstOpts): void;
-export interface CelebrationFx {
-  celebrate(x: number, y: number, opts: CelebrateOpts): void;
   update(dt: number): void;
   draw(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null): void;
   /** true while anything is still animating */
