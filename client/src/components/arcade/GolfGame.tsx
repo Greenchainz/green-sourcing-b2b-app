@@ -512,11 +512,6 @@ export default function GolfGame({
 
     // ball — on the tee shot it sails: a shadow stays on the turf while the ball
     // lofts on a time-based arc, so a big drive visibly hangs and climbs.
-    const drive = driveRef.current;
-    const loft =
-      drive.active && drive.airMs > 0
-        ? Math.sin(clamp(drive.t / drive.airMs, 0, 1) * Math.PI) * drive.maxH
-        : 0;
     if (loft > 0.5) {
       ctx.save();
       ctx.globalAlpha = clamp(0.3 - loft / 700, 0.07, 0.3);
