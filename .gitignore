@@ -118,7 +118,11 @@ __azurite_db_table_extent__.json
 replit.nix
 
 # Personal/local scripts that should not be shared
-sync-repos-to-f-drive.sh
+/sync-repos-to-f-drive.sh
+
+# AI-session / dev artifacts dumped into attached_assets (zips, pasted terminal logs).
+# The @assets vite/vitest alias points at this dir but no source imports it.
+/attached_assets/
 
 # Scratch / debug files that accumulate in root
 about_mod.txt
