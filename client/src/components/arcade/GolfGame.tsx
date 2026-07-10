@@ -262,6 +262,33 @@ export default function GolfGame({
     const dpr = dprRef.current;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Fill the viewport first so cinematic pans never reveal empty canvas.
+    ctx.fillStyle = "#07140d";
+    ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+
+    const drive = driveRef.current;
+    const flightK = drive.airMs > 0 ? clamp(drive.t / drive.airMs, 0, 1) : 0;
+    const loft = drive.active ? Math.sin(flightK * Math.PI) * drive.maxH : 0;
+    const cinematic = drive.active && !reducedRef.current;
+    ctx.save();
+    if (cinematic) {
+      // Nintendo-style suspense beat: follow the tee shot with a quick zoom/pan.
+      const zoom = 1.08 + Math.sin(flightK * Math.PI) * 0.42;
+      const lookAhead = 48 + drive.maxH * 0.18;
+      const camX = clamp(
+        s.ball.x + Math.cos(aimRef.current) * lookAhead,
+        FIELD_WIDTH * 0.2,
+        FIELD_WIDTH * 0.8,
+      );
+      const camY = clamp(
+        s.ball.y - loft * 0.38,
+        FIELD_HEIGHT * 0.18,
+        FIELD_HEIGHT * 0.82,
+      );
+      ctx.translate(FIELD_WIDTH * 0.5, FIELD_HEIGHT * 0.62);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-camX, -camY);
+    }
 
     // fairway felt
     const grad = ctx.createLinearGradient(0, 0, 0, FIELD_HEIGHT);
@@ -485,11 +512,6 @@ export default function GolfGame({
 
     // ball — on the tee shot it sails: a shadow stays on the turf while the ball
     // lofts on a time-based arc, so a big drive visibly hangs and climbs.
-    const drive = driveRef.current;
-    const loft =
-      drive.active && drive.airMs > 0
-        ? Math.sin(clamp(drive.t / drive.airMs, 0, 1) * Math.PI) * drive.maxH
-        : 0;
     if (loft > 0.5) {
       ctx.save();
       ctx.globalAlpha = clamp(0.3 - loft / 700, 0.07, 0.3);
@@ -544,6 +566,7 @@ export default function GolfGame({
 
     // celebration fireworks (draws its own additive-glow layer, self-contained)
     fxRef.current.draw(ctx, logoRef.current);
+    ctx.restore();
 
     // swing meter
     if (m.phase !== "idle") {
@@ -623,6 +646,14 @@ export default function GolfGame({
             life: 900,
             max: 900,
           });
+          if (ev.kind === "good") {
+            const hot = ev.label === "BULLS-EYE" || ev.label === "NET-ZERO";
+            fxRef.current.burst(ev.x, ev.y, {
+              accent: accentRef.current,
+              reduced: reducedRef.current,
+              intensity: hot ? 0.92 : clamp(ev.value / 260, 0.35, 0.68),
+            });
+          }
         } else if (ev.type === "bank") {
           popsRef.current.push({
             x: ev.x,
@@ -631,6 +662,11 @@ export default function GolfGame({
             color: accentRef.current,
             life: 800,
             max: 800,
+          });
+          fxRef.current.burst(ev.x, ev.y, {
+            accent: accentRef.current,
+            reduced: reducedRef.current,
+            intensity: 0.58,
           });
         }
       }
