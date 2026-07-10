@@ -66,7 +66,7 @@ export const adminRouter = router({
       // Update supplier status
       await db
         .update(suppliers)
-        .set({ verificationStatus: "approved", verifiedAt: new Date() })
+        .set({ verified: true, verificationStatus: "approved", verifiedAt: new Date() })
         .where(eq(suppliers.id, input.supplierId));
 
       // Get supplier info for email
@@ -155,7 +155,7 @@ export const adminRouter = router({
       // Update supplier status
       await db
         .update(suppliers)
-        .set({ verificationStatus: "rejected" })
+        .set({ verified: false, verificationStatus: "rejected" })
         .where(eq(suppliers.id, input.supplierId));
 
       // Get supplier info for email
