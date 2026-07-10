@@ -243,7 +243,7 @@ export default function Header() {
               My Hub
             </Link>
           ) : (
-            <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <Link href="/for-suppliers" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Supplier Hub
             </Link>
           )}
@@ -392,7 +392,7 @@ export default function Header() {
                 My Hub
               </Link>
             ) : (
-              <Link href="/supplier/register" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+              <Link href="/for-suppliers" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
                 onClick={() => setMobileMenuOpen(false)}>
                 Supplier Hub
               </Link>

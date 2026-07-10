@@ -9,9 +9,11 @@
  *  3. Advances the CRM contact to "engaged" so an admin follows up with account setup
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { trackGoogleEvent } from "@/lib/analytics";
+import { trackEvent as trackAiEvent } from "@/lib/appInsights";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,14 +38,41 @@ export default function ClaimProfile() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  // UTM attribution carried on the claim link from the outreach email.
+  const readUtm = () => ({
+    utm_source: params.get("utm_source") ?? "",
+    utm_medium: params.get("utm_medium") ?? "",
+    utm_campaign: params.get("utm_campaign") ?? "",
+    utm_content: params.get("utm_content") ?? "",
+  });
+
   const { data, isLoading, error } = trpc.crm.claim.verify.useQuery(
     { token },
     { enabled: token.length > 0, retry: false }
   );
 
+  // Fire a funnel "viewed" event once, when a valid token resolves a profile,
+  // so claim-rate (claimed / viewed) is measurable in GA + App Insights.
+  const viewTracked = useRef(false);
+  useEffect(() => {
+    if (data && !viewTracked.current) {
+      viewTracked.current = true;
+      const payload = { ...readUtm(), has_epd: Boolean(data.hasEpd) };
+      trackGoogleEvent("claim_profile_viewed", payload);
+      trackAiEvent("ClaimProfileViewed", payload);
+    }
+    // readUtm only reads stable query params; keyed on data intentionally.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
   const claim = trpc.crm.claim.complete.useMutation({
     onSuccess: (result) => {
       setSubmitted(true);
+      // The money moment: a supplier claimed their profile. Track it as a
+      // conversion so it can be measured against the viewed event above.
+      const payload = { ...readUtm(), company: result.companyName };
+      trackGoogleEvent("supplier_profile_claimed", payload);
+      trackAiEvent("SupplierProfileClaimed", payload);
       toast.success(`Profile claimed for ${result.companyName}! We'll be in touch shortly.`);
     },
     onError: (err) => {
@@ -204,10 +233,11 @@ function SuccessScreen({ companyName }: { companyName: string }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 text-center">
       <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-      <h2 className="text-xl font-bold text-gray-900 mb-2">You're in the queue!</h2>
+      <h2 className="text-xl font-bold text-gray-900 mb-2">Claim received!</h2>
       <p className="text-gray-600 max-w-sm">
-        We've received your claim for <strong>{companyName}</strong>. Our team will reach out
-        within one business day to complete your verified supplier profile.
+        We've received your claim for <strong>{companyName}</strong>. Check your email for a
+        confirmation with next steps. Our team will review and verify your credentials — once
+        approved, your profile will go live in the catalog.
       </p>
       <p className="text-xs text-gray-400 mt-6">
         Questions? Email <a href="mailto:hello@greenchainz.com" className="underline">hello@greenchainz.com</a>

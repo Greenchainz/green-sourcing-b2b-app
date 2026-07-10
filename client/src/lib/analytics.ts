@@ -48,3 +48,14 @@ export function trackGooglePageView(path: string) {
     page_title: document.title,
   });
 }
+
+// ── Custom events ─────────────────────────────────────────────────────────────
+// Use for funnel milestones and conversions (e.g. a supplier claiming their
+// profile) so they show up in GA alongside page views.
+export function trackGoogleEvent(action: string, params?: Record<string, unknown>) {
+  if (!isGoogleAnalyticsEnabled()) return;
+
+  initGoogleAnalytics();
+
+  window.gtag?.("event", action, params ?? {});
+}
