@@ -1191,6 +1191,19 @@ jobs:
             --remove-env-vars AZURE_MI_CLIENT_ID MANAGED_IDENTITY_CLIENT_ID AZURE_CLIENT_ID \
             --min-replicas 1 \
             --max-replicas 3
+          # Wait for the containerapp update to reach Succeeded before issuing
+          # the ingress update. Running both writes back-to-back on the same
+          # entity causes ConflictingConcurrentWriteNotAllowed.
+          echo "Waiting for frontend containerapp update to settle..."
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show \
+              --name ${{ env.FRONTEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+            echo "  ($i) provisioningState: ${STATE:-unknown}"
+            [ "$STATE" = "Succeeded" ] && break
+            sleep 10
+          done
           # Ensure ingress target port is always 3000 - guards against portal
           # misconfig or a previous deployment that set a different port.
           az containerapp ingress update \
