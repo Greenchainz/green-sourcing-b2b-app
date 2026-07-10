@@ -99,6 +99,13 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
 
       expect(result).toEqual({ success: true });
       expect(mockDb.update).toHaveBeenCalled();
+      expect(mockDb.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          verified: true,
+          verificationStatus: "approved",
+          verifiedAt: expect.any(Date),
+        })
+      );
     });
 
     it('should approve supplier without notes', async () => {
@@ -120,6 +127,13 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
       });
 
       expect(result).toEqual({ success: true });
+      expect(mockDb.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          verified: true,
+          verificationStatus: "approved",
+          verifiedAt: expect.any(Date),
+        })
+      );
     });
   });
 
@@ -146,6 +160,12 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
 
       expect(result).toEqual({ success: true });
       expect(mockDb.update).toHaveBeenCalled();
+      expect(mockDb.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          verified: false,
+          verificationStatus: "rejected",
+        })
+      );
     });
   });
 
