@@ -400,6 +400,126 @@ export function buildLongHole(rng: () => number = Math.random): HoleLayout {
     kind: "bad",
     label,
   });
+  const targets: Target[] = [
+    ring(0.28, 30, 50, "SOLAR"),
+    ring(0.5, 27, 100, "RECYCLE"),
+    ring(0.66, 25, 175, "NET-ZERO"),
+    badZone(0.44, 0.8, 34, -50, "OIL SLICK"),
+    badZone(0.6, 0.19, 32, -40, "LANDFILL"),
+  ];
+
+  // Two lit green-side bumpers flanking the cup approach: bank a hot shot off
+  // one for bonus points (capped), or thread the gap straight into the pin.
+  const walls: Wall[] = [
+    {
+      x: hole.x - 74,
+      y: clamp(hole.y - 82, MARGIN, FIELD_HEIGHT - MARGIN - 62),
+      width: 16,
+      height: 62,
+    },
+    {
+      x: hole.x - 74,
+      y: clamp(hole.y + 20, MARGIN, FIELD_HEIGHT - MARGIN - 62),
+      width: 16,
+      height: 62,
+    },
+  ];
+
+  // A definite, readable green break so the "hills" matter on the putt.
+  const breakAngle = rng() * Math.PI * 2;
+  const breakMag = 0.00006;
+  const slope: Vec2 = {
+    x: Math.cos(breakAngle) * breakMag,
+    y: Math.sin(breakAngle) * breakMag,
+  };
+
+  return { tee, hole, walls, targets, par: 4, slope };
+}
+
+/**
+ * A single-hole run: play "The Round" once, tee to cup, and it ends. Reuses the
+ * whole golf engine + renderer; only the {@link GolfState.endless} flag differs.
+ */
+export function createRoundState(
+  config: GolfConfig = defaultGolfConfig,
+  rng: () => number = Math.random,
+): GolfState {
+  const layout = buildLongHole(rng);
+  return {
+    phase: "aim",
+    ball: ballAtTee(layout.tee),
+    tee: layout.tee,
+    hole: layout.hole,
+    walls: layout.walls,
+    par: layout.par,
+    slope: layout.slope,
+    strokes: 0,
+    holeNumber: 1,
+    score: 0,
+    bankScored: 0,
+    targets: layout.targets,
+    lastResult: null,
+    sinkTimer: 0,
+    config,
+    events: [],
+    rng,
+    endless: false,
+  };
+}
+
+/**
+ * A single long championship hole for "The Round" — GreenChainz's daily main
+ * show. One wide tee-to-cup fairway: stroke 1 is a real drive (a full-power
+ * swing carries most of the way down), then an approach and a breaking putt to
+ * the pin. Always completable — the two fairway rails sit off the direct line
+ * and never seal off the tee or cup, so there is always a lane through.
+ */
+export function buildLongHole(rng: () => number = Math.random): HoleLayout {
+  const tee: Vec2 = { x: MARGIN + 20, y: FIELD_HEIGHT / 2 };
+  const hole: Hole = {
+    x: FIELD_WIDTH - MARGIN - 24,
+    y: clamp(
+      FIELD_HEIGHT / 2 + (rng() - 0.5) * 200,
+      MARGIN + 24,
+      FIELD_HEIGHT - MARGIN - 24,
+    ),
+    radius: HOLE_RADIUS,
+  };
+
+  // Pinball scoring strung along the tee->cup line. GOOD "green win" rings light
+  // up for points — aim true and a big drive threads all three for a combo, and
+  // the deeper ring pays the most. BAD "dirty energy" zones sit OFF the line, so
+  // only a sprayed shot finds the muck and gets docked. Cheesy on purpose: the
+  // game literally rewards keeping it clean and green.
+  const ring = (
+    t: number,
+    radius: number,
+    value: number,
+    label: string,
+  ): Target => ({
+    x: tee.x + (hole.x - tee.x) * t,
+    y: tee.y + (hole.y - tee.y) * t,
+    radius,
+    value,
+    hit: false,
+    kind: "good",
+    label,
+  });
+  const badZone = (
+    fx: number,
+    fy: number,
+    radius: number,
+    value: number,
+    label: string,
+  ): Target => ({
+    x: FIELD_WIDTH * fx,
+    y: FIELD_HEIGHT * fy,
+    radius,
+    value,
+    hit: false,
+    kind: "bad",
+    label,
+  });
   // Drive landing zone: a bullseye placed OFF the direct tee→cup line so the
   // player must aim their tee shot here, THEN re-aim for the cup on approach.
   // Outer ring (FAIRWAY) = +100; inner ring (BULLS-EYE) = +250 — hitting both

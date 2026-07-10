@@ -340,6 +340,8 @@ export default function GolfGame({
     for (const t of s.targets) {
       // Drive landing zone targets have their own render pass above.
       if (t.label === "FAIRWAY" || t.label === "BULLS-EYE") continue;
+    const nowMs = performance.now();
+    for (const t of s.targets) {
       const good = t.kind === "good";
       if (t.hit) {
         // spent: faint ghost so the course still reads after you tag it
