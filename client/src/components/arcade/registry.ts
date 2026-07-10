@@ -2,7 +2,6 @@ import type { ArcadeGameMeta } from "./types";
 import BreakoutGame from "./BreakoutGame";
 import SnakeGame from "./SnakeGame";
 import TriviaGame from "./TriviaGame";
-import GolfGame from "./GolfGame";
 import TheRoundGame from "./TheRoundGame";
 
 /**
@@ -48,14 +47,6 @@ export const ARCADE_GAMES: ArcadeGameMeta[] = [
     tagline: "How well do you really know sustainable materials?",
     accent: "#FFC24B",
     Component: TriviaGame,
-  },
-  {
-    id: "green-approach",
-    name: "Green Approach",
-    classic: "Golf",
-    tagline: "Read the break, bank the birdie — get on the green.",
-    accent: "#EC6A5E",
-    Component: GolfGame,
   },
 ];
 
