@@ -14,7 +14,7 @@ import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
 import { getAllPriceTrendsFromDb, getPriceTrendByCategory } from '../services/price-trends';
-import { searchMaterials } from '../services/search';
+import { materialSearchProvider } from '../services/search';
 
 export const materialsRouter = router({
   list: publicProcedure
@@ -407,17 +407,28 @@ export const materialsRouter = router({
     )
     .query(async ({ input }) => {
       // Routed through the swappable hybrid retrieval seam (keyword + vector
-      // fused via RRF). Output shape is preserved: `items` carry the material
-      // fields + manufacturer fields + `distance`, and `semantic` reflects
-      // whether the vector path ran (hybrid) or we degraded to keyword-only.
-      const { items, mode } = await searchMaterials({
+      // fused via RRF). We call the PROVIDER interface (not the concrete
+      // function) so rebinding `materialSearchProvider` to an Azure AI Search
+      // implementation later reroutes this endpoint with no changes here.
+      const { items, mode } = await materialSearchProvider.search({
         query: input.query,
         limit: input.limit,
         // semanticSearch historically searched the whole catalog (not verified-gated).
         verifiedOnly: false,
       });
 
-      return { items, semantic: mode === 'hybrid' };
+      // Preserve the legacy distance contract: the old vector-only path gave
+      // every returned item a real cosine distance. Under RRF a top hit can be
+      // keyword-only (distance = null); consumers like ExcelAudit coerce a null
+      // distance to 0 and would misread it as a perfect semantic match. Emit a
+      // far sentinel (1.0 = no vector similarity) for keyword-only hits so they
+      // are never mistaken for strong matches.
+      const compatItems = items.map((item) => ({
+        ...item,
+        distance: item.distance ?? 1,
+      }));
+
+      return { items: compatItems, semantic: mode === 'hybrid' };
     }),
 
   getPriceTrends: publicProcedure.query(() => {
