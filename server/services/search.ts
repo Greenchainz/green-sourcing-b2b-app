@@ -93,10 +93,72 @@ export interface MaterialSearchProvider {
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
-interface RankedCandidate {
-  keywordRank?: number;
-  vectorRank?: number;
-  distance?: number;
+/** A vector-search hit: material id + its raw cosine distance (lower = closer). */
+export interface VectorMatch {
+  id: number;
+  distance: number | null;
+}
+
+/** One fused candidate after RRF, before hydration. */
+export interface FusedCandidate {
+  id: number;
+  /** Fused Reciprocal Rank Fusion score (higher = better). */
+  score: number;
+  keywordRank: number | null;
+  vectorRank: number | null;
+  distance: number | null;
+}
+
+/**
+ * Reciprocal Rank Fusion — the pure ranking core, decoupled from the database so
+ * it can be unit-tested directly. Merges an ordered keyword id list and an
+ * ordered vector match list into a single ranking:
+ *
+ *   score = Σ 1 / (k + rank_i)   over each list the doc appears in (k = RRF_K)
+ *
+ * `distance` is carried from the vector list only (null for keyword-only docs).
+ * Duplicate ids within a single list keep their first (best) rank.
+ */
+export function fuseByRrf(
+  keywordIds: number[],
+  vectorMatches: VectorMatch[],
+  limit: number,
+): FusedCandidate[] {
+  const merged = new Map<
+    number,
+    { keywordRank?: number; vectorRank?: number; distance: number | null }
+  >();
+
+  keywordIds.forEach((id, index) => {
+    const entry = merged.get(id) ?? { distance: null };
+    if (entry.keywordRank === undefined) entry.keywordRank = index + 1;
+    merged.set(id, entry);
+  });
+
+  vectorMatches.forEach((match, index) => {
+    const entry = merged.get(match.id) ?? { distance: null };
+    if (entry.vectorRank === undefined) {
+      entry.vectorRank = index + 1;
+      entry.distance = match.distance;
+    }
+    merged.set(match.id, entry);
+  });
+
+  return Array.from(merged.entries())
+    .map(([id, entry]) => {
+      let score = 0;
+      if (entry.keywordRank !== undefined) score += 1 / (RRF_K + entry.keywordRank);
+      if (entry.vectorRank !== undefined) score += 1 / (RRF_K + entry.vectorRank);
+      return {
+        id,
+        score,
+        keywordRank: entry.keywordRank ?? null,
+        vectorRank: entry.vectorRank ?? null,
+        distance: entry.distance,
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.max(0, limit));
 }
 
 /** Coerce a drizzle `db.execute` result into a plain row array (typing varies by driver). */
@@ -145,6 +207,9 @@ export async function searchMaterials(
   const filterClause = buildFilterClause(params);
 
   // ── Keyword candidates (tsvector match, ranked by ts_rank_cd) ──
+  // NOTE: this to_tsvector(...) expression is mirrored by the GIN index
+  // `idx_materials_fts` (created in scripts/generate-embeddings.ts). Keep the two
+  // in sync — an exact match is required for the planner to use the index.
   const tsv = sql`to_tsvector('english', m.name || ' ' || COALESCE(m."productName", '') || ' ' || COALESCE(m.description, ''))`;
   const tsq = sql`plainto_tsquery('english', ${query})`;
   const keywordResult = await db.execute(sql`
@@ -154,20 +219,15 @@ export async function searchMaterials(
     ORDER BY rank DESC
     LIMIT ${CANDIDATE_N}
   `);
-
-  const candidates = new Map<number, RankedCandidate>();
-  const keywordRows = readRows(keywordResult);
-  keywordRows.forEach((row, index) => {
+  const keywordIds = readRows(keywordResult).flatMap((row) => {
     const id = toId(row.id);
-    if (id === null) return;
-    const entry = candidates.get(id) ?? {};
-    entry.keywordRank = index + 1;
-    candidates.set(id, entry);
+    return id === null ? [] : [id];
   });
 
   // ── Vector candidates (cosine <=>), only when we can embed the query ──
   const embedding = await generateEmbedding(query);
   let mode: SearchMode = 'keyword-only';
+  let vectorMatches: VectorMatch[] = [];
 
   if (embedding) {
     mode = 'hybrid';
@@ -179,34 +239,21 @@ export async function searchMaterials(
       ORDER BY m.embedding <=> ${embString}::vector
       LIMIT ${CANDIDATE_N}
     `);
-    const vectorRows = readRows(vectorResult);
-    vectorRows.forEach((row, index) => {
+    vectorMatches = readRows(vectorResult).flatMap((row) => {
       const id = toId(row.id);
-      if (id === null) return;
-      const entry = candidates.get(id) ?? {};
-      entry.vectorRank = index + 1;
+      if (id === null) return [];
       const dist = Number(row.distance);
-      entry.distance = Number.isFinite(dist) ? dist : undefined;
-      candidates.set(id, entry);
+      return [{ id, distance: Number.isFinite(dist) ? dist : null }];
     });
   }
 
-  if (candidates.size === 0) {
+  // ── Fuse via RRF (pure, unit-tested core) ──
+  const fused = fuseByRrf(keywordIds, vectorMatches, limit);
+  if (fused.length === 0) {
     return { items: [], mode };
   }
 
-  // ── Reciprocal Rank Fusion: score = Σ 1 / (k + rank_i) ──
-  const scored = Array.from(candidates.entries())
-    .map(([id, c]) => {
-      let score = 0;
-      if (c.keywordRank !== undefined) score += 1 / (RRF_K + c.keywordRank);
-      if (c.vectorRank !== undefined) score += 1 / (RRF_K + c.vectorRank);
-      return { id, score, candidate: c };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-
-  const orderedIds = scored.map((s) => s.id);
+  const orderedIds = fused.map((f) => f.id);
 
   // ── Hydrate full material rows (typed) + manufacturer join ──
   const rows = await db
@@ -223,16 +270,16 @@ export async function searchMaterials(
   const rowById = new Map(rows.map((r) => [r.id, r]));
 
   // Re-apply the fused order (SQL does not preserve `inArray` order).
-  const items: MaterialSearchResultItem[] = scored.flatMap((s) => {
-    const row = rowById.get(s.id);
+  const items: MaterialSearchResultItem[] = fused.flatMap((f) => {
+    const row = rowById.get(f.id);
     if (!row) return [];
     return [
       {
         ...row,
-        score: s.score,
-        keywordRank: s.candidate.keywordRank ?? null,
-        vectorRank: s.candidate.vectorRank ?? null,
-        distance: s.candidate.distance ?? null,
+        score: f.score,
+        keywordRank: f.keywordRank,
+        vectorRank: f.vectorRank,
+        distance: f.distance,
       },
     ];
   });
