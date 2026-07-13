@@ -3,7 +3,7 @@ import "./log-scrubber"; // must be second — scrubs all subsequent console.* c
 import "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import path from "path";
 import compression from "compression";
 import express from "express";
@@ -15,6 +15,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { decodeWin, buildWinMeta, renderWinMetaTags } from "@shared/carbonWin";
 import { handleLandingPage } from "../marketplace-landing";
 import { handleRevitLanding } from "../revit-landing";
 import { handleWebhook } from "../marketplace-webhook";
@@ -428,6 +429,50 @@ async function startServer() {
           res.status(404).end();
         }
       });
+    });
+
+    // ── Share unfurls: inject per-win OpenGraph meta for /win ────────────────
+    // Crawlers (LinkedIn, X, Slack, iMessage) don't run JS, so the client-side
+    // card can't drive the link preview. In production we read the built SPA
+    // shell, swap the default OG block for win-specific tags, and serve that.
+    // In dev the shell is served through Vite (which must transform it), so we
+    // fall through to the Vite catch-all and the page still renders client-side.
+    app.get("/win", (req, res, next) => {
+      if (process.env.NODE_ENV !== "production") {
+        return next();
+      }
+      try {
+        const raw = typeof req.query.d === "string" ? req.query.d : null;
+        const data = decodeWin(raw);
+        if (!data) {
+          return next();
+        }
+        const indexPath = path.resolve(clientPublicDir, "index.html");
+        let html = readFileSync(indexPath, "utf-8");
+        const proto =
+          (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim() ||
+          req.protocol;
+        const host =
+          (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0]?.trim() ||
+          req.get("host") ||
+          "greenchainz.com";
+        const meta = buildWinMeta(`${proto}://${host}`, data);
+        const tags = renderWinMetaTags(meta);
+        if (html.includes("OG:DEFAULT")) {
+          html = html.replace(
+            /<!--\s*OG:DEFAULT[\s\S]*?\/OG:DEFAULT\s*-->/,
+            `<!-- OG:WIN -->\n    ${tags}\n    <!-- /OG:WIN -->`,
+          );
+        } else {
+          html = html.replace("</head>", `    ${tags}\n  </head>`);
+        }
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.status(200).send(html);
+      } catch (err) {
+        console.error("[server] /win OG injection failed:", err);
+        next();
+      }
     });
   }
 
