@@ -1,0 +1,18 @@
+# CODEOWNERS — required reviewers for sensitive paths
+#
+# Format: <pattern>  <owner>
+# Patterns follow .gitignore rules (most specific wins).
+# All listed paths require an approved review from the owner
+# before merging into main (enforced via branch protection).
+
+# --- Auth: Express OAuth, JWT cookie logic, tRPC context ---
+/server/_core/                    @jnorvi5
+
+# --- Database migrations: irreversible schema changes ---
+/drizzle/migrations/              @jnorvi5
+
+# --- CI/CD workflows: pipeline integrity ---
+/.github/workflows/               @jnorvi5
+
+# --- Azure infra: Container Apps, Key Vault, networking ---
+/azure/                           @jnorvi5
