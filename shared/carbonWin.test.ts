@@ -38,6 +38,13 @@ describe("encodeWin / decodeWin", () => {
     expect(decoded!.date).toBe("2026-01-15");
   });
 
+  it("round-trips the per-unit flag", () => {
+    const decoded = decodeWin(encodeWin({ ...sample, perUnit: true }));
+    expect(decoded!.perUnit).toBe(true);
+    // Absolute (whole-project) wins leave the flag undefined, not false.
+    expect(decodeWin(encodeWin(sample))!.perUnit).toBeUndefined();
+  });
+
   it("produces a URL-safe token (no +, /, or = padding)", () => {
     const token = encodeWin(sample);
     expect(token).not.toMatch(/[+/=]/);
@@ -100,6 +107,11 @@ describe("carbonEquivalences", () => {
     const b = carbonEquivalences(2000)[0].value;
     expect(b).toBeCloseTo(a * 2, 5);
   });
+
+  it("uses the 7.09 t/home EPA factor for homes powered", () => {
+    const homes = carbonEquivalences(7090).find((e) => e.key === "homes");
+    expect(homes!.value).toBeCloseTo(1, 3);
+  });
 });
 
 describe("URLs + share text", () => {
@@ -118,6 +130,13 @@ describe("URLs + share text", () => {
     expect(winShareText(sample)).toContain("GreenChainz");
     expect(winHeadline(sample)).toContain("4.2");
   });
+
+  it("drops unprovable 'verified' claims and flags per-unit wins", () => {
+    expect(winShareText(sample).toLowerCase()).not.toContain("verified");
+    expect(winShareText({ ...sample, perUnit: true })).toContain(
+      "per declared unit",
+    );
+  });
 });
 
 describe("OpenGraph meta", () => {
@@ -127,6 +146,18 @@ describe("OpenGraph meta", () => {
     expect(meta.image).toBe("https://greenchainz.com/images/og-image-homepage.jpg");
     expect(meta.title).toContain("Carbon Win");
     expect(meta.description).toContain(sample.toMaterial);
+    expect(meta.description.toLowerCase()).not.toContain("verified");
+  });
+
+  it("omits absolute equivalences for per-unit wins", () => {
+    const abs = buildWinMeta("https://greenchainz.com", sample);
+    const per = buildWinMeta("https://greenchainz.com", {
+      ...sample,
+      perUnit: true,
+    });
+    expect(abs.description).toMatch(/Like taking/i);
+    expect(per.description).not.toMatch(/Like taking/i);
+    expect(per.title).toContain("per declared unit");
   });
 
   it("renders escaped tags for crawlers", () => {

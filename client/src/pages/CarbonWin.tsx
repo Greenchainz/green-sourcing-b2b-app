@@ -29,7 +29,7 @@ const DEMO_WIN: CarbonWinData = {
   co2SavedKg: 12400,
   fromMaterial: "Standard CMU wall assembly",
   toMaterial: "Low-carbon GFRC rainscreen panel",
-  supplier: "Verified GreenChainz supplier",
+  supplier: "EcoStone Facades",
   savingsPct: 38,
 };
 
@@ -111,7 +111,7 @@ export default function CarbonWin() {
             Carbon Win
           </span>
           <h1 className="mt-4 text-3xl font-bold sm:text-4xl">
-            Real carbon, avoided — and verified.
+            Real carbon savings, made shareable.
           </h1>
           <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
             This is what a smarter material choice looks like on GreenChainz.
@@ -180,7 +180,7 @@ export default function CarbonWin() {
               <Factory className="h-6 w-6 text-primary" />
               <h3 className="mt-3 font-semibold">For suppliers</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Get your verified low-carbon products in front of architects at
+                Get your low-carbon products in front of architects at
                 the moment of specification.
               </p>
               <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
@@ -196,7 +196,7 @@ export default function CarbonWin() {
               <Leaf className="h-6 w-6 text-primary" />
               <h3 className="mt-3 font-semibold">How it works</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                See how GreenChainz turns EPD data into verified carbon wins for
+                See how GreenChainz turns EPD data into shareable carbon wins for
                 every project.
               </p>
               <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">

@@ -95,7 +95,7 @@ export function renderWinCanvas(data: CarbonWinData): HTMLCanvasElement {
   ctx.fillStyle = COLORS.muted;
   ctx.font = `600 18px ${FONT}`;
   ctx.textAlign = "right";
-  ctx.fillText("VERIFIED CARBON WIN", W - cx, 92);
+  ctx.fillText("CARBON WIN", W - cx, 92);
   ctx.textAlign = "left";
 
   // Headline number
@@ -112,7 +112,8 @@ export function renderWinCanvas(data: CarbonWinData): HTMLCanvasElement {
 
   ctx.fillStyle = COLORS.muted;
   ctx.font = `500 26px ${FONT}`;
-  ctx.fillText("of embodied carbon avoided", cx, numY + 42);
+  const perUnitSuffix = data.perUnit ? " (per declared unit)" : "";
+  ctx.fillText(`of embodied carbon avoided${perUnitSuffix}`, cx, numY + 42);
 
   // Percentage pill
   if (data.savingsPct && data.savingsPct > 0) {
@@ -158,27 +159,41 @@ export function renderWinCanvas(data: CarbonWinData): HTMLCanvasElement {
     );
   }
 
-  // Equivalences row
-  const eqs = carbonEquivalences(data.co2SavedKg).slice(0, 3);
-  const rowY = 500;
-  const colW = (W - cx * 2) / 3;
-  eqs.forEach((eq, i) => {
-    const x = cx + i * colW;
-    ctx.fillStyle = COLORS.lime;
-    ctx.font = `800 34px ${FONT}`;
-    ctx.fillText(eq.display, x, rowY + 24);
+  // Equivalences row — only for absolute (whole-project) wins. Per-unit deltas
+  // have no known project quantity, so absolute equivalences would mislead.
+  if (!data.perUnit) {
+    const eqs = carbonEquivalences(data.co2SavedKg).slice(0, 3);
+    const rowY = 500;
+    const colW = (W - cx * 2) / 3;
+    eqs.forEach((eq, i) => {
+      const x = cx + i * colW;
+      ctx.fillStyle = COLORS.lime;
+      ctx.font = `800 34px ${FONT}`;
+      ctx.fillText(eq.display, x, rowY + 24);
+      ctx.fillStyle = COLORS.muted;
+      ctx.font = `500 17px ${FONT}`;
+      // wrap label to two lines within the column
+      wrapText(ctx, `≈ ${eq.label}`, x, rowY + 50, colW - 24, 22);
+    });
+  } else {
     ctx.fillStyle = COLORS.muted;
-    ctx.font = `500 17px ${FONT}`;
-    // wrap label to two lines within the column
-    wrapText(ctx, `≈ ${eq.label}`, x, rowY + 50, colW - 24, 22);
-  });
+    ctx.font = `500 20px ${FONT}`;
+    wrapText(
+      ctx,
+      "Per declared unit. Total project impact scales with the quantity specified.",
+      cx,
+      516,
+      W - cx * 2,
+      28,
+    );
+  }
 
   // Footer
   ctx.fillStyle = "rgba(159, 232, 112, 0.16)";
   ctx.fillRect(cx, H - 78, W - cx * 2, 1);
   ctx.fillStyle = COLORS.muted;
   ctx.font = `500 18px ${FONT}`;
-  ctx.fillText("greenchainz.com — verified sustainable materials", cx, H - 46);
+  ctx.fillText("greenchainz.com — sustainable materials", cx, H - 46);
 
   const date = data.date ? new Date(data.date) : new Date();
   const dateStr = isNaN(date.getTime())

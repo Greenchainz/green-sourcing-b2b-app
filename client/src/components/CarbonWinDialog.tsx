@@ -91,7 +91,7 @@ export function CarbonWinDialog({ data, open, onOpenChange }: CarbonWinDialogPro
           <DialogTitle>🎉 You just logged a Carbon Win</DialogTitle>
           <DialogDescription>
             Share the proof. Every post puts your low-carbon choice — and the
-            verified supplier — in front of your network.
+            supplier who won the spec — in front of your network.
           </DialogDescription>
         </DialogHeader>
 
