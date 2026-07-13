@@ -5,12 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, TrendingDown, TrendingUp, AlertCircle } from "lucide-react";
+import { Loader2, Search, TrendingDown, TrendingUp, AlertCircle, PartyPopper } from "lucide-react";
+import { CarbonWinDialog } from "@/components/CarbonWinDialog";
+import type { CarbonWinData } from "@shared/carbonWin";
 
 export default function MaterialSwap() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMaterialId, setSelectedMaterialId] = useState<number | null>(null);
   const [comparisonMaterialId, setComparisonMaterialId] = useState<number | null>(null);
+  const [winData, setWinData] = useState<CarbonWinData | null>(null);
+  const [winOpen, setWinOpen] = useState(false);
 
   // Search materials
   const { data: searchResults, isLoading: searchLoading } = trpc.materialSwap.search.useQuery(
@@ -208,9 +212,39 @@ export default function MaterialSwap() {
                               )}
                             </div>
                           </div>
-                          <Button variant="outline" size="sm">
-                            Compare
-                          </Button>
+                          <div className="flex flex-col gap-2 shrink-0">
+                            <Button variant="outline" size="sm">
+                              Compare
+                            </Button>
+                            {carbonSavings !== null &&
+                              carbonSavings > 0 &&
+                              originalGwp !== null &&
+                              candidateGwp !== null &&
+                              swap.candidateHasEpd === true && (
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setWinData({
+                                      co2SavedKg: Math.max(0, originalGwp - candidateGwp),
+                                      fromMaterial: swap.original.name,
+                                      toMaterial: swap.candidate.name,
+                                      supplier:
+                                        swap.candidate.manufacturer ??
+                                        swap.candidate.supplier ??
+                                        swap.candidate.supplierName ??
+                                        undefined,
+                                      savingsPct: Math.round(carbonSavings),
+                                      perUnit: true,
+                                    });
+                                    setWinOpen(true);
+                                  }}
+                                >
+                                  <PartyPopper className="h-3.5 w-3.5" />
+                                  Celebrate &amp; share
+                                </Button>
+                              )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -536,6 +570,8 @@ export default function MaterialSwap() {
           </CardContent>
         </Card>
       )}
+
+      <CarbonWinDialog data={winData} open={winOpen} onOpenChange={setWinOpen} />
     </div>
   );
 }
