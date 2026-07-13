@@ -220,9 +220,9 @@ export async function uploadFileToBlob(
 // AZURE SQL DATABASE (Products, Suppliers, Users)
 // ============================================================================
 
-// Connection pool (singleton)
+// Connection pool (singleton) — kept for future re-enable
 let sqlPool: any | null = null;
-let poolConnecting: Promise<any> | null = null;
+let _poolConnecting: Promise<any> | null = null;
 
 /**
  * Check if Azure SQL is configured
@@ -243,50 +243,6 @@ export function isAzureSQLConfigured(): boolean {
  */
 export async function getAzureSQLPool(): Promise<any> {
     throw getMssqlUnavailableError();
-
-    // Return existing connected pool
-    if (sqlPool && sqlPool.connected) {
-        return sqlPool;
-    }
-
-    // Return existing connection attempt (prevent connection storms)
-    if (poolConnecting) {
-        return poolConnecting;
-    }
-
-    // Create new connection with retry
-    poolConnecting = withRetry(async () => {
-        // Double-check in case another call connected while we waited
-        if (sqlPool && sqlPool.connected) {
-            return sqlPool;
-        }
-
-        // Close any stale pool
-        if (sqlPool) {
-            try {
-                await sqlPool.close();
-            } catch {
-                // Ignore close errors on stale pool
-            }
-            sqlPool = null;
-        }
-
-        throw getMssqlUnavailableError();
-        await sqlPool.connect();
-
-        console.log("✅ Connected to Azure SQL Database");
-        return sqlPool;
-    }, {
-        maxRetries: 3,
-        baseDelayMs: 1000,
-    });
-
-    try {
-        const pool = await poolConnecting;
-        return pool;
-    } finally {
-        poolConnecting = null;
-    }
 }
 
 /**
@@ -370,7 +326,7 @@ export function resetSQLPool(): void {
         sqlPool.close().catch(console.error);
         sqlPool = null;
     }
-    poolConnecting = null;
+    _poolConnecting = null;
     console.log("✅ Azure SQL pool reset");
 }
 

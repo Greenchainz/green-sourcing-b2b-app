@@ -108,11 +108,13 @@ export async function invokeFoundryWorkflow(
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
-          `Foundry workflow invocation failed: ${error.response?.data?.message || error.message}`
+          `Foundry workflow invocation failed: ${error.response?.data?.message || error.message}`,
+          { cause: error }
         );
       }
       throw new Error(
-        `Foundry workflow invocation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Foundry workflow invocation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { cause: error }
       );
     }
   });
@@ -154,7 +156,8 @@ export async function getWorkflowStatus(executionId: string): Promise<WorkflowRe
       };
     } catch (error) {
       throw new Error(
-        `Failed to get workflow status: ${error instanceof Error ? error.message : 'Unknown'}`
+        `Failed to get workflow status: ${error instanceof Error ? error.message : 'Unknown'}`,
+        { cause: error }
       );
     }
   });

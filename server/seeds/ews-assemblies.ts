@@ -46,7 +46,7 @@ interface AssemblyInput {
 
 // ─── Helper: derive tier from lowest framing-option total ─────────────────────
 
-function tier(totals: number[]): "LOW" | "MID" | "HIGH" {
+function _tier(totals: number[]): "LOW" | "MID" | "HIGH" {
   const min = Math.min(...totals);
   if (min < 10000) return "LOW";
   if (min < 22000) return "MID";

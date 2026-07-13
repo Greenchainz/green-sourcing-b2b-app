@@ -169,6 +169,7 @@ const CrmDashboard = lazy(() => import("./pages/admin/CrmDashboard"));
 const ConciergeDashboard = lazy(() => import("./pages/admin/ConciergeDashboard"));
 const SupplierSpecSubmission = lazy(() => import("./pages/SupplierSpecSubmission"));
 const MaterialSwap = lazy(() => import("./pages/MaterialSwap"));
+const CarbonWin = lazy(() => import("./pages/CarbonWin"));
 const InsiderPage = lazy(() => import("./pages/InsiderPage"));
 const ManufacturerDirectory = lazy(() => import("./pages/ManufacturerDirectory"));
 const ManufacturerProfile = lazy(() => import("./pages/ManufacturerProfile"));
@@ -183,6 +184,7 @@ const HowItWorks = lazy(() => import("./pages/HowItWorks").then((m) => ({ defaul
 const Support = lazy(() => import("./pages/Support"));
 const Login = lazy(() => import("./pages/Login"));
 const Pricing = lazy(() => import("./pages/Pricing"));
+const ForSuppliers = lazy(() => import("./pages/ForSuppliers"));
 const Features = lazy(() => import("./pages/Features"));
 const FounderVideoNew = lazy(() => import("./pages/FounderVideoNew"));
 const FounderVideoList = lazy(() => import("./pages/FounderVideoList"));
@@ -197,6 +199,7 @@ const CADocumentsPage = lazy(() => import("./pages/CADocumentsPage"));
 const ClaimProfile = lazy(() => import("./pages/ClaimProfile"));
 const IntercomWidget = lazy(() => import("./components/IntercomWidget"));
 const ChatWidget = lazy(() => import("./components/ChatWidget").then((m) => ({ default: m.ChatWidget })));
+const ArcadeHost = lazy(() => import("./components/arcade/ArcadeHost"));
 
 function RouteSeoFallback() {
   const [location] = useLocation();
@@ -261,11 +264,14 @@ function Router() {
       <Route path="/supplier/analytics">{() => <SupplierLayout><SupplierAnalytics /></SupplierLayout>}</Route>
       <Route path="/supplier/filters">{() => <SupplierLayout><SupplierFilterSetup /></SupplierLayout>}</Route>
       <Route path="/material-swap" component={MaterialSwap} />
+      <Route path="/win" component={CarbonWin} />
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/verification" component={AdminVerificationQueue} />
+      <Route path="/admin/verification-queue">{() => <Redirect to="/admin/verification" />}</Route>
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
+      <Route path="/admin/users">{() => <Redirect to="/admin?tab=users" />}</Route>
       <Route path="/admin/crm" component={CrmDashboard} />
       <Route path="/admin/concierge" component={ConciergeDashboard} />
       <Route path="/admin/founder-videos" component={FounderVideoList} />
@@ -287,6 +293,7 @@ function Router() {
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
       <Route path={"/pricing"} component={Pricing} />
+      <Route path={"/for-suppliers"} component={ForSuppliers} />
       <Route path={"/features"} component={Features} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={ArchitectDashboard} />
@@ -455,7 +462,8 @@ function ArchitectOnboardingGuard() {
         path === "/how-it-works" ||
         path === "/manufacturers" ||
         path.startsWith("/manufacturers/") ||
-        path === "/insider"
+        path === "/insider" ||
+        path === "/win"
       ) {
         return;
       }
@@ -523,6 +531,10 @@ function AppInner() {
             <ChatWidget />
           </Suspense>
         ) : null}
+        {/* GreenChainz Arcade — hidden easter egg (Konami code + launcher). Client-only. */}
+        <Suspense fallback={null}>
+          <ArcadeHost />
+        </Suspense>
         {/* CookieYes in index.html handles cookie consent */}
       </TooltipProvider>
     </ChatWidgetProvider>

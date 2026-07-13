@@ -14,7 +14,7 @@ import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
 import { getAllPriceTrendsFromDb, getPriceTrendByCategory } from '../services/price-trends';
-import { generateEmbedding } from '../services/embedding-service';
+import { materialSearchProvider } from '../services/search';
 
 export const materialsRouter = router({
   list: publicProcedure
@@ -73,7 +73,7 @@ export const materialsRouter = router({
 
       // Exclude heavy vector/search columns from the list query — they're only
       // needed for semantic search and cause query failures on some DB configs.
-      const { embedding, searchText, ...listColumns } = getTableColumns(materials);
+      const { embedding: _embedding, searchText: _searchText, ...listColumns } = getTableColumns(materials);
 
       // Run data fetch, count, and baselines in parallel — eliminates sequential waterfall
       const orderByExpr = (() => {
@@ -406,57 +406,29 @@ export const materialsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return { items: [], semantic: false };
+      // Routed through the swappable hybrid retrieval seam (keyword + vector
+      // fused via RRF). We call the PROVIDER interface (not the concrete
+      // function) so rebinding `materialSearchProvider` to an Azure AI Search
+      // implementation later reroutes this endpoint with no changes here.
+      const { items, mode } = await materialSearchProvider.search({
+        query: input.query,
+        limit: input.limit,
+        // semanticSearch historically searched the whole catalog (not verified-gated).
+        verifiedOnly: false,
+      });
 
-      const embedding = await generateEmbedding(input.query);
-
-      if (embedding) {
-        const embString = `[${embedding.join(',')}]`;
-        const rows = await db.execute(
-          sql`SELECT m.*,
-                     mfg.name AS "manufacturerName",
-                     mfg.website AS "manufacturerWebsite",
-                     mfg."logoUrl" AS "manufacturerLogoUrl",
-                     m.embedding <=> ${embString}::vector AS distance
-              FROM materials m
-              LEFT JOIN manufacturers mfg ON m."manufacturerId" = mfg.id
-              WHERE m.embedding IS NOT NULL
-              ORDER BY m.embedding <=> ${embString}::vector
-              LIMIT ${input.limit}`
-        );
-        return { items: rows.rows ?? rows, semantic: true };
-      }
-
-      const term = `%${input.query}%`;
-      const rows = await db
-        .select({
-          material: materials,
-          manufacturerName: manufacturers.name,
-          manufacturerWebsite: manufacturers.website,
-          manufacturerLogoUrl: manufacturers.logoUrl,
-        })
-        .from(materials)
-        .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
-        .where(
-          or(
-            like(materials.name, term),
-            like(materials.productName, term),
-            like(materials.category, term),
-            like(materials.subcategory, term),
-            like(materials.description, term)
-          )
-        )
-        .limit(input.limit);
-
-      const items = rows.map((r) => ({
-        ...r.material,
-        manufacturerName: r.manufacturerName,
-        manufacturerWebsite: r.manufacturerWebsite,
-        manufacturerLogoUrl: r.manufacturerLogoUrl,
+      // Preserve the legacy distance contract: the old vector-only path gave
+      // every returned item a real cosine distance. Under RRF a top hit can be
+      // keyword-only (distance = null); consumers like ExcelAudit coerce a null
+      // distance to 0 and would misread it as a perfect semantic match. Emit a
+      // far sentinel (1.0 = no vector similarity) for keyword-only hits so they
+      // are never mistaken for strong matches.
+      const compatItems = items.map((item) => ({
+        ...item,
+        distance: item.distance ?? 1,
       }));
 
-      return { items, semantic: false };
+      return { items: compatItems, semantic: mode === 'hybrid' };
     }),
 
   getPriceTrends: publicProcedure.query(() => {

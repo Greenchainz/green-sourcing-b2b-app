@@ -189,7 +189,7 @@ export async function getContainer(
     });
   } catch (error) {
     console.error(`❌ Failed to create/access container '${containerName}':`, error);
-    throw new Error(`Failed to access container '${containerName}': ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to access container '${containerName}': ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 
   return containerClient;
@@ -252,7 +252,8 @@ export async function uploadBlob(
   } catch (error) {
     console.error(`❌ Failed to upload blob '${blobName}':`, error);
     throw new Error(
-      `Failed to upload blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to upload blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -303,7 +304,8 @@ export async function uploadBlobFromStream(
   } catch (error) {
     console.error(`❌ Failed to upload blob from stream '${blobName}':`, error);
     throw new Error(
-      `Failed to upload blob from stream '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to upload blob from stream '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -333,7 +335,8 @@ export async function downloadBlob(
   } catch (error) {
     console.error(`❌ Failed to download blob '${blobName}':`, error);
     throw new Error(
-      `Failed to download blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to download blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -381,7 +384,8 @@ export async function deleteBlob(
   } catch (error) {
     console.error(`❌ Failed to delete blob '${blobName}':`, error);
     throw new Error(
-      `Failed to delete blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to delete blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -420,7 +424,8 @@ export async function listBlobs(
   } catch (error) {
     console.error(`❌ Failed to list blobs in '${containerName}':`, error);
     throw new Error(
-      `Failed to list blobs in '${containerName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to list blobs in '${containerName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }

@@ -1,9 +1,10 @@
 import "dotenv/config";
 import "./log-scrubber"; // must be second — scrubs all subsequent console.* calls
-import "../instrument";
+import { initTelemetry } from "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync } from "fs";
+import { readFile } from "fs/promises";
 import path from "path";
 import compression from "compression";
 import express from "express";
@@ -15,6 +16,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { decodeWin, buildWinMeta, renderWinMetaTags } from "@shared/carbonWin";
 import { handleLandingPage } from "../marketplace-landing";
 import { handleRevitLanding } from "../revit-landing";
 import { handleWebhook } from "../marketplace-webhook";
@@ -87,6 +89,7 @@ const rfqPdfRateLimit = createRateLimiter(30, 60_000);
 const materialScorePdfRateLimit = createRateLimiter(10, 60_000);
 const webhookRateLimit = createRateLimiter(120, 60_000);
 const publicApiRateLimit = createRateLimiter(120, 60_000);
+const winShareRateLimit = createRateLimiter(120, 60_000);
 const CANONICAL_HOST = "greenchainz.com";
 const ALLOWED_PUBLIC_HOSTS = new Set([
   CANONICAL_HOST,
@@ -168,6 +171,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const { loadSecrets } = await import("../../lib/secrets");
   await loadSecrets();
+  // Init telemetry here — after loadSecrets() so any KV-loaded connection string is
+  // already in process.env. (The deploy workflow also injects it as a plain env var.)
+  initTelemetry();
 
   const preflight = runStartupSecurityPreflight();
   if (process.env.NODE_ENV === "production" && preflight.hasFailures) {
@@ -428,6 +434,59 @@ async function startServer() {
           res.status(404).end();
         }
       });
+    });
+
+    // ── Share unfurls: inject per-win OpenGraph meta for /win ────────────────
+    // Crawlers (LinkedIn, X, Slack, iMessage) don't run JS, so the client-side
+    // card can't drive the link preview. In production we read the built SPA
+    // shell, swap the default OG block for win-specific tags, and serve that.
+    // The shell is immutable for the lifetime of the process, so we cache it
+    // once on first use to avoid blocking the event loop on every request.
+    // In dev the shell is served through Vite (which must transform it), so we
+    // fall through to the Vite catch-all and the page still renders client-side.
+    let cachedSpaShell: string | null = null;
+
+    app.get("/win", winShareRateLimit, async (req, res, next) => {
+      if (process.env.NODE_ENV !== "production") {
+        return next();
+      }
+      try {
+        const raw = typeof req.query.d === "string" ? req.query.d : null;
+        const data = decodeWin(raw);
+        if (!data) {
+          return next();
+        }
+        if (cachedSpaShell === null) {
+          const indexPath = path.resolve(clientPublicDir, "index.html");
+          // Assign only on success so a transient failure (e.g. build not yet
+          // written) keeps cachedSpaShell as null and we retry next request.
+          cachedSpaShell = await readFile(indexPath, "utf-8");
+        }
+        let html = cachedSpaShell;
+        const proto =
+          (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim() ||
+          req.protocol;
+        const host =
+          (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0]?.trim() ||
+          req.get("host") ||
+          "greenchainz.com";
+        const meta = buildWinMeta(`${proto}://${host}`, data);
+        const tags = renderWinMetaTags(meta);
+        if (html.includes("OG:DEFAULT")) {
+          html = html.replace(
+            /<!--\s*OG:DEFAULT[\s\S]*?\/OG:DEFAULT\s*-->/,
+            `<!-- OG:WIN -->\n    ${tags}\n    <!-- /OG:WIN -->`,
+          );
+        } else {
+          html = html.replace("</head>", `    ${tags}\n  </head>`);
+        }
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.status(200).send(html);
+      } catch (err) {
+        console.error("[server] /win OG injection failed:", err);
+        next();
+      }
     });
   }
 

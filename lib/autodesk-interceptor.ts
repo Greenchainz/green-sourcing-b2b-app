@@ -108,7 +108,7 @@ export async function getForgeToken(): Promise<string> {
     return response.data.access_token;
   } catch (error) {
     console.error('❌ Autodesk Forge authentication failed:', error);
-    throw new Error('Failed to authenticate with Autodesk Forge');
+    throw new Error('Failed to authenticate with Autodesk Forge', { cause: error });
   }
 }
 
@@ -164,7 +164,7 @@ async function uploadRevitFile(
     return urn;
   } catch (error) {
     console.error('❌ Failed to upload Revit file:', error);
-    throw new Error('Failed to upload Revit file to Forge');
+    throw new Error('Failed to upload Revit file to Forge', { cause: error });
   }
 }
 
@@ -235,7 +235,7 @@ async function translateRevitFile(urn: string): Promise<void> {
     throw new Error('Translation timeout');
   } catch (error) {
     console.error('❌ Failed to translate Revit file:', error);
-    throw new Error('Failed to translate Revit file');
+    throw new Error('Failed to translate Revit file', { cause: error });
   }
 }
 
@@ -318,7 +318,7 @@ async function extractMaterialProperties(urn: string): Promise<RevitMaterialSpec
     return materials;
   } catch (error) {
     console.error('❌ Failed to extract material properties:', error);
-    throw new Error('Failed to extract material properties');
+    throw new Error('Failed to extract material properties', { cause: error });
   }
 }
 

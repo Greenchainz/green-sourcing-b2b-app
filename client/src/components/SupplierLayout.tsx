@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Home,
   SlidersHorizontal,
+  LogOut,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,7 @@ const NAV_ITEMS = [
 
 export function SupplierLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const { data: profile } = trpc.supplierOnboarding.getMyProfile.useQuery(undefined, {
     enabled: !!user,
@@ -100,6 +101,14 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
             <Home className="w-4 h-4 shrink-0" />
             Back to App
           </Link>
+          <button
+            type="button"
+            onClick={logout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-destructive hover:bg-muted transition-colors"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            Sign out
+          </button>
         </div>
       </aside>
 
