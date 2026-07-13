@@ -61,8 +61,7 @@ export class AzureClient {
         if (!this.client) return "Mock Audit: Product looks sustainable (LLM not configured).";
 
         // Integrate with Autodesk SDA API
-        let sdaData: SDAProductResponse | null = null;
-        let auditContext = "";
+        let auditContext: string;
 
         try {
             // Authenticate with Autodesk
@@ -82,7 +81,7 @@ export class AzureClient {
 
             if (response.data && response.data.data && response.data.data.length > 0) {
                 const item = response.data.data[0];
-                sdaData = {
+                const sdaData: SDAProductResponse = {
                     id: item.id,
                     name: item.attributes.name,
                     description: item.attributes.description,

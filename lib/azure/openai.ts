@@ -317,7 +317,7 @@ export async function* streamChat(
     }
   } catch (error) {
     console.error("❌ Streaming chat failed:", error);
-    throw new Error(`Streaming chat failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Streaming chat failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -498,7 +498,7 @@ export async function generateEmbedding(
     return response.data[0].embedding;
   } catch (error) {
     console.error("❌ Embedding generation failed:", error);
-    throw new Error(`Embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 

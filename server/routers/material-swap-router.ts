@@ -190,7 +190,6 @@ export const materialSwapRouter = router({
       if (specs.gwp != null) {
         conditions.push(`"gwpValue" < $${paramIdx}`);
         params.push(specs.gwp);
-        paramIdx += 1;
       }
 
       const whereClause = conditions.join(' AND ');

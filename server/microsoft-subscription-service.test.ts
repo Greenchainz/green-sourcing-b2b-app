@@ -1,15 +1,6 @@
-import { describe, it, expect, beforeEach, beforeAll } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { getDb } from "./db";
 import { users, subscriptions } from "../drizzle/schema";
-
-// Skip entire suite when DATABASE_URL is not available (CI)
-let dbAvailable = false;
-beforeAll(async () => {
-  try {
-    const db = await getDb();
-    dbAvailable = !!db;
-  } catch { dbAvailable = false; }
-});
 import {
   getUserSubscription,
   getUserTier,
