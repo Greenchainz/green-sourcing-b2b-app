@@ -77,7 +77,7 @@ ${text.slice(0, 12000)}
 
 Return a JSON array where each object has these exact fields:
 {
-  "name": "short descriptive material name (e.g. 'Mineral Wool CI 4"')",
+  "name": "short descriptive material name (e.g. 'Mineral Wool CI 4in')",
   "productName": "exact product trade name from EPD (e.g. 'ROCKWOOL Stone wool Thermal Insulation')",
   "manufacturer": "manufacturer company name",
   "category": "ONE of: Concrete, Steel, Aluminum, Glass, Insulation, Gypsum Board, Masonry, Wood, Roofing, Flooring, Other",

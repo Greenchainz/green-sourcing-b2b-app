@@ -64,16 +64,24 @@ export interface McsResult {
  * Pure and deterministic — no DB access, no side effects.
  */
 export function computeMcs(material: McsMaterialInput, certs: McsCertInput[] = []): McsResult {
+  // Parse a numeric-ish field to a number, preserving a valid 0 (e.g. zero GWP)
+  // and rejecting null/undefined/empty/non-finite values.
+  const toNum = (v: string | number | null | undefined): number | null => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
   // ── EPD (max 30) ────────────────────────────────────────────────────────────
   const hasEpdFlag = !!material.hasEpd;
   const hasEpdNumber = !!material.epdNumber;
   const epdScore = hasEpdFlag ? 30 : hasEpdNumber ? 15 : 0;
 
   // ── Carbon / GWP (max 25) ─────────────────────────────────────────────────────
-  const gwp = material.gwpValue ? Number(material.gwpValue) : null;
-  const median = material.ec3IndustryMedian ? Number(material.ec3IndustryMedian) : null;
-  const bestPractice = material.ec3BestPractice ? Number(material.ec3BestPractice) : null;
-  const conservative = material.ec3ConservativeEstimate ? Number(material.ec3ConservativeEstimate) : null;
+  const gwp = toNum(material.gwpValue);
+  const median = toNum(material.ec3IndustryMedian);
+  const bestPractice = toNum(material.ec3BestPractice);
+  const conservative = toNum(material.ec3ConservativeEstimate);
 
   let carbonScore = 0;
   if (gwp !== null && median !== null && median > 0) {

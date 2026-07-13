@@ -18,7 +18,7 @@
 - [ ] Forma extension built and deployable (Forma extension repo)
 - [ ] Revit plugin packaged as `.bundle` or installer (Revit plugin repo)
 - [ ] Demo environment live at `https://greenchainz.com`
-- [ ] Demo credentials working (`demo@greenchainz.com` / `GreenchainzDemo123!`)
+- [ ] Demo credentials working (`demo@greenchainz.com` / password stored in Key Vault — do not commit)
 - [ ] All SDA API endpoints returning valid responses
 - [ ] End-to-end flow tested: Revit/Forma → main app API → material data
 

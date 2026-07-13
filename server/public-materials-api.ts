@@ -279,7 +279,9 @@ publicMaterialsRouter.get('/badge/material/:id', async (req: Request, res: Respo
   const theme: BadgeTheme = req.query.theme === 'dark' ? 'dark' : 'light';
 
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+  // Conservative default: short cache so transient not-found / DB-unavailable /
+  // error fallbacks recover quickly. Successful badges get a long cache below.
+  res.setHeader('Cache-Control', 'public, max-age=60');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const fallback = () =>
@@ -314,12 +316,14 @@ publicMaterialsRouter.get('/badge/material/:id', async (req: Request, res: Respo
       score: total,
       materialName: material.name ?? 'Material',
       manufacturerName,
-      verified: !!material.hasEpd,
+      verified: !!material.verified,
       found: true,
       style,
       theme,
     });
 
+    // Valid, found badge — safe to cache aggressively at the edge.
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
     return res.status(200).send(svg);
   } catch (err) {
     console.error('[public-api] badge error:', err);

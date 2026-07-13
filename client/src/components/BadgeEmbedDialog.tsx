@@ -56,14 +56,16 @@ export function BadgeEmbedDialog({
 
   const { w, h } = DIMS[style];
   const alt = `GreenChainz Verified — Material Credit Score for ${materialName}`;
+  // Escape for safe interpolation into the copy-paste HTML attribute below.
+  const altAttr = alt.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   const snippets = useMemo(
     () => ({
-      html: `<a href="${scoreUrl}" target="_blank" rel="noopener">\n  <img src="${badgeUrl}" alt="${alt}" width="${w}" height="${h}" />\n</a>`,
+      html: `<a href="${scoreUrl}" target="_blank" rel="noopener">\n  <img src="${badgeUrl}" alt="${altAttr}" width="${w}" height="${h}" />\n</a>`,
       markdown: `[![GreenChainz Verified](${badgeUrl})](${scoreUrl})`,
       url: badgeUrl,
     }),
-    [scoreUrl, badgeUrl, alt, w, h]
+    [scoreUrl, badgeUrl, altAttr, w, h]
   );
 
   const copy = async (key: string, value: string) => {
