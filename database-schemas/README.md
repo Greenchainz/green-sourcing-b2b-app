@@ -10,7 +10,7 @@
 > | Task | Correct location |
 > |---|---|
 > | Read/edit the live schema | `drizzle/schema.ts` (+ `drizzle/schema-additions-mcs.ts`) |
-> | Generate a new migration | `pnpm exec drizzle-kit generate` → outputs to `drizzle/0NNN_*.sql` |
+> | Generate a new migration | `pnpm run db:generate` → outputs to `drizzle/0NNN_*.sql` |
 > | Apply journaled migrations | `pnpm run db:migrate` |
 > | One-off SQL changes | Add a timestamped file to `drizzle/migrations/` — **note**: these are NOT applied automatically by `pnpm run db:migrate` or CI/CD; you must apply them manually or add a dedicated runner step. |
 
