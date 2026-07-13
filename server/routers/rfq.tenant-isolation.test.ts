@@ -10,10 +10,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { TRPCError } from "@trpc/server";
 import { rfqRouter } from "./rfq";
 import { getDb } from "../db";
-import * as pgPool from "../../lib/pg-pool";
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 

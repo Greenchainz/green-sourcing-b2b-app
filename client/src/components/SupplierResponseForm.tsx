@@ -6,7 +6,7 @@
  * Submitted values are keyed by field.key for structured storage in fieldValues JSON.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Send, AlertCircle, CheckCircle2, PackageCheck } from "lucide-react";
+import { Loader2, Send, AlertCircle, CheckCircle2, PackageCheck, Upload, Link as LinkIcon } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { SupplierResponseField } from "./SmartRfxRecommendationCard";
@@ -229,8 +229,42 @@ interface FieldInputProps {
   onChange: (v: string | boolean | number) => void;
 }
 
+async function uploadSupplierResponseFile(file: File): Promise<{ url: string; filename: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let message = "Upload failed";
+    try {
+      const payload = (await response.json()) as { error?: string };
+      message = payload.error ?? message;
+    } catch {
+      // Preserve fallback message when response body is not JSON.
+    }
+    throw new Error(message);
+  }
+
+  const payload = (await response.json()) as { url?: string; filename?: string };
+  if (!payload.url) {
+    throw new Error("Upload completed but no file URL was returned");
+  }
+
+  return {
+    url: payload.url,
+    filename: payload.filename ?? file.name,
+  };
+}
+
 function FieldInput({ field, value, onChange }: FieldInputProps) {
   const id = `field-${field.key}`;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadedFilename, setUploadedFilename] = useState<string>("");
 
   return (
     <div className="space-y-1.5">
@@ -257,7 +291,7 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
             onCheckedChange={(v) => onChange(v)}
           />
           <Label htmlFor={id} className="text-sm cursor-pointer">
-            {Boolean(value) ? "Yes" : "No"}
+            {value ? "Yes" : "No"}
           </Label>
         </div>
       ) : field.fieldType === "number" || field.fieldType === "currency" ? (
@@ -288,11 +322,66 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
       ) : field.fieldType === "file" ? (
         <div className="border border-dashed border-border rounded-lg p-4 text-center">
           <PackageCheck className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground mb-2">
-            File uploads coming soon — paste a URL or reference number below
+          <p className="text-xs text-muted-foreground mb-3">
+            Upload a supporting document (EPD, submittal, datasheet) or paste a URL.
           </p>
-          <Input
+          <input
+            ref={fileInputRef}
             id={id}
+            type="file"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (file.size > 10 * 1024 * 1024) {
+                toast.error("File size must be 10MB or less");
+                e.target.value = "";
+                return;
+              }
+
+              setIsUploadingFile(true);
+              try {
+                const uploaded = await uploadSupplierResponseFile(file);
+                setUploadedFilename(uploaded.filename);
+                onChange(uploaded.url);
+                toast.success("File uploaded");
+              } catch (error) {
+                const message = error instanceof Error ? error.message : "Failed to upload file";
+                toast.error(message);
+              } finally {
+                setIsUploadingFile(false);
+                e.target.value = "";
+              }
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="mb-3"
+            disabled={isUploadingFile}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {isUploadingFile ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload file
+              </>
+            )}
+          </Button>
+          {typeof value === "string" && value.trim().length > 0 && (
+            <div className="mb-3 text-xs text-muted-foreground break-all flex items-center justify-center gap-1">
+              <LinkIcon className="w-3.5 h-3.5 shrink-0" />
+              <a href={value} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {uploadedFilename || value}
+              </a>
+            </div>
+          )}
+          <Input
             type="url"
             value={String(value ?? "")}
             onChange={(e) => onChange(e.target.value)}

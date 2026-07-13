@@ -175,7 +175,7 @@ export async function generatePersonaCopy(
   try {
     rawResponse = await callLLM(systemPrompt, userPrompt);
   } catch (err) {
-    throw new Error(`LLM call failed for persona copy generation: ${err}`);
+    throw new Error(`LLM call failed for persona copy generation: ${err}`, { cause: err });
   }
 
   // Parse JSON response

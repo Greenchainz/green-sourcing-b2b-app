@@ -29,7 +29,12 @@ import { eq, and, isNull, lte } from "drizzle-orm";
 
 const FROM = "noreply@updates.greenchainz.com";
 const REPLY_TO = "hello@greenchainz.com";
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://greenchainz.com";
+// Base URL for links in outreach emails. Matches the convention used by every
+// other email service in this repo (FRONTEND_URL), with APP_BASE_URL as a
+// secondary so claim links resolve correctly wherever auth already works.
+// NOTE: this is an Express + Vite app — there is no NEXT_PUBLIC_* env here.
+const BASE_URL =
+  process.env.FRONTEND_URL || process.env.APP_BASE_URL || "https://greenchainz.com";
 
 // ─── Procurement Layer Definition ────────────────────────────────────────────
 
@@ -399,9 +404,10 @@ function step3Html(c: { companyName: string; category: string }, layer: Procurem
 function buildSequenceStep(
   step: 1 | 2 | 3,
   contact: { companyName: string; category: string; keyProduct?: string | null },
-  layer: ProcurementLayer
+  layer: ProcurementLayer,
+  claimToken: string
 ): { subject: string; html: string } {
-  const claimUrl = `${BASE_URL}/suppliers/claim?company=${encodeURIComponent(contact.companyName)}&layer=${layer}&utm_source=outreach&utm_medium=email&utm_campaign=claim_profile&utm_content=step${step}`;
+  const claimUrl = `${BASE_URL}/suppliers/claim?token=${claimToken}&utm_source=outreach&utm_medium=email&utm_campaign=claim_profile&utm_content=step${step}`;
 
   if (step === 1) {
     const builders: Record<ProcurementLayer, () => { subject: string; html: string }> = {
@@ -442,22 +448,30 @@ export async function enrollInClaimSequence(contactId: number): Promise<void> {
   // Auto-detect procurement layer from category
   const layer = detectLayer(contact.category ?? "", contact.subcategory, contact.keyProduct);
 
-  // Auto-populate pitchAngle if not already set
-  if (!contact.pitchAngle) {
-    await db
-      .update(crmContacts)
-      .set({
-        pitchAngle: `Layer ${layer}: ${LAYER_PROFILES[layer].financialDriver}`,
-        updatedAt: new Date(),
-      })
-      .where(eq(crmContacts.id, contactId));
-  }
+  // Generate a secure claim token if one doesn't exist yet (expires in 90 days)
+  const tokenExpiry = new Date(now);
+  tokenExpiry.setDate(tokenExpiry.getDate() + 90);
+
+  const [updatedContact] = await db
+    .update(crmContacts)
+    .set({
+      pitchAngle: contact.pitchAngle ?? `Layer ${layer}: ${LAYER_PROFILES[layer].financialDriver}`,
+      claimTokenExpiresAt: tokenExpiry,
+      updatedAt: new Date(),
+    })
+    .where(eq(crmContacts.id, contactId))
+    .returning();
+
+  const claimToken = updatedContact?.claimToken ?? contact.claimToken ?? contactId.toString();
 
   await db.insert(crmEmailSequences).values([
     { contactId, sequenceName: "default", step: 1, scheduledAt: scheduleStep(0), sentAt: null },
     { contactId, sequenceName: "default", step: 2, scheduledAt: scheduleStep(4), sentAt: null },
     { contactId, sequenceName: "default", step: 3, scheduledAt: scheduleStep(10), sentAt: null },
   ]);
+
+  // Store the claim token on the sequence rows isn't needed — it lives on crmContacts
+  void claimToken; // referenced in processDueSequenceSteps via contact lookup
 }
 
 // ─── Process due sequence steps ───────────────────────────────────────────────
@@ -508,7 +522,8 @@ export async function processDueSequenceSteps(): Promise<{ sent: number; errors:
     const { subject, html } = buildSequenceStep(
       seq.step as 1 | 2 | 3,
       { companyName: contact.companyName, category: contact.category ?? "sustainable materials", keyProduct: contact.keyProduct },
-      layer
+      layer,
+      contact.claimToken ?? contact.id.toString()
     );
 
     try {
@@ -619,7 +634,7 @@ export function previewLayerEmail(
   layer: ProcurementLayer,
   contact: { companyName: string; category: string; keyProduct?: string | null }
 ): { subject: string; html: string; layer: ProcurementLayer; driver: string } {
-  const { subject, html } = buildSequenceStep(step, contact, layer);
+  const { subject, html } = buildSequenceStep(step, contact, layer, "preview");
   return { subject, html, layer, driver: LAYER_PROFILES[layer].financialDriver };
 }
 

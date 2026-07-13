@@ -10,8 +10,7 @@
  *   POST /unsubscribe                 — RFC 8058 one-click (List-Unsubscribe-Post)
  *
  * Tokens: when JWT_SECRET is set, links we generate carry an HMAC token tying
- * the URL to the email so addresses can't be suppressed by guessing. Legacy
- * links without a token still work (back-compat) but are rate-limited upstream.
+ * the URL to the email so addresses can't be suppressed by guessing.
  */
 
 import { Router } from "express";
@@ -47,14 +46,21 @@ function tokenValid(email: string, token: string | undefined): boolean {
   // No server secret → can't verify; accept (legacy behaviour).
   const expected = unsubscribeToken(email);
   if (!expected) return true;
-  // Link without a token (older emails) → accept for compliance, but only the
-  // exact address in the link is ever suppressed.
-  if (!token) return true;
+  if (!token) return false;
   try {
     return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
   } catch {
     return false;
   }
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 async function suppress(email: string): Promise<boolean> {
@@ -134,7 +140,7 @@ unsubscribeRouter.get("/unsubscribe", async (req, res) => {
     return res.status(200).send(
       page(
         "You're unsubscribed",
-        `<strong>${email}</strong> has been removed from GreenChainz emails. You won't receive further messages at this address.`
+        `<strong>${escapeHtml(email)}</strong> has been removed from GreenChainz emails. You won't receive further messages at this address.`
       )
     );
   } catch (err) {

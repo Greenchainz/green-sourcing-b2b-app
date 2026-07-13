@@ -62,7 +62,7 @@ async function searchBing(
   } catch (err: any) {
     if (err?.response?.status === 429) {
       console.warn("[lead-scraper] Bing rate limit — pausing Bing phase");
-      throw new Error("BING_RATE_LIMIT");
+      throw new Error("BING_RATE_LIMIT", { cause: err });
     }
     return [];
   }

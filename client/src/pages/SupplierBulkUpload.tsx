@@ -88,6 +88,17 @@ interface ParsedRow {
   valid: boolean;
 }
 
+interface MaterialFieldValues {
+  name: string;
+  category: string;
+  description: string;
+  pricePerUnit: string;
+  priceUnit: string;
+  leadTimeDays: string;
+  hasEpd: string;
+  recycledContentPct: string;
+}
+
 function parseCSVLine(line: string): string[] {
   const fields: string[] = [];
   let current = "";
@@ -113,6 +124,58 @@ function parseCSVLine(line: string): string[] {
   return fields;
 }
 
+function buildParsedRow(values: MaterialFieldValues, rowNum: number): ParsedRow {
+  const errors: string[] = [];
+
+  const {
+    name,
+    category,
+    description,
+    pricePerUnit,
+    priceUnit,
+    leadTimeDays,
+    hasEpd,
+    recycledContentPct,
+  } = values;
+
+  if (!name) errors.push("Name is required");
+  if (!category) {
+    errors.push("Category is required");
+  } else if (!VALID_CATEGORIES.includes(category)) {
+    errors.push(
+      `Invalid category "${category}". Valid: ${VALID_CATEGORIES.join(", ")}`,
+    );
+  }
+  if (pricePerUnit && (isNaN(Number(pricePerUnit)) || Number(pricePerUnit) < 0)) {
+    errors.push("Price must be a positive number");
+  }
+  if (leadTimeDays && (!Number.isInteger(Number(leadTimeDays)) || Number(leadTimeDays) < 1)) {
+    errors.push("Lead time must be a positive integer");
+  }
+  if (
+    recycledContentPct &&
+    (isNaN(Number(recycledContentPct)) ||
+      Number(recycledContentPct) < 0 ||
+      Number(recycledContentPct) > 100)
+  ) {
+    errors.push("Recycled content must be 0-100");
+  }
+
+  return {
+    rowNum,
+    name,
+    category,
+    description,
+    pricePerUnit,
+    priceUnit,
+    leadTimeDays,
+    hasEpd,
+    recycledContentPct,
+    errors,
+    valid: errors.length === 0,
+  };
+}
+
 function parseCSV(text: string): ParsedRow[] {
   const lines = text
     .split(/\r?\n/)
@@ -124,55 +187,96 @@ function parseCSV(text: string): ParsedRow[] {
   const dataLines = lines.slice(1);
   return dataLines.map((line, idx) => {
     const fields = parseCSVLine(line);
-    const errors: string[] = [];
-
-    const name = fields[0] ?? "";
-    const category = fields[1] ?? "";
-    const description = fields[2] ?? "";
-    const pricePerUnit = fields[3] ?? "";
-    const priceUnit = fields[4] ?? "";
-    const leadTimeDays = fields[5] ?? "";
-    const hasEpd = fields[6] ?? "";
-    const recycledContentPct = fields[7] ?? "";
-
-    // Validation
-    if (!name) errors.push("Name is required");
-    if (!category) {
-      errors.push("Category is required");
-    } else if (!VALID_CATEGORIES.includes(category)) {
-      errors.push(
-        `Invalid category "${category}". Valid: ${VALID_CATEGORIES.join(", ")}`,
-      );
-    }
-    if (pricePerUnit && (isNaN(Number(pricePerUnit)) || Number(pricePerUnit) < 0)) {
-      errors.push("Price must be a positive number");
-    }
-    if (leadTimeDays && (!Number.isInteger(Number(leadTimeDays)) || Number(leadTimeDays) < 1)) {
-      errors.push("Lead time must be a positive integer");
-    }
-    if (
-      recycledContentPct &&
-      (isNaN(Number(recycledContentPct)) ||
-        Number(recycledContentPct) < 0 ||
-        Number(recycledContentPct) > 100)
-    ) {
-      errors.push("Recycled content must be 0-100");
-    }
-
-    return {
-      rowNum: idx + 1,
-      name,
-      category,
-      description,
-      pricePerUnit,
-      priceUnit,
-      leadTimeDays,
-      hasEpd,
-      recycledContentPct,
-      errors,
-      valid: errors.length === 0,
-    };
+    return buildParsedRow(
+      {
+        name: fields[0] ?? "",
+        category: fields[1] ?? "",
+        description: fields[2] ?? "",
+        pricePerUnit: fields[3] ?? "",
+        priceUnit: fields[4] ?? "",
+        leadTimeDays: fields[5] ?? "",
+        hasEpd: fields[6] ?? "",
+        recycledContentPct: fields[7] ?? "",
+      },
+      idx + 1,
+    );
   });
+}
+
+function normalizeHeader(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function stringFromCell(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    if (typeof objectValue.text === "string") return objectValue.text.trim();
+    if (typeof objectValue.result === "string" || typeof objectValue.result === "number") {
+      return String(objectValue.result).trim();
+    }
+    if (Array.isArray(objectValue.richText)) {
+      return objectValue.richText
+        .map((segment) =>
+          typeof segment === "object" && segment && typeof (segment as Record<string, unknown>).text === "string"
+            ? ((segment as Record<string, unknown>).text as string)
+            : "",
+        )
+        .join("")
+        .trim();
+    }
+  }
+  return "";
+}
+
+async function parseSpreadsheet(file: File): Promise<ParsedRow[]> {
+  const { Workbook } = await import("exceljs");
+  const workbook = new Workbook();
+  const buffer = await file.arrayBuffer();
+  await workbook.xlsx.load(buffer);
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet || worksheet.rowCount < 2) return [];
+
+  const headerRow = worksheet.getRow(1);
+  const headerToColumn = new Map<string, number>();
+  headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    const key = normalizeHeader(stringFromCell(cell.value));
+    if (key) headerToColumn.set(key, colNumber);
+  });
+
+  const getValue = (rowNumber: number, header: (typeof TEMPLATE_HEADERS)[number]) => {
+    const col = headerToColumn.get(normalizeHeader(header));
+    if (!col) return "";
+    return stringFromCell(worksheet.getRow(rowNumber).getCell(col).value);
+  };
+
+  const parsedRows: ParsedRow[] = [];
+  for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+    const rowValues: MaterialFieldValues = {
+      name: getValue(rowNumber, "name"),
+      category: getValue(rowNumber, "category"),
+      description: getValue(rowNumber, "description"),
+      pricePerUnit: getValue(rowNumber, "pricePerUnit"),
+      priceUnit: getValue(rowNumber, "priceUnit"),
+      leadTimeDays: getValue(rowNumber, "leadTimeDays"),
+      hasEpd: getValue(rowNumber, "hasEpd"),
+      recycledContentPct: getValue(rowNumber, "recycledContentPct"),
+    };
+
+    const hasAnyValue = Object.values(rowValues).some((value) => value.length > 0);
+    if (!hasAnyValue) continue;
+
+    parsedRows.push(buildParsedRow(rowValues, parsedRows.length + 1));
+  }
+
+  return parsedRows;
 }
 
 // ── Upload States ────────────────────────────────────────────────────────────
@@ -211,18 +315,12 @@ export default function SupplierBulkUpload() {
 
   // ── File Handling ──────────────────────────────────────────────────────────
 
-  const processFile = useCallback((file: File) => {
+  const processFile = useCallback(async (file: File) => {
     if (!file) return;
 
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext === "xlsx" || ext === "xls") {
-      toast.error(
-        "XLSX support coming soon. Please export your spreadsheet as CSV for now.",
-      );
-      return;
-    }
-    if (ext !== "csv") {
-      toast.error("Please upload a .csv file");
+    if (ext !== "csv" && ext !== "xlsx" && ext !== "xls") {
+      toast.error("Please upload a .csv, .xlsx, or .xls file");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -232,9 +330,22 @@ export default function SupplierBulkUpload() {
 
     setFileName(file.name);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
+    try {
+      if (ext === "xlsx" || ext === "xls") {
+        const parsed = await parseSpreadsheet(file);
+        if (parsed.length === 0) {
+          toast.error(
+            "No data rows found. Make sure your spreadsheet has a header row and at least one data row.",
+          );
+          return;
+        }
+        setRows(parsed);
+        setPhase("preview");
+        toast.success(`Parsed ${parsed.length} rows from ${file.name}`);
+        return;
+      }
+
+      const text = await file.text();
       const parsed = parseCSV(text);
       if (parsed.length === 0) {
         toast.error(
@@ -245,9 +356,9 @@ export default function SupplierBulkUpload() {
       setRows(parsed);
       setPhase("preview");
       toast.success(`Parsed ${parsed.length} rows from ${file.name}`);
-    };
-    reader.onerror = () => toast.error("Failed to read file");
-    reader.readAsText(file);
+    } catch {
+      toast.error("Failed to read file");
+    }
   }, []);
 
   const handleDrop = useCallback(
@@ -255,7 +366,7 @@ export default function SupplierBulkUpload() {
       e.preventDefault();
       setDragOver(false);
       const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
+      if (file) void processFile(file);
     },
     [processFile],
   );
@@ -263,7 +374,7 @@ export default function SupplierBulkUpload() {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) processFile(file);
+      if (file) void processFile(file);
       // Reset input so re-selecting same file triggers change
       e.target.value = "";
     },
@@ -412,14 +523,14 @@ export default function SupplierBulkUpload() {
                     Drop your CSV file here
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Supports .csv files up to 10MB
+                    Supports .csv, .xlsx, and .xls files up to 10MB
                   </p>
                 </div>
                 <div>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".csv"
+                    accept=".csv,.xlsx,.xls"
                     className="hidden"
                     onChange={handleChange}
                   />

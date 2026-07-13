@@ -45,7 +45,7 @@ const STATES = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function extractDomain(website: string): string | null {
+function _extractDomain(website: string): string | null {
   try {
     const url = website.startsWith('http') ? website : `https://${website}`;
     const host = new URL(url).hostname.replace(/^www\./, '');
@@ -159,7 +159,7 @@ export async function scrapeEPDManufacturers(): Promise<ScrapedSupplier[]> {
   const seen     = new Set<string>();
   const pageSize = 200;
   let   page     = 1;
-  let   total    = 0;
+  let   total: number;
 
   do {
     const url = `https://api.environdec.com/api/v1/EPDLibrary/SearchEPD?PageNumber=${page}&PageSize=${pageSize}`;

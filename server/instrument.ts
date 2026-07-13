@@ -53,7 +53,14 @@ class TelemetryScrubberProcessor implements SpanProcessor {
   }
 }
 
-queueMicrotask(() => {
+/**
+ * Initialize Azure Monitor OpenTelemetry.
+ *
+ * Must be called AFTER loadSecrets() so that any Key Vault-loaded value for
+ * APPLICATIONINSIGHTS_CONNECTION_STRING is already in process.env.
+ * (The deploy workflow injects it as a plain env var, so both paths are covered.)
+ */
+export function initTelemetry(): void {
   const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
   const enable = process.env.NODE_ENV === "production" || process.env.AZURE_MONITOR_ENABLED === "true";
 
@@ -70,4 +77,4 @@ queueMicrotask(() => {
     spanProcessors: [new TelemetryScrubberProcessor()],
   });
   console.log("[telemetry] Azure Monitor OpenTelemetry initialized (with telemetry scrubber)");
-});
+}

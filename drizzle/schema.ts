@@ -11,6 +11,7 @@ import {
   real,
   date,
   json,
+  uuid,
   index,
   uniqueIndex,
   customType,
@@ -511,6 +512,37 @@ export const leads = pgTable("leads", {
 });
 
 export type Lead = typeof leads.$inferSelect;
+
+// ─── Arcade Scores (global leaderboard) ─────────────────────────────────────
+// Cross-user leaderboard for the GreenChainz Arcade. `eventKey` is the seam for
+// tournaments / charity events (casual board = eventKey IS NULL). When a player
+// claims their rank with an email, the arcade router also seeds a CRM lead.
+
+export const arcadeScores = pgTable(
+  "arcade_scores",
+  {
+    id: serial("id").primaryKey(),
+    gameId: varchar("gameId", { length: 64 }).notNull(),
+    initials: varchar("initials", { length: 12 }).notNull(),
+    score: integer("score").notNull(),
+    playerName: varchar("playerName", { length: 120 }),
+    email: varchar("email", { length: 320 }),
+    company: varchar("company", { length: 160 }),
+    eventKey: varchar("eventKey", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => ({
+    boardIdx: index("arcade_scores_board_idx").on(
+      t.gameId,
+      t.eventKey,
+      t.score.desc(),
+      t.createdAt.asc(),
+    ),
+  }),
+);
+
+export type ArcadeScore = typeof arcadeScores.$inferSelect;
+export type InsertArcadeScore = typeof arcadeScores.$inferInsert;
 
 // ─── Agent Conversations ───────────────────────────────────────────────────
 
@@ -1972,6 +2004,9 @@ export const crmContacts = pgTable(
     source: varchar("source", { length: 100 }),
     linkedinUrl: varchar("linkedin_url", { length: 500 }),
     supplierId: integer("supplier_id"), // populated when they claim profile
+    claimToken: uuid("claim_token").defaultRandom(), // secure one-time token for claim emails
+    claimTokenExpiresAt: timestamp("claim_token_expires_at"),
+    claimTokenUsedAt: timestamp("claim_token_used_at"),
     lastContactedAt: timestamp("last_contacted_at"),
     nextFollowUpAt: timestamp("next_follow_up_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -1,9 +1,10 @@
 import "dotenv/config";
 import "./log-scrubber"; // must be second — scrubs all subsequent console.* calls
-import "../instrument";
+import { initTelemetry } from "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync } from "fs";
+import { readFile } from "fs/promises";
 import path from "path";
 import compression from "compression";
 import express from "express";
@@ -15,6 +16,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { decodeWin, buildWinMeta, renderWinMetaTags } from "@shared/carbonWin";
 import { handleLandingPage } from "../marketplace-landing";
 import { handleRevitLanding } from "../revit-landing";
 import { handleWebhook } from "../marketplace-webhook";
@@ -87,7 +89,47 @@ const rfqPdfRateLimit = createRateLimiter(30, 60_000);
 const materialScorePdfRateLimit = createRateLimiter(10, 60_000);
 const webhookRateLimit = createRateLimiter(120, 60_000);
 const publicApiRateLimit = createRateLimiter(120, 60_000);
+const winShareRateLimit = createRateLimiter(120, 60_000);
 const CANONICAL_HOST = "greenchainz.com";
+const ALLOWED_PUBLIC_HOSTS = new Set([
+  CANONICAL_HOST,
+  "www.greenchainz.com",
+]);
+
+function getForwardedHost(req: express.Request): string {
+  const forwardedHostHeader = req.headers["x-forwarded-host"];
+  const rawForwardedHost = Array.isArray(forwardedHostHeader)
+    ? forwardedHostHeader[0]
+    : String(forwardedHostHeader ?? "").split(",")[0].trim();
+  const forwardedHost = rawForwardedHost.toLowerCase();
+  return /^[a-z0-9.-]+(?::\d+)?$/.test(forwardedHost) ? forwardedHost : "";
+}
+
+function getRequestHost(req: express.Request): string {
+  const host = String(req.headers.host ?? "").toLowerCase();
+  return /^[a-z0-9.-]+(?::\d+)?$/.test(host) ? host : "";
+}
+
+function isHostAllowedForPublicApi(req: express.Request): boolean {
+  const forwardedHost = getForwardedHost(req);
+  const host = getRequestHost(req);
+
+  if (forwardedHost) {
+    return ALLOWED_PUBLIC_HOSTS.has(forwardedHost);
+  }
+
+  // Local development and internal container health checks.
+  if (
+    host.startsWith("localhost:") ||
+    host === "localhost" ||
+    host.startsWith("127.0.0.1:") ||
+    host === "127.0.0.1"
+  ) {
+    return true;
+  }
+
+  return ALLOWED_PUBLIC_HOSTS.has(host);
+}
 
 function isHealthEndpoint(path: string): boolean {
   return path === "/health" || path === "/healthz" || path === "/ready" || path === "/api/health";
@@ -129,6 +171,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const { loadSecrets } = await import("../../lib/secrets");
   await loadSecrets();
+  // Init telemetry here — after loadSecrets() so any KV-loaded connection string is
+  // already in process.env. (The deploy workflow also injects it as a plain env var.)
+  initTelemetry();
 
   const preflight = runStartupSecurityPreflight();
   if (process.env.NODE_ENV === "production" && preflight.hasFailures) {
@@ -193,13 +238,8 @@ async function startServer() {
       return;
     }
 
-    const forwardedHostHeader = req.headers["x-forwarded-host"];
-    const rawForwardedHost = Array.isArray(forwardedHostHeader)
-      ? forwardedHostHeader[0]
-      : String(forwardedHostHeader ?? "").split(",")[0].trim();
-    const forwardedHost = rawForwardedHost.toLowerCase();
-    const safeForwardedHost = /^[a-z0-9.-]+(?::\d+)?$/.test(forwardedHost) ? forwardedHost : "";
-    const host = (safeForwardedHost || String(req.headers.host ?? "")).toLowerCase();
+    const safeForwardedHost = getForwardedHost(req);
+    const host = (safeForwardedHost || getRequestHost(req)).toLowerCase();
     const forwardedProtoHeader = req.headers["x-forwarded-proto"];
     const forwardedProto = Array.isArray(forwardedProtoHeader)
       ? forwardedProtoHeader[0]
@@ -212,6 +252,36 @@ async function startServer() {
     }
 
     res.redirect(308, `https://${CANONICAL_HOST}${req.originalUrl}`);
+  });
+
+  // In production, block direct public API traffic to containerapp FQDNs.
+  // Requests must arrive via the canonical hosts routed through Front Door.
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV !== "production") {
+      next();
+      return;
+    }
+
+    if (isHealthEndpoint(req.path)) {
+      next();
+      return;
+    }
+
+    const isPublicApiSurface = req.path.startsWith("/api/") || req.path === "/unsubscribe";
+    if (!isPublicApiSurface) {
+      next();
+      return;
+    }
+
+    if (isHostAllowedForPublicApi(req)) {
+      next();
+      return;
+    }
+
+    console.warn(
+      `[network-guard] Rejected direct backend request host=${String(req.headers.host ?? "")} path=${req.path}`
+    );
+    res.status(403).json(createErrorResponse("Forbidden", req.id, "Request host is not allowed."));
   });
 
   // ── Gzip compression ─────────────────────────────────────────────────────
@@ -365,6 +435,59 @@ async function startServer() {
         }
       });
     });
+
+    // ── Share unfurls: inject per-win OpenGraph meta for /win ────────────────
+    // Crawlers (LinkedIn, X, Slack, iMessage) don't run JS, so the client-side
+    // card can't drive the link preview. In production we read the built SPA
+    // shell, swap the default OG block for win-specific tags, and serve that.
+    // The shell is immutable for the lifetime of the process, so we cache it
+    // once on first use to avoid blocking the event loop on every request.
+    // In dev the shell is served through Vite (which must transform it), so we
+    // fall through to the Vite catch-all and the page still renders client-side.
+    let cachedSpaShell: string | null = null;
+
+    app.get("/win", winShareRateLimit, async (req, res, next) => {
+      if (process.env.NODE_ENV !== "production") {
+        return next();
+      }
+      try {
+        const raw = typeof req.query.d === "string" ? req.query.d : null;
+        const data = decodeWin(raw);
+        if (!data) {
+          return next();
+        }
+        if (cachedSpaShell === null) {
+          const indexPath = path.resolve(clientPublicDir, "index.html");
+          // Assign only on success so a transient failure (e.g. build not yet
+          // written) keeps cachedSpaShell as null and we retry next request.
+          cachedSpaShell = await readFile(indexPath, "utf-8");
+        }
+        let html = cachedSpaShell;
+        const proto =
+          (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim() ||
+          req.protocol;
+        const host =
+          (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0]?.trim() ||
+          req.get("host") ||
+          "greenchainz.com";
+        const meta = buildWinMeta(`${proto}://${host}`, data);
+        const tags = renderWinMetaTags(meta);
+        if (html.includes("OG:DEFAULT")) {
+          html = html.replace(
+            /<!--\s*OG:DEFAULT[\s\S]*?\/OG:DEFAULT\s*-->/,
+            `<!-- OG:WIN -->\n    ${tags}\n    <!-- /OG:WIN -->`,
+          );
+        } else {
+          html = html.replace("</head>", `    ${tags}\n  </head>`);
+        }
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.status(200).send(html);
+      } catch (err) {
+        console.error("[server] /win OG injection failed:", err);
+        next();
+      }
+    });
   }
 
   app.get("/ready", async (_req, res) => {
@@ -464,6 +587,7 @@ async function startServer() {
   });
 
   app.get("/revit", handleRevitLanding);
+  app.get("/docs", (_req, res) => res.redirect(301, "/docs.html"));
   app.get("/privacy", (_req, res) => res.redirect(301, "/privacy.html"));
   app.get("/terms", (_req, res) => res.redirect(301, "/terms.html"));
   app.get("/security", (_req, res) => res.redirect(301, "/security.html"));

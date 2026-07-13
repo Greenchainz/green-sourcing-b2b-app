@@ -118,6 +118,11 @@ export async function loadSecrets(): Promise<void> {
         // Configuration → Webhook. Enforced fail-closed at startup
         // (security-preflight.ts) so the endpoint never accepts unsigned events.
         "microsoft-webhook-secret": "MICROSOFT_WEBHOOK_SECRET",
+        // Azure Application Insights (telemetry + distributed tracing)
+        // KV name: appinsights-connection (lowercase, no underscores — Azure naming)
+        // Env var: APPLICATIONINSIGHTS_CONNECTION_STRING (SDK convention)
+        // Portal: Application Insights → Overview → Connection String
+        "appinsights-connection": "APPLICATIONINSIGHTS_CONNECTION_STRING",
       };
 
       for (const [vaultKey, envKey] of Object.entries(secretMappings)) {

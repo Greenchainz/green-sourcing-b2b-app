@@ -355,7 +355,7 @@ function parseStructuralOption(text: string): number | null {
 
 function parseFloatSafe(s: string | undefined): number | null {
   if (!s) return null;
-  const cleaned = s.replace(/[,\s]/g, "").replace(/[^\d.\-]/g, "");
+  const cleaned = s.replace(/[,\s]/g, "").replace(/[^-\d.]/g, "");
   const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : null;
 }

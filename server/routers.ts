@@ -45,6 +45,7 @@ import { proofRouter } from './routers/blockchain-proof/proofRouter';
 import { submittalsRouter } from './routers/submittals-router';
 import { supplierAnalyticsRouter } from './routers/supplier-analytics-router';
 import { caDocumentsRouter } from './routers/ca-documents-router';
+import { arcadeRouter } from './routers/arcade-router';
 
 export const appRouter = router({
   system: systemRouter,
@@ -80,6 +81,7 @@ export const appRouter = router({
   rfq: rfqInternalRouter,
   agent: agentRouter,
   leads: leadsRouter,
+  arcade: arcadeRouter,
   materialSwaps: materialSwapsRouter,
   messaging: messagingRouter,
   videoCalling: videoCallingRouter,

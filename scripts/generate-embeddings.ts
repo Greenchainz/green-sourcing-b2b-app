@@ -75,6 +75,17 @@ async function main() {
         ON materials USING hnsw (embedding vector_cosine_ops)`
   );
 
+  // Create a GIN full-text index matching the hybrid keyword query expression
+  // in server/services/search.ts (to_tsvector over name/productName/description).
+  // The expression must match the query's exactly for the planner to use it,
+  // so LIMIT-bounded keyword candidate lookups avoid a full-table scan + sort.
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS idx_materials_fts
+        ON materials USING gin (
+          to_tsvector('english', name || ' ' || COALESCE("productName", '') || ' ' || COALESCE(description, ''))
+        )`
+  );
+
   // Fetch materials that don't have an embedding yet
   const rows = await db
     .select({
