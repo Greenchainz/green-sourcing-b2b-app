@@ -400,12 +400,37 @@ export function buildLongHole(rng: () => number = Math.random): HoleLayout {
     kind: "bad",
     label,
   });
+  // Drive landing zone: a bullseye placed OFF the direct tee→cup line so the
+  // player must aim their tee shot here, THEN re-aim for the cup on approach.
+  // Outer ring (FAIRWAY) = +100; inner ring (BULLS-EYE) = +250 — hitting both
+  // stacks to +350 for a perfect landing. Offset perpendicular to the shot line
+  // so a straight drive to the pin misses it (real golf: drive to the fairway).
+  const ldx = hole.x - tee.x;
+  const ldy = hole.y - tee.y;
+  const llen = Math.hypot(ldx, ldy);
+  const perpX = -ldy / llen;
+  const perpY = ldx / llen;
+  const landSide = rng() > 0.5 ? 1 : -1;
+  const landX = clamp(
+    tee.x + ldx * 0.62 + perpX * 68 * landSide,
+    MARGIN + 55,
+    FIELD_WIDTH - MARGIN - 55,
+  );
+  const landY = clamp(
+    tee.y + ldy * 0.62 + perpY * 68 * landSide,
+    MARGIN + 55,
+    FIELD_HEIGHT - MARGIN - 55,
+  );
+
   const targets: Target[] = [
     ring(0.28, 30, 50, "SOLAR"),
     ring(0.5, 27, 100, "RECYCLE"),
     ring(0.66, 25, 175, "NET-ZERO"),
     badZone(0.44, 0.8, 34, -50, "OIL SLICK"),
     badZone(0.6, 0.19, 32, -40, "LANDFILL"),
+    // drive landing zone — outer then inner so inner renders on top
+    { x: landX, y: landY, radius: 44, value: 100, hit: false, kind: "good", label: "FAIRWAY" },
+    { x: landX, y: landY, radius: 19, value: 250, hit: false, kind: "good", label: "BULLS-EYE" },
   ];
 
   // Two lit green-side bumpers flanking the cup approach: bank a hot shot off

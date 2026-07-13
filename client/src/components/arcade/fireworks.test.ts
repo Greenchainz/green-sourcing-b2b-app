@@ -84,4 +84,13 @@ describe("celebration fireworks", () => {
     const fakeLogo = { complete: true, naturalWidth: 64, naturalHeight: 64 } as HTMLImageElement;
     expect(() => fx.draw(ctx, fakeLogo)).not.toThrow();
   });
+
+  it("supports lightweight burst pops for in-hole events", () => {
+    const fx = createCelebrationFx();
+    fx.burst(320, 200, { accent: "#FFCC33", intensity: 0.7, rng: mulberry32(6) });
+    expect(fx.active()).toBe(true);
+    expect(fx.particleCount()).toBeGreaterThan(0);
+    advance(fx, 1500);
+    expect(fx.particleCount()).toBe(0);
+  });
 });

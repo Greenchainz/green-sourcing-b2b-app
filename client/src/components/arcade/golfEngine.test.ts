@@ -383,11 +383,17 @@ describe("Golf-Pinball scoring (rings, muck & bank bonus)", () => {
     expect(bads.length).toBeGreaterThanOrEqual(1);
     // green wins pay points and sit on the tee -> cup line; deeper pays more
     for (const g of goods) {
+    expect(goods.length).toBe(5); // 3 fairway rings + FAIRWAY outer + BULLS-EYE inner
+    expect(bads.length).toBeGreaterThanOrEqual(1);
+    // fairway rings sit on the tee -> cup line; deeper pays more
+    const lineRings = goods.filter((g) => !["FAIRWAY", "BULLS-EYE"].includes(g.label));
+    for (const g of lineRings) {
       expect(g.value).toBeGreaterThan(0);
       expect(g.x).toBeGreaterThan(l.tee.x);
       expect(g.x).toBeLessThan(l.hole.x);
     }
     expect(goods[goods.length - 1].value).toBeGreaterThan(goods[0].value);
+    expect(lineRings[lineRings.length - 1].value).toBeGreaterThan(lineRings[0].value);
     // dirty energy docks points
     for (const b of bads) expect(b.value).toBeLessThan(0);
   });

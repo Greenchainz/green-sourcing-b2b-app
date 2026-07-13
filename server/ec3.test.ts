@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fetchEC3EPDs, searchEC3EPDs, fetchEC3Categories, parseGWP } from "./ec3";
+import { fetchEC3EPDs, searchEC3EPDs, parseGWP } from "./ec3";
 
 const hasEC3Credentials = !!(
   process.env.EC3_API_KEY ||

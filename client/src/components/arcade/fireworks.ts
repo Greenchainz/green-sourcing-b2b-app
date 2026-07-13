@@ -72,6 +72,20 @@ export interface CelebrateOpts {
 
 export interface CelebrationFx {
   celebrate(x: number, y: number, opts: CelebrateOpts): void;
+export interface BurstOpts {
+  /** Game accent (hex) — folded into the burst palette. */
+  accent: string;
+  /** Honour prefers-reduced-motion: skip transient spark bursts. */
+  reduced?: boolean;
+  /** 0..1 — higher values throw denser, faster sparks. */
+  intensity?: number;
+  /** Injectable RNG for deterministic tests. Defaults to Math.random. */
+  rng?: () => number;
+}
+
+export interface CelebrationFx {
+  celebrate(x: number, y: number, opts: CelebrateOpts): void;
+  burst(x: number, y: number, opts: BurstOpts): void;
   update(dt: number): void;
   draw(ctx: CanvasRenderingContext2D, logo: HTMLImageElement | null): void;
   /** true while anything is still animating */
@@ -163,6 +177,24 @@ export function createCelebrationFx(): CelebrationFx {
     queue.push({ delay: 840, x: x + 86, y: y - 104, colors: palette, count: Math.round(big * 0.55), speed: speed * 0.9, rng });
     rings.push({ x: x - 96, y: y - 74, t: -620, dur: 460, color: BRAND_GREENS[0], maxRadius: 58 });
     rings.push({ x: x + 86, y: y - 104, t: -840, dur: 460, color: accent, maxRadius: 58 });
+  }
+
+  function burst(x: number, y: number, opts: BurstOpts): void {
+    if (opts.reduced) return;
+    const rng = opts.rng ?? Math.random;
+    const intensity = Math.max(0.2, Math.min(1, opts.intensity ?? 0.55));
+    const palette = [opts.accent, ...BRAND_GREENS, SPARKLE];
+    const count = Math.round(16 + intensity * 26);
+    const speed = 0.18 + intensity * 0.14;
+    spawnBurst(x, y, palette, count, speed, rng);
+    rings.push({
+      x,
+      y,
+      t: 0,
+      dur: 320,
+      color: opts.accent,
+      maxRadius: 24 + intensity * 22,
+    });
   }
 
   function update(dt: number): void {
@@ -291,6 +323,7 @@ export function createCelebrationFx(): CelebrationFx {
 
   return {
     celebrate,
+    burst,
     update,
     draw,
     active: () => particles.length > 0 || rings.length > 0 || emblem !== null || queue.length > 0,

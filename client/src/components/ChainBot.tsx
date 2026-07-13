@@ -110,7 +110,7 @@ export function ChainBot() {
     try {
       const cart = JSON.parse(localStorage.getItem("rfq-cart") || "[]");
       if (cart.length > 0) ctx.cartItems = cart;
-    } catch {}
+    } catch { /* ignore parse errors on corrupt cart data */ }
 
     // Attach browser-resolved geolocation if available
     if (userLocation) ctx.projectLocation = userLocation;

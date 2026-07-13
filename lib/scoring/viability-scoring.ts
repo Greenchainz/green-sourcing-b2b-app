@@ -485,7 +485,6 @@ function calculateVerificationScore(profile: MaterialViabilityProfile): number {
       isTrustedEpdsSource = trustedHosts.includes(host);
     } catch {
       // Malformed URL; treat as generic link below
-      isTrustedEpdsSource = false;
     }
 
     if (isTrustedEpdsSource) {

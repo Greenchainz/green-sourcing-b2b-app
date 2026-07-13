@@ -223,7 +223,7 @@ function parseProjectBlock(blockHtml: string): TxdotProject | null {
       letDate, seqNo, timeAllowed, length, limitsFrom, limitsTo, checkAmount,
       engineerEstimate, bids,
     };
-  } catch (err) {
+  } catch {
     return null;
   }
 }

@@ -10,13 +10,16 @@
     "check": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "seed:ews": "tsx scripts/seed-ews-assemblies.ts",
     "seed:suppliers": "tsx scripts/seed-suppliers.ts",
     "lint": "eslint \"server/**/*.ts\" \"client/src/**/*.{ts,tsx}\" \"lib/**/*.ts\"",
-    "lint:fix": "eslint \"server/**/*.ts\" \"client/src/**/*.{ts,tsx}\" \"lib/**/*.ts\" --fix"
+    "lint:fix": "eslint \"server/**/*.ts\" \"client/src/**/*.{ts,tsx}\" \"lib/**/*.ts\" --fix",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.1.0",
