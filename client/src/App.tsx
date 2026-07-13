@@ -271,7 +271,7 @@ function Router() {
       <Route path="/admin/verification" component={AdminVerificationQueue} />
       <Route path="/admin/verification-queue">{() => <Redirect to="/admin/verification" />}</Route>
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
-      <Route path="/admin/users">{() => <Redirect to="/admin" />}</Route>
+      <Route path="/admin/users">{() => <Redirect to="/admin?tab=users" />}</Route>
       <Route path="/admin/crm" component={CrmDashboard} />
       <Route path="/admin/concierge" component={ConciergeDashboard} />
       <Route path="/admin/founder-videos" component={FounderVideoList} />
