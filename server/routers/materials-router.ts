@@ -73,7 +73,7 @@ export const materialsRouter = router({
 
       // Exclude heavy vector/search columns from the list query — they're only
       // needed for semantic search and cause query failures on some DB configs.
-      const { embedding, searchText, ...listColumns } = getTableColumns(materials);
+      const { embedding: _embedding, searchText: _searchText, ...listColumns } = getTableColumns(materials);
 
       // Run data fetch, count, and baselines in parallel — eliminates sequential waterfall
       const orderByExpr = (() => {

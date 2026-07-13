@@ -1,15 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
-  sendInAppNotification,
   sendEmailNotification,
   sendSmsNotification,
-  sendNotification,
   generateNotificationContent,
   generateRfqMatchEmail,
   generateBidAcceptedEmail,
   generateNewMessageEmail,
-  markNotificationAsRead,
-  getUnreadNotifications,
 } from "./notification-service";
 
 describe("Notification Service", () => {

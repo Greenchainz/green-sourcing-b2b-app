@@ -445,7 +445,7 @@ export async function runSwapEngine(
       const isHigh = highSustainabilitySet.has(id);
       const isFallback = c.matchScore < 20;
 
-      let reason = "";
+      let reason: string;
       if (agentAvailable) {
         reason = isHigh
           ? "Selected by AI for strong sustainability credentials"
