@@ -3,7 +3,7 @@ import "./log-scrubber"; // must be second — scrubs all subsequent console.* c
 import "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
-import { existsSync, readFileSync } from "fs";
+import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import path from "path";
 import compression from "compression";
