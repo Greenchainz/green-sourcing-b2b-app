@@ -20,14 +20,12 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     WorkspaceResourceId: workspaceId // workspace-based is mandatory for new components
-    // Disable public ingestion network restriction — the server reaches the
-    // ingestion endpoint from inside the Container App environment.
+    // Retention is controlled by the Log Analytics workspace (30 days as configured
+    // in loganalytics.bicep). RetentionInDays on this resource is ineffective for
+    // workspace-based Application Insights and is intentionally omitted.
+    // SamplingPercentage omitted — defaults to 100 %. Tune in portal if ingest costs grow.
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
-    // 90-day data retention on the workspace side (configured in loganalytics.bicep);
-    // this property is workspace-level, set it here only as documentation.
-    RetentionInDays: 90
-    // SamplingPercentage omitted — defaults to 100 %. Tune in portal if ingest costs grow.
   }
 }
 

@@ -85,6 +85,10 @@ properties:
       - name: resend-api-key
         keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/RESEND-API-KEY
         identity: system
+      # Application Insights telemetry connection string
+      - name: appinsights-connection
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/appinsights-connection
+        identity: system
 
   template:
     containers:
@@ -166,6 +170,10 @@ properties:
           # by the deploy workflow from Key Vault (appinsights-connection secret).
           - name: FEATURE_AZURE_MONITORING
             value: "true"
+          - name: AZURE_MONITOR_ENABLED
+            value: "true"
+          - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+            secretRef: appinsights-connection
           - name: FEATURE_AI_DOCUMENT_ANALYSIS
             value: "false"
           - name: NOTIFICATIONS_ENABLED

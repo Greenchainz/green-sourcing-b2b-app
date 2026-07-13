@@ -1009,6 +1009,8 @@ jobs:
             # prevents a FATAL crash when REDIS_HOST/REDIS_PORT are not yet set.
             "REQUIRE_REDIS_CALL_SESSIONS=false"
           )
+          # Array for env vars to purge from the Container App (grows conditionally below)
+          STALE_TELEMETRY_VARS=()
           # EC3 API key - powers the 24h material sync scheduler
           if [ -n "${{ steps.kv.outputs.ec3-api-key }}" ]; then
             ENV_VARS+=("EC3_API_KEY=${{ steps.kv.outputs.ec3-api-key }}")
@@ -1036,6 +1038,10 @@ jobs:
           else
             echo "⚠️  appinsights-connection not found in Key Vault — telemetry disabled"
             echo "    To enable: az keyvault secret set --vault-name ${{ env.KEY_VAULT }} --name appinsights-connection --value '<connection-string>'"
+            # Explicitly remove stale telemetry vars so a value from a previous
+            # revision does not remain active (az containerapp update preserves
+            # unmentioned env vars from the prior revision by default).
+            STALE_TELEMETRY_VARS=("APPLICATIONINSIGHTS_CONNECTION_STRING" "AZURE_MONITOR_ENABLED" "FEATURE_AZURE_MONITORING")
           fi
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
@@ -1048,12 +1054,17 @@ jobs:
           # Azure CLI, leaving the old user-assigned identity client ID in place.
           # --remove-env-vars performs an explicit deletion, ensuring
           # ManagedIdentityCredential() falls back to the system-assigned identity.
+          REMOVE_VARS=("AZURE_MI_CLIENT_ID" "MANAGED_IDENTITY_CLIENT_ID" "AZURE_CLIENT_ID")
+          # Add stale telemetry vars if appinsights-connection was absent this run
+          if [ ${#STALE_TELEMETRY_VARS[@]} -gt 0 ]; then
+            REMOVE_VARS+=("${STALE_TELEMETRY_VARS[@]}")
+          fi
           az containerapp update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}" \
-            --remove-env-vars AZURE_MI_CLIENT_ID MANAGED_IDENTITY_CLIENT_ID AZURE_CLIENT_ID
+            --remove-env-vars "${REMOVE_VARS[@]}"
 
       - name: Ensure backend ingress targetPort is 3000
         run: |

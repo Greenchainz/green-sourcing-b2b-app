@@ -200,10 +200,21 @@ Safe to include in configuration files. These are feature flags and tuning param
 | `AUTODESK-CLIENT-SECRET` | `AUTODESK_CLIENT_SECRET` | `lib/secrets.ts` |
 | `INTERCOM-SECRET` | `INTERCOM_SECRET` | `lib/secrets.ts` |
 | `microsoft-webhook-secret` | `MICROSOFT_WEBHOOK_SECRET` | `lib/secrets.ts` |
+| `AUTH-SECRET` | `AUTH_SECRET` | `lib/secrets.ts` |
+| `BETTER-AUTH-URL` | `BETTER_AUTH_URL` | `lib/secrets.ts` |
+| `LINKEDIN-CLIENTID` | `LINKEDIN_CLIENT_ID` | `lib/secrets.ts` |
+| `LINKEDIN-SECRET` | `LINKEDIN_CLIENT_SECRET` | `lib/secrets.ts` |
+| `ZEPTOMAIL-SMTP-USER` | `ZEPTOMAIL_SMTP_USER` | `lib/secrets.ts` |
+| `ZEPTOMAIL-SMTP-PASSWORD` | `ZEPTOMAIL_SMTP_PASSWORD` | `lib/secrets.ts` |
+| `FRONTEND-URL` | `FRONTEND_URL` | `lib/secrets.ts` |
 
-> **Note:** `AZURE_AD_CLIENT_ID` and `AZURE_AD_TENANT_ID` are **not secrets** —
-> they are public OAuth identifiers hard-coded in the deploy workflow as plain env vars.
-> Do not store them in Key Vault.
+> **containerapp-backend.yaml note:** The YAML uses `AZURE-AD-CLIENT-SECRET` as the KV
+> secret name (line ~55). The deploy workflow uses `microsoft-client-secret`. These are
+> the same secret — just referenced under different names depending on the deploy path.
+> The authoritative name for new KV entries is `microsoft-client-secret`.
+
+> **Not secrets:** `AZURE_AD_CLIENT_ID` and `AZURE_AD_TENANT_ID` are public OAuth identifiers
+> hard-coded in the deploy workflow as plain env vars. Do not store them in Key Vault.
 
 ---
 
@@ -248,19 +259,32 @@ az keyvault secret set --vault-name greenchainz-vault --name azure-client-secret
 
 ### Step 3: Grant Access to Container App
 
-```bash
-# Get Container App's managed identity principal ID
-PRINCIPAL_ID=$(az containerapp identity show \
-  --name greenchainz-backend \
-  --resource-group rg-greenchainz \
-  --query principalId -o tsv)
+The Key Vault uses **RBAC authorization** (not access policies). Grant the managed identity
+the **Key Vault Secrets User** role scoped to the vault resource:
 
-# Grant Key Vault access
-az keyvault set-policy \
+```bash
+# Get the Container App's system-assigned managed identity principal ID
+PRINCIPAL_ID=$(az containerapp show \
+  --name greenchainz-backend-v2 \
+  --resource-group rg-greenchainz-prod-container \
+  --query "identity.principalId" -o tsv)
+
+# Scope the role assignment to the vault resource (not the whole RG)
+VAULT_ID=$(az keyvault show \
   --name greenchainz-vault \
-  --object-id $PRINCIPAL_ID \
-  --secret-permissions get list
+  --resource-group greenchainz-production \
+  --query id -o tsv)
+
+az role assignment create \
+  --assignee-object-id "$PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Key Vault Secrets User" \
+  --scope "$VAULT_ID"
 ```
+
+> **Note:** `az keyvault set-policy` is for access-policy mode vaults. It is **ineffective**
+> when `enableRbacAuthorization: true` (which this vault uses). Always use
+> `az role assignment create` for RBAC-mode Key Vaults.
 
 ---
 

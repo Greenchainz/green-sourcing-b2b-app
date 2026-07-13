@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Log Analytics workspace module — GreenChainz
 // PerGB2018 SKU: pay only for data ingested.
-// 30-day interactive retention (free), then pay-per-GB for archive.
+// 30-day interactive retention; data is deleted after 30 days (no archive configured).
 // ─────────────────────────────────────────────────────────────────────────────
 
 @description('Azure region for this resource.')
@@ -18,8 +18,11 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
       name: 'PerGB2018' // cheapest — ~$2.76/GB after the 5 GB/month free tier
     }
     // 30-day interactive retention — sufficient for typical debugging windows.
+    // Data older than 30 days is purged (no archive tier configured here).
     retentionInDays: 30
-    // Force ingestion/query through Microsoft backbone, not public internet.
+    // 'Enabled' allows ingestion/query over the public internet; it does NOT
+    // route traffic exclusively through the Microsoft backbone. Private networking
+    // is intentionally out of scope for this deployment.
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
   }
