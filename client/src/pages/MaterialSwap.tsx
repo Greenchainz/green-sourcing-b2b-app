@@ -219,7 +219,8 @@ export default function MaterialSwap() {
                             {carbonSavings !== null &&
                               carbonSavings > 0 &&
                               originalGwp !== null &&
-                              candidateGwp !== null && (
+                              candidateGwp !== null &&
+                              swap.candidateHasEpd === true && (
                                 <Button
                                   size="sm"
                                   onClick={(e) => {
@@ -234,6 +235,7 @@ export default function MaterialSwap() {
                                         swap.candidate.supplierName ??
                                         undefined,
                                       savingsPct: Math.round(carbonSavings),
+                                      perUnit: true,
                                     });
                                     setWinOpen(true);
                                   }}

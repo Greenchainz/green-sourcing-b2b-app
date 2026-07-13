@@ -53,7 +53,8 @@ export function CarbonWinDialog({ data, open, onOpenChange }: CarbonWinDialogPro
       await navigator.clipboard.writeText(url);
       toast.success("Share link copied to clipboard");
     } catch {
-      toast.error("Copy failed — you can copy the link from the address bar.");
+      window.open(url, "_blank", "noopener,noreferrer");
+      toast.error("Clipboard access was blocked — the share page has opened in a new tab so you can copy the URL from there.");
     }
   };
 

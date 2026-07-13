@@ -4,6 +4,7 @@ import "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync, readFileSync } from "fs";
+import { readFile } from "fs/promises";
 import path from "path";
 import compression from "compression";
 import express from "express";
@@ -435,9 +436,13 @@ async function startServer() {
     // Crawlers (LinkedIn, X, Slack, iMessage) don't run JS, so the client-side
     // card can't drive the link preview. In production we read the built SPA
     // shell, swap the default OG block for win-specific tags, and serve that.
+    // The shell is immutable for the lifetime of the process, so we cache it
+    // once on first use to avoid blocking the event loop on every request.
     // In dev the shell is served through Vite (which must transform it), so we
     // fall through to the Vite catch-all and the page still renders client-side.
-    app.get("/win", (req, res, next) => {
+    let cachedSpaShell: string | null = null;
+
+    app.get("/win", async (req, res, next) => {
       if (process.env.NODE_ENV !== "production") {
         return next();
       }
@@ -447,8 +452,11 @@ async function startServer() {
         if (!data) {
           return next();
         }
-        const indexPath = path.resolve(clientPublicDir, "index.html");
-        let html = readFileSync(indexPath, "utf-8");
+        if (cachedSpaShell === null) {
+          const indexPath = path.resolve(clientPublicDir, "index.html");
+          cachedSpaShell = await readFile(indexPath, "utf-8");
+        }
+        let html = cachedSpaShell;
         const proto =
           (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim() ||
           req.protocol;

@@ -76,6 +76,7 @@ interface MaterialRow {
   pricePerUnit: string | null;
   priceUnit: string | null;
   supplierName: string | null;
+  hasEpd: boolean;
 }
 
 interface SwapHistoryRow {
@@ -459,7 +460,8 @@ export const materialSwapRouter = router({
         "recycledContentPct"::TEXT AS "recycledContentPct",
         "embodiedEnergy"::TEXT AS "embodiedEnergy",
         voc::TEXT AS voc, "epdUrl", certifications,
-        "pricePerUnit"::TEXT AS "pricePerUnit", "priceUnit", "supplierName"`;
+        "pricePerUnit"::TEXT AS "pricePerUnit", "priceUnit", "supplierName",
+        "hasEpd"`;
 
       const originalRow = await queryOne<MaterialRow>(
         `SELECT ${selectCols} FROM materials WHERE id = $1`,
@@ -519,6 +521,7 @@ export const materialSwapRouter = router({
               /** True when original is non-compliant but candidate IS compliant — key differentiator */
               upgradesCompliance: bccaOriginal.status === "non_compliant" && bccaCandidate.status === "compliant",
             },
+            candidateHasEpd: c.hasEpd,
           };
         });
 

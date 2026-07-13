@@ -460,7 +460,8 @@ function ArchitectOnboardingGuard() {
         path === "/how-it-works" ||
         path === "/manufacturers" ||
         path.startsWith("/manufacturers/") ||
-        path === "/insider"
+        path === "/insider" ||
+        path === "/win"
       ) {
         return;
       }

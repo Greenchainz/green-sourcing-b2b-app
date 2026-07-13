@@ -7,7 +7,6 @@ import {
 } from "@shared/carbonWin";
 import {
   ArrowRight,
-  BadgeCheck,
   Car,
   Fuel,
   Home,
@@ -97,8 +96,7 @@ export function CarbonWinCard({
           GreenChainz
         </span>
         <span className="flex items-center gap-1.5 rounded-full border border-[#9FE870]/30 bg-[#9FE870]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-[#9FE870]">
-          <BadgeCheck className="h-3.5 w-3.5" />
-          Verified Carbon Win
+          Carbon Win
         </span>
       </div>
 
@@ -114,6 +112,9 @@ export function CarbonWinCard({
         </div>
         <p className="mt-2 text-sm text-white/60 sm:text-base">
           of embodied carbon avoided
+          {data.perUnit ? (
+            <span className="ml-1 text-white/40">(per declared unit)</span>
+          ) : null}
         </p>
         {data.savingsPct && data.savingsPct > 0 ? (
           <span className="mt-3 inline-flex rounded-full bg-[#9FE870]/12 px-3 py-1 text-sm font-bold text-[#9FE870]">
@@ -142,30 +143,32 @@ export function CarbonWinCard({
         ) : null}
       </div>
 
-      {/* Equivalences */}
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        {equivalences.map((eq) => {
-          const Icon = EQUIVALENCE_ICONS[eq.key];
-          return (
-            <div
-              key={eq.key}
-              className="rounded-xl border border-white/10 bg-black/20 p-3 text-center"
-            >
-              <Icon className="mx-auto mb-1.5 h-5 w-5 text-[#9FE870]" />
-              <div className="text-xl font-extrabold sm:text-2xl">
-                {eq.display}
+      {/* Equivalences — omitted for per-unit comparisons (no project quantity known) */}
+      {!data.perUnit ? (
+        <div className="mt-6 grid grid-cols-3 gap-3">
+          {equivalences.map((eq) => {
+            const Icon = EQUIVALENCE_ICONS[eq.key];
+            return (
+              <div
+                key={eq.key}
+                className="rounded-xl border border-white/10 bg-black/20 p-3 text-center"
+              >
+                <Icon className="mx-auto mb-1.5 h-5 w-5 text-[#9FE870]" />
+                <div className="text-xl font-extrabold sm:text-2xl">
+                  {eq.display}
+                </div>
+                <div className="mt-0.5 text-[11px] leading-tight text-white/55">
+                  {eq.label}
+                </div>
               </div>
-              <div className="mt-0.5 text-[11px] leading-tight text-white/55">
-                {eq.label}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {/* Footer */}
       <div className="mt-6 flex items-center justify-between border-t border-[#9FE870]/15 pt-4 text-[11px] text-white/45">
-        <span>greenchainz.com — verified sustainable materials</span>
+        <span>greenchainz.com — sustainable materials</span>
         {dateStr ? <span>{dateStr}</span> : null}
       </div>
     </div>

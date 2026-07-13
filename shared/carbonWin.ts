@@ -17,7 +17,7 @@ export interface CarbonWinData {
   fromMaterial: string;
   /** The chosen lower-carbon material. */
   toMaterial: string;
-  /** The verified supplier who wins the spec (the money lane). */
+  /** The supplier who wins the spec (the money lane). */
   supplier?: string;
   /** Optional project name. */
   project?: string;
@@ -25,6 +25,11 @@ export interface CarbonWinData {
   savingsPct?: number;
   /** ISO date string (defaults to render time). */
   date?: string;
+  /**
+   * When true, co2SavedKg is a per-declared-unit GWP delta, not a total
+   * project saving. Omit absolute real-world equivalences in this case.
+   */
+  perUnit?: boolean;
 }
 
 /** Guard against absurd/abusive share strings. */
@@ -76,6 +81,7 @@ export function encodeWin(data: CarbonWinData): string {
     p: data.project ? clampText(data.project) : undefined,
     r: typeof data.savingsPct === "number" ? Math.round(data.savingsPct) : undefined,
     d: data.date,
+    u: data.perUnit ? true : undefined,
   };
   const json = JSON.stringify(compact);
   const bytes = new TextEncoder().encode(json);
@@ -104,6 +110,7 @@ export function decodeWin(token: string | null | undefined): CarbonWinData | nul
           ? Math.max(0, Math.min(100, Math.round(raw.r)))
           : undefined,
       date: typeof raw.d === "string" ? raw.d.slice(0, 32) : undefined,
+      perUnit: raw.u === true ? true : undefined,
     };
   } catch {
     return null;
@@ -150,13 +157,16 @@ export interface CarbonEquivalence {
 /**
  * Convert kg CO2e into relatable comparisons.
  * Factors (metric tons CO2e): car/yr 4.6, tree-seedling/10yr 0.060,
- * home energy/yr 7.5, gallon of gasoline 0.008887.
+ * home energy/yr 7.09 (EPA GHG Equivalencies Calculator, 2024),
+ * gallon of gasoline 0.008887.
+ *
+ * Source: https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator
  */
 export function carbonEquivalences(kgCo2e: number): CarbonEquivalence[] {
   const tonnes = Math.max(0, kgCo2e || 0) / 1000;
   const cars = tonnes / 4.6;
   const trees = tonnes / 0.06;
-  const homes = tonnes / 7.5;
+  const homes = tonnes / 7.09;
   const gas = tonnes / 0.008887;
   return [
     {
@@ -210,7 +220,8 @@ export function winHeadline(data: CarbonWinData): string {
 export function winShareText(data: CarbonWinData): string {
   const co2 = formatCo2(data.co2SavedKg);
   const supplier = data.supplier ? ` with ${data.supplier}` : "";
-  return `🌱 Carbon Win: ${co2.value} ${co2.unit} avoided by specifying ${data.toMaterial}${supplier} — verified on GreenChainz.`;
+  const perUnit = data.perUnit ? " (per declared unit)" : "";
+  return `🌱 Carbon Win: ${co2.value} ${co2.unit} avoided${perUnit} by specifying ${data.toMaterial}${supplier} — tracked on GreenChainz.`;
 }
 
 // ── OpenGraph meta (server-injected for crawler-facing unfurls) ──────────────
@@ -226,12 +237,14 @@ export function buildWinMeta(origin: string, data: CarbonWinData): WinMeta {
   const clean = origin.replace(/\/+$/, "");
   const co2 = formatCo2(data.co2SavedKg);
   const supplier = data.supplier ? ` · Supplier: ${data.supplier}` : "";
-  const eq = carbonEquivalences(data.co2SavedKg)[0];
+  const perUnitNote = data.perUnit ? " (per declared unit)" : "";
+  const eq = data.perUnit ? null : carbonEquivalences(data.co2SavedKg)[0];
+  const eqText = eq ? ` Like taking ${eq.display} ${eq.label}.` : "";
   return {
-    title: `${co2.value} ${co2.unit} avoided — a GreenChainz Carbon Win`,
+    title: `${co2.value} ${co2.unit} avoided${perUnitNote} — a GreenChainz Carbon Win`,
     description: `${data.toMaterial} beats ${data.fromMaterial} by ${
       data.savingsPct ? `${data.savingsPct}% ` : ""
-    }embodied carbon — like taking ${eq.display} ${eq.label}.${supplier} Verified on GreenChainz.`,
+    }embodied carbon${perUnitNote}.${eqText}${supplier} Tracked on GreenChainz.`,
     url: buildWinUrl(clean, data),
     image: `${clean}/images/og-image-homepage.jpg`,
   };
