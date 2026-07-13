@@ -446,6 +446,35 @@ async function startServer() {
     // fall through to the Vite catch-all and the page still renders client-side.
     let cachedSpaShell: string | null = null;
 
+    // ── Share unfurls: render the per-win Carbon Win card as a real PNG ───────
+    // Social crawlers (LinkedIn/X/Slack/WhatsApp/iMessage) show whatever
+    // og:image points at. We render the SAME branded 1200×630 card the client
+    // draws, on demand, so every shared win is a billboard that names the
+    // winning supplier and the CO₂e avoided — not a generic homepage image.
+    // The renderer is imported lazily so a native-canvas load issue can never
+    // take down the server: on ANY failure we fall back to the static homepage
+    // image (= today's behavior, nothing breaks). Runs in dev + prod.
+    const OG_FALLBACK_IMAGE = "/images/og-image-homepage.jpg";
+    app.get("/win/og-image.png", winShareRateLimit, async (req, res) => {
+      try {
+        const raw = typeof req.query.d === "string" ? req.query.d : null;
+        const data = decodeWin(raw);
+        if (!data) {
+          return res.redirect(302, OG_FALLBACK_IMAGE);
+        }
+        const { renderWinOgPng } = await import("../services/win-og-image");
+        const png = renderWinOgPng(data);
+        res.setHeader("Content-Type", "image/png");
+        // Deterministic per token → safe to cache hard at the edge and browser.
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.setHeader("Content-Length", String(png.length));
+        res.status(200).end(png);
+      } catch (err) {
+        console.error("[server] /win/og-image.png render failed:", err);
+        res.redirect(302, OG_FALLBACK_IMAGE);
+      }
+    });
+
     app.get("/win", winShareRateLimit, async (req, res, next) => {
       if (process.env.NODE_ENV !== "production") {
         return next();

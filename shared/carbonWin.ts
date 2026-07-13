@@ -239,6 +239,10 @@ export interface WinMeta {
   description: string;
   url: string;
   image: string;
+  imageWidth: number;
+  imageHeight: number;
+  imageType: string;
+  imageAlt: string;
 }
 
 export function buildWinMeta(origin: string, data: CarbonWinData): WinMeta {
@@ -248,13 +252,22 @@ export function buildWinMeta(origin: string, data: CarbonWinData): WinMeta {
   const perUnitNote = data.perUnit ? " (per declared unit)" : "";
   const eq = data.perUnit ? null : carbonEquivalences(data.co2SavedKg)[0];
   const eqText = eq ? ` Like taking ${eq.display} ${eq.label}.` : "";
+  const supplierAlt = data.supplier ? ` with ${data.supplier}` : "";
   return {
     title: `${co2.value} ${co2.unit} avoided${perUnitNote} — a GreenChainz Carbon Win`,
     description: `${data.toMaterial} beats ${data.fromMaterial} by ${
       data.savingsPct ? `${data.savingsPct}% ` : ""
     }embodied carbon${perUnitNote}.${eqText}${supplier} Tracked on GreenChainz.`,
     url: buildWinUrl(clean, data),
-    image: `${clean}/images/og-image-homepage.jpg`,
+    // Dynamically rendered per-win card (server-side @napi-rs/canvas). Every
+    // shared win becomes a branded billboard naming the winning supplier — not
+    // a generic homepage image. Falls back to the static JPG server-side if the
+    // render ever fails, so the unfurl never breaks.
+    image: `${clean}/win/og-image.png?d=${encodeWin(data)}`,
+    imageWidth: 1200,
+    imageHeight: 630,
+    imageType: "image/png",
+    imageAlt: `${co2.value} ${co2.unit} of embodied carbon avoided${perUnitNote} by specifying ${data.toMaterial}${supplierAlt} — a GreenChainz Carbon Win.`,
   };
 }
 
@@ -273,6 +286,7 @@ export function renderWinMetaTags(meta: WinMeta): string {
   const d = escapeHtml(meta.description);
   const u = escapeHtml(meta.url);
   const img = escapeHtml(meta.image);
+  const alt = escapeHtml(meta.imageAlt);
   return [
     `<title>${t}</title>`,
     `<meta name="description" content="${d}" />`,
@@ -282,9 +296,15 @@ export function renderWinMetaTags(meta: WinMeta): string {
     `<meta property="og:description" content="${d}" />`,
     `<meta property="og:url" content="${u}" />`,
     `<meta property="og:image" content="${img}" />`,
+    `<meta property="og:image:secure_url" content="${img}" />`,
+    `<meta property="og:image:type" content="${escapeHtml(meta.imageType)}" />`,
+    `<meta property="og:image:width" content="${meta.imageWidth}" />`,
+    `<meta property="og:image:height" content="${meta.imageHeight}" />`,
+    `<meta property="og:image:alt" content="${alt}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${t}" />`,
     `<meta name="twitter:description" content="${d}" />`,
     `<meta name="twitter:image" content="${img}" />`,
+    `<meta name="twitter:image:alt" content="${alt}" />`,
   ].join("\n    ");
 }
