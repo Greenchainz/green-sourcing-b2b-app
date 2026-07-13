@@ -284,15 +284,19 @@ publicMaterialsRouter.get('/badge/material/:id', async (req: Request, res: Respo
   res.setHeader('Cache-Control', 'public, max-age=60');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  const fallback = () =>
-    renderMaterialBadgeSvg({ score: 0, materialName: 'Material', verified: false, found: false, style, theme });
+  const fallback = (transient = false) => {
+    // Transient failures (DB down / render error) must not be cached, or a
+    // recovered material can stay "Unrated" at the edge for the cache lifetime.
+    if (transient) res.setHeader('Cache-Control', 'no-store');
+    return renderMaterialBadgeSvg({ score: 0, materialName: 'Material', verified: false, found: false, style, theme });
+  };
 
   try {
     const materialId = Number(String(req.params.id).replace(/\.svg$/i, ''));
     if (!Number.isFinite(materialId)) return res.status(200).send(fallback());
 
     const db = await getDb();
-    if (!db) return res.status(200).send(fallback());
+    if (!db) return res.status(200).send(fallback(true));
 
     const { embedding: _embedding, searchText: _searchText, ...scoreColumns } = getTableColumns(materials);
     const rows = await db
@@ -327,7 +331,7 @@ publicMaterialsRouter.get('/badge/material/:id', async (req: Request, res: Respo
     return res.status(200).send(svg);
   } catch (err) {
     console.error('[public-api] badge error:', err);
-    return res.status(200).send(fallback());
+    return res.status(200).send(fallback(true));
   }
 });
 
