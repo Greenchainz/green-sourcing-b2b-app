@@ -8,7 +8,7 @@ properties:
     activeRevisionsMode: Single
     ingress:
       external: true
-      targetPort: 3001
+      targetPort: 3000
       transport: http
       allowInsecure: false
       traffic:
@@ -85,6 +85,10 @@ properties:
       - name: resend-api-key
         keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/RESEND-API-KEY
         identity: system
+      # Application Insights telemetry connection string
+      - name: appinsights-connection
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/appinsights-connection
+        identity: system
 
   template:
     containers:
@@ -101,7 +105,7 @@ properties:
           - name: NODE_ENV
             value: production
           - name: PORT
-            value: "3001"
+            value: "3000"
           
           # ─────────────────────────────────────────────────────────────
           # Frontend URL (for CORS)
@@ -162,8 +166,14 @@ properties:
           # ─────────────────────────────────────────────────────────────
           - name: FEATURE_REDIS_CACHING
             value: "true"
+          # Telemetry enabled — APPLICATIONINSIGHTS_CONNECTION_STRING is injected
+          # by the deploy workflow from Key Vault (appinsights-connection secret).
           - name: FEATURE_AZURE_MONITORING
-            value: "false"
+            value: "true"
+          - name: AZURE_MONITOR_ENABLED
+            value: "true"
+          - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+            secretRef: appinsights-connection
           - name: FEATURE_AI_DOCUMENT_ANALYSIS
             value: "false"
           - name: NOTIFICATIONS_ENABLED
@@ -239,7 +249,7 @@ properties:
           - type: liveness
             httpGet:
               path: /health
-              port: 3001
+              port: 3000
             initialDelaySeconds: 10
             periodSeconds: 30
             failureThreshold: 3
@@ -247,7 +257,7 @@ properties:
           - type: readiness
             httpGet:
               path: /ready
-              port: 3001
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
@@ -255,7 +265,7 @@ properties:
           - type: startup
             httpGet:
               path: /health
-              port: 3001
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 30

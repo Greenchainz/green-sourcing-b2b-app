@@ -1,6 +1,6 @@
 import "dotenv/config";
 import "./log-scrubber"; // must be second — scrubs all subsequent console.* calls
-import "../instrument";
+import { initTelemetry } from "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
 import { existsSync } from "fs";
@@ -171,6 +171,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const { loadSecrets } = await import("../../lib/secrets");
   await loadSecrets();
+  // Init telemetry here — after loadSecrets() so any KV-loaded connection string is
+  // already in process.env. (The deploy workflow also injects it as a plain env var.)
+  initTelemetry();
 
   const preflight = runStartupSecurityPreflight();
   if (process.env.NODE_ENV === "production" && preflight.hasFailures) {
