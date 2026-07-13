@@ -1,6 +1,24 @@
-# Database Schemas
+# ⚠️ DEPRECATED — Do Not Use
 
-This directory contains database schemas and migration files for the GreenChainz platform.
+> **This entire directory is obsolete.** These raw SQL files were written before Drizzle ORM was adopted as the authoritative schema system. They are kept for historical reference only.
+>
+> **Do NOT run any file from this directory against a database.**
+> **Do NOT use these files to understand the current schema.**
+>
+> ### What to use instead
+>
+> | Task | Correct location |
+> |---|---|
+> | Read/edit the live schema | `drizzle/schema.ts` (+ `drizzle/schema-additions-mcs.ts`) |
+> | Generate a new migration | `pnpm run db:generate` → outputs to `drizzle/0NNN_*.sql` |
+> | Apply migrations | `pnpm run db:migrate` |
+> | Add incremental one-off SQL | `drizzle/migrations/<timestamp>_description.sql` |
+
+---
+
+# Database Schemas (HISTORICAL REFERENCE ONLY)
+
+This directory contains legacy database schemas and migration files that predate the adoption of Drizzle ORM.
 
 ## Azure Postgres (RFQ Simulator) Schema
 
