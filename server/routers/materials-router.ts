@@ -14,7 +14,6 @@ import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
 import { getAllPriceTrendsFromDb, getPriceTrendByCategory } from '../services/price-trends';
-import { generateEmbedding } from '../services/embedding-service';
 import { computeMcs } from '../services/mcs-score';
 import { materialSearchProvider } from '../services/search';
 
