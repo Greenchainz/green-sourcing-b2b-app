@@ -1,11 +1,11 @@
-# Foundry private access unblock checklist
+# Azure AI Foundry private access unblock checklist
 
 ## Goal
-Restore access to the GreenChainz Microsoft Foundry project currently showing **"Private network access required"** and keep work open until end-to-end access is confirmed.
+Restore access to the GreenChainz Azure AI Foundry project currently showing **"Private network access required"** and keep work open until end-to-end access is confirmed.
 
 ## Definition of done (hard gates)
 - [ ] Foundry home opens without the private network access error from an approved network path.
-- [ ] DNS for the Foundry private endpoint resolves to private IP from the client path being used.
+- [ ] DNS for the Foundry private endpoint resolves to a private IP from the client path being used.
 - [ ] Network path is validated (VPN/ExpressRoute/peered VNet + NSG/UDR rules allow required traffic).
 - [ ] Browser session is confirmed against the correct tenant/subscription/project context.
 - [ ] A rollback-safe record exists of every change made (who/what/when).
