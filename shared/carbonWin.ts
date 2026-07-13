@@ -198,6 +198,14 @@ export function carbonEquivalences(kgCo2e: number): CarbonEquivalence[] {
 
 // ── URLs + share text ─────────────────────────────────────────────────────────
 
+/** Strip trailing forward-slashes without a regex so static analysis doesn't
+ *  flag it as a potential ReDoS sink when the input is user-provided. */
+function trimTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url[end - 1] === "/") end--;
+  return end === url.length ? url : url.slice(0, end);
+}
+
 /** Relative path (/win?d=…) for a win. */
 export function buildWinPath(data: CarbonWinData): string {
   return `/win?d=${encodeWin(data)}`;
@@ -205,7 +213,7 @@ export function buildWinPath(data: CarbonWinData): string {
 
 /** Absolute share URL for a win. */
 export function buildWinUrl(origin: string, data: CarbonWinData): string {
-  const clean = origin.replace(/\/+$/, "");
+  const clean = trimTrailingSlashes(origin);
   return `${clean}${buildWinPath(data)}`;
 }
 
@@ -234,7 +242,7 @@ export interface WinMeta {
 }
 
 export function buildWinMeta(origin: string, data: CarbonWinData): WinMeta {
-  const clean = origin.replace(/\/+$/, "");
+  const clean = trimTrailingSlashes(origin);
   const co2 = formatCo2(data.co2SavedKg);
   const supplier = data.supplier ? ` · Supplier: ${data.supplier}` : "";
   const perUnitNote = data.perUnit ? " (per declared unit)" : "";

@@ -89,6 +89,7 @@ const rfqPdfRateLimit = createRateLimiter(30, 60_000);
 const materialScorePdfRateLimit = createRateLimiter(10, 60_000);
 const webhookRateLimit = createRateLimiter(120, 60_000);
 const publicApiRateLimit = createRateLimiter(120, 60_000);
+const winShareRateLimit = createRateLimiter(120, 60_000);
 const CANONICAL_HOST = "greenchainz.com";
 const ALLOWED_PUBLIC_HOSTS = new Set([
   CANONICAL_HOST,
@@ -442,7 +443,7 @@ async function startServer() {
     // fall through to the Vite catch-all and the page still renders client-side.
     let cachedSpaShell: string | null = null;
 
-    app.get("/win", async (req, res, next) => {
+    app.get("/win", winShareRateLimit, async (req, res, next) => {
       if (process.env.NODE_ENV !== "production") {
         return next();
       }
@@ -454,6 +455,8 @@ async function startServer() {
         }
         if (cachedSpaShell === null) {
           const indexPath = path.resolve(clientPublicDir, "index.html");
+          // Assign only on success so a transient failure (e.g. build not yet
+          // written) keeps cachedSpaShell as null and we retry next request.
           cachedSpaShell = await readFile(indexPath, "utf-8");
         }
         let html = cachedSpaShell;
