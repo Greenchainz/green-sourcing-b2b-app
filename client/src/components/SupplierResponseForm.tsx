@@ -291,7 +291,7 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
             onCheckedChange={(v) => onChange(v)}
           />
           <Label htmlFor={id} className="text-sm cursor-pointer">
-            {Boolean(value) ? "Yes" : "No"}
+            {value ? "Yes" : "No"}
           </Label>
         </div>
       ) : field.fieldType === "number" || field.fieldType === "currency" ? (

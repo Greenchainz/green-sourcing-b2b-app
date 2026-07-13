@@ -74,7 +74,7 @@ export const architectSpecRouter = router({
         return { success: true, blobUrl: url };
       } catch (error) {
         console.error("File upload failed:", error);
-        throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
       }
     }),
 

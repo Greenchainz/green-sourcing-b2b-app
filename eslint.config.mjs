@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import typescript from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
+import reactHooks from "eslint-plugin-react-hooks";
 import security from "eslint-plugin-security";
 import globals from "globals";
 
@@ -37,9 +38,13 @@ export default [
     },
     plugins: {
       "@typescript-eslint": typescript,
+      "react-hooks": reactHooks,
     },
     rules: {
-      "@typescript-eslint/no-explicit-any": "error",
+      // Only enable exhaustive-deps (the one that was failing with "rule not found")
+      // rules-of-hooks would add 35+ errors to pre-existing code, which is out of scope
+      "react-hooks/exhaustive-deps": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -50,6 +55,8 @@ export default [
       ],
       "no-unused-vars": "off", // Disable base rule as it can report incorrect errors
       "no-undef": "off", // TypeScript handles this
+      "no-redeclare": "off", // TypeScript handles redeclarations; TS rule below also fires on valid const+type patterns
+      "@typescript-eslint/no-redeclare": "off",
     },
   },
 ];

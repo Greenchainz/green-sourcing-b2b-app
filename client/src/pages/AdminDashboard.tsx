@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'wouter';
+import { useState, useMemo, useCallback } from 'react';
+import { Link, useLocation, useSearch } from 'wouter';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc';
@@ -239,7 +239,7 @@ function OverviewTab() {
           <CardTitle className="text-base font-semibold text-white">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
-          <Link href="/admin/users">
+          <Link href="/admin?tab=users">
             <Button
               variant="outline"
               size="sm"
@@ -259,7 +259,7 @@ function OverviewTab() {
               View Suppliers
             </Button>
           </Link>
-          <Link href="/admin/verification-queue">
+          <Link href="/admin/verification">
             <Button
               variant="outline"
               size="sm"
@@ -1396,7 +1396,7 @@ function SystemTab() {
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
-            <Link href="/admin/verification-queue">
+            <Link href="/admin/verification">
               <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
                 <Clock className="mr-2 h-4 w-4" />Verification Queue
                 <ExternalLink className="ml-2 h-3 w-3" />
@@ -1473,7 +1473,19 @@ function AccessDenied() {
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [, navigate] = useLocation();
+  const searchStr = useSearch();
+  const activeTab = useMemo(
+    () => new URLSearchParams(searchStr).get('tab') ?? 'overview',
+    [searchStr],
+  );
+
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      navigate(`/admin?tab=${tab}`);
+    },
+    [navigate],
+  );
 
   // Loading state while auth resolves
   if (authLoading) {

@@ -169,6 +169,7 @@ const CrmDashboard = lazy(() => import("./pages/admin/CrmDashboard"));
 const ConciergeDashboard = lazy(() => import("./pages/admin/ConciergeDashboard"));
 const SupplierSpecSubmission = lazy(() => import("./pages/SupplierSpecSubmission"));
 const MaterialSwap = lazy(() => import("./pages/MaterialSwap"));
+const CarbonWin = lazy(() => import("./pages/CarbonWin"));
 const InsiderPage = lazy(() => import("./pages/InsiderPage"));
 const ManufacturerDirectory = lazy(() => import("./pages/ManufacturerDirectory"));
 const ManufacturerProfile = lazy(() => import("./pages/ManufacturerProfile"));
@@ -263,11 +264,14 @@ function Router() {
       <Route path="/supplier/analytics">{() => <SupplierLayout><SupplierAnalytics /></SupplierLayout>}</Route>
       <Route path="/supplier/filters">{() => <SupplierLayout><SupplierFilterSetup /></SupplierLayout>}</Route>
       <Route path="/material-swap" component={MaterialSwap} />
+      <Route path="/win" component={CarbonWin} />
       <Route path="/messages" component={Messages} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/verification" component={AdminVerificationQueue} />
+      <Route path="/admin/verification-queue">{() => <Redirect to="/admin/verification" />}</Route>
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
+      <Route path="/admin/users">{() => <Redirect to="/admin?tab=users" />}</Route>
       <Route path="/admin/crm" component={CrmDashboard} />
       <Route path="/admin/concierge" component={ConciergeDashboard} />
       <Route path="/admin/founder-videos" component={FounderVideoList} />
@@ -458,7 +462,8 @@ function ArchitectOnboardingGuard() {
         path === "/how-it-works" ||
         path === "/manufacturers" ||
         path.startsWith("/manufacturers/") ||
-        path === "/insider"
+        path === "/insider" ||
+        path === "/win"
       ) {
         return;
       }
