@@ -595,6 +595,11 @@ jobs:
     name: Deploy to Azure
     runs-on: ubuntu-latest
     needs: migrate
+    # Binds this job to the "Production" GitHub Environment, which has a required
+    # reviewer configured. GitHub pauses here and waits for manual approval before
+    # the Container Apps deploy runs. (This is the deployment environment gate,
+    # distinct from the workflow-level `env:` variables above.)
+    environment: Production
     timeout-minutes: 30
     permissions:
       id-token: write
