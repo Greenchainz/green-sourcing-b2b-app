@@ -14,6 +14,8 @@ import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
 import type { PersonaWeights } from '../ccps-engine';
 import { getAllPriceTrendsFromDb, getPriceTrendByCategory } from '../services/price-trends';
+import { generateEmbedding } from '../services/embedding-service';
+import { computeMcs } from '../services/mcs-score';
 import { materialSearchProvider } from '../services/search';
 
 export const materialsRouter = router({
@@ -316,62 +318,7 @@ export const materialsRouter = router({
         .from(materialCertifications)
         .where(eq(materialCertifications.materialId, input.materialId));
 
-      const hasEpdFlag = !!material.hasEpd;
-      const hasEpdNumber = !!material.epdNumber;
-      const epdScore = hasEpdFlag ? 30 : hasEpdNumber ? 15 : 0;
-
-      const gwp = material.gwpValue ? Number(material.gwpValue) : null;
-      const median = material.ec3IndustryMedian ? Number(material.ec3IndustryMedian) : null;
-      const bestPractice = material.ec3BestPractice ? Number(material.ec3BestPractice) : null;
-      const conservative = material.ec3ConservativeEstimate ? Number(material.ec3ConservativeEstimate) : null;
-
-      let carbonScore = 0;
-      if (gwp !== null && median !== null && median > 0) {
-        if (bestPractice !== null && gwp <= bestPractice) {
-          carbonScore = 25;
-        } else if (conservative !== null && gwp >= conservative) {
-          carbonScore = 0;
-        } else if (conservative !== null && bestPractice !== null && conservative > bestPractice) {
-          carbonScore = Math.max(0, Math.min(25, Math.round(25 * (conservative - gwp) / (conservative - bestPractice))));
-        } else {
-          const ratio = gwp / median;
-          carbonScore = Math.max(0, Math.min(25, Math.round((1 - ratio) * 50)));
-        }
-      }
-
-      const certSet = new Set<string>();
-      if (material.hasEpd) certSet.add('EPD');
-      if (material.hasHpd) certSet.add('HPD');
-      if (material.hasFsc) certSet.add('FSC');
-      if (material.hasC2c) certSet.add('Cradle to Cradle');
-      if (material.hasGreenguard) certSet.add('GREENGUARD');
-      if (material.hasDeclare) certSet.add('Declare');
-      for (const c of certs) if (c.certificationName) certSet.add(c.certificationName);
-      const certificationScore = Math.min(20, certSet.size * 4);
-      const certNames = Array.from(certSet);
-
-      const miles = material.regionalAvailabilityMiles ?? null;
-      const baseLocal = miles === null ? 8 : miles === 0 ? 15 : Math.max(0, Math.min(15, Math.round((1 - miles / 500) * 15)));
-      const localSourcingScore = material.usManufactured ? Math.min(15, baseLocal + 3) : baseLocal;
-
-      const transparencyFields = [
-        material.description,
-        material.gwpValue,
-        material.pricePerUnit,
-        material.leadTimeDays,
-        material.epdUrl || material.epdNumber,
-        material.specSheetUrl,
-        material.manufacturerId,
-        material.recycledContentPct,
-        material.ec3IndustryMedian,
-        material.category,
-      ];
-      const filledCount = transparencyFields.filter(
-        (f) => f !== null && f !== undefined && String(f).trim() !== ''
-      ).length;
-      const transparencyScore = Math.round((filledCount / transparencyFields.length) * 10);
-
-      const total = Math.min(100, epdScore + carbonScore + certificationScore + localSourcingScore + transparencyScore);
+      const { total, breakdown } = computeMcs(material, certs);
 
       const now = new Date();
       const history = Array.from({ length: 6 }, (_, i) => {
@@ -387,13 +334,7 @@ export const materialsRouter = router({
         materialName: material.name,
         manufacturerName,
         total,
-        breakdown: {
-          epd: { score: epdScore, max: 30, hasEpd: hasEpdFlag, hasEpdNumber },
-          carbon: { score: carbonScore, max: 25, gwp, median, bestPractice },
-          certifications: { score: certificationScore, max: 20, certNames },
-          localSourcing: { score: localSourcingScore, max: 15, miles, usManufactured: !!material.usManufactured },
-          transparency: { score: transparencyScore, max: 10, filledFields: filledCount, totalFields: transparencyFields.length },
-        },
+        breakdown,
         history,
       };
     }),
