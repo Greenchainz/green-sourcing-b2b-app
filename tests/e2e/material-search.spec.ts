@@ -63,6 +63,79 @@ test.describe('Material discovery', () => {
         await expect(page.getByRole('link', { name: /GreenCore Recycled Steel Beam/i })).toHaveCount(0);
     });
 
+    /**
+     * REGRESSION: MaterialDetail must not white-screen on partial/wrong-typed API data.
+     *
+     * The detail page is a core paid-pilot demo path. Three latent crashes let a
+     * drifting API response throw during render, which the ErrorBoundary catches
+     * as a blank white page:
+     *   (a) Object.keys(m.ccpsByPersona) called when ccpsByPersona is null,
+     *   (b) CcpsScoreCard reading ccps.dataQuality.confidence when dataQuality is missing,
+     *   (c) (alternatives ?? []).slice(...) when findAlternatives returns a NON-array.
+     *
+     * These assert the page still fully renders the material's core info and the
+     * ErrorBoundary fallback ("An unexpected error occurred.") never appears.
+     */
+    const ERROR_BOUNDARY = /An unexpected error occurred/i;
+
+    test('detail page survives null ccpsByPersona + non-array alternatives', async ({ page }) => {
+        // ccpsByPersona: null  → exercises guard (a) [Object.keys] and CcpsScoreCard.
+        // alternatives: a non-array error object → exercises guard (c) [.slice].
+        const PARTIAL = makeMaterial({
+            id: 303,
+            name: 'PartialData EcoPanel',
+            ccpsByPersona: null,
+        });
+
+        await mockTrpc(page, {
+            'materials.getById': PARTIAL,
+            'materialSwaps.getSavedSwaps': [],
+            'materialSwap.findAlternatives': { error: 'boom' }, // deliberately NOT an array
+        });
+
+        await page.goto('/materials/303');
+
+        // Core info renders...
+        await expect(page.getByRole('heading', { name: 'PartialData EcoPanel' })).toBeVisible();
+        // ...and the ErrorBoundary white-screen never appears.
+        await expect(page.getByRole('heading', { name: ERROR_BOUNDARY })).toHaveCount(0);
+    });
+
+    test('detail page survives a CCPS persona missing dataQuality', async ({ page }) => {
+        // The "Credit Score" tab is the DEFAULT tab, so CcpsScoreCard renders on
+        // load. A persona breakdown with no `dataQuality` exercises guard (b).
+        const NO_DQ = makeMaterial({
+            id: 404,
+            name: 'NoDataQuality Beam',
+            ccpsByPersona: {
+                default: {
+                    carbonScore: 60,
+                    complianceScore: 55,
+                    certificationScore: 50,
+                    costScore: 45,
+                    supplyChainScore: 40,
+                    healthScore: 35,
+                    ccpsTotal: 58,
+                    sourcingDifficulty: 3,
+                    // dataQuality intentionally omitted (partial API response)
+                },
+            },
+        });
+
+        await mockTrpc(page, {
+            'materials.getById': NO_DQ,
+            'materialSwaps.getSavedSwaps': [],
+            'materialSwap.findAlternatives': [],
+        });
+
+        await page.goto('/materials/404');
+
+        await expect(page.getByRole('heading', { name: 'NoDataQuality Beam' })).toBeVisible();
+        // The score card still renders its grade/breakdown instead of crashing.
+        await expect(page.getByText('Score Breakdown')).toBeVisible();
+        await expect(page.getByRole('heading', { name: ERROR_BOUNDARY })).toHaveCount(0);
+    });
+
     test('opening a material shows its detail / EPD page', async ({ page }) => {
         await mockTrpc(page, {
             'materials.list': listHandler,
