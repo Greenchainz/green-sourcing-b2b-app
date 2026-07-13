@@ -251,7 +251,7 @@ function normalizeAndExpandSignatures(r: bigint, s: bigint): Array<{ r: bigint; 
   return pairs;
 }
 
-function parseDerEcdsaSignature(der: Uint8Array): { r: bigint; s: bigint } {
+function _parseDerEcdsaSignature(der: Uint8Array): { r: bigint; s: bigint } {
   if (der.length < 8 || der[0] !== 0x30) {
     throw new Error("[blockchain-proof] Invalid DER signature (missing SEQUENCE header)");
   }

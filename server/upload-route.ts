@@ -90,7 +90,7 @@ uploadRouter.post("/supplier/upload-image", (req, res, next) => {
     try {
       const { url } = await storagePut(blobName, req.file.buffer, req.file.mimetype);
       imageUrl = url;
-    } catch (storageErr) {
+    } catch (_storageErr) {
       console.warn("[material-image] Azure storage not configured, skipping blob upload");
       res.status(503).json({
         error:

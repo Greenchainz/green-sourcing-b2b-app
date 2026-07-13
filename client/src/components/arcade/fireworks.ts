@@ -70,6 +70,8 @@ export interface CelebrateOpts {
   rng?: () => number;
 }
 
+export interface CelebrationFx {
+  celebrate(x: number, y: number, opts: CelebrateOpts): void;
 export interface BurstOpts {
   /** Game accent (hex) — folded into the burst palette. */
   accent: string;

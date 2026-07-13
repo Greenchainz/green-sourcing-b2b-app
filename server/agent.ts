@@ -698,7 +698,7 @@ Return ONLY a JSON object: {"agent": "materials|rfq|support", "confidence": 0.0-
 
     const parsed = JSON.parse(result.choices[0].message.content as string);
     return parsed as RouterResult;
-  } catch (err) {
+  } catch {
     // Fallback: route based on keywords
     if (lower.match(/material|carbon|epd|gwp|insulation|glazing|concrete|steel|wood|assembly|leed|certification|compare|alternative/)) {
       return { agent: "materials", confidence: 0.7, reasoning: "Keyword match: material-related terms" };

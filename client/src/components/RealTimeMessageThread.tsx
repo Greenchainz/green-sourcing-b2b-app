@@ -89,7 +89,7 @@ export function RealTimeMessageThread({
           const data = JSON.parse(event.data);
 
           switch (data.type) {
-            case "message":
+            case "message": {
               // New message received
               const newMsg: Message = {
                 id: Date.now(), // Temporary ID until we get real one
@@ -110,6 +110,7 @@ export function RealTimeMessageThread({
                 }, 1000);
               }
               break;
+            }
 
             case "message_sent":
               // Confirmation that our message was sent

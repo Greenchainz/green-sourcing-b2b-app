@@ -52,9 +52,9 @@ function WatchBar({ pct }: { pct: number }) {
 }
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
-type Video = RouterOutput["founderVideo"]["analytics"]["videos"][number];
+type VideoRecord = RouterOutput["founderVideo"]["analytics"]["videos"][number];
 
-function VideoRow({ v }: { v: Video }) {
+function VideoRow({ v }: { v: VideoRecord }) {
   const [open, setOpen] = useState(false);
   const hasViews = v.viewCount > 0;
 

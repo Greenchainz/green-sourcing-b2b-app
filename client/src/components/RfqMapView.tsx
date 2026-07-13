@@ -51,7 +51,7 @@ export function RfqMapView({ rfqs, supplierLocation, radiusFilter, onRfqClick }:
           setIsLoading(false);
         };
         document.head.appendChild(script);
-      } catch (err) {
+      } catch {
         setError("Error initializing map");
         setIsLoading(false);
       }

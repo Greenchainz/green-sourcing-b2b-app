@@ -37,7 +37,7 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
  */
 function materialKeywords(materialType: string): string[] {
   const lower = materialType.toLowerCase();
-  const words = lower.split(/[\s,\-\/]+/).filter((w) => w.length > 2);
+  const words = lower.split(/[-\s,/]+/).filter((w) => w.length > 2);
   // Add common synonyms
   const synonyms: Record<string, string[]> = {
     concrete: ["cement", "ready-mix", "precast"],
