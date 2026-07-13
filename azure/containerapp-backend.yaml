@@ -200,11 +200,11 @@ properties:
 
           # ─────────────────────────────────────────────────────────────
           # User-Assigned Managed Identity (Azure resource access — NOT user sign-in)
-          # Identity: id-greenchainz-backend (rg-greenchainz-infra)
-          # Client ID: ec248abf-f6ce-4d7c-8888-740317709f1b
+          # Identity: id-greenchainz-backend (rg-greenchainz-prod-container)
+          # Client ID: fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e
           # ─────────────────────────────────────────────────────────────
           - name: MANAGED_IDENTITY_CLIENT_ID
-            value: "ec248abf-f6ce-4d7c-8888-740317709f1b"
+            value: "fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e"
 
           # ─────────────────────────────────────────────────────────────
           # Intercom & Internal API
@@ -239,6 +239,18 @@ properties:
             value: greencontent
           - name: AZURE_STORAGE_CONTAINER_NAME
             value: greenchainz-uploads
+          # ─────────────────────────────────────────────────────────────
+          # Azure OpenAI / AI Services (Foundry hub: greenchainz-resource)
+          # Auth: system-assigned managed identity (Azure AI Developer role)
+          # ─────────────────────────────────────────────────────────────
+          - name: AZURE_OPENAI_ENDPOINT
+            value: "https://greenchainz-resource.cognitiveservices.azure.com/"
+          - name: AZURE_OPENAI_DEPLOYMENT
+            value: "gpt-4o"
+          - name: AZURE_OPENAI_API_VERSION
+            value: "2024-08-01-preview"
+          - name: DOCUMENT_INTELLIGENCE_ENDPOINT
+            value: "https://greenchainz-content-intel.cognitiveservices.azure.com/"
         
         # ─────────────────────────────────────────────────────────────
         # Health Probes
