@@ -8,6 +8,28 @@
 
 ## Completed Baseline (Repository + Package Audit)
 
+### Email & Partner Program
+- [ ] Send email to Becky (see `EMAIL-DRAFT.md`)
+- [ ] Apply to AECO Technology Partner Program
+- [ ] Confirm Becky + Tiffany received submission preview
+
+### Technical Readiness
+- [ ] Main app deployed with SDA endpoints live (`green-sourcing-b2b-app`)
+- [ ] Forma extension built and deployable (Forma extension repo)
+- [ ] Revit plugin packaged as `.bundle` or installer (Revit plugin repo)
+- [ ] Demo environment live at `https://greenchainz.com`
+- [ ] Demo credentials working (`demo@greenchainz.com` / password stored in Key Vault — do not commit)
+- [ ] All SDA API endpoints returning valid responses
+- [ ] End-to-end flow tested: Revit/Forma → main app API → material data
+
+### Assets Required
+- [ ] App icon (512x512 PNG, transparent background)
+- [ ] Screenshots – Revit plugin panel (min 3)
+- [ ] Screenshots – Forma extension (min 3)
+- [ ] Screenshots – Sustainability data view
+- [ ] Screenshots – RFQ workflow
+- [ ] Walkthrough video (2-5 min recommended)
+- [ ] PDF or hosted documentation (install guide + user guide)
 - [x] Autodesk marketplace documentation set present in `docs/autodesk-marketplace/`
 - [x] Release package structure present in `release/` (manifests, docs, security notes)
 - [x] Demo access references standardized to `https://greenchainz.com`
@@ -34,6 +56,14 @@
 - [ ] Confirm production-ready Forma extension package
 - [ ] Confirm end-to-end reviewer flow works with live domain `https://greenchainz.com`
 
+| Item | Status | Notes |
+|------|--------|-------|
+| Demo URL readiness | ❓ | Confirm `greenchainz.com` is live |
+| SDA endpoints in main app | ❓ | Confirm SDA routes are deployed in `green-sourcing-b2b-app` |
+| Revit plugin build | ❓ | Is the `.bundle` packaged and signed? |
+| Forma extension build | ❓ | Is it published to extension registry? |
+| Screenshots captured | ❓ | Need actual product screenshots |
+| Video walkthrough | ❓ | Record or confirm existing |
 ### Submission Assembly
 - [ ] Perform final pass on `docs/autodesk-marketplace/LISTING-CONTENT.md`
 - [ ] Assemble final submission zip from `release/` only after all manual-final checks pass

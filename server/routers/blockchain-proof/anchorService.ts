@@ -85,7 +85,8 @@ export async function anchorArtifact(
   } catch (err) {
     console.error("[blockchain-proof] anchor() transaction failed:", err);
     throw new Error(
-      `[blockchain-proof] Failed to submit anchor transaction: ${err instanceof Error ? err.message : String(err)}`
+      `[blockchain-proof] Failed to submit anchor transaction: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err }
     );
   }
 

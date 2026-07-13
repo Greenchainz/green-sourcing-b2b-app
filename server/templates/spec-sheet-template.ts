@@ -185,7 +185,7 @@ function sectionTitle(
 
 function buildSchemas(): (Schema & Record<string, unknown>)[] {
   const schemas: (Schema & Record<string, unknown>)[] = [];
-  let y = 0;
+  let y: number;
 
   // ── Header bar (static green rectangle + white text) ───────────────────
   schemas.push(rectField("headerBar", 0, 0, PAGE_W, HEADER_H, GREEN));
@@ -301,7 +301,6 @@ function buildSchemas(): (Schema & Record<string, unknown>)[] {
   for (let i = 0; i < PROC_ROWS; i++) {
     schemas.push(...tableRow("proc", i, y));
   }
-  y += PROC_ROWS * ROW_H + 8;
 
   // ── Footer ────────────────────────────────────────────────────────────
   const footerY = PAGE_H - 15;

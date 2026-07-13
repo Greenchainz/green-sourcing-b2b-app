@@ -12,7 +12,7 @@
  * All endpoints use Bearer token auth via the `api_keys` table.
  */
 
-import express, { Request, Response, NextFunction, Router } from 'express';
+import { Request, Response, NextFunction, Router } from 'express';
 import { query } from '../lib/pg-pool';
 import { runCarbonAudit } from '../lib/greenchainz/carbon-audit';
 import { canRunAudit, consumeAuditCredit } from '../lib/greenchainz/audit-credits';

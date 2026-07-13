@@ -10,15 +10,18 @@ import { captureEvent } from "./services/learning-pipeline";
  * Routes:
  *   GET  /api/public/materials/search    — keyword + category search
  *   GET  /api/public/materials/:id/swaps — greener alternatives (SWAP engine)
+ *   GET  /api/public/badge/material/:id.svg — embeddable Verified score badge (SVG)
  *   GET  /api/public/auth/verify         — validate a Forma extension Bearer token
  *   POST /api/public/rfq/add-item        — create an RFQ from the Forma extension
  */
 
 import { Router, type Request, type Response } from 'express';
 import { getDb } from './db';
-import { materials, manufacturers, rfqRequests, suppliers, users } from '../drizzle/schema';
-import { eq, like, and, lte, or, desc, sql, ilike } from 'drizzle-orm';
+import { materials, manufacturers, materialCertifications, rfqRequests, suppliers, users } from '../drizzle/schema';
+import { eq, like, and, lte, or, desc, sql, ilike, getTableColumns } from 'drizzle-orm';
 import { sdk } from './_core/sdk';
+import { computeMcs } from './services/mcs-score';
+import { renderMaterialBadgeSvg, type BadgeStyle, type BadgeTheme } from './services/material-badge';
 
 export const publicMaterialsRouter = Router();
 const SEARCH_CACHE_TTL_MS = 60_000;
@@ -258,6 +261,77 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
   } catch (err) {
     console.error('[public-api] materials/swaps error:', err);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── GET /api/public/badge/material/:id.svg ────────────────────────────────────
+//
+// The "GreenChainz Verified" embeddable badge. Suppliers paste this on their own
+// product pages / websites; it always renders the live Material Credit Score
+// (identical math to the in-app score page). Unauthenticated + cacheable so it
+// works as a plain <img> on any external site.
+//
+// Query params:  style=flat|card   theme=light|dark
+// Accepts an optional ".svg" suffix on the id so the URL looks like an image.
+
+publicMaterialsRouter.get('/badge/material/:id', async (req: Request, res: Response) => {
+  const style: BadgeStyle = req.query.style === 'card' ? 'card' : 'flat';
+  const theme: BadgeTheme = req.query.theme === 'dark' ? 'dark' : 'light';
+
+  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+  // Conservative default: short cache so transient not-found / DB-unavailable /
+  // error fallbacks recover quickly. Successful badges get a long cache below.
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const fallback = (transient = false) => {
+    // Transient failures (DB down / render error) must not be cached, or a
+    // recovered material can stay "Unrated" at the edge for the cache lifetime.
+    if (transient) res.setHeader('Cache-Control', 'no-store');
+    return renderMaterialBadgeSvg({ score: 0, materialName: 'Material', verified: false, found: false, style, theme });
+  };
+
+  try {
+    const materialId = Number(String(req.params.id).replace(/\.svg$/i, ''));
+    if (!Number.isFinite(materialId)) return res.status(200).send(fallback());
+
+    const db = await getDb();
+    if (!db) return res.status(200).send(fallback(true));
+
+    const { embedding: _embedding, searchText: _searchText, ...scoreColumns } = getTableColumns(materials);
+    const rows = await db
+      .select({ material: scoreColumns, manufacturerName: manufacturers.name })
+      .from(materials)
+      .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+      .where(eq(materials.id, materialId))
+      .limit(1);
+
+    if (rows.length === 0) return res.status(200).send(fallback());
+    const { material, manufacturerName } = rows[0];
+
+    const certs = await db
+      .select()
+      .from(materialCertifications)
+      .where(eq(materialCertifications.materialId, materialId));
+
+    const { total } = computeMcs(material, certs);
+
+    const svg = renderMaterialBadgeSvg({
+      score: total,
+      materialName: material.name ?? 'Material',
+      manufacturerName,
+      verified: !!material.verified,
+      found: true,
+      style,
+      theme,
+    });
+
+    // Valid, found badge — safe to cache aggressively at the edge.
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+    return res.status(200).send(svg);
+  } catch (err) {
+    console.error('[public-api] badge error:', err);
+    return res.status(200).send(fallback(true));
   }
 });
 
