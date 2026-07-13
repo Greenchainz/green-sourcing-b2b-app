@@ -88,7 +88,7 @@ These **MUST** be stored in Azure Key Vault. Production will **refuse to start**
 |----------|----------------------|-------------|
 | `AZURE_STORAGE_CONNECTION_STRING` | `storage-connection-string` | Blob storage (contains keys) |
 | `AZURE_REDIS_CONNECTION_STRING` | `redis-connection-string` | Redis URL with password |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | `appinsights-connection-string` | App Insights (contains key) |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | `appinsights-connection` | App Insights (contains instrumentation key) |
 | `SMTP_PASS` | `smtp-password` | Email service password |
 | `STRIPE_SECRET_KEY` | `stripe-secret-key` | Stripe API key |
 | `STRIPE_WEBHOOK_SECRET` | `stripe-webhook-secret` | Stripe webhook signing |
@@ -116,7 +116,7 @@ Set these as Container App environment variables. Not secrets, but environment-s
 | Variable | Example Value | Description | Required |
 |----------|---------------|-------------|----------|
 | `NODE_ENV` | `production` | Environment mode | ✅ Yes |
-| `PORT` | `3001` | Server port | ✅ Yes |
+| `PORT` | `3000` | Server port | ✅ Yes |
 | `FRONTEND_URL` | `https://greenchainz.com` | Frontend URL for CORS | ✅ Yes |
 | `BACKEND_URL` | `https://api.greenchainz.com` | Backend self-reference | ✅ Yes |
 | `POSTGRES_HOST` | `greenchainz.postgres.database.azure.com` | Database host | ✅ Yes |
@@ -168,6 +168,45 @@ Safe to include in configuration files. These are feature flags and tuning param
 
 ---
 
+## Canonical Key Vault Secret Names
+
+> **Single source of truth.** These names must match exactly in `lib/secrets.ts`,
+> `azure/containerapp-backend.yaml`, and `.github/workflows/deploy-azure.yml`.
+
+| Key Vault secret name | env var set at runtime | Loaded by |
+|---|---|---|
+| `jwt-secret` | `JWT_SECRET` | `lib/secrets.ts` + deploy workflow (secretref) |
+| `microsoft-client-secret` | `AZURE_AD_CLIENT_SECRET` | `lib/secrets.ts` + deploy workflow (secretref) |
+| `Database-URL` | `DATABASE_URL` | deploy workflow (secretref) |
+| `appinsights-connection` | `APPLICATIONINSIGHTS_CONNECTION_STRING` | `lib/secrets.ts` + deploy workflow (plain env var) |
+| `fred-api-key` | `FRED_API_KEY` | deploy workflow → `lib/secrets.ts` |
+| `resend-api-key` | `RESEND_API_KEY` | deploy workflow → `lib/secrets.ts` |
+| `ec3-api-key` | `EC3_API_KEY` | deploy workflow (conditional) |
+| `azure-maps-client-id` | `AZURE_MAPS_CLIENT_ID` | deploy workflow (conditional) |
+| `sentry-dsn` | `SENTRY_DSN` | deploy workflow (conditional) |
+| `sentry-auth-token` | `SENTRY_AUTH_TOKEN` | deploy workflow (build step) |
+| `sentry-org` | `SENTRY_ORG` | deploy workflow (build step) |
+| `sentry-project` | `SENTRY_PROJECT` | deploy workflow (build step) |
+| `REDIS-HOST` | `REDIS_HOST` | `lib/secrets.ts` |
+| `REDIS-PORT` | `REDIS_PORT` | `lib/secrets.ts` |
+| `WEBPUBSUB-CONNECTION-STRING` | `AZURE_WEBPUBSUB_CONNECTION_STRING` | `lib/secrets.ts` |
+| `AZURE-MAPS-KEY` | `AZURE_MAPS_SUBSCRIPTION_KEY` | `lib/secrets.ts` |
+| `EC3-API-KEY` | `EC3_API_KEY` | `lib/secrets.ts` |
+| `EC3-CLIENT-ID` | `EC3_CLIENT_ID` | `lib/secrets.ts` |
+| `EC3-CLIENT-SECRET` | `EC3_CLIENT_SECRET` | `lib/secrets.ts` |
+| `EC3-USERNAME` | `EC3_USERNAME` | `lib/secrets.ts` |
+| `EC3-PASSWORD` | `EC3_PASSWORD` | `lib/secrets.ts` |
+| `AUTODESK-CLIENT-ID` | `AUTODESK_CLIENT_ID` | `lib/secrets.ts` |
+| `AUTODESK-CLIENT-SECRET` | `AUTODESK_CLIENT_SECRET` | `lib/secrets.ts` |
+| `INTERCOM-SECRET` | `INTERCOM_SECRET` | `lib/secrets.ts` |
+| `microsoft-webhook-secret` | `MICROSOFT_WEBHOOK_SECRET` | `lib/secrets.ts` |
+
+> **Note:** `AZURE_AD_CLIENT_ID` and `AZURE_AD_TENANT_ID` are **not secrets** —
+> they are public OAuth identifiers hard-coded in the deploy workflow as plain env vars.
+> Do not store them in Key Vault.
+
+---
+
 ## Azure Key Vault Setup
 
 ### Step 1: Create Key Vault
@@ -181,7 +220,7 @@ az keyvault create \
   --name greenchainz-vault \
   --resource-group rg-greenchainz \
   --location eastus \
-  --enable-rbac-authorization false
+  --enable-rbac-authorization true
 ```
 
 ### Step 2: Add Secrets
@@ -234,7 +273,7 @@ In Azure Portal → Container App → Configuration → Environment Variables:
 ```yaml
 # Required for all deployments
 NODE_ENV: production
-PORT: 3001
+PORT: 3000
 FRONTEND_URL: https://greenchainz.com
 BACKEND_URL: https://api.greenchainz.com
 
@@ -473,4 +512,3 @@ For `JWT_SECRET`, `SESSION_SECRET`, `COOKIE_SECRET`:
 - [Azure Authentication Setup](./OAUTH_SETUP.md)
 - [Deployment Checklist](./deployment-checklist.md)
 - [Backend README](../backend/README.md)
-

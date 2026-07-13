@@ -704,6 +704,9 @@ jobs:
           # start successfully even before system-assigned MI RBAC fully propagates.
           get_secret jwt-secret
           get_secret microsoft-client-secret
+          # Application Insights connection string (contains instrumentation key)
+          # Store in Key Vault as: appinsights-connection
+          get_secret appinsights-connection
 
       - name: Remove stale user-assigned identities from backend
         run: |
@@ -1022,6 +1025,18 @@ jobs:
           fi
           # FRED_API_KEY and RESEND_API_KEY are loaded at runtime from Key Vault
           # by loadSecrets() using the system-assigned managed identity
+          # Application Insights — inject connection string so Azure Monitor telemetry
+          # starts on every new revision automatically.
+          if [ -n "${{ steps.kv.outputs.appinsights-connection }}" ]; then
+            ENV_VARS+=(
+              "APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.kv.outputs.appinsights-connection }}"
+              "AZURE_MONITOR_ENABLED=true"
+              "FEATURE_AZURE_MONITORING=true"
+            )
+          else
+            echo "⚠️  appinsights-connection not found in Key Vault — telemetry disabled"
+            echo "    To enable: az keyvault secret set --vault-name ${{ env.KEY_VAULT }} --name appinsights-connection --value '<connection-string>'"
+          fi
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
               "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}"

@@ -89,6 +89,56 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
+// === KEY VAULT ===
+// RBAC-based vault (no access policies). Soft-delete + purge-protection on.
+// Grant access via Key Vault Secrets User role — see kvSecretsUser module above.
+module keyVault 'modules/keyvault.bicep' = {
+  scope: rgProd
+  name: 'keyVaultDeployment'
+  params: {
+    location: location
+    vaultName: 'greenchainz-vault'
+  }
+}
+
+// === CONTAINER REGISTRY ===
+// Standard SKU, admin disabled. The Container App pulls images via AcrPull
+// role on the managed identity (see acrPull module above).
+module acr 'modules/acr.bicep' = {
+  scope: rgInfra
+  name: 'acrDeployment'
+  params: {
+    location: location
+    registryName: 'acrgreenchainzprod${resourceSuffix}'
+  }
+}
+
+// === OBSERVABILITY ===
+
+// Log Analytics workspace — backs Application Insights.
+// All Container App and backend telemetry flows here.
+module logAnalytics 'modules/loganalytics.bicep' = {
+  scope: rgProd
+  name: 'logAnalyticsDeployment'
+  params: {
+    location: location
+    workspaceName: 'log-greenchainz-prod'
+  }
+}
+
+// Application Insights — workspace-based, connected to the Log Analytics workspace above.
+// The connection string is output here so you can store it in Key Vault as
+// "appinsights-connection" after running `az deployment sub create`.
+module appInsights 'modules/appinsights.bicep' = {
+  scope: rgProd
+  name: 'appInsightsDeployment'
+  params: {
+    location: location
+    appInsightsName: 'appi-greenchainz-prod'
+    workspaceId: logAnalytics.outputs.workspaceId
+  }
+}
+
 // === OUTPUTS ===
 output rgProdName string = rgProd.name
 output rgAgentsName string = rgAgents.name
@@ -96,3 +146,7 @@ output rgInfraName string = rgInfra.name
 output managedIdentityClientId string = managedIdentity.outputs.clientId
 output managedIdentityPrincipalId string = managedIdentity.outputs.principalId
 output storageAccountName string = storage.outputs.storageAccountName
+output keyVaultUri string = keyVault.outputs.vaultUri
+output acrLoginServer string = acr.outputs.loginServer
+output appInsightsConnectionString string = appInsights.outputs.connectionString
+output logAnalyticsWorkspaceId string = logAnalytics.outputs.workspaceId
