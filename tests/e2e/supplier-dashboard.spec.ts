@@ -1,54 +1,77 @@
-import { testSupplier as test, expect } from '../fixtures/auth';
+import { test, expect } from '@playwright/test';
+import { signInAs, mockTrpc, USERS } from './support/harness';
 
-test.describe('Supplier Dashboard', () => {
-    test.beforeEach(async ({ authenticatedPage }) => {
-        // Mock API BEFORE navigating
-        await authenticatedPage.route('**/api/v2/suppliers/supplier-123/inbox', async route => {
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({
-                    inbox: [
-                        {
-                            id: 'rfq-1',
-                            project_name: 'Test Project',
-                            category: 'Steel',
-                            message: 'Need urgent quote',
-                            status: 'pending',
-                            created_at: new Date().toISOString()
-                        }
-                    ]
-                })
-            });
+/**
+ * CRITICAL JOURNEY (MONEY FLOW) — SUPPLIER SIDE.
+ *
+ * This is the "money moment": an RFQ a buyer submitted must appear in the
+ * matched supplier's dashboard so they can quote. This spec asserts a matched
+ * RFQ surfaces in the supplier's RFQ Dashboard (supplierRfq.getMatchedRfqs)
+ * and that a direct request appears in the Direct Requests inbox
+ * (rfqRequests.listIncoming).
+ *
+ * `/supplier/rfqs` is behind the supplier onboarding guard, so we mock a
+ * completed supplier profile to stay on the dashboard.
+ */
+
+// The same project the buyer raised in rfq-flow.spec.ts, now seen by the
+// matched supplier.
+const MATCHED_RFQ = {
+    id: 9001,
+    projectName: 'Riverside Office Retrofit',
+    projectLocation: 'Austin, TX',
+    materials: ['Low-carbon concrete', 'Recycled steel'],
+    matchScore: 92,
+    status: 'open',
+    hasBid: false,
+    createdAt: new Date('2026-01-15T10:00:00Z').toISOString(),
+    dueDate: new Date('2026-02-15T10:00:00Z').toISOString(),
+};
+
+const DIRECT_REQUEST = {
+    id: 7001,
+    status: 'pending',
+    materialType: 'Recycled denim insulation',
+    createdAt: new Date('2026-01-16T10:00:00Z').toISOString(),
+    architectName: 'Test Architect',
+    quantity: '500 boards',
+    unit: 'boards',
+};
+
+test.describe('RFQ money flow — supplier', () => {
+    test('matched RFQ from a buyer appears in the supplier dashboard', async ({ page }) => {
+        await signInAs(page, USERS.supplier);
+        await mockTrpc(page, {
+            'supplierOnboarding.getMyProfile': { id: 1, companyName: 'EcoMix Industries', onboardingCompleted: true },
+            'supplierRfq.getMatchedRfqs': [MATCHED_RFQ],
+            'rfqRequests.listIncoming': [],
         });
+
+        await page.goto('/supplier/rfqs');
+
+        await expect(page.getByRole('heading', { name: 'RFQ Dashboard' })).toBeVisible();
+        // The buyer's project reached the intended supplier — the core of the
+        // marketplace's value.
+        await expect(page.getByRole('heading', { name: 'Riverside Office Retrofit' })).toBeVisible();
+        await expect(page.getByText('Austin, TX')).toBeVisible();
+        await expect(page.getByText('Low-carbon concrete').first()).toBeVisible();
     });
 
-    test('should display relevant RFQs', async ({ authenticatedPage }) => {
-        await authenticatedPage.goto('/dashboard/supplier/rfqs');
-        await authenticatedPage.waitForLoadState('networkidle');
+    test('direct RFQ request appears in the supplier Direct Requests inbox', async ({ page }) => {
+        await signInAs(page, USERS.supplier);
+        await mockTrpc(page, {
+            'supplierOnboarding.getMyProfile': { id: 1, companyName: 'EcoMix Industries', onboardingCompleted: true },
+            'supplierRfq.getMatchedRfqs': [],
+            'rfqRequests.listIncoming': [DIRECT_REQUEST],
+        });
 
-        // Heading is "RFQ Inbox"
-        await expect(authenticatedPage.getByRole('heading', { name: 'RFQ Inbox' })).toBeVisible();
+        await page.goto('/supplier/rfqs');
+        await expect(page.getByRole('heading', { name: 'RFQ Dashboard' })).toBeVisible();
 
-        // Wait for the list to render (rfq map)
-        // It renders: <h3 ...>{rfq.project_name}</h3>
-        // We can wait for the text to appear
-        await expect(authenticatedPage.getByText('Test Project')).toBeVisible();
-        await expect(authenticatedPage.getByText('RFQ ID')).toBeVisible();
-    });
-
-    test('should have quote button visible', async ({ authenticatedPage }) => {
-        await authenticatedPage.goto('/dashboard/supplier/rfqs');
-        await authenticatedPage.waitForLoadState('networkidle');
-
-        // Check for project name first to ensure data loaded
-        await expect(authenticatedPage.getByText('Test Project')).toBeVisible();
-
-        // Check for the button. It has text "Send Quote".
-        // Use a more generic selector if getByRole is strict on invisible elements or something
-        // But visibility check should handle it.
-        // Maybe wait for it explicitly.
-        const sendQuoteBtn = authenticatedPage.getByRole('button', { name: 'Send Quote' }).first();
-        await expect(sendQuoteBtn).toBeVisible();
+        // Switch to the Direct Requests tab and confirm the incoming request is
+        // visible to the supplier.
+        await page.getByRole('tab', { name: /Direct Requests/i }).click();
+        await expect(page.getByRole('heading', { name: 'Recycled denim insulation' })).toBeVisible();
+        await expect(page.getByText('500 boards')).toBeVisible();
     });
 });
