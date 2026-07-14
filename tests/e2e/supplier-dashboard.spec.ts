@@ -22,7 +22,7 @@ const MATCHED_RFQ = {
     projectLocation: 'Austin, TX',
     materials: ['Low-carbon concrete', 'Recycled steel'],
     matchScore: 92,
-    status: 'open',
+    status: 'submitted',
     hasBid: false,
     createdAt: new Date('2026-01-15T10:00:00Z').toISOString(),
     dueDate: new Date('2026-02-15T10:00:00Z').toISOString(),

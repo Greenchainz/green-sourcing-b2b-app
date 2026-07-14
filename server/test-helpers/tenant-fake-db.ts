@@ -105,8 +105,6 @@ function matches(row: Row, p: Pred): boolean {
   }
 }
 
-let autoId = 1;
-
 class Builder<T = Row[]> implements PromiseLike<T> {
   private table?: object;
   private wherePred: Pred = { kind: "true" };
@@ -206,7 +204,7 @@ class Builder<T = Row[]> implements PromiseLike<T> {
       const store = this.db.rowsFor(table);
       const inserted: Row[] = [];
       for (const v of this.insertValues ?? []) {
-        const row: Row = { id: autoId++, createdAt: new Date(), updatedAt: new Date(), ...v };
+        const row: Row = { id: this.db.nextIdFor(table), createdAt: new Date(), updatedAt: new Date(), ...v };
         store.push(row);
         inserted.push(row);
       }
@@ -278,6 +276,20 @@ export class FakeDb {
   /** Read-only snapshot of a table's current rows (for assertions). */
   snapshot(table: object): Row[] {
     return this.rowsFor(table).map((r) => ({ ...r }));
+  }
+
+  /**
+   * Return the next auto-increment ID for a table.
+   * Derived from the current maximum numeric `id` among the table's rows,
+   * so explicitly-seeded rows never collide with generated ones.
+   */
+  nextIdFor(table: object): number {
+    const rows = this.rowsFor(table);
+    const maxId = rows.reduce(
+      (m, r) => (typeof r.id === "number" && r.id > m ? r.id : m),
+      0,
+    );
+    return maxId + 1;
   }
 
   select(_proj?: unknown): Builder {

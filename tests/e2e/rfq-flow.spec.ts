@@ -7,14 +7,13 @@ import { signInAs, mockTrpc, USERS } from './support/harness';
  * The single revenue-generating interaction on GreenChainz is: a buyer issues
  * an RFQ and it reaches the intended supplier. This spec covers the buyer half:
  *   - the RFQ list persists / shows a buyer's requests (rfqRequests.listMine)
- *   - the "New RFQ" entry point renders the intake form
+ *   - the buyer can drive the manual wizard end-to-end: fill project + material
+ *     details, select a supplier, submit, and land on the new RFQ detail page
+ *     (rfqRequests.createMulti → redirect to /rfqs/:id)
  *
- * NOTE ON THE FULL WIZARD: /rfq/new is a multi-step, AI-assisted wizard
- * (rfqRequests.createMulti). Driving the entire AI conversation headlessly is
- * inherently flaky, so we verify the form renders and cover end-to-end
- * persistence/visibility via the list views (buyer here, supplier in
- * supplier-dashboard.spec.ts). The supplier-visibility assertion is the true
- * "money moment".
+ * The AI-assisted intake path is flaky in headless CI, so we exercise the
+ * deterministic "fill out manually" branch of the wizard.  The supplier-side
+ * visibility assertion lives in supplier-dashboard.spec.ts.
  */
 
 // One shared RFQ, told from the buyer's side. The supplier spec asserts the
@@ -46,19 +45,69 @@ test.describe('RFQ money flow — buyer', () => {
         await expect(page.locator('a[href="/rfqs/9001"]')).toBeVisible();
     });
 
-    test('buyer can open the New RFQ intake form', async ({ page }) => {
+    test('buyer can submit an RFQ through the manual wizard', async ({ page }) => {
+        // A supplier the matchSuppliers query will return; the component auto-selects
+        // the top result so no manual checkbox interaction is needed.
+        const WIZARD_SUPPLIER = {
+            id: 42,
+            companyName: 'EcoMix Industries',
+            city: 'Austin',
+            state: 'TX',
+            isHighSustainability: true,
+            isFallback: false,
+            isLocalSupplier: true,
+            certificationMatches: [],
+            sustainabilityScore: '85',
+            verifiedSupplierStatus: 'verified',
+            verifiedSupplierReasons: [],
+        };
+
+        let createMultiCalled = false;
         await signInAs(page, USERS.buyer);
         await mockTrpc(page, {
             'architect.getMyProfile': { id: 1, firmName: 'Test Firm', onboardingCompleted: true },
             'rfqRequests.listMine': [BUYER_RFQ],
             'location.suppliersByState': [],
+            'rfqRequests.matchSuppliers': [WIZARD_SUPPLIER],
+            'rfqRequests.createMulti': (_input) => {
+                createMultiCalled = true;
+                return { primaryId: 9002, rfqIds: [9002] };
+            },
         });
 
         await page.goto('/rfqs');
         await page.getByRole('link', { name: /New RFQ/i }).click();
-
         await expect(page).toHaveURL(/\/rfq\/new/);
         await expect(page.getByRole('heading', { name: /Submit RFQ/i })).toBeVisible();
-        await expect(page.getByText('Tell us what you need')).toBeVisible();
+
+        // Step 0 → bypass AI intake and open the manual form
+        await page.getByRole('button', { name: /Fill out the form manually instead/i }).click();
+
+        // Step 1 — project info
+        await page.getByLabel('Project Name').fill('Riverside Office Retrofit');
+        await page.getByText('Select project type').click();
+        await page.getByRole('option', { name: 'Commercial Office' }).click();
+
+        // Step 1 — material details
+        await page.getByText('Select category').click();
+        await page.getByRole('option', { name: 'Concrete & Masonry' }).click();
+        await page.getByLabel('Material Description').fill('Low-carbon ready-mix, 4000 PSI, 40% fly-ash replacement');
+        await page.getByLabel('Quantity').fill('2500');
+
+        // Advance to step 2 — supplier selection
+        await page.getByRole('button', { name: 'Next' }).click();
+
+        // The matched supplier is auto-selected by the component effect
+        await expect(page.getByText('EcoMix Industries')).toBeVisible();
+
+        // Advance to step 3 — review
+        await page.getByRole('button', { name: 'Next' }).click();
+
+        // Submit — calls rfqRequests.createMulti
+        await page.getByRole('button', { name: 'Send RFQ' }).click();
+
+        // createMulti returned primaryId 9002 → wizard navigates to the detail page
+        await expect(page).toHaveURL(/\/rfqs\/9002/, { timeout: 8_000 });
+        expect(createMultiCalled).toBe(true);
     });
 });

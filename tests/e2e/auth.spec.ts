@@ -89,12 +89,9 @@ test.describe('Authentication', () => {
         await page.goto('/dashboard');
         await expect(page).toHaveURL(/\/dashboard/);
 
-        // Trigger logout the same way the app does (AuthContext.logout →
-        // window.location = /api/auth/logout). We drive it directly to avoid
-        // depending on exact header menu markup, which varies by viewport.
-        await page.evaluate(() => {
-            window.location.href = '/api/auth/logout';
-        });
+        // Click the visible Sign out button in the header — exercises the real
+        // AuthContext.logout wiring end-to-end, not just the redirect target.
+        await page.getByRole('button', { name: 'Sign out' }).click();
 
         await expect.poll(() => logoutHit, { timeout: 5000 }).toBe(true);
     });
