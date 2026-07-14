@@ -75,6 +75,10 @@ const CATEGORY_MAP: Record<string, string> = {
   // Wood + timber
   Wood: "/images/materials/wood.jpg",
   Timber: "/images/materials/wood.jpg",
+  // Wood + flooring
+  Wood: "/images/materials/wood.jpg",
+  Timber: "/images/materials/wood.jpg",
+  Flooring: "/images/materials/wood.jpg",
   NonStructuralWood: "/images/materials/wood.jpg",
   WoodFlooring: "/images/materials/wood.jpg",
   WoodJoists: "/images/materials/wood.jpg",
