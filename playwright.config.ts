@@ -3,6 +3,13 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * See https://playwright.dev/docs/test-configuration
  */
+
+// Port the E2E app server runs on. Defaults to 3000 so CI behaviour is
+// unchanged; override with E2E_PORT when 3000 is already taken locally
+// (e.g. another worktree's dev server is running).
+const PORT = process.env.E2E_PORT ?? '3000';
+const BASE_URL = `http://localhost:${PORT}`;
+
 export default defineConfig({
     testDir: './tests/e2e',
     /* Run tests in files in parallel */
@@ -18,7 +25,7 @@ export default defineConfig({
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
     use: {
         /* Base URL to use in actions like `await page.goto('/')`. */
-        baseURL: 'http://localhost:3000',
+        baseURL: BASE_URL,
 
         /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
         trace: 'on-first-retry',
@@ -55,7 +62,11 @@ export default defineConfig({
     /* Run your local dev server before starting the tests */
     webServer: {
         command: 'npm run dev',
-        url: 'http://localhost:3000',
+        url: BASE_URL,
         reuseExistingServer: !process.env.CI,
+        // Pin the dev server to the same port Playwright targets. In dev the
+        // server auto-hunts for a free port when its preferred one is taken, so
+        // pinning avoids it drifting onto (or away from) another worktree's server.
+        env: { PORT },
     },
 });
