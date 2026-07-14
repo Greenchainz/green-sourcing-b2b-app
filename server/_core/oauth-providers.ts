@@ -29,6 +29,24 @@ function buildRedirectUri(_req: Request, provider: string): string {
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
+// Trusted external origins that may receive the auth token via returnPath redirect.
+// Any absolute returnPath whose origin is in this list bypasses the relative-only
+// validation and gets the session token appended as ?token=<session_token> so the
+// receiving page (e.g. auth-callback.html) can extract it without same-origin access.
+const ALLOWED_EXTERNAL_ORIGINS: readonly string[] = [
+  "https://forma.greenchainz.com",
+];
+
+function isAllowedReturnPath(raw: string): boolean {
+  if (/^\/(?!\/)/.test(raw)) return true; // relative path on same origin
+  try {
+    const u = new URL(raw);
+    return ALLOWED_EXTERNAL_ORIGINS.includes(u.origin);
+  } catch {
+    return false;
+  }
+}
+
 type OAuthRole = "supplier" | "buyer" | null;
 
 interface OAuthStatePayload {
@@ -91,7 +109,7 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
       return null;
     }
 
-    const safeReturnPath = /^\/(?!\/)/.test(payload.returnPath) ? payload.returnPath : "/";
+    const safeReturnPath = isAllowedReturnPath(payload.returnPath) ? payload.returnPath : "/";
     const safeRole: OAuthRole = payload.role === "supplier" || payload.role === "buyer" ? payload.role : null;
     return { returnPath: safeReturnPath, role: safeRole };
   } catch {
@@ -357,7 +375,7 @@ export function registerOAuthProviderRoutes(app: Express) {
   app.get("/api/auth/:provider", (req: Request, res: Response) => {
     const provider = Array.isArray(req.params.provider) ? req.params.provider[0] : req.params.provider;
     const rawReturnPath = (req.query.returnPath as string) || "/";
-    const returnPath = /^\/(?!\/)/.test(rawReturnPath) ? rawReturnPath : "/";
+    const returnPath = isAllowedReturnPath(rawReturnPath) ? rawReturnPath : "/";
     const requestedRole = (req.query.role as string) || null;
     const role: OAuthRole = requestedRole === "supplier" || requestedRole === "buyer" ? requestedRole : null;
 
@@ -485,7 +503,21 @@ export function registerOAuthProviderRoutes(app: Express) {
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie("app_session_id", sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-      res.redirect(302, returnPath || "/");
+
+      // For external allowlisted origins (e.g. the Forma extension auth-callback page),
+      // append the session token as ?token=<sessionToken> so the callback page can relay
+      // it back to the extension via postMessage without requiring same-origin cookie access.
+      let finalRedirect = returnPath || "/";
+      try {
+        const u = new URL(finalRedirect);
+        if (ALLOWED_EXTERNAL_ORIGINS.includes(u.origin)) {
+          u.searchParams.set("token", sessionToken);
+          finalRedirect = u.toString();
+        }
+      } catch {
+        // relative path — no external token append needed
+      }
+      res.redirect(302, finalRedirect);
     } catch (err) {
       console.error(`[Auth] Callback failed for ${provider}:`, err);
       res.redirect(302, `/login?error=callback_failed`);
