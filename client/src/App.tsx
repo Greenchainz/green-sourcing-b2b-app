@@ -171,6 +171,7 @@ const SupplierSpecSubmission = lazy(() => import("./pages/SupplierSpecSubmission
 const MaterialSwap = lazy(() => import("./pages/MaterialSwap"));
 const CarbonWin = lazy(() => import("./pages/CarbonWin"));
 const InsiderPage = lazy(() => import("./pages/InsiderPage"));
+const ArcadePage = lazy(() => import("./pages/ArcadePage"));
 const ManufacturerDirectory = lazy(() => import("./pages/ManufacturerDirectory"));
 const ManufacturerProfile = lazy(() => import("./pages/ManufacturerProfile"));
 const SupplierAgentConfig = lazy(() => import("./pages/SupplierAgentConfig"));
@@ -239,6 +240,7 @@ function Router() {
       <Route path="/rfqs" component={RFQListPage} />
       <Route path="/rfqs/:rfqId" component={RFQDetailPage} />
       <Route path="/insider" component={InsiderPage} />
+      <Route path="/arcade" component={ArcadePage} />
       <Route path="/manufacturers" component={ManufacturerDirectory} />
       <Route path="/manufacturers/:id" component={ManufacturerProfile} />
       <Route path="/compare" component={Compare} />
