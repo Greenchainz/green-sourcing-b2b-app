@@ -244,7 +244,7 @@ export default function MaterialCard(props: MaterialCardProps) {
   useEffect(() => {
     setImgSrc(initialSrc);
     setImgBroken(false);
-  }, [initialSrc]);
+  }, [initialSrc, placeholderSrc]);
   const handleImgError = () => {
     if (imgSrc !== placeholderSrc) setImgSrc(placeholderSrc);
     else setImgBroken(true);
