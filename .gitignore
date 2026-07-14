@@ -163,3 +163,8 @@ package-lock.json
 .webdev/
 /green-sourcing-b2b-app/
 Commercial-Marketplace-SaaS-Accelerator/
+
+# Playwright e2e artifacts
+test-results/
+playwright-report/
+playwright/.cache/
