@@ -20,8 +20,11 @@ const CATEGORY_MAP: Record<string, string> = {
   ArchitecturalPrecast: "/images/materials/concrete.jpg",
   AutoclavedAeratedConcrete: "/images/materials/concrete.jpg",
 
-  // Steel + rebar
+  // Steel + metals
+  Metals: "/images/materials/steel.jpg",
+  Metal: "/images/materials/steel.jpg",
   Steel: "/images/materials/steel.jpg",
+  Copper: "/images/materials/steel.jpg",
   RebarSteel: "/images/materials/steel.jpg",
   PlateSteel: "/images/materials/steel.jpg",
   HotRolledSections: "/images/materials/steel.jpg",
@@ -36,8 +39,9 @@ const CATEGORY_MAP: Record<string, string> = {
   InsulatedRoofPanels: "/images/materials/insulation.jpg",
   AppliedFireproofing: "/images/materials/insulation.jpg",
 
-  // Gypsum
+  // Gypsum + drywall
   Gypsum: "/images/materials/gypsum.jpg",
+  Drywall: "/images/materials/gypsum.jpg",
   "Gypsum Board": "/images/materials/gypsum.jpg",
   GypsumFinishingCompounds: "/images/materials/gypsum.jpg",
   CementBoard: "/images/materials/gypsum.jpg",
@@ -45,6 +49,7 @@ const CATEGORY_MAP: Record<string, string> = {
 
   // Glass + glazing
   Glass: "/images/materials/glass.jpg",
+  Glazing: "/images/materials/glass.jpg",
   ProcessedNonInsulatingGlassPanes: "/images/materials/glass.jpg",
   Windows: "/images/materials/glass.jpg",
   CurtainWalls: "/images/materials/glass.jpg",
@@ -67,13 +72,17 @@ const CATEGORY_MAP: Record<string, string> = {
   StoneCladding: "/images/materials/masonry.jpg",
   Cladding: "/images/materials/masonry.jpg",
 
-  // Wood
+  // Wood + flooring
+  Wood: "/images/materials/wood.jpg",
+  Timber: "/images/materials/wood.jpg",
+  Flooring: "/images/materials/wood.jpg",
   NonStructuralWood: "/images/materials/wood.jpg",
   WoodFlooring: "/images/materials/wood.jpg",
   WoodJoists: "/images/materials/wood.jpg",
   PrefabricatedWoodInsulatedPanels: "/images/materials/wood.jpg",
 
   // Roofing
+  Roofing: "/images/materials/roofing.jpg",
   MembraneRoofing: "/images/materials/roofing.jpg",
   BituminousRoofing: "/images/materials/roofing.jpg",
   RoofPanels: "/images/materials/roofing.jpg",
