@@ -2070,7 +2070,7 @@ export default function RFQNewPage() {
                   {selectedIds.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {selectedSupplierObjects.map((s) => (
-                        <Badge key={s.id} variant="secondary" className="text-xs gap-1 pr-1">
+                        <Badge key={s.id} variant="secondary" data-testid="rfq-selected-supplier" className="text-xs gap-1 pr-1">
                           {s.companyName}
                           <button type="button" onClick={() => toggleSupplier(s.id)}>
                             <X className="w-3 h-3" />
@@ -2317,13 +2317,19 @@ export default function RFQNewPage() {
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
             )}
-            {/* Step 0 handles its own CTA (AI chat); step 1+ use Next/Send */}
+            {/* Step 0 handles its own CTA (AI chat); step 1+ use Next/Send.
+                Distinct keys force React to mount a *separate* DOM node for each
+                button instead of reusing one and flipping its `type` from
+                "button" to "submit" on the step 2→3 transition — which made the
+                browser fire the form's default submit on the "Next" click,
+                skipping the review step and sending the RFQ prematurely. */}
             {step === 0 ? null : step < 3 ? (
-              <Button type="button" className="flex-1 bg-green-600 hover:bg-green-700" onClick={goNext}>
+              <Button key="wizard-nav-next" type="button" className="flex-1 bg-green-600 hover:bg-green-700" onClick={goNext}>
                 Next <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
               <Button
+                key="wizard-nav-send"
                 type="submit"
                 disabled={createMulti.isPending || approveDraftMutation.isPending}
                 className="flex-1 bg-green-600 hover:bg-green-700"
