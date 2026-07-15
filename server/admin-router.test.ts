@@ -35,8 +35,8 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
 
     // Create caller context
     mockCaller = adminRouter.createCaller({
-      user: { id: 1, role: 'admin', email: 'admin@test.com', openId: 'admin-123' },
-      auth: { userId: 'admin-123', email: 'admin@test.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
+      user: { id: 1, role: 'admin', email: 'founder@greenchainz.com', openId: 'admin-123' },
+      auth: { userId: 'admin-123', email: 'founder@greenchainz.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
       req: {} as any,
       res: {} as any,
     });
@@ -291,8 +291,8 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
 
     it('should allow access to admin users', async () => {
       const adminCaller = adminRouter.createCaller({
-        user: { id: 1, role: 'admin', email: 'admin@test.com', openId: 'admin-123' },
-        auth: { userId: 'admin-123', email: 'admin@test.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
+        user: { id: 1, role: 'admin', email: 'founder@greenchainz.com', openId: 'admin-123' },
+        auth: { userId: 'admin-123', email: 'founder@greenchainz.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
         req: {} as any,
         res: {} as any,
       });
@@ -313,8 +313,8 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
 // ─────────────────────────────────────────────────────────────────────────────
 
 const adminCtx = {
-  user: { id: 1, role: 'admin', email: 'admin@test.com', openId: 'admin-123' },
-  auth: { userId: 'admin-123', email: 'admin@test.com', role: 'admin', tenantId: 't', rawRoles: ['admin'] },
+  user: { id: 1, role: 'admin', email: 'founder@greenchainz.com', openId: 'admin-123' },
+  auth: { userId: 'admin-123', email: 'founder@greenchainz.com', role: 'admin', tenantId: 't', rawRoles: ['admin'] },
   req: {} as any,
   res: {} as any,
 };
@@ -349,6 +349,10 @@ function makeDb({ targetRow = [] as any[], countRow = [{ c: 1 }] as any[] } = {}
     p.limit = vi.fn().mockResolvedValue(targetRow);
     return p;
   });
+  // Purges wrap their writes in db.transaction(async (tx) => {...}); run the
+  // callback synchronously with the same chainable stub so `tx.*` calls land on
+  // the same spies the assertions inspect (tx === db in the mock).
+  db.transaction = vi.fn(async (cb: any) => cb(db));
   return db;
 }
 

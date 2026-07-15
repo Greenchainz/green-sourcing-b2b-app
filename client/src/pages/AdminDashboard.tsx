@@ -624,12 +624,6 @@ function UsersTab() {
   // Self-protection: frontend AuthContext user.id is the openId string, so match by email.
   const isSelf = (u: AdminUser) => !!authUser?.email && authUser.email === u.email;
 
-    },
-    onError: (err) => {
-      toast.error(err.message ?? 'Failed to delete user');
-    },
-  });
-
   const filtered = (allUsers ?? []).filter((u) => {
     const q = search.toLowerCase();
     const matchesSearch =
@@ -795,24 +789,6 @@ function UsersTab() {
                             >
                               <Trash2 className="mr-1 h-3 w-3" />
                               Delete
-                          {u.role !== 'admin' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-red-700/40 bg-red-900/20 text-xs text-red-400 hover:bg-red-900/40 hover:text-red-300"
-                              disabled={deleteUserMutation.isPending}
-                              title="Delete user"
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `Delete ${u.name ?? u.email}? This permanently removes the account and cannot be undone.`
-                                  )
-                                ) {
-                                  deleteUserMutation.mutate({ userId: u.id });
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>
