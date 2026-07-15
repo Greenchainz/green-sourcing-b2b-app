@@ -129,6 +129,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Blog
+                </Link>
+              </li>
+              <li>
                 <Link href="/get-started" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Get Started
                 </Link>
@@ -195,6 +200,7 @@ export default function Footer() {
       <noscript>
         <nav aria-label="Site navigation fallback" style={{ padding: '1rem', fontSize: '0.75rem' }}>
           <a href="/">Home</a> | <a href="/about">About</a> | <a href="/features">Features</a> |{' '}
+          <a href="/blog">Blog</a> |{' '}
           <a href="/pricing">Pricing</a> | <a href="/materials">Materials</a> |{' '}
           <a href="/how-it-works">How It Works</a> | <a href="/carbon-compare">Carbon Compare</a> |{' '}
           <a href="/tools/extension">Browser Extension</a> | <a href="/tools/revit">Revit Plugin</a> |{' '}
@@ -205,4 +211,3 @@ export default function Footer() {
     </footer>
   );
 }
-

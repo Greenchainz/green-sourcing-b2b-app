@@ -14,6 +14,7 @@ import { generateComplianceReport } from "./compliance-service";
 import { dbUserRoleSchema } from "../shared/types/roles";
 import { auditLog, AuditAction } from "./services/audit-log";
 import { publishSupplierEvent } from "./services/event-bus";
+import { canAccessAdmin } from "./_core/admin-access";
 
 /**
  * Admin Router — Admin-only operations
@@ -21,8 +22,7 @@ import { publishSupplierEvent } from "./services/event-bus";
 
 // Admin-only procedure (checks if user is admin)
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  const role = ctx.auth?.role;
-  if (role !== "admin") {
+  if (!canAccessAdmin(ctx.user)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({ ctx });

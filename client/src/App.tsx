@@ -105,6 +105,12 @@ const ROUTE_SEO_FALLBACKS: Record<string, { title: string; description: string; 
       "Generate compliance-ready submittal packages with verified material data, EPD context, and documentation links.",
     canonicalPath: "/tools/submittal",
   },
+  "/blog": {
+    title: "GreenChainz Blog | SEO + AEO for Sustainable Procurement",
+    description:
+      "Question-first content for architects and suppliers on compliance, sourcing workflows, and sustainable material execution.",
+    canonicalPath: "/blog",
+  },
 };
 
 function normalizePathname(pathname: string): string {
@@ -120,6 +126,8 @@ function normalizePathname(pathname: string): string {
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Home = lazy(() => import("./pages/Home"));
 const About = lazy(() => import("./pages/About"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPostPage = lazy(() => import("./pages/BlogPostPage"));
 const ExcelAudit = lazy(() => import("./pages/ExcelAudit"));
 const ExcelAuditWorkingTool = lazy(() => import("./pages/ExcelAuditWorkingTool"));
 const BrowserExtension = lazy(() => import("./pages/BrowserExtension"));
@@ -283,6 +291,8 @@ function Router() {
       <Route path="/excel-audit" component={ExcelAudit} />
       <Route path="/excel-audit-tool" component={ExcelAuditWorkingTool} />
       <Route path={"/about"} component={About} />
+      <Route path={"/blog"} component={Blog} />
+      <Route path={"/blog/:slug"} component={BlogPostPage} />
       <Route path={"/tools"} component={Tools} />
       <Route path={"/tools/extension"} component={BrowserExtension} />
       <Route path={"/tools/revit"} component={RevitPlugin} />
@@ -462,6 +472,8 @@ function ArchitectOnboardingGuard() {
         path === "/privacy" ||
         path === "/support" ||
         path === "/how-it-works" ||
+        path === "/blog" ||
+        path.startsWith("/blog/") ||
         path === "/manufacturers" ||
         path.startsWith("/manufacturers/") ||
         path === "/insider" ||
