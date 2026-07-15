@@ -946,7 +946,7 @@ function SupplierDetailPanel({
 
 function SuppliersTab() {
   const { data: allSuppliers, isLoading, refetch } = trpc.admin.getAllSuppliers.useQuery();
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getSupplierStats.useQuery();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.admin.getSupplierStats.useQuery();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -973,6 +973,7 @@ function SuppliersTab() {
     onSuccess: () => {
       toast.success('Supplier deleted');
       void refetch();
+      void refetchStats();
       setExpandedId(null);
     },
     onError: (err) => toast.error(err.message ?? 'Failed to delete supplier'),
