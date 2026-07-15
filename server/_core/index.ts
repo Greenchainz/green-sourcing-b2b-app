@@ -26,6 +26,7 @@ import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { unsubscribeRouter } from "../unsubscribe-route";
 import { specSheetRouter } from "../spec-sheet-router";
 import { registerAdminRoutes } from "../admin-routes/index";
+import { registerIntelligenceRoutes } from "../intelligence-routes";
 import { publicMaterialsRouter } from "../public-materials-api";
 import { registerPdfRoutes } from "../admin-routes/pdf-routes";
 import { registerMobileMessagesRoutes } from "../admin-routes/mobile-messages";
@@ -617,6 +618,7 @@ async function startServer() {
 
   // ── Delegated route groups ────────────────────────────────────────────────
   registerAdminRoutes(app, adminRateLimit);
+  registerIntelligenceRoutes(app, adminRateLimit);
   registerPdfRoutes(app, rfqPdfRateLimit, materialScorePdfRateLimit);
   registerMobileMessagesRoutes(app);
 
