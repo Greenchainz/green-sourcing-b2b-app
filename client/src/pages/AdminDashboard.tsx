@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,20 +35,24 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
   Users,
   Building2,
+  Activity,
   Clock,
   CreditCard,
   CheckCircle,
   XCircle,
   AlertTriangle,
   Search,
+  Mail,
   Eye,
   ShieldAlert,
   RefreshCcw,
   ChevronDown,
+  Rocket,
   Server,
   Zap,
   ExternalLink,
@@ -65,6 +69,12 @@ import {
   BarChart3,
   TrendingUp,
   Video,
+  Bot,
+  FolderOpen,
+  Database,
+  Upload,
+  FileText,
+  Send,
 } from 'lucide-react';
 import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
 
@@ -72,6 +82,15 @@ import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
 
 type UserRole = 'user' | 'admin' | 'buyer' | 'supplier';
 type UserTier = 'free' | 'standard' | 'premium';
+type SortDirection = 'asc' | 'desc';
+type ChatRole = 'user' | 'assistant';
+
+const INTELLIGENCE_SCRAPER_OPTIONS = [
+  { name: 'supplier-contacts', label: 'Supplier contacts scraper' },
+  { name: 'buyer-contacts', label: 'Buyer contacts scraper' },
+  { name: 'drip-sequences', label: 'Drip sequence runner' },
+  { name: 'salesforce-sync', label: 'Salesforce lead sync' },
+] as const;
 
 interface AdminUser {
   id: number;
@@ -85,9 +104,56 @@ interface AdminUser {
   deletedAt: Date | string | null;
 }
 
+interface IntelligenceChatMessage {
+  id: string;
+  role: ChatRole;
+  content: string;
+  createdAt: number;
+}
+
+interface SharePointItem {
+  id: string;
+  name: string;
+  webUrl: string | null;
+  size: number | null;
+  lastModifiedAt: string | null;
+  type: 'folder' | 'file';
+  childCount: number | null;
+}
+
+interface FabricOverviewResponse {
+  configured: boolean;
+  counts: {
+    suppliers: number;
+    rfqs: number;
+    leads: number;
+  };
+  workspace: { id: string } | null;
+  items: Array<{
+    id: string | null;
+    name: string;
+    type: string;
+    description: string | null;
+  }>;
+  message?: string;
+}
+
+interface WorkIqResponse {
+  source: 'delegated' | 'app';
+  insights: {
+    meetingHours: number | null;
+    focusTimeHours: number | null;
+    collaborationHours: number | null;
+    topCollaborators: string[];
+  };
+  activityStatistics: unknown[];
+  reportStatus: 'ok' | 'unavailable';
+  reportPreview: Array<Record<string, string>>;
+}
+
 // ─── Helper utilities ────────────────────────────────────────────────────────
 
-function formatDate(d: Date | string | null | undefined): string {
+function formatDate(d: Date | string | number | null | undefined): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -96,7 +162,7 @@ function formatDate(d: Date | string | null | undefined): string {
   });
 }
 
-function formatDateTime(d: Date | string | null | undefined): string {
+function formatDateTime(d: Date | string | number | null | undefined): string {
   if (!d) return 'Never';
   return new Date(d).toLocaleString('en-US', {
     year: 'numeric',
@@ -558,6 +624,12 @@ function UsersTab() {
   // Self-protection: frontend AuthContext user.id is the openId string, so match by email.
   const isSelf = (u: AdminUser) => !!authUser?.email && authUser.email === u.email;
 
+    },
+    onError: (err) => {
+      toast.error(err.message ?? 'Failed to delete user');
+    },
+  });
+
   const filtered = (allUsers ?? []).filter((u) => {
     const q = search.toLowerCase();
     const matchesSearch =
@@ -723,6 +795,24 @@ function UsersTab() {
                             >
                               <Trash2 className="mr-1 h-3 w-3" />
                               Delete
+                          {u.role !== 'admin' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-700/40 bg-red-900/20 text-xs text-red-400 hover:bg-red-900/40 hover:text-red-300"
+                              disabled={deleteUserMutation.isPending}
+                              title="Delete user"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Delete ${u.name ?? u.email}? This permanently removes the account and cannot be undone.`
+                                  )
+                                ) {
+                                  deleteUserMutation.mutate({ userId: u.id });
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>
@@ -966,7 +1056,7 @@ function SupplierDetailPanel({
 
 function SuppliersTab() {
   const { data: allSuppliers, isLoading, refetch } = trpc.admin.getAllSuppliers.useQuery();
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getSupplierStats.useQuery();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.admin.getSupplierStats.useQuery();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -987,6 +1077,16 @@ function SuppliersTab() {
       setExpandedId(null);
     },
     onError: (err) => toast.error(err.message ?? 'Rejection failed'),
+  });
+
+  const deleteSupplierMutation = trpc.admin.deleteSupplier.useMutation({
+    onSuccess: () => {
+      toast.success('Supplier deleted');
+      void refetch();
+      void refetchStats();
+      setExpandedId(null);
+    },
+    onError: (err) => toast.error(err.message ?? 'Failed to delete supplier'),
   });
 
   const filtered = (allSuppliers ?? []).filter((s) => {
@@ -1140,6 +1240,25 @@ function SuppliersTab() {
                               </Button>
                             </>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-700/40 bg-red-900/20 text-xs text-red-400 hover:bg-red-900/40 hover:text-red-300"
+                            disabled={deleteSupplierMutation.isPending}
+                            title="Delete supplier"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Delete ${s.companyName}? This permanently removes the supplier record and cannot be undone.`
+                                )
+                              ) {
+                                deleteSupplierMutation.mutate({ supplierId: s.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            Delete
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1489,12 +1608,897 @@ function CatalogTab() {
   );
 }
 
+// ─── Intelligence Tabs ────────────────────────────────────────────────────────
+
+function LeadsTab() {
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: 'name' | 'company' | 'createdAt'; direction: SortDirection }>({
+    key: 'createdAt',
+    direction: 'desc',
+  });
+  const { data, isLoading } = trpc.admin.listIntelligenceLeads.useQuery();
+
+  const filtered = useMemo(() => {
+    const rows = data ?? [];
+    const q = search.trim().toLowerCase();
+    const searched = q
+      ? rows.filter((row) =>
+        [row.name, row.email, row.company, row.role, row.category, row.sfLeadId]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q))
+      )
+      : rows;
+
+    return [...searched].sort((a, b) => {
+      const av = a[sort.key] ?? '';
+      const bv = b[sort.key] ?? '';
+      const cmp = sort.key === 'createdAt'
+        ? new Date(String(av)).getTime() - new Date(String(bv)).getTime()
+        : String(av).localeCompare(String(bv));
+      return sort.direction === 'asc' ? cmp : -cmp;
+    });
+  }, [data, search, sort]);
+
+  const toggleSort = (key: 'name' | 'company' | 'createdAt') => {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'asc' }
+    );
+  };
+
+  return (
+    <Card className="border-gray-800 bg-gray-900">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+          <Users className="h-4 w-4 text-gray-400" />
+          Leads discovered
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search leads…"
+            className="h-8 border-gray-700 bg-gray-800 pl-8 text-xs text-white placeholder:text-gray-600"
+          />
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+          </div>
+        ) : (
+          <div className="rounded-md border border-gray-800">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800 hover:bg-transparent">
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('name')}>Name</TableHead>
+                  <TableHead className="text-gray-400 text-xs">Email</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('company')}>Company</TableHead>
+                  <TableHead className="text-gray-400 text-xs">Role</TableHead>
+                  <TableHead className="text-gray-400 text-xs">Category</TableHead>
+                  <TableHead className="text-gray-400 text-xs">SF Lead ID</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('createdAt')}>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-8 text-center text-gray-500 text-sm">No leads found.</TableCell>
+                  </TableRow>
+                ) : filtered.map((row) => (
+                  <TableRow key={row.id} className="border-gray-800 hover:bg-gray-800/40">
+                    <TableCell className="text-xs text-gray-200 py-2">{row.name ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-400 py-2">{row.email ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-300 py-2">{row.company ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-400 py-2">{row.role ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-400 py-2">{row.category ?? '—'}</TableCell>
+                    <TableCell className="text-[10px] font-mono text-gray-500 py-2">{row.sfLeadId ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-500 py-2">{formatDateTime(row.createdAt)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OutreachTab() {
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: 'step' | 'status' | 'sentAt'; direction: SortDirection }>({
+    key: 'sentAt',
+    direction: 'desc',
+  });
+  const { data, isLoading } = trpc.admin.listIntelligenceEmailSequences.useQuery();
+
+  const filtered = useMemo(() => {
+    const rows = data ?? [];
+    const q = search.trim().toLowerCase();
+    const searched = q
+      ? rows.filter((row) =>
+        [row.contactEmail, row.status, row.step]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q))
+      )
+      : rows;
+
+    return [...searched].sort((a, b) => {
+      if (sort.key === 'step') {
+        return sort.direction === 'asc' ? a.step - b.step : b.step - a.step;
+      }
+      if (sort.key === 'status') {
+        const cmp = String(a.status).localeCompare(String(b.status));
+        return sort.direction === 'asc' ? cmp : -cmp;
+      }
+      const at = a.sentAt ? new Date(String(a.sentAt)).getTime() : 0;
+      const bt = b.sentAt ? new Date(String(b.sentAt)).getTime() : 0;
+      return sort.direction === 'asc' ? at - bt : bt - at;
+    });
+  }, [data, search, sort]);
+
+  const toggleSort = (key: 'step' | 'status' | 'sentAt') => {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'asc' }
+    );
+  };
+
+  return (
+    <Card className="border-gray-800 bg-gray-900">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+          <Mail className="h-4 w-4 text-gray-400" />
+          Outreach sequences
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search outreach…"
+            className="h-8 border-gray-700 bg-gray-800 pl-8 text-xs text-white placeholder:text-gray-600"
+          />
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+          </div>
+        ) : (
+          <div className="rounded-md border border-gray-800">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800 hover:bg-transparent">
+                  <TableHead className="text-gray-400 text-xs">Contact email</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('step')}>Step</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('status')}>Status</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('sentAt')}>Sent at</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-8 text-center text-gray-500 text-sm">No outreach rows found.</TableCell>
+                  </TableRow>
+                ) : filtered.map((row) => (
+                  <TableRow key={row.id} className="border-gray-800 hover:bg-gray-800/40">
+                    <TableCell className="text-xs text-gray-300 py-2">{row.contactEmail ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-400 py-2">{row.step}</TableCell>
+                    <TableCell className="text-xs text-gray-300 py-2">{row.status}</TableCell>
+                    <TableCell className="text-xs text-gray-500 py-2">{formatDateTime(row.sentAt)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScrapersTab() {
+  const [selectedScraper, setSelectedScraper] = useState<string>(INTELLIGENCE_SCRAPER_OPTIONS[0].name);
+  const [isTriggering, setIsTriggering] = useState(false);
+  const { data, isLoading, refetch } = trpc.admin.listIntelligenceScraperStatus.useQuery();
+
+  const triggerScraper = async () => {
+    setIsTriggering(true);
+    try {
+      const res = await fetch('/api/intelligence/trigger', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scraperName: selectedScraper }),
+      });
+      const body = (await res.json()) as { error?: string; detail?: string };
+      if (!res.ok) {
+        throw new Error(body.detail ?? body.error ?? 'Failed to trigger scraper');
+      }
+      toast.success(`${selectedScraper} triggered`);
+      await refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to trigger scraper');
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Rocket className="h-4 w-4 text-gray-400" />
+            Trigger scraper
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Select value={selectedScraper} onValueChange={setSelectedScraper}>
+            <SelectTrigger className="w-full border-gray-700 bg-gray-800 text-white text-xs sm:w-72">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-gray-700 bg-gray-900 text-white">
+              {INTELLIGENCE_SCRAPER_OPTIONS.map((scraper) => (
+                <SelectItem key={scraper.name} value={scraper.name} className="text-xs">{scraper.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" disabled={isTriggering} onClick={triggerScraper}>
+            {isTriggering ? (
+              <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Triggering…</>
+            ) : (
+              <><Rocket className="mr-1.5 h-3.5 w-3.5" />Trigger now</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Activity className="h-4 w-4 text-gray-400" />
+            Scraper run history
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    <TableHead className="text-gray-400 text-xs">Scraper</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Status</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Last run</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Completed</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(data ?? []).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-8 text-center text-gray-500 text-sm">No scraper history found.</TableCell>
+                    </TableRow>
+                  ) : (data ?? []).map((row) => (
+                    <TableRow key={row.scraperName} className="border-gray-800 hover:bg-gray-800/40">
+                      <TableCell className="text-xs text-gray-200 py-2">{row.label}</TableCell>
+                      <TableCell className="text-xs py-2">
+                        <Badge variant="secondary" className="text-[10px] px-1.5">
+                          {row.status ?? 'unknown'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-400 py-2">{formatDateTime(row.lastRunAt)}</TableCell>
+                      <TableCell className="text-xs text-gray-500 py-2">{formatDateTime(row.completedAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AIChatTab() {
+  const [messages, setMessages] = useState<IntelligenceChatMessage[]>([
+    {
+      id: 'seed-assistant-message',
+      role: 'assistant',
+      content: 'I am your GreenChainz dashboard copilot. Ask about lead strategy, supplier onboarding, outreach, or growth decisions.',
+      createdAt: Date.now(),
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const sendMessage = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isSending) return;
+
+    const userMessage: IntelligenceChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: trimmed,
+      createdAt: Date.now(),
+    };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    setInput('');
+    setIsSending(true);
+
+    try {
+      const response = await fetch('/api/admin/intelligence/ai-chat', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: nextMessages.map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+        }),
+      });
+      const body = (await response.json()) as { reply?: string; error?: string; detail?: string };
+      if (!response.ok || !body.reply) {
+        throw new Error(body.detail ?? body.error ?? 'AI chat request failed');
+      }
+      setMessages((current) => [
+        ...current,
+        {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: body.reply!,
+          createdAt: Date.now(),
+        },
+      ]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'AI chat request failed');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <Card className="border-gray-800 bg-gray-900">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+          <Bot className="h-4 w-4 text-gray-400" />
+          AI founder copilot
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <ScrollArea className="h-[420px] rounded-md border border-gray-800 bg-gray-950/40 p-3">
+          <div className="space-y-3">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`max-w-[88%] rounded-md px-3 py-2 text-sm ${message.role === 'user'
+                    ? 'ml-auto bg-emerald-500/15 text-emerald-100 border border-emerald-500/30'
+                    : 'mr-auto bg-gray-800 text-gray-100 border border-gray-700'
+                  }`}
+              >
+                <p className="whitespace-pre-wrap">{message.content}</p>
+                <p className="mt-1 text-[10px] text-gray-400">{formatDateTime(message.createdAt)}</p>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        <div className="space-y-2">
+          <Textarea
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="Ask about leads, RFQs, supplier conversion, or growth priorities…"
+            className="min-h-[90px] border-gray-700 bg-gray-800 text-sm text-white placeholder:text-gray-500"
+          />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={sendMessage} disabled={isSending || input.trim().length === 0}>
+              {isSending ? (
+                <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Sending…</>
+              ) : (
+                <><Send className="mr-1.5 h-3.5 w-3.5" />Send</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SharePointTab() {
+  const [path, setPath] = useState('');
+  const [items, setItems] = useState<SharePointItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadFiles = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const search = path.trim() ? `?path=${encodeURIComponent(path.trim())}` : '';
+      const response = await fetch(`/api/admin/intelligence/sharepoint/files${search}`, {
+        credentials: 'include',
+      });
+      const body = (await response.json()) as { items?: SharePointItem[]; error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(body.detail ?? body.error ?? 'Failed to load SharePoint files');
+      }
+      setItems(body.items ?? []);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load SharePoint files');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [path]);
+
+  useEffect(() => {
+    void loadFiles();
+  }, [loadFiles]);
+
+  const uploadFile = async () => {
+    if (!selectedFile) {
+      toast.error('Choose a file before uploading');
+      return;
+    }
+    setIsUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      if (path.trim()) formData.append('path', path.trim());
+
+      const response = await fetch('/api/admin/intelligence/sharepoint/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const body = (await response.json()) as { success?: boolean; error?: string; detail?: string };
+      if (!response.ok || !body.success) {
+        throw new Error(body.detail ?? body.error ?? 'SharePoint upload failed');
+      }
+      setSelectedFile(null);
+      toast.success('Document uploaded to SharePoint');
+      await loadFiles();
+    } catch (uploadError) {
+      const message = uploadError instanceof Error ? uploadError.message : 'SharePoint upload failed';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <FolderOpen className="h-4 w-4 text-gray-400" />
+            SharePoint documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={path}
+              onChange={(event) => setPath(event.target.value)}
+              placeholder="Folder path (optional), e.g. leads/2026"
+              className="border-gray-700 bg-gray-800 text-sm text-white placeholder:text-gray-600"
+            />
+            <Button size="sm" variant="outline" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700" onClick={() => void loadFiles()}>
+              Refresh
+            </Button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              type="file"
+              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+              className="border-gray-700 bg-gray-800 text-xs text-gray-300 file:border-0 file:bg-gray-700 file:text-gray-200"
+            />
+            <Button size="sm" onClick={uploadFile} disabled={isUploading || !selectedFile}>
+              {isUploading ? (
+                <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Uploading…</>
+              ) : (
+                <><Upload className="mr-1.5 h-3.5 w-3.5" />Upload</>
+              )}
+            </Button>
+          </div>
+          {error ? (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Files</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    <TableHead className="text-gray-400 text-xs">Name</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Type</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Size</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Modified</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Open</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-gray-500 text-sm">No SharePoint items found.</TableCell>
+                    </TableRow>
+                  ) : items.map((item) => (
+                    <TableRow key={item.id} className="border-gray-800 hover:bg-gray-800/40">
+                      <TableCell className="text-xs text-gray-200 py-2">{item.name}</TableCell>
+                      <TableCell className="text-xs text-gray-400 py-2">{item.type}</TableCell>
+                      <TableCell className="text-xs text-gray-400 py-2">
+                        {item.size !== null ? `${Math.max(1, Math.round(item.size / 1024))} KB` : '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-500 py-2">{formatDateTime(item.lastModifiedAt)}</TableCell>
+                      <TableCell className="text-xs py-2">
+                        {item.webUrl ? (
+                          <a href={item.webUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300 underline-offset-4 hover:underline">
+                            Open
+                          </a>
+                        ) : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function FabricTab() {
+  const [data, setData] = useState<FabricOverviewResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadOverview = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/intelligence/fabric/overview', {
+        credentials: 'include',
+      });
+      const body = (await response.json()) as FabricOverviewResponse & { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(body.detail ?? body.error ?? 'Failed to load Fabric overview');
+      }
+      setData(body);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load Fabric overview');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadOverview();
+  }, [loadOverview]);
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Database className="h-4 w-4 text-gray-400" />
+            Fabric data sync
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-3">
+            <Button size="sm" variant="outline" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700" onClick={() => void loadOverview()}>
+              Refresh
+            </Button>
+            {data?.configured ? (
+              <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">Fabric configured</Badge>
+            ) : (
+              <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-300">Configuration needed</Badge>
+            )}
+          </div>
+          {error ? (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+          ) : null}
+          {data?.message ? (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{data.message}</div>
+          ) : null}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <KpiCard
+              title="Suppliers"
+              value={data?.counts.suppliers ?? 0}
+              icon={<Building2 className="h-5 w-5 text-blue-300" />}
+              accent="bg-blue-500/10"
+              loading={isLoading}
+            />
+            <KpiCard
+              title="RFQs"
+              value={data?.counts.rfqs ?? 0}
+              icon={<FileText className="h-5 w-5 text-purple-300" />}
+              accent="bg-purple-500/10"
+              loading={isLoading}
+            />
+            <KpiCard
+              title="Leads"
+              value={data?.counts.leads ?? 0}
+              icon={<Users className="h-5 w-5 text-emerald-300" />}
+              accent="bg-emerald-500/10"
+              loading={isLoading}
+            />
+          </div>
+          {data?.workspace?.id ? (
+            <p className="text-xs text-gray-500">Workspace: <span className="font-mono">{data.workspace.id}</span></p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Workspace items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    <TableHead className="text-gray-400 text-xs">Name</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Type</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Description</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(data?.items ?? []).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="py-8 text-center text-gray-500 text-sm">No Fabric items available.</TableCell>
+                    </TableRow>
+                  ) : (data?.items ?? []).map((item) => (
+                    <TableRow key={`${item.id ?? item.name}-${item.type}`} className="border-gray-800 hover:bg-gray-800/40">
+                      <TableCell className="text-xs text-gray-200 py-2">{item.name}</TableCell>
+                      <TableCell className="text-xs text-gray-400 py-2">{item.type}</TableCell>
+                      <TableCell className="text-xs text-gray-500 py-2">{item.description ?? '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function WorkIQTab() {
+  const [data, setData] = useState<WorkIqResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadWorkIq = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/workiq', {
+        credentials: 'include',
+      });
+      const body = (await response.json()) as WorkIqResponse & { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(body.detail ?? body.error ?? 'Failed to load WorkIQ insights');
+      }
+      setData(body);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load WorkIQ insights');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadWorkIq();
+  }, [loadWorkIq]);
+
+  const reportColumns = data?.reportPreview[0] ? Object.keys(data.reportPreview[0]).slice(0, 6) : [];
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <BarChart3 className="h-4 w-4 text-gray-400" />
+            WorkIQ productivity insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700"
+              onClick={() => void loadWorkIq()}
+            >
+              Refresh
+            </Button>
+            {data ? (
+              <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+                Token mode: {data.source}
+              </Badge>
+            ) : null}
+          </div>
+
+          {error ? (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <KpiCard
+              title="Meeting hours"
+              value={data?.insights.meetingHours ?? '—'}
+              icon={<Clock className="h-5 w-5 text-amber-300" />}
+              accent="bg-amber-500/10"
+              loading={isLoading}
+            />
+            <KpiCard
+              title="Focus time"
+              value={data?.insights.focusTimeHours ?? '—'}
+              icon={<Leaf className="h-5 w-5 text-emerald-300" />}
+              accent="bg-emerald-500/10"
+              loading={isLoading}
+            />
+            <KpiCard
+              title="Collaboration load"
+              value={data?.insights.collaborationHours ?? '—'}
+              icon={<Users className="h-5 w-5 text-blue-300" />}
+              accent="bg-blue-500/10"
+              loading={isLoading}
+            />
+          </div>
+
+          <div className="rounded-md border border-gray-800 bg-gray-950/40 p-3">
+            <p className="text-xs font-medium text-gray-300">Top collaborators</p>
+            {(data?.insights.topCollaborators?.length ?? 0) === 0 ? (
+              <p className="mt-1 text-xs text-gray-500">No collaborator insights were returned for this tenant/user.</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {data?.insights.topCollaborators.map((name) => (
+                  <Badge key={name} variant="secondary" className="text-[11px]">{name}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">M365 App usage (D7 preview)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : data?.reportStatus !== 'ok' ? (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              M365 report data is currently unavailable for this app registration or tenant permissions.
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    {reportColumns.map((column) => (
+                      <TableHead key={column} className="text-gray-400 text-xs">{column}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.reportPreview.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={Math.max(1, reportColumns.length)} className="py-8 text-center text-gray-500 text-sm">
+                        No report rows available.
+                      </TableCell>
+                    </TableRow>
+                  ) : data.reportPreview.map((row, index) => (
+                    <TableRow key={`report-row-${index}`} className="border-gray-800 hover:bg-gray-800/40">
+                      {reportColumns.map((column) => (
+                        <TableCell key={`${index}-${column}`} className="text-xs text-gray-300 py-2">
+                          {row[column] || '—'}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
 function SystemTab() {
+  const clearTestUsers = trpc.admin.clearTestUsers.useMutation({
+    onSuccess: (res) => {
+      toast.success(
+        res.count > 0
+          ? `Cleared ${res.count} test user${res.count === 1 ? '' : 's'}`
+          : 'No test users found to clear'
+      );
+    },
+    onError: (err) => toast.error(err.message ?? 'Failed to clear test users'),
+  });
+
   return (
     <div className="space-y-6">
-      {/* Test user role switching was removed with the legacy cookie-session flow. */}
+      {/* Data Maintenance */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Trash2 className="h-4 w-4 text-gray-400" />
+            Data Maintenance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-white">Clear test users</p>
+              <p className="text-xs text-gray-500">
+                Removes internal test accounts (openId matching <code className="text-gray-400">test-*-gcz-internal</code>). Real users are never touched.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-700/40 bg-red-900/20 text-red-400 hover:bg-red-900/40 hover:text-red-300"
+              disabled={clearTestUsers.isPending}
+              onClick={() => {
+                if (window.confirm('Delete all internal test users? This cannot be undone.')) {
+                  clearTestUsers.mutate();
+                }
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {clearTestUsers.isPending ? 'Clearing…' : 'Clear Test Users'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Quick Links */}
       <Card className="border-gray-800 bg-gray-900">
@@ -1556,7 +2560,7 @@ function SystemTab() {
             </Link>
             <Link href="/manufacturers">
               <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
-                <Building2 className="mr-2 h-4 w-4" />Suppliers Directory
+                <Building2 className="mr-2 h-4 w-4" />Supplier Spotlight
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
@@ -1700,6 +2704,55 @@ export default function AdminDashboard() {
               Catalog
             </TabsTrigger>
             <TabsTrigger
+              value="leads"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Users className="mr-1.5 h-4 w-4" />
+              Leads
+            </TabsTrigger>
+            <TabsTrigger
+              value="outreach"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Mail className="mr-1.5 h-4 w-4" />
+              Outreach
+            </TabsTrigger>
+            <TabsTrigger
+              value="scrapers"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Activity className="mr-1.5 h-4 w-4" />
+              Scrapers
+            </TabsTrigger>
+            <TabsTrigger
+              value="ai-chat"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Bot className="mr-1.5 h-4 w-4" />
+              AI Chat
+            </TabsTrigger>
+            <TabsTrigger
+              value="sharepoint"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <FolderOpen className="mr-1.5 h-4 w-4" />
+              SharePoint
+            </TabsTrigger>
+            <TabsTrigger
+              value="fabric"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Database className="mr-1.5 h-4 w-4" />
+              Fabric
+            </TabsTrigger>
+            <TabsTrigger
+              value="workiq"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <BarChart3 className="mr-1.5 h-4 w-4" />
+              WorkIQ
+            </TabsTrigger>
+            <TabsTrigger
               value="system"
               className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
             >
@@ -1722,6 +2775,34 @@ export default function AdminDashboard() {
 
           <TabsContent value="catalog">
             <CatalogTab />
+          </TabsContent>
+
+          <TabsContent value="leads">
+            <LeadsTab />
+          </TabsContent>
+
+          <TabsContent value="outreach">
+            <OutreachTab />
+          </TabsContent>
+
+          <TabsContent value="scrapers">
+            <ScrapersTab />
+          </TabsContent>
+
+          <TabsContent value="ai-chat">
+            <AIChatTab />
+          </TabsContent>
+
+          <TabsContent value="sharepoint">
+            <SharePointTab />
+          </TabsContent>
+
+          <TabsContent value="fabric">
+            <FabricTab />
+          </TabsContent>
+
+          <TabsContent value="workiq">
+            <WorkIQTab />
           </TabsContent>
 
           <TabsContent value="system">

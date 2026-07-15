@@ -10,6 +10,12 @@ import {
   suppliersLocation, rfqSupplierInvites, epdMaterials, supplierMaterialEpds,
 } from "../drizzle/schema";
 import { eq, and, inArray, desc, asc, count, sql, gte, isNull, ne } from "drizzle-orm";
+  subscriptions,
+  crmContacts,
+  crmEmailSequences,
+  scraperRuns,
+} from "../drizzle/schema";
+import { eq, and, inArray, desc, count, sql, gte, like } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -17,6 +23,7 @@ import { generateComplianceReport } from "./compliance-service";
 import { dbUserRoleSchema } from "../shared/types/roles";
 import { auditLog, AuditAction } from "./services/audit-log";
 import { publishSupplierEvent } from "./services/event-bus";
+import { INTELLIGENCE_SCRAPERS } from "./intelligence/intelligence-config";
 
 /**
  * Admin Router — Admin-only operations
@@ -65,6 +72,13 @@ async function assertUserDeletable(
       throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete the last remaining admin." });
     }
   }
+function hasPgErrorCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === code
+  );
 }
 
 export const adminRouter = router({
@@ -615,6 +629,179 @@ export const adminRouter = router({
     return db.select().from(leads).orderBy(desc(leads.createdAt)).limit(200);
   }),
 
+  listIntelligenceLeads: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const rows = await db.execute(sql`
+      SELECT
+        c.id,
+        COALESCE(NULLIF(to_jsonb(c)->>'contact_name', ''), NULLIF(to_jsonb(c)->>'name', '')) AS name,
+        NULLIF(to_jsonb(c)->>'email', '') AS email,
+        COALESCE(NULLIF(to_jsonb(c)->>'company_name', ''), NULLIF(to_jsonb(c)->>'company', '')) AS company,
+        COALESCE(NULLIF(to_jsonb(c)->>'role', ''), NULLIF(to_jsonb(c)->>'type', '')) AS role,
+        NULLIF(to_jsonb(c)->>'category', '') AS category,
+        NULLIF(to_jsonb(c)->>'sf_lead_id', '') AS sf_lead_id,
+        c.created_at
+      FROM crm_contacts c
+      ORDER BY c.created_at DESC
+      LIMIT 500
+    `);
+
+    return rows.rows.map((row) => {
+      const typedRow = row as {
+        id: number | string;
+        name: string | null;
+        email: string | null;
+        company: string | null;
+        role: string | null;
+        category: string | null;
+        sf_lead_id: string | null;
+        created_at: Date | string;
+      };
+      return {
+        id: Number(typedRow.id),
+        name: typedRow.name,
+        email: typedRow.email,
+        company: typedRow.company,
+        role: typedRow.role,
+        category: typedRow.category,
+        sfLeadId: typedRow.sf_lead_id,
+        createdAt: typedRow.created_at,
+      };
+    });
+  }),
+
+  listIntelligenceEmailSequences: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const tableCheck = await db.execute(
+      sql`SELECT to_regclass('public.email_sequences')::text AS table_name`
+    );
+    const hasEmailSequencesTable = Boolean(
+      (tableCheck.rows[0] as { table_name?: string | null } | undefined)?.table_name
+    );
+
+    if (hasEmailSequencesTable) {
+      const rows = await db.execute(sql`
+        SELECT
+          e.id,
+          COALESCE(NULLIF(to_jsonb(e)->>'contact_email', ''), NULLIF(to_jsonb(e)->>'email', '')) AS contact_email,
+          COALESCE(NULLIF(to_jsonb(e)->>'status', ''), 'pending') AS status,
+          COALESCE(NULLIF(to_jsonb(e)->>'step', ''), '1')::int AS step,
+          e.sent_at,
+          e.created_at
+        FROM email_sequences e
+        ORDER BY e.created_at DESC
+        LIMIT 500
+      `);
+
+      return rows.rows.map((row) => {
+        const typedRow = row as {
+          id: number | string;
+          contact_email: string | null;
+          step: number | string;
+          status: string;
+          sent_at: Date | string | null;
+          created_at: Date | string;
+        };
+        return {
+          id: Number(typedRow.id),
+          contactEmail: typedRow.contact_email,
+          step: Number(typedRow.step),
+          status: typedRow.status,
+          sentAt: typedRow.sent_at,
+          createdAt: typedRow.created_at,
+        };
+      });
+    }
+
+    const rows = await db
+      .select({
+        id: crmEmailSequences.id,
+        contactEmail: crmContacts.email,
+        step: crmEmailSequences.step,
+        status: crmEmailSequences.status,
+        sentAt: crmEmailSequences.sentAt,
+        createdAt: crmEmailSequences.createdAt,
+      })
+      .from(crmEmailSequences)
+      .leftJoin(crmContacts, eq(crmEmailSequences.contactId, crmContacts.id))
+      .orderBy(desc(crmEmailSequences.createdAt))
+      .limit(500);
+
+    return rows;
+  }),
+
+  listIntelligenceScraperStatus: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    try {
+      const runs = await db
+        .select({
+          scraperName: scraperRuns.scraperName,
+          status: scraperRuns.status,
+          startedAt: scraperRuns.startedAt,
+          completedAt: scraperRuns.completedAt,
+        })
+        .from(scraperRuns)
+        .orderBy(desc(scraperRuns.startedAt))
+        .limit(200);
+
+      const byScraper = new Map<
+        string,
+        {
+          scraperName: string;
+          status: string;
+          lastRunAt: Date | string;
+          completedAt: Date | string | null;
+        }
+      >();
+      for (const run of runs) {
+        if (!byScraper.has(run.scraperName)) {
+          byScraper.set(run.scraperName, {
+            scraperName: run.scraperName,
+            status: run.status,
+            lastRunAt: run.startedAt,
+            completedAt: run.completedAt,
+          });
+        }
+      }
+
+      const knownScrapers = new Set([
+        ...INTELLIGENCE_SCRAPERS.map((scraper) => scraper.name),
+        ...byScraper.keys(),
+      ]);
+
+      return Array.from(knownScrapers).map((scraperName) => {
+        const known = byScraper.get(scraperName);
+        const label =
+          INTELLIGENCE_SCRAPERS.find((scraper) => scraper.name === scraperName)?.label ??
+          scraperName;
+        return {
+          scraperName,
+          label,
+          status: known?.status ?? null,
+          lastRunAt: known?.lastRunAt ?? null,
+          completedAt: known?.completedAt ?? null,
+        };
+      });
+    } catch (error) {
+      if (!hasPgErrorCode(error, "42P01")) {
+        throw error;
+      }
+      return INTELLIGENCE_SCRAPERS.map((scraper) => ({
+        scraperName: scraper.name,
+        label: scraper.label,
+        status: null,
+        lastRunAt: null,
+        completedAt: null,
+      }));
+    }
+  }),
+
   // ─── God-mode: Recent conversations (no message content, just metadata) ───
   getConversationOverview: adminProcedure.query(async () => {
     const db = await getDb();
@@ -711,15 +898,122 @@ export const adminRouter = router({
     return { total: payloads.length, sent, failed };
   }),
 
-  // ─── Delete test users ────────────────────────────────────────────────────
-  clearTestUsers: adminProcedure.mutation(async () => {
+  // ─── Delete test users (bulk maintenance) ─────────────────────────────────
+  clearTestUsers: adminProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const { users } = await import("../drizzle/schema");
-    const { like } = await import("drizzle-orm");
-    await db.delete(users).where(like(users.openId, "test-%-gcz-internal"));
-    return { cleared: true };
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    const deleted = await db
+      .delete(users)
+      .where(
+        and(
+          like(users.openId, "test-%-gcz-internal"),
+          sql`${users.role} <> 'admin'`,
+          sql`${users.id} <> ${ctx.user.id}`,
+        ),
+      )
+      .returning({ id: users.id });
+
+    void auditLog.record({
+      action: AuditAction.ADMIN_TEST_USERS_CLEARED,
+      actorUserId: ctx.user?.id,
+      actorEmail: ctx.auth?.email ?? null,
+      actorRole: ctx.auth?.role ?? null,
+      resourceType: "user",
+      metadata: { count: deleted.length },
+      req: ctx.req,
+    }).catch((err) => console.error("[audit] clearTestUsers", err));
+
+    return { cleared: true, count: deleted.length };
   }),
+
+  // ─── Delete a single user (hard delete) ───────────────────────────────────
+  deleteUser: adminProcedure
+    .input(z.object({
+      userId: z.number(), // gcz-allow: admin-targeting — removing another account, not self-identity
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      if (ctx.user?.id === input.userId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You can't delete your own account." });
+      }
+
+      const [existing] = await db
+        .select({ id: users.id, email: users.email, role: users.role })
+        .from(users)
+        .where(eq(users.id, input.userId))
+        .limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      if (existing.role === "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin accounts can't be deleted here." });
+      }
+
+      try {
+        await db.delete(users).where(eq(users.id, input.userId));
+      } catch (err) {
+        if (err instanceof Error && /foreign key|violates|23503/i.test(err.message)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Can't delete this user — they still have related records (RFQs, orders, or messages). Remove those first.",
+          });
+        }
+        throw err;
+      }
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_USER_DELETED,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "user",
+        resourceId: input.userId,
+        metadata: { email: existing.email ?? null, role: existing.role },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] deleteUser", err));
+
+      return { success: true };
+    }),
+
+  // ─── Delete a single supplier (hard delete) ───────────────────────────────
+  deleteSupplier: adminProcedure
+    .input(z.object({ supplierId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [existing] = await db
+        .select({ id: suppliers.id, companyName: suppliers.companyName })
+        .from(suppliers)
+        .where(eq(suppliers.id, input.supplierId))
+        .limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found" });
+
+      try {
+        await db.delete(suppliers).where(eq(suppliers.id, input.supplierId));
+      } catch (err) {
+        if (err instanceof Error && /foreign key|violates|23503/i.test(err.message)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Can't delete this supplier — it still has related records (RFQ bids, materials, or messages). Reject it instead, or remove those records first.",
+          });
+        }
+        throw err;
+      }
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_SUPPLIER_DELETED,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "supplier",
+        resourceId: input.supplierId,
+        metadata: { companyName: existing.companyName ?? null },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] deleteSupplier", err));
+
+      return { success: true };
+    }),
 
   // ─── Catalog Stats ───────────────────────────────────────────────────────
   getCatalogStats: adminProcedure.query(async () => {
@@ -872,7 +1166,6 @@ export const adminRouter = router({
    */
   backfillOutreachLayers: adminProcedure.mutation(async () => {
     const { detectLayer } = await import("./services/outreach-email-service");
-    const { crmContacts } = await import("../drizzle/schema");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
