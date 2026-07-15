@@ -676,7 +676,13 @@ export const adminRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
     const deleted = await db
       .delete(users)
-      .where(like(users.openId, "test-%-gcz-internal"))
+      .where(
+        and(
+          like(users.openId, "test-%-gcz-internal"),
+          sql`${users.role} <> 'admin'`,
+          sql`${users.id} <> ${ctx.user.id}`,
+        ),
+      )
       .returning({ id: users.id });
 
     void auditLog.record({
