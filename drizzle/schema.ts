@@ -2078,6 +2078,24 @@ export const crmEmailSequences = pgTable(
 export type CrmEmailSequence = typeof crmEmailSequences.$inferSelect;
 export type InsertCrmEmailSequence = typeof crmEmailSequences.$inferInsert;
 
+/**
+ * Read-only mirror used by the separate intelligence Azure Functions app.
+ * This app does not own migrations for this table.
+ */
+export const emailSequences = pgTable(
+  "email_sequences",
+  {
+    id: serial("id").primaryKey(),
+    contactEmail: varchar("contact_email", { length: 320 }),
+    step: integer("step").notNull().default(1),
+    status: varchar("status", { length: 50 }).notNull().default("pending"),
+    sentAt: timestamp("sent_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  }
+);
+
+export type EmailSequence = typeof emailSequences.$inferSelect;
+
 // ─── Price Indices (BLS/FRED) ─────────────────────────────────────────────────
 
 export const priceIndices = pgTable(

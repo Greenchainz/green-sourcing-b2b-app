@@ -5,6 +5,9 @@ import {
   suppliers, users, materials, materialCertifications, buyerSubscriptions,
   rfqs, rfqBids, leads, conversations, messages,
   subscriptions,
+  crmContacts,
+  crmEmailSequences,
+  scraperRuns,
 } from "../drizzle/schema";
 import { eq, and, inArray, desc, count, sql, gte, like } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -14,6 +17,7 @@ import { generateComplianceReport } from "./compliance-service";
 import { dbUserRoleSchema } from "../shared/types/roles";
 import { auditLog, AuditAction } from "./services/audit-log";
 import { publishSupplierEvent } from "./services/event-bus";
+import { INTELLIGENCE_SCRAPERS } from "./intelligence/intelligence-config";
 
 /**
  * Admin Router — Admin-only operations
@@ -27,6 +31,15 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+function hasPgErrorCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === code
+  );
+}
 
 export const adminRouter = router({
   /**
@@ -574,6 +587,179 @@ export const adminRouter = router({
     return db.select().from(leads).orderBy(desc(leads.createdAt)).limit(200);
   }),
 
+  listIntelligenceLeads: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const rows = await db.execute(sql`
+      SELECT
+        c.id,
+        COALESCE(NULLIF(to_jsonb(c)->>'contact_name', ''), NULLIF(to_jsonb(c)->>'name', '')) AS name,
+        NULLIF(to_jsonb(c)->>'email', '') AS email,
+        COALESCE(NULLIF(to_jsonb(c)->>'company_name', ''), NULLIF(to_jsonb(c)->>'company', '')) AS company,
+        COALESCE(NULLIF(to_jsonb(c)->>'role', ''), NULLIF(to_jsonb(c)->>'type', '')) AS role,
+        NULLIF(to_jsonb(c)->>'category', '') AS category,
+        NULLIF(to_jsonb(c)->>'sf_lead_id', '') AS sf_lead_id,
+        c.created_at
+      FROM crm_contacts c
+      ORDER BY c.created_at DESC
+      LIMIT 500
+    `);
+
+    return rows.rows.map((row) => {
+      const typedRow = row as {
+        id: number | string;
+        name: string | null;
+        email: string | null;
+        company: string | null;
+        role: string | null;
+        category: string | null;
+        sf_lead_id: string | null;
+        created_at: Date | string;
+      };
+      return {
+        id: Number(typedRow.id),
+        name: typedRow.name,
+        email: typedRow.email,
+        company: typedRow.company,
+        role: typedRow.role,
+        category: typedRow.category,
+        sfLeadId: typedRow.sf_lead_id,
+        createdAt: typedRow.created_at,
+      };
+    });
+  }),
+
+  listIntelligenceEmailSequences: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const tableCheck = await db.execute(
+      sql`SELECT to_regclass('public.email_sequences')::text AS table_name`
+    );
+    const hasEmailSequencesTable = Boolean(
+      (tableCheck.rows[0] as { table_name?: string | null } | undefined)?.table_name
+    );
+
+    if (hasEmailSequencesTable) {
+      const rows = await db.execute(sql`
+        SELECT
+          e.id,
+          COALESCE(NULLIF(to_jsonb(e)->>'contact_email', ''), NULLIF(to_jsonb(e)->>'email', '')) AS contact_email,
+          COALESCE(NULLIF(to_jsonb(e)->>'status', ''), 'pending') AS status,
+          COALESCE(NULLIF(to_jsonb(e)->>'step', ''), '1')::int AS step,
+          e.sent_at,
+          e.created_at
+        FROM email_sequences e
+        ORDER BY e.created_at DESC
+        LIMIT 500
+      `);
+
+      return rows.rows.map((row) => {
+        const typedRow = row as {
+          id: number | string;
+          contact_email: string | null;
+          step: number | string;
+          status: string;
+          sent_at: Date | string | null;
+          created_at: Date | string;
+        };
+        return {
+          id: Number(typedRow.id),
+          contactEmail: typedRow.contact_email,
+          step: Number(typedRow.step),
+          status: typedRow.status,
+          sentAt: typedRow.sent_at,
+          createdAt: typedRow.created_at,
+        };
+      });
+    }
+
+    const rows = await db
+      .select({
+        id: crmEmailSequences.id,
+        contactEmail: crmContacts.email,
+        step: crmEmailSequences.step,
+        status: crmEmailSequences.status,
+        sentAt: crmEmailSequences.sentAt,
+        createdAt: crmEmailSequences.createdAt,
+      })
+      .from(crmEmailSequences)
+      .leftJoin(crmContacts, eq(crmEmailSequences.contactId, crmContacts.id))
+      .orderBy(desc(crmEmailSequences.createdAt))
+      .limit(500);
+
+    return rows;
+  }),
+
+  listIntelligenceScraperStatus: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    try {
+      const runs = await db
+        .select({
+          scraperName: scraperRuns.scraperName,
+          status: scraperRuns.status,
+          startedAt: scraperRuns.startedAt,
+          completedAt: scraperRuns.completedAt,
+        })
+        .from(scraperRuns)
+        .orderBy(desc(scraperRuns.startedAt))
+        .limit(200);
+
+      const byScraper = new Map<
+        string,
+        {
+          scraperName: string;
+          status: string;
+          lastRunAt: Date | string;
+          completedAt: Date | string | null;
+        }
+      >();
+      for (const run of runs) {
+        if (!byScraper.has(run.scraperName)) {
+          byScraper.set(run.scraperName, {
+            scraperName: run.scraperName,
+            status: run.status,
+            lastRunAt: run.startedAt,
+            completedAt: run.completedAt,
+          });
+        }
+      }
+
+      const knownScrapers = new Set([
+        ...INTELLIGENCE_SCRAPERS.map((scraper) => scraper.name),
+        ...byScraper.keys(),
+      ]);
+
+      return Array.from(knownScrapers).map((scraperName) => {
+        const known = byScraper.get(scraperName);
+        const label =
+          INTELLIGENCE_SCRAPERS.find((scraper) => scraper.name === scraperName)?.label ??
+          scraperName;
+        return {
+          scraperName,
+          label,
+          status: known?.status ?? null,
+          lastRunAt: known?.lastRunAt ?? null,
+          completedAt: known?.completedAt ?? null,
+        };
+      });
+    } catch (error) {
+      if (!hasPgErrorCode(error, "42P01")) {
+        throw error;
+      }
+      return INTELLIGENCE_SCRAPERS.map((scraper) => ({
+        scraperName: scraper.name,
+        label: scraper.label,
+        status: null,
+        lastRunAt: null,
+        completedAt: null,
+      }));
+    }
+  }),
+
   // ─── God-mode: Recent conversations (no message content, just metadata) ───
   getConversationOverview: adminProcedure.query(async () => {
     const db = await getDb();
@@ -938,7 +1124,6 @@ export const adminRouter = router({
    */
   backfillOutreachLayers: adminProcedure.mutation(async () => {
     const { detectLayer } = await import("./services/outreach-email-service");
-    const { crmContacts } = await import("../drizzle/schema");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
