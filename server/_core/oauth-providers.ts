@@ -18,6 +18,7 @@ import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
 import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
+import { isFounderAdminEmail } from "./admin-access";
 
 // Helpers
 
@@ -451,9 +452,9 @@ export function registerOAuthProviderRoutes(app: Express) {
           return;
       }
 
-      // Determine role: admin if greenchainz.com email, else use provided role or default to buyer
+      // Determine role: ONLY founder@greenchainz.com can be admin.
       let assignedRole: "buyer" | "supplier" | "admin" | "user" = "buyer";
-      if (userInfo.email?.endsWith("@greenchainz.com")) {
+      if (isFounderAdminEmail(userInfo.email)) {
         assignedRole = "admin";
       } else if (role === "supplier") {
         assignedRole = "supplier";
@@ -465,11 +466,13 @@ export function registerOAuthProviderRoutes(app: Express) {
       const existingUser = await db.getUserByOpenId(userInfo.openId);
       const isNewUser = !existingUser;
 
-      // Preserve existing role unless we need to elevate an internal account.
+      // Preserve existing role unless we need to elevate or remediate admin role.
       let roleForUpsert: "buyer" | "supplier" | "admin" | "user" | undefined = assignedRole;
       if (existingUser?.role) {
-        if (existingUser.role !== "admin" && userInfo.email?.endsWith("@greenchainz.com")) {
+        if (existingUser.role !== "admin" && isFounderAdminEmail(userInfo.email)) {
           roleForUpsert = "admin";
+        } else if (existingUser.role === "admin" && !isFounderAdminEmail(userInfo.email)) {
+          roleForUpsert = "buyer";
         } else {
           roleForUpsert = undefined;
         }

@@ -19,11 +19,11 @@ import {
 } from "../drizzle/schema";
 import { eq, desc, ilike, or, and, isNotNull, sql } from "drizzle-orm";
 import { sendEmail } from "./email-service";
+import { canAccessAdmin } from "./_core/admin-access";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  const role = ctx.auth?.role;
-  if (role !== "admin") {
+  if (!canAccessAdmin(ctx.user)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({ ctx });
