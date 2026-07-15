@@ -29,7 +29,7 @@ function buildRedirectUri(_req: Request, provider: string): string {
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
-// Trusted external origins that may receive the auth token via returnPath redirect.
+// Trusted external origins that may receive the auth token via returnPath redirect. (v2)
 // Any absolute returnPath whose origin is in this list bypasses the relative-only
 // validation and gets the session token appended as ?token=<session_token> so the
 // receiving page (e.g. auth-callback.html) can extract it without same-origin access.
