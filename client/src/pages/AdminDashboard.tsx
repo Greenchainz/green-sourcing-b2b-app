@@ -134,6 +134,19 @@ interface FabricOverviewResponse {
   message?: string;
 }
 
+interface WorkIqResponse {
+  source: 'delegated' | 'app';
+  insights: {
+    meetingHours: number | null;
+    focusTimeHours: number | null;
+    collaborationHours: number | null;
+    topCollaborators: string[];
+  };
+  activityStatistics: unknown[];
+  reportStatus: 'ok' | 'unavailable';
+  reportPreview: Array<Record<string, string>>;
+}
+
 // ─── Helper utilities ────────────────────────────────────────────────────────
 
 function formatDate(d: Date | string | number | null | undefined): string {
@@ -2120,6 +2133,154 @@ function FabricTab() {
   );
 }
 
+function WorkIQTab() {
+  const [data, setData] = useState<WorkIqResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadWorkIq = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/workiq', {
+        credentials: 'include',
+      });
+      const body = (await response.json()) as WorkIqResponse & { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(body.detail ?? body.error ?? 'Failed to load WorkIQ insights');
+      }
+      setData(body);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load WorkIQ insights');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadWorkIq();
+  }, [loadWorkIq]);
+
+  const reportColumns = data?.reportPreview[0] ? Object.keys(data.reportPreview[0]).slice(0, 6) : [];
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <BarChart3 className="h-4 w-4 text-gray-400" />
+            WorkIQ productivity insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700"
+              onClick={() => void loadWorkIq()}
+            >
+              Refresh
+            </Button>
+            {data ? (
+              <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+                Token mode: {data.source}
+              </Badge>
+            ) : null}
+          </div>
+
+          {error ? (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <KpiCard
+              title="Meeting hours"
+              value={data?.insights.meetingHours ?? '—'}
+              icon={<Clock className="h-5 w-5 text-amber-300" />}
+              accent="bg-amber-500/10"
+              loading={isLoading}
+            />
+            <KpiCard
+              title="Focus time"
+              value={data?.insights.focusTimeHours ?? '—'}
+              icon={<Leaf className="h-5 w-5 text-emerald-300" />}
+              accent="bg-emerald-500/10"
+              loading={isLoading}
+            />
+            <KpiCard
+              title="Collaboration load"
+              value={data?.insights.collaborationHours ?? '—'}
+              icon={<Users className="h-5 w-5 text-blue-300" />}
+              accent="bg-blue-500/10"
+              loading={isLoading}
+            />
+          </div>
+
+          <div className="rounded-md border border-gray-800 bg-gray-950/40 p-3">
+            <p className="text-xs font-medium text-gray-300">Top collaborators</p>
+            {(data?.insights.topCollaborators?.length ?? 0) === 0 ? (
+              <p className="mt-1 text-xs text-gray-500">No collaborator insights were returned for this tenant/user.</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {data?.insights.topCollaborators.map((name) => (
+                  <Badge key={name} variant="secondary" className="text-[11px]">{name}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">M365 App usage (D7 preview)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : data?.reportStatus !== 'ok' ? (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              M365 report data is currently unavailable for this app registration or tenant permissions.
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    {reportColumns.map((column) => (
+                      <TableHead key={column} className="text-gray-400 text-xs">{column}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.reportPreview.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={Math.max(1, reportColumns.length)} className="py-8 text-center text-gray-500 text-sm">
+                        No report rows available.
+                      </TableCell>
+                    </TableRow>
+                  ) : data.reportPreview.map((row, index) => (
+                    <TableRow key={`report-row-${index}`} className="border-gray-800 hover:bg-gray-800/40">
+                      {reportColumns.map((column) => (
+                        <TableCell key={`${index}-${column}`} className="text-xs text-gray-300 py-2">
+                          {row[column] || '—'}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
 function SystemTab() {
@@ -2367,6 +2528,13 @@ export default function AdminDashboard() {
               Fabric
             </TabsTrigger>
             <TabsTrigger
+              value="workiq"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <BarChart3 className="mr-1.5 h-4 w-4" />
+              WorkIQ
+            </TabsTrigger>
+            <TabsTrigger
               value="system"
               className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
             >
@@ -2413,6 +2581,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="fabric">
             <FabricTab />
+          </TabsContent>
+
+          <TabsContent value="workiq">
+            <WorkIQTab />
           </TabsContent>
 
           <TabsContent value="system">

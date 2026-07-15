@@ -73,6 +73,27 @@ function normalizeSharePointPath(path: string | null | undefined): string {
   return path.replace(/^\/+/, "").replace(/\/+$/, "");
 }
 
+function getDelegatedGraphTokenFromRequest(req: express.Request): string | null {
+  const headerValue = req.headers["x-ms-token-aad-access-token"];
+  if (typeof headerValue === "string" && headerValue.trim().length > 0) {
+    return headerValue.trim();
+  }
+  return null;
+}
+
+function parseCsvText(csvText: string): Array<Record<string, string>> {
+  const rows = csvText.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (rows.length < 2) return [];
+  const headers = rows[0].split(",").map((header) => header.replace(/^"|"$/g, "").trim());
+  return rows.slice(1, 26).map((line) => {
+    const values = line.split(",").map((value) => value.replace(/^"|"$/g, "").trim());
+    return headers.reduce<Record<string, string>>((acc, header, index) => {
+      acc[header] = values[index] ?? "";
+      return acc;
+    }, {});
+  });
+}
+
 function createErrorResponse(
   message: string,
   requestId: string,
@@ -366,6 +387,91 @@ export function registerAdminRoutes(
     } catch (err) {
       console.error('[admin] Fabric overview error:', err);
       res.status(500).json(createErrorResponse('Fabric overview failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
+    }
+  });
+
+  app.get('/api/admin/workiq', adminRateLimit, async (req, res) => {
+    try {
+      const user = await requireEasyAuthAdminUser(req, res);
+      if (!user) return;
+
+      // Graph scopes required:
+      // - Analytics.Read (for /me/analytics/activityStatistics)
+      // - Reports.Read.All (for /reports/getM365AppUserDetail)
+      const delegatedToken = getDelegatedGraphTokenFromRequest(req);
+      const appToken = await getClientCredentialsToken("https://graph.microsoft.com/.default");
+      const tokenMode = delegatedToken ? "delegated" : "app";
+
+      let meetingHours: number | null = null;
+      let focusTimeHours: number | null = null;
+      let collaborationHours: number | null = null;
+      let topCollaborators: string[] = [];
+      let activityStatistics: unknown[] = [];
+
+      if (delegatedToken) {
+        try {
+          const analyticsResponse = await callGraphJson<{ value?: Array<Record<string, unknown>> }>(
+            delegatedToken,
+            `/me/analytics/activityStatistics`
+          );
+          const stats = analyticsResponse.value ?? [];
+          activityStatistics = stats;
+
+          for (const row of stats) {
+            const label = String(row.displayName ?? row.activity ?? row.activityType ?? "").toLowerCase();
+            const rawHours = Number(row.hours ?? row.value ?? row.metricValue ?? row.timeSpentInHours ?? 0);
+            if (label.includes("meeting")) meetingHours = rawHours;
+            else if (label.includes("focus")) focusTimeHours = rawHours;
+            else if (label.includes("collaboration")) collaborationHours = rawHours;
+
+            const collaborator = row.personName ?? row.collaborator ?? row.userPrincipalName;
+            if (typeof collaborator === "string" && collaborator.trim().length > 0) {
+              topCollaborators.push(collaborator.trim());
+            }
+          }
+          topCollaborators = Array.from(new Set(topCollaborators)).slice(0, 5);
+        } catch (analyticsError) {
+          console.warn("[admin] WorkIQ analytics endpoint unavailable:", analyticsError);
+        }
+      }
+
+      const reportResponse = await fetch(
+        "https://graph.microsoft.com/v1.0/reports/getM365AppUserDetail(period='D7')",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${appToken}`,
+            Accept: "text/csv",
+          },
+        }
+      );
+
+      let reportPreview: Array<Record<string, string>> = [];
+      let reportStatus: "ok" | "unavailable" = "unavailable";
+      if (reportResponse.ok) {
+        const csv = await reportResponse.text();
+        reportPreview = parseCsvText(csv);
+        reportStatus = "ok";
+      } else {
+        const reportErr = await reportResponse.text();
+        console.warn("[admin] WorkIQ report endpoint unavailable:", reportResponse.status, reportErr);
+      }
+
+      res.json({
+        source: tokenMode,
+        insights: {
+          meetingHours,
+          focusTimeHours,
+          collaborationHours,
+          topCollaborators,
+        },
+        activityStatistics,
+        reportStatus,
+        reportPreview,
+      });
+    } catch (err) {
+      console.error('[admin] WorkIQ error:', err);
+      res.status(500).json(createErrorResponse('WorkIQ request failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
     }
   });
 
