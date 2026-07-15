@@ -38,13 +38,14 @@ const ALLOWED_EXTERNAL_ORIGINS: readonly string[] = [
 ];
 
 function isAllowedReturnPath(raw: string): boolean {
+  if (typeof raw !== "string" || !raw) return false;
   if (/^\/(?!\/)/.test(raw)) return true; // relative path on same origin
-  try {
-    const u = new URL(raw);
-    return ALLOWED_EXTERNAL_ORIGINS.includes(u.origin);
-  } catch {
-    return false;
-  }
+  // Use string-prefix matching to avoid potential URL-parser quirks in the deployed env.
+  // An absolute returnPath is allowed when it starts with an allowlisted origin.
+  const allowed = ALLOWED_EXTERNAL_ORIGINS.some(
+    (origin) => raw === origin || raw.startsWith(origin + "/")
+  );
+  return allowed;
 }
 
 type OAuthRole = "supplier" | "buyer" | null;
