@@ -108,7 +108,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/manufacturers" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Supplier Directory
+                  Supplier Spotlight
                 </Link>
               </li>
               <li>
@@ -198,7 +198,7 @@ export default function Footer() {
           <a href="/pricing">Pricing</a> | <a href="/materials">Materials</a> |{' '}
           <a href="/how-it-works">How It Works</a> | <a href="/carbon-compare">Carbon Compare</a> |{' '}
           <a href="/tools/extension">Browser Extension</a> | <a href="/tools/revit">Revit Plugin</a> |{' '}
-          <a href="/manufacturers">Supplier Directory</a> | <a href="/supplier/register">Supplier Sign Up</a> |{' '}
+          <a href="/manufacturers">Supplier Spotlight</a> | <a href="/supplier/register">Supplier Sign Up</a> |{' '}
           <a href="/support">Support</a> | <a href="/privacy">Privacy</a> | <a href="/terms">Terms</a>
         </nav>
       </noscript>

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, adminProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { manufacturers, materials } from "../drizzle/schema";
 import { eq, asc, sql, desc } from "drizzle-orm";
@@ -163,5 +163,73 @@ export const manufacturerRouter = router({
         .where(eq(manufacturers.id, input.id));
 
       return { success: true };
+    }),
+
+  /**
+   * Curated editorial spotlight for the /manufacturers page.
+   * Returns ONLY featured suppliers (never the full inventory) so the moat
+   * stays server-side. The most-recently-featured row is the "Supplier of the
+   * Week" hero; the remainder are the "Emerging / New & Noteworthy" set.
+   */
+  getSpotlight: publicProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(12).optional() }).optional())
+    .query(async ({ input }) => {
+      const limit = input?.limit ?? 7;
+      const db = await getDb();
+      if (!db) {
+        return researchFallback().filter((m) => m.featured).slice(0, limit);
+      }
+
+      const materialCounts = db
+        .select({
+          manufacturerId: materials.manufacturerId,
+          count: sql<number>`count(*)`.as("count"),
+        })
+        .from(materials)
+        .groupBy(materials.manufacturerId)
+        .as("materialCounts");
+
+      const rows = await db
+        .select({
+          manufacturer: manufacturers,
+          materialCount: sql<number>`COALESCE(${materialCounts.count}, 0)`,
+        })
+        .from(manufacturers)
+        .leftJoin(materialCounts, eq(manufacturers.id, materialCounts.manufacturerId))
+        .where(eq(manufacturers.featured, true))
+        .orderBy(desc(manufacturers.updatedAt))
+        .limit(limit);
+
+      const dbResults = rows.map((r) => ({
+        ...r.manufacturer,
+        companyName: r.manufacturer.name,
+        materialCount: Number(r.materialCount),
+      }));
+
+      // Nothing curated yet → surface featured research-library candidates.
+      if (dbResults.length === 0) {
+        return researchFallback().filter((m) => m.featured).slice(0, limit);
+      }
+
+      return dbResults;
+    }),
+
+  /**
+   * Admin-only: feature / un-feature a supplier. Stamping updatedAt makes the
+   * newest pick the "Supplier of the Week" hero (getSpotlight orders by it).
+   * No schema migration — reuses the existing `featured` flag.
+   */
+  setFeatured: adminProcedure
+    .input(z.object({ id: z.number().int().positive(), featured: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { success: false as const };
+
+      await db
+        .update(manufacturers)
+        .set({ featured: input.featured, updatedAt: new Date() })
+        .where(eq(manufacturers.id, input.id));
+
+      return { success: true as const, id: input.id, featured: input.featured };
     }),
 });

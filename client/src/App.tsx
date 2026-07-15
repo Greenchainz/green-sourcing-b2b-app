@@ -58,9 +58,9 @@ const ROUTE_SEO_FALLBACKS: Record<string, { title: string; description: string; 
     canonicalPath: "/insider",
   },
   "/manufacturers": {
-    title: "Verified Sustainable Manufacturers Directory | GreenChainz",
+    title: "Supplier Spotlight: Emerging Sustainable Manufacturers | GreenChainz",
     description:
-      "Browse verified sustainable manufacturers, review product documentation, and discover suppliers ready for specification.",
+      "A curated spotlight on new and emerging sustainable material manufacturers. To source, search materials by carbon, EPD, price and lead time — or start an RFQ.",
     canonicalPath: "/manufacturers",
   },
   "/privacy": {
