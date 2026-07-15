@@ -71,7 +71,13 @@ function researchFallback(categoryFilter?: string): ManufacturerRow[] {
 }
 
 export const manufacturerRouter = router({
-  getAll: publicProcedure
+  /**
+   * Full supplier inventory — ADMIN ONLY. This is the curated/scraped moat and
+   * must never be dumped to the public client. Buyers source via Material Search
+   * (`/search`) + RFQ; the public `/manufacturers` page uses `getSpotlight`
+   * (featured-only). Kept (not deleted) so admin tooling can still enumerate.
+   */
+  getAll: adminProcedure
     .input(
       z.object({
         category: z.string().optional(),
