@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
   Users,
@@ -66,6 +67,12 @@ import {
   BarChart3,
   TrendingUp,
   Video,
+  Bot,
+  FolderOpen,
+  Database,
+  Upload,
+  FileText,
+  Send,
 } from 'lucide-react';
 
 // ─── Type definitions ────────────────────────────────────────────────────────
@@ -73,6 +80,7 @@ import {
 type UserRole = 'user' | 'admin' | 'buyer' | 'supplier';
 type UserTier = 'free' | 'standard' | 'premium';
 type SortDirection = 'asc' | 'desc';
+type ChatRole = 'user' | 'assistant';
 
 const INTELLIGENCE_SCRAPER_OPTIONS = [
   { name: 'supplier-contacts', label: 'Supplier contacts scraper' },
@@ -92,9 +100,43 @@ interface AdminUser {
   subscriptionStatus: string;
 }
 
+interface IntelligenceChatMessage {
+  id: string;
+  role: ChatRole;
+  content: string;
+  createdAt: number;
+}
+
+interface SharePointItem {
+  id: string;
+  name: string;
+  webUrl: string | null;
+  size: number | null;
+  lastModifiedAt: string | null;
+  type: 'folder' | 'file';
+  childCount: number | null;
+}
+
+interface FabricOverviewResponse {
+  configured: boolean;
+  counts: {
+    suppliers: number;
+    rfqs: number;
+    leads: number;
+  };
+  workspace: { id: string } | null;
+  items: Array<{
+    id: string | null;
+    name: string;
+    type: string;
+    description: string | null;
+  }>;
+  message?: string;
+}
+
 // ─── Helper utilities ────────────────────────────────────────────────────────
 
-function formatDate(d: Date | string | null | undefined): string {
+function formatDate(d: Date | string | number | null | undefined): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -103,7 +145,7 @@ function formatDate(d: Date | string | null | undefined): string {
   });
 }
 
-function formatDateTime(d: Date | string | null | undefined): string {
+function formatDateTime(d: Date | string | number | null | undefined): string {
   if (!d) return 'Never';
   return new Date(d).toLocaleString('en-US', {
     year: 'numeric',
@@ -1689,6 +1731,395 @@ function ScrapersTab() {
   );
 }
 
+function AIChatTab() {
+  const [messages, setMessages] = useState<IntelligenceChatMessage[]>([
+    {
+      id: 'seed-assistant-message',
+      role: 'assistant',
+      content: 'I am your GreenChainz dashboard copilot. Ask about lead strategy, supplier onboarding, outreach, or growth decisions.',
+      createdAt: Date.now(),
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const sendMessage = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isSending) return;
+
+    const userMessage: IntelligenceChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: trimmed,
+      createdAt: Date.now(),
+    };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    setInput('');
+    setIsSending(true);
+
+    try {
+      const response = await fetch('/api/admin/intelligence/ai-chat', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: nextMessages.map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+        }),
+      });
+      const body = (await response.json()) as { reply?: string; error?: string; detail?: string };
+      if (!response.ok || !body.reply) {
+        throw new Error(body.detail ?? body.error ?? 'AI chat request failed');
+      }
+      setMessages((current) => [
+        ...current,
+        {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: body.reply!,
+          createdAt: Date.now(),
+        },
+      ]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'AI chat request failed');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <Card className="border-gray-800 bg-gray-900">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+          <Bot className="h-4 w-4 text-gray-400" />
+          AI founder copilot
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <ScrollArea className="h-[420px] rounded-md border border-gray-800 bg-gray-950/40 p-3">
+          <div className="space-y-3">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`max-w-[88%] rounded-md px-3 py-2 text-sm ${message.role === 'user'
+                    ? 'ml-auto bg-emerald-500/15 text-emerald-100 border border-emerald-500/30'
+                    : 'mr-auto bg-gray-800 text-gray-100 border border-gray-700'
+                  }`}
+              >
+                <p className="whitespace-pre-wrap">{message.content}</p>
+                <p className="mt-1 text-[10px] text-gray-400">{formatDateTime(message.createdAt)}</p>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        <div className="space-y-2">
+          <Textarea
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="Ask about leads, RFQs, supplier conversion, or growth priorities…"
+            className="min-h-[90px] border-gray-700 bg-gray-800 text-sm text-white placeholder:text-gray-500"
+          />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={sendMessage} disabled={isSending || input.trim().length === 0}>
+              {isSending ? (
+                <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Sending…</>
+              ) : (
+                <><Send className="mr-1.5 h-3.5 w-3.5" />Send</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SharePointTab() {
+  const [path, setPath] = useState('');
+  const [items, setItems] = useState<SharePointItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadFiles = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const search = path.trim() ? `?path=${encodeURIComponent(path.trim())}` : '';
+      const response = await fetch(`/api/admin/intelligence/sharepoint/files${search}`, {
+        credentials: 'include',
+      });
+      const body = (await response.json()) as { items?: SharePointItem[]; error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(body.detail ?? body.error ?? 'Failed to load SharePoint files');
+      }
+      setItems(body.items ?? []);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load SharePoint files');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [path]);
+
+  useEffect(() => {
+    void loadFiles();
+  }, [loadFiles]);
+
+  const uploadFile = async () => {
+    if (!selectedFile) {
+      toast.error('Choose a file before uploading');
+      return;
+    }
+    setIsUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      if (path.trim()) formData.append('path', path.trim());
+
+      const response = await fetch('/api/admin/intelligence/sharepoint/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const body = (await response.json()) as { success?: boolean; error?: string; detail?: string };
+      if (!response.ok || !body.success) {
+        throw new Error(body.detail ?? body.error ?? 'SharePoint upload failed');
+      }
+      setSelectedFile(null);
+      toast.success('Document uploaded to SharePoint');
+      await loadFiles();
+    } catch (uploadError) {
+      const message = uploadError instanceof Error ? uploadError.message : 'SharePoint upload failed';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <FolderOpen className="h-4 w-4 text-gray-400" />
+            SharePoint documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={path}
+              onChange={(event) => setPath(event.target.value)}
+              placeholder="Folder path (optional), e.g. leads/2026"
+              className="border-gray-700 bg-gray-800 text-sm text-white placeholder:text-gray-600"
+            />
+            <Button size="sm" variant="outline" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700" onClick={() => void loadFiles()}>
+              Refresh
+            </Button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              type="file"
+              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+              className="border-gray-700 bg-gray-800 text-xs text-gray-300 file:border-0 file:bg-gray-700 file:text-gray-200"
+            />
+            <Button size="sm" onClick={uploadFile} disabled={isUploading || !selectedFile}>
+              {isUploading ? (
+                <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Uploading…</>
+              ) : (
+                <><Upload className="mr-1.5 h-3.5 w-3.5" />Upload</>
+              )}
+            </Button>
+          </div>
+          {error ? (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Files</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    <TableHead className="text-gray-400 text-xs">Name</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Type</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Size</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Modified</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Open</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-gray-500 text-sm">No SharePoint items found.</TableCell>
+                    </TableRow>
+                  ) : items.map((item) => (
+                    <TableRow key={item.id} className="border-gray-800 hover:bg-gray-800/40">
+                      <TableCell className="text-xs text-gray-200 py-2">{item.name}</TableCell>
+                      <TableCell className="text-xs text-gray-400 py-2">{item.type}</TableCell>
+                      <TableCell className="text-xs text-gray-400 py-2">
+                        {item.size !== null ? `${Math.max(1, Math.round(item.size / 1024))} KB` : '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-500 py-2">{formatDateTime(item.lastModifiedAt)}</TableCell>
+                      <TableCell className="text-xs py-2">
+                        {item.webUrl ? (
+                          <a href={item.webUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300 underline-offset-4 hover:underline">
+                            Open
+                          </a>
+                        ) : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function FabricTab() {
+  const [data, setData] = useState<FabricOverviewResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadOverview = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/intelligence/fabric/overview', {
+        credentials: 'include',
+      });
+      const body = (await response.json()) as FabricOverviewResponse & { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(body.detail ?? body.error ?? 'Failed to load Fabric overview');
+      }
+      setData(body);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load Fabric overview');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadOverview();
+  }, [loadOverview]);
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Database className="h-4 w-4 text-gray-400" />
+            Fabric data sync
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-3">
+            <Button size="sm" variant="outline" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700" onClick={() => void loadOverview()}>
+              Refresh
+            </Button>
+            {data?.configured ? (
+              <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">Fabric configured</Badge>
+            ) : (
+              <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-300">Configuration needed</Badge>
+            )}
+          </div>
+          {error ? (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+          ) : null}
+          {data?.message ? (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{data.message}</div>
+          ) : null}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <KpiCard
+              title="Suppliers"
+              value={data?.counts.suppliers ?? 0}
+              icon={<Building2 className="h-5 w-5 text-blue-300" />}
+              accent="bg-blue-500/10"
+              loading={isLoading}
+            />
+            <KpiCard
+              title="RFQs"
+              value={data?.counts.rfqs ?? 0}
+              icon={<FileText className="h-5 w-5 text-purple-300" />}
+              accent="bg-purple-500/10"
+              loading={isLoading}
+            />
+            <KpiCard
+              title="Leads"
+              value={data?.counts.leads ?? 0}
+              icon={<Users className="h-5 w-5 text-emerald-300" />}
+              accent="bg-emerald-500/10"
+              loading={isLoading}
+            />
+          </div>
+          {data?.workspace?.id ? (
+            <p className="text-xs text-gray-500">Workspace: <span className="font-mono">{data.workspace.id}</span></p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Workspace items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    <TableHead className="text-gray-400 text-xs">Name</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Type</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Description</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(data?.items ?? []).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="py-8 text-center text-gray-500 text-sm">No Fabric items available.</TableCell>
+                    </TableRow>
+                  ) : (data?.items ?? []).map((item) => (
+                    <TableRow key={`${item.id ?? item.name}-${item.type}`} className="border-gray-800 hover:bg-gray-800/40">
+                      <TableCell className="text-xs text-gray-200 py-2">{item.name}</TableCell>
+                      <TableCell className="text-xs text-gray-400 py-2">{item.type}</TableCell>
+                      <TableCell className="text-xs text-gray-500 py-2">{item.description ?? '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
 function SystemTab() {
@@ -1915,6 +2346,27 @@ export default function AdminDashboard() {
               Scrapers
             </TabsTrigger>
             <TabsTrigger
+              value="ai-chat"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Bot className="mr-1.5 h-4 w-4" />
+              AI Chat
+            </TabsTrigger>
+            <TabsTrigger
+              value="sharepoint"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <FolderOpen className="mr-1.5 h-4 w-4" />
+              SharePoint
+            </TabsTrigger>
+            <TabsTrigger
+              value="fabric"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Database className="mr-1.5 h-4 w-4" />
+              Fabric
+            </TabsTrigger>
+            <TabsTrigger
               value="system"
               className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
             >
@@ -1949,6 +2401,18 @@ export default function AdminDashboard() {
 
           <TabsContent value="scrapers">
             <ScrapersTab />
+          </TabsContent>
+
+          <TabsContent value="ai-chat">
+            <AIChatTab />
+          </TabsContent>
+
+          <TabsContent value="sharepoint">
+            <SharePointTab />
+          </TabsContent>
+
+          <TabsContent value="fabric">
+            <FabricTab />
           </TabsContent>
 
           <TabsContent value="system">
