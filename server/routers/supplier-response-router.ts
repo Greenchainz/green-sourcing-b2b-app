@@ -17,7 +17,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { rfqs, rfqBids, suppliers, rfqSupplierInvites } from "../../drizzle/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
 import {
   scoreRfxResponse,
   computeMedianBidPrice,
@@ -128,6 +128,7 @@ export const supplierResponseRouter = router({
           and(
             eq(suppliers.userId, ctx.user.id),
             eq(suppliers.verificationStatus, "approved"),
+            isNull(suppliers.deletedAt),
           )
         )
         .limit(1);
@@ -135,7 +136,7 @@ export const supplierResponseRouter = router({
       if (!supplierRow) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only verified suppliers can submit responses",
+          message: "Supplier account is not active",
         });
       }
 
@@ -411,7 +412,7 @@ export const supplierResponseRouter = router({
       const [supplierRow] = await db
         .select({ id: suppliers.id })
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplierRow) return null;

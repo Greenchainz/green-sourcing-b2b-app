@@ -2,6 +2,29 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { adminRouter } from './admin-router';
 import { getDb } from './db';
 import { TRPCError } from '@trpc/server';
+import {
+  architects,
+  buyerSubscriptions,
+  subscriptions,
+  emailCredentials,
+  users,
+  supplierSubscriptions,
+  supplierProfileViews,
+  supplierBuyerFitInputs,
+  supplierSustainabilityProfiles,
+  materialSpecs,
+  companyOfWeekSlots,
+  usageTracking,
+  agentHandoffRules,
+  supplierFilters,
+  suppliersLocation,
+  rfqSupplierInvites,
+  epdMaterials,
+  supplierMaterialEpds,
+  conciergeRoutes,
+  learningEvents,
+  suppliers,
+} from '../drizzle/schema';
 
 // Mock the database
 vi.mock('./db', () => ({
@@ -330,9 +353,13 @@ const nonAdminCtx = {
  * Chainable mock Drizzle handle.
  *  - `.where()` returns a thenable that resolves to `countRow` (for awaited
  *    update/delete/count queries) and also exposes `.limit()` → `targetRow`
- *    (for the `select…where…limit` lookup inside assertUserDeletable).
+ *    (for existence lookups) and `.returning()` (for affected-row checks).
  */
-function makeDb({ targetRow = [] as any[], countRow = [{ c: 1 }] as any[] } = {}) {
+function makeDb({
+  targetRow = [{ id: 1, role: 'supplier' }] as any[],
+  countRow = [{ c: 1 }] as any[],
+  returningRow = targetRow,
+} = {}) {
   const db: any = {};
   const chain = () => db;
   db.select = vi.fn(chain);
@@ -347,6 +374,7 @@ function makeDb({ targetRow = [] as any[], countRow = [{ c: 1 }] as any[] } = {}
   db.where = vi.fn(() => {
     const p: any = Promise.resolve(countRow);
     p.limit = vi.fn().mockResolvedValue(targetRow);
+    p.returning = vi.fn().mockResolvedValue(returningRow);
     return p;
   });
   // Purges wrap their writes in db.transaction(async (tx) => {...}); run the
@@ -453,8 +481,13 @@ describe('Admin Router - Destructive data control', () => {
       const result = await caller.purgeUser({ userId: 2 });
 
       expect(result).toEqual({ success: true });
-      // architects + buyerSubscriptions + subscriptions + users = 4 deletes
-      expect(db.delete).toHaveBeenCalledTimes(4);
+      expect(db.delete.mock.calls.map(([table]) => table)).toEqual([
+        architects,
+        buyerSubscriptions,
+        subscriptions,
+        emailCredentials,
+        users,
+      ]);
       // owned public supplier profile is soft-deleted, not hard-deleted
       expect(db.update).toHaveBeenCalled();
     });
@@ -555,8 +588,24 @@ describe('Admin Router - Destructive data control', () => {
       const result = await caller.purgeSupplier({ supplierId: 4 });
 
       expect(result).toEqual({ success: true });
-      // 10 owned/1:1 child tables + the supplier row itself = 11 deletes
-      expect(db.delete).toHaveBeenCalledTimes(11);
+      expect(db.delete.mock.calls.map(([table]) => table)).toEqual([
+        supplierSubscriptions,
+        supplierProfileViews,
+        supplierBuyerFitInputs,
+        supplierSustainabilityProfiles,
+        materialSpecs,
+        companyOfWeekSlots,
+        usageTracking,
+        agentHandoffRules,
+        supplierFilters,
+        suppliersLocation,
+        rfqSupplierInvites,
+        epdMaterials,
+        supplierMaterialEpds,
+        conciergeRoutes,
+        learningEvents,
+        suppliers,
+      ]);
     });
   });
 });

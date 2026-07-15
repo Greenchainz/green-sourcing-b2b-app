@@ -121,6 +121,22 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByOpenIdIncludingDeleted(openId: string) {
+  const resolvedDb = await getDb();
+  if (!resolvedDb) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await resolvedDb
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function updateUserRole(
   userId: number,
   role: DbUserRole

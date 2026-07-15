@@ -8,7 +8,9 @@ import {
   supplierSubscriptions, supplierProfileViews, supplierBuyerFitInputs,
   supplierSustainabilityProfiles, agentHandoffRules, supplierFilters,
   suppliersLocation, rfqSupplierInvites, epdMaterials, supplierMaterialEpds,
-  crmContacts, crmEmailSequences, scraperRuns,
+  crmContacts, crmEmailSequences, scraperRuns, emailCredentials,
+  materialSpecs, companyOfWeekSlots, usageTracking, conciergeRoutes,
+  learningEvents,
 } from "../drizzle/schema";
 import { eq, and, inArray, desc, asc, count, sql, gte, isNull, ne, like } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -1247,10 +1249,14 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      await db
+      const restored = await db
         .update(users)
         .set({ deletedAt: null, updatedAt: new Date() })
-        .where(eq(users.id, input.userId));
+        .where(eq(users.id, input.userId))
+        .returning({ id: users.id });
+      if (restored.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found." });
+      }
 
       void auditLog.record({
         action: AuditAction.ADMIN_USER_RESTORED,
@@ -1266,9 +1272,9 @@ export const adminRouter = router({
     }),
 
   // Irreversible. Children removed first so a mid-run failure never orphans the
-  // parent. The two real FKs (submittals.createdBy, ca_documents.createdBy)
-  // cascade at the DB level; a public supplier profile is soft-deleted so it
-  // can't linger in the directory; identity/billing 1:1 rows are removed.
+  // parent. The three real user FKs (submittals.createdBy, ca_documents.createdBy,
+  // ca_document_messages.author_user_id) cascade at the DB level; public supplier
+  // profiles are soft-deleted; billing and email credential rows are removed.
   purgeUser: adminProcedure
     .input(z.object({ userId: z.number().int().positive() })) // gcz-allow: admin-targeting
     .mutation(async ({ input, ctx }) => {
@@ -1282,6 +1288,7 @@ export const adminRouter = router({
         await tx.delete(architects).where(eq(architects.userId, id));
         await tx.delete(buyerSubscriptions).where(eq(buyerSubscriptions.userId, id));
         await tx.delete(subscriptions).where(eq(subscriptions.userId, id));
+        await tx.delete(emailCredentials).where(eq(emailCredentials.userId, id));
         await tx.delete(users).where(eq(users.id, id));
       });
 
@@ -1340,6 +1347,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
+
       const updates: Partial<typeof manufacturers.$inferInsert> = {};
       if (input.name !== undefined) updates.name = input.name;
       if (input.category !== undefined) updates.category = input.category;
@@ -1373,6 +1385,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
+
       await db.update(manufacturers).set({ verified: input.verified, updatedAt: new Date() }).where(eq(manufacturers.id, input.id));
 
       void auditLog.record({
@@ -1395,6 +1412,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
+
       await db.update(manufacturers).set({ deletedAt: new Date(), updatedAt: new Date() }).where(and(eq(manufacturers.id, input.id), isNull(manufacturers.deletedAt)));
 
       void auditLog.record({
@@ -1415,6 +1437,11 @@ export const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
 
       await db.update(manufacturers).set({ deletedAt: null, updatedAt: new Date() }).where(eq(manufacturers.id, input.id));
 
@@ -1438,6 +1465,11 @@ export const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
 
       await db.transaction(async (tx) => {
         await tx.update(materials).set({ manufacturerId: null }).where(eq(materials.manufacturerId, input.id));
@@ -1464,6 +1496,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: suppliers.id }).from(suppliers).where(eq(suppliers.id, input.supplierId)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found." });
+      }
+
       await db.update(suppliers).set({ deletedAt: new Date(), updatedAt: new Date() }).where(and(eq(suppliers.id, input.supplierId), isNull(suppliers.deletedAt)));
 
       void auditLog.record({
@@ -1485,6 +1522,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: suppliers.id }).from(suppliers).where(eq(suppliers.id, input.supplierId)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found." });
+      }
+
       await db.update(suppliers).set({ deletedAt: null, updatedAt: new Date() }).where(eq(suppliers.id, input.supplierId));
 
       void auditLog.record({
@@ -1500,10 +1542,10 @@ export const adminRouter = router({
       return { success: true };
     }),
 
-  // Irreversible. Owned / 1:1 child rows are removed first (meaningless without
-  // the supplier), then the supplier itself. Historical money-lane rows
-  // (rfq_bids, conversations, messages) are intentionally left as orphans per
-  // the founder's accepted tradeoff — documented in the PR.
+  // Irreversible. Supplier-owned operational/config rows are removed first, then
+  // the supplier itself. Cross-party history (rfq_bids, conversations, messages,
+  // rfq_threads, rfq_requests, crm_contacts) is retained for architect/CRM audit
+  // context and may keep the historical supplier id after purge.
   purgeSupplier: adminProcedure
     .input(z.object({ supplierId: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
@@ -1511,17 +1553,27 @@ export const adminRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
       const id = input.supplierId;
+      const [target] = await db.select({ id: suppliers.id }).from(suppliers).where(eq(suppliers.id, id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found." });
+      }
+
       await db.transaction(async (tx) => {
         await tx.delete(supplierSubscriptions).where(eq(supplierSubscriptions.supplierId, id));
         await tx.delete(supplierProfileViews).where(eq(supplierProfileViews.supplierId, id));
         await tx.delete(supplierBuyerFitInputs).where(eq(supplierBuyerFitInputs.supplierId, id));
         await tx.delete(supplierSustainabilityProfiles).where(eq(supplierSustainabilityProfiles.supplierId, id));
+        await tx.delete(materialSpecs).where(eq(materialSpecs.supplierId, id));
+        await tx.delete(companyOfWeekSlots).where(eq(companyOfWeekSlots.supplierId, id));
+        await tx.delete(usageTracking).where(eq(usageTracking.supplierId, id));
         await tx.delete(agentHandoffRules).where(eq(agentHandoffRules.supplierId, id));
         await tx.delete(supplierFilters).where(eq(supplierFilters.supplierId, id));
         await tx.delete(suppliersLocation).where(eq(suppliersLocation.supplierId, id));
         await tx.delete(rfqSupplierInvites).where(eq(rfqSupplierInvites.supplierId, id));
         await tx.delete(epdMaterials).where(eq(epdMaterials.supplierId, id));
         await tx.delete(supplierMaterialEpds).where(eq(supplierMaterialEpds.supplierId, id));
+        await tx.delete(conciergeRoutes).where(eq(conciergeRoutes.supplierId, id));
+        await tx.delete(learningEvents).where(eq(learningEvents.supplierId, id));
         await tx.delete(suppliers).where(eq(suppliers.id, id));
       });
 
