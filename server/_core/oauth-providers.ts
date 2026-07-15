@@ -30,7 +30,7 @@ function buildRedirectUri(_req: Request, provider: string): string {
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
-// Trusted external origins that may receive the auth token via returnPath redirect.
+// Trusted external origins that may receive the auth token via returnPath redirect. (v2)
 // Any absolute returnPath whose origin is in this list bypasses the relative-only
 // validation and gets the session token appended as ?token=<session_token> so the
 // receiving page (e.g. auth-callback.html) can extract it without same-origin access.
@@ -39,13 +39,14 @@ const ALLOWED_EXTERNAL_ORIGINS: readonly string[] = [
 ];
 
 function isAllowedReturnPath(raw: string): boolean {
+  if (typeof raw !== "string" || !raw) return false;
   if (/^\/(?!\/)/.test(raw)) return true; // relative path on same origin
-  try {
-    const u = new URL(raw);
-    return ALLOWED_EXTERNAL_ORIGINS.includes(u.origin);
-  } catch {
-    return false;
-  }
+  // Use string-prefix matching to avoid potential URL-parser quirks in the deployed env.
+  // An absolute returnPath is allowed when it starts with an allowlisted origin.
+  const allowed = ALLOWED_EXTERNAL_ORIGINS.some(
+    (origin) => raw === origin || raw.startsWith(origin + "/")
+  );
+  return allowed;
 }
 
 type OAuthRole = "supplier" | "buyer" | null;
