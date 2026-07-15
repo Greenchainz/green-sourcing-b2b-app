@@ -11,45 +11,34 @@ export const manufacturerSearchRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      const results = await db
+      // Single query with LEFT JOIN + GROUP BY replaces the previous N+1 pattern
+      // (1 query for manufacturers + up to 8 individual stats queries).
+      const rows = await db
         .select({
-          id: manufacturers.id,
           name: manufacturers.name,
-          website: manufacturers.website,
           verified: manufacturers.verified,
-          logoUrl: manufacturers.logoUrl,
           claimed: manufacturers.claimed,
+          productCount: sql<number>`count(${materials.id})`.as('productCount'),
+          hasImages: sql<boolean>`bool_or(${materials.imageUrl} is not null)`.as('hasImages'),
+          hasEpds: sql<boolean>`bool_or(${materials.hasEpd})`.as('hasEpds'),
+          categories: sql<string[]>`array_agg(distinct ${materials.category})`.as('categories'),
         })
         .from(manufacturers)
+        .leftJoin(materials, eq(materials.manufacturerId, manufacturers.id))
         .where(ilike(manufacturers.name, `%${input.q}%`))
+        .groupBy(manufacturers.id, manufacturers.name, manufacturers.verified, manufacturers.claimed)
         .limit(8);
 
-      if (results.length === 0) return [];
+      if (rows.length === 0) return [];
 
-      const enriched = await Promise.all(
-        results.map(async (mfr) => {
-          const stats = await db
-            .select({
-              productCount: sql<number>`count(*)`.as('productCount'),
-              hasImages: sql<boolean>`bool_or(${(materials as any).imageUrl} is not null)`.as('hasImages'),
-              hasEpds: sql<boolean>`bool_or(${materials.hasEpd})`.as('hasEpds'),
-              categories: sql<string[]>`array_agg(distinct ${materials.category})`.as('categories'),
-            })
-            .from(materials)
-            .where(eq(materials.manufacturerId, mfr.id));
-
-          return {
-            manufacturer: mfr.name,
-            productCount: Number(stats[0]?.productCount ?? 0),
-            hasImages: Boolean(stats[0]?.hasImages),
-            hasEpds: Boolean(stats[0]?.hasEpds),
-            isVerified: mfr.verified ?? false,
-            isClaimed: mfr.claimed ?? false,
-            categories: (stats[0]?.categories ?? []).filter(Boolean).slice(0, 3),
-          };
-        })
-      );
-
-      return enriched;
+      return rows.map((row) => ({
+        manufacturer: row.name,
+        productCount: Number(row.productCount ?? 0),
+        hasImages: Boolean(row.hasImages),
+        hasEpds: Boolean(row.hasEpds),
+        isVerified: row.verified ?? false,
+        isClaimed: row.claimed ?? false,
+        categories: (row.categories ?? []).filter(Boolean).slice(0, 3),
+      }));
     }),
 });
