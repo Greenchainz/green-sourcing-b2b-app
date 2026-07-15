@@ -97,8 +97,12 @@ test.describe('RFQ money flow — buyer', () => {
         // Advance to step 2 — supplier selection
         await page.getByRole('button', { name: 'Next' }).click();
 
-        // The matched supplier is auto-selected by the component effect
-        await expect(page.getByText('EcoMix Industries')).toBeVisible();
+        // The matched supplier is auto-selected by the component effect. Its name
+        // renders in BOTH the matched-list row and the selected-suppliers chip, so
+        // scope the assertion to the chip to stay unambiguous under strict mode.
+        await expect(
+            page.getByTestId('rfq-selected-supplier').filter({ hasText: 'EcoMix Industries' }),
+        ).toBeVisible();
 
         // Advance to step 3 — review
         await page.getByRole('button', { name: 'Next' }).click();

@@ -72,10 +72,9 @@ const CATEGORY_MAP: Record<string, string> = {
   StoneCladding: "/images/materials/masonry.jpg",
   Cladding: "/images/materials/masonry.jpg",
 
-  // Wood + flooring
+  // Wood + timber
   Wood: "/images/materials/wood.jpg",
   Timber: "/images/materials/wood.jpg",
-  Flooring: "/images/materials/wood.jpg",
   NonStructuralWood: "/images/materials/wood.jpg",
   WoodFlooring: "/images/materials/wood.jpg",
   WoodJoists: "/images/materials/wood.jpg",
@@ -92,16 +91,29 @@ const CATEGORY_MAP: Record<string, string> = {
 
 const DEFAULT_IMAGE = "/images/materials/default.jpg";
 
+// The "Flooring" category spans materially different products (carpet, bamboo,
+// polished concrete), so a single category image would be misleading. When a
+// subcategory identifies the actual floor material, prefer a matching image.
+// Subcategories without a good asset (e.g. carpet) intentionally fall through
+// to the neutral default rather than a wrong image.
+const SUBCATEGORY_MAP: Record<string, string> = {
+  "Concrete Flooring": "/images/materials/concrete.jpg",
+  "Hard Flooring": "/images/materials/wood.jpg",
+};
+
 /**
  * Get the image URL for a material.
  * If the material has a supplier-uploaded image (imageUrl), use that.
- * Otherwise fall back to the category placeholder.
+ * Otherwise prefer a subcategory-specific placeholder, then fall back to the
+ * category placeholder, then a neutral default.
  */
 export function getMaterialImage(
   category: string | null | undefined,
-  supplierImageUrl?: string | null
+  supplierImageUrl?: string | null,
+  subcategory?: string | null
 ): string {
   if (supplierImageUrl) return supplierImageUrl;
+  if (subcategory && SUBCATEGORY_MAP[subcategory]) return SUBCATEGORY_MAP[subcategory];
   if (!category) return DEFAULT_IMAGE;
   return CATEGORY_MAP[category] || DEFAULT_IMAGE;
 }

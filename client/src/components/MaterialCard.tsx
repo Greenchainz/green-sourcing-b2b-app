@@ -237,8 +237,8 @@ export default function MaterialCard(props: MaterialCardProps) {
   // placeholder -> avatar initials. getMaterialImage always returns a
   // non-empty string, so a broken external url would otherwise render a
   // permanent broken-image icon with no fallback.
-  const placeholderSrc = getMaterialImage(category, null);
-  const initialSrc = getMaterialImage(category, props.imageUrl);
+  const placeholderSrc = getMaterialImage(category, null, subcategory);
+  const initialSrc = getMaterialImage(category, props.imageUrl, subcategory);
   const [imgSrc, setImgSrc] = useState(initialSrc);
   const [imgBroken, setImgBroken] = useState(false);
   useEffect(() => {
