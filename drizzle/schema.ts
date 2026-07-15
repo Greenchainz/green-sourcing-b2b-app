@@ -134,6 +134,7 @@ export const users = pgTable("users", {
   linkedinVerifiedAt: timestamp("linkedin_verified_at"),
   avatarUrl: text("avatarUrl"),
   acsUserId: text("acs_user_id"),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -167,6 +168,7 @@ export const manufacturers = pgTable("manufacturers", {
   featured: boolean("featured").default(false),
   dataSource: varchar("dataSource", { length: 100 }),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type Manufacturer = typeof manufacturers.$inferSelect;
@@ -642,6 +644,7 @@ export const suppliers = pgTable("suppliers", {
   hitsDigestLastSentAt: timestamp("hits_digest_last_sent_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type Supplier = typeof suppliers.$inferSelect;

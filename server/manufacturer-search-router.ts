@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, publicProcedure } from './_core/trpc';
 import { getDb } from './db';
 import { materials, manufacturers } from '../drizzle/schema';
-import { ilike, sql, eq } from 'drizzle-orm';
+import { ilike, sql, eq, and, isNull } from 'drizzle-orm';
 
 export const manufacturerSearchRouter = router({
   search: publicProcedure
@@ -25,7 +25,7 @@ export const manufacturerSearchRouter = router({
         })
         .from(manufacturers)
         .leftJoin(materials, eq(materials.manufacturerId, manufacturers.id))
-        .where(ilike(manufacturers.name, `%${input.q}%`))
+        .where(and(ilike(manufacturers.name, `%${input.q}%`), isNull(manufacturers.deletedAt)))
         .groupBy(manufacturers.id, manufacturers.name, manufacturers.verified, manufacturers.claimed)
         .limit(8);
 

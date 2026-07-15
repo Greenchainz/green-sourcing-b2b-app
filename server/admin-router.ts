@@ -4,12 +4,18 @@ import { getDb } from "./db";
 import {
   suppliers, users, materials, materialCertifications, buyerSubscriptions,
   rfqs, rfqBids, leads, conversations, messages,
+  subscriptions, manufacturers, architects,
+  supplierSubscriptions, supplierProfileViews, supplierBuyerFitInputs,
+  supplierSustainabilityProfiles, agentHandoffRules, supplierFilters,
+  suppliersLocation, rfqSupplierInvites, epdMaterials, supplierMaterialEpds,
+} from "../drizzle/schema";
+import { eq, and, inArray, desc, asc, count, sql, gte, isNull, ne } from "drizzle-orm";
   subscriptions,
   crmContacts,
   crmEmailSequences,
   scraperRuns,
 } from "../drizzle/schema";
-import { eq, and, inArray, desc, count, sql, gte } from "drizzle-orm";
+import { eq, and, inArray, desc, count, sql, gte, like } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -32,6 +38,40 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+/** Resolved (non-null) Drizzle handle — avoids `any` under strict mode. */
+type AdminDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+/**
+ * Guardrails shared by deleteUser / purgeUser:
+ *  - an admin cannot delete their own currently-logged-in account
+ *  - the last remaining (non-deleted) admin cannot be removed
+ * Throws TRPCError; returns void when the target is safe to delete.
+ */
+async function assertUserDeletable(
+  db: AdminDb,
+  targetUserId: number,
+  actorUserId: number,
+): Promise<void> {
+  if (targetUserId === actorUserId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot delete your own account." });
+  }
+  const target = await db
+    .select({ id: users.id, role: users.role })
+    .from(users)
+    .where(eq(users.id, targetUserId))
+    .limit(1);
+  if (target.length === 0) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "User not found." });
+  }
+  if (target[0].role === "admin") {
+    const [remaining] = await db
+      .select({ c: count() })
+      .from(users)
+      .where(and(eq(users.role, "admin"), isNull(users.deletedAt), ne(users.id, targetUserId)));
+    if (Number(remaining?.c ?? 0) === 0) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete the last remaining admin." });
+    }
+  }
 function hasPgErrorCode(error: unknown, code: string): boolean {
   return (
     typeof error === "object" &&
@@ -258,6 +298,7 @@ export const adminRouter = router({
         sustainabilityScore: suppliers.sustainabilityScore,
         createdAt: suppliers.createdAt,
         verifiedAt: suppliers.verifiedAt,
+        deletedAt: suppliers.deletedAt,
       })
       .from(suppliers)
       .orderBy(suppliers.createdAt);
@@ -326,6 +367,7 @@ export const adminRouter = router({
         role: users.role,
         createdAt: users.createdAt,
         lastSignedIn: users.lastSignedIn,
+        deletedAt: users.deletedAt,
       })
       .from(users)
       .orderBy(desc(users.createdAt));
@@ -856,15 +898,122 @@ export const adminRouter = router({
     return { total: payloads.length, sent, failed };
   }),
 
-  // ─── Delete test users ────────────────────────────────────────────────────
-  clearTestUsers: adminProcedure.mutation(async () => {
+  // ─── Delete test users (bulk maintenance) ─────────────────────────────────
+  clearTestUsers: adminProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const { users } = await import("../drizzle/schema");
-    const { like } = await import("drizzle-orm");
-    await db.delete(users).where(like(users.openId, "test-%-gcz-internal"));
-    return { cleared: true };
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    const deleted = await db
+      .delete(users)
+      .where(
+        and(
+          like(users.openId, "test-%-gcz-internal"),
+          sql`${users.role} <> 'admin'`,
+          sql`${users.id} <> ${ctx.user.id}`,
+        ),
+      )
+      .returning({ id: users.id });
+
+    void auditLog.record({
+      action: AuditAction.ADMIN_TEST_USERS_CLEARED,
+      actorUserId: ctx.user?.id,
+      actorEmail: ctx.auth?.email ?? null,
+      actorRole: ctx.auth?.role ?? null,
+      resourceType: "user",
+      metadata: { count: deleted.length },
+      req: ctx.req,
+    }).catch((err) => console.error("[audit] clearTestUsers", err));
+
+    return { cleared: true, count: deleted.length };
   }),
+
+  // ─── Delete a single user (hard delete) ───────────────────────────────────
+  deleteUser: adminProcedure
+    .input(z.object({
+      userId: z.number(), // gcz-allow: admin-targeting — removing another account, not self-identity
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      if (ctx.user?.id === input.userId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You can't delete your own account." });
+      }
+
+      const [existing] = await db
+        .select({ id: users.id, email: users.email, role: users.role })
+        .from(users)
+        .where(eq(users.id, input.userId))
+        .limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      if (existing.role === "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin accounts can't be deleted here." });
+      }
+
+      try {
+        await db.delete(users).where(eq(users.id, input.userId));
+      } catch (err) {
+        if (err instanceof Error && /foreign key|violates|23503/i.test(err.message)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Can't delete this user — they still have related records (RFQs, orders, or messages). Remove those first.",
+          });
+        }
+        throw err;
+      }
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_USER_DELETED,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "user",
+        resourceId: input.userId,
+        metadata: { email: existing.email ?? null, role: existing.role },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] deleteUser", err));
+
+      return { success: true };
+    }),
+
+  // ─── Delete a single supplier (hard delete) ───────────────────────────────
+  deleteSupplier: adminProcedure
+    .input(z.object({ supplierId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [existing] = await db
+        .select({ id: suppliers.id, companyName: suppliers.companyName })
+        .from(suppliers)
+        .where(eq(suppliers.id, input.supplierId))
+        .limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found" });
+
+      try {
+        await db.delete(suppliers).where(eq(suppliers.id, input.supplierId));
+      } catch (err) {
+        if (err instanceof Error && /foreign key|violates|23503/i.test(err.message)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Can't delete this supplier — it still has related records (RFQ bids, materials, or messages). Reject it instead, or remove those records first.",
+          });
+        }
+        throw err;
+      }
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_SUPPLIER_DELETED,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "supplier",
+        resourceId: input.supplierId,
+        metadata: { companyName: existing.companyName ?? null },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] deleteSupplier", err));
+
+      return { success: true };
+    }),
 
   // ─── Catalog Stats ───────────────────────────────────────────────────────
   getCatalogStats: adminProcedure.query(async () => {
@@ -1148,4 +1297,330 @@ export const adminRouter = router({
 
     return rows;
   }),
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Admin destructive data control — users / manufacturers / suppliers
+  // Soft-delete + restore is the safe default; hard-purge is the irreversible
+  // path (each guarded by an extra client-side confirmation). All audit-logged.
+  // ════════════════════════════════════════════════════════════════════════
+
+  // ─── Users ──────────────────────────────────────────────────────────────
+  // Soft-delete sets `deletedAt`; getUserByOpenId filters it out, which revokes
+  // the account's access everywhere in one place. Self-delete and last-admin
+  // removal are blocked by assertUserDeletable.
+  deleteUser: adminProcedure
+    .input(z.object({ userId: z.number().int().positive() })) // gcz-allow: admin-targeting — deleting another user, not self
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await assertUserDeletable(db, input.userId, ctx.user.id);
+
+      await db
+        .update(users)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(users.id, input.userId), isNull(users.deletedAt)));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_USER_DELETED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "user",
+        resourceId: input.userId,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] deleteUser", err));
+
+      return { success: true };
+    }),
+
+  restoreUser: adminProcedure
+    .input(z.object({ userId: z.number().int().positive() })) // gcz-allow: admin-targeting
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db
+        .update(users)
+        .set({ deletedAt: null, updatedAt: new Date() })
+        .where(eq(users.id, input.userId));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_USER_RESTORED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "user",
+        resourceId: input.userId,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] restoreUser", err));
+
+      return { success: true };
+    }),
+
+  // Irreversible. Children removed first so a mid-run failure never orphans the
+  // parent. The two real FKs (submittals.createdBy, ca_documents.createdBy)
+  // cascade at the DB level; a public supplier profile is soft-deleted so it
+  // can't linger in the directory; identity/billing 1:1 rows are removed.
+  purgeUser: adminProcedure
+    .input(z.object({ userId: z.number().int().positive() })) // gcz-allow: admin-targeting
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await assertUserDeletable(db, input.userId, ctx.user.id);
+
+      const id = input.userId;
+      await db.update(suppliers).set({ deletedAt: new Date() }).where(and(eq(suppliers.userId, id), isNull(suppliers.deletedAt)));
+      await db.delete(architects).where(eq(architects.userId, id));
+      await db.delete(buyerSubscriptions).where(eq(buyerSubscriptions.userId, id));
+      await db.delete(subscriptions).where(eq(subscriptions.userId, id));
+      await db.delete(users).where(eq(users.id, id));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_USER_PURGED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "user",
+        resourceId: id,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] purgeUser", err));
+
+      return { success: true };
+    }),
+
+  // ─── Manufacturers (the directory inventory — the "~81") ─────────────────
+  // Admin list surfaces ALL rows incl. soft-deleted, with material counts.
+  getAllManufacturersAdmin: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    const materialCounts = db
+      .select({
+        manufacturerId: materials.manufacturerId,
+        count: sql<number>`count(*)`.as("count"),
+      })
+      .from(materials)
+      .groupBy(materials.manufacturerId)
+      .as("materialCounts");
+
+    const rows = await db
+      .select({
+        manufacturer: manufacturers,
+        materialCount: sql<number>`COALESCE(${materialCounts.count}, 0)`,
+      })
+      .from(manufacturers)
+      .leftJoin(materialCounts, eq(manufacturers.id, materialCounts.manufacturerId))
+      .orderBy(desc(manufacturers.featured), asc(manufacturers.name));
+
+    return rows.map((r) => ({ ...r.manufacturer, materialCount: Number(r.materialCount) }));
+  }),
+
+  updateManufacturer: adminProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      name: z.string().min(1).max(255).optional(),
+      category: z.string().max(100).nullable().optional(),
+      subcategory: z.string().max(100).nullable().optional(),
+      website: z.string().max(2000).nullable().optional(),
+      location: z.string().max(255).nullable().optional(),
+      pitchAngle: z.string().nullable().optional(),
+      description: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const updates: Partial<typeof manufacturers.$inferInsert> = {};
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.category !== undefined) updates.category = input.category;
+      if (input.subcategory !== undefined) updates.subcategory = input.subcategory;
+      if (input.website !== undefined) updates.website = input.website;
+      if (input.location !== undefined) updates.location = input.location;
+      if (input.pitchAngle !== undefined) updates.pitchAngle = input.pitchAngle;
+      if (input.description !== undefined) updates.description = input.description;
+      if (Object.keys(updates).length === 0) return { success: true, id: input.id };
+      updates.updatedAt = new Date();
+
+      await db.update(manufacturers).set(updates).where(eq(manufacturers.id, input.id));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_MANUFACTURER_UPDATED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "manufacturer",
+        resourceId: input.id,
+        metadata: { fields: Object.keys(updates) },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] updateManufacturer", err));
+
+      return { success: true, id: input.id };
+    }),
+
+  setManufacturerVerified: adminProcedure
+    .input(z.object({ id: z.number().int().positive(), verified: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db.update(manufacturers).set({ verified: input.verified, updatedAt: new Date() }).where(eq(manufacturers.id, input.id));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_MANUFACTURER_UPDATED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "manufacturer",
+        resourceId: input.id,
+        metadata: { verified: input.verified },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] setManufacturerVerified", err));
+
+      return { success: true, id: input.id, verified: input.verified };
+    }),
+
+  deleteManufacturer: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db.update(manufacturers).set({ deletedAt: new Date(), updatedAt: new Date() }).where(and(eq(manufacturers.id, input.id), isNull(manufacturers.deletedAt)));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_MANUFACTURER_DELETED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "manufacturer",
+        resourceId: input.id,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] deleteManufacturer", err));
+
+      return { success: true };
+    }),
+
+  restoreManufacturer: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db.update(manufacturers).set({ deletedAt: null, updatedAt: new Date() }).where(eq(manufacturers.id, input.id));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_MANUFACTURER_RESTORED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "manufacturer",
+        resourceId: input.id,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] restoreManufacturer", err));
+
+      return { success: true };
+    }),
+
+  // Irreversible. materials.manufacturerId is the only reference — null it first
+  // so no material is left pointing at a missing manufacturer, then delete.
+  purgeManufacturer: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db.update(materials).set({ manufacturerId: null }).where(eq(materials.manufacturerId, input.id));
+      await db.delete(manufacturers).where(eq(manufacturers.id, input.id));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_MANUFACTURER_PURGED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "manufacturer",
+        resourceId: input.id,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] purgeManufacturer", err));
+
+      return { success: true };
+    }),
+
+  // ─── Suppliers (paid table) ──────────────────────────────────────────────
+  deleteSupplier: adminProcedure
+    .input(z.object({ supplierId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db.update(suppliers).set({ deletedAt: new Date(), updatedAt: new Date() }).where(and(eq(suppliers.id, input.supplierId), isNull(suppliers.deletedAt)));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_SUPPLIER_DELETED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "supplier",
+        resourceId: input.supplierId,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] deleteSupplier", err));
+
+      return { success: true };
+    }),
+
+  restoreSupplier: adminProcedure
+    .input(z.object({ supplierId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db.update(suppliers).set({ deletedAt: null, updatedAt: new Date() }).where(eq(suppliers.id, input.supplierId));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_SUPPLIER_RESTORED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "supplier",
+        resourceId: input.supplierId,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] restoreSupplier", err));
+
+      return { success: true };
+    }),
+
+  // Irreversible. Owned / 1:1 child rows are removed first (meaningless without
+  // the supplier), then the supplier itself. Historical money-lane rows
+  // (rfq_bids, conversations, messages) are intentionally left as orphans per
+  // the founder's accepted tradeoff — documented in the PR.
+  purgeSupplier: adminProcedure
+    .input(z.object({ supplierId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const id = input.supplierId;
+      await db.delete(supplierSubscriptions).where(eq(supplierSubscriptions.supplierId, id));
+      await db.delete(supplierProfileViews).where(eq(supplierProfileViews.supplierId, id));
+      await db.delete(supplierBuyerFitInputs).where(eq(supplierBuyerFitInputs.supplierId, id));
+      await db.delete(supplierSustainabilityProfiles).where(eq(supplierSustainabilityProfiles.supplierId, id));
+      await db.delete(agentHandoffRules).where(eq(agentHandoffRules.supplierId, id));
+      await db.delete(supplierFilters).where(eq(supplierFilters.supplierId, id));
+      await db.delete(suppliersLocation).where(eq(suppliersLocation.supplierId, id));
+      await db.delete(rfqSupplierInvites).where(eq(rfqSupplierInvites.supplierId, id));
+      await db.delete(epdMaterials).where(eq(epdMaterials.supplierId, id));
+      await db.delete(supplierMaterialEpds).where(eq(supplierMaterialEpds.supplierId, id));
+      await db.delete(suppliers).where(eq(suppliers.id, id));
+
+      void auditLog.record({
+        action: AuditAction.ADMIN_SUPPLIER_PURGED,
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "supplier",
+        resourceId: id,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] purgeSupplier", err));
+
+      return { success: true };
+    }),
 });
