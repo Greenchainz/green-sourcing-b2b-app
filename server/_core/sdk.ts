@@ -51,6 +51,40 @@ class SDKServer {
     );
   }
 
+  /**
+   * Create a short-lived Forma extension token carrying ext:'forma'.
+   * Expires in 5 minutes. Distinct from the session cookie — only valid
+   * for /api/public/* Forma extension endpoints.
+   */
+  async createFormaExtensionToken(openId: string, name: string): Promise<string> {
+    const FORMA_TOKEN_TTL_MS = 5 * 60 * 1000;
+    const expirationSeconds = Math.floor((Date.now() + FORMA_TOKEN_TTL_MS) / 1000);
+    const secretKey = this.getSessionSecret();
+
+    return new SignJWT({ openId, appId: ENV.appId, name, ext: "forma" })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setExpirationTime(expirationSeconds)
+      .sign(secretKey);
+  }
+
+  /**
+   * Verify a Forma extension token. Returns the openId if valid and the token
+   * carries ext:'forma'; returns null otherwise.
+   */
+  async verifyFormaToken(token: string): Promise<string | null> {
+    if (!token) return null;
+    try {
+      const secretKey = this.getSessionSecret();
+      const { payload } = await jwtVerify(token, secretKey, { algorithms: ["HS256"] });
+      const { openId, ext } = payload as Record<string, unknown>;
+      if (typeof openId !== "string" || !openId) return null;
+      if (ext !== "forma") return null;
+      return openId;
+    } catch {
+      return null;
+    }
+  }
+
   async signSession(
     payload: SessionPayload,
     options: { expiresInMs?: number } = {}
