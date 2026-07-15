@@ -167,7 +167,6 @@ const AdminSupplierDashboard = lazy(() =>
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const CrmDashboard = lazy(() => import("./pages/admin/CrmDashboard"));
 const ConciergeDashboard = lazy(() => import("./pages/admin/ConciergeDashboard"));
-const IntelligenceDashboard = lazy(() => import("./pages/admin/IntelligenceDashboard"));
 const SupplierSpecSubmission = lazy(() => import("./pages/SupplierSpecSubmission"));
 const MaterialSwap = lazy(() => import("./pages/MaterialSwap"));
 const CarbonWin = lazy(() => import("./pages/CarbonWin"));
@@ -277,8 +276,6 @@ function Router() {
       <Route path="/admin/users">{() => <Redirect to="/admin?tab=users" />}</Route>
       <Route path="/admin/crm" component={CrmDashboard} />
       <Route path="/admin/concierge" component={ConciergeDashboard} />
-      <Route path="/admin/intelligence" component={IntelligenceDashboard} />
-      <Route path="/intelligence">{() => <Redirect to="/admin/intelligence" />}</Route>
       <Route path="/admin/founder-videos" component={FounderVideoList} />
       <Route path="/admin/founder-videos/analytics" component={FounderVideoDashboard} />
       <Route path="/admin/founder-videos/new" component={FounderVideoNew} />
@@ -328,7 +325,6 @@ const PROTECTED_PREFIXES = [
   "/messages",
   "/subscription",
   "/admin/",
-  "/intelligence",
   "/dashboard",
   "/rfqs",
   "/buyer/",

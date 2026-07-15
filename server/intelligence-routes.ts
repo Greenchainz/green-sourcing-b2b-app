@@ -1,5 +1,8 @@
 import type express from "express";
+import { eq } from "drizzle-orm";
+import { scraperRuns } from "../drizzle/schema";
 import { getAzureCredential } from "../lib/azure/credentials";
+import { getDb } from "./db";
 import { sdk } from "./_core/sdk";
 import { INTELLIGENCE_FUNCTION_APP, INTELLIGENCE_SCRAPERS } from "./intelligence/intelligence-config";
 
@@ -22,6 +25,15 @@ function createErrorResponse(message: string, requestId: string, detail?: string
 
 function getRequestId(req: express.Request): string {
   return req.id ?? "unknown";
+}
+
+function toNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
 }
 
 async function requireFounderOrAdminUser(req: express.Request, res: express.Response) {
@@ -102,6 +114,28 @@ export function registerIntelligenceRoutes(
       return;
     }
 
+    const db = await getDb();
+    if (!db) {
+      res.status(503).json(createErrorResponse("Database unavailable", getRequestId(req)));
+      return;
+    }
+
+    const startTime = Date.now();
+    const [runRow] = await db
+      .insert(scraperRuns)
+      .values({
+        scraperName,
+        status: "running",
+        startedAt: new Date(startTime),
+        metadata: {
+          source: "admin_intelligence_trigger",
+          triggeredByUserId: user.id,
+          triggeredByEmail: user.email ?? null,
+          payload: body.payload ?? null,
+        },
+      })
+      .returning({ id: scraperRuns.id });
+
     try {
       const hostKey = await getFunctionHostKey();
       const triggerUrl = `https://${INTELLIGENCE_FUNCTION_APP.appName}.azurewebsites.net/api/${encodeURIComponent(scraperName)}`;
@@ -118,8 +152,31 @@ export function registerIntelligenceRoutes(
       const responseBody = contentType.includes("application/json")
         ? await functionResponse.json()
         : await functionResponse.text();
+      const endTime = Date.now();
+      const durationMs = endTime - startTime;
 
       if (!functionResponse.ok) {
+        await db
+          .update(scraperRuns)
+          .set({
+            status: "error",
+            completedAt: new Date(endTime),
+            durationMs,
+            errorMessage:
+              typeof responseBody === "string"
+                ? responseBody.slice(0, 2000)
+                : JSON.stringify(responseBody).slice(0, 2000),
+            metadata: {
+              source: "admin_intelligence_trigger",
+              triggeredByUserId: user.id,
+              triggeredByEmail: user.email ?? null,
+              payload: body.payload ?? null,
+              functionStatus: functionResponse.status,
+              functionResponse: responseBody,
+            },
+          })
+          .where(eq(scraperRuns.id, runRow.id));
+
         res.status(functionResponse.status).json({
           success: false,
           scraperName,
@@ -129,13 +186,63 @@ export function registerIntelligenceRoutes(
         return;
       }
 
+      const bodyObject = typeof responseBody === "object" && responseBody !== null
+        ? (responseBody as Record<string, unknown>)
+        : null;
+      await db
+        .update(scraperRuns)
+        .set({
+          status: "success",
+          completedAt: new Date(endTime),
+          durationMs,
+          recordsProcessed:
+            toNumber(bodyObject?.recordsProcessed) ??
+            toNumber(bodyObject?.processed) ??
+            0,
+          recordsCreated:
+            toNumber(bodyObject?.recordsCreated) ??
+            toNumber(bodyObject?.created) ??
+            0,
+          recordsUpdated:
+            toNumber(bodyObject?.recordsUpdated) ??
+            toNumber(bodyObject?.updated) ??
+            0,
+          metadata: {
+            source: "admin_intelligence_trigger",
+            triggeredByUserId: user.id,
+            triggeredByEmail: user.email ?? null,
+            payload: body.payload ?? null,
+            functionStatus: functionResponse.status,
+            functionResponse: responseBody,
+          },
+        })
+        .where(eq(scraperRuns.id, runRow.id));
+
       res.json({
         success: true,
         scraperName,
         triggeredBy: user.email ?? user.openId,
+        runId: runRow.id,
         response: responseBody,
       });
     } catch (error) {
+      const endTime = Date.now();
+      await db
+        .update(scraperRuns)
+        .set({
+          status: "error",
+          completedAt: new Date(endTime),
+          durationMs: endTime - startTime,
+          errorMessage: error instanceof Error ? error.message.slice(0, 2000) : String(error).slice(0, 2000),
+          metadata: {
+            source: "admin_intelligence_trigger",
+            triggeredByUserId: user.id,
+            triggeredByEmail: user.email ?? null,
+            payload: body.payload ?? null,
+          },
+        })
+        .where(eq(scraperRuns.id, runRow.id));
+
       console.error("[intelligence] trigger failed:", error);
       res
         .status(500)
@@ -149,3 +256,4 @@ export function registerIntelligenceRoutes(
     }
   });
 }
+

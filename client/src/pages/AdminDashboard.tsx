@@ -39,16 +39,19 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Users,
   Building2,
+  Activity,
   Clock,
   CreditCard,
   CheckCircle,
   XCircle,
   AlertTriangle,
   Search,
+  Mail,
   Eye,
   ShieldAlert,
   RefreshCcw,
   ChevronDown,
+  Rocket,
   Server,
   Zap,
   ExternalLink,
@@ -69,6 +72,14 @@ import {
 
 type UserRole = 'user' | 'admin' | 'buyer' | 'supplier';
 type UserTier = 'free' | 'standard' | 'premium';
+type SortDirection = 'asc' | 'desc';
+
+const INTELLIGENCE_SCRAPER_OPTIONS = [
+  { name: 'supplier-contacts', label: 'Supplier contacts scraper' },
+  { name: 'buyer-contacts', label: 'Buyer contacts scraper' },
+  { name: 'drip-sequences', label: 'Drip sequence runner' },
+  { name: 'salesforce-sync', label: 'Salesforce lead sync' },
+] as const;
 
 interface AdminUser {
   id: number;
@@ -1373,6 +1384,311 @@ function CatalogTab() {
   );
 }
 
+// ─── Intelligence Tabs ────────────────────────────────────────────────────────
+
+function LeadsTab() {
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: 'name' | 'company' | 'createdAt'; direction: SortDirection }>({
+    key: 'createdAt',
+    direction: 'desc',
+  });
+  const { data, isLoading } = trpc.admin.listIntelligenceLeads.useQuery();
+
+  const filtered = useMemo(() => {
+    const rows = data ?? [];
+    const q = search.trim().toLowerCase();
+    const searched = q
+      ? rows.filter((row) =>
+        [row.name, row.email, row.company, row.role, row.category, row.sfLeadId]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q))
+      )
+      : rows;
+
+    return [...searched].sort((a, b) => {
+      const av = a[sort.key] ?? '';
+      const bv = b[sort.key] ?? '';
+      const cmp = sort.key === 'createdAt'
+        ? new Date(String(av)).getTime() - new Date(String(bv)).getTime()
+        : String(av).localeCompare(String(bv));
+      return sort.direction === 'asc' ? cmp : -cmp;
+    });
+  }, [data, search, sort]);
+
+  const toggleSort = (key: 'name' | 'company' | 'createdAt') => {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'asc' }
+    );
+  };
+
+  return (
+    <Card className="border-gray-800 bg-gray-900">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+          <Users className="h-4 w-4 text-gray-400" />
+          Leads discovered
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search leads…"
+            className="h-8 border-gray-700 bg-gray-800 pl-8 text-xs text-white placeholder:text-gray-600"
+          />
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+          </div>
+        ) : (
+          <div className="rounded-md border border-gray-800">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800 hover:bg-transparent">
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('name')}>Name</TableHead>
+                  <TableHead className="text-gray-400 text-xs">Email</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('company')}>Company</TableHead>
+                  <TableHead className="text-gray-400 text-xs">Role</TableHead>
+                  <TableHead className="text-gray-400 text-xs">Category</TableHead>
+                  <TableHead className="text-gray-400 text-xs">SF Lead ID</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('createdAt')}>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-8 text-center text-gray-500 text-sm">No leads found.</TableCell>
+                  </TableRow>
+                ) : filtered.map((row) => (
+                  <TableRow key={row.id} className="border-gray-800 hover:bg-gray-800/40">
+                    <TableCell className="text-xs text-gray-200 py-2">{row.name ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-400 py-2">{row.email ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-300 py-2">{row.company ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-400 py-2">{row.role ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-400 py-2">{row.category ?? '—'}</TableCell>
+                    <TableCell className="text-[10px] font-mono text-gray-500 py-2">{row.sfLeadId ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-500 py-2">{formatDateTime(row.createdAt)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OutreachTab() {
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: 'step' | 'status' | 'sentAt'; direction: SortDirection }>({
+    key: 'sentAt',
+    direction: 'desc',
+  });
+  const { data, isLoading } = trpc.admin.listIntelligenceEmailSequences.useQuery();
+
+  const filtered = useMemo(() => {
+    const rows = data ?? [];
+    const q = search.trim().toLowerCase();
+    const searched = q
+      ? rows.filter((row) =>
+        [row.contactEmail, row.status, row.step]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q))
+      )
+      : rows;
+
+    return [...searched].sort((a, b) => {
+      if (sort.key === 'step') {
+        return sort.direction === 'asc' ? a.step - b.step : b.step - a.step;
+      }
+      if (sort.key === 'status') {
+        const cmp = String(a.status).localeCompare(String(b.status));
+        return sort.direction === 'asc' ? cmp : -cmp;
+      }
+      const at = a.sentAt ? new Date(String(a.sentAt)).getTime() : 0;
+      const bt = b.sentAt ? new Date(String(b.sentAt)).getTime() : 0;
+      return sort.direction === 'asc' ? at - bt : bt - at;
+    });
+  }, [data, search, sort]);
+
+  const toggleSort = (key: 'step' | 'status' | 'sentAt') => {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'asc' }
+    );
+  };
+
+  return (
+    <Card className="border-gray-800 bg-gray-900">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+          <Mail className="h-4 w-4 text-gray-400" />
+          Outreach sequences
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search outreach…"
+            className="h-8 border-gray-700 bg-gray-800 pl-8 text-xs text-white placeholder:text-gray-600"
+          />
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+          </div>
+        ) : (
+          <div className="rounded-md border border-gray-800">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800 hover:bg-transparent">
+                  <TableHead className="text-gray-400 text-xs">Contact email</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('step')}>Step</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('status')}>Status</TableHead>
+                  <TableHead className="cursor-pointer text-gray-400 text-xs" onClick={() => toggleSort('sentAt')}>Sent at</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-8 text-center text-gray-500 text-sm">No outreach rows found.</TableCell>
+                  </TableRow>
+                ) : filtered.map((row) => (
+                  <TableRow key={row.id} className="border-gray-800 hover:bg-gray-800/40">
+                    <TableCell className="text-xs text-gray-300 py-2">{row.contactEmail ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-400 py-2">{row.step}</TableCell>
+                    <TableCell className="text-xs text-gray-300 py-2">{row.status}</TableCell>
+                    <TableCell className="text-xs text-gray-500 py-2">{formatDateTime(row.sentAt)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScrapersTab() {
+  const [selectedScraper, setSelectedScraper] = useState<string>(INTELLIGENCE_SCRAPER_OPTIONS[0].name);
+  const [isTriggering, setIsTriggering] = useState(false);
+  const { data, isLoading, refetch } = trpc.admin.listIntelligenceScraperStatus.useQuery();
+
+  const triggerScraper = async () => {
+    setIsTriggering(true);
+    try {
+      const res = await fetch('/api/intelligence/trigger', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scraperName: selectedScraper }),
+      });
+      const body = (await res.json()) as { error?: string; detail?: string };
+      if (!res.ok) {
+        throw new Error(body.detail ?? body.error ?? 'Failed to trigger scraper');
+      }
+      toast.success(`${selectedScraper} triggered`);
+      await refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to trigger scraper');
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Rocket className="h-4 w-4 text-gray-400" />
+            Trigger scraper
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Select value={selectedScraper} onValueChange={setSelectedScraper}>
+            <SelectTrigger className="w-full border-gray-700 bg-gray-800 text-white text-xs sm:w-72">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-gray-700 bg-gray-900 text-white">
+              {INTELLIGENCE_SCRAPER_OPTIONS.map((scraper) => (
+                <SelectItem key={scraper.name} value={scraper.name} className="text-xs">{scraper.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" disabled={isTriggering} onClick={triggerScraper}>
+            {isTriggering ? (
+              <><RefreshCcw className="mr-1.5 h-3.5 w-3.5 animate-spin" />Triggering…</>
+            ) : (
+              <><Rocket className="mr-1.5 h-3.5 w-3.5" />Trigger now</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Activity className="h-4 w-4 text-gray-400" />
+            Scraper run history
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800 hover:bg-transparent">
+                    <TableHead className="text-gray-400 text-xs">Scraper</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Status</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Last run</TableHead>
+                    <TableHead className="text-gray-400 text-xs">Completed</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(data ?? []).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-8 text-center text-gray-500 text-sm">No scraper history found.</TableCell>
+                    </TableRow>
+                  ) : (data ?? []).map((row) => (
+                    <TableRow key={row.scraperName} className="border-gray-800 hover:bg-gray-800/40">
+                      <TableCell className="text-xs text-gray-200 py-2">{row.label}</TableCell>
+                      <TableCell className="text-xs py-2">
+                        <Badge variant="secondary" className="text-[10px] px-1.5">
+                          {row.status ?? 'unknown'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-400 py-2">{formatDateTime(row.lastRunAt)}</TableCell>
+                      <TableCell className="text-xs text-gray-500 py-2">{formatDateTime(row.completedAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
 function SystemTab() {
@@ -1578,6 +1894,27 @@ export default function AdminDashboard() {
               Catalog
             </TabsTrigger>
             <TabsTrigger
+              value="leads"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Users className="mr-1.5 h-4 w-4" />
+              Leads
+            </TabsTrigger>
+            <TabsTrigger
+              value="outreach"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Mail className="mr-1.5 h-4 w-4" />
+              Outreach
+            </TabsTrigger>
+            <TabsTrigger
+              value="scrapers"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Activity className="mr-1.5 h-4 w-4" />
+              Scrapers
+            </TabsTrigger>
+            <TabsTrigger
               value="system"
               className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
             >
@@ -1600,6 +1937,18 @@ export default function AdminDashboard() {
 
           <TabsContent value="catalog">
             <CatalogTab />
+          </TabsContent>
+
+          <TabsContent value="leads">
+            <LeadsTab />
+          </TabsContent>
+
+          <TabsContent value="outreach">
+            <OutreachTab />
+          </TabsContent>
+
+          <TabsContent value="scrapers">
+            <ScrapersTab />
           </TabsContent>
 
           <TabsContent value="system">
