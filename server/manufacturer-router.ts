@@ -2,7 +2,7 @@ import { z } from "zod";
 import { publicProcedure, adminProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { manufacturers, materials } from "../drizzle/schema";
-import { eq, asc, sql, desc } from "drizzle-orm";
+import { eq, asc, sql, desc, and, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { SUPPLIERS, SupplierCategory } from "../lib/research/supplierCategories";
 
@@ -81,7 +81,7 @@ export const manufacturerRouter = router({
       const db = await getDb();
       if (!db) return researchFallback(input?.category);
 
-      const conditions: SQL<unknown>[] = [];
+      const conditions: SQL<unknown>[] = [isNull(manufacturers.deletedAt)];
       if (input?.category) {
         conditions.push(eq(manufacturers.category, input.category));
       }
@@ -105,9 +105,7 @@ export const manufacturerRouter = router({
         .leftJoin(materialCounts, eq(manufacturers.id, materialCounts.manufacturerId))
         .orderBy(desc(manufacturers.featured), asc(manufacturers.name));
 
-      const rows = conditions.length > 0
-        ? await query.where(conditions[0])
-        : await query;
+      const rows = await query.where(and(...conditions));
 
       const dbResults = rows.map((r) => ({
         ...r.manufacturer,
@@ -132,7 +130,7 @@ export const manufacturerRouter = router({
       const rows = await db
         .select()
         .from(manufacturers)
-        .where(eq(manufacturers.id, input.id))
+        .where(and(eq(manufacturers.id, input.id), isNull(manufacturers.deletedAt)))
         .limit(1);
 
       if (rows.length === 0) return null;
@@ -160,7 +158,7 @@ export const manufacturerRouter = router({
         .set({
           profileViews: sql`COALESCE(${manufacturers.profileViews}, 0) + 1`,
         })
-        .where(eq(manufacturers.id, input.id));
+        .where(and(eq(manufacturers.id, input.id), isNull(manufacturers.deletedAt)));
 
       return { success: true };
     }),
@@ -196,7 +194,7 @@ export const manufacturerRouter = router({
         })
         .from(manufacturers)
         .leftJoin(materialCounts, eq(manufacturers.id, materialCounts.manufacturerId))
-        .where(eq(manufacturers.featured, true))
+        .where(and(eq(manufacturers.featured, true), isNull(manufacturers.deletedAt)))
         .orderBy(desc(manufacturers.updatedAt))
         .limit(limit);
 
