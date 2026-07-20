@@ -104,6 +104,12 @@ interface AdminUser {
   deletedAt: Date | string | null;
 }
 
+function getUserConfirmIdentifier(user: AdminUser | null): string {
+  if (!user) return '';
+  const email = user.email?.trim();
+  return email ? email : `#${user.id}`;
+}
+
 interface IntelligenceChatMessage {
   id: string;
   role: ChatRole;
@@ -623,12 +629,8 @@ function UsersTab() {
 
   // Self-protection: frontend AuthContext user.id is the openId string, so match by email.
   const isSelf = (u: AdminUser) => !!authUser?.email && authUser.email === u.email;
-
-    },
-    onError: (err) => {
-      toast.error(err.message ?? 'Failed to delete user');
-    },
-  });
+  const deleteConfirmIdentifier = getUserConfirmIdentifier(deleteDialogUser);
+  const purgeConfirmIdentifier = getUserConfirmIdentifier(purgeDialogUser);
 
   const filtered = (allUsers ?? []).filter((u) => {
     const q = search.toLowerCase();
@@ -795,24 +797,6 @@ function UsersTab() {
                             >
                               <Trash2 className="mr-1 h-3 w-3" />
                               Delete
-                          {u.role !== 'admin' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-red-700/40 bg-red-900/20 text-xs text-red-400 hover:bg-red-900/40 hover:text-red-300"
-                              disabled={deleteUserMutation.isPending}
-                              title="Delete user"
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `Delete ${u.name ?? u.email}? This permanently removes the account and cannot be undone.`
-                                  )
-                                ) {
-                                  deleteUserMutation.mutate({ userId: u.id });
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>
@@ -848,12 +832,12 @@ function UsersTab() {
         description={
           <>
             This revokes access for{' '}
-            <span className="font-semibold text-white">{deleteDialogUser?.email}</span>{' '}
+            <span className="font-semibold text-white">{deleteConfirmIdentifier}</span>{' '}
             and hides the account. It&apos;s reversible — you can restore it afterwards.
-            Type the email below to confirm.
+            Type the identifier below to confirm.
           </>
         }
-        confirmWord={deleteDialogUser?.email ?? undefined}
+        confirmWord={deleteConfirmIdentifier}
         confirmLabel="Delete user"
         onConfirm={() => { if (deleteDialogUser) deleteUserMutation.mutate({ userId: deleteDialogUser.id }); }}
         isPending={deleteUserMutation.isPending}
@@ -865,11 +849,13 @@ function UsersTab() {
         description={
           <>
             This <span className="font-semibold text-red-400">permanently deletes</span>{' '}
-            <span className="font-semibold text-white">{purgeDialogUser?.email}</span>{' '}
-            and their owned profile records. This cannot be undone. Type the email below to confirm.
+            <span className="font-semibold text-white">{purgeConfirmIdentifier}</span>{' '}
+            and destroys their profile records, submittals, CA documents, CA document messages,
+            other dependent AEC data, and login credentials. This cannot be undone. Type the
+            identifier below to confirm.
           </>
         }
-        confirmWord={purgeDialogUser?.email ?? undefined}
+        confirmWord={purgeConfirmIdentifier}
         confirmLabel="Purge forever"
         onConfirm={() => { if (purgeDialogUser) purgeUserMutation.mutate({ userId: purgeDialogUser.id }); }}
         isPending={purgeUserMutation.isPending}

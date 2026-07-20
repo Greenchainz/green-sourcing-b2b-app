@@ -5,7 +5,7 @@ import { submitRfq, getRfqWithBids, submitBid, getOrCreateThread, sendMessage, a
 import type { RfqSubmissionInput } from "./rfq-service";
 import { getDb } from "./db";
 import { rfqs, rfqItems, rfqBids, rfqAnalytics, suppliers, users } from "../drizzle/schema";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, isNull } from "drizzle-orm";
 import { enrichRfqWithAiAnalysis } from "./ai-agent-service";
 import { getMarketplaceAccessToken } from "./marketplace-auth";
 
@@ -152,7 +152,7 @@ export const rfqMarketplaceRouter = router({
         const [supplierRecord] = await db
           .select({ id: suppliers.id })
           .from(suppliers)
-          .where(eq(suppliers.userId, ctx.user.id))
+          .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
           .limit(1);
 
         if (!supplierRecord) {
@@ -192,11 +192,11 @@ export const rfqMarketplaceRouter = router({
       const [supplierRecord] = await db
         .select({ id: suppliers.id })
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplierRecord) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "A supplier account is required to submit a bid" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
       }
 
       return submitBid(input.rfqId, supplierRecord.id, input.bidPrice, input.leadDays, input.notes);
@@ -328,7 +328,7 @@ export const rfqMarketplaceRouter = router({
         const [supplierRecord] = await db
           .select({ id: suppliers.id })
           .from(suppliers)
-          .where(eq(suppliers.userId, ctx.user.id))
+          .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
           .limit(1);
 
         if (!supplierRecord) {

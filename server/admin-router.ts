@@ -8,14 +8,11 @@ import {
   supplierSubscriptions, supplierProfileViews, supplierBuyerFitInputs,
   supplierSustainabilityProfiles, agentHandoffRules, supplierFilters,
   suppliersLocation, rfqSupplierInvites, epdMaterials, supplierMaterialEpds,
+  crmContacts, crmEmailSequences, scraperRuns, emailCredentials,
+  materialSpecs, companyOfWeekSlots, usageTracking, conciergeRoutes,
+  learningEvents,
 } from "../drizzle/schema";
-import { eq, and, inArray, desc, asc, count, sql, gte, isNull, ne } from "drizzle-orm";
-  subscriptions,
-  crmContacts,
-  crmEmailSequences,
-  scraperRuns,
-} from "../drizzle/schema";
-import { eq, and, inArray, desc, count, sql, gte, like } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, count, sql, gte, isNull, ne, like } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -72,6 +69,8 @@ async function assertUserDeletable(
       throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete the last remaining admin." });
     }
   }
+}
+
 function hasPgErrorCode(error: unknown, code: string): boolean {
   return (
     typeof error === "object" &&
@@ -926,95 +925,6 @@ export const adminRouter = router({
     return { cleared: true, count: deleted.length };
   }),
 
-  // ─── Delete a single user (hard delete) ───────────────────────────────────
-  deleteUser: adminProcedure
-    .input(z.object({
-      userId: z.number(), // gcz-allow: admin-targeting — removing another account, not self-identity
-    }))
-    .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-
-      if (ctx.user?.id === input.userId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "You can't delete your own account." });
-      }
-
-      const [existing] = await db
-        .select({ id: users.id, email: users.email, role: users.role })
-        .from(users)
-        .where(eq(users.id, input.userId))
-        .limit(1);
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
-      if (existing.role === "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Admin accounts can't be deleted here." });
-      }
-
-      try {
-        await db.delete(users).where(eq(users.id, input.userId));
-      } catch (err) {
-        if (err instanceof Error && /foreign key|violates|23503/i.test(err.message)) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "Can't delete this user — they still have related records (RFQs, orders, or messages). Remove those first.",
-          });
-        }
-        throw err;
-      }
-
-      void auditLog.record({
-        action: AuditAction.ADMIN_USER_DELETED,
-        actorUserId: ctx.user?.id,
-        actorEmail: ctx.auth?.email ?? null,
-        actorRole: ctx.auth?.role ?? null,
-        resourceType: "user",
-        resourceId: input.userId,
-        metadata: { email: existing.email ?? null, role: existing.role },
-        req: ctx.req,
-      }).catch((err) => console.error("[audit] deleteUser", err));
-
-      return { success: true };
-    }),
-
-  // ─── Delete a single supplier (hard delete) ───────────────────────────────
-  deleteSupplier: adminProcedure
-    .input(z.object({ supplierId: z.number() }))
-    .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-
-      const [existing] = await db
-        .select({ id: suppliers.id, companyName: suppliers.companyName })
-        .from(suppliers)
-        .where(eq(suppliers.id, input.supplierId))
-        .limit(1);
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found" });
-
-      try {
-        await db.delete(suppliers).where(eq(suppliers.id, input.supplierId));
-      } catch (err) {
-        if (err instanceof Error && /foreign key|violates|23503/i.test(err.message)) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "Can't delete this supplier — it still has related records (RFQ bids, materials, or messages). Reject it instead, or remove those records first.",
-          });
-        }
-        throw err;
-      }
-
-      void auditLog.record({
-        action: AuditAction.ADMIN_SUPPLIER_DELETED,
-        actorUserId: ctx.user?.id,
-        actorEmail: ctx.auth?.email ?? null,
-        actorRole: ctx.auth?.role ?? null,
-        resourceType: "supplier",
-        resourceId: input.supplierId,
-        metadata: { companyName: existing.companyName ?? null },
-        req: ctx.req,
-      }).catch((err) => console.error("[audit] deleteSupplier", err));
-
-      return { success: true };
-    }),
-
   // ─── Catalog Stats ───────────────────────────────────────────────────────
   getCatalogStats: adminProcedure.query(async () => {
     const db = await getDb();
@@ -1339,10 +1249,14 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      await db
+      const restored = await db
         .update(users)
         .set({ deletedAt: null, updatedAt: new Date() })
-        .where(eq(users.id, input.userId));
+        .where(eq(users.id, input.userId))
+        .returning({ id: users.id });
+      if (restored.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found." });
+      }
 
       void auditLog.record({
         action: AuditAction.ADMIN_USER_RESTORED,
@@ -1358,9 +1272,9 @@ export const adminRouter = router({
     }),
 
   // Irreversible. Children removed first so a mid-run failure never orphans the
-  // parent. The two real FKs (submittals.createdBy, ca_documents.createdBy)
-  // cascade at the DB level; a public supplier profile is soft-deleted so it
-  // can't linger in the directory; identity/billing 1:1 rows are removed.
+  // parent. The three real user FKs (submittals.createdBy, ca_documents.createdBy,
+  // ca_document_messages.author_user_id) cascade at the DB level; public supplier
+  // profiles are soft-deleted; billing and email credential rows are removed.
   purgeUser: adminProcedure
     .input(z.object({ userId: z.number().int().positive() })) // gcz-allow: admin-targeting
     .mutation(async ({ input, ctx }) => {
@@ -1369,11 +1283,14 @@ export const adminRouter = router({
       await assertUserDeletable(db, input.userId, ctx.user.id);
 
       const id = input.userId;
-      await db.update(suppliers).set({ deletedAt: new Date() }).where(and(eq(suppliers.userId, id), isNull(suppliers.deletedAt)));
-      await db.delete(architects).where(eq(architects.userId, id));
-      await db.delete(buyerSubscriptions).where(eq(buyerSubscriptions.userId, id));
-      await db.delete(subscriptions).where(eq(subscriptions.userId, id));
-      await db.delete(users).where(eq(users.id, id));
+      await db.transaction(async (tx) => {
+        await tx.update(suppliers).set({ deletedAt: new Date() }).where(and(eq(suppliers.userId, id), isNull(suppliers.deletedAt)));
+        await tx.delete(architects).where(eq(architects.userId, id));
+        await tx.delete(buyerSubscriptions).where(eq(buyerSubscriptions.userId, id));
+        await tx.delete(subscriptions).where(eq(subscriptions.userId, id));
+        await tx.delete(emailCredentials).where(eq(emailCredentials.userId, id));
+        await tx.delete(users).where(eq(users.id, id));
+      });
 
       void auditLog.record({
         action: AuditAction.ADMIN_USER_PURGED,
@@ -1430,6 +1347,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
+
       const updates: Partial<typeof manufacturers.$inferInsert> = {};
       if (input.name !== undefined) updates.name = input.name;
       if (input.category !== undefined) updates.category = input.category;
@@ -1463,6 +1385,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
+
       await db.update(manufacturers).set({ verified: input.verified, updatedAt: new Date() }).where(eq(manufacturers.id, input.id));
 
       void auditLog.record({
@@ -1485,6 +1412,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
+
       await db.update(manufacturers).set({ deletedAt: new Date(), updatedAt: new Date() }).where(and(eq(manufacturers.id, input.id), isNull(manufacturers.deletedAt)));
 
       void auditLog.record({
@@ -1505,6 +1437,11 @@ export const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
 
       await db.update(manufacturers).set({ deletedAt: null, updatedAt: new Date() }).where(eq(manufacturers.id, input.id));
 
@@ -1529,8 +1466,15 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      await db.update(materials).set({ manufacturerId: null }).where(eq(materials.manufacturerId, input.id));
-      await db.delete(manufacturers).where(eq(manufacturers.id, input.id));
+      const [target] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, input.id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Manufacturer not found." });
+      }
+
+      await db.transaction(async (tx) => {
+        await tx.update(materials).set({ manufacturerId: null }).where(eq(materials.manufacturerId, input.id));
+        await tx.delete(manufacturers).where(eq(manufacturers.id, input.id));
+      });
 
       void auditLog.record({
         action: AuditAction.ADMIN_MANUFACTURER_PURGED,
@@ -1551,6 +1495,11 @@ export const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [target] = await db.select({ id: suppliers.id }).from(suppliers).where(eq(suppliers.id, input.supplierId)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found." });
+      }
 
       await db.update(suppliers).set({ deletedAt: new Date(), updatedAt: new Date() }).where(and(eq(suppliers.id, input.supplierId), isNull(suppliers.deletedAt)));
 
@@ -1573,6 +1522,11 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      const [target] = await db.select({ id: suppliers.id }).from(suppliers).where(eq(suppliers.id, input.supplierId)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found." });
+      }
+
       await db.update(suppliers).set({ deletedAt: null, updatedAt: new Date() }).where(eq(suppliers.id, input.supplierId));
 
       void auditLog.record({
@@ -1588,10 +1542,10 @@ export const adminRouter = router({
       return { success: true };
     }),
 
-  // Irreversible. Owned / 1:1 child rows are removed first (meaningless without
-  // the supplier), then the supplier itself. Historical money-lane rows
-  // (rfq_bids, conversations, messages) are intentionally left as orphans per
-  // the founder's accepted tradeoff — documented in the PR.
+  // Irreversible. Supplier-owned operational/config rows are removed first, then
+  // the supplier itself. Cross-party history (rfq_bids, conversations, messages,
+  // rfq_threads, rfq_requests, crm_contacts) is retained for architect/CRM audit
+  // context and may keep the historical supplier id after purge.
   purgeSupplier: adminProcedure
     .input(z.object({ supplierId: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
@@ -1599,17 +1553,29 @@ export const adminRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
       const id = input.supplierId;
-      await db.delete(supplierSubscriptions).where(eq(supplierSubscriptions.supplierId, id));
-      await db.delete(supplierProfileViews).where(eq(supplierProfileViews.supplierId, id));
-      await db.delete(supplierBuyerFitInputs).where(eq(supplierBuyerFitInputs.supplierId, id));
-      await db.delete(supplierSustainabilityProfiles).where(eq(supplierSustainabilityProfiles.supplierId, id));
-      await db.delete(agentHandoffRules).where(eq(agentHandoffRules.supplierId, id));
-      await db.delete(supplierFilters).where(eq(supplierFilters.supplierId, id));
-      await db.delete(suppliersLocation).where(eq(suppliersLocation.supplierId, id));
-      await db.delete(rfqSupplierInvites).where(eq(rfqSupplierInvites.supplierId, id));
-      await db.delete(epdMaterials).where(eq(epdMaterials.supplierId, id));
-      await db.delete(supplierMaterialEpds).where(eq(supplierMaterialEpds.supplierId, id));
-      await db.delete(suppliers).where(eq(suppliers.id, id));
+      const [target] = await db.select({ id: suppliers.id }).from(suppliers).where(eq(suppliers.id, id)).limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Supplier not found." });
+      }
+
+      await db.transaction(async (tx) => {
+        await tx.delete(supplierSubscriptions).where(eq(supplierSubscriptions.supplierId, id));
+        await tx.delete(supplierProfileViews).where(eq(supplierProfileViews.supplierId, id));
+        await tx.delete(supplierBuyerFitInputs).where(eq(supplierBuyerFitInputs.supplierId, id));
+        await tx.delete(supplierSustainabilityProfiles).where(eq(supplierSustainabilityProfiles.supplierId, id));
+        await tx.delete(materialSpecs).where(eq(materialSpecs.supplierId, id));
+        await tx.delete(companyOfWeekSlots).where(eq(companyOfWeekSlots.supplierId, id));
+        await tx.delete(usageTracking).where(eq(usageTracking.supplierId, id));
+        await tx.delete(agentHandoffRules).where(eq(agentHandoffRules.supplierId, id));
+        await tx.delete(supplierFilters).where(eq(supplierFilters.supplierId, id));
+        await tx.delete(suppliersLocation).where(eq(suppliersLocation.supplierId, id));
+        await tx.delete(rfqSupplierInvites).where(eq(rfqSupplierInvites.supplierId, id));
+        await tx.delete(epdMaterials).where(eq(epdMaterials.supplierId, id));
+        await tx.delete(supplierMaterialEpds).where(eq(supplierMaterialEpds.supplierId, id));
+        await tx.delete(conciergeRoutes).where(eq(conciergeRoutes.supplierId, id));
+        await tx.delete(learningEvents).where(eq(learningEvents.supplierId, id));
+        await tx.delete(suppliers).where(eq(suppliers.id, id));
+      });
 
       void auditLog.record({
         action: AuditAction.ADMIN_SUPPLIER_PURGED,

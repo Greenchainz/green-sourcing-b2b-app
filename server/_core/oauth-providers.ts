@@ -462,8 +462,12 @@ export function registerOAuthProviderRoutes(app: Express) {
         assignedRole = "buyer";
       }
 
-      // Check if this is a new user before upserting
-      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      // Check if this is a new user before upserting.
+      const existingUser = await db.getUserByOpenIdIncludingDeleted(userInfo.openId);
+      if (existingUser?.deletedAt) {
+        res.redirect(302, `/login?error=${encodeURIComponent("This account has been deactivated. Contact support.")}`);
+        return;
+      }
       const isNewUser = !existingUser;
 
       // Preserve existing role unless we need to elevate or remediate admin role.

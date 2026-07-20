@@ -70,6 +70,16 @@ function researchFallback(categoryFilter?: string): ManufacturerRow[] {
     }));
 }
 
+type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+async function hasManufacturerRows(db: Db): Promise<boolean> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(manufacturers);
+
+  return Number(row?.count ?? 0) > 0;
+}
+
 export const manufacturerRouter = router({
   /**
    * Full supplier inventory — ADMIN ONLY. This is the curated/scraped moat and
@@ -119,9 +129,9 @@ export const manufacturerRouter = router({
         materialCount: Number(r.materialCount),
       }));
 
-      // If the DB table has no rows yet, surface the research library
+      // Only use the first-run fallback before manufacturer inventory has been seeded.
       if (dbResults.length === 0) {
-        return researchFallback(input?.category);
+        return (await hasManufacturerRows(db)) ? [] : researchFallback(input?.category);
       }
 
       return dbResults;
@@ -210,9 +220,11 @@ export const manufacturerRouter = router({
         materialCount: Number(r.materialCount),
       }));
 
-      // Nothing curated yet → surface featured research-library candidates.
+      // Only use the first-run fallback before manufacturer inventory has been seeded.
       if (dbResults.length === 0) {
-        return researchFallback().filter((m) => m.featured).slice(0, limit);
+        return (await hasManufacturerRows(db))
+          ? []
+          : researchFallback().filter((m) => m.featured).slice(0, limit);
       }
 
       return dbResults;
