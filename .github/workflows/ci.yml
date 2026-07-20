@@ -20,7 +20,7 @@ jobs:
       # (single source of truth). Do NOT add a `with: version:` input here — passing
       # a version while packageManager is also set makes pnpm/action-setup fail with
       # "Multiple versions of pnpm specified" (ERR_PNPM_BAD_PM_VERSION).
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -40,7 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:
