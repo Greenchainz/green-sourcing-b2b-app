@@ -1,6 +1,6 @@
 # GreenChainz Auth & Route Contract
 
-> **SOURCE OF TRUTH — DO NOT CHANGE AUTH WITHOUT ARCHITECTURE REVIEW FROM @jnorvi5**
+> **SOURCE OF TRUTH — DO NOT CHANGE AUTH WITHOUT ARCHITECTURE REVIEW FROM the lead architect**
 > Implementation details: `docs/AUTH_ARCHITECTURE.md`
 > Azure identity setup: `docs/MANAGED_IDENTITY_SETUP.md`
 
@@ -159,7 +159,7 @@ GreenChainz uses a **custom, self-managed authentication model**.
 
 ## Rule: Any Change to Auth Requires Architecture Review
 
-Changes to any of the following require a PR reviewed and approved by @jnorvi5:
+Changes to any of the following require a PR reviewed and approved by the lead architect:
 
 - Token format or cookie name/shape
 - Login or refresh flows
