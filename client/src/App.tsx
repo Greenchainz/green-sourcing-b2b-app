@@ -468,6 +468,7 @@ function ArchitectOnboardingGuard() {
         path === "/" ||
         path === "/get-started" ||
         path === "/pricing" ||
+        path === "/for-suppliers" ||
         path === "/features" ||
         path === "/about" ||
         path === "/terms" ||
