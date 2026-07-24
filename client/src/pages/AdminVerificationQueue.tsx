@@ -6,6 +6,7 @@ import { Badge } from "../components/ui/badge";
 import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { CheckCircle2, XCircle, Building2, MapPin, Mail, Phone, Calendar } from "lucide-react";
+import { toast } from "sonner";
 
 
 export default function AdminVerificationQueue() {
@@ -16,21 +17,23 @@ export default function AdminVerificationQueue() {
   const { data: pendingSuppliers, isLoading, refetch } = trpc.admin.getPendingSuppliers.useQuery();
   const approveSupplier = trpc.admin.approveSupplier.useMutation({
     onSuccess: () => {
-      alert("Supplier approved and notified!");
+      toast.success("Supplier approved and notified!");
       refetch();
       setSelectedSupplier(null);
       setActionType(null);
       setNotes("");
     },
+    onError: (err) => toast.error(err.message ?? "Approval failed"),
   });
   const rejectSupplier = trpc.admin.rejectSupplier.useMutation({
     onSuccess: () => {
-      alert("Supplier rejected and notified.");
+      toast.success("Supplier rejected and notified.");
       refetch();
       setSelectedSupplier(null);
       setActionType(null);
       setNotes("");
     },
+    onError: (err) => toast.error(err.message ?? "Rejection failed"),
   });
 
   const handleAction = () => {

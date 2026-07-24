@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import {
   Award,
   CheckCircle2,
   AlertCircle,
+  Star,
 } from "lucide-react";
 import { EpdProofBadge } from "@/components/proof/ProofBadge";
 
@@ -34,6 +36,23 @@ export default function ManufacturerProfile() {
   );
 
   const incrementViews = trpc.manufacturer.incrementViews.useMutation();
+
+  const utils = trpc.useUtils();
+  const setFeatured = trpc.manufacturer.setFeatured.useMutation({
+    onSuccess: (res) => {
+      if (!res.success) {
+        toast.error("Database unavailable — could not update spotlight.");
+        return;
+      }
+      void utils.manufacturer.getById.invalidate({ id });
+      toast.success(
+        res.featured
+          ? "Set as Supplier of the Week."
+          : "Removed from the spotlight."
+      );
+    },
+    onError: (err) => toast.error(err.message || "Could not update spotlight."),
+  });
 
   useEffect(() => {
     if (id > 0) {
@@ -62,7 +81,7 @@ export default function ManufacturerProfile() {
           <Link href="/manufacturers">
             <Button variant="outline">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Directory
+              Back to Supplier Spotlight
             </Button>
           </Link>
         </div>
@@ -86,7 +105,7 @@ export default function ManufacturerProfile() {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Supplier Directory
+            Back to Supplier Spotlight
           </Link>
 
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
@@ -107,7 +126,18 @@ export default function ManufacturerProfile() {
                   </Badge>
                 )}
                 {manufacturer.featured && (
-                  <Badge className="bg-emerald-600 text-white">Featured</Badge>
+                  <Badge className="bg-emerald-600 text-white">
+                    <Star className="h-3 w-3 mr-1 fill-current" />
+                    In Spotlight
+                  </Badge>
+                )}
+                {!manufacturer.verified && (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/30 bg-amber-500/10 text-amber-400"
+                  >
+                    Emerging &mdash; not yet GreenChainz Verified
+                  </Badge>
                 )}
               </div>
 
@@ -145,11 +175,35 @@ export default function ManufacturerProfile() {
               </div>
             </div>
 
-            {/* Admin view count */}
+            {/* Admin controls */}
             {isAdmin && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-3 py-2 rounded-lg">
-                <Eye className="h-4 w-4" />
-                {manufacturer.profileViews ?? 0} views
+              <div className="flex flex-col items-stretch md:items-end gap-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-3 py-2 rounded-lg">
+                  <Eye className="h-4 w-4" />
+                  {manufacturer.profileViews ?? 0} views
+                </div>
+                <Button
+                  variant={manufacturer.featured ? "outline" : "default"}
+                  size="sm"
+                  disabled={setFeatured.isPending}
+                  onClick={() =>
+                    setFeatured.mutate({ id, featured: !manufacturer.featured })
+                  }
+                  className={
+                    manufacturer.featured
+                      ? "border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                      : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                  }
+                >
+                  <Star
+                    className={`h-4 w-4 mr-1.5 ${
+                      manufacturer.featured ? "fill-current" : ""
+                    }`}
+                  />
+                  {manufacturer.featured
+                    ? "Remove from Spotlight"
+                    : "Set as Supplier of the Week"}
+                </Button>
               </div>
             )}
           </div>
@@ -217,7 +271,7 @@ export default function ManufacturerProfile() {
                       {manufacturer.hasEpd ? (
                         <span className="inline-flex items-center gap-1 text-sm text-emerald-500">
                           <ShieldCheck className="h-4 w-4" />
-                          Verified
+                          Published EPD
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">

@@ -2,6 +2,29 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { adminRouter } from './admin-router';
 import { getDb } from './db';
 import { TRPCError } from '@trpc/server';
+import {
+  architects,
+  buyerSubscriptions,
+  subscriptions,
+  emailCredentials,
+  users,
+  supplierSubscriptions,
+  supplierProfileViews,
+  supplierBuyerFitInputs,
+  supplierSustainabilityProfiles,
+  materialSpecs,
+  companyOfWeekSlots,
+  usageTracking,
+  agentHandoffRules,
+  supplierFilters,
+  suppliersLocation,
+  rfqSupplierInvites,
+  epdMaterials,
+  supplierMaterialEpds,
+  conciergeRoutes,
+  learningEvents,
+  suppliers,
+} from '../drizzle/schema';
 
 // Mock the database
 vi.mock('./db', () => ({
@@ -35,8 +58,8 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
 
     // Create caller context
     mockCaller = adminRouter.createCaller({
-      user: { id: 1, role: 'admin', email: 'admin@test.com', openId: 'admin-123' },
-      auth: { userId: 'admin-123', email: 'admin@test.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
+      user: { id: 1, role: 'admin', email: 'founder@greenchainz.com', openId: 'admin-123' },
+      auth: { userId: 'admin-123', email: 'founder@greenchainz.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
       req: {} as any,
       res: {} as any,
     });
@@ -291,8 +314,8 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
 
     it('should allow access to admin users', async () => {
       const adminCaller = adminRouter.createCaller({
-        user: { id: 1, role: 'admin', email: 'admin@test.com', openId: 'admin-123' },
-        auth: { userId: 'admin-123', email: 'admin@test.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
+        user: { id: 1, role: 'admin', email: 'founder@greenchainz.com', openId: 'admin-123' },
+        auth: { userId: 'admin-123', email: 'founder@greenchainz.com', role: 'admin', tenantId: 'test-tenant', rawRoles: ['admin'] },
         req: {} as any,
         res: {} as any,
       });
@@ -302,6 +325,287 @@ describe.skipIf(!process.env.DATABASE_URL)('Admin Router - Supplier Verification
       const result = await adminCaller.getPendingSuppliers();
 
       expect(result).toEqual([]);
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Destructive data control: deleteUser/restoreUser/purgeUser + manufacturer /
+// supplier soft-delete/restore/purge. Fully mocked (getDb is stubbed) so these
+// run without a real database and actually exercise the admin-gate + safeguards.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const adminCtx = {
+  user: { id: 1, role: 'admin', email: 'founder@greenchainz.com', openId: 'admin-123' },
+  auth: { userId: 'admin-123', email: 'founder@greenchainz.com', role: 'admin', tenantId: 't', rawRoles: ['admin'] },
+  req: {} as any,
+  res: {} as any,
+};
+
+const nonAdminCtx = {
+  user: { id: 2, role: 'supplier', email: 'sup@test.com', openId: 'sup-2' },
+  auth: { userId: 'sup-2', email: 'sup@test.com', role: 'supplier', tenantId: 't', rawRoles: ['supplier'] },
+  req: {} as any,
+  res: {} as any,
+};
+
+/**
+ * Chainable mock Drizzle handle.
+ *  - `.where()` returns a thenable that resolves to `countRow` (for awaited
+ *    update/delete/count queries) and also exposes `.limit()` → `targetRow`
+ *    (for existence lookups) and `.returning()` (for affected-row checks).
+ */
+function makeDb({
+  targetRow = [{ id: 1, role: 'supplier' }] as any[],
+  countRow = [{ c: 1 }] as any[],
+  returningRow = targetRow,
+} = {}) {
+  const db: any = {};
+  const chain = () => db;
+  db.select = vi.fn(chain);
+  db.from = vi.fn(chain);
+  db.innerJoin = vi.fn(chain);
+  db.leftJoin = vi.fn(chain);
+  db.groupBy = vi.fn(chain);
+  db.orderBy = vi.fn().mockResolvedValue([]);
+  db.update = vi.fn(chain);
+  db.set = vi.fn(chain);
+  db.delete = vi.fn(chain);
+  db.where = vi.fn(() => {
+    const p: any = Promise.resolve(countRow);
+    p.limit = vi.fn().mockResolvedValue(targetRow);
+    p.returning = vi.fn().mockResolvedValue(returningRow);
+    return p;
+  });
+  // Purges wrap their writes in db.transaction(async (tx) => {...}); run the
+  // callback synchronously with the same chainable stub so `tx.*` calls land on
+  // the same spies the assertions inspect (tx === db in the mock).
+  db.transaction = vi.fn(async (cb: any) => cb(db));
+  return db;
+}
+
+describe('Admin Router - Destructive data control', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // ── Users ──────────────────────────────────────────────────────────────
+  describe('deleteUser', () => {
+    it('denies non-admin callers (FORBIDDEN)', async () => {
+      (getDb as any).mockResolvedValue(makeDb());
+      const caller = adminRouter.createCaller(nonAdminCtx);
+      await expect(caller.deleteUser({ userId: 5 })).rejects.toThrow(
+        expect.objectContaining({ code: 'FORBIDDEN' }),
+      );
+    });
+
+    it('blocks an admin from deleting their own account (BAD_REQUEST)', async () => {
+      (getDb as any).mockResolvedValue(makeDb());
+      const caller = adminRouter.createCaller(adminCtx);
+      // actor id === target id (1)
+      await expect(caller.deleteUser({ userId: 1 })).rejects.toThrow(
+        expect.objectContaining({ code: 'BAD_REQUEST' }),
+      );
+    });
+
+    it('blocks deleting the last remaining admin (BAD_REQUEST)', async () => {
+      (getDb as any).mockResolvedValue(
+        makeDb({ targetRow: [{ id: 2, role: 'admin' }], countRow: [{ c: 0 }] }),
+      );
+      const caller = adminRouter.createCaller(adminCtx);
+      await expect(caller.deleteUser({ userId: 2 })).rejects.toThrow(
+        expect.objectContaining({ code: 'BAD_REQUEST' }),
+      );
+    });
+
+    it('throws NOT_FOUND when the target user does not exist', async () => {
+      (getDb as any).mockResolvedValue(makeDb({ targetRow: [] }));
+      const caller = adminRouter.createCaller(adminCtx);
+      await expect(caller.deleteUser({ userId: 99 })).rejects.toThrow(
+        expect.objectContaining({ code: 'NOT_FOUND' }),
+      );
+    });
+
+    it('soft-deletes a non-admin user by setting deletedAt', async () => {
+      const db = makeDb({ targetRow: [{ id: 2, role: 'supplier' }] });
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      const result = await caller.deleteUser({ userId: 2 });
+
+      expect(result).toEqual({ success: true });
+      expect(db.update).toHaveBeenCalled();
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ deletedAt: expect.any(Date) }),
+      );
+    });
+  });
+
+  describe('restoreUser', () => {
+    it('clears deletedAt', async () => {
+      const db = makeDb();
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      const result = await caller.restoreUser({ userId: 2 });
+
+      expect(result).toEqual({ success: true });
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ deletedAt: null }),
+      );
+    });
+  });
+
+  describe('purgeUser', () => {
+    it('denies non-admin callers (FORBIDDEN)', async () => {
+      (getDb as any).mockResolvedValue(makeDb());
+      const caller = adminRouter.createCaller(nonAdminCtx);
+      await expect(caller.purgeUser({ userId: 5 })).rejects.toThrow(
+        expect.objectContaining({ code: 'FORBIDDEN' }),
+      );
+    });
+
+    it('blocks purging your own account (BAD_REQUEST)', async () => {
+      (getDb as any).mockResolvedValue(makeDb());
+      const caller = adminRouter.createCaller(adminCtx);
+      await expect(caller.purgeUser({ userId: 1 })).rejects.toThrow(
+        expect.objectContaining({ code: 'BAD_REQUEST' }),
+      );
+    });
+
+    it('hard-deletes the user and its owned 1:1 rows', async () => {
+      const db = makeDb({ targetRow: [{ id: 2, role: 'supplier' }] });
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      const result = await caller.purgeUser({ userId: 2 });
+
+      expect(result).toEqual({ success: true });
+      expect(db.delete.mock.calls.map(([table]) => table)).toEqual([
+        architects,
+        buyerSubscriptions,
+        subscriptions,
+        emailCredentials,
+        users,
+      ]);
+      // owned public supplier profile is soft-deleted, not hard-deleted
+      expect(db.update).toHaveBeenCalled();
+    });
+  });
+
+  // ── Manufacturers ────────────────────────────────────────────────────────
+  describe('manufacturer delete/restore/purge', () => {
+    it('deleteManufacturer denies non-admins (FORBIDDEN)', async () => {
+      (getDb as any).mockResolvedValue(makeDb());
+      const caller = adminRouter.createCaller(nonAdminCtx);
+      await expect(caller.deleteManufacturer({ id: 3 })).rejects.toThrow(
+        expect.objectContaining({ code: 'FORBIDDEN' }),
+      );
+    });
+
+    it('deleteManufacturer soft-deletes by setting deletedAt', async () => {
+      const db = makeDb();
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      const result = await caller.deleteManufacturer({ id: 3 });
+
+      expect(result).toEqual({ success: true });
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ deletedAt: expect.any(Date) }),
+      );
+    });
+
+    it('restoreManufacturer clears deletedAt', async () => {
+      const db = makeDb();
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      await caller.restoreManufacturer({ id: 3 });
+
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ deletedAt: null }),
+      );
+    });
+
+    it('purgeManufacturer nulls materials.manufacturerId before deleting', async () => {
+      const db = makeDb();
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      const result = await caller.purgeManufacturer({ id: 3 });
+
+      expect(result).toEqual({ success: true });
+      // detach materials first…
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ manufacturerId: null }),
+      );
+      // …then hard-delete the manufacturer row
+      expect(db.delete).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── Suppliers (paid table) ─────────────────────────────────────────────────
+  describe('supplier delete/restore/purge', () => {
+    it('deleteSupplier denies non-admins (FORBIDDEN)', async () => {
+      (getDb as any).mockResolvedValue(makeDb());
+      const caller = adminRouter.createCaller(nonAdminCtx);
+      await expect(caller.deleteSupplier({ supplierId: 4 })).rejects.toThrow(
+        expect.objectContaining({ code: 'FORBIDDEN' }),
+      );
+    });
+
+    it('deleteSupplier soft-deletes by setting deletedAt', async () => {
+      const db = makeDb();
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      const result = await caller.deleteSupplier({ supplierId: 4 });
+
+      expect(result).toEqual({ success: true });
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ deletedAt: expect.any(Date) }),
+      );
+    });
+
+    it('restoreSupplier clears deletedAt', async () => {
+      const db = makeDb();
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      await caller.restoreSupplier({ supplierId: 4 });
+
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ deletedAt: null }),
+      );
+    });
+
+    it('purgeSupplier deletes all owned child rows then the supplier', async () => {
+      const db = makeDb();
+      (getDb as any).mockResolvedValue(db);
+      const caller = adminRouter.createCaller(adminCtx);
+
+      const result = await caller.purgeSupplier({ supplierId: 4 });
+
+      expect(result).toEqual({ success: true });
+      expect(db.delete.mock.calls.map(([table]) => table)).toEqual([
+        supplierSubscriptions,
+        supplierProfileViews,
+        supplierBuyerFitInputs,
+        supplierSustainabilityProfiles,
+        materialSpecs,
+        companyOfWeekSlots,
+        usageTracking,
+        agentHandoffRules,
+        supplierFilters,
+        suppliersLocation,
+        rfqSupplierInvites,
+        epdMaterials,
+        supplierMaterialEpds,
+        conciergeRoutes,
+        learningEvents,
+        suppliers,
+      ]);
     });
   });
 });

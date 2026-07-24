@@ -16,6 +16,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { BLOG_POSTS, getBlogPostPath } from "@shared/blogPosts";
 import { decodeWin, buildWinMeta, renderWinMetaTags } from "@shared/carbonWin";
 import { handleLandingPage } from "../marketplace-landing";
 import { handleRevitLanding } from "../revit-landing";
@@ -26,6 +27,7 @@ import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { unsubscribeRouter } from "../unsubscribe-route";
 import { specSheetRouter } from "../spec-sheet-router";
 import { registerAdminRoutes } from "../admin-routes/index";
+import { registerIntelligenceRoutes } from "../intelligence-routes";
 import { publicMaterialsRouter } from "../public-materials-api";
 import { registerPdfRoutes } from "../admin-routes/pdf-routes";
 import { registerMobileMessagesRoutes } from "../admin-routes/mobile-messages";
@@ -139,7 +141,75 @@ function isHealthEndpoint(path: string): boolean {
 // redirect — if they were, search engines would see a 308 redirect loop on
 // https://greenchainz.com/robots.txt and fail to fetch the file at all.
 function isCrawlCriticalFile(path: string): boolean {
-  return path === "/robots.txt" || path === "/sitemap.xml";
+  return path === "/robots.txt" || path === "/sitemap.xml" || path === "/blog/rss.xml" || path === "/blog/feed.json";
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function buildBlogRssXml(siteBaseUrl: string): string {
+  const sortedPosts = [...BLOG_POSTS].sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+  );
+  const items = sortedPosts
+    .map((post) => {
+      const postUrl = `${siteBaseUrl}${getBlogPostPath(post.slug)}`;
+      const pubDate = new Date(post.publishedAt).toUTCString();
+      return [
+        "    <item>",
+        `      <title>${escapeXml(post.title)}</title>`,
+        `      <link>${escapeXml(postUrl)}</link>`,
+        `      <guid>${escapeXml(postUrl)}</guid>`,
+        `      <pubDate>${escapeXml(pubDate)}</pubDate>`,
+        `      <description>${escapeXml(post.description)}</description>`,
+        "    </item>",
+      ].join("\n");
+    })
+    .join("\n");
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<rss version="2.0">',
+    "  <channel>",
+    "    <title>GreenChainz Blog</title>",
+    `    <link>${escapeXml(`${siteBaseUrl}/blog`)}</link>`,
+    "    <description>Question-first SEO and procurement content from GreenChainz.</description>",
+    "    <language>en-us</language>",
+    items,
+    "  </channel>",
+    "</rss>",
+    "",
+  ].join("\n");
+}
+
+function buildBlogJsonFeed(siteBaseUrl: string): Record<string, unknown> {
+  const sortedPosts = [...BLOG_POSTS].sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+  );
+
+  return {
+    version: "https://jsonfeed.org/version/1.1",
+    title: "GreenChainz Blog",
+    home_page_url: `${siteBaseUrl}/blog`,
+    feed_url: `${siteBaseUrl}/blog/feed.json`,
+    description: "Question-first SEO and procurement content from GreenChainz.",
+    items: sortedPosts.map((post) => ({
+      id: `${siteBaseUrl}${getBlogPostPath(post.slug)}`,
+      url: `${siteBaseUrl}${getBlogPostPath(post.slug)}`,
+      title: post.title,
+      summary: post.description,
+      content_text: [post.quickAnswer, ...post.sections.flatMap((section) => section.paragraphs)].join("\n\n"),
+      date_published: post.publishedAt,
+      date_modified: post.updatedAt ?? post.publishedAt,
+      tags: post.tags,
+    })),
+  };
 }
 
 if (process.env.NODE_ENV !== "production") {
@@ -436,6 +506,38 @@ async function startServer() {
       });
     });
 
+    app.get("/blog/rss.xml", (req, res) => {
+      const proto =
+        (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.protocol ||
+        "https";
+      const host =
+        (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.get("host") ||
+        CANONICAL_HOST;
+      const siteBaseUrl = `${proto}://${host}`;
+
+      res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.status(200).send(buildBlogRssXml(siteBaseUrl));
+    });
+
+    app.get("/blog/feed.json", (req, res) => {
+      const proto =
+        (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.protocol ||
+        "https";
+      const host =
+        (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.get("host") ||
+        CANONICAL_HOST;
+      const siteBaseUrl = `${proto}://${host}`;
+
+      res.setHeader("Content-Type", "application/feed+json; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.status(200).json(buildBlogJsonFeed(siteBaseUrl));
+    });
+
     // ── Share unfurls: inject per-win OpenGraph meta for /win ────────────────
     // Crawlers (LinkedIn, X, Slack, iMessage) don't run JS, so the client-side
     // card can't drive the link preview. In production we read the built SPA
@@ -617,6 +719,7 @@ async function startServer() {
 
   // ── Delegated route groups ────────────────────────────────────────────────
   registerAdminRoutes(app, adminRateLimit);
+  registerIntelligenceRoutes(app, adminRateLimit);
   registerPdfRoutes(app, rfqPdfRateLimit, materialScorePdfRateLimit);
   registerMobileMessagesRoutes(app);
 

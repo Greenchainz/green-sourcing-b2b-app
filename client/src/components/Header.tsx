@@ -179,11 +179,14 @@ export default function Header() {
           <Link href="/about" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             About
           </Link>
+          <Link href="/blog" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Blog
+          </Link>
           <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Explore
           </Link>
           <Link href="/manufacturers" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-            Suppliers
+            Supplier Spotlight
           </Link>
           {/* Tools dropdown — hidden for suppliers */}
           {user?.role !== 'supplier' && <ToolsDropdown />}
@@ -309,13 +312,17 @@ export default function Header() {
               onClick={() => setMobileMenuOpen(false)}>
               About
             </Link>
+            <Link href="/blog" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+              onClick={() => setMobileMenuOpen(false)}>
+              Blog
+            </Link>
             <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
               onClick={() => setMobileMenuOpen(false)}>
               Explore Materials
             </Link>
             <Link href="/manufacturers" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
               onClick={() => setMobileMenuOpen(false)}>
-              Suppliers
+              Supplier Spotlight
             </Link>
             {user?.role !== 'supplier' && (
               <>

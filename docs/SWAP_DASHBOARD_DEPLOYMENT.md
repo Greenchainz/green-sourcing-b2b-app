@@ -156,6 +156,6 @@ The Manus dev environment runs the **Vite/React app** (`client/` directory), not
 ## Support
 
 For deployment issues or questions:
-- Check GitHub Actions logs: https://github.com/jnorvi5/green-sourcing-b2b-app/actions
+- Check GitHub Actions logs: https://github.com/Greenchainz/green-sourcing-b2b-app/actions
 - Check Azure Container Apps logs: Azure Portal → greenchainz-frontend → Log stream
 - Review API documentation: `app/api/README.md`

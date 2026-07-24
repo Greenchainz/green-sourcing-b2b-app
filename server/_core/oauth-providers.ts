@@ -18,6 +18,7 @@ import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
 import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
+import { isFounderAdminEmail } from "./admin-access";
 
 // Helpers
 
@@ -50,13 +51,14 @@ function pruneFormaAuthCodes(): void {
 }
 
 function isAllowedReturnPath(raw: string): boolean {
+  if (typeof raw !== "string" || !raw) return false;
   if (/^\/(?!\/)/.test(raw)) return true; // relative path on same origin
-  try {
-    const u = new URL(raw);
-    return ALLOWED_EXTERNAL_ORIGINS.includes(u.origin);
-  } catch {
-    return false;
-  }
+  // Use string-prefix matching to avoid potential URL-parser quirks in the deployed env.
+  // An absolute returnPath is allowed when it starts with an allowlisted origin.
+  const allowed = ALLOWED_EXTERNAL_ORIGINS.some(
+    (origin) => raw === origin || raw.startsWith(origin + "/")
+  );
+  return allowed;
 }
 
 type OAuthRole = "supplier" | "buyer" | null;
@@ -462,9 +464,9 @@ export function registerOAuthProviderRoutes(app: Express) {
           return;
       }
 
-      // Determine role: admin if greenchainz.com email, else use provided role or default to buyer
+      // Determine role: ONLY founder@greenchainz.com can be admin.
       let assignedRole: "buyer" | "supplier" | "admin" | "user" = "buyer";
-      if (userInfo.email?.endsWith("@greenchainz.com")) {
+      if (isFounderAdminEmail(userInfo.email)) {
         assignedRole = "admin";
       } else if (role === "supplier") {
         assignedRole = "supplier";
@@ -472,15 +474,21 @@ export function registerOAuthProviderRoutes(app: Express) {
         assignedRole = "buyer";
       }
 
-      // Check if this is a new user before upserting
-      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      // Check if this is a new user before upserting.
+      const existingUser = await db.getUserByOpenIdIncludingDeleted(userInfo.openId);
+      if (existingUser?.deletedAt) {
+        res.redirect(302, `/login?error=${encodeURIComponent("This account has been deactivated. Contact support.")}`);
+        return;
+      }
       const isNewUser = !existingUser;
 
-      // Preserve existing role unless we need to elevate an internal account.
+      // Preserve existing role unless we need to elevate or remediate admin role.
       let roleForUpsert: "buyer" | "supplier" | "admin" | "user" | undefined = assignedRole;
       if (existingUser?.role) {
-        if (existingUser.role !== "admin" && userInfo.email?.endsWith("@greenchainz.com")) {
+        if (existingUser.role !== "admin" && isFounderAdminEmail(userInfo.email)) {
           roleForUpsert = "admin";
+        } else if (existingUser.role === "admin" && !isFounderAdminEmail(userInfo.email)) {
+          roleForUpsert = "buyer";
         } else {
           roleForUpsert = undefined;
         }
