@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { router, protectedProcedure, architectProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -8,7 +9,10 @@ import {
   architectDownloadEvents,
 } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { sendArchitectWelcomeEmail, sendFounderNewArchitectAlert } from "../email-service";
+import {
+  sendArchitectWelcomeEmail,
+  sendFounderNewArchitectAlert,
+} from "../email-service";
 
 /**
  * Architect Router
@@ -40,9 +44,9 @@ const FIRM_TYPE_VALUES = [
 const VOLUME_VALUES = ["under_1m", "1m_10m", "10m_50m", "over_50m"] as const;
 
 const PROFILE_CREDIT_KEYS = {
-  firmName:  { credits: 1, label: "Firm name" },
-  license:   { credits: 1, label: "License number" },
-  autodesk:  { credits: 2, label: "Autodesk account" },
+  firmName: { credits: 1, label: "Firm name" },
+  license: { credits: 1, label: "License number" },
+  autodesk: { credits: 2, label: "Autodesk account" },
 } as const;
 
 type ProfileCreditKey = keyof typeof PROFILE_CREDIT_KEYS;
@@ -53,20 +57,26 @@ function generateReferralCodeString(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }
 
 /** Compute which profile credit keys are eligible but not yet granted. */
 function unclaimedProfileCredits(
-  row: { firmName: string | null; licenseNumber: string | null; autodeskConnected: boolean | null },
+  row: {
+    firmName: string | null;
+    licenseNumber: string | null;
+    autodeskConnected: boolean | null;
+  },
   granted: string[]
 ): ProfileCreditKey[] {
   const unclaimed: ProfileCreditKey[] = [];
-  if (row.firmName && !granted.includes("firmName"))  unclaimed.push("firmName");
-  if (row.licenseNumber && !granted.includes("license")) unclaimed.push("license");
-  if (row.autodeskConnected && !granted.includes("autodesk")) unclaimed.push("autodesk");
+  if (row.firmName && !granted.includes("firmName")) unclaimed.push("firmName");
+  if (row.licenseNumber && !granted.includes("license"))
+    unclaimed.push("license");
+  if (row.autodeskConnected && !granted.includes("autodesk"))
+    unclaimed.push("autodesk");
   return unclaimed;
 }
 
@@ -83,7 +93,9 @@ const onboardingInput = z.object({
   licenseState: z.string().optional(),
   annualProjectVolume: z.enum(VOLUME_VALUES).optional(),
   projectTypes: z.array(z.string()).min(1, "Select at least one project type"),
-  sustainabilityGoals: z.array(z.string()).min(1, "Select at least one sustainability goal"),
+  sustainabilityGoals: z
+    .array(z.string())
+    .min(1, "Select at least one sustainability goal"),
   preferredCertifications: z.array(z.string()).optional(),
   location: z.string().min(1, "City is required"),
   state: z.string().min(1, "State is required"),
@@ -97,7 +109,6 @@ const onboardingInput = z.object({
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export const architectRouter = router({
-
   // ── Onboarding ──────────────────────────────────────────────────────────────
 
   getMyProfile: protectedProcedure.query(async ({ ctx }) => {
@@ -115,10 +126,17 @@ export const architectRouter = router({
     .input(onboardingInput)
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       const [existing] = await db
-        .select({ id: architects.id, profileCreditsGranted: architects.profileCreditsGranted })
+        .select({
+          id: architects.id,
+          profileCreditsGranted: architects.profileCreditsGranted,
+        })
         .from(architects)
         .where(eq(architects.userId, ctx.user.id))
         .limit(1);
@@ -145,27 +163,45 @@ export const architectRouter = router({
       };
 
       if (existing) {
-        await db.update(architects).set(values).where(eq(architects.id, existing.id));
+        await db
+          .update(architects)
+          .set(values)
+          .where(eq(architects.id, existing.id));
         // Auto-apply any newly-eligible profile credits
-        await _applyProfileCreditsInternal(db, existing.id, {
-          firmName: input.firmName,
-          licenseNumber: input.licenseNumber ?? null,
-          autodeskConnected: false,
-        }, existing.profileCreditsGranted ?? []);
+        await _applyProfileCreditsInternal(
+          db,
+          existing.id,
+          {
+            firmName: input.firmName,
+            licenseNumber: input.licenseNumber ?? null,
+            autodeskConnected: false,
+          },
+          existing.profileCreditsGranted ?? []
+        );
         return { id: existing.id, created: false };
       }
 
       const [row] = await db
         .insert(architects)
-        .values({ userId: ctx.user.id, status: "pending", downloadCredits: 2, ...values })
+        .values({
+          userId: ctx.user.id,
+          status: "pending",
+          downloadCredits: 2,
+          ...values,
+        })
         .returning({ id: architects.id });
 
       // Auto-apply profile credits for fields filled during onboarding
-      await _applyProfileCreditsInternal(db, row.id, {
-        firmName: input.firmName,
-        licenseNumber: input.licenseNumber ?? null,
-        autodeskConnected: false,
-      }, []);
+      await _applyProfileCreditsInternal(
+        db,
+        row.id,
+        {
+          firmName: input.firmName,
+          licenseNumber: input.licenseNumber ?? null,
+          autodeskConnected: false,
+        },
+        []
+      );
 
       // Honor referral code if supplied
       if (input.referralCode) {
@@ -199,7 +235,11 @@ export const architectRouter = router({
     .input(onboardingInput.partial())
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       const [existing] = await db
         .select({
@@ -213,7 +253,11 @@ export const architectRouter = router({
         .where(eq(architects.userId, ctx.user.id))
         .limit(1);
 
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "No architect profile found" });
+      if (!existing)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No architect profile found",
+        });
 
       await db
         .update(architects)
@@ -222,12 +266,15 @@ export const architectRouter = router({
 
       // Re-evaluate profile credits with merged state
       const merged = {
-        firmName: (input.firmName ?? existing.firmName) ?? null,
-        licenseNumber: (input.licenseNumber ?? existing.licenseNumber) ?? null,
+        firmName: input.firmName ?? existing.firmName ?? null,
+        licenseNumber: input.licenseNumber ?? existing.licenseNumber ?? null,
         autodeskConnected: existing.autodeskConnected ?? false,
       };
       const creditsAdded = await _applyProfileCreditsInternal(
-        db, existing.id, merged, existing.profileCreditsGranted ?? []
+        db,
+        existing.id,
+        merged,
+        existing.profileCreditsGranted ?? []
       );
 
       return { success: true, profileCreditsAdded: creditsAdded };
@@ -238,7 +285,11 @@ export const architectRouter = router({
   /** Returns credit balance and referral code (or null if not yet generated). */
   getDownloadCredits: architectProcedure.query(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    if (!db)
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database unavailable",
+      });
 
     const [row] = await db
       .select({
@@ -254,11 +305,19 @@ export const architectRouter = router({
       .where(eq(architects.userId, ctx.user.id))
       .limit(1);
 
-    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No architect profile" });
+    if (!row)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No architect profile",
+      });
 
     // Surface which profile credit fields are still unclaimed so the UI can show them
     const unclaimed = unclaimedProfileCredits(
-      { firmName: row.firmName, licenseNumber: row.licenseNumber, autodeskConnected: row.autodeskConnected },
+      {
+        firmName: row.firmName,
+        licenseNumber: row.licenseNumber,
+        autodeskConnected: row.autodeskConnected,
+      },
       row.profileCreditsGranted ?? []
     );
 
@@ -268,7 +327,7 @@ export const architectRouter = router({
       referralUrl: row.referralCode
         ? `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/register?ref=${row.referralCode}`
         : null,
-      profileCreditsAvailable: unclaimed.map((k) => ({
+      profileCreditsAvailable: unclaimed.map(k => ({
         key: k,
         label: PROFILE_CREDIT_KEYS[k].label,
         credits: PROFILE_CREDIT_KEYS[k].credits,
@@ -282,7 +341,11 @@ export const architectRouter = router({
    */
   generateReferralCode: architectProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    if (!db)
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database unavailable",
+      });
 
     const [row] = await db
       .select({ id: architects.id, referralCode: architects.referralCode })
@@ -290,7 +353,11 @@ export const architectRouter = router({
       .where(eq(architects.userId, ctx.user.id))
       .limit(1);
 
-    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No architect profile" });
+    if (!row)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No architect profile",
+      });
 
     if (row.referralCode) {
       return {
@@ -313,7 +380,10 @@ export const architectRouter = router({
       attempts++;
     }
 
-    await db.update(architects).set({ referralCode: code }).where(eq(architects.id, row.id));
+    await db
+      .update(architects)
+      .set({ referralCode: code })
+      .where(eq(architects.id, row.id));
 
     return {
       referralCode: code,
@@ -329,18 +399,32 @@ export const architectRouter = router({
     .input(z.object({ materialId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       const [row] = await db
-        .select({ id: architects.id, downloadCredits: architects.downloadCredits })
+        .select({
+          id: architects.id,
+          downloadCredits: architects.downloadCredits,
+        })
         .from(architects)
         .where(eq(architects.userId, ctx.user.id))
         .limit(1);
 
-      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No architect profile" });
+      if (!row)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No architect profile",
+        });
 
       if (row.downloadCredits <= 0) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "No download credits remaining" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No download credits remaining",
+        });
       }
 
       await db
@@ -365,15 +449,26 @@ export const architectRouter = router({
     .input(z.object({ materialId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       const [row] = await db
-        .select({ id: architects.id, downloadCredits: architects.downloadCredits })
+        .select({
+          id: architects.id,
+          downloadCredits: architects.downloadCredits,
+        })
         .from(architects)
         .where(eq(architects.userId, ctx.user.id))
         .limit(1);
 
-      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No architect profile" });
+      if (!row)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No architect profile",
+        });
 
       // Idempotency check: already claimed for this material?
       const [existing] = await db
@@ -390,7 +485,11 @@ export const architectRouter = router({
 
       if (existing) {
         // Already claimed — just return current balance without error
-        return { creditsAdded: 0, totalCredits: row.downloadCredits, alreadyClaimed: true };
+        return {
+          creditsAdded: 0,
+          totalCredits: row.downloadCredits,
+          alreadyClaimed: true,
+        };
       }
 
       await db
@@ -404,7 +503,11 @@ export const architectRouter = router({
         bypassMethod: "linkedin",
       });
 
-      return { creditsAdded: 1, totalCredits: row.downloadCredits + 1, alreadyClaimed: false };
+      return {
+        creditsAdded: 1,
+        totalCredits: row.downloadCredits + 1,
+        alreadyClaimed: false,
+      };
     }),
 
   /**
@@ -416,7 +519,11 @@ export const architectRouter = router({
     .input(z.object({ referralCode: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       const [myProfile] = await db
         .select({ id: architects.id })
@@ -424,9 +531,18 @@ export const architectRouter = router({
         .where(eq(architects.userId, ctx.user.id))
         .limit(1);
 
-      if (!myProfile) throw new TRPCError({ code: "NOT_FOUND", message: "No architect profile" });
+      if (!myProfile)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No architect profile",
+        });
 
-      await _creditReferrer(db, input.referralCode, myProfile.id, ctx.user.email ?? "");
+      await _creditReferrer(
+        db,
+        input.referralCode,
+        myProfile.id,
+        ctx.user.email ?? ""
+      );
       return { success: true };
     }),
 
@@ -436,7 +552,11 @@ export const architectRouter = router({
    */
   applyProfileCredits: architectProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    if (!db)
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database unavailable",
+      });
 
     const [row] = await db
       .select({
@@ -451,11 +571,20 @@ export const architectRouter = router({
       .where(eq(architects.userId, ctx.user.id))
       .limit(1);
 
-    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No architect profile" });
+    if (!row)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No architect profile",
+      });
 
     const creditsAdded = await _applyProfileCreditsInternal(
-      db, row.id,
-      { firmName: row.firmName, licenseNumber: row.licenseNumber, autodeskConnected: row.autodeskConnected },
+      db,
+      row.id,
+      {
+        firmName: row.firmName,
+        licenseNumber: row.licenseNumber,
+        autodeskConnected: row.autodeskConnected,
+      },
       row.profileCreditsGranted ?? []
     );
 
@@ -470,13 +599,20 @@ type DbType = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 async function _applyProfileCreditsInternal(
   db: DbType,
   architectId: number,
-  profile: { firmName: string | null; licenseNumber: string | null; autodeskConnected: boolean | null },
+  profile: {
+    firmName: string | null;
+    licenseNumber: string | null;
+    autodeskConnected: boolean | null;
+  },
   alreadyGranted: string[]
 ): Promise<number> {
   const unclaimed = unclaimedProfileCredits(profile, alreadyGranted);
   if (unclaimed.length === 0) return 0;
 
-  const totalNew = unclaimed.reduce((sum, k) => sum + PROFILE_CREDIT_KEYS[k].credits, 0);
+  const totalNew = unclaimed.reduce(
+    (sum, k) => sum + PROFILE_CREDIT_KEYS[k].credits,
+    0
+  );
   const newGranted = [...alreadyGranted, ...unclaimed];
 
   // Fetch current credits and add
@@ -489,7 +625,10 @@ async function _applyProfileCreditsInternal(
   if (cur) {
     await db
       .update(architects)
-      .set({ profileCreditsGranted: newGranted, downloadCredits: cur.downloadCredits + totalNew })
+      .set({
+        profileCreditsGranted: newGranted,
+        downloadCredits: cur.downloadCredits + totalNew,
+      })
       .where(eq(architects.id, architectId));
   }
 
@@ -515,7 +654,10 @@ async function _creditReferrer(
 
   // Check if this referral was already credited
   const [existingReferral] = await db
-    .select({ id: architectReferrals.id, creditedAt: architectReferrals.creditedAt })
+    .select({
+      id: architectReferrals.id,
+      creditedAt: architectReferrals.creditedAt,
+    })
     .from(architectReferrals)
     .where(
       and(

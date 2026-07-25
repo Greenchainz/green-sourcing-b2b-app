@@ -1,6 +1,6 @@
 /**
  * Voice/Video Calling Service with Tier-based Limits
- * 
+ *
  * Tier Limits:
  * - Free: 0 minutes (no calling)
  * - Standard: 30 minutes/month
@@ -8,8 +8,14 @@
  */
 
 import { getDb } from "./db";
-import { callHistory, monthlyCallUsage, suppliers, supplierSubscriptions } from "../drizzle/schema";
+import {
+  callHistory,
+  monthlyCallUsage,
+  suppliers,
+  supplierSubscriptions,
+} from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { broadcastNotification } from "./webpubsub-manager";
 import { createDistributedCallSessionStore } from "./services/distributed-call-session-store";
 
@@ -24,12 +30,15 @@ export interface CallSession {
   status: "ringing" | "active" | "ended" | "rejected" | "missed";
 }
 
-const callSessionStore = createDistributedCallSessionStore<CallSession>("voice-video");
+const callSessionStore =
+  createDistributedCallSessionStore<CallSession>("voice-video");
 
 /**
  * Get supplier tier for a user
  */
-export async function getSupplierTier(userId: number): Promise<"free" | "standard" | "premium"> {
+export async function getSupplierTier(
+  userId: number
+): Promise<"free" | "standard" | "premium"> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -101,7 +110,8 @@ export async function checkCallLimit(userId: number): Promise<{
 
   const limitMinutes = limits[tier];
   const allowed = limitMinutes === null || usedMinutes < limitMinutes;
-  const remainingMinutes = limitMinutes === null ? null : Math.max(0, limitMinutes - usedMinutes);
+  const remainingMinutes =
+    limitMinutes === null ? null : Math.max(0, limitMinutes - usedMinutes);
 
   return {
     allowed,
@@ -131,6 +141,7 @@ export async function initiateCall(params: {
     );
   }
 
+  const callId = `call-${Date.now()}-${randomBytes(4).toString("hex")}`;
   const callId = `call-${Date.now()}-${crypto.randomUUID()}`;
   // RFC-4122 v4 UUID — both parties join the same ACS group call room
   const groupCallId = crypto.randomUUID();
@@ -183,7 +194,10 @@ export async function acceptCall(callId: string): Promise<CallSession | null> {
   if (!session) return null;
 
   session.status = "active";
-  await callSessionStore.set(callId, session, [session.callerId, session.receiverId]);
+  await callSessionStore.set(callId, session, [
+    session.callerId,
+    session.receiverId,
+  ]);
 
   // Update database
   const db = await getDb();
@@ -246,7 +260,10 @@ export async function rejectCall(callId: string): Promise<void> {
 /**
  * End a call and track usage
  */
-export async function endCall(callId: string, userId: number): Promise<{ durationMinutes: number } | null> {
+export async function endCall(
+  callId: string,
+  userId: number
+): Promise<{ durationMinutes: number } | null> {
   const session = await callSessionStore.get(callId);
   if (!session) return null;
 
@@ -317,7 +334,8 @@ export async function endCall(callId: string, userId: number): Promise<{ duratio
   }
 
   // Notify other participant
-  const otherUserId = userId === session.callerId ? session.receiverId : session.callerId;
+  const otherUserId =
+    userId === session.callerId ? session.receiverId : session.callerId;
   await broadcastNotification(otherUserId, {
     type: "call_ended",
     callId,
@@ -332,6 +350,8 @@ export async function endCall(callId: string, userId: number): Promise<{ duratio
 /**
  * Get active call session
  */
-export async function getCallSession(callId: string): Promise<CallSession | null> {
+export async function getCallSession(
+  callId: string
+): Promise<CallSession | null> {
   return await callSessionStore.get(callId);
 }
