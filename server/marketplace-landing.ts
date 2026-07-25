@@ -229,20 +229,12 @@ export async function handleLandingPage(req: Request, res: Response) {
     const dashboardUrl = `${getFrontendBaseUrl(req)}/dashboard?welcome=true`;
     return res.redirect(dashboardUrl);
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Marketplace Landing] Error:", redactSensitiveData(error));
     return res.status(500).json({
       error: "Internal server error",
       message: error instanceof Error ? error.message : "Unknown error",
     });
-    console.error("[Marketplace Landing] Error:", error);
-    return respondMarketplaceError(
-      req,
-      res,
-      500,
-      "internal_error",
-      error instanceof Error ? error.message : "Unexpected marketplace error."
-    );
   }
 }
 
