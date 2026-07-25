@@ -131,7 +131,7 @@ export async function initiateCall(params: {
     );
   }
 
-  const callId = `call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  const callId = `call-${Date.now()}-${crypto.randomUUID()}`;
   // RFC-4122 v4 UUID — both parties join the same ACS group call room
   const groupCallId = crypto.randomUUID();
 
