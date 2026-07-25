@@ -11,8 +11,8 @@
  * Run: npx tsx server/seeds/ews-assemblies.ts
  */
 
-import { db } from "../db";
-import { assemblySpecs, ewsComponents } from "../../db/schema";
+import { getDb } from "../db";
+import { materialAssemblySpecs, ewsCarbonComponents } from "../../drizzle/schema";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ interface AssemblyInput {
 
 // ─── Helper: derive tier from lowest framing-option total ─────────────────────
 
-function tier(totals: number[]): "LOW" | "MID" | "HIGH" {
+function _tier(totals: number[]): "LOW" | "MID" | "HIGH" {
   const min = Math.min(...totals);
   if (min < 10000) return "LOW";
   if (min < 22000) return "MID";
@@ -1336,6 +1336,8 @@ const ASSEMBLIES: AssemblyInput[] = [
 
 async function seed() {
   console.log("🌱  Seeding EWS assemblies…");
+  const db = await getDb();
+  if (!db) throw new Error("Database not initialized");
 
   for (const assembly of ASSEMBLIES) {
     // Derive totalGwpPerSf from first framing option (null + opt-1 components)
@@ -1347,7 +1349,7 @@ async function seed() {
     }, 0);
 
     const [inserted] = await db
-      .insert(assemblySpecs)
+      .insert(materialAssemblySpecs)
       .values({
         name: assembly.name,
         category: assembly.category,
@@ -1359,12 +1361,12 @@ async function seed() {
         gwpPer1000sf: String(Math.round(opt1Total)),
         updatedAt: new Date(),
       })
-      .returning({ id: assemblySpecs.id });
+      .returning({ id: materialAssemblySpecs.id });
 
     const specId = inserted.id;
 
     for (const c of assembly.components) {
-      await db.insert(ewsComponents).values({
+      await db.insert(ewsCarbonComponents).values({
         assemblySpecId: specId,
         zone: c.zone,
         layerOrder: c.layerOrder,

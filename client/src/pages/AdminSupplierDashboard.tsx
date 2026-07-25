@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, XCircle, AlertCircle, Search, Eye, Mail } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2, CheckCircle, XCircle, AlertCircle, Search, Eye, Mail, Trash2, RotateCcw } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { Textarea } from '@/components/ui/textarea';
+import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
+import { toast } from 'sonner';
 
 interface SupplierDetailModalProps {
   open: boolean;
@@ -214,7 +216,7 @@ export function AdminSupplierDashboard() {
   const [activeTab, setActiveTab] = useState('pending');
 
   // Fetch data
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getSupplierStats.useQuery();
+  const { data: stats } = trpc.admin.getSupplierStats.useQuery();
   const { data: allSuppliers, isLoading: suppliersLoading, refetch } = trpc.admin.getAllSuppliers.useQuery();
 
   // Mutations
@@ -230,6 +232,23 @@ export function AdminSupplierDashboard() {
       refetch();
       setDetailModalOpen(false);
     },
+  });
+
+  // Destructive data control (soft-delete / restore / hard-purge)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [purgeTarget, setPurgeTarget] = useState<{ id: number; name: string } | null>(null);
+
+  const { mutate: deleteSupplier, isPending: deleteLoading } = trpc.admin.deleteSupplier.useMutation({
+    onSuccess: () => { refetch(); setDeleteTarget(null); toast.success('Supplier deleted'); },
+    onError: (err) => toast.error(err.message ?? 'Failed to delete supplier'),
+  });
+  const { mutate: restoreSupplier } = trpc.admin.restoreSupplier.useMutation({
+    onSuccess: () => { refetch(); toast.success('Supplier restored'); },
+    onError: (err) => toast.error(err.message ?? 'Failed to restore supplier'),
+  });
+  const { mutate: purgeSupplier, isPending: purgeLoading } = trpc.admin.purgeSupplier.useMutation({
+    onSuccess: () => { refetch(); setPurgeTarget(null); toast.success('Supplier permanently purged'); },
+    onError: (err) => toast.error(err.message ?? 'Failed to purge supplier'),
   });
 
   // Filter suppliers
@@ -370,6 +389,9 @@ export function AdminSupplierDashboard() {
                           >
                             {supplier.verificationStatus}
                           </Badge>
+                          {supplier.deletedAt && (
+                            <Badge variant="destructive">Deleted</Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">{supplier.email}</p>
                         {supplier.location && <p className="text-sm text-muted-foreground">{supplier.location}</p>}
@@ -404,6 +426,38 @@ export function AdminSupplierDashboard() {
                             Email
                           </Button>
                         )}
+                        {supplier.deletedAt ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => restoreSupplier({ supplierId: supplier.id })}
+                              className="gap-2 border-emerald-700 text-emerald-400 hover:bg-emerald-950"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              Restore
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPurgeTarget({ id: supplier.id, name: supplier.companyName })}
+                              className="gap-2 border-red-800 text-red-400 hover:bg-red-950"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Purge
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteTarget({ id: supplier.id, name: supplier.companyName })}
+                            className="gap-2 border-red-800 text-red-400 hover:bg-red-950"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -431,6 +485,42 @@ export function AdminSupplierDashboard() {
         onApprove={handleApprove}
         onReject={handleReject}
         isLoading={approveLoading || rejectLoading}
+      />
+
+      {/* Soft-delete confirmation (reversible) */}
+      <DeleteConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}
+        title="Delete supplier?"
+        description={
+          <>
+            This hides{' '}
+            <span className="font-semibold text-white">{deleteTarget?.name}</span>{' '}
+            from the directory and RFQ matching. It&apos;s reversible — you can restore it afterwards.
+          </>
+        }
+        confirmLabel="Delete supplier"
+        onConfirm={() => { if (deleteTarget) deleteSupplier({ supplierId: deleteTarget.id }); }}
+        isPending={deleteLoading}
+      />
+
+      {/* Hard-purge confirmation (irreversible, type-to-confirm) */}
+      <DeleteConfirmDialog
+        open={purgeTarget !== null}
+        onOpenChange={(o) => { if (!o) setPurgeTarget(null); }}
+        title="Permanently purge supplier?"
+        description={
+          <>
+            This <span className="font-semibold text-red-400">permanently deletes</span>{' '}
+            <span className="font-semibold text-white">{purgeTarget?.name}</span>{' '}
+            and its owned records. This cannot be undone. Historical RFQ bids and
+            conversations are intentionally left intact.
+          </>
+        }
+        confirmWord={purgeTarget?.name}
+        confirmLabel="Purge forever"
+        onConfirm={() => { if (purgeTarget) purgeSupplier({ supplierId: purgeTarget.id }); }}
+        isPending={purgeLoading}
       />
     </div>
   );

@@ -142,7 +142,7 @@ echo "════════════════════════�
 FQDN=$(az containerapp show \
   --name "$CONTAINER_APP" \
   --resource-group "$RESOURCE_GROUP" \
-  --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io")
+  --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "greenchainz.com")
 
 echo "  Microsoft: https://${FQDN}/.auth/login/aad"
 echo "  Google:    https://${FQDN}/.auth/login/google"
@@ -154,3 +154,4 @@ echo "     Google Cloud Console:   https://${FQDN}/.auth/login/google/callback"
 echo "     LinkedIn Dev Portal:    https://${FQDN}/.auth/login/linkedin/callback"
 echo ""
 echo "  Done! 🎉"
+

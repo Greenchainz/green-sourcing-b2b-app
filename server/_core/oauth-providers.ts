@@ -1,14 +1,14 @@
 /**
- * OAuth Provider Routes — Microsoft Entra ID, LinkedIn
+ * OAuth Provider Routes - Microsoft Entra ID, Google, LinkedIn
  *
  * Replaces the Manus OAuth flow with direct provider OAuth 2.0.
- * Session is stored as a signed JWT cookie (same mechanism as before).
+ * Session is stored as a signed JWT cookie.
  *
  * Flow:
- *   1. GET /api/auth/:provider  → redirect to provider
- *   2. GET /api/auth/callback/:provider → exchange code, upsert user, set cookie
- *   3. GET /api/auth/me         → return current user from session
- *   4. POST /api/auth/logout    → clear session cookie
+ *   1. GET /api/auth/:provider -> redirect to provider
+ *   2. GET /api/auth/callback/:provider -> exchange code, upsert user, set cookie
+ *   3. GET /api/auth/me -> return current user from session
+ *   4. POST /api/auth/logout -> clear session cookie
  */
 
 import crypto from "crypto";
@@ -17,12 +17,10 @@ import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
+import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
+import { isFounderAdminEmail } from "./admin-access";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function getEnv(key: string): string {
-  return process.env[key] ?? "";
-}
+// Helpers
 
 function buildRedirectUri(_req: Request, provider: string): string {
   // Always use the canonical production domain to avoid Container Apps internal domain mismatch
@@ -30,42 +28,133 @@ function buildRedirectUri(_req: Request, provider: string): string {
   return `${baseUrl}/api/auth/callback/${provider}`;
 }
 
-// In-memory state store (good enough for stateless container; use Redis for multi-replica)
-const pendingStates = new Map<string, { returnPath: string; role: string | null; createdAt: number }>();
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
-// Clean up states older than 10 minutes
-setInterval(() => {
-  const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [key, val] of pendingStates.entries()) {
-    if (val.createdAt < cutoff) pendingStates.delete(key);
+// Trusted external origins that may receive a short-lived auth code via returnPath redirect.
+// After OAuth completes the user is redirected to the returnPath with ?code=<uuid>.
+// The Forma extension exchanges that code at GET /api/auth/forma-token for a
+// short-lived JWT carrying ext:'forma', which it can then use against /api/public/*.
+const ALLOWED_EXTERNAL_ORIGINS: readonly string[] = [
+  "https://forma.greenchainz.com",
+];
+
+// Single-use auth-code store for the Forma extension token-exchange flow.
+// code → { openId, name, expiresAt }  (expires in 5 min; deleted on first use)
+const FORMA_CODE_TTL_MS = 5 * 60 * 1000;
+const formaAuthCodes = new Map<string, { openId: string; name: string; expiresAt: number }>();
+
+function pruneFormaAuthCodes(): void {
+  const now = Date.now();
+  for (const [code, entry] of formaAuthCodes) {
+    if (entry.expiresAt < now) formaAuthCodes.delete(code);
   }
-}, 60_000);
-
-function createState(returnPath: string, role: string | null): string {
-  const state = crypto.randomBytes(24).toString("hex");
-  pendingStates.set(state, { returnPath, role, createdAt: Date.now() });
-  return state;
 }
 
-function consumeState(state: string) {
-  const data = pendingStates.get(state);
-  if (data) pendingStates.delete(state);
-  return data ?? { returnPath: "/", role: null };
+function isAllowedReturnPath(raw: string): boolean {
+  if (typeof raw !== "string" || !raw) return false;
+  if (/^\/(?!\/)/.test(raw)) return true; // relative path on same origin
+  // Use string-prefix matching to avoid potential URL-parser quirks in the deployed env.
+  // An absolute returnPath is allowed when it starts with an allowlisted origin.
+  const allowed = ALLOWED_EXTERNAL_ORIGINS.some(
+    (origin) => raw === origin || raw.startsWith(origin + "/")
+  );
+  return allowed;
 }
 
-// ── Provider configs ──────────────────────────────────────────────────────────
+type OAuthRole = "supplier" | "buyer" | null;
+
+interface OAuthStatePayload {
+  returnPath: string;
+  role: OAuthRole;
+  createdAt: number;
+  nonce: string;
+}
+
+function getOAuthStateSecret(): string {
+  const secret = process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("OAUTH_STATE_SECRET or JWT_SECRET must be set in production");
+    }
+    return "dev-oauth-state-secret";
+  }
+  return secret;
+}
+
+function signStatePayload(payloadB64: string): string {
+  return crypto
+    .createHmac("sha256", getOAuthStateSecret())
+    .update(payloadB64)
+    .digest("base64url");
+}
+
+function createState(returnPath: string, role: OAuthRole): string {
+  const payload: OAuthStatePayload = {
+    returnPath,
+    role,
+    createdAt: Date.now(),
+    nonce: crypto.randomBytes(12).toString("hex"),
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const signature = signStatePayload(payloadB64);
+  return `${payloadB64}.${signature}`;
+}
+
+function consumeState(state: string): { returnPath: string; role: OAuthRole } | null {
+  const [payloadB64, providedSig] = state.split(".");
+  if (!payloadB64 || !providedSig) {
+    return null;
+  }
+
+  const expectedSig = signStatePayload(payloadB64);
+  const providedBuffer = Buffer.from(providedSig, "utf8");
+  const expectedBuffer = Buffer.from(expectedSig, "utf8");
+
+  if (
+    providedBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+  ) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")) as OAuthStatePayload;
+    if (Date.now() - payload.createdAt > OAUTH_STATE_TTL_MS) {
+      return null;
+    }
+
+    const safeReturnPath = isAllowedReturnPath(payload.returnPath) ? payload.returnPath : "/";
+    const safeRole: OAuthRole = payload.role === "supplier" || payload.role === "buyer" ? payload.role : null;
+    return { returnPath: safeReturnPath, role: safeRole };
+  } catch {
+    return null;
+  }
+}
+
+// Provider configs
+
+// Public Entra app registration for GreenChainz user sign-in (OAuth2/OIDC).
+// These are NOT secrets — they are the same public identifiers baked into the
+// frontend container and documented in .env.example. Only the client *secret*
+// is sensitive (see getRequiredEnv("AZURE_AD_CLIENT_SECRET")). We fall back to
+// the known-correct values when the env var is missing so the OAuth initiate
+// route degrades gracefully instead of returning a 500.
+const MICROSOFT_TENANT_ID = "1d04bf50-8175-40af-a9d5-f8e441460b06";
+const MICROSOFT_CLIENT_ID = "8b597068-9347-4e99-8860-8c4e9a9bc112";
+
+function getMicrosoftTenantId(): string {
+  const value = process.env.AZURE_AD_TENANT_ID;
+  return value && value.length > 0 ? value : MICROSOFT_TENANT_ID;
+}
+
+function getMicrosoftClientId(): string {
+  const value = process.env.AZURE_AD_CLIENT_ID;
+  return value && value.length > 0 ? value : MICROSOFT_CLIENT_ID;
+}
 
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
-  // Use AZURE_AD_CLIENT_ID as the canonical name — do NOT fall through to
-  // AZURE_CLIENT_ID_APP which may be a placeholder in .env
-  const clientId = getEnv("AZURE_AD_CLIENT_ID") || getEnv("MICROSOFT_CLIENT_ID");
-  if (!clientId) throw new Error("[Auth] Microsoft OAuth not configured: set AZURE_AD_CLIENT_ID");
-
-  // Use /common so both work+school AND personal Microsoft accounts can log in.
-  // OAUTH_SERVER_URL can override this for tenant-specific deployments.
-  const oauthBase = getEnv("OAUTH_SERVER_URL").replace(/\/$/, "") ||
-    "https://login.microsoftonline.com/common";
-
+  const tenantId = getMicrosoftTenantId();
+  const clientId = getMicrosoftClientId();
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
@@ -74,12 +163,25 @@ function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
     scope: "openid profile email offline_access User.Read",
     state,
   });
-  return `${oauthBase}/oauth2/v2.0/authorize?${params}`;
+  return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params}`;
+}
+
+function getGoogleAuthUrl(redirectUri: string, state: string): string {
+  const clientId = getEnvWithDevDefault("GOOGLE_CLIENT_ID", "856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com");
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: "code",
+    redirect_uri: redirectUri,
+    scope: "openid profile email",
+    state,
+    access_type: "offline",
+    prompt: "select_account",
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
 function getLinkedInAuthUrl(redirectUri: string, state: string): string {
-  const clientId = getEnv("LINKEDIN_CLIENT_ID");
-  if (!clientId) throw new Error("[Auth] LinkedIn OAuth not configured: set LINKEDIN_CLIENT_ID");
+  const clientId = getEnvWithDevDefault("LINKEDIN_CLIENT_ID", "77lzd3h7nzedke");
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
@@ -90,7 +192,7 @@ function getLinkedInAuthUrl(redirectUri: string, state: string): string {
   return `https://www.linkedin.com/oauth/v2/authorization?${params}`;
 }
 
-// ── Token exchange ────────────────────────────────────────────────────────────
+// Token exchange
 
 interface OAuthUserInfo {
   openId: string;
@@ -100,15 +202,11 @@ interface OAuthUserInfo {
 }
 
 async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const clientId = getEnv("AZURE_AD_CLIENT_ID") || getEnv("MICROSOFT_CLIENT_ID");
-  if (!clientId) throw new Error("[Auth] Microsoft OAuth not configured: set AZURE_AD_CLIENT_ID");
-  const clientSecret = getEnv("MICROSOFT_CLIENT_SECRET") || getEnv("AZURE_AD_CLIENT_SECRET");
+  const tenantId = getMicrosoftTenantId();
+  const clientId = getMicrosoftClientId();
+  const clientSecret = getRequiredEnv("AZURE_AD_CLIENT_SECRET");
 
-  // Match the same base URL used in getMicrosoftAuthUrl
-  const oauthBase = getEnv("OAUTH_SERVER_URL").replace(/\/$/, "") ||
-    "https://login.microsoftonline.com/common";
-
-  const tokenRes = await fetch(`${oauthBase}/oauth2/v2.0/token`, {
+  const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -152,10 +250,56 @@ async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise
   };
 }
 
+async function exchangeGoogleCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
+  const clientId = getEnvWithDevDefault("GOOGLE_CLIENT_ID", "856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com");
+  const clientSecret = getRequiredEnv("GOOGLE_CLIENT_SECRET");
+
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    }),
+  });
+
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error(`Google token exchange failed: ${err}`);
+  }
+
+  const tokens = await tokenRes.json() as { id_token?: string; access_token: string };
+
+  if (tokens.id_token) {
+    const [, payload] = tokens.id_token.split(".");
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return {
+      openId: `google:${decoded.sub}`,
+      email: decoded.email ?? null,
+      name: decoded.name ?? null,
+      provider: "google",
+    };
+  }
+
+  // Fallback: userinfo endpoint
+  const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+    headers: { Authorization: `Bearer ${tokens.access_token}` },
+  });
+  const user = await userRes.json() as { id: string; email?: string; name?: string };
+  return {
+    openId: `google:${user.id}`,
+    email: user.email ?? null,
+    name: user.name ?? null,
+    provider: "google",
+  };
+}
+
 async function exchangeLinkedInCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const clientId = getEnv("LINKEDIN_CLIENT_ID");
-  if (!clientId) throw new Error("[Auth] LinkedIn OAuth not configured: set LINKEDIN_CLIENT_ID");
-  const clientSecret = getEnv("LINKEDIN_CLIENT_SECRET");
+  const clientId = getEnvWithDevDefault("LINKEDIN_CLIENT_ID", "77lzd3h7nzedke");
+  const clientSecret = getRequiredEnv("LINKEDIN_CLIENT_SECRET");
 
   const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
     method: "POST",
@@ -201,18 +345,19 @@ async function exchangeLinkedInCode(code: string, redirectUri: string): Promise<
   };
 }
 
-// ── Route registration ────────────────────────────────────────────────────────
+// Route registration
 
 export function registerOAuthProviderRoutes(app: Express) {
-  // ── Current user — must register BEFORE /:provider wildcard ───────────────
+  // Current user route must register before /:provider wildcard
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
       const user = await sdk.authenticateRequest(req);
       if (!user) {
-        res.status(401).json({ error: "Not authenticated" });
+        res.status(200).json({ authenticated: false, user: null });
         return;
       }
-      res.json({
+      res.status(200).json({
+        authenticated: true,
         user: {
           id: String(user.id),
           email: user.email ?? "",
@@ -220,15 +365,14 @@ export function registerOAuthProviderRoutes(app: Express) {
           roles: [user.role],
           isAdmin: user.role === "admin",
           isSupplier: user.role === "supplier",
-          avatarUrl: (user as Record<string, unknown>).avatarUrl as string | null ?? null,
         },
       });
     } catch {
-      res.status(401).json({ error: "Not authenticated" });
+      res.status(200).json({ authenticated: false, user: null });
     }
   });
 
-  // ── Logout — must register BEFORE /:provider wildcard ─────────────────────
+  // Logout route must register before /:provider wildcard
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     const cookieOptions = getSessionCookieOptions(req);
     res.clearCookie("app_session_id", { ...cookieOptions, maxAge: -1 });
@@ -241,13 +385,13 @@ export function registerOAuthProviderRoutes(app: Express) {
     res.redirect(302, "/");
   });
 
-  // ── Initiate OAuth flow ────────────────────────────────────────────────────
+  // Initiate OAuth flow
   app.get("/api/auth/:provider", (req: Request, res: Response) => {
-    const provider = req.params.provider as string;
+    const provider = Array.isArray(req.params.provider) ? req.params.provider[0] : req.params.provider;
     const rawReturnPath = (req.query.returnPath as string) || "/";
-    // Prevent open redirect: only allow relative paths (starts with / but not //)
-    const returnPath = /^\/(?!\/)/.test(rawReturnPath) ? rawReturnPath : "/";
-    const role = (req.query.role as string) || null;
+    const returnPath = isAllowedReturnPath(rawReturnPath) ? rawReturnPath : "/";
+    const requestedRole = (req.query.role as string) || null;
+    const role: OAuthRole = requestedRole === "supplier" || requestedRole === "buyer" ? requestedRole : null;
 
     const state = createState(returnPath, role);
     const redirectUri = buildRedirectUri(req, provider);
@@ -257,6 +401,9 @@ export function registerOAuthProviderRoutes(app: Express) {
       switch (provider) {
         case "microsoft":
           authUrl = getMicrosoftAuthUrl(redirectUri, state);
+          break;
+        case "google":
+          authUrl = getGoogleAuthUrl(redirectUri, state);
           break;
         case "linkedin":
           authUrl = getLinkedInAuthUrl(redirectUri, state);
@@ -274,9 +421,9 @@ export function registerOAuthProviderRoutes(app: Express) {
     res.redirect(302, authUrl);
   });
 
-  // ── OAuth callback ─────────────────────────────────────────────────────────
+  // OAuth callback
   app.get("/api/auth/callback/:provider", async (req: Request, res: Response) => {
-    const provider = req.params.provider as string;
+    const provider = Array.isArray(req.params.provider) ? req.params.provider[0] : req.params.provider;
     const code = req.query.code as string;
     const state = req.query.state as string;
     const error = req.query.error as string;
@@ -292,7 +439,12 @@ export function registerOAuthProviderRoutes(app: Express) {
       return;
     }
 
-    const { returnPath, role } = consumeState(state);
+    const stateData = consumeState(state);
+    if (!stateData) {
+      res.redirect(302, "/login?error=invalid_state");
+      return;
+    }
+    const { returnPath, role } = stateData;
     const redirectUri = buildRedirectUri(req, provider);
 
     try {
@@ -300,6 +452,9 @@ export function registerOAuthProviderRoutes(app: Express) {
       switch (provider) {
         case "microsoft":
           userInfo = await exchangeMicrosoftCode(code, redirectUri);
+          break;
+        case "google":
+          userInfo = await exchangeGoogleCode(code, redirectUri);
           break;
         case "linkedin":
           userInfo = await exchangeLinkedInCode(code, redirectUri);
@@ -309,9 +464,9 @@ export function registerOAuthProviderRoutes(app: Express) {
           return;
       }
 
-      // Determine role: admin if greenchainz.com email, else use provided role or default to buyer
+      // Determine role: ONLY founder@greenchainz.com can be admin.
       let assignedRole: "buyer" | "supplier" | "admin" | "user" = "buyer";
-      if (userInfo.email?.endsWith("@greenchainz.com")) {
+      if (isFounderAdminEmail(userInfo.email)) {
         assignedRole = "admin";
       } else if (role === "supplier") {
         assignedRole = "supplier";
@@ -319,9 +474,25 @@ export function registerOAuthProviderRoutes(app: Express) {
         assignedRole = "buyer";
       }
 
-      // Check if this is a new user before upserting
-      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      // Check if this is a new user before upserting.
+      const existingUser = await db.getUserByOpenIdIncludingDeleted(userInfo.openId);
+      if (existingUser?.deletedAt) {
+        res.redirect(302, `/login?error=${encodeURIComponent("This account has been deactivated. Contact support.")}`);
+        return;
+      }
       const isNewUser = !existingUser;
+
+      // Preserve existing role unless we need to elevate or remediate admin role.
+      let roleForUpsert: "buyer" | "supplier" | "admin" | "user" | undefined = assignedRole;
+      if (existingUser?.role) {
+        if (existingUser.role !== "admin" && isFounderAdminEmail(userInfo.email)) {
+          roleForUpsert = "admin";
+        } else if (existingUser.role === "admin" && !isFounderAdminEmail(userInfo.email)) {
+          roleForUpsert = "buyer";
+        } else {
+          roleForUpsert = undefined;
+        }
+      }
 
       await db.upsertUser({
         openId: userInfo.openId,
@@ -329,20 +500,20 @@ export function registerOAuthProviderRoutes(app: Express) {
         email: userInfo.email,
         loginMethod: userInfo.provider,
         lastSignedIn: new Date(),
-        role: assignedRole,
+        role: roleForUpsert,
       });
+
+      const effectiveRole = roleForUpsert ?? existingUser?.role ?? assignedRole;
 
       // Send welcome email to new users (non-blocking)
       if (isNewUser && userInfo.email) {
-        void import("../notification-service")
-          .then(({ sendWelcomeEmail }) =>
-            sendWelcomeEmail({
-              name: userInfo.name ?? "there",
-              email: userInfo.email!,
-              role: assignedRole,
-            })
-          )
-          .catch((err: unknown) => console.warn("[Auth] Welcome email failed (non-critical):", err));
+        import("../notification-service").then(({ sendWelcomeEmail }) => {
+          sendWelcomeEmail({
+            name: userInfo.name ?? "there",
+            email: userInfo.email!,
+            role: effectiveRole,
+          }).catch((err: unknown) => console.warn("[Auth] Welcome email failed (non-critical):", err));
+        }).catch(() => { });
       }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
@@ -352,11 +523,54 @@ export function registerOAuthProviderRoutes(app: Express) {
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie("app_session_id", sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-      res.redirect(302, returnPath || "/");
+
+      // For external allowlisted origins (e.g. the Forma extension auth-callback page),
+      // issue a short-lived single-use code instead of embedding the session JWT in the
+      // URL (which would expose a 1-year bearer token to logs and browser history).
+      // The Forma extension exchanges the code at GET /api/auth/forma-token for a
+      // short-lived JWT with ext:'forma' that can authenticate /api/public/* calls.
+      let finalRedirect = returnPath || "/";
+      try {
+        const u = new URL(finalRedirect);
+        if (ALLOWED_EXTERNAL_ORIGINS.includes(u.origin)) {
+          pruneFormaAuthCodes();
+          const code = crypto.randomUUID();
+          formaAuthCodes.set(code, {
+            openId: userInfo.openId,
+            name: userInfo.name ?? "",
+            expiresAt: Date.now() + FORMA_CODE_TTL_MS,
+          });
+          u.searchParams.set("code", code);
+          finalRedirect = u.toString();
+        }
+      } catch {
+        // relative path — no external code needed
+      }
+      res.redirect(302, finalRedirect);
     } catch (err) {
       console.error(`[Auth] Callback failed for ${provider}:`, err);
       res.redirect(302, `/login?error=callback_failed`);
     }
+  });
+
+  // ── GET /api/auth/forma-token?code=<uuid> ────────────────────────────────
+  // Exchanges a single-use short-lived auth code (issued during the OAuth
+  // callback redirect to an allowlisted external origin) for a Forma extension
+  // JWT carrying ext:'forma'. The extension uses that token as a Bearer token
+  // against /api/public/* endpoints.
+  app.get("/api/auth/forma-token", async (req: Request, res: Response) => {
+    const code = typeof req.query.code === "string" ? req.query.code.trim() : null;
+    if (!code) return res.status(400).json({ error: "Missing code" });
+
+    const entry = formaAuthCodes.get(code);
+    formaAuthCodes.delete(code); // single-use regardless of outcome
+
+    if (!entry || Date.now() > entry.expiresAt) {
+      return res.status(401).json({ error: "Invalid or expired code" });
+    }
+
+    const token = await sdk.createFormaExtensionToken(entry.openId, entry.name);
+    return res.json({ token });
   });
 
 }

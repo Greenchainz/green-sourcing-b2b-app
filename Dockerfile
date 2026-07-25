@@ -7,12 +7,13 @@ WORKDIR /app
 # Enable corepack (built into Node 22) to install pnpm without hitting npm registry
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 # Install dumb-init for proper signal handling (copied to runtime below)
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+# Upgrade all packages first to pull in glibc security patches from Debian repos
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 # Copy package files and patches (needed for pnpm patched dependencies)
 COPY package.json pnpm-lock.yaml ./
 COPY patches/ ./patches/
 # Install dependencies
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Stage 2: Builder
 FROM dhi.io/node:22-debian13-dev AS builder
@@ -31,11 +32,6 @@ ARG VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 # Vite reads it during the build step below via the inline env var.
 ARG VITE_AZURE_MAPS_KEY
 ARG VITE_BACKEND_URL
-ARG VITE_SENTRY_DSN
-# Sentry source map upload (runs during vite build via @sentry/vite-plugin)
-ARG SENTRY_AUTH_TOKEN
-ARG SENTRY_ORG
-ARG SENTRY_PROJECT
 # Make them available during build
 ENV VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
     VITE_FRONTEND_WEBPUBSUB_HUB=$VITE_FRONTEND_WEBPUBSUB_HUB \
@@ -45,19 +41,16 @@ ENV VITE_FRONTEND_WEBPUBSUB_ENDPOINT=$VITE_FRONTEND_WEBPUBSUB_ENDPOINT \
 # Build the app:
 #   - vite build  → dist/public/ (client static assets, VITE_AZURE_MAPS_KEY baked in here)
 #   - esbuild     → dist/index.js (server bundle)
-RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY \
-    VITE_SENTRY_DSN=$VITE_SENTRY_DSN \
-    SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
-    SENTRY_ORG=$SENTRY_ORG \
-    SENTRY_PROJECT=$SENTRY_PROJECT \
-    pnpm run build
+RUN VITE_AZURE_MAPS_KEY=$VITE_AZURE_MAPS_KEY pnpm run build
 
-# Stage 3: Runtime — DHI minimal image (no shell, no package manager, zero CVEs)
-FROM dhi.io/node:22-debian13 AS runtime
+# Stage 3: Runtime — node:22.22.3-trixie-slim (Debian trixie, actively patched glibc, non-root node user)
+FROM node:22.22.3-trixie-slim AS runtime
 WORKDIR /app
-# Copy dumb-init binary from deps stage (runtime image has no package manager)
+# Patch all OS packages (including glibc) at image build time
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
+# Copy dumb-init binary from deps stage
 COPY --from=deps /usr/bin/dumb-init /usr/bin/dumb-init
-# DHI runtime runs as non-root user 'node' (uid 1000) — no adduser step needed
+# node:22.22.3-trixie-slim includes non-root user 'node' (uid 1000)
 # Copy the production build output
 # dist/index.js  = Express server bundle (esbuild --packages=external output)
 # dist/public/   = Vite client build (static assets served by Express)

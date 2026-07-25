@@ -21,6 +21,7 @@ import { getDb } from "../db";
 import { supplierMaterialEpds, suppliers, epdMaterials } from "../../drizzle/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { fetchEC3EPDById } from "../ec3";
+import { publishSupplierEvent } from "../services/event-bus";
 import { normaliseEpdPayload } from "../services/epd-ingestion";
 
 const epdInput = z.object({
@@ -241,6 +242,9 @@ export const epdRouter = router({
           notes: normalised.notes ?? null,
         })
         .returning({ id: epdMaterials.id });
+
+      void publishSupplierEvent({ type: "epd.ingested", epdId: row.id, supplierId: supplierRow.id })
+        .catch((err) => console.error("[event-bus] epd.ingested", err));
 
       return { id: row.id, gwpPer1000sf: normalised.gwpPer1000sf };
     }),

@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff } from "lucide-react";
+import { Phone, PhoneOff, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+
+const VIDEO_CONTAINER_HEIGHT = 480;
 
 interface CallModalProps {
   isOpen: boolean;
@@ -13,6 +15,11 @@ interface CallModalProps {
   isOutgoing: boolean;
 }
 
+type CallStatus = "connecting" | "ringing" | "active" | "ended";
+
+const CALL_END_MODAL_DELAY_MS = 2000;
+const CALL_ANSWER_DELAY_MS = 3000;
+
 export function CallModal({
   isOpen,
   onClose,
@@ -21,161 +28,118 @@ export function CallModal({
   otherPartyName,
   isOutgoing,
 }: CallModalProps) {
+  const [callStatus, setCallStatus] = useState<CallStatus>(isOutgoing ? "ringing" : "connecting");
   const [callDuration, setCallDuration] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoEnabled, setIsVideoEnabled] = useState(callType === "video");
-  const [callStatus, setCallStatus] = useState<"connecting" | "ringing" | "active" | "ended">(
-    isOutgoing ? "ringing" : "connecting"
-  );
+
+  // Reset timer when a new call is loaded or the modal is reopened.
+  useEffect(() => {
+    if (isOpen) {
+      setCallDuration(0);
+    }
+  }, [callId, isOpen]);
 
   const endCallMutation = trpc.messaging.endCall.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       setCallStatus("ended");
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      setTimeout(onClose, CALL_END_MODAL_DELAY_MS);
     },
   });
 
   const acceptCallMutation = trpc.messaging.acceptCall.useMutation({
-    onSuccess: () => {
-      setCallStatus("active");
-    },
+    onSuccess: () => setCallStatus("active"),
   });
 
   const rejectCallMutation = trpc.messaging.rejectCall.useMutation({
-    onSuccess: () => {
-      onClose();
-    },
+    onSuccess: onClose,
   });
 
-  // Duration timer
+  // Duration timer (voice calls / active state)
   useEffect(() => {
-    if (callStatus !== "active") return;
-
-    const interval = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
-    }, 1000);
-
+    if (callStatus !== "active" || callType !== "voice") return;
+    const interval = setInterval(() => setCallDuration((d) => d + 1), 1000);
     return () => clearInterval(interval);
-  }, [callStatus]);
+  }, [callStatus, callType]);
 
-  // Auto-accept for outgoing calls (simulated)
+  // Outgoing: auto-transition ringing → active (real accept via WebPubSub in prod)
   useEffect(() => {
     if (isOutgoing && callStatus === "ringing") {
-      // Simulate call being accepted after 2 seconds
-      const timeout = setTimeout(() => {
-        setCallStatus("active");
-      }, 2000);
-      return () => clearTimeout(timeout);
+      const t = setTimeout(() => setCallStatus("active"), CALL_ANSWER_DELAY_MS);
+      return () => clearTimeout(t);
     }
   }, [isOutgoing, callStatus]);
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
+  const formatDuration = (s: number) =>
+    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-  const handleEndCall = () => {
-    endCallMutation.mutate({ callId });
-  };
-
-  const handleAcceptCall = () => {
-    acceptCallMutation.mutate({ callId });
-  };
-
-  const handleRejectCall = () => {
-    rejectCallMutation.mutate({ callId });
-  };
+  const isWideModal = callType === "video" && callStatus === "active";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={isWideModal ? "sm:max-w-4xl" : "sm:max-w-md"}>
         <DialogHeader>
           <DialogTitle>
-            {callType === "voice" ? "Voice Call" : "Video Call"}
+            {callType === "voice" ? "Voice Call" : "Video Call"} — {otherPartyName}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-6 py-6">
-          {/* Call Status */}
-          <div className="text-center">
-            <h3 className="text-xl font-semibold">{otherPartyName}</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {callStatus === "connecting" && "Connecting..."}
-              {callStatus === "ringing" && "Ringing..."}
-              {callStatus === "active" && formatDuration(callDuration)}
-              {callStatus === "ended" && "Call Ended"}
-            </p>
-          </div>
+        <div className="flex flex-col items-center gap-4 py-4">
+          {/* Status line */}
+          <p className="text-sm text-muted-foreground">
+            {callStatus === "connecting" && "Incoming call…"}
+            {callStatus === "ringing" && "Ringing…"}
+            {callStatus === "active" && callType === "voice" && formatDuration(callDuration)}
+            {callStatus === "ended" && "Call ended"}
+          </p>
 
-          {/* Video Feed Placeholder */}
-          {callType === "video" && isVideoEnabled && (
-            <div className="w-full aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
-              <Video className="h-12 w-12 text-gray-500" />
-              <p className="text-gray-400 ml-2">Video feed (placeholder)</p>
+          {/* ── Video: unavailable (ACS packages removed) ──────────── */}
+          {callType === "video" && callStatus === "active" && (
+            <div className="w-full rounded-lg overflow-hidden flex items-center justify-center bg-gray-900" style={{ height: VIDEO_CONTAINER_HEIGHT }}>
+              <div className="flex flex-col items-center gap-3 text-white">
+                <VideoOff className="h-12 w-12 text-gray-400" />
+                <p className="text-sm text-gray-400">Video calling is not available</p>
+              </div>
             </div>
           )}
 
-          {/* Call Controls */}
-          <div className="flex items-center gap-4">
-            {/* Mute Button */}
-            {callStatus === "active" && (
-              <Button
-                variant={isMuted ? "destructive" : "outline"}
-                size="icon"
-                className="h-12 w-12 rounded-full"
-                onClick={() => setIsMuted(!isMuted)}
-              >
-                {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-              </Button>
+          {/* ── Call controls ──────────────────────────────────────── */}
+          <div className="flex items-center gap-4 mt-2">
+            {/* Incoming: accept / reject */}
+            {!isOutgoing && callStatus === "connecting" && (
+              <>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="h-14 w-14 rounded-full bg-green-500 hover:bg-green-600"
+                  onClick={() => acceptCallMutation.mutate({ callId })}
+                  disabled={acceptCallMutation.isPending}
+                >
+                  <Phone className="h-6 w-6" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="h-14 w-14 rounded-full"
+                  onClick={() => rejectCallMutation.mutate({ callId })}
+                  disabled={rejectCallMutation.isPending}
+                >
+                  <PhoneOff className="h-6 w-6" />
+                </Button>
+              </>
             )}
 
-            {/* Video Toggle (for video calls) */}
-            {callType === "video" && callStatus === "active" && (
-              <Button
-                variant={!isVideoEnabled ? "destructive" : "outline"}
-                size="icon"
-                className="h-12 w-12 rounded-full"
-                onClick={() => setIsVideoEnabled(!isVideoEnabled)}
-              >
-                {isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-              </Button>
-            )}
-
-            {/* End Call / Reject Button */}
-            {(callStatus === "active" || callStatus === "ringing") && (
+            {/* Active or outgoing-ringing: end call */}
+            {(callStatus === "active" || (isOutgoing && callStatus === "ringing")) && (
               <Button
                 variant="destructive"
                 size="icon"
                 className="h-14 w-14 rounded-full"
-                onClick={isOutgoing || callStatus === "active" ? handleEndCall : handleRejectCall}
+                onClick={() => endCallMutation.mutate({ callId })}
+                disabled={endCallMutation.isPending}
               >
                 <PhoneOff className="h-6 w-6" />
               </Button>
             )}
-
-            {/* Accept Button (for incoming calls) */}
-            {!isOutgoing && callStatus === "connecting" && (
-              <Button
-                variant="default"
-                size="icon"
-                className="h-14 w-14 rounded-full bg-green-500 hover:bg-green-600"
-                onClick={handleAcceptCall}
-              >
-                <Phone className="h-6 w-6" />
-              </Button>
-            )}
           </div>
-
-          {/* Call Stats */}
-          {callStatus === "active" && (
-            <div className="text-xs text-muted-foreground">
-              {isMuted && "🔇 Muted"}
-              {!isVideoEnabled && callType === "video" && " • 📹 Video Off"}
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>

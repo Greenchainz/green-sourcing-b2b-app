@@ -56,12 +56,15 @@ export default function RfqCart() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <div className="container py-6 flex-1">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4"><Link href="/materials" className="hover:text-foreground">Materials</Link><span>/</span><span className="text-foreground">RFQ Cart</span></div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Link href="/materials" className="hover:text-foreground">Materials</Link><span>/</span><span className="text-foreground">RFQ Cart</span></div>
+          <Link href="/rfq/new" className="text-xs text-primary hover:underline font-medium">Submit RFQ without browsing →</Link>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between"><h1 className="text-2xl font-bold flex items-center gap-2"><ShoppingCart className="w-6 h-6" />RFQ Cart</h1><Badge variant="secondary">{items.length} items</Badge></div>
             {items.length === 0 ? (
-              <Card><CardContent className="py-16 text-center"><ShoppingCart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">Your RFQ cart is empty</h3><p className="text-sm text-muted-foreground mb-4">Browse the materials catalog to add items for your quote request.</p><Link href="/materials"><Button><ArrowLeft className="w-4 h-4 mr-2" />Browse Materials</Button></Link></CardContent></Card>
+              <Card><CardContent className="py-16 text-center"><ShoppingCart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">Your RFQ cart is empty</h3><p className="text-sm text-muted-foreground mb-4">Browse the materials catalog to add items, or skip browsing and submit your requirements directly.</p><div className="flex flex-col sm:flex-row items-center justify-center gap-3"><Link href="/materials"><Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" />Browse Materials</Button></Link><Link href="/rfq/new"><Button>Submit RFQ Directly →</Button></Link></div><p className="text-xs text-muted-foreground mt-4">No browsing required — describe what you need and suppliers respond in a comparable format.</p></CardContent></Card>
             ) : (
               <div className="space-y-2">
                 {items.map((item) => {

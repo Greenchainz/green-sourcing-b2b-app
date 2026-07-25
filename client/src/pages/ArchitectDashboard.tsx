@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +25,10 @@ import {
   Layers,
   Wind,
   X,
+  Zap,
+  DollarSign,
+  FileText,
+  ClipboardList,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -191,7 +195,7 @@ function MyProjects() {
       ) : (
         <div className="space-y-3">
           {projects.map((project) => {
-            const totalGwp = project.materials.reduce((sum, m) => sum + m.gwpValue, 0);
+            const totalGwp = project.materials.reduce((sum, m) => sum + (m.gwpValue ?? 0), 0);
             return (
               <Card key={project.id} className="hover:shadow-sm transition-shadow group">
                 <CardContent className="py-3 px-4">
@@ -205,7 +209,7 @@ function MyProjects() {
                         </span>
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Wind className="w-3 h-3 text-green-500" />
-                          {totalGwp.toFixed(1)} kg CO₂e
+                          {totalGwp > 0 ? `${totalGwp.toFixed(1)} kg CO₂e` : "—"}
                         </span>
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <CalendarDays className="w-3 h-3" />
@@ -286,7 +290,7 @@ function SavedMaterials() {
               <p className="text-xs font-medium leading-tight line-clamp-2 mb-1">{mat.name}</p>
               <p className="text-xs text-muted-foreground flex items-center gap-0.5">
                 <Wind className="w-3 h-3 text-green-500 shrink-0" />
-                {mat.gwpValue.toFixed(1)} kg CO₂e
+                {mat.gwpValue != null ? `${mat.gwpValue.toFixed(1)} kg CO₂e` : "—"}
               </p>
             </CardContent>
           </Card>
@@ -373,6 +377,11 @@ export default function ArchitectDashboard() {
               : `You have ${activeRfqs.length} open RFQ${activeRfqs.length === 1 ? "" : "s"} awaiting supplier response.`}
           </p>
           <div className="flex flex-wrap gap-3 mt-4">
+            <Link href="/buyer/new-request">
+              <Button size="sm" className="bg-white text-green-700 hover:bg-green-50 font-semibold">
+                <Zap className="w-4 h-4 mr-1.5" /> Smart RFx Builder
+              </Button>
+            </Link>
             <Link href="/search">
               <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0">
                 <Search className="w-4 h-4 mr-1.5" /> Search Materials
@@ -380,7 +389,7 @@ export default function ArchitectDashboard() {
             </Link>
             <Link href="/rfq/new">
               <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0">
-                <Plus className="w-4 h-4 mr-1.5" /> New RFQ
+                <Plus className="w-4 h-4 mr-1.5" /> Classic RFQ
               </Button>
             </Link>
             <Link href="/architect/onboarding">
@@ -411,6 +420,44 @@ export default function ArchitectDashboard() {
             </Card>
           ))}
         </div>
+
+        {/* ── Smart RFx Builder entry point ─────────────────────────────────── */}
+        <Card className="border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+          <CardContent className="py-5 px-6">
+            <div className="flex items-center justify-between gap-6 flex-wrap">
+              <div className="flex items-start gap-4">
+                <div className="p-2.5 rounded-xl bg-green-600 shrink-0">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-green-900 dark:text-green-200">Smart RFx Builder</h3>
+                  <p className="text-sm text-green-700 dark:text-green-400 mt-0.5">
+                    Describe your material need — GreenChainz classifies it as an RFI, RFQ, RFP, or qualification request and generates supplier-ready fields with carbon scoring.
+                  </p>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-green-600 dark:text-green-500">
+                    <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> RFI</span>
+                    <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> RFQ</span>
+                    <span className="flex items-center gap-1"><ClipboardList className="w-3 h-3" /> RFP</span>
+                    <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> Qualification</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 shrink-0">
+                <Link href="/buyer/requests">
+                  <Button variant="outline" size="sm" className="border-green-300 text-green-700 hover:bg-green-50">
+                    My requests
+                  </Button>
+                </Link>
+                <Link href="/buyer/new-request">
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white font-semibold">
+                    <Zap className="w-3.5 h-3.5 mr-1.5" />
+                    New request
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* ── Three-column row: Projects (2 cols) + Saved Materials (1 col) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

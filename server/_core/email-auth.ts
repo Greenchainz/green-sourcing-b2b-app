@@ -1,16 +1,16 @@
 /**
  * Email/Password Authentication
  *
- * Additive auth path for suppliers who don't have a Google or Microsoft account.
- * Does NOT replace Easy Auth — production SSO users continue through /.auth/*.
+ * Additive auth path for users who don't (or can't) use an OAuth provider.
+ * This app uses custom Express OAuth routes + JWT session cookies (no Azure Easy Auth sidecar).
  *
  * Stores credentials in a separate `email_credentials` table:
  *   - Password is hashed with scrypt (Node built-in, no extra deps)
  *   - Session is issued as the same app_session_id JWT used by the OAuth flows
  *
  * Routes:
- *   POST /api/auth/email/signup  — create account + issue session cookie
- *   POST /api/auth/email/login   — verify password + issue session cookie
+ *   POST /api/auth/email/signup  - create account + issue session cookie
+ *   POST /api/auth/email/login   - verify password + issue session cookie
  */
 
 import type { Express, Request, Response } from "express";
@@ -55,7 +55,7 @@ function isRateLimited(
   return { limited: false, retryAfterSeconds: 0 };
 }
 
-// ── Lazy pg pool (uses same DATABASE_URL as the rest of the app) ─────────────
+// Lazy pg pool (uses same DATABASE_URL as the rest of the app)
 
 let _pool: Pool | null = null;
 
@@ -74,7 +74,7 @@ function getPool(): Pool | null {
   return _pool;
 }
 
-// ── Password helpers ─────────────────────────────────────────────────────────
+// Password helpers
 
 async function hashPassword(password: string): Promise<{ hash: Buffer; salt: Buffer }> {
   const salt = randomBytes(SALT_BYTES);
@@ -87,7 +87,7 @@ async function verifyPassword(password: string, salt: Buffer, hash: Buffer): Pro
   return timingSafeEqual(derived, hash);
 }
 
-// ── Table bootstrap ──────────────────────────────────────────────────────────
+// Table bootstrap
 
 let _tableReady = false;
 
@@ -109,7 +109,7 @@ async function ensureTable(): Promise<void> {
   console.log("[EmailAuth] email_credentials table ready");
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 function openIdForEmail(email: string): string {
   // Deterministic openId derived from the normalised email
@@ -117,8 +117,17 @@ function openIdForEmail(email: string): string {
   return `email:${Buffer.from(normalized).toString("base64url")}`;
 }
 
+function isAllowlistedAdminEmail(email: string): boolean {
+  const allowlist = process.env.ADMIN_EMAIL_ALLOWLIST
+    ?.split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowlist || allowlist.length === 0) return false;
+  return allowlist.includes(email.toLowerCase().trim());
+}
+
 function assignRole(email: string, requestedRole?: string): "buyer" | "supplier" | "admin" {
-  if (email.endsWith("@greenchainz.com")) return "admin";
+  if (isAllowlistedAdminEmail(email)) return "admin";
   if (requestedRole === "supplier") return "supplier";
   return "buyer";
 }
@@ -133,7 +142,7 @@ async function issueSession(
   res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
 }
 
-// ── Route registration ────────────────────────────────────────────────────────
+// Route registration
 
 export function registerEmailAuthRoutes(app: Express): void {
   // Bootstrap table once on startup (non-blocking)
@@ -141,7 +150,7 @@ export function registerEmailAuthRoutes(app: Express): void {
     console.warn("[EmailAuth] Table bootstrap failed (DB may not be available yet):", err)
   );
 
-  // ── POST /api/auth/email/signup ──────────────────────────────────────────
+  // POST /api/auth/email/signup
   app.post("/api/auth/email/signup", async (req: Request, res: Response) => {
     const signupLimit = isRateLimited(signupRateLimit, getRequestIp(req), 5, 60_000);
     if (signupLimit.limited) {
@@ -218,7 +227,7 @@ export function registerEmailAuthRoutes(app: Express): void {
     }
   });
 
-  // ── POST /api/auth/email/login ───────────────────────────────────────────
+  // POST /api/auth/email/login
   app.post("/api/auth/email/login", async (req: Request, res: Response) => {
     const loginLimit = isRateLimited(loginRateLimit, getRequestIp(req), 10, 60_000);
     if (loginLimit.limited) {
@@ -242,7 +251,7 @@ export function registerEmailAuthRoutes(app: Express): void {
       await ensureTable();
 
       const result = await pool.query(
-        `SELECT ec.salt, ec.hash, ec."userId", u."openId", u.name, u.role
+        `SELECT ec.salt, ec.hash, ec."userId", u."openId", u.name, u.role, u.deleted_at AS "deletedAt"
            FROM email_credentials ec
            JOIN users u ON u.id = ec."userId"
           WHERE ec.email = $1`,
@@ -255,6 +264,10 @@ export function registerEmailAuthRoutes(app: Express): void {
       }
 
       const row = result.rows[0];
+      if (row.deletedAt) {
+        return void res.status(403).json({ error: "This account has been deactivated. Contact support." });
+      }
+
       const salt = Buffer.isBuffer(row.salt) ? row.salt : Buffer.from(row.salt);
       const hash = Buffer.isBuffer(row.hash) ? row.hash : Buffer.from(row.hash);
 

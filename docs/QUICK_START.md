@@ -81,7 +81,7 @@ git push origin main
 
 # 4. Update manifest for production
 # File: public/manifest.xml
-# Change: <SourceLocation DefaultValue="https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io/excel-addin"/>
+# Change: <SourceLocation DefaultValue="https://greenchainz.com/excel-addin"/>
 ```
 
 ---
@@ -182,6 +182,4 @@ CREATE TABLE Products (
 ## Questions?
 
 See full documentation:
-- [Excel Add-in Setup](EXCEL_ADDIN_SETUP.md)
 - [Scraper Integration](EXCEL_SCRAPER_INTEGRATION.md)
-- [Strategic Overview](TOOLBOX_LAUNCH_SUMMARY.md)

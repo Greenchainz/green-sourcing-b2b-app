@@ -1,8 +1,9 @@
 import { router, protectedProcedure } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "./db";
-import { rfqs, rfqItems, rfqBids, materials, suppliers } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { rfqs, rfqItems, rfqBids, suppliers } from "../drizzle/schema";
+import { eq, and, desc, isNull } from "drizzle-orm";
 
 export const supplierRfqRouter = router({
   /**
@@ -16,7 +17,7 @@ export const supplierRfqRouter = router({
     const [supplier] = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.userId, ctx.user.id))
+      .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
       .limit(1);
 
     if (!supplier) {
@@ -31,18 +32,30 @@ export const supplierRfqRouter = router({
   }),
 
   /**
-   * Get available RFQs for a supplier
+   * Get available RFQs for a supplier — only accessible by registered suppliers
    */
   getAvailableRfqs: protectedProcedure
     .input(
       z.object({
-        limit: z.number().default(20),
-        offset: z.number().default(0),
+        limit: z.number().int().min(1).max(100).default(20),
+        offset: z.number().int().min(0).default(0),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database connection failed");
+
+      // Only registered suppliers may browse open RFQs
+      const [supplier] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
+        .limit(1);
+
+      const role = ctx.auth?.role;
+      if (!supplier && role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
+      }
 
       const allRfqs = await db
         .select({
@@ -54,6 +67,7 @@ export const supplierRfqRouter = router({
           createdAt: rfqs.createdAt,
         })
         .from(rfqs)
+        .where(and(eq(rfqs.status, "submitted"), isNull(rfqs.deletedAt)))
         .limit(input.limit)
         .offset(input.offset);
 
@@ -72,7 +86,7 @@ export const supplierRfqRouter = router({
       const rfq = await db
         .select()
         .from(rfqs)
-        .where(eq(rfqs.id, input.rfqId))
+        .where(and(eq(rfqs.id, input.rfqId), isNull(rfqs.deletedAt)))
         .limit(1);
 
       if (!rfq.length) {
@@ -89,7 +103,7 @@ export const supplierRfqRouter = router({
           notes: rfqItems.notes,
         })
         .from(rfqItems)
-        .where(eq(rfqItems.rfqId, input.rfqId));
+        .where(and(eq(rfqItems.rfqId, input.rfqId), isNull(rfqItems.deletedAt)));
 
       return {
         ...rfq[0],
@@ -117,11 +131,11 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier.length) {
-        throw new Error("Supplier not found");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
       }
 
       // Check if bid already exists
@@ -188,7 +202,7 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier.length) {
@@ -204,9 +218,13 @@ export const supplierRfqRouter = router({
           status: rfqBids.status,
           notes: rfqBids.notes,
           createdAt: rfqBids.createdAt,
+          projectName: rfqs.projectName,
+          projectLocation: rfqs.projectLocation,
         })
         .from(rfqBids)
-        .where(eq(rfqBids.supplierId, supplier[0].id))
+        .leftJoin(rfqs, eq(rfqBids.rfqId, rfqs.id))
+        .where(and(eq(rfqBids.supplierId, supplier[0].id), isNull(rfqBids.deletedAt)))
+        .orderBy(desc(rfqBids.createdAt))
         .limit(input.limit)
         .offset(input.offset);
 
@@ -226,11 +244,11 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier.length) {
-        throw new Error("Supplier not found");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
       }
 
       const bid = await db
@@ -268,11 +286,11 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier.length) {
-        throw new Error("Supplier not found");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
       }
 
       // Verify bid belongs to supplier
@@ -311,7 +329,7 @@ export const supplierRfqRouter = router({
     const [supplier] = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.userId, ctx.user.id))
+      .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
       .limit(1);
 
     if (!supplier) {
@@ -351,7 +369,7 @@ export const supplierRfqRouter = router({
       const [supplier] = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier || !supplier.latitude || !supplier.longitude) {

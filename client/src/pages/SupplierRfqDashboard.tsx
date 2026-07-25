@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { format, formatDistanceToNow, isPast, isBefore, addDays } from "date-fns";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -159,15 +159,17 @@ export default function SupplierRfqDashboard() {
     respondToRequest.mutate({ id: rfqRequestId, status: response });
   };
 
+  // "submitted" and "responded" are the live/bidable states — "open" doesn't exist in our enum
+  const isLive = (status: string) => status === "submitted" || status === "responded";
+
   // Filter and sort matched RFQs
   const filteredRfqs = matchedRfqs.data
     ?.filter((rfq: any) => {
       if (statusFilter === "all") return true;
-      if (statusFilter === "new" && rfq.status === "open" && !rfq.hasBid)
+      if (statusFilter === "new" && isLive(rfq.status) && !rfq.hasBid) return true;
+      if (statusFilter === "active" && isLive(rfq.status) && rfq.hasBid) return true;
+      if (statusFilter === "closed" && (rfq.status === "awarded" || rfq.status === "closed"))
         return true;
-      if (statusFilter === "active" && rfq.status === "open" && rfq.hasBid)
-        return true;
-      if (statusFilter === "closed" && rfq.status === "closed") return true;
       return false;
     })
     .sort((a: any, b: any) => {
@@ -422,7 +424,7 @@ export default function SupplierRfqDashboard() {
                               <Badge className="bg-blue-100 text-blue-800 border-blue-300">
                                 Bid Submitted
                               </Badge>
-                            ) : rfq.status === "open" ? (
+                            ) : isLive(rfq.status) ? (
                               <Button
                                 className="bg-[#2D6A4F] hover:bg-[#245a42] text-white"
                                 onClick={() => openQuoteDialog(rfq)}
@@ -431,7 +433,9 @@ export default function SupplierRfqDashboard() {
                                 Submit Quote
                               </Button>
                             ) : (
-                              <Badge variant="secondary">Closed</Badge>
+                              <Badge variant="secondary">
+                                {rfq.status === "awarded" ? "Awarded" : "Closed"}
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -555,7 +559,7 @@ export default function SupplierRfqDashboard() {
                   <Inbox className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-600 font-medium">No direct requests</p>
                   <p className="text-sm text-gray-400 mt-1">
-                    When architects send you direct RFQ requests, they'll appear here
+                    When project teams send you direct RFQ requests, they'll appear here
                   </p>
                 </Card>
               )}

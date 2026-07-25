@@ -1,0 +1,25 @@
+{
+  "name": "GreenChainz",
+  "displayName": "GreenChainz – Sustainable Materials Intelligence",
+  "version": "1.0.0",
+  "description": "Sustainable material insights, embodied carbon data, and supplier procurement workflows for Revit and Forma.",
+  "supportedProducts": ["Revit", "Forma"],
+  "supportedVersions": {
+    "Revit": ["2024", "2025"],
+    "Forma": ["current"]
+  },
+  "category": "Sustainability",
+  "vendor": {
+    "name": "GreenChainz",
+    "id": "GCNZ",
+    "url": "https://greenchainz.com",
+    "contact": "support@greenchainz.com"
+  },
+  "author": "Jerit Norville",
+  "license": "Proprietary",
+  "pricing": "Free",
+  "demoUrl": "https://greenchainz.com",
+  "documentationUrl": "https://greenchainz.com/docs",
+  "privacyPolicyUrl": "https://greenchainz.com/privacy",
+  "termsOfServiceUrl": "https://greenchainz.com/terms"
+}

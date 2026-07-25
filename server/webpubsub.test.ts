@@ -1,180 +1,143 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { WebPubSubServiceClient } from "@azure/web-pubsub";
-import { getDb } from "./db";
-import { rfqThreads, rfqMessages } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
-import {
-  getWebSocketAccessToken,
-  sendMessageToThread,
-  broadcastTypingIndicator,
-  markMessageAsRead,
-  getThreadMessages,
-  closeThread,
-} from "./webpubsub-manager";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-describe.skipIf(!process.env.DATABASE_URL)("Azure Web PubSub Integration", () => {
-  it("should validate Web PubSub connection string", async () => {
-    const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
-    expect(connectionString).toBeDefined();
-    expect(connectionString).toContain("Endpoint=");
-    expect(connectionString).toContain("AccessKey=");
+const mockSendToUser = vi.fn();
+const mockGetClientAccessToken = vi.fn();
+const webPubSubClientCtor = vi.fn();
+const defaultAzureCredentialCtor = vi.fn();
+
+vi.mock("@azure/web-pubsub", () => ({
+  WebPubSubServiceClient: webPubSubClientCtor,
+}));
+
+vi.mock("@azure/identity", () => ({
+  DefaultAzureCredential: defaultAzureCredentialCtor,
+}));
+
+vi.mock("./db", () => ({
+  getDb: vi.fn(),
+}));
+
+function createMockClient() {
+  return {
+    sendToUser: mockSendToUser,
+    getClientAccessToken: mockGetClientAccessToken,
+  };
+}
+
+describe("webpubsub-manager", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    delete process.env.AZURE_WEBPUBSUB_ENDPOINT;
+    delete process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
+    delete process.env.WEBPUBSUB_HUB;
+
+    defaultAzureCredentialCtor.mockImplementation(function () {
+      return { kind: "managed-identity" };
+    });
+    webPubSubClientCtor.mockImplementation(function () {
+      return createMockClient();
+    });
   });
 
-  it("should create Web PubSub client successfully", async () => {
-    const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
-    const hubName = process.env.WEBPUBSUB_HUB;
-
-    expect(connectionString).toBeDefined();
-    expect(hubName).toBeDefined();
-
-    try {
-      const client = new WebPubSubServiceClient(connectionString, hubName);
-      expect(client).toBeDefined();
-      
-      // Test basic connectivity by getting access token
-      const token = await client.getClientAccessToken();
-      expect(token).toBeDefined();
-      expect(token.token).toBeDefined();
-      expect(token.baseUrl).toBeDefined();
-    } catch (error) {
-      expect.fail(`Failed to connect to Web PubSub: ${error}`);
-    }
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("should have valid hub name", () => {
-    const hubName = process.env.WEBPUBSUB_HUB;
-    expect(hubName).toBe("greenchainzhub");
+  it("returns null notification token when WebPubSub is not configured", async () => {
+    const manager = await import("./webpubsub-manager");
+    const token = await manager.getNotificationAccessToken(7);
+
+    expect(token).toBeNull();
+    expect(webPubSubClientCtor).not.toHaveBeenCalled();
   });
 
-  it("should have public endpoint configured", () => {
-    const endpoint = process.env.NEXT_PUBLIC_WEBPUBSUB_ENDPOINT;
-    expect(endpoint).toBeDefined();
-    expect(endpoint).toContain("greenchainz.webpubsub.azure.com");
-  });
-});
+  it("uses managed identity endpoint when AZURE_WEBPUBSUB_ENDPOINT is configured", async () => {
+    process.env.AZURE_WEBPUBSUB_ENDPOINT = "https://greenchainz.webpubsub.azure.com";
+    process.env.WEBPUBSUB_HUB = "greenchainz-hub-test";
+    mockGetClientAccessToken.mockResolvedValue({
+      url: "wss://greenchainz.webpubsub.azure.com/client/hubs/greenchainz-hub-test?access_token=abc",
+    });
 
-describe.skipIf(!process.env.DATABASE_URL)("WebSocket Access Token Generation", () => {
-  // Use mock IDs for testing (database tables may not exist yet)
-  const testThreadId = 1;
-  const testBuyerId = 1;
-  const testSupplierId = 2;
+    const manager = await import("./webpubsub-manager");
+    const token = await manager.getNotificationAccessToken(42);
 
-  it("should generate access token for buyer", async () => {
-    try {
-      const token = await getWebSocketAccessToken(testBuyerId, testThreadId);
-      expect(token).toBeDefined();
-      expect(token.token).toBeDefined();
-      expect(token.url).toBeDefined();
-      expect(token.userId).toBe(`user-${testBuyerId}`);
-      expect(token.threadId).toBe(testThreadId);
-    } catch (error: any) {
-      // Expected if thread doesn't exist or database table not created
-      expect(error.message).toMatch(/Thread not found|Failed query/);
-    }
+    expect(defaultAzureCredentialCtor).toHaveBeenCalledTimes(1);
+    expect(webPubSubClientCtor).toHaveBeenCalledWith(
+      "https://greenchainz.webpubsub.azure.com",
+      expect.any(Object),
+      "greenchainz-hub-test"
+    );
+    expect(mockGetClientAccessToken).toHaveBeenCalledWith({
+      userId: "user-42",
+      expirationTimeInMinutes: 60,
+    });
+    expect(token?.url).toContain("access_token=abc");
   });
 
-  it("should generate access token for supplier", async () => {
-    try {
-      const token = await getWebSocketAccessToken(testSupplierId, testThreadId);
-      expect(token).toBeDefined();
-      expect(token.token).toBeDefined();
-      expect(token.url).toBeDefined();
-      expect(token.userId).toBe(`user-${testSupplierId}`);
-    } catch (error: any) {
-      // Expected if thread doesn't exist or database table not created
-      expect(error.message).toMatch(/Thread not found|Failed query/);
-    }
+  it("falls back to connection-string auth when managed identity client initialization fails", async () => {
+    process.env.AZURE_WEBPUBSUB_ENDPOINT = "https://greenchainz.webpubsub.azure.com";
+    process.env.AZURE_WEBPUBSUB_CONNECTION_STRING =
+      "Endpoint=https://greenchainz.webpubsub.azure.com;AccessKey=secret;Version=1.0;";
+    webPubSubClientCtor
+      .mockImplementationOnce(function () {
+        throw new Error("managed identity initialization failed");
+      })
+      .mockImplementation(function () {
+        return createMockClient();
+      });
+    mockGetClientAccessToken.mockResolvedValue({
+      url: "wss://greenchainz.webpubsub.azure.com/client/hubs/greenchainz-hub?access_token=fallback",
+    });
+
+    const manager = await import("./webpubsub-manager");
+    const token = await manager.getNotificationAccessToken(99);
+
+    expect(webPubSubClientCtor).toHaveBeenNthCalledWith(
+      1,
+      "https://greenchainz.webpubsub.azure.com",
+      expect.any(Object),
+      "greenchainz-hub"
+    );
+    expect(webPubSubClientCtor).toHaveBeenNthCalledWith(
+      2,
+      "Endpoint=https://greenchainz.webpubsub.azure.com;AccessKey=secret;Version=1.0;",
+      "greenchainz-hub"
+    );
+    expect(token?.url).toContain("access_token=fallback");
   });
 
-  it("should reject unauthorized user", async () => {
-    const unauthorizedUserId = 99999;
-    try {
-      await getWebSocketAccessToken(unauthorizedUserId, testThreadId);
-      expect.fail("Should have thrown an error");
-    } catch (error: any) {
-      expect(error.message).toMatch(/not found|not have access|Failed query/);
-    }
-  });
-});
+  it("builds websocket URL from baseUrl+token when SDK omits url field", async () => {
+    process.env.AZURE_WEBPUBSUB_CONNECTION_STRING =
+      "Endpoint=https://greenchainz.webpubsub.azure.com;AccessKey=secret;Version=1.0;";
+    mockGetClientAccessToken.mockResolvedValue({
+      baseUrl: "wss://greenchainz.webpubsub.azure.com/client/hubs/greenchainz-hub",
+      token: "manual-token",
+    });
 
-describe.skipIf(!process.env.DATABASE_URL)("Real-Time Messaging Functions", () => {
-  it("should broadcast typing indicator", async () => {
-    try {
-      const result = await broadcastTypingIndicator(1, 1, true);
-      expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-    } catch (error: any) {
-      // Expected if thread doesn't exist or database error
-      expect(error.message).toMatch(/Thread not found|Failed query/);
-    }
+    const manager = await import("./webpubsub-manager");
+    const token = await manager.getNotificationAccessToken(11);
+
+    expect(token).toEqual({
+      url: "wss://greenchainz.webpubsub.azure.com/client/hubs/greenchainz-hub?access_token=manual-token",
+    });
   });
 
-  it("should get thread messages", async () => {
-    try {
-      const messages = await getThreadMessages(1, 50, 0);
-      expect(Array.isArray(messages)).toBe(true);
-    } catch (error: any) {
-      // Database error is acceptable in test environment
-      expect(error).toBeDefined();
-    }
-  });
+  it("sends notification payload to user-specific channel", async () => {
+    process.env.AZURE_WEBPUBSUB_CONNECTION_STRING =
+      "Endpoint=https://greenchainz.webpubsub.azure.com;AccessKey=secret;Version=1.0;";
 
-  it("should mark message as read", async () => {
-    try {
-      const result = await markMessageAsRead(1);
-      expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-    } catch (error: any) {
-      // Expected if message doesn't exist
-      expect(error).toBeDefined();
-    }
-  });
+    const manager = await import("./webpubsub-manager");
+    await manager.broadcastNotification(13, {
+      type: "new_message",
+      title: "New message",
+      content: "You have an unread message",
+    });
 
-  it("should close thread", async () => {
-    try {
-      const result = await closeThread(1);
-      expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-    } catch (error: any) {
-      // Expected if thread doesn't exist
-      expect(error).toBeDefined();
-    }
-  });
-});
-
-describe.skipIf(!process.env.DATABASE_URL)("Message Sending", () => {
-  it("should enforce 1000 character limit", async () => {
-    const longMessage = "a".repeat(1500);
-    try {
-      const result = await sendMessageToThread(1, 1, longMessage, true);
-      // If it succeeds, verify message was truncated
-      if (result.success) {
-        const db = await getDb();
-        if (db) {
-          const messages = await db
-            .select()
-            .from(rfqMessages)
-            .where(eq(rfqMessages.id, result.messageId))
-            .limit(1);
-          if (messages.length > 0) {
-            expect(messages[0].content.length).toBeLessThanOrEqual(1000);
-          }
-        }
-      }
-    } catch (error: any) {
-      // Expected if thread doesn't exist or database error
-      expect(error.message).toMatch(/Thread not found|not authorized|Failed query/);
-    }
-  });
-
-  it("should reject empty messages", async () => {
-    try {
-      await sendMessageToThread(1, 1, "", true);
-      // Empty messages should still be accepted (will be truncated to empty string)
-      expect(true).toBe(true);
-    } catch (error: any) {
-      // Expected if thread doesn't exist
-      expect(error).toBeDefined();
-    }
+    expect(mockSendToUser).toHaveBeenCalledWith("user-13", {
+      type: "new_message",
+      title: "New message",
+      content: "You have an unread message",
+    });
   });
 });

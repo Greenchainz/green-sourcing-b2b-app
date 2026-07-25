@@ -30,16 +30,16 @@ export const messagingRouter = router({
         offset: z.number().min(0).default(0),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { getThreadMessages } = await import('../webpubsub-manager');
-      return getThreadMessages(input.threadId, input.limit, input.offset);
+      return getThreadMessages(input.threadId, ctx.user.id, input.limit, input.offset);
     }),
 
   markMessageAsRead: protectedProcedure
     .input(z.object({ messageId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { markMessageAsRead } = await import('../webpubsub-manager');
-      return markMessageAsRead(input.messageId);
+      return markMessageAsRead(input.messageId, ctx.user.id);
     }),
 
   broadcastTyping: protectedProcedure
@@ -56,9 +56,9 @@ export const messagingRouter = router({
 
   closeThread: protectedProcedure
     .input(z.object({ threadId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { closeThread } = await import('../webpubsub-manager');
-      return closeThread(input.threadId);
+      return closeThread(input.threadId, ctx.user.id);
     }),
 
   getOrCreateConversation: protectedProcedure
@@ -69,9 +69,9 @@ export const messagingRouter = router({
         supplierId: z.number(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { getOrCreateConversation } = await import('../messaging-service');
-      return await getOrCreateConversation(input);
+      return await getOrCreateConversation({ ...input, requestingUserId: ctx.user.id });
     }),
 
   getConversations: protectedProcedure.query(async ({ ctx }) => {
@@ -81,9 +81,9 @@ export const messagingRouter = router({
 
   getMessages: protectedProcedure
     .input(z.object({ conversationId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { getConversationMessages } = await import('../messaging-service');
-      return await getConversationMessages(input.conversationId);
+      return await getConversationMessages(input.conversationId, ctx.user.id);
     }),
 
   send: protectedProcedure
@@ -203,7 +203,7 @@ export const messagingRouter = router({
         return { success: true, handedOff: true };
       }
 
-      const messageHistory = await getConversationMessages(input.conversationId);
+      const messageHistory = await getConversationMessages(input.conversationId, ctx.user.id);
       const formattedHistory = messageHistory.slice(-10).map((msg) => ({
         role: (msg.senderId === ctx.user.id ? 'user' : 'assistant') as 'user' | 'assistant',
         content: msg.content,
@@ -488,6 +488,7 @@ export const messagingRouter = router({
         rfqId: null,
         buyerId: ctx.user.id,
         supplierId: input.supplierId,
+        requestingUserId: ctx.user.id,
       });
 
       const db = await getDb();
@@ -508,19 +509,9 @@ export const messagingRouter = router({
     }),
 
   getNotificationToken: protectedProcedure.query(async ({ ctx }) => {
-    const { WebPubSubServiceClient } = await import('@azure/web-pubsub');
-    const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
-    const hub = process.env.WEBPUBSUB_HUB ?? 'greenchainz-hub';
-    if (!connectionString) {
-      throw new Error('Azure Web PubSub not configured — set AZURE_WEBPUBSUB_CONNECTION_STRING');
-    }
-    const client = new WebPubSubServiceClient(connectionString, hub);
-    const tokenResponse = await client.getClientAccessToken({
-      userId: `user-${ctx.user.id}`,
-      expirationTimeInMinutes: 60,
-    });
-    // tokenResponse.url is the full wss:// URL with access_token already embedded
-    return { url: tokenResponse.url };
+    const { getNotificationAccessToken } = await import('../webpubsub-manager');
+    const tokenResponse = await getNotificationAccessToken(ctx.user.id);
+    return { url: tokenResponse?.url ?? null };
   }),
 
   checkCallLimit: protectedProcedure.query(async ({ ctx }) => {
@@ -566,5 +557,35 @@ export const messagingRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { endCall } = await import('../calling-service');
       return await endCall(input.callId, ctx.user.id);
+    }),
+
+  /**
+   * Returns an ACS token + groupCallId so the client can join the real video call.
+   * Only the caller and receiver of the given callId may request a token.
+   */
+  getCallToken: protectedProcedure
+    .input(z.object({ callId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const { getCallSession } = await import('../calling-service');
+      const { getAcsTokenForUser, getAcsEndpoint } = await import('../acs-service');
+
+      const session = await getCallSession(input.callId);
+      if (!session) throw new Error('Call session not found or already ended');
+
+      const isParticipant =
+        ctx.user.id === session.callerId || ctx.user.id === session.receiverId;
+      if (!isParticipant) throw new Error('Not a participant of this call');
+
+      const { token, acsUserId, expiresOn } = await getAcsTokenForUser(ctx.user.id);
+      const endpointUrl = getAcsEndpoint();
+
+      return {
+        token,
+        acsUserId,
+        expiresOn,
+        groupCallId: session.groupCallId,
+        endpointUrl,
+        callType: session.callType,
+      };
     }),
 });

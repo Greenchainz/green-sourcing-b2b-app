@@ -1,12 +1,14 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
+import { protectedProcedure, router } from "./_core/trpc";
+import { getDb } from "./db";
+import { suppliers } from "../drizzle/schema";
 import {
   getBuyerSubscription,
-  createBuyerSubscription,
   upgradeBuyerSubscription,
   cancelBuyerSubscription,
   getSupplierSubscription,
-  createSupplierSubscription,
   upgradeSupplierSubscription,
   cancelSupplierSubscription,
   checkBuyerFeatureAccess,
@@ -34,6 +36,29 @@ const buyerDimensionEnum = z.enum([
 ]);
 
 const supplierDimensionEnum = z.enum(["bid_submission", "message_thread"]);
+
+// Resolve the supplier record owned by the authenticated user.
+// Object-level authZ: callers may only act on their OWN supplier subscription;
+// client-supplied supplierId is never trusted (mirrors supplier-router.ts).
+async function resolveOwnSupplierId(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database connection failed");
+
+  const [supplier] = await db
+    .select({ id: suppliers.id })
+    .from(suppliers)
+    .where(eq(suppliers.userId, userId))
+    .limit(1);
+
+  if (!supplier) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "No supplier profile is associated with this account",
+    });
+  }
+
+  return supplier.id;
+}
 
 // ─── Router ─────────────────────────────────────────────────────────────────────
 export const subscriptionRouter = router({
@@ -74,45 +99,47 @@ export const subscriptionRouter = router({
   }),
 
   // Supplier subscription procedures
+  // supplierId is ALWAYS resolved from ctx.user.id — never trust client input.
   getSupplierSubscription: protectedProcedure
-    .input(z.object({ supplierId: z.number() }))
-    .query(async ({ input }) => {
-      return await getSupplierSubscription(input.supplierId);
+    .query(async ({ ctx }) => {
+      const supplierId = await resolveOwnSupplierId(ctx.user.id);
+      return await getSupplierSubscription(supplierId);
     }),
 
   getSupplierTierLimits: protectedProcedure
-    .input(z.object({ supplierId: z.number() }))
-    .query(async ({ input }) => {
-      return await getSupplierTierLimits(input.supplierId);
+    .query(async ({ ctx }) => {
+      const supplierId = await resolveOwnSupplierId(ctx.user.id);
+      return await getSupplierTierLimits(supplierId);
     }),
 
   checkSupplierFeatureAccess: protectedProcedure
-    .input(z.object({ supplierId: z.number(), feature: z.string() }))
-    .query(async ({ input }) => {
-      return await checkSupplierFeatureAccess(input.supplierId, input.feature as keyof typeof TIER_LIMITS["supplier"]["free"]["features"]);
+    .input(z.object({ feature: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const supplierId = await resolveOwnSupplierId(ctx.user.id);
+      return await checkSupplierFeatureAccess(supplierId, input.feature as keyof typeof TIER_LIMITS["supplier"]["free"]["features"]);
     }),
 
   upgradeSupplierSubscription: protectedProcedure
     .input(
       z.object({
-        supplierId: z.number(),
         tier: z.enum(["premium"]),
         msSubscriptionId: z.string().optional(),
         msPlanId: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const supplierId = await resolveOwnSupplierId(ctx.user.id);
       return await upgradeSupplierSubscription(
-        input.supplierId,
+        supplierId,
         input.tier,
         input.msSubscriptionId
       );
     }),
 
   cancelSupplierSubscription: protectedProcedure
-    .input(z.object({ supplierId: z.number() }))
-    .mutation(async ({ input }) => {
-      return await cancelSupplierSubscription(input.supplierId);
+    .mutation(async ({ ctx }) => {
+      const supplierId = await resolveOwnSupplierId(ctx.user.id);
+      return await cancelSupplierSubscription(supplierId);
     }),
 
   // Usage tracking procedures
@@ -130,13 +157,13 @@ export const subscriptionRouter = router({
   getSupplierUsage: protectedProcedure
     .input(
       z.object({
-        supplierId: z.number(),
         dimension: supplierDimensionEnum,
         period: z.enum(["month", "all"]).default("month"),
       })
     )
-    .query(async ({ input }) => {
-      return await getSupplierUsage(input.supplierId);
+    .query(async ({ ctx }) => {
+      const supplierId = await resolveOwnSupplierId(ctx.user.id);
+      return await getSupplierUsage(supplierId);
     }),
 
   checkUsageLimit: protectedProcedure
@@ -148,7 +175,6 @@ export const subscriptionRouter = router({
         }),
         z.object({
           userType: z.literal("supplier"),
-          supplierId: z.number(),
           dimension: supplierDimensionEnum,
         }),
       ])
@@ -157,7 +183,8 @@ export const subscriptionRouter = router({
       if (input.userType === "buyer") {
         return await checkBuyerUsageLimit(ctx.user.id, input.dimension);
       } else {
-        return await checkSupplierUsageLimit(input.supplierId, input.dimension);
+        const supplierId = await resolveOwnSupplierId(ctx.user.id);
+        return await checkSupplierUsageLimit(supplierId, input.dimension);
       }
     }),
 
@@ -175,12 +202,12 @@ export const subscriptionRouter = router({
   trackSupplierUsage: protectedProcedure
     .input(
       z.object({
-        supplierId: z.number(),
         dimension: supplierDimensionEnum,
         quantity: z.number().default(1),
       })
     )
-    .mutation(async ({ input }) => {
-      return await trackSupplierUsage(input.supplierId, input.dimension, input.quantity);
+    .mutation(async ({ ctx, input }) => {
+      const supplierId = await resolveOwnSupplierId(ctx.user.id);
+      return await trackSupplierUsage(supplierId, input.dimension, input.quantity);
     }),
 });

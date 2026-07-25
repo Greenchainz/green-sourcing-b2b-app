@@ -14,12 +14,14 @@
  *   "grid" (default) — vertical card
  *   "list"           — compact horizontal row
  */
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ShieldCheck,
   ShieldAlert,
+  Frown,
   ArrowRight,
   FileText,
   BarChart3,
@@ -28,6 +30,11 @@ import {
 import { Link, useLocation } from "wouter";
 import { ScoreBadge } from "@/components/MaterialCreditScore/ScoreBadge";
 import { PriceTrendBadge } from "@/components/PriceTrendBadge";
+import { getMaterialImage } from "@/lib/material-images";
+import {
+  useOptionalCarbonBudget,
+  type BudgetItem,
+} from "@/contexts/CarbonBudgetContext";
 
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -74,15 +81,15 @@ export interface MaterialCardProps {
 
 const AVATAR_PALETTES = [
   { bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-200" },
-  { bg: "bg-teal-100",    text: "text-teal-800",    border: "border-teal-200"    },
-  { bg: "bg-sky-100",     text: "text-sky-800",     border: "border-sky-200"     },
-  { bg: "bg-violet-100",  text: "text-violet-800",  border: "border-violet-200"  },
-  { bg: "bg-amber-100",   text: "text-amber-800",   border: "border-amber-200"   },
-  { bg: "bg-rose-100",    text: "text-rose-800",    border: "border-rose-200"    },
-  { bg: "bg-lime-100",    text: "text-lime-800",    border: "border-lime-200"    },
-  { bg: "bg-cyan-100",    text: "text-cyan-800",    border: "border-cyan-200"    },
-  { bg: "bg-orange-100",  text: "text-orange-800",  border: "border-orange-200"  },
-  { bg: "bg-indigo-100",  text: "text-indigo-800",  border: "border-indigo-200"  },
+  { bg: "bg-teal-100", text: "text-teal-800", border: "border-teal-200" },
+  { bg: "bg-sky-100", text: "text-sky-800", border: "border-sky-200" },
+  { bg: "bg-violet-100", text: "text-violet-800", border: "border-violet-200" },
+  { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200" },
+  { bg: "bg-rose-100", text: "text-rose-800", border: "border-rose-200" },
+  { bg: "bg-lime-100", text: "text-lime-800", border: "border-lime-200" },
+  { bg: "bg-cyan-100", text: "text-cyan-800", border: "border-cyan-200" },
+  { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200" },
+  { bg: "bg-indigo-100", text: "text-indigo-800", border: "border-indigo-200" },
 ];
 
 function hashStr(s: string): number {
@@ -102,29 +109,82 @@ function materialAvatar(name: string, category: string) {
 
 // ── Carbon context helper (plain-language GWP summary) ────────────────────────
 
-function carbonContext(
+// Card-level preferred baseline for sustainable-first ranking.
+const MIN_MCS_SCORE_FOR_PREFERRED = 60;
+
+type CarbonContext = {
+  label: string;
+  color: string;
+  pct: number;
+  bucket: "top" | "below" | "near" | "above";
+};
+
+const NON_PREFERRED_COPY = {
+  shortLabel: "Not preferred",
+  accessibleLabel: "Not preferred low-carbon option",
+  tooltip: "Data is shown for transparency, but this option is not a preferred low-carbon choice.",
+} as const;
+
+export function carbonContext(
   gwp: string | null | undefined,
   median: string | null | undefined
-): { label: string; color: string } | null {
+): CarbonContext | null {
   const g = parseFloat(gwp ?? "");
   const m = parseFloat(median ?? "");
   if (isNaN(g) || isNaN(m) || m === 0) return null;
   const pct = Math.round(((m - g) / m) * 100); // positive = better than median
-  if (pct >= 40) return { label: "Top 25% in class", color: "text-green-600" };
-  if (pct >= 15) return { label: `${pct}% below avg`,  color: "text-green-600" };
-  if (pct >= -10) return { label: "Near avg",            color: "text-amber-600" };
-  return { label: `${Math.abs(pct)}% above avg`,         color: "text-red-500"   };
+  if (pct >= 40) return { label: "Top 25% in class", color: "text-green-600", pct, bucket: "top" };
+  if (pct >= 15) return { label: `${pct}% below avg`, color: "text-green-600", pct, bucket: "below" };
+  if (pct >= -10) return { label: "Near avg", color: "text-amber-600", pct, bucket: "near" };
+  return { label: `${Math.abs(pct)}% above avg`, color: "text-red-500", pct, bucket: "above" };
+}
+
+export function isNonSustainableOption(
+  mcsScore: number,
+  hasEpd: boolean | null | undefined,
+  carbCtx: CarbonContext | null
+) {
+  if (!hasEpd) return true;
+  if (mcsScore < MIN_MCS_SCORE_FOR_PREFERRED) return true;
+  return carbCtx?.bucket === "above";
+}
+
+function NonPreferredLabel({ variant }: { variant: "list" | "grid" }) {
+  if (variant === "list") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[9px] px-1 py-0 h-4 border-amber-300 text-amber-800 bg-amber-50 shrink-0"
+        title={NON_PREFERRED_COPY.tooltip}
+        aria-label={NON_PREFERRED_COPY.accessibleLabel}
+      >
+        <Frown className="w-2.5 h-2.5 mr-0.5" aria-hidden="true" />
+        {NON_PREFERRED_COPY.shortLabel}
+      </Badge>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700"
+      title={NON_PREFERRED_COPY.tooltip}
+      aria-label={NON_PREFERRED_COPY.accessibleLabel}
+    >
+      <Frown className="w-3 h-3" aria-hidden="true" />
+      {NON_PREFERRED_COPY.shortLabel}
+    </span>
+  );
 }
 
 // ── Cert definitions ──────────────────────────────────────────────────────────
 
 const CERT_DEFS = [
-  { key: "hasEpd"        as const, label: "EPD",     cls: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-  { key: "hasFsc"        as const, label: "FSC",     cls: "bg-green-50 border-green-200 text-green-700"       },
-  { key: "hasC2c"        as const, label: "C2C",     cls: "bg-teal-50 border-teal-200 text-teal-700"          },
-  { key: "hasHpd"        as const, label: "HPD",     cls: "bg-sky-50 border-sky-200 text-sky-700"             },
-  { key: "hasGreenguard" as const, label: "GG",      cls: "bg-lime-50 border-lime-200 text-lime-700"          },
-  { key: "hasDeclare"    as const, label: "Declare", cls: "bg-purple-50 border-purple-200 text-purple-700"    },
+  { key: "hasEpd" as const, label: "EPD", cls: "bg-emerald-50 border-emerald-200 text-emerald-700" },
+  { key: "hasFsc" as const, label: "FSC", cls: "bg-green-50 border-green-200 text-green-700" },
+  { key: "hasC2c" as const, label: "C2C", cls: "bg-teal-50 border-teal-200 text-teal-700" },
+  { key: "hasHpd" as const, label: "HPD", cls: "bg-sky-50 border-sky-200 text-sky-700" },
+  { key: "hasGreenguard" as const, label: "GG", cls: "bg-lime-50 border-lime-200 text-lime-700" },
+  { key: "hasDeclare" as const, label: "Declare", cls: "bg-purple-50 border-purple-200 text-purple-700" },
 ] as const;
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -139,20 +199,56 @@ export default function MaterialCard(props: MaterialCardProps) {
   } = props;
 
   const [, navigate] = useLocation();
-  const mcsScore    = ccps.ccpsTotal;
-  const carbCtx     = carbonContext(gwpValue, ec3IndustryMedian);
+  const mcsScore = ccps.ccpsTotal;
+  const carbCtx = carbonContext(gwpValue, ec3IndustryMedian);
   const activeCerts = CERT_DEFS.filter((c) => !!props[c.key]);
+  const nonSustainableOption = isNonSustainableOption(mcsScore, props.hasEpd, carbCtx);
 
   const handleRequestQuote = (e: React.MouseEvent) => {
     e.preventDefault();
     navigate(
-      `/rfq/new?materialId=${id}&category=${encodeURIComponent(category)}&epdRequired=${
-        props.hasEpd ? "true" : "false"
+      `/rfq/new?materialId=${id}&category=${encodeURIComponent(category)}&epdRequired=${props.hasEpd ? "true" : "false"
       }`
     );
   };
 
+  // ── Carbon budget tracker ────────────────────────────────────────────────────
+  const budget = useOptionalCarbonBudget();
+  const parsedGwp = gwpValue ? parseFloat(gwpValue) : null;
+  const showTracker = budget !== null && parsedGwp !== null && !isNaN(parsedGwp);
+  const isTracked = showTracker && budget.isTracking(id);
+
+  const handleTrackToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!budget || parsedGwp === null) return;
+    const item: BudgetItem = {
+      id,
+      name: productName ?? name,
+      category,
+      gwpValue: parsedGwp,
+      gwpUnit: gwpUnit ?? "kgCO₂e",
+      ec3Median: ec3IndustryMedian ? parseFloat(ec3IndustryMedian) : null,
+    };
+    budget.toggle(item);
+  };
+
   const avatar = materialAvatar(name, category);
+  // Graceful image fallback chain: external/DB imageUrl -> local category
+  // placeholder -> avatar initials. getMaterialImage always returns a
+  // non-empty string, so a broken external url would otherwise render a
+  // permanent broken-image icon with no fallback.
+  const placeholderSrc = getMaterialImage(category, null, subcategory);
+  const initialSrc = getMaterialImage(category, props.imageUrl, subcategory);
+  const [imgSrc, setImgSrc] = useState(initialSrc);
+  const [imgBroken, setImgBroken] = useState(false);
+  useEffect(() => {
+    setImgSrc(initialSrc);
+    setImgBroken(false);
+  }, [initialSrc, placeholderSrc]);
+  const handleImgError = () => {
+    if (imgSrc !== placeholderSrc) setImgSrc(placeholderSrc);
+    else setImgBroken(true);
+  };
 
   // ── List variant ────────────────────────────────────────────────────────────
   if (variant === "list") {
@@ -161,8 +257,8 @@ export default function MaterialCard(props: MaterialCardProps) {
 
         {/* Thumbnail */}
         <div className={`shrink-0 w-10 h-10 rounded overflow-hidden border ${avatar.border} ${avatar.bg} flex items-center justify-center`}>
-          {props.imageUrl ? (
-            <img src={props.imageUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
+          {!imgBroken ? (
+            <img src={imgSrc} alt={name} onError={handleImgError} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <span className={`text-xs font-bold ${avatar.text}`}>{avatar.initials}</span>
           )}
@@ -210,6 +306,9 @@ export default function MaterialCard(props: MaterialCardProps) {
               <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50 shrink-0">
                 🇺🇸 US Made
               </Badge>
+            )}
+            {nonSustainableOption && (
+              <NonPreferredLabel variant="list" />
             )}
           </div>
         </div>
@@ -263,6 +362,21 @@ export default function MaterialCard(props: MaterialCardProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
+          {showTracker && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 w-7 p-0 transition-colors ${
+                isTracked
+                  ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
+                  : "text-muted-foreground hover:text-emerald-600"
+              }`}
+              onClick={handleTrackToggle}
+              title={isTracked ? "Remove from carbon tracker" : "Track carbon budget"}
+            >
+              <Leaf className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <Button
             size="sm"
             className="h-7 text-[11px] bg-green-700 hover:bg-green-800 text-white gap-1 px-3 font-medium"
@@ -287,11 +401,12 @@ export default function MaterialCard(props: MaterialCardProps) {
 
         {/* ── Hero image / avatar ─────────────────────────────────────── */}
         <div className={`relative w-full h-32 overflow-hidden ${props.imageUrl ? "bg-muted" : `${avatar.bg} border-b ${avatar.border}`}`}>
-          {props.imageUrl ? (
+          {!imgBroken ? (
             <>
               <img
-                src={props.imageUrl}
+                src={imgSrc}
                 alt={name}
+                onError={handleImgError}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
               />
@@ -411,6 +526,10 @@ export default function MaterialCard(props: MaterialCardProps) {
             </span>
           )}
 
+          {nonSustainableOption && (
+            <NonPreferredLabel variant="grid" />
+          )}
+
           {/* Carbon Score — only rendered when gwpValue is populated */}
           {gwpValue && (
             <div className="text-right">
@@ -432,6 +551,24 @@ export default function MaterialCard(props: MaterialCardProps) {
                 </>
               )}
             </div>
+          )}
+
+          {/* Track carbon button — only when inside CarbonBudgetProvider */}
+          {showTracker && (
+            <button
+              onClick={handleTrackToggle}
+              className={`inline-flex flex-col items-center gap-0.5 transition-colors shrink-0 ${
+                isTracked
+                  ? "text-emerald-600 hover:text-emerald-700"
+                  : "text-muted-foreground/50 hover:text-emerald-600"
+              }`}
+              title={isTracked ? "Remove from carbon tracker" : "Track this material's carbon impact"}
+            >
+              <Leaf className={`w-3.5 h-3.5 ${isTracked ? "fill-emerald-100" : ""}`} />
+              <span className="text-[8px] uppercase tracking-wider font-medium">
+                {isTracked ? "Tracked" : "+Track"}
+              </span>
+            </button>
           )}
         </div>
 

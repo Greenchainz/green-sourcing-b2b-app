@@ -5,36 +5,43 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+      content="width=device-width, initial-scale=1.0" />
     <title>GreenChainz — EPD Lookup & Sustainable Materials Procurement Software</title>
     <meta name="description" content="GreenChainz is the B2B procurement platform for architects and contractors. Instant EPD lookups, automated RFQs, and real-time LEED/Buy Clean/Title 24 compliance." />
-    <link rel="canonical" href="https://greenchainz.com/" />
+    <!-- Social preview defaults; the server swaps this block per-page for share routes like /win -->
+    <!-- OG:DEFAULT -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GreenChainz" />
+    <meta property="og:title" content="GreenChainz — Verified Sustainable Materials Procurement" />
+    <meta property="og:description" content="The B2B marketplace where architects find verified low-carbon materials and suppliers win specs. Instant EPD lookups, automated RFQs, and real carbon savings." />
+    <meta property="og:url" content="https://greenchainz.com/" />
+    <meta property="og:image" content="https://greenchainz.com/images/og-image-homepage.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GreenChainz — Verified Sustainable Materials Procurement" />
+    <meta name="twitter:description" content="The B2B marketplace where architects find verified low-carbon materials and suppliers win specs." />
+    <meta name="twitter:image" content="https://greenchainz.com/images/og-image-homepage.jpg" />
+    <!-- /OG:DEFAULT -->
     <meta name="msvalidate.01" content="2DC93450D2C906A117E98315FAD70579" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />    
-    <!-- THIS IS THE START OF A COMMENT BLOCK, BLOCK TO BE DELETED: Google Fonts here, example:
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    THIS IS THE END OF A COMMENT BLOCK, BLOCK TO BE DELETED -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <!-- Preload the header logo — it appears above the fold on every page -->
+    <link rel="preload" href="/brand/greenchainz-icon.webp" as="image" fetchpriority="high" />
+    <!-- Early connection for HubSpot — saves 1 RTT on its first script request -->
+    <link rel="preconnect" href="https://js-na2.hs-scripts.com" />
+    <link rel="dns-prefetch" href="https://js-na2.hs-analytics.net" />
+    <link rel="dns-prefetch" href="https://js-na2.hscollectedforms.net" />
     <!-- CookieYes Cookie Consent -->
-    <script id="cookieyes" type="text/javascript" src="https://cdn-cookieyes.com/client_data/80d633ac80d2b968de32ce14/script.js"></script>
+    <script
+      id="cookieyes"
+      type="text/javascript"
+      async
+      defer
+      src="https://cdn-cookieyes.com/client_data/80d633ac80d2b968de32ce14/script.js"></script>
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
-    <!-- Intercom Messenger -->
-    <script>
-      window.intercomSettings = {
-        app_id: "cqtm1euj",
-        api_base: "https://api-iam.intercom.io"
-      };
-    </script>
-    <script async src="https://widget.intercom.io/widget/cqtm1euj"></script>
   </body>
 
 </html>
+                                                                                                                                                                                                                                                                                                

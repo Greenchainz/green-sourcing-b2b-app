@@ -4,13 +4,14 @@
  * Provides geocoding, distance calculation, and route planning
  * using Azure Maps REST APIs with Haversine fallback.
  *
- * Requires AZURE_MAPS_SUBSCRIPTION_KEY environment variable.
+ * Uses managed identity auth when configured, with guarded key fallback.
  *
  * Ported from Manus prototype. Framework-agnostic — uses fetch only.
  */
 
+import { getAzureMapsAuth } from "../../azure/azure-maps-auth";
+
 const AZURE_MAPS_BASE_URL = "https://atlas.microsoft.com";
-const AZURE_MAPS_SUBSCRIPTION_KEY = process.env.AZURE_MAPS_SUBSCRIPTION_KEY || "";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,22 +37,25 @@ export interface RouteResult {
  * Geocode an address to coordinates using Azure Maps Search API.
  */
 export async function geocodeAddress(address: string): Promise<Coordinates | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return null;
   }
 
   try {
     const params = new URLSearchParams({
       "api-version": "1.0",
-      "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
       query: address,
       limit: "1",
       countrySet: "US",
     });
 
     const response = await fetch(
-      `${AZURE_MAPS_BASE_URL}/search/address/json?${params}`
+      `${AZURE_MAPS_BASE_URL}/search/address/json?${params}`,
+      {
+        headers: auth.headers,
+      }
     );
     const data = await response.json() as any;
 
@@ -81,22 +85,25 @@ export async function calculateDistance(
   origin: Coordinates,
   destination: Coordinates
 ): Promise<DistanceResult | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return calculateHaversineDistance(origin, destination);
   }
 
   try {
     const params = new URLSearchParams({
       "api-version": "1.0",
-      "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
     });
 
     const response = await fetch(
       `${AZURE_MAPS_BASE_URL}/route/matrix/json?${params}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...auth.headers,
+        },
         body: JSON.stringify({
           origins: {
             type: "MultiPoint",
@@ -139,20 +146,23 @@ export async function calculateRoute(
   origin: Coordinates,
   destination: Coordinates
 ): Promise<RouteResult | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return null;
   }
 
   try {
     const params = new URLSearchParams({
       "api-version": "1.0",
-      "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
       query: `${origin.latitude},${origin.longitude}:${destination.latitude},${destination.longitude}`,
     });
 
     const response = await fetch(
-      `${AZURE_MAPS_BASE_URL}/route/directions/json?${params}`
+      `${AZURE_MAPS_BASE_URL}/route/directions/json?${params}`,
+      {
+        headers: auth.headers,
+      }
     );
     const data = await response.json() as any;
     const routes = data?.routes;

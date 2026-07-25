@@ -6,6 +6,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { canAccessAdmin } from "./admin-access";
 
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
@@ -29,7 +30,7 @@ class SDKServer {
   private getSessionSecret() {
     const secret = ENV.cookieSecret;
     if (!secret) {
-      throw new Error("[Auth] JWT_SECRET is not set — refusing to sign/verify sessions with an empty key");
+      throw new Error("[Auth] JWT_SECRET is not set - refusing to sign/verify sessions with an empty key");
     }
     return new TextEncoder().encode(secret);
   }
@@ -49,6 +50,40 @@ class SDKServer {
       },
       options
     );
+  }
+
+  /**
+   * Create a short-lived Forma extension token carrying ext:'forma'.
+   * Expires in 5 minutes. Distinct from the session cookie — only valid
+   * for /api/public/* Forma extension endpoints.
+   */
+  async createFormaExtensionToken(openId: string, name: string): Promise<string> {
+    const FORMA_TOKEN_TTL_MS = 5 * 60 * 1000;
+    const expirationSeconds = Math.floor((Date.now() + FORMA_TOKEN_TTL_MS) / 1000);
+    const secretKey = this.getSessionSecret();
+
+    return new SignJWT({ openId, appId: ENV.appId, name, ext: "forma" })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setExpirationTime(expirationSeconds)
+      .sign(secretKey);
+  }
+
+  /**
+   * Verify a Forma extension token. Returns the openId if valid and the token
+   * carries ext:'forma'; returns null otherwise.
+   */
+  async verifyFormaToken(token: string): Promise<string | null> {
+    if (!token) return null;
+    try {
+      const secretKey = this.getSessionSecret();
+      const { payload } = await jwtVerify(token, secretKey, { algorithms: ["HS256"] });
+      const { openId, ext } = payload as Record<string, unknown>;
+      if (typeof openId !== "string" || !openId) return null;
+      if (ext !== "forma") return null;
+      return openId;
+    } catch {
+      return null;
+    }
   }
 
   async signSession(
@@ -85,7 +120,7 @@ class SDKServer {
       });
       const { openId, appId, name } = payload as Record<string, unknown>;
 
-      // Only openId is required — appId (VITE_APP_ID) is a build-time var that
+      // Only openId is required - appId (VITE_APP_ID) is a build-time var that
       // is empty at runtime in Container Apps, so we cannot require it here.
       if (!isNonEmptyString(openId)) {
         console.warn("[Auth] Session payload missing required fields");
@@ -118,9 +153,21 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    const now = new Date();
+    if (user.role === "admin" && !canAccessAdmin(user)) {
+      console.warn(`[Auth] Blocking admin role for non-founder account: ${user.email ?? user.openId}`);
+      await db.upsertUser({
+        openId: user.openId,
+        role: "buyer",
+        lastSignedIn: now,
+      });
+
+      return { ...user, role: "buyer" };
+    }
+
     await db.upsertUser({
       openId: user.openId,
-      lastSignedIn: new Date(),
+      lastSignedIn: now,
     });
 
     return user;

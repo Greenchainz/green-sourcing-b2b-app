@@ -20,7 +20,6 @@
 *.sql  text eol=lf
 *.env  text eol=lf
 *.env.* text eol=lf
-
 # Binary files — never touch line endings
 *.png  binary
 *.jpg  binary
@@ -36,12 +35,10 @@
 *.woff binary
 *.woff2 binary
 *.eot  binary
-
 # Shell scripts must be LF
-*.sh   text eol=lf
 *.bash text eol=lf
-
 # Windows shell scripts — keep CRLF
 *.cmd  text eol=crlf
 *.bat  text eol=crlf
 *.ps1  text eol=crlf
+*.mp4 filter=lfs diff=lfs merge=lfs -text

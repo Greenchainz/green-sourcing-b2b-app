@@ -7,7 +7,7 @@ import {
   architectReferrals,
   architectDownloadEvents,
 } from "../../drizzle/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { sendArchitectWelcomeEmail, sendFounderNewArchitectAlert } from "../email-service";
 
 /**

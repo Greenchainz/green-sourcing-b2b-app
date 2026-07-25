@@ -21,7 +21,7 @@ async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${BACKEND_URL}${endpoint}`;
-  
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -49,7 +49,18 @@ async function apiFetch<T>(
     // Handle empty responses
     const text = await response.text();
     if (!text) return {} as T;
-    
+
+    // Guard against HTML responses (e.g. proxy error pages, server restarts).
+    // JSON.parse on HTML produces the cryptic "Unexpected token '<'" error.
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+      // Only warn — don't expose the full HTML body in the error message
+      const preview = text.slice(0, 120).replace(/\n/g, ' ');
+      throw new Error(
+        `Server returned non-JSON response (${contentType || 'unknown content-type'}): ${preview}`
+      );
+    }
+
     return JSON.parse(text) as T;
   } catch (error) {
     // Only log non-auth errors (401s already handled above)
@@ -77,33 +88,6 @@ function post<T>(endpoint: string, data?: unknown): Promise<T> {
   });
 }
 
-/**
- * PUT request
- */
-function put<T>(endpoint: string, data?: unknown): Promise<T> {
-  return apiFetch<T>(endpoint, {
-    method: 'PUT',
-    body: data ? JSON.stringify(data) : undefined,
-  });
-}
-
-/**
- * PATCH request
- */
-function patch<T>(endpoint: string, data?: unknown): Promise<T> {
-  return apiFetch<T>(endpoint, {
-    method: 'PATCH',
-    body: data ? JSON.stringify(data) : undefined,
-  });
-}
-
-/**
- * DELETE request
- */
-function del<T>(endpoint: string): Promise<T> {
-  return apiFetch<T>(endpoint, { method: 'DELETE' });
-}
-
 // ============================================================================
 // API ENDPOINTS
 // ============================================================================
@@ -124,10 +108,11 @@ export async function checkHealth() {
 
 /**
  * Get current user from the Express backend /api/auth/me endpoint.
- * Session is validated via the app_session_id cookie (JWT).
+ * Identity comes from the Easy Auth principal headers.
  */
 export async function getCurrentUser() {
   const response = await get<{
+    authenticated: boolean;
     user: {
       id: string;
       email: string;
@@ -136,10 +121,11 @@ export async function getCurrentUser() {
       isAdmin: boolean;
       isSupplier: boolean;
       avatarUrl: string | null;
-    };
+    } | null;
   }>('/api/auth/me');
 
   const { user } = response;
+  if (!user) return null;
   return {
     id: user.id,
     email: user.email,
@@ -174,7 +160,7 @@ export async function getSuppliers(params?: {
   if (params?.limit) query.set('limit', params.limit.toString());
   if (params?.search) query.set('search', params.search);
   if (params?.verified !== undefined) query.set('verified', params.verified.toString());
-  
+
   const queryString = query.toString();
   return get<{
     suppliers: Array<{
@@ -248,7 +234,7 @@ export async function getSupplierRFQs(params?: {
 }) {
   const query = new URLSearchParams();
   if (params?.status) query.set('status', params.status);
-  
+
   const queryString = query.toString();
   return get<{
     rfqs: Array<{

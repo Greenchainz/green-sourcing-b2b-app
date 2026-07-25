@@ -1,3 +1,5 @@
+import { captureEvent } from "./services/learning-pipeline";
+
 /**
  * Public Materials API — unauthenticated REST endpoints for the Forma Extension.
  *
@@ -6,21 +8,98 @@
  * in an iframe and has no access to the user's GreenChainz session cookie.
  *
  * Routes:
- *   GET /api/public/materials/search   — keyword + category search
- *   GET /api/public/materials/:id/swaps — greener alternatives (SWAP engine)
+ *   GET  /api/public/materials/search    — keyword + category search
+ *   GET  /api/public/materials/:id/swaps — greener alternatives (SWAP engine)
+ *   GET  /api/public/badge/material/:id.svg — embeddable Verified score badge (SVG)
+ *   GET  /api/public/auth/verify         — validate a Forma extension Bearer token
+ *   POST /api/public/rfq/add-item        — create an RFQ from the Forma extension
  */
 
 import { Router, type Request, type Response } from 'express';
 import { getDb } from './db';
-import { materials, manufacturers } from '../drizzle/schema';
-import { eq, like, and, lte, or } from 'drizzle-orm';
+import { materials, manufacturers, materialCertifications, rfqRequests, suppliers, users } from '../drizzle/schema';
+import { eq, like, and, lte, or, desc, sql, ilike, getTableColumns } from 'drizzle-orm';
+import { sdk } from './_core/sdk';
+import { computeMcs } from './services/mcs-score';
+import { renderMaterialBadgeSvg, type BadgeStyle, type BadgeTheme } from './services/material-badge';
 
 export const publicMaterialsRouter = Router();
+const SEARCH_CACHE_TTL_MS = 60_000;
+const SWAPS_CACHE_TTL_MS = 90_000;
+const MAX_CACHE_ENTRIES = 500;
+
+const responseCache = new Map<string, { expiresAt: number; payload: unknown }>();
+
+function pruneExpiredCacheEntries(): void {
+  const now = Date.now();
+  for (const [key, value] of responseCache.entries()) {
+    if (value.expiresAt <= now) responseCache.delete(key);
+  }
+}
+
+function stableQueryString(query: Request['query']): string {
+  const entries: [string, string][] = [];
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const arrayValue of value) entries.push([key, String(arrayValue)]);
+      continue;
+    }
+    entries.push([key, String(value)]);
+  }
+
+  entries.sort((a, b) => {
+    if (a[0] === b[0]) return a[1].localeCompare(b[1]);
+    return a[0].localeCompare(b[0]);
+  });
+
+  return new URLSearchParams(entries).toString();
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+function getCachedResponse<T>(key: string): T | null {
+  pruneExpiredCacheEntries();
+  const cached = responseCache.get(key);
+  if (!cached) return null;
+  return cached.payload as T;
+}
+
+function setCachedResponse(key: string, payload: unknown, ttlMs: number): void {
+  pruneExpiredCacheEntries();
+  if (responseCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = responseCache.keys().next().value;
+    if (oldestKey) responseCache.delete(oldestKey);
+  }
+  responseCache.set(key, { expiresAt: Date.now() + ttlMs, payload });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Extract and verify a Forma extension Bearer token from the Authorization header.
+ * Returns the decoded openId on success, or null if invalid/missing.
+ *
+ * Extension tokens are standard GreenChainz JWTs (signed with JWT_SECRET) with
+ * an extra `ext: "forma"` claim so they can't be confused with session cookies.
+ */
+async function verifyExtensionToken(req: Request): Promise<string | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  return sdk.verifyFormaToken(token);
+}
 
 // ── GET /api/public/materials/search ─────────────────────────────────────────
 
 publicMaterialsRouter.get('/materials/search', async (req: Request, res: Response) => {
   try {
+    const cacheKey = `materials-search:${stableQueryString(req.query)}`;
+    const cached = getCachedResponse<{ materials: unknown[] }>(cacheKey);
+    if (cached) return res.json(cached);
+
     const db = await getDb();
     if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -64,7 +143,7 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
         epdUrl:              materials.epdUrl,
         ec3Id:               materials.ec3Id,
         isVerified:          materials.hasEpd,
-        manufacturerName:    manufacturers.companyName,
+        manufacturerName:    manufacturers.name,
       })
       .from(materials)
       .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
@@ -85,7 +164,16 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
       certifications:      [] as string[],
     }));
 
-    return res.json({ materials: shaped });
+    // Passive learning: capture what users search for
+    void Promise.resolve(captureEvent({
+      type: shaped.length > 0 ? "search_query" : "search_zero_results",
+      query: q ?? category ?? undefined,
+      metadata: { category, resultCount: shaped.length, maxGwp, minMcs },
+    })).catch(() => {});
+
+    const responseBody = { materials: shaped };
+    setCachedResponse(cacheKey, responseBody, SEARCH_CACHE_TTL_MS);
+    return res.json(responseBody);
   } catch (err) {
     console.error('[public-api] materials/search error:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -96,13 +184,16 @@ publicMaterialsRouter.get('/materials/search', async (req: Request, res: Respons
 
 publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Response) => {
   try {
+    const cacheKey = `materials-swaps:${req.params.id}`;
+    const cached = getCachedResponse<{ alternatives: unknown[] }>(cacheKey);
+    if (cached) return res.json(cached);
+
     const db = await getDb();
     if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
     const materialId = Number(req.params.id);
     if (isNaN(materialId)) return res.status(400).json({ error: 'Invalid material ID' });
 
-    // Look up the source material
     const [source] = await db
       .select({
         id:       materials.id,
@@ -116,7 +207,6 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
 
     if (!source) return res.status(404).json({ error: 'Material not found' });
 
-    // Find lower-carbon alternatives in the same category
     const alternatives = await db
       .select({
         id:                  materials.id,
@@ -128,7 +218,7 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
         epdUrl:              materials.epdUrl,
         ec3Id:               materials.ec3Id,
         isVerified:          materials.hasEpd,
-        manufacturerName:    manufacturers.companyName,
+        manufacturerName:    manufacturers.name,
       })
       .from(materials)
       .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
@@ -136,10 +226,7 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
         and(
           like(materials.category, `%${source.category}%`),
           eq(materials.hasEpd, true),
-          // Only return materials with lower GWP than the source
-          source.gwpValue
-            ? lte(materials.gwpValue, source.gwpValue)
-            : undefined
+          source.gwpValue ? lte(materials.gwpValue, source.gwpValue) : undefined
         )
       )
       .limit(5);
@@ -161,9 +248,316 @@ publicMaterialsRouter.get('/materials/:id/swaps', async (req: Request, res: Resp
         certifications:      [] as string[],
       }));
 
-    return res.json({ alternatives: shaped });
+    const responseBody = { alternatives: shaped };
+    setCachedResponse(cacheKey, responseBody, SWAPS_CACHE_TTL_MS);
+    return res.json(responseBody);
   } catch (err) {
     console.error('[public-api] materials/swaps error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── GET /api/public/badge/material/:id.svg ────────────────────────────────────
+//
+// The "GreenChainz Verified" embeddable badge. Suppliers paste this on their own
+// product pages / websites; it always renders the live Material Credit Score
+// (identical math to the in-app score page). Unauthenticated + cacheable so it
+// works as a plain <img> on any external site.
+//
+// Query params:  style=flat|card   theme=light|dark
+// Accepts an optional ".svg" suffix on the id so the URL looks like an image.
+
+publicMaterialsRouter.get('/badge/material/:id', async (req: Request, res: Response) => {
+  const style: BadgeStyle = req.query.style === 'card' ? 'card' : 'flat';
+  const theme: BadgeTheme = req.query.theme === 'dark' ? 'dark' : 'light';
+
+  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+  // Conservative default: short cache so transient not-found / DB-unavailable /
+  // error fallbacks recover quickly. Successful badges get a long cache below.
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const fallback = (transient = false) => {
+    // Transient failures (DB down / render error) must not be cached, or a
+    // recovered material can stay "Unrated" at the edge for the cache lifetime.
+    if (transient) res.setHeader('Cache-Control', 'no-store');
+    return renderMaterialBadgeSvg({ score: 0, materialName: 'Material', verified: false, found: false, style, theme });
+  };
+
+  try {
+    const materialId = Number(String(req.params.id).replace(/\.svg$/i, ''));
+    if (!Number.isFinite(materialId)) return res.status(200).send(fallback());
+
+    const db = await getDb();
+    if (!db) return res.status(200).send(fallback(true));
+
+    const { embedding: _embedding, searchText: _searchText, ...scoreColumns } = getTableColumns(materials);
+    const rows = await db
+      .select({ material: scoreColumns, manufacturerName: manufacturers.name })
+      .from(materials)
+      .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+      .where(eq(materials.id, materialId))
+      .limit(1);
+
+    if (rows.length === 0) return res.status(200).send(fallback());
+    const { material, manufacturerName } = rows[0];
+
+    const certs = await db
+      .select()
+      .from(materialCertifications)
+      .where(eq(materialCertifications.materialId, materialId));
+
+    const { total } = computeMcs(material, certs);
+
+    const svg = renderMaterialBadgeSvg({
+      score: total,
+      materialName: material.name ?? 'Material',
+      manufacturerName,
+      verified: !!material.verified,
+      found: true,
+      style,
+      theme,
+    });
+
+    // Valid, found badge — safe to cache aggressively at the edge.
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+    return res.status(200).send(svg);
+  } catch (err) {
+    console.error('[public-api] badge error:', err);
+    return res.status(200).send(fallback(true));
+  }
+});
+
+// ── GET /api/public/auth/verify ───────────────────────────────────────────────
+//
+// Called by the Forma extension on startup to confirm the stored token is valid.
+// Returns 200 + { ok, user } or 401.
+
+publicMaterialsRouter.get('/auth/verify', async (req: Request, res: Response) => {
+  const openId = await verifyExtensionToken(req);
+  if (!openId) return res.status(401).json({ error: 'Invalid or expired token' });
+
+  try {
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+
+    const [user] = await db
+      .select({ id: users.id, name: users.name, email: users.email, role: users.role })
+      .from(users)
+      .where(eq(users.openId, openId))
+      .limit(1);
+
+    if (!user) return res.status(401).json({ error: 'User not found' });
+
+    return res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  } catch (err) {
+    console.error('[public-api] auth/verify error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── GET /api/public/suppliers ─────────────────────────────────────────────────
+//
+// Returns verified suppliers for the Revit plugin and other external consumers.
+// Unauthenticated — returns only non-sensitive fields (no email, no user IDs).
+// Optional query params: ?category=concrete  ?region=California
+
+publicMaterialsRouter.get('/suppliers', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+
+    const { category, region } = req.query as { category?: string; region?: string };
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 100);
+    const offset = Math.max(Number(req.query.offset ?? 0), 0);
+
+    const conditions = [eq(suppliers.verified, true)];
+    if (category?.trim()) {
+      const escapedCategory = `%${escapeLikePattern(category.trim())}%`;
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements_text(${suppliers.materialCategories}::jsonb) AS category_item
+          WHERE category_item ILIKE ${escapedCategory} ESCAPE '\\'
+        )`
+      );
+    }
+    if (region?.trim()) {
+      const regionTerm = `%${escapeLikePattern(region.trim())}%`;
+      conditions.push(
+        or(
+          ilike(suppliers.city, regionTerm),
+          ilike(suppliers.state, regionTerm),
+          ilike(suppliers.country, regionTerm)
+        )!
+      );
+    }
+
+    const whereClause = and(...conditions);
+    const [rows, countResult] = await Promise.all([
+      db
+      .select({
+        id:                   suppliers.id,
+        companyName:          suppliers.companyName,
+        website:              suppliers.website,
+        description:          suppliers.description,
+        materialCategories:   suppliers.materialCategories,
+        certifications:       suppliers.certifications,
+        city:                 suppliers.city,
+        state:                suppliers.state,
+        country:              suppliers.country,
+        sustainabilityScore:  suppliers.sustainabilityScore,
+        isPremium:            suppliers.isPremium,
+        logoUrl:              suppliers.logoUrl,
+        otifPercentage:       suppliers.otifPercentage,
+        avgLeadTimeDays:      suppliers.avgLeadTimeDays,
+        leadTimeVarianceDays: suppliers.leadTimeVarianceDays,
+        supplierZScore:       suppliers.supplierZScore,
+        inventoryVisibility:  suppliers.inventoryVisibility,
+      })
+      .from(suppliers)
+      .where(whereClause)
+      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
+      .limit(limit)
+      .offset(offset),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(suppliers)
+        .where(whereClause),
+    ]);
+
+    const count = Number(countResult[0]?.count) || 0;
+    return res.json({ count, limit, offset, suppliers: rows });
+  } catch (err) {
+    console.error('[public-api] suppliers error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /api/public/rfq/add-item ────────────────────────────────────────────
+//
+// Creates an RFQ from the Forma extension. Requires a valid extension Bearer token.
+// Finds the best-match verified supplier for the material's category and fires a
+// notification email to them.
+//
+// Body: { materialId: string, quantity: number, unit: string, projectName?: string }
+
+publicMaterialsRouter.post('/rfq/add-item', async (req: Request, res: Response) => {
+  const openId = await verifyExtensionToken(req);
+  if (!openId) {
+    return res.status(401).json({ error: 'Invalid or expired token — re-link your GreenChainz account' });
+  }
+
+  const { materialId, quantity, unit, projectName } = req.body as {
+    materialId?: unknown;
+    quantity?: unknown;
+    unit?: unknown;
+    projectName?: unknown;
+  };
+
+  if (!materialId || typeof materialId !== 'string') {
+    return res.status(400).json({ error: 'materialId is required' });
+  }
+  const qty = Number(quantity);
+  if (isNaN(qty) || qty <= 0) {
+    return res.status(400).json({ error: 'quantity must be a positive number' });
+  }
+  const unitStr  = typeof unit        === 'string' && unit.trim()        ? unit.trim()        : 'unit';
+  const project  = typeof projectName === 'string' && projectName.trim() ? projectName.trim() : 'Forma Project';
+
+  try {
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+
+    // 1. Resolve architect user
+    const [architect] = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.openId, openId))
+      .limit(1);
+
+    if (!architect) return res.status(401).json({ error: 'User not found' });
+
+    // 2. Resolve material → get category for supplier matching
+    const [material] = await db
+      .select({ id: materials.id, name: materials.name, category: materials.category })
+      .from(materials)
+      .where(eq(materials.id, Number(materialId)))
+      .limit(1);
+
+    if (!material) return res.status(404).json({ error: 'Material not found' });
+
+    // 3. Find best-match verified supplier (category match, premium first)
+    const [matchedSupplier] = await db
+      .select({ id: suppliers.id, companyName: suppliers.companyName, email: suppliers.email })
+      .from(suppliers)
+      .where(
+        and(
+          eq(suppliers.verified, true),
+          sql`EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(${suppliers.materialCategories}::jsonb) AS category
+            WHERE category ILIKE ${material.category}
+          )`
+        )
+      )
+      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
+      .limit(1);
+
+    // Fall back to any verified supplier if no category match
+    const fallbackRows = matchedSupplier ? [] : await db
+      .select({ id: suppliers.id, companyName: suppliers.companyName, email: suppliers.email })
+      .from(suppliers)
+      .where(eq(suppliers.verified, true))
+      .orderBy(desc(suppliers.isPremium), desc(suppliers.weightedRankScore))
+      .limit(1);
+
+    const supplier = matchedSupplier ?? fallbackRows[0];
+    if (!supplier) {
+      return res.status(503).json({
+        error: 'No verified suppliers available for this material category. Try again later.',
+      });
+    }
+
+    // 4. Insert RFQ record
+    const [inserted] = await db
+      .insert(rfqRequests)
+      .values({
+        architectId:  architect.id,
+        supplierId:   supplier.id,
+        materialId:   material.id,
+        materialType: material.name,
+        quantity:     String(qty),
+        specs:        `${unitStr} — submitted via Autodesk Forma`,
+        message:      `Project: ${project}\nMaterial: ${material.name} (${material.category})\nQuantity: ${qty} ${unitStr}\nSource: Autodesk Forma Extension`,
+        status:       'pending',
+      })
+      .returning({ id: rfqRequests.id });
+
+    if (!inserted) return res.status(500).json({ error: 'Failed to create RFQ' });
+
+    // 5. Notify supplier (fire-and-forget)
+    void import('./email-service')
+      .then(({ sendRfqNotificationEmail }) =>
+        sendRfqNotificationEmail({
+          supplierEmail: supplier.email,
+          supplierName:  supplier.companyName,
+          projectName:   project,
+          materialCount: 1,
+          matchScore:    matchedSupplier ? 90 : 60,
+          rfqId:         inserted.id,
+        })
+      )
+      .catch((err: unknown) => console.error('[public-api] RFQ email failed (non-critical):', err));
+
+    return res.status(201).json({
+      rfqId:        inserted.id,
+      supplierName: supplier.companyName,
+      message:      `RFQ sent to ${supplier.companyName}. They'll respond within 48 hours.`,
+    });
+
+  } catch (err) {
+    console.error('[public-api] rfq/add-item error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

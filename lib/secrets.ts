@@ -47,16 +47,14 @@ export async function loadSecrets(): Promise<void> {
 
   if (isProduction) {
     try {
-      // Uses User-Assigned Managed Identity: id-greenchainz-backend
-      // Accept either AZURE_MI_CLIENT_ID (canonical) or MANAGED_IDENTITY_CLIENT_ID (legacy alias)
+      // Accept either AZURE_MI_CLIENT_ID (canonical) or MANAGED_IDENTITY_CLIENT_ID (legacy alias).
+      // If neither is set (or both are empty), fall back to the container's system-assigned
+      // managed identity — ManagedIdentityCredential() with no args selects it automatically.
       const miClientId =
-        process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID;
-      if (!miClientId) {
-        throw new Error(
-          "[Secrets] AZURE_MI_CLIENT_ID (or MANAGED_IDENTITY_CLIENT_ID) env var is required in production"
-        );
-      }
-      const credential = new ManagedIdentityCredential(miClientId);
+        process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID || "";
+      const credential = miClientId
+        ? new ManagedIdentityCredential(miClientId)
+        : new ManagedIdentityCredential(); // system-assigned identity
       const client = new SecretClient(vaultUrl, credential);
 
       console.log(`[Secrets] Loading secrets from Key Vault: ${vaultUrl}`);
@@ -114,6 +112,17 @@ export async function loadSecrets(): Promise<void> {
         "fred-api-key": "FRED_API_KEY",
         // Resend (transactional email)
         "resend-api-key": "RESEND_API_KEY",
+        // Microsoft Marketplace billing webhook HMAC secret
+        // Used by /api/microsoft/subscription-webhook to verify x-ms-signature.
+        // Set this to the shared secret from Partner Center → Technical
+        // Configuration → Webhook. Enforced fail-closed at startup
+        // (security-preflight.ts) so the endpoint never accepts unsigned events.
+        "microsoft-webhook-secret": "MICROSOFT_WEBHOOK_SECRET",
+        // Azure Application Insights (telemetry + distributed tracing)
+        // KV name: appinsights-connection (lowercase, no underscores — Azure naming)
+        // Env var: APPLICATIONINSIGHTS_CONNECTION_STRING (SDK convention)
+        // Portal: Application Insights → Overview → Connection String
+        "appinsights-connection": "APPLICATIONINSIGHTS_CONNECTION_STRING",
       };
 
       for (const [vaultKey, envKey] of Object.entries(secretMappings)) {
@@ -158,12 +167,12 @@ export function getSecret(key: string): string | undefined {
  * Call after loadSecrets() to confirm the app is properly configured.
  */
 export function validateSecrets(): boolean {
-  // With Easy Auth enabled, OAuth client secrets are managed by the Azure
-  // Container Apps sidecar — we no longer need them in our process.env.
-  // Only DATABASE_URL and JWT_SECRET (for legacy session compat) are required.
+  // This app performs OAuth code exchange server-side, so the Entra client secret
+  // must be available at runtime (Key Vault in prod, env vars in dev).
   const requiredSecrets = [
     "DATABASE_URL",
     "JWT_SECRET",
+    "AZURE_AD_CLIENT_SECRET",
   ];
 
   const missing = requiredSecrets.filter((key) => !getSecret(key));

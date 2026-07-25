@@ -8,11 +8,10 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { fetchEC3EPDs, searchEC3EPDs } from "../ec3";
-import { transformEC3ToMaterial, transformEC3Batch } from "../ec3-transform";
+import { transformEC3Batch } from "../ec3-transform";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
 
 export const ec3Router = router({
   /**
@@ -38,8 +37,8 @@ export const ec3Router = router({
         };
       }
 
-      // Transform EPDs to materials
-      const transformedMaterials = transformEC3Batch(epds);
+      // Transform EPDs to materials (async — translates non-English content to English)
+      const transformedMaterials = await transformEC3Batch(epds);
 
       // Check which materials already exist (by EC3 ID)
       const ec3Ids = epds.map(epd => epd.id);
@@ -113,8 +112,8 @@ export const ec3Router = router({
         const db = await getDb();
         if (!db) throw new Error("Database connection failed");
         
-        const transformedMaterials = transformEC3Batch(epds);
-        
+        const transformedMaterials = await transformEC3Batch(epds);
+
         for (const material of transformedMaterials) {
           // Check if exists
           const existing = await db

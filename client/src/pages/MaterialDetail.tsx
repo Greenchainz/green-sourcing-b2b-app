@@ -78,7 +78,6 @@ export default function MaterialDetail() {
       { enabled: !!m?.name && !!m?.category }
     );
 
-  const [swapAnalysisAttempted, setSwapAnalysisAttempted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [, navigate] = useLocation();
 
@@ -243,13 +242,18 @@ export default function MaterialDetail() {
       </div>
     );
 
+  // Guard: ccpsByPersona can be null/undefined or an empty object when the API
+  // returns partial data — never call Object.keys() on it unconditionally.
+  const ccpsByPersona = m.ccpsByPersona ?? {};
   const defaultCcps =
-    m.ccpsByPersona?.default ||
-    m.ccpsByPersona?.[Object.keys(m.ccpsByPersona)[0]] ||
+    ccpsByPersona.default ||
+    ccpsByPersona[Object.keys(ccpsByPersona)[0]] ||
     {};
 
-  // Map findAlternatives results → MaterialSwapCard shape
-  const liveSwapCards = (alternatives ?? []).slice(0, 6).map((alt) => {
+  // Map findAlternatives results → MaterialSwapCard shape.
+  // Guard: findAlternatives may resolve to a non-array (e.g. an error object)
+  // on shape drift; `?? []` only covers null/undefined, so type-check here.
+  const liveSwapCards = (Array.isArray(alternatives) ? alternatives : []).slice(0, 6).map((alt) => {
     const pct = alt.gwpReductionPercent ?? 0;
     const tier: "good" | "better" | "best" =
       pct >= 30 ? "best" : pct >= 15 ? "better" : "good";
@@ -272,18 +276,10 @@ export default function MaterialDetail() {
   });
 
   // ── Derived display values (safe helpers) ──────────────────────────────────
-  const gwpValue = m.gwpValue ? Number(m.gwpValue).toFixed(4) : "—";
   const gwpUnit = m.gwpUnit || "kgCO₂e";
   const embodiedCarbon = m.embodiedCarbonPer1000sf
     ? `${Number(m.embodiedCarbonPer1000sf).toFixed(2)} kgCO₂e`
     : "—";
-  const recycledPct = m.recycledContentPct
-    ? Number(m.recycledContentPct).toFixed(0)
-    : "—";
-  const leadTimeDays = m.leadTimeDays ? String(m.leadTimeDays) : "—";
-  const price = m.pricePerUnit ? Number(m.pricePerUnit).toFixed(2) : "—";
-  const unit = m.priceUnit || "unit";
-  const warrantyYears = m.warrantyYears ? String(m.warrantyYears) : "—";
 
   // ── Carbon comparison chart data ───────────────────────────────────────────
   const gwpNum = m.gwpValue ? Number(m.gwpValue) : null;
@@ -354,9 +350,11 @@ export default function MaterialDetail() {
                     {m.productName && m.productName !== m.name && (
                       <p className="text-sm text-muted-foreground mt-0.5">{m.productName}</p>
                     )}
-                    <p className="text-sm text-muted-foreground mt-1">
-                      by <span className="font-medium text-foreground">{m.manufacturerName}</span>
-                    </p>
+                    {m.manufacturerName && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        by <span className="font-medium text-foreground">{m.manufacturerName}</span>
+                      </p>
+                    )}
                     {m.description && (
                       <p className="text-sm text-muted-foreground mt-3 leading-relaxed line-clamp-3">
                         {m.description}
@@ -665,7 +663,7 @@ export default function MaterialDetail() {
                                 ]}
                               />
                               <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                                {carbonChartData.map((entry, index) => (
+                                {carbonChartData.map((_, index) => (
                                   <Cell
                                     key={`cell-${index}`}
                                     fill={
@@ -840,7 +838,7 @@ export default function MaterialDetail() {
                     </p>
                   </CardHeader>
                   <CardContent>
-                    {m.leedCredits ? (
+                    {typeof m.leedCredits === "string" && m.leedCredits.trim() ? (
                       <div className="space-y-3">
                         {m.leedCredits
                           .split(/[,\n]+/)
@@ -1010,7 +1008,7 @@ export default function MaterialDetail() {
                 <CardTitle className="text-sm">Manufacturer</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-base font-semibold">{m.manufacturerName}</p>
+                <p className="text-base font-semibold">{m.manufacturerName ?? "—"}</p>
                 {m.manufacturerWebsite && (
                   <a
                     href={m.manufacturerWebsite}

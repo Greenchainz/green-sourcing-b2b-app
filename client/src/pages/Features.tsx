@@ -14,6 +14,10 @@ import {
   Zap,
   Bot,
   Scale,
+  Truck,
+  TrendingDown,
+  ShieldCheck,
+  ScanLine,
 } from 'lucide-react';
 
 const features = [
@@ -32,15 +36,30 @@ const features = [
   },
   {
     icon: FileText,
-    title: 'Automated RFQ System — BOM Drop to Instant Quotes',
+    title: 'RFQ Automation — Carbon Impact Before You Commit',
     slug: 'rfq-automation',
     description:
-      'Drop your Bill of Materials (BOM) and get compliance-ready supplier quotes without leaving Excel. No more manual RFQs, no more 3-day wait for callbacks. AI-powered validation ensures completeness before submission.',
+      'Every other carbon tool shows you the impact after design is locked. GreenChainz shows it at the procurement decision moment — before the RFQ goes out, while you still have a choice. Projected kgCO2e (A1–A3) is calculated live from EPD-backed supplier data and displayed on the review screen so architects can spec lower-carbon materials in the same workflow, not a separate audit.',
     highlights: [
-      'Upload BOM from Excel — instant RFQ generation',
-      'AI-powered completeness validation',
-      'Automatic CSI MasterFormat categorization',
-      'Multi-material RFQ support with compliance flags',
+      'Live carbon forecast (kgCO2e A1–A3) at RFQ review — before any PO is placed',
+      'EPD-backed GWP data from your verified supplier database, EC3 benchmark fallback',
+      'LEED MR credit context surfaced per material category, inline',
+      'AI parses spec PDFs → matches EPD-verified suppliers automatically',
+      'CSI Form 13.1A-compliant submittal generated with every approved RFQ',
+    ],
+  },
+  {
+    icon: Truck,
+    title: 'Supplier Vetting — No Vendor Goes Dark Mid-Project',
+    slug: 'supplier-vetting',
+    description:
+      'A sustainable spec that falls apart at procurement is just a nice idea. Before any supplier receives an RFQ through GreenChainz, we screen them for delivery reliability, financial health, and inventory readiness — so you\'re not the one chasing them three days before a pour. OTIF rate, lead time variance, and Altman Z-score financial health are visible on every supplier card before you commit.',
+    highlights: [
+      '95%+ OTIF (On-Time In-Full) required — flagged below 85%, removed below 75%',
+      'Altman Z-score financial screening — no vendors on the edge of insolvency',
+      'Average lead time + variance shown upfront — set realistic schedules',
+      'Real-time inventory visibility for premium suppliers — know before you ask',
+      'All vetting data re-checked quarterly by the GreenChainz AI Audit Agent',
     ],
   },
   {
@@ -98,15 +117,15 @@ const features = [
   },
   {
     icon: Shield,
-    title: 'Regulatory Compliance Tracking',
+    title: 'Liability-Proof Compliance Tracking',
     slug: 'compliance-tracking',
     description:
-      'Track compliance across every moving regulatory target: LEED v5, Buy Clean California Act, Local Law 97 (NYC), Title 24 (California), and more. Automatic alerts when regulations change or materials fall out of compliance.',
+      "Architects reject sustainable alternatives for one reason: liability. If the material fails code review or triggers a warranty claim, it's on them. GreenChainz removes that risk — ICC-ES reports, UL Listings, and third-party verified EPDs are confirmed before any submittal is generated. Every credential is defensive documentation, not just an environmental badge.",
     highlights: [
-      'LEED v5 mandatory embodied carbon (MRp2) tracking',
-      'Buy Clean Act GWP threshold monitoring',
-      'Local Law 97 building emissions compliance',
-      'Title 24 California energy code alignment',
+      'ICC-ES reports on file for bio-based and alternative materials — code review ready',
+      'UL Listings verified before submittal generation — not self-declared by manufacturers',
+      'EPDs backed by EPD International + EPD Hub — third-party verified, not manufacturer PDFs',
+      'LEED v5 MRp2, Buy Clean Act GWP thresholds (BCCA + 5 states), Local Law 97, Title 24 — all tracked automatically',
     ],
   },
   {
@@ -123,6 +142,20 @@ const features = [
     ],
   },
   {
+    icon: TrendingDown,
+    title: '25-Year TCO Calculator — OpEx to Property Value',
+    slug: 'tco-calculator',
+    description:
+      'Asset managers and ownership groups need one number: how does this material decision affect the building\'s value? The GreenChainz TCO calculator takes installation cost, maintenance cycles, replacement frequency, and energy savings and produces a 25-year lifecycle cost comparison with payback period. The NOI bridge converts annual OpEx savings directly into property valuation impact at any cap rate — the language ownership actually speaks.',
+    highlights: [
+      'Side-by-side 25-year cumulative cost chart — standard vs. sustainable',
+      'Payback period with year-by-year crossover visualization',
+      'Configurable cap rate → lower OpEx = higher property valuation',
+      'Maintenance cycle, replacement lifespan, and energy savings all modeled',
+      'One-click RFQ to the verified supplier from the results screen',
+    ],
+  },
+  {
     icon: Bot,
     title: 'AI Audit Agent',
     slug: 'ai-audit-agent',
@@ -135,14 +168,42 @@ const features = [
       'Audit report generation for stakeholder review',
     ],
   },
+  {
+    icon: ShieldCheck,
+    title: 'Buy Clean California Act Compliance — Built Into Every Swap',
+    slug: 'bcca-compliance',
+    description:
+      "California's Buy Clean Act sets hard GWP limits for structural steel, rebar, flat glass, and mineral wool on public projects — and similar laws are live in Colorado, Oregon, Washington, Minnesota, and New Mexico. GreenChainz hard-codes every BCCA threshold directly into the Swap Engine. When you search for an alternative, every candidate is immediately flagged as compliant, non-compliant, or a compliance upgrade over what you currently have specified. No spreadsheet. No manual lookup. The legal limit is built into the recommendation.",
+    highlights: [
+      'Hard-coded GWP limits for all 5 BCCA-eligible material categories (updated April 2026)',
+      'Every swap candidate shows compliance status, GWP margin, and % headroom vs. threshold',
+      '"Upgrades compliance" flag surfaces swaps that fix a non-compliant spec in one click',
+      'Mineral wool functional-unit comparison flagged automatically — no silent false positives',
+      'Covers Buy Clean laws in CA, CO, OR, WA, MN, NM — expanding as new states pass',
+    ],
+  },
+  {
+    icon: ScanLine,
+    title: 'EPD Auto-Fill — Upload Once, Profile Done',
+    slug: 'epd-auto-fill',
+    description:
+      "Suppliers have EPDs. They hate re-keying them into every platform they join. GreenChainz eliminates that entirely. Upload your EPD or product datasheet PDF — Azure Document Intelligence reads it, GPT-4o structures it, and your profile is pre-filled: GWP values, certifications, EPD number, program operator, validity dates, recycled content, and facility location. You review, adjust if needed, and save. The average supplier goes from zero to verified profile in under three minutes.",
+    highlights: [
+      'Drag-and-drop EPD, product sheet, or certification PDF — any format accepted',
+      'AI extracts GWP A1–A3, GWP A1–C4, EPD number, program, validity dates automatically',
+      'Certifications (FSC, GreenGuard, Declare, HPD, Cradle to Cradle) detected and pre-checked',
+      'Recycled content percentage and facility location pulled from document text',
+      'Confidence score shown per extraction — HIGH / MEDIUM / LOW — so you know what to verify',
+    ],
+  },
 ];
 
 export default function Features() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="Features — GreenChainz | EPD Lookup, RFQ Automation, Autodesk Forma Extension, Revit Plugin"
-        description="GreenChainz features: 100,000+ EPD lookup via EC3, automated RFQ from Excel BOMs, Autodesk Forma Extension, Revit Plugin, Chrome greenwashing detection, Carbon Compare, Material Credit Scores, LEED v5/Buy Clean compliance, and AI Audit Agent."
+        title="Features — GreenChainz | BCCA Compliance, EPD Auto-Fill, SWAP Engine, Revit Plugin"
+        description="GreenChainz features: Buy Clean California Act compliance built into every material swap, EPD PDF auto-fill for suppliers, SWAP Engine inside Revit and Forma, distance-aware RFQ routing, blockchain-verified EPDs, and CSI MasterFormat submittal generation."
         canonicalPath="/features"
       />
       <Header />
@@ -152,14 +213,25 @@ export default function Features() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-2">
-              <img src="/brand/autodesk-logo-white.png" alt="Autodesk" className="h-4 w-auto opacity-80" />
+              <picture>
+                <source srcSet="/brand/autodesk-logo-white.webp" type="image/webp" />
+                <img
+                  src="/brand/autodesk-logo-white.webp"
+                  alt="Autodesk"
+                  className="h-4 w-auto opacity-80"
+                  width={88}
+                  height={16}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
               Works with Forma Carbon Insights — the missing procurement layer
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-              The Arsenal
+              Spec → Swap → RFQ → Submittal
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Autodesk moved the audience into the room. GreenChainz is the booth — verified procurement for every carbon problem Forma Carbon Insights surfaces.
+              Each feature reinforces one thing: a verified decision engine that meets architects inside Revit and carries a material all the way to GC sign-off. Nothing here is a standalone tool. It's a chain.
             </p>
           </div>
         </div>
@@ -230,3 +302,4 @@ export default function Features() {
     </div>
   );
 }
+

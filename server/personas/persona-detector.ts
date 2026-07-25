@@ -11,7 +11,6 @@
 
 import {
   PERSONA_LAYERS,
-  ALL_SUB_PERSONAS,
   type PersonaId,
   type SubPersonaId,
   type SubPersona,

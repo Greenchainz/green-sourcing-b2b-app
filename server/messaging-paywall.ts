@@ -1,6 +1,6 @@
 import { eq, and, gte, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { users, messages, conversations, usageTracking } from "../drizzle/schema";
+import { users, messages, usageTracking } from "../drizzle/schema";
 
 /**
  * Messaging Paywall Service
@@ -25,6 +25,18 @@ export interface VideoLimitResult {
   tier: SubscriptionTier;
 }
 
+const MESSAGE_LIMITS = {
+  free: 10,
+  standard: 300,
+  premium: null,
+} as const;
+
+const VIDEO_LIMITS_MINUTES = {
+  free: 0,
+  standard: 900,
+  premium: 3000,
+} as const;
+
 /**
  * Get user's subscription tier from Microsoft subscriptions table
  */
@@ -32,7 +44,7 @@ async function getUserTier(userId: number): Promise<SubscriptionTier> {
   const db = await getDb();
   if (!db) return "free";
 
-  const user = await db
+  await db
     .select({ role: users.role })
     .from(users)
     .where(eq(users.id, userId))
@@ -54,7 +66,7 @@ async function getUserTier(userId: number): Promise<SubscriptionTier> {
  */
 export async function checkMessageLimit(
   userId: number,
-  conversationId: number
+  _conversationId: number
 ): Promise<MessageLimitResult> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -83,7 +95,7 @@ export async function checkMessageLimit(
       );
 
     const used = Number(messageCount[0]?.count) || 0;
-    const limit = 10;
+    const limit = MESSAGE_LIMITS.free;
 
     if (used >= limit) {
       return {
@@ -116,7 +128,7 @@ export async function checkMessageLimit(
       );
 
     const used = Number(messageCount[0]?.count) || 0;
-    const limit = 300; // covers both architects (50 real usage) and Verified Pro suppliers
+     const limit = MESSAGE_LIMITS.standard;
 
     if (used >= limit) {
       return {
@@ -158,7 +170,7 @@ export async function checkVideoLimit(userId: number): Promise<VideoLimitResult>
   }
 
   // Standard = Verified Pro suppliers: 15 hrs/month. Premium = unlimited (promo grants).
-  const limit = tier === "premium" ? 3000 : 900; // 900 min = 15hr, 3000 min = 50hr
+  const limit = VIDEO_LIMITS_MINUTES[tier];
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -278,13 +290,13 @@ export async function getUserUsageStats(userId: number) {
     tier,
     messages: {
       used: messagesUsed,
-      limit: tier === "free" ? null : tier === "standard" ? 50 : null, // null = unlimited
+      limit: MESSAGE_LIMITS[tier], // null = unlimited
     },
     video: {
       minutesUsed: videoMinutesUsed,
-      minutesLimit: tier === "free" ? 0 : tier === "standard" ? 600 : 3000,
+      minutesLimit: VIDEO_LIMITS_MINUTES[tier],
       hoursUsed: Math.round((videoMinutesUsed / 60) * 10) / 10,
-      hoursLimit: tier === "free" ? 0 : tier === "standard" ? 10 : 50,
+      hoursLimit: VIDEO_LIMITS_MINUTES[tier] / 60,
     },
   };
 }

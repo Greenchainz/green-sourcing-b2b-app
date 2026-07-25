@@ -88,7 +88,7 @@ These **MUST** be stored in Azure Key Vault. Production will **refuse to start**
 |----------|----------------------|-------------|
 | `AZURE_STORAGE_CONNECTION_STRING` | `storage-connection-string` | Blob storage (contains keys) |
 | `AZURE_REDIS_CONNECTION_STRING` | `redis-connection-string` | Redis URL with password |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | `appinsights-connection-string` | App Insights (contains key) |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | `appinsights-connection` | App Insights (contains instrumentation key) |
 | `SMTP_PASS` | `smtp-password` | Email service password |
 | `STRIPE_SECRET_KEY` | `stripe-secret-key` | Stripe API key |
 | `STRIPE_WEBHOOK_SECRET` | `stripe-webhook-secret` | Stripe webhook signing |
@@ -116,7 +116,7 @@ Set these as Container App environment variables. Not secrets, but environment-s
 | Variable | Example Value | Description | Required |
 |----------|---------------|-------------|----------|
 | `NODE_ENV` | `production` | Environment mode | ✅ Yes |
-| `PORT` | `3001` | Server port | ✅ Yes |
+| `PORT` | `3000` | Server port | ✅ Yes |
 | `FRONTEND_URL` | `https://greenchainz.com` | Frontend URL for CORS | ✅ Yes |
 | `BACKEND_URL` | `https://api.greenchainz.com` | Backend self-reference | ✅ Yes |
 | `POSTGRES_HOST` | `greenchainz.postgres.database.azure.com` | Database host | ✅ Yes |
@@ -168,6 +168,56 @@ Safe to include in configuration files. These are feature flags and tuning param
 
 ---
 
+## Canonical Key Vault Secret Names
+
+> **Single source of truth.** These names must match exactly in `lib/secrets.ts`,
+> `azure/containerapp-backend.yaml`, and `.github/workflows/deploy-azure.yml`.
+
+| Key Vault secret name | env var set at runtime | Loaded by |
+|---|---|---|
+| `jwt-secret` | `JWT_SECRET` | `lib/secrets.ts` + deploy workflow (secretref) |
+| `microsoft-client-secret` | `AZURE_AD_CLIENT_SECRET` | `lib/secrets.ts` + deploy workflow (secretref) |
+| `Database-URL` | `DATABASE_URL` | deploy workflow (secretref) |
+| `appinsights-connection` | `APPLICATIONINSIGHTS_CONNECTION_STRING` | `lib/secrets.ts` + deploy workflow (plain env var) |
+| `fred-api-key` | `FRED_API_KEY` | deploy workflow → `lib/secrets.ts` |
+| `resend-api-key` | `RESEND_API_KEY` | deploy workflow → `lib/secrets.ts` |
+| `ec3-api-key` | `EC3_API_KEY` | deploy workflow (conditional) |
+| `azure-maps-client-id` | `AZURE_MAPS_CLIENT_ID` | deploy workflow (conditional) |
+| `sentry-dsn` | `SENTRY_DSN` | deploy workflow (conditional) |
+| `sentry-auth-token` | `SENTRY_AUTH_TOKEN` | deploy workflow (build step) |
+| `sentry-org` | `SENTRY_ORG` | deploy workflow (build step) |
+| `sentry-project` | `SENTRY_PROJECT` | deploy workflow (build step) |
+| `REDIS-HOST` | `REDIS_HOST` | `lib/secrets.ts` |
+| `REDIS-PORT` | `REDIS_PORT` | `lib/secrets.ts` |
+| `WEBPUBSUB-CONNECTION-STRING` | `AZURE_WEBPUBSUB_CONNECTION_STRING` | `lib/secrets.ts` |
+| `AZURE-MAPS-KEY` | `AZURE_MAPS_SUBSCRIPTION_KEY` | `lib/secrets.ts` |
+| `EC3-API-KEY` | `EC3_API_KEY` | `lib/secrets.ts` |
+| `EC3-CLIENT-ID` | `EC3_CLIENT_ID` | `lib/secrets.ts` |
+| `EC3-CLIENT-SECRET` | `EC3_CLIENT_SECRET` | `lib/secrets.ts` |
+| `EC3-USERNAME` | `EC3_USERNAME` | `lib/secrets.ts` |
+| `EC3-PASSWORD` | `EC3_PASSWORD` | `lib/secrets.ts` |
+| `AUTODESK-CLIENT-ID` | `AUTODESK_CLIENT_ID` | `lib/secrets.ts` |
+| `AUTODESK-CLIENT-SECRET` | `AUTODESK_CLIENT_SECRET` | `lib/secrets.ts` |
+| `INTERCOM-SECRET` | `INTERCOM_SECRET` | `lib/secrets.ts` |
+| `microsoft-webhook-secret` | `MICROSOFT_WEBHOOK_SECRET` | `lib/secrets.ts` |
+| `AUTH-SECRET` | `AUTH_SECRET` | `lib/secrets.ts` |
+| `BETTER-AUTH-URL` | `BETTER_AUTH_URL` | `lib/secrets.ts` |
+| `LINKEDIN-CLIENTID` | `LINKEDIN_CLIENT_ID` | `lib/secrets.ts` |
+| `LINKEDIN-SECRET` | `LINKEDIN_CLIENT_SECRET` | `lib/secrets.ts` |
+| `ZEPTOMAIL-SMTP-USER` | `ZEPTOMAIL_SMTP_USER` | `lib/secrets.ts` |
+| `ZEPTOMAIL-SMTP-PASSWORD` | `ZEPTOMAIL_SMTP_PASSWORD` | `lib/secrets.ts` |
+| `FRONTEND-URL` | `FRONTEND_URL` | `lib/secrets.ts` |
+
+> **containerapp-backend.yaml note:** The YAML uses `AZURE-AD-CLIENT-SECRET` as the KV
+> secret name (line ~55). The deploy workflow uses `microsoft-client-secret`. These are
+> the same secret — just referenced under different names depending on the deploy path.
+> The authoritative name for new KV entries is `microsoft-client-secret`.
+
+> **Not secrets:** `AZURE_AD_CLIENT_ID` and `AZURE_AD_TENANT_ID` are public OAuth identifiers
+> hard-coded in the deploy workflow as plain env vars. Do not store them in Key Vault.
+
+---
+
 ## Azure Key Vault Setup
 
 ### Step 1: Create Key Vault
@@ -181,7 +231,7 @@ az keyvault create \
   --name greenchainz-vault \
   --resource-group rg-greenchainz \
   --location eastus \
-  --enable-rbac-authorization false
+  --enable-rbac-authorization true
 ```
 
 ### Step 2: Add Secrets
@@ -209,19 +259,32 @@ az keyvault secret set --vault-name greenchainz-vault --name azure-client-secret
 
 ### Step 3: Grant Access to Container App
 
-```bash
-# Get Container App's managed identity principal ID
-PRINCIPAL_ID=$(az containerapp identity show \
-  --name greenchainz-backend \
-  --resource-group rg-greenchainz \
-  --query principalId -o tsv)
+The Key Vault uses **RBAC authorization** (not access policies). Grant the managed identity
+the **Key Vault Secrets User** role scoped to the vault resource:
 
-# Grant Key Vault access
-az keyvault set-policy \
+```bash
+# Get the Container App's system-assigned managed identity principal ID
+PRINCIPAL_ID=$(az containerapp show \
+  --name greenchainz-backend-v2 \
+  --resource-group rg-greenchainz-prod-container \
+  --query "identity.principalId" -o tsv)
+
+# Scope the role assignment to the vault resource (not the whole RG)
+VAULT_ID=$(az keyvault show \
   --name greenchainz-vault \
-  --object-id $PRINCIPAL_ID \
-  --secret-permissions get list
+  --resource-group greenchainz-production \
+  --query id -o tsv)
+
+az role assignment create \
+  --assignee-object-id "$PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Key Vault Secrets User" \
+  --scope "$VAULT_ID"
 ```
+
+> **Note:** `az keyvault set-policy` is for access-policy mode vaults. It is **ineffective**
+> when `enableRbacAuthorization: true` (which this vault uses). Always use
+> `az role assignment create` for RBAC-mode Key Vaults.
 
 ---
 
@@ -234,7 +297,7 @@ In Azure Portal → Container App → Configuration → Environment Variables:
 ```yaml
 # Required for all deployments
 NODE_ENV: production
-PORT: 3001
+PORT: 3000
 FRONTEND_URL: https://greenchainz.com
 BACKEND_URL: https://api.greenchainz.com
 

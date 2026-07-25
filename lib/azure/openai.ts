@@ -21,6 +21,10 @@ import type {
   ChatCompletionCreateParamsStreaming,
   ChatCompletion,
 } from "openai/resources/chat/completions";
+import {
+  getAzureOpenAIAuthConfig,
+  isAzureOpenAIConfigured,
+} from "./openai-auth";
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -29,12 +33,16 @@ import type {
 export interface OpenAIConfig {
   /** Azure OpenAI endpoint URL */
   endpoint: string;
-  /** API key for authentication */
-  apiKey: string;
   /** Deployment name (e.g., 'gpt-4o', 'gpt-4-turbo') */
   deployment: string;
   /** API version (default: 2024-08-01-preview) */
-  apiVersion?: string;
+  apiVersion: string;
+  /** Auth mode */
+  authMode: "managed-identity" | "api-key";
+  /** API key when authMode is api-key */
+  apiKey?: string;
+  /** Token provider when authMode is managed-identity */
+  azureADTokenProvider?: (...args: unknown[]) => Promise<string>;
 }
 
 export interface ChatOptions {
@@ -99,26 +107,10 @@ let currentConfig: OpenAIConfig | null = null;
  * Get configuration from environment variables
  */
 function getConfigFromEnv(): OpenAIConfig {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const apiKey = process.env.AZURE_OPENAI_API_KEY;
-  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || DEFAULT_DEPLOYMENT;
-  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || DEFAULT_API_VERSION;
-
-  if (!endpoint) {
-    throw new Error(
-      "Missing AZURE_OPENAI_ENDPOINT environment variable. " +
-      "Please configure Azure OpenAI credentials."
-    );
-  }
-
-  if (!apiKey) {
-    throw new Error(
-      "Missing AZURE_OPENAI_API_KEY environment variable. " +
-      "Please configure Azure OpenAI credentials."
-    );
-  }
-
-  return { endpoint, apiKey, deployment, apiVersion };
+  return getAzureOpenAIAuthConfig({
+    defaultDeployment: DEFAULT_DEPLOYMENT,
+    defaultApiVersion: DEFAULT_API_VERSION,
+  });
 }
 
 /**
@@ -128,6 +120,7 @@ function configChanged(newConfig: OpenAIConfig): boolean {
   if (!currentConfig) return true;
   return (
     currentConfig.endpoint !== newConfig.endpoint ||
+    currentConfig.authMode !== newConfig.authMode ||
     currentConfig.apiKey !== newConfig.apiKey ||
     currentConfig.deployment !== newConfig.deployment ||
     currentConfig.apiVersion !== newConfig.apiVersion
@@ -148,13 +141,20 @@ export function getOpenAIClient(): AzureOpenAI {
   }
 
   currentConfig = config;
-  openaiClient = new AzureOpenAI({
+  const clientOptions: ConstructorParameters<typeof AzureOpenAI>[0] = {
     endpoint: config.endpoint,
-    apiKey: config.apiKey,
     apiVersion: config.apiVersion,
     deployment: config.deployment,
     maxRetries: MAX_RETRIES,
-  });
+  };
+
+  if (config.authMode === "managed-identity" && config.azureADTokenProvider) {
+    clientOptions.azureADTokenProvider = config.azureADTokenProvider;
+  } else if (config.apiKey) {
+    clientOptions.apiKey = config.apiKey;
+  }
+
+  openaiClient = new AzureOpenAI(clientOptions);
 
   console.log(`✅ Azure OpenAI client initialized (deployment: ${config.deployment})`);
   return openaiClient;
@@ -164,12 +164,10 @@ export function getOpenAIClient(): AzureOpenAI {
  * Check if Azure OpenAI is configured
  */
 export function isOpenAIConfigured(): boolean {
-  try {
-    getConfigFromEnv();
-    return true;
-  } catch {
-    return false;
-  }
+  return isAzureOpenAIConfigured({
+    defaultDeployment: DEFAULT_DEPLOYMENT,
+    defaultApiVersion: DEFAULT_API_VERSION,
+  });
 }
 
 // ============================================================================
@@ -319,7 +317,7 @@ export async function* streamChat(
     }
   } catch (error) {
     console.error("❌ Streaming chat failed:", error);
-    throw new Error(`Streaming chat failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Streaming chat failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 
@@ -500,7 +498,7 @@ export async function generateEmbedding(
     return response.data[0].embedding;
   } catch (error) {
     console.error("❌ Embedding generation failed:", error);
-    throw new Error(`Embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 }
 

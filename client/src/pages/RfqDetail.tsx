@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRoute } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, MapPin, Package, Calendar, Clock, Send, ArrowLeft } from "lucide-react";
+import { AlertCircle, MapPin, Package, Send, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
@@ -59,7 +59,6 @@ export default function RfqDetail() {
     try {
       await submitBidMutation.mutateAsync({
         rfqId: rfqId || 0,
-        supplierId: supplierData.id,
         bidPrice: parseFloat(bidPrice),
         leadDays: parseInt(leadDays),
         notes: bidNotes || undefined,

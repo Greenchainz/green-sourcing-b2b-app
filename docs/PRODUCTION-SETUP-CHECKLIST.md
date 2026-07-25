@@ -13,14 +13,14 @@ This document outlines the **MANUAL** steps required to deploy GreenChainz to pr
 
 Create a Key Vault and add the following secrets (do not put these in `Container App` env vars directly if possible, or use secret references):
 
-| Secret Name              | Description                                 | Source                    |
-| :----------------------- | :------------------------------------------ | :------------------------ |
-| `JWT_SECRET`             | 32+ char random string for Auth             | `openssl rand -base64 48` |
-| `SESSION_SECRET`         | 32+ char random string for Sessions         | `openssl rand -base64 48` |
-| `COOKIE_SECRET`          | 32+ char random string for Cookies          | `openssl rand -base64 48` |
-| `AZURE_CLIENT_SECRET`    | Azure AD App Client Secret                  | Azure Portal (App Reg)    |
-| `LINKEDIN_CLIENT_SECRET` | LinkedIn App Client Secret                  | LinkedIn Developers       |
-| `SMTP_PASS`              | Email Provider Password                     | Zoho/SendGrid             |
+| Secret Name              | Description                         | Source                    |
+| :----------------------- | :---------------------------------- | :------------------------ |
+| `JWT_SECRET`             | 32+ char random string for Auth     | `openssl rand -base64 48` |
+| `SESSION_SECRET`         | 32+ char random string for Sessions | `openssl rand -base64 48` |
+| `COOKIE_SECRET`          | 32+ char random string for Cookies  | `openssl rand -base64 48` |
+| `AZURE_CLIENT_SECRET`    | Azure AD App Client Secret          | Azure Portal (App Reg)    |
+| `LINKEDIN_CLIENT_SECRET` | LinkedIn App Client Secret          | LinkedIn Developers       |
+| `SMTP_PASS`              | Email Provider Password             | Zoho/SendGrid             |
 
 ### B. Environment Variables (Container Configuration)
 
@@ -32,6 +32,10 @@ Ensure the following are set in your `Container App` configuration:
 - `DATABASE_URL`: Full PostgreSQL connection string (SSL required)
 - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` (if using Redis)
 - `AZURE_STORAGE_CONNECTION_STRING`
+
+Optional (About page video):
+
+- `ABOUT_VIDEO_BLOB_KEY`: Blob key in the `founder-videos` Azure Storage container (e.g. `about/about-video-faststart.mp4`). Server-side only — the tRPC `founderVideo.aboutVideo` endpoint generates a short-lived SAS URL at runtime.
 
 ---
 

@@ -11,9 +11,11 @@ import { getDb } from "./db";
 import { callHistory, monthlyCallUsage, suppliers, supplierSubscriptions } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { broadcastNotification } from "./webpubsub-manager";
+import { createDistributedCallSessionStore } from "./services/distributed-call-session-store";
 
 export interface CallSession {
   callId: string;
+  groupCallId: string; // ACS group call UUID — both parties join this room
   conversationId: number;
   callerId: number;
   receiverId: number;
@@ -22,8 +24,7 @@ export interface CallSession {
   status: "ringing" | "active" | "ended" | "rejected" | "missed";
 }
 
-// In-memory store for active calls
-const activeCalls = new Map<string, CallSession>();
+const callSessionStore = createDistributedCallSessionStore<CallSession>("voice-video");
 
 /**
  * Get supplier tier for a user
@@ -49,7 +50,7 @@ export async function getSupplierTier(userId: number): Promise<"free" | "standar
     .limit(1);
 
   if (subscription.length === 0) return "free";
-  
+
   // Map supplier tiers (free/premium) to calling tiers
   // For suppliers: free=0 min, premium=unlimited
   // Standard tier doesn't exist for suppliers, only for buyers
@@ -119,7 +120,7 @@ export async function initiateCall(params: {
   callerId: number;
   receiverId: number;
   callType: "voice" | "video";
-}): Promise<{ callId: string; session: CallSession }> {
+}): Promise<{ callId: string; groupCallId: string; session: CallSession }> {
   const { conversationId, callerId, receiverId, callType } = params;
 
   // Check caller's tier limits
@@ -131,9 +132,12 @@ export async function initiateCall(params: {
   }
 
   const callId = `call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  // RFC-4122 v4 UUID — both parties join the same ACS group call room
+  const groupCallId = crypto.randomUUID();
 
   const session: CallSession = {
     callId,
+    groupCallId,
     conversationId,
     callerId,
     receiverId,
@@ -142,7 +146,7 @@ export async function initiateCall(params: {
     status: "ringing",
   };
 
-  activeCalls.set(callId, session);
+  await callSessionStore.set(callId, session, [callerId, receiverId]);
 
   // Save to database
   const db = await getDb();
@@ -154,30 +158,32 @@ export async function initiateCall(params: {
       callType,
       status: "missed", // Default to missed, will update if accepted
       startTime: session.startedAt,
+      groupCallId,
     });
   }
 
-  // Notify receiver via WebPubSub
+  // Notify receiver via WebPubSub — include groupCallId so both sides can join same room
   await broadcastNotification(receiverId, {
     type: "call_incoming",
     callId,
+    groupCallId,
     callerId,
     callType,
     conversationId,
   });
 
-  return { callId, session };
+  return { callId, groupCallId, session };
 }
 
 /**
  * Accept a call
  */
 export async function acceptCall(callId: string): Promise<CallSession | null> {
-  const session = activeCalls.get(callId);
+  const session = await callSessionStore.get(callId);
   if (!session) return null;
 
   session.status = "active";
-  activeCalls.set(callId, session);
+  await callSessionStore.set(callId, session, [session.callerId, session.receiverId]);
 
   // Update database
   const db = await getDb();
@@ -208,7 +214,7 @@ export async function acceptCall(callId: string): Promise<CallSession | null> {
  * Reject a call
  */
 export async function rejectCall(callId: string): Promise<void> {
-  const session = activeCalls.get(callId);
+  const session = await callSessionStore.get(callId);
   if (!session) return;
 
   session.status = "rejected";
@@ -234,14 +240,14 @@ export async function rejectCall(callId: string): Promise<void> {
     callId,
   });
 
-  activeCalls.delete(callId);
+  await callSessionStore.delete(callId);
 }
 
 /**
  * End a call and track usage
  */
 export async function endCall(callId: string, userId: number): Promise<{ durationMinutes: number } | null> {
-  const session = activeCalls.get(callId);
+  const session = await callSessionStore.get(callId);
   if (!session) return null;
 
   session.status = "ended";
@@ -318,7 +324,7 @@ export async function endCall(callId: string, userId: number): Promise<{ duratio
     durationMinutes,
   });
 
-  activeCalls.delete(callId);
+  await callSessionStore.delete(callId);
 
   return { durationMinutes };
 }
@@ -326,6 +332,6 @@ export async function endCall(callId: string, userId: number): Promise<{ duratio
 /**
  * Get active call session
  */
-export function getCallSession(callId: string): CallSession | null {
-  return activeCalls.get(callId) || null;
+export async function getCallSession(callId: string): Promise<CallSession | null> {
+  return await callSessionStore.get(callId);
 }

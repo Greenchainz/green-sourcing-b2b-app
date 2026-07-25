@@ -3,6 +3,7 @@ import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { trpc } from "@/lib/trpc";
+import { openArcadeNudge } from "@/components/arcade/arcadeBus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +47,6 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
   // microsoftOrderId comes from the Azure Marketplace purchase flow (purchaseToken).
   // Pre-activation: order ID is optional; platform proceeds with dev bypass.
   const [microsoftOrderId] = useState<string | undefined>(undefined);
-  const [accessConfirmed] = useState(true); // true until ISV billing goes live
 
   const { data: materialsData } = trpc.materials.list.useQuery({
     search: "",
@@ -61,7 +61,6 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
     register,
     control,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<RfqFormData>({
@@ -92,6 +91,8 @@ export function RfqCreationForm({ onSuccess, onCancel }: RfqCreationFormProps) {
 
       alert(`RFQ #${result.rfqId} has been created and suppliers have been matched.`);
       reset();
+      // Easter egg: invite the buyer to the arcade while suppliers respond.
+      openArcadeNudge({ reason: "rfq-sent" });
       setTimeout(() => {
         setSubmitStatus(null);
         onSuccess?.();

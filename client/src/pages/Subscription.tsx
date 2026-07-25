@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Check, X, Zap, MessageCircle, Video } from "lucide-react";
 
 export default function Subscription() {
-  const { data: subscription, isLoading: subLoading } = trpc.microsoftSubscription.getMySubscription.useQuery();
-  const { data: tier, isLoading: tierLoading } = trpc.microsoftSubscription.getMyTier.useQuery();
-  const { data: usageStats } = trpc.messaging.getUserUsageStats.useQuery();
+  const { data: subscription, isLoading: subLoading, error: subError } = trpc.microsoftSubscription.getMySubscription.useQuery(undefined, { retry: false });
+  const { data: tier, isLoading: tierLoading, error: tierError } = trpc.microsoftSubscription.getMyTier.useQuery(undefined, { retry: false });
+  const { data: usageStats } = trpc.messaging.getUserUsageStats.useQuery(undefined, { retry: false });
 
   if (subLoading || tierLoading) {
     return (
@@ -16,6 +16,40 @@ export default function Subscription() {
           <div className="h-8 bg-muted rounded w-1/3"></div>
           <div className="h-32 bg-muted rounded"></div>
         </div>
+      </div>
+    );
+  }
+
+  const isUnauthorized =
+    (subError as any)?.data?.code === "UNAUTHORIZED" ||
+    (tierError as any)?.data?.code === "UNAUTHORIZED";
+
+  if (isUnauthorized) {
+    return (
+      <div className="container mx-auto py-16 text-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="py-12">
+            <Zap className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Sign in to view your subscription</h2>
+            <p className="text-muted-foreground">
+              You need to be signed in to see your plan and usage details.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (subError || tierError) {
+    return (
+      <div className="container mx-auto py-16 text-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="py-12">
+            <p className="text-muted-foreground">
+              {subError?.message ?? tierError?.message ?? "Something went wrong loading your subscription."}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -37,8 +71,8 @@ export default function Subscription() {
       price: "$99/month",
       color: "bg-blue-500",
       features: [
-        { text: "50 messages per month", included: true },
-        { text: "10 hours WebRTC video per month", included: true },
+        { text: "300 messages per month", included: true },
+        { text: "15 hours WebRTC video per month", included: true },
         { text: "Advanced material search", included: true },
         { text: "Priority RFQ matching", included: true },
         { text: "Material swap recommendations", included: true },

@@ -8,10 +8,10 @@ import {
   decimal,
   boolean,
   integer,
-  smallint,
   real,
   date,
   json,
+  uuid,
   index,
   uniqueIndex,
   customType,
@@ -76,6 +76,7 @@ export const supplierTierEnum = pgEnum("supplier_tier", ["free", "standard", "pr
 export const supplierStatusEnum = pgEnum("supplier_status", ["active", "canceled", "past_due", "suspended", "pending"]);
 export const buyerStatusEnum = pgEnum("buyer_status", ["active", "canceled", "past_due", "suspended", "pending", "trial"]);
 export const verificationStatusEnum = pgEnum("verification_status", ["pending", "approved", "rejected"]);
+export const supplierVerifiedBadgeStatusEnum = pgEnum("supplier_verified_badge_status", ["UNVERIFIED", "PARTIAL", "VERIFIED"]);
 export const usageDimensionEnum = pgEnum("usage_dimension", [
   "rfq_submission", "ai_query", "swap_analysis", "ccps_export",
   "material_comparison", "supplier_match", "message_thread",
@@ -89,6 +90,29 @@ export const annualProjectVolumeEnum = pgEnum("annual_project_volume", [
   "under_1m", "1m_10m", "10m_50m", "over_50m",
 ]);
 export const architectStatusEnum = pgEnum("architect_status", ["pending", "active"]);
+export const submittalStatusEnum = pgEnum("submittal_status", [
+  "draft",
+  "submitted",
+  "approved_as_noted",
+  "revise_and_resubmit",
+  "rejected",
+  "closed",
+]);
+export const submittalBallInCourtEnum = pgEnum("submittal_ball_in_court", [
+  "buyer",
+  "architect",
+  "supplier",
+]);
+export const caDocumentTypeEnum = pgEnum("ca_document_type", ["rfi", "change_request"]);
+export const caDocumentStatusEnum = pgEnum("ca_document_status", [
+  "draft",
+  "open",
+  "answered",
+  "pending_approval",
+  "approved",
+  "rejected",
+  "closed",
+]);
 
 // ─── Users ──────────────────────────────────────────────────────────────────
 
@@ -109,6 +133,8 @@ export const users = pgTable("users", {
   linkedinProfileUrl: varchar("linkedin_profile_url", { length: 500 }),
   linkedinVerifiedAt: timestamp("linkedin_verified_at"),
   avatarUrl: text("avatarUrl"),
+  acsUserId: text("acs_user_id"),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -119,7 +145,6 @@ export type InsertUser = typeof users.$inferInsert;
 export const manufacturers = pgTable("manufacturers", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  companyName: varchar("name", { length: 255 }).notNull().default(""),
   website: text("website"),
   logoUrl: text("logoUrl"),
   phone: varchar("phone", { length: 50 }),
@@ -143,6 +168,7 @@ export const manufacturers = pgTable("manufacturers", {
   featured: boolean("featured").default(false),
   dataSource: varchar("dataSource", { length: 100 }),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type Manufacturer = typeof manufacturers.$inferSelect;
@@ -208,7 +234,7 @@ export const materials = pgTable("materials", {
   cdphCompliant: boolean("cdphCompliant").default(false),
   weightPerSf: decimal("weightPerSf", { precision: 8, scale: 3 }),
   // Layer 2: Financial Gatekeepers — WLC, ROI, whole-life cost
-  wlcPaybackYears: smallint("wlcPaybackYears"),
+  wlcPaybackYears: integer("wlcPaybackYears"),
   annualEnergySavingsPct: decimal("annualEnergySavingsPct", { precision: 5, scale: 2 }),
   maintenanceCostPerSfPerYear: decimal("maintenanceCostPerSfPerYear", { precision: 8, scale: 2 }),
   // Layer 4: Operational Stewards — FM, cleaning, TCO
@@ -247,15 +273,15 @@ export const assemblies = pgTable("assemblies", {
   estimatedCostPer1000Sqft: decimal("estimatedCostPer1000Sqft", { precision: 10, scale: 2 }),
   fireRating: varchar("fireRating", { length: 50 }),
   // ─── Performance metrics ─────────────────────────────────────────────────
-  stcRating: smallint("stcRating"),
-  iicRating: smallint("iicRating"),
+  stcRating: integer("stcRating"),
+  iicRating: integer("iicRating"),
   airPermeance: varchar("airPermeance", { length: 120 }),
   vaporPermeance: varchar("vaporPermeance", { length: 120 }),
   windUpliftRating: varchar("windUpliftRating", { length: 120 }),
-  flameSpreadIndex: smallint("flameSpreadIndex"),
-  smokeDevelopmentIndex: smallint("smokeDevelopmentIndex"),
+  flameSpreadIndex: integer("flameSpreadIndex"),
+  smokeDevelopmentIndex: integer("smokeDevelopmentIndex"),
   ulDesignNumber: varchar("ulDesignNumber", { length: 80 }),
-  loadCapacityPsf: smallint("loadCapacityPsf"),
+  loadCapacityPsf: integer("loadCapacityPsf"),
   impactResistance: varchar("impactResistance", { length: 200 }),
   leedCredits: text("leedCredits"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -404,7 +430,9 @@ export const decisionMakerPersonas = pgTable("decision_maker_personas", {
   costWeight: decimal("costWeight", { precision: 4, scale: 2 }),
   supplyChainWeight: decimal("supplyChainWeight", { precision: 4, scale: 2 }),
   healthWeight: decimal("healthWeight", { precision: 4, scale: 2 }),
-});
+}, (table) => ({
+  personaKeyIdx: uniqueIndex("idx_decision_maker_personas_persona_key").on(table.personaKey),
+}));
 
 export type DecisionMakerPersona = typeof decisionMakerPersonas.$inferSelect;
 
@@ -421,10 +449,36 @@ export const rfqs = pgTable("rfqs", {
   requiredCertifications: json("requiredCertifications").$type<string[]>(),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  geocodedAt: timestamp("geocoded_at"),
+  geocodeSource: varchar("geocode_source", { length: 32 }),
+  projectClimateZone: varchar("project_climate_zone", { length: 10 }),
   dueDate: timestamp("dueDate"),
   depositVerified: boolean("deposit_verified").default(false),
   depositPaymentIntentId: varchar("deposit_payment_intent_id", { length: 255 }),
   depositAmount: decimal("deposit_amount"),
+  // ── Smart RFx Builder additions ─────────────────────────────────────────────
+  requestType: varchar("request_type", { length: 40 }).default("rfq_quote"),
+  responseFieldSchema: json("response_field_schema").$type<Array<{ key: string; label: string; fieldType: string; required: boolean; category: string; helpText?: string }>>(),
+  scoringWeights: json("scoring_weights").$type<{ price: number; carbon: number; leadTime: number; documentation: number; certifications: number }>(),
+  // ── Internal Carbon Pricing (Shadow Price) ───────────────────────────────────
+  // Buyer-set $/tonne CO₂e — used to compute carbon-adjusted cost in comparison table.
+  // Formula: Carbon-Adjusted Cost = Bid Price + (GWP_kg / 1000 × shadowCarbonPrice)
+  shadowCarbonPrice: decimal("shadow_carbon_price", { precision: 10, scale: 2 }),
+  // ── First-class carbon / sustainability gate fields ──────────────────────────
+  // Hard cap: bids above this GWP are flagged non-compliant (null = no cap).
+  // Typical concrete values: 200–500 kgCO2e/m3; steel: 1,000–3,000 kgCO2e/tonne.
+  // Negative values are not meaningful — validate > 0 at the application layer.
+  gwpCapPerUnit: decimal("gwp_cap_per_unit", { precision: 10, scale: 4 }),
+  // Unit string for gwpCapPerUnit, e.g. "kgCO2e/m3" or "kgCO2e/tonne".
+  gwpCapUnit: varchar("gwp_cap_unit", { length: 50 }),
+  // Percentage reduction below regional baseline buyer is targeting (null = not set).
+  gwpReductionTarget: decimal("gwp_reduction_target", { precision: 5, scale: 2 }),
+  // When true, bids without a valid EPD link are treated as non-compliant.
+  epdRequired: boolean("epd_required").default(false).notNull(),
+  // ── Compliance / Data Retention ──────────────────────────────────────────────
+  // Soft-delete timestamp. Rows where this is non-null are logically deleted.
+  // Hard deletes are prohibited per the 7-year retention policy.
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -442,6 +496,8 @@ export const rfqItems = pgTable("rfq_items", {
   quantityUnit: varchar("quantityUnit", { length: 50 }),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  // Soft-delete — see retention policy note on rfqs table.
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type RfqItem = typeof rfqItems.$inferSelect;
@@ -458,6 +514,37 @@ export const leads = pgTable("leads", {
 });
 
 export type Lead = typeof leads.$inferSelect;
+
+// ─── Arcade Scores (global leaderboard) ─────────────────────────────────────
+// Cross-user leaderboard for the GreenChainz Arcade. `eventKey` is the seam for
+// tournaments / charity events (casual board = eventKey IS NULL). When a player
+// claims their rank with an email, the arcade router also seeds a CRM lead.
+
+export const arcadeScores = pgTable(
+  "arcade_scores",
+  {
+    id: serial("id").primaryKey(),
+    gameId: varchar("gameId", { length: 64 }).notNull(),
+    initials: varchar("initials", { length: 12 }).notNull(),
+    score: integer("score").notNull(),
+    playerName: varchar("playerName", { length: 120 }),
+    email: varchar("email", { length: 320 }),
+    company: varchar("company", { length: 160 }),
+    eventKey: varchar("eventKey", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => ({
+    boardIdx: index("arcade_scores_board_idx").on(
+      t.gameId,
+      t.eventKey,
+      t.score.desc(),
+      t.createdAt.asc(),
+    ),
+  }),
+);
+
+export type ArcadeScore = typeof arcadeScores.$inferSelect;
+export type InsertArcadeScore = typeof arcadeScores.$inferInsert;
 
 // ─── Agent Conversations ───────────────────────────────────────────────────
 
@@ -512,11 +599,17 @@ export const suppliers = pgTable("suppliers", {
   verified: boolean("verified").default(false),
   verificationStatus: verificationStatusEnum("verificationStatus").default("pending").notNull(),
   verifiedAt: timestamp("verifiedAt"),
+  verifiedSupplierStatus: supplierVerifiedBadgeStatusEnum("verified_supplier_status").default("UNVERIFIED").notNull(),
+  verifiedSupplierReasons: json("verified_supplier_reasons").$type<string[]>().default([]).notNull(),
+  verifiedSupplierComputedAt: timestamp("verified_supplier_computed_at"),
+  verifiedSupplierExpiresAt: timestamp("verified_supplier_expires_at"),
   description: text("description"),
   location: varchar("location", { length: 255 }),
   contactName: varchar("contactName", { length: 255 }),
   materialCategories: json("materialCategories").$type<string[]>(),
   certifications: json("certifications").$type<string[]>(),
+  epdUrl: text("epdUrl"),
+  epdProgramOperator: varchar("epdProgramOperator", { length: 150 }),
   maxOrderValue: decimal("maxOrderValue", { precision: 12, scale: 2 }),
   currentCapacity: integer("currentCapacity").default(100),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
@@ -529,12 +622,56 @@ export const suppliers = pgTable("suppliers", {
   microsoftPlanId: text("microsoftPlanId"),
   tierUpdatedAt: timestamp("tierUpdatedAt"),
   specSheetUrl: text("specSheetUrl"),
+  // ── Service area & shipping capability ──────────────────────────────────
+  // Collected during onboarding. Used by matchSuppliers for distance-aware routing.
+  serviceRadiusMiles: integer("serviceRadiusMiles"),             // null = use category default radius
+  statesServed: json("statesServed").$type<string[]>(),          // explicit list of 2-char state codes
+  shipsNationwide: boolean("shipsNationwide").default(false),    // true = no distance limit
+  minOrderQuantity: decimal("minOrderQuantity", { precision: 12, scale: 2 }), // per unit (category-appropriate)
+  maxOrderQuantity: decimal("maxOrderQuantity", { precision: 12, scale: 2 }), // typical project max
+  // ── Supplier reliability & vetting metrics ───────────────────────────────
+  // Populated by the AI Audit Agent and updated quarterly.
+  // Displayed on supplier profiles as trust signals for architects.
+  otifPercentage: decimal("otif_percentage", { precision: 5, scale: 2 }),    // On-Time In-Full delivery rate (0–100)
+  avgLeadTimeDays: integer("avg_lead_time_days"),                              // Average days from PO to delivery
+  leadTimeVarianceDays: integer("lead_time_variance_days"),                   // ±days variance (lower = more reliable)
+  supplierZScore: decimal("supplier_z_score", { precision: 5, scale: 2 }),   // Altman Z-score proxy for financial health
+  inventoryVisibility: boolean("inventory_visibility").default(false),        // true = real-time stock visibility available
+  vetLastUpdatedAt: timestamp("vet_last_updated_at"),                         // when reliability data was last refreshed
+  // ── Profile-hits outreach ────────────────────────────────────────────────
+  // Last time the weekly "you got X profile views" digest was emailed to this
+  // supplier. Used by runSupplierHitsDigest() to throttle to one email/week.
+  hitsDigestLastSentAt: timestamp("hits_digest_last_sent_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = typeof suppliers.$inferInsert;
+
+// ─── Supplier Profile Views ("hits") ─────────────────────────────────────────
+// One row per (supplier, architect, day). The unique index dedupes repeated
+// views by the same architect on the same day, so a "hit" = a unique architect
+// who looked at the supplier on a given day. Only architect (role='buyer')
+// views are recorded — that is the money-lane signal a supplier pays to see.
+
+export const supplierProfileViews = pgTable("supplier_profile_views", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").notNull(),
+  viewerUserId: integer("viewer_user_id").notNull(),
+  viewerRole: varchar("viewer_role", { length: 32 }),
+  source: varchar("source", { length: 48 }),
+  viewDate: date("view_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  uniqDay: uniqueIndex("supplier_profile_views_unique_day").on(t.supplierId, t.viewerUserId, t.viewDate),
+  bySupplier: index("supplier_profile_views_supplier_idx").on(t.supplierId),
+  byViewer: index("supplier_profile_views_viewer_idx").on(t.viewerUserId),
+}));
+
+export type SupplierProfileView = typeof supplierProfileViews.$inferSelect;
+export type InsertSupplierProfileView = typeof supplierProfileViews.$inferInsert;
 
 // ─── Architects ──────────────────────────────────────────────────────────────
 
@@ -759,6 +896,22 @@ export const rfqBids = pgTable("rfq_bids", {
   leadDays: integer("leadDays"),
   notes: text("notes"),
   expiresAt: timestamp("expiresAt"),
+  // ── Smart RFx structured response additions ──────────────────────────────────
+  canFulfill: boolean("can_fulfill"),
+  fieldValues: json("field_values"),
+  gwpValue: decimal("gwp_value", { precision: 14, scale: 4 }),
+  epdReference: text("epd_reference"),
+  rfxTotalScore: decimal("rfx_total_score", { precision: 6, scale: 2 }),
+  // ── Data quality (set server-side, never from client) ─────────────────────
+  // L0 = proxy/none, L1 = self-reported, L2 = third-party, L3 = EPD verified
+  dataQualityLevel: varchar("data_quality_level", { length: 2 }),
+  // ── Compliance gate (computed server-side on bid submission) ──────────────
+  // true  → gwpValue ≤ rfqs.gwpCapPerUnit (or no cap set)
+  // false → gwpValue exceeds rfqs.gwpCapPerUnit
+  // null  → no gwpValue provided or no cap on the parent RFQ
+  gwpMeetsTarget: boolean("gwp_meets_target"),
+  // Soft-delete — see retention policy note on rfqs table.
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -977,6 +1130,7 @@ export const callHistory = pgTable("call_history", {
   startTime: timestamp("startTime").notNull(),
   endTime: timestamp("endTime"),
   durationSeconds: integer("durationSeconds").default(0),
+  groupCallId: text("group_call_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -1290,6 +1444,123 @@ export const swapValidations = pgTable(
 export type SwapValidation = typeof swapValidations.$inferSelect;
 export type InsertSwapValidation = typeof swapValidations.$inferInsert;
 
+export const submittals = pgTable(
+  "submittals",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id"),
+    specSection: varchar("spec_section", { length: 50 }),
+    masterformatCode: varchar("masterformat_code", { length: 20 }),
+    submittalNumber: varchar("submittal_number", { length: 100 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    status: submittalStatusEnum("status").notNull().default("draft"),
+    ballInCourt: submittalBallInCourtEnum("ball_in_court").notNull().default("buyer"),
+    submittedAt: timestamp("submitted_at"),
+    dueAt: timestamp("due_at"),
+    requiredOnSiteAt: timestamp("required_on_site_at"),
+    returnedAt: timestamp("returned_at"),
+    relatedRfqId: integer("related_rfq_id").references(() => rfqs.id, { onDelete: "set null" }),
+    relatedSwapValidationId: integer("related_swap_validation_id").references(() => swapValidations.id, { onDelete: "set null" }),
+    createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdByIdx: index("idx_submittals_created_by").on(table.createdBy),
+    projectIdx: index("idx_submittals_project").on(table.projectId),
+    statusIdx: index("idx_submittals_status").on(table.status),
+    relatedRfqIdx: index("idx_submittals_related_rfq").on(table.relatedRfqId),
+    relatedValidationIdx: index("idx_submittals_related_validation").on(table.relatedSwapValidationId),
+  })
+);
+
+export type Submittal = typeof submittals.$inferSelect;
+export type InsertSubmittal = typeof submittals.$inferInsert;
+
+export const submittalItems = pgTable(
+  "submittal_items",
+  {
+    id: serial("id").primaryKey(),
+    submittalId: integer("submittal_id").notNull().references(() => submittals.id, { onDelete: "cascade" }),
+    materialId: integer("material_id").references(() => materials.id, { onDelete: "set null" }),
+    supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    submittalIdx: index("idx_submittal_items_submittal").on(table.submittalId),
+    materialIdx: index("idx_submittal_items_material").on(table.materialId),
+    supplierIdx: index("idx_submittal_items_supplier").on(table.supplierId),
+  })
+);
+
+export type SubmittalItem = typeof submittalItems.$inferSelect;
+export type InsertSubmittalItem = typeof submittalItems.$inferInsert;
+
+export const caDocuments = pgTable(
+  "ca_documents",
+  {
+    id: serial("id").primaryKey(),
+    type: caDocumentTypeEnum("type").notNull(),
+    status: caDocumentStatusEnum("status").notNull().default("draft"),
+    ballInCourt: submittalBallInCourtEnum("ball_in_court").notNull().default("buyer"),
+    documentNumber: varchar("document_number", { length: 100 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    projectId: integer("project_id"),
+    submittalId: integer("submittal_id").references(() => submittals.id, { onDelete: "set null" }),
+    relatedRfqId: integer("related_rfq_id").references(() => rfqs.id, { onDelete: "set null" }),
+    relatedSwapValidationId: integer("related_swap_validation_id").references(() => swapValidations.id, { onDelete: "set null" }),
+    // RFI-specific fields
+    question: text("question"),
+    officialResponse: text("official_response"),
+    responseAt: timestamp("response_at"),
+    // Change-request specific fields
+    proposedResolution: text("proposed_resolution"),
+    costImpact: decimal("cost_impact", { precision: 12, scale: 2 }),
+    scheduleImpactDays: integer("schedule_impact_days"),
+    approvedAt: timestamp("approved_at"),
+    closedAt: timestamp("closed_at"),
+    dueAt: timestamp("due_at"),
+    createdBy: integer("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    typeIdx: index("idx_ca_documents_type").on(table.type),
+    statusIdx: index("idx_ca_documents_status").on(table.status),
+    createdByIdx: index("idx_ca_documents_created_by").on(table.createdBy),
+    submittalIdx: index("idx_ca_documents_submittal").on(table.submittalId),
+    rfqIdx: index("idx_ca_documents_related_rfq").on(table.relatedRfqId),
+  }),
+);
+
+export type CaDocument = typeof caDocuments.$inferSelect;
+export type InsertCaDocument = typeof caDocuments.$inferInsert;
+
+export const caDocumentMessages = pgTable(
+  "ca_document_messages",
+  {
+    id: serial("id").primaryKey(),
+    documentId: integer("document_id")
+      .notNull()
+      .references(() => caDocuments.id, { onDelete: "cascade" }),
+    authorUserId: integer("author_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: text("message").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    documentIdx: index("idx_ca_document_messages_document").on(table.documentId),
+    authorIdx: index("idx_ca_document_messages_author").on(table.authorUserId),
+  }),
+);
+
+export type CaDocumentMessage = typeof caDocumentMessages.$inferSelect;
+export type InsertCaDocumentMessage = typeof caDocumentMessages.$inferInsert;
+
 export const materialAssemblySpecs = pgTable(
   "material_assembly_specs",
   {
@@ -1325,6 +1596,7 @@ export const materialAssemblySpecs = pgTable(
     epdNumberIdx: index("idx_assembly_epd_number").on(table.epdNumber),
     carbonTierIdx: index("idx_assembly_carbon_tier").on(table.carbonTier),
     assemblyTypeTagsIdx: index("idx_assembly_type_tags").on(table.assemblyTypeTags),
+    nameUnique: uniqueIndex("idx_assembly_specs_name_unique").on(table.name),
   })
 );
 
@@ -1452,9 +1724,54 @@ export const scrapedLeads = pgTable("scraped_leads", {
 export type ScrapedLead = typeof scrapedLeads.$inferSelect;
 export type InsertScrapedLead = typeof scrapedLeads.$inferInsert;
 
+// ─── RFQ Drafts (Human-in-the-Loop review) ───────────────────────────────────
+// AI proposes → human reviews → system executes.
+// A draft holds the AI's raw output and the human's final approved version.
+// No rfq_request row is created until the draft reaches "approved" status.
+
+export const rfqDraftStatusEnum = pgEnum("rfq_draft_status", [
+  "draft",      // AI produced this, awaiting human review
+  "approved",   // Human approved (possibly with edits) — rfq_requests created
+  "rejected",   // Human rejected — no rfq_requests created
+]);
+
+export const rfqDrafts = pgTable("rfq_drafts", {
+  id: serial("id").primaryKey(),
+  architectId: integer("architect_id").notNull(),
+
+  // Raw text the architect typed into the intake box
+  rawInput: text("raw_input").notNull(),
+
+  // Full SwapResult JSON from swapEngine (AI output, immutable after creation)
+  aiOutput: json("ai_output").notNull(),
+
+  // Human-edited version of the RFQ fields (starts as a copy of aiOutput, mutated on edit)
+  humanEdits: json("human_edits"),
+
+  // Which AI-inferred fields the human explicitly accepted vs. changed
+  // e.g. { "category": "accepted", "quantity": "edited", "certifications": "rejected" }
+  fieldDecisions: json("field_decisions"),
+
+  // Reason provided when a field or the whole draft is rejected
+  rejectionReason: text("rejection_reason"),
+
+  status: rfqDraftStatusEnum("status").default("draft").notNull(),
+
+  // Set when the human approves — links back to the created rfq_requests rows
+  approvedAt: timestamp("approved_at"),
+  approvedByUserId: integer("approved_by_user_id"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type RfqDraft = typeof rfqDrafts.$inferSelect;
+export type InsertRfqDraft = typeof rfqDrafts.$inferInsert;
+
 // ─── RFQ Requests ────────────────────────────────────────────────────────────
 // Simpler direct-assignment model: one architect → one supplier per request.
 // Complements the existing rfqs/rfq_bids wave-matching tables.
+// A request is only created after the architect approves a draft.
 
 export const rfqRequestStatusEnum = pgEnum("rfq_request_status", [
   "pending",
@@ -1473,6 +1790,8 @@ export const rfqRequests = pgTable("rfq_requests", {
   specs: text("specs"),
   message: text("message"),
   status: rfqRequestStatusEnum("status").default("pending").notNull(),
+  // FK to the draft that produced this request (for audit trail)
+  draftId: integer("draft_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -1608,6 +1927,49 @@ export const epdMaterials = pgTable(
 export type EpdMaterial = typeof epdMaterials.$inferSelect;
 export type InsertEpdMaterial = typeof epdMaterials.$inferInsert;
 
+// ─── Material Credit Score Cache ─────────────────────────────────────────────
+
+export const materialCreditScoreCache = pgTable("material_credit_score_cache", {
+  epdId: integer("epdId").primaryKey(),
+  total: integer("total").notNull(),
+  carbonEfficiency: integer("carbonEfficiency").notNull(),
+  epdVerification: integer("epdVerification").notNull(),
+  manufacturerTransparency: integer("manufacturerTransparency").notNull(),
+  assemblyOptionsCoverage: integer("assemblyOptionsCoverage").notNull(),
+  rulesVersion: varchar("rulesVersion", { length: 32 }).notNull().default("ccps-policy-v1"),
+  inputFingerprint: varchar("inputFingerprint", { length: 64 }).notNull().default(""),
+  epdValidityStatus: varchar("epdValidityStatus", { length: 20 }).notNull().default("missing"),
+  staleReason: varchar("staleReason", { length: 64 }),
+  expiresAt: timestamp("expiresAt").notNull().defaultNow(),
+  computedAt: timestamp("computedAt").defaultNow().notNull(),
+});
+
+export type MaterialCreditScoreCache = typeof materialCreditScoreCache.$inferSelect;
+
+export const materialCreditScoreSnapshots = pgTable("material_credit_score_snapshots", {
+  id: serial("id").primaryKey(),
+  epdId: integer("epdId").notNull(),
+  total: integer("total").notNull(),
+  carbonEfficiency: integer("carbonEfficiency").notNull(),
+  epdVerification: integer("epdVerification").notNull(),
+  manufacturerTransparency: integer("manufacturerTransparency").notNull(),
+  assemblyOptionsCoverage: integer("assemblyOptionsCoverage").notNull(),
+  rulesVersion: varchar("rulesVersion", { length: 32 }).notNull(),
+  inputFingerprint: varchar("inputFingerprint", { length: 64 }).notNull(),
+  epdValidityStatus: varchar("epdValidityStatus", { length: 20 }).notNull(),
+  staleReason: varchar("staleReason", { length: 64 }),
+  inputs: json("inputs").$type<Record<string, unknown>>(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  computedAt: timestamp("computedAt").defaultNow().notNull(),
+}, (table) => ({
+  epdComputedIdx: index("idx_material_credit_score_snapshots_epd_computed").on(
+    table.epdId,
+    table.computedAt
+  ),
+}));
+
+export type MaterialCreditScoreSnapshot = typeof materialCreditScoreSnapshots.$inferSelect;
+
 // ─── CRM Enums ───────────────────────────────────────────────────────────────
 
 export const crmContactTypeEnum = pgEnum("crm_contact_type", [
@@ -1645,6 +2007,9 @@ export const crmContacts = pgTable(
     source: varchar("source", { length: 100 }),
     linkedinUrl: varchar("linkedin_url", { length: 500 }),
     supplierId: integer("supplier_id"), // populated when they claim profile
+    claimToken: uuid("claim_token").defaultRandom(), // secure one-time token for claim emails
+    claimTokenExpiresAt: timestamp("claim_token_expires_at"),
+    claimTokenUsedAt: timestamp("claim_token_used_at"),
     lastContactedAt: timestamp("last_contacted_at"),
     nextFollowUpAt: timestamp("next_follow_up_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1715,6 +2080,24 @@ export const crmEmailSequences = pgTable(
 
 export type CrmEmailSequence = typeof crmEmailSequences.$inferSelect;
 export type InsertCrmEmailSequence = typeof crmEmailSequences.$inferInsert;
+
+/**
+ * Read-only mirror used by the separate intelligence Azure Functions app.
+ * This app does not own migrations for this table.
+ */
+export const emailSequences = pgTable(
+  "email_sequences",
+  {
+    id: serial("id").primaryKey(),
+    contactEmail: varchar("contact_email", { length: 320 }),
+    step: integer("step").notNull().default(1),
+    status: varchar("status", { length: 50 }).notNull().default("pending"),
+    sentAt: timestamp("sent_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  }
+);
+
+export type EmailSequence = typeof emailSequences.$inferSelect;
 
 // ─── Price Indices (BLS/FRED) ─────────────────────────────────────────────────
 
@@ -1828,9 +2211,333 @@ export type ConciergeRoute = typeof conciergeRoutes.$inferSelect;
 export type InsertConciergeRoute = typeof conciergeRoutes.$inferInsert;
 // ── App Settings (key-value store for OAuth tokens, feature flags, etc.) ──────
 export const appSettings = pgTable("app_settings", {
-  key:       text("key").primaryKey(),
-  value:     text("value").notNull(),
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export type AppSetting = typeof appSettings.$inferSelect;
+
+// ── Founder Video Messaging ───────────────────────────────────────────────────
+// ── Founder Videos (async video messaging from founder to suppliers/architects) ──
+export const founderVideoStatusEnum = pgEnum("founder_video_status", ["draft", "ready", "deleted"]);
+export const founderVideoTranscriptStatusEnum = pgEnum("founder_video_transcript_status", [
+  "pending", "done", "failed",
+]);
+
+export const founderVideos = pgTable("founder_videos", {
+  id: serial("id").primaryKey(),
+  ownerUserId: integer("ownerUserId").notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  recipientName: varchar("recipientName", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  note: text("note"),
+  shareToken: varchar("shareToken", { length: 32 }).notNull().unique(),
+  blobKey: text("blobKey").notNull(),
+  blobUrl: text("blobUrl").notNull(),
+  durationSec: integer("durationSec").default(0).notNull(),
+  status: founderVideoStatusEnum("status").default("draft").notNull(),
+  transcript: text("transcript"),
+  transcriptStatus: founderVideoTranscriptStatusEnum("transcriptStatus").default("pending").notNull(),
+  watchedCount: integer("watchedCount").default(0).notNull(),
+  firstWatchedAt: timestamp("firstWatchedAt"),
+  lastWatchedAt: timestamp("lastWatchedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+});
+
+export type FounderVideo = typeof founderVideos.$inferSelect;
+export type InsertFounderVideo = typeof founderVideos.$inferInsert;
+
+export const founderVideoViews = pgTable("founder_video_views", {
+  id: serial("id").primaryKey(),
+  videoId: integer("videoId").notNull(),
+  viewedAt: timestamp("viewedAt").defaultNow().notNull(),
+  viewerIp: varchar("viewerIp", { length: 64 }),
+  userAgent: text("userAgent"),
+  durationWatchedSec: integer("durationWatchedSec"),
+});
+
+export type FounderVideoView = typeof founderVideoViews.$inferSelect;
+
+// ── Audit Log ─────────────────────────────────────────────────────────────────
+// Immutable record of security-relevant and business-critical events.
+// Never update or delete rows — append only.
+// Accessible only to greenchainz_admin in the application layer.
+
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  // Who performed the action
+  actorUserId: integer("actorUserId"),          // null for system/scheduler actions
+  actorEmail: varchar("actorEmail", { length: 320 }),
+  actorRole: varchar("actorRole", { length: 32 }),
+  // What they did
+  action: varchar("action", { length: 64 }).notNull(),
+  // What resource was affected
+  resourceType: varchar("resourceType", { length: 64 }),
+  resourceId: varchar("resourceId", { length: 128 }),
+  // Freeform structured context (no PII beyond what's already in actor fields)
+  metadata: json("metadata"),
+  // Result
+  outcome: varchar("outcome", { length: 16 }).default("success").notNull(), // "success" | "failure" | "blocked"
+  // Network context
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  userAgent: text("userAgent"),
+  // Immutable timestamp
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  actorIdx: index("audit_logs_actor_idx").on(table.actorUserId),
+  actionIdx: index("audit_logs_action_idx").on(table.action),
+  createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
+  resourceIdx: index("audit_logs_resource_idx").on(table.resourceType, table.resourceId),
+}));
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+// ── RFQ Match Runs — append-only SWAP Engine audit ────────────────────────────
+// Every invocation of runSwapEngine writes one row. Never update or delete.
+// Used for: supplier scorecard analytics, per-run reasoning audit, CCPS trend analysis.
+
+export const rfqMatchRuns = pgTable(
+  "rfq_match_runs",
+  {
+    id: serial("id").primaryKey(),
+    draftId: integer("draft_id"),                                    // rfq_drafts.id (set post-save)
+    userId: integer("user_id").notNull(),
+    personaKey: varchar("persona_key", { length: 50 }).notNull(),    // e.g. "architect"
+    agentAvailable: boolean("agent_available").notNull(),
+    matchSource: varchar("match_source", { length: 32 }).notNull(),  // "agent" | "fallback"
+    candidateCount: integer("candidate_count").notNull().default(0),
+    shortlistCount: integer("shortlist_count").notNull().default(0),
+    /** Full ScoreBreakdown[] JSON for every candidate scored in this run */
+    scoreBreakdowns: json("score_breakdowns"),
+    reasoningTrace: json("reasoning_trace").$type<string[]>(),
+    durationMs: integer("duration_ms"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    draftIdx: index("idx_match_runs_draft").on(table.draftId),
+    userIdx: index("idx_match_runs_user").on(table.userId),
+    createdAtIdx: index("idx_match_runs_created_at").on(table.createdAt),
+  }),
+);
+
+export type RfqMatchRun = typeof rfqMatchRuns.$inferSelect;
+export type InsertRfqMatchRun = typeof rfqMatchRuns.$inferInsert;
+
+// ── RFQ Supplier Invites — auto-match audit + notification tracking ────────────
+// One row per (rfq, supplier) pair. Inserted when the auto-matcher runs.
+// uniqueIndex prevents double-notifying the same supplier on the same RFQ.
+
+export const rfqSupplierInvites = pgTable(
+  "rfq_supplier_invites",
+  {
+    id: serial("id").primaryKey(),
+    rfqId: integer("rfq_id").notNull(),
+    supplierId: integer("supplier_id").notNull(),
+    matchScore: decimal("match_score", { precision: 5, scale: 2 }),
+    emailSent: boolean("email_sent").default(false).notNull(),
+    inAppSent: boolean("in_app_sent").default(false).notNull(),
+    respondedAt: timestamp("responded_at"),   // set when rfqBid is inserted
+    notifiedAt: timestamp("notified_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    rfqIdx: index("idx_rsi_rfq").on(table.rfqId),
+    supplierIdx: index("idx_rsi_supplier").on(table.supplierId),
+    uniquePair: uniqueIndex("idx_rsi_unique").on(table.rfqId, table.supplierId),
+  }),
+);
+
+export type RfqSupplierInvite = typeof rfqSupplierInvites.$inferSelect;
+
+// ── Supplier Sustainability Profiles ──────────────────────────────────────────
+// One row per supplier. Partial save is allowed — no fields are mandatory at DB
+// level. The application layer enforces "Required to go live" rules via the
+// Data Ladder (L0–L3). Last-updated audit trail is baked in.
+
+export const supplierSustainabilityProfiles = pgTable(
+  "supplier_sustainability_profiles",
+  {
+    id: serial("id").primaryKey(),
+    supplierId: integer("supplier_id").notNull().unique(),
+
+    // ── Data ladder ─────────────────────────────────────────────────────────
+    // Inferred by the server from the combination of fields below.
+    // L0 = proxy/none · L1 = self-reported · L2 = third-party · L3 = EPD
+    dataQualityLevel: varchar("data_quality_level", { length: 2 }).default("L0").notNull(),
+    dataSourceType: varchar("data_source_type", { length: 50 }),
+
+    // ── EPD / product documentation ─────────────────────────────────────────
+    hasEpd: boolean("has_epd").default(false).notNull(),
+    epdReference: text("epd_reference"),
+
+    // ── Scope 1 + 2 emissions (tCO₂e) ──────────────────────────────────────
+    // Computed by emissions-calculator.ts from energy inputs below
+    scope1Emissions: decimal("scope1_emissions", { precision: 14, scale: 4 }),
+    scope2Emissions: decimal("scope2_emissions", { precision: 14, scale: 4 }),
+    totalEmissions: decimal("total_emissions", { precision: 14, scale: 4 }),
+
+    // ── SME-friendly calculator inputs ───────────────────────────────────────
+    // Suppliers enter their annual utility bill numbers — we do the math.
+    electricityKwh: decimal("electricity_kwh", { precision: 14, scale: 2 }),
+    naturalGasMmbtu: decimal("natural_gas_mmbtu", { precision: 14, scale: 2 }),
+    dieselGallons: decimal("diesel_gallons", { precision: 14, scale: 2 }),
+
+    // ── Spend-based fallback (L0 only) ───────────────────────────────────────
+    annualRevenue: decimal("annual_revenue", { precision: 16, scale: 2 }),
+
+    // ── Certifications ────────────────────────────────────────────────────────
+    certifications: json("certifications").$type<string[]>().default([]),
+
+    // ── Audit trail (required for all value changes) ─────────────────────────
+    calculationMethod: varchar("calculation_method", { length: 100 }),  // "energy_bill" | "spend_based" | "epd" | "manual"
+    lastUpdatedBy: integer("last_updated_by"),  // users.id of who last saved
+    verifiedAt: timestamp("verified_at"),
+    verifiedBy: integer("verified_by"),      // admin users.id
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    supplierIdx: index("idx_ssp_supplier").on(table.supplierId),
+    qualityIdx: index("idx_ssp_quality").on(table.dataQualityLevel),
+  }),
+);
+
+export type SupplierSustainabilityProfile = typeof supplierSustainabilityProfiles.$inferSelect;
+export type InsertSupplierSustainabilityProfile = typeof supplierSustainabilityProfiles.$inferInsert;
+
+// ── GreenChainz Proof Ledger — Blockchain Anchors ────────────────────────────
+// Immutable record of every artifact anchored on Polygon via AnchorRegistry.sol.
+// Append-only: never update or delete rows. Use verificationStatus only for
+// internal state tracking (e.g. "anchored" → "mismatch_detected").
+//
+// artifactType values:
+//   "epd"                — verified EPD document
+//   "certification"      — supplier certification (LEED, FSC, GreenGuard, etc.)
+//   "material_score"     — material credit score snapshot
+//   "material_submittal" — approved CSI material submittal PDF
+//   "supplier_audit"     — AI Audit Agent verification record
+//
+// artifactId is stored as varchar to support both integer IDs (suppliers,
+// materials) and string IDs (EPD numbers from external providers like EC3).
+
+export const blockchainAnchors = pgTable(
+  "blockchain_anchors",
+  {
+    id: serial("id").primaryKey(),
+
+    // Who initiated this anchor (null for automated/system anchors)
+    anchoredByUserId: integer("anchored_by_user_id"),
+
+    // What was anchored
+    artifactType: varchar("artifact_type", { length: 64 }).notNull(),
+    artifactId: varchar("artifact_id", { length: 255 }).notNull(),
+
+    // Cryptographic proof — keccak256 hashes (66 chars: "0x" + 64 hex)
+    artifactHash: varchar("artifact_hash", { length: 66 }).notNull(),
+    contextHash: varchar("context_hash", { length: 66 }).notNull(),
+
+    // Chain location
+    chainId: integer("chain_id").notNull(),
+    contractAddress: varchar("contract_address", { length: 42 }).notNull(),
+    txHash: varchar("tx_hash", { length: 66 }).notNull().unique(),
+    blockNumber: integer("block_number"),
+
+    // Internal state — never alter historical proof records
+    verificationStatus: varchar("verification_status", { length: 32 })
+      .notNull()
+      .default("anchored"),
+
+    anchoredAt: timestamp("anchored_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    artifactIdx: index("idx_bc_anchors_artifact").on(table.artifactType, table.artifactId),
+    txHashIdx: index("idx_bc_anchors_tx_hash").on(table.txHash),
+    userIdx: index("idx_bc_anchors_user").on(table.anchoredByUserId),
+    anchoredAtIdx: index("idx_bc_anchors_anchored_at").on(table.anchoredAt),
+  })
+);
+
+export type BlockchainAnchor = typeof blockchainAnchors.$inferSelect;
+export type InsertBlockchainAnchor = typeof blockchainAnchors.$inferInsert;
+
+// ─── Data Subject Requests (CCPA / GDPR) ────────────────────────────────────
+// Tracks privacy requests (access, correction, deletion) so they can be
+// serviced and audited. Required before any enterprise supplier MSA can be signed.
+
+export const dataSubjectRequestTypeEnum = pgEnum("data_subject_request_type", [
+  "access",
+  "correction",
+  "deletion",
+]);
+
+export const dataSubjectRequestStatusEnum = pgEnum("data_subject_request_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "rejected",
+]);
+
+export const dataSubjectRequests = pgTable(
+  "data_subject_requests",
+  {
+    id: serial("id").primaryKey(),
+    // Admin who created this request record (null if submitted via public form).
+    requestedByAdminId: integer("requested_by_admin_id"),
+    // The user whose data is being acted on.
+    targetUserId: integer("target_user_id").notNull(),
+    type: dataSubjectRequestTypeEnum("type").notNull(),
+    status: dataSubjectRequestStatusEnum("status").default("pending").notNull(),
+    // Free-form notes from the handling admin (e.g. "email received 2026-06-10").
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    completedAt: timestamp("completed_at"),
+  },
+  (table) => ({
+    targetUserIdx: index("idx_dsr_target_user").on(table.targetUserId),
+    statusIdx: index("idx_dsr_status").on(table.status),
+  })
+);
+
+export type DataSubjectRequest = typeof dataSubjectRequests.$inferSelect;
+export type InsertDataSubjectRequest = typeof dataSubjectRequests.$inferInsert;
+
+// ─── Learning Pipeline ──────────────────────────────────────────────────────
+
+export const learningEvents = pgTable(
+  "learning_events",
+  {
+    id: serial("id").primaryKey(),
+    type: varchar("type", { length: 50 }).notNull(),
+    userId: integer("user_id"),
+    orgId: integer("org_id"),
+    materialId: integer("material_id"),
+    supplierId: integer("supplier_id"),
+    query: text("query"),
+    metadata: json("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    typeIdx: index("idx_learning_events_type").on(table.type),
+    createdIdx: index("idx_learning_events_created").on(table.createdAt),
+    materialIdx: index("idx_learning_events_material").on(table.materialId),
+    typeCreatedIdx: index("idx_learning_events_type_created").on(
+      table.type,
+      table.createdAt
+    ),
+  })
+);
+
+export type LearningEvent = typeof learningEvents.$inferSelect;
+
+export const learningSynthesis = pgTable("learning_synthesis", {
+  id: serial("id").primaryKey(),
+  report: json("report").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type LearningSynthesis = typeof learningSynthesis.$inferSelect;

@@ -20,6 +20,7 @@ import { saveViabilityProfile } from "../../viability-profile";
 import { MaterialViabilityProfile, ASTMStandard, LaborUnits, OTIFMetrics } from "../../../types/schema";
 import { calculateViabilityScoresForAllPersonas } from "../../scoring/viability-scoring";
 import { WebFetcher } from "./web-fetcher";
+import { getAzureOpenAIAuthConfig } from "../../azure/openai-auth";
 
 // Interface for Azure Search document
 interface SearchDocument {
@@ -143,11 +144,14 @@ async function simulateWebSearch(query: string): Promise<{ title: string; snippe
  * Uses Azure OpenAI to parse the "scraped" text into JSON
  */
 async function extractWithOpenAI(text: string, promptType: 'carbon' | 'health'): Promise<ExtractedData> {
-    const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const key = process.env.AZURE_OPENAI_API_KEY;
-    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || "gpt-4o";
-
-    if (!endpoint || !key) {
+    let auth;
+    try {
+        auth = getAzureOpenAIAuthConfig({
+            deploymentEnvVar: "AZURE_OPENAI_DEPLOYMENT_NAME",
+            defaultDeployment: "gpt-4o",
+            defaultApiVersion: "2024-08-01-preview",
+        });
+    } catch {
         console.warn("⚠️ Missing Azure OpenAI credentials - returning mock data");
         return {
             gwp_per_unit: 5.0,
@@ -157,12 +161,20 @@ async function extractWithOpenAI(text: string, promptType: 'carbon' | 'health'):
         };
     }
 
-    const client = new AzureOpenAI({
-        endpoint,
-        apiKey: key,
-        apiVersion: "2024-08-01-preview",
-        deployment
-    });
+    const deployment = auth.deployment;
+    const options: ConstructorParameters<typeof AzureOpenAI>[0] = {
+        endpoint: auth.endpoint,
+        apiVersion: auth.apiVersion,
+        deployment,
+    };
+
+    if (auth.authMode === "managed-identity" && auth.azureADTokenProvider) {
+        options.azureADTokenProvider = auth.azureADTokenProvider;
+    } else if (auth.apiKey) {
+        options.apiKey = auth.apiKey;
+    }
+
+    const client = new AzureOpenAI(options);
 
     const systemPrompt = promptType === 'health'
         ? DATA_JANITOR_PROMPTS.healthSafety

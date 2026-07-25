@@ -34,7 +34,6 @@ import {
   Send,
   Search,
   Building2,
-  User,
   MapPin,
   Mail,
   CheckCircle2,

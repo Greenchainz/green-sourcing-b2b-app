@@ -3,7 +3,7 @@
  * 
  * Centralized credential management for User-Assigned Managed Identity
  * Identity: id-greenchainz-backend
- * Client ID: ec248abf-f6ce-4d7c-8888-740317709f1b
+ * Client ID: fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e
  * 
  * This module provides a singleton credential instance that:
  * - Uses User-Assigned Managed Identity in Azure (production)
@@ -16,7 +16,7 @@ import { DefaultAzureCredential } from '@azure/identity';
 /**
  * Singleton credential instance with User-Assigned Managed Identity
  *
- * MANAGED_IDENTITY_CLIENT_ID should be set to: ec248abf-f6ce-4d7c-8888-740317709f1b
+ * MANAGED_IDENTITY_CLIENT_ID should be set to: fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e
  * This enables the app to use the id-greenchainz-backend managed identity.
  *
  * NOTE: MANAGED_IDENTITY_CLIENT_ID is the user-assigned managed identity client ID.
@@ -41,7 +41,7 @@ export function getAzureCredential(): DefaultAzureCredential {
   if (!managedIdentityClientId) {
     console.warn(
       '⚠️ AZURE_MI_CLIENT_ID not set. Managed Identity authentication may fail in Azure. ' +
-      'Set AZURE_MI_CLIENT_ID=ec248abf-f6ce-4d7c-8888-740317709f1b for production. ' +
+      'Set AZURE_MI_CLIENT_ID=fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e for production. ' +
       'Do NOT use the Entra app registration CLIENT_ID here — they are different identities.'
     );
   }
@@ -66,5 +66,10 @@ export function resetAzureCredential(): void {
  * @returns true if configuration is valid
  */
 export function isCredentialConfigured(): boolean {
-  return !!(process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID);
+  if (process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID) {
+    return true;
+  }
+
+  // System-assigned managed identity has no client-id env var but is still valid in Azure.
+  return process.env.NODE_ENV === "production";
 }

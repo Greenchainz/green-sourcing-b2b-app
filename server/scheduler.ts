@@ -20,61 +20,89 @@ async function runNotificationEmails(
 export async function startSchedulers(): Promise<void> {
   // ── EC3 sync — startup + every 24 hours ───────────────────────────────────
   if (process.env.EC3_API_KEY || (process.env.EC3_USERNAME && process.env.EC3_PASSWORD)) {
-    const { fetchEC3EPDs } = await import('./ec3');
+    const { fetchEC3EPDs, fetchEC3Categories } = await import('./ec3');
     const { transformEC3Batch } = await import('./ec3-transform');
     const { getDb } = await import('./db');
     const { materials } = await import('../drizzle/schema');
-    const { inArray, eq, isNotNull } = await import('drizzle-orm');
+    const { inArray, eq } = await import('drizzle-orm');
 
-    const FALLBACK_EC3_CATEGORIES = ['Concrete', 'Steel', 'Wood', 'Insulation', 'Glass', 'Aluminum', 'Masonry', 'Roofing'];
+    // Target category display names — used to match against EC3's real category IDs.
+    // Do NOT derive from the materials table (contains KBOB German names).
+    const EC3_SYNC_CATEGORIES = [
+      'Concrete', 'Steel', 'Wood', 'Insulation', 'Glass', 'Aluminum',
+      'Masonry', 'Roofing', 'Flooring', 'Gypsum', 'Copper', 'Timber',
+    ];
+
+    const PAGE_SIZE = 100; // EC3 max page size
 
     const runEC3Sync = async () => {
       console.log('[EC3 Sync] Starting scheduled sync...');
       const db = await getDb();
       if (!db) { console.error('[EC3 Sync] No DB connection'); return; }
 
-      // Derive categories from existing materials; fall back to hardcoded seed list on a fresh DB.
-      const categoryRows = await db
-        .selectDistinct({ category: materials.category })
-        .from(materials)
-        .where(isNotNull(materials.category));
-      const dynamicCategories = categoryRows
-        .map((r: { category: string | null }) => r.category)
-        .filter((c: string | null): c is string => Boolean(c));
-      const EC3_SYNC_CATEGORIES = dynamicCategories.length > 0 ? dynamicCategories : FALLBACK_EC3_CATEGORIES;
-      console.log(`[EC3 Sync] Syncing ${EC3_SYNC_CATEGORIES.length} categories: ${EC3_SYNC_CATEGORIES.join(', ')}`);
+      // Step 1: resolve EC3 category IDs so we filter by ID, not by free-text name.
+      // EC3's ?category=<name> param is unreliable — the API expects a category UUID.
+      const categoryIdMap = new Map<string, string>();
+      try {
+        const ec3Cats = await fetchEC3Categories();
+        for (const cat of ec3Cats) {
+          const display = (cat.display_name || cat.name || '').toLowerCase();
+          for (const target of EC3_SYNC_CATEGORIES) {
+            if (display.includes(target.toLowerCase()) || target.toLowerCase().includes(display)) {
+              if (!categoryIdMap.has(target)) categoryIdMap.set(target, cat.id);
+            }
+          }
+        }
+        console.log(`[EC3 Sync] Resolved ${categoryIdMap.size}/${EC3_SYNC_CATEGORIES.length} category IDs from EC3`);
+      } catch (err) {
+        console.warn('[EC3 Sync] Could not fetch EC3 categories — falling back to name-based search:', err);
+      }
 
       let totalCreated = 0;
       let totalUpdated = 0;
 
+      // Step 2: paginate through every EPD for each category
       for (const category of EC3_SYNC_CATEGORIES) {
         try {
-          const epds = await fetchEC3EPDs(category, 50);
-          if (epds.length === 0) continue;
+          // Prefer the resolved EC3 category ID; fall back to plain name
+          const categoryParam = categoryIdMap.get(category) ?? category;
+          let offset = 0;
+          let pagesFetched = 0;
 
-          const transformed = transformEC3Batch(epds);
-          // EC3EPD.id is the external ID field; filter out any falsy values
-          const ec3Ids = epds.map((e) => e.id).filter(Boolean) as string[];
+          while (true) {
+            const epds = await fetchEC3EPDs(categoryParam, PAGE_SIZE, offset);
+            if (epds.length === 0) break;
+            pagesFetched++;
 
-          const existing = await db
-            .select({ ec3Id: materials.ec3Id })
-            .from(materials)
-            .where(inArray(materials.ec3Id, ec3Ids));
+            const transformed = await transformEC3Batch(epds);
+            const ec3Ids = epds.map((e) => e.id).filter(Boolean) as string[];
 
-          const existingSet = new Set(existing.map((m) => m.ec3Id));
-          const toCreate = transformed.filter((m) => m.ec3Id && !existingSet.has(m.ec3Id));
-          const toUpdate = transformed.filter((m) => m.ec3Id && existingSet.has(m.ec3Id));
+            const existing = await db
+              .select({ ec3Id: materials.ec3Id })
+              .from(materials)
+              .where(inArray(materials.ec3Id, ec3Ids));
 
-          if (toCreate.length > 0) {
-            // transformEC3ToMaterial always populates required fields; Partial<Material> is safe here
-            type InsertMaterial = typeof materials.$inferInsert;
-            await db.insert(materials).values(toCreate as unknown as InsertMaterial[]);
-            totalCreated += toCreate.length;
+            const existingSet = new Set(existing.map((m) => m.ec3Id));
+            const toCreate = transformed.filter((m) => m.ec3Id && !existingSet.has(m.ec3Id));
+            const toUpdate = transformed.filter((m) => m.ec3Id && existingSet.has(m.ec3Id));
+
+            if (toCreate.length > 0) {
+              await db.insert(materials).values(
+                toCreate as unknown as (typeof materials.$inferInsert)[]
+              );
+              totalCreated += toCreate.length;
+            }
+            for (const m of toUpdate) {
+              await db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!));
+              totalUpdated++;
+            }
+
+            // Stop if we got a partial page (last page) or hit 2000 EPDs per category (safety cap)
+            if (epds.length < PAGE_SIZE || offset >= 2000) break;
+            offset += PAGE_SIZE;
           }
-          for (const m of toUpdate) {
-            await db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!));
-            totalUpdated++;
-          }
+
+          if (pagesFetched > 0) console.log(`[EC3 Sync] ${category}: fetched ${pagesFetched} page(s) (offset reached ${offset})`);
         } catch (err) {
           console.error(`[EC3 Sync] Error syncing category "${category}":`, err);
         }
@@ -132,6 +160,26 @@ export async function startSchedulers(): Promise<void> {
   const { startNotificationScheduler } = await import('./services/notification-scheduler');
   startNotificationScheduler();
 
+  // ── Material score snapshot maintenance — startup + daily ──────────────────
+  const runMaterialScoreMaintenance = async () => {
+    try {
+      const {
+        markExpiredMaterialScoreCaches,
+        cleanupOldMaterialScoreSnapshots,
+      } = await import('./services/material-credit-score');
+      const staleMarked = await markExpiredMaterialScoreCaches();
+      const removed = await cleanupOldMaterialScoreSnapshots();
+      if (staleMarked > 0 || removed > 0) {
+        console.log(`[score-maintenance] stale marked=${staleMarked}, snapshots removed=${removed}`);
+      }
+    } catch (e) {
+      console.error('[score-maintenance] run failed:', e);
+    }
+  };
+
+  setTimeout(runMaterialScoreMaintenance, 120_000);
+  setInterval(runMaterialScoreMaintenance, 24 * 60 * 60 * 1000);
+
   // ── Streak reminder emails — daily (first run: 90s after boot) ────────────
   async function runStreakReminders(): Promise<void> {
     try {
@@ -168,15 +216,30 @@ export async function startSchedulers(): Promise<void> {
     }
   }, 7 * 24 * 60 * 60 * 1000);
 
-  // ── EPD Sync Scheduler (Autodesk SDA) — first run: 3min, then hourly ──────
-  setTimeout(async () => {
+  // ── Supplier "profile hits" digest — first run: 3min, then weekly ─────────
+  // Emails suppliers who had architect views in the last 7 days. Free tier gets
+  // an upgrade CTA to unlock viewer identities; premium gets the firms inline.
+  async function runHitsDigest(): Promise<void> {
     try {
-      const { startEpdSyncScheduler } = await import('./epd-sync-scheduler');
-      startEpdSyncScheduler(60 * 60 * 1000);
+      const { runSupplierHitsDigest } = await import('./services/supplier-hits-digest');
+      await runSupplierHitsDigest();
     } catch (e) {
-      console.error('[EPD Sync] Failed to start scheduler:', e);
+      console.error('[Hits Digest] run failed:', e);
     }
-  }, 3 * 60 * 1000);
+  }
+
+  setTimeout(runHitsDigest, 3 * 60 * 1000);
+  setInterval(runHitsDigest, 7 * 24 * 60 * 60 * 1000);
+
+  // ── EPD Sync Scheduler (Autodesk SDA) — DISABLED (SDA shut down April 2026) ─
+  // SDA was decommissioned. The stub in autodesk-sda-service.ts returns empty
+  // arrays / throws. Re-enable if a replacement EPD source is wired in.
+  // To re-enable: uncomment the block below and set an appropriate interval.
+  //
+  // setTimeout(async () => {
+  //   const { startEpdSyncScheduler } = await import('./epd-sync-scheduler');
+  //   startEpdSyncScheduler(24 * 60 * 60 * 1000); // daily, not hourly
+  // }, 3 * 60 * 1000);
 
   // ── Supplier Scraper — first run: 5min, then weekly ───────────────────────
   setTimeout(async () => {

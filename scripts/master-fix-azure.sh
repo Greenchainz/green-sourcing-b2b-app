@@ -43,7 +43,7 @@ FQDN=$(az containerapp show \
   --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
 
 if [ -z "$FQDN" ]; then
-  FQDN="greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io"
+  FQDN="greenchainz.com"
   echo "⚠️  Could not auto-detect FQDN, using default: $FQDN"
 fi
 
@@ -302,3 +302,4 @@ echo "       https://${FQDN}/.auth/login/linkedin/callback"
 echo "       https://greenchainz.com/.auth/login/linkedin/callback"
 echo ""
 echo "  Done!"
+

@@ -62,27 +62,29 @@ interface EC3EPDListResponse {
   results: EC3EPD[];
 }
 
-let cachedToken: string | null = null;
-let tokenExpiry: number = 0;
+// Session token obtained via username/password login (not the env API key).
+// We don't cache the env key — it's read fresh each call so a key rotation
+// in .env / Key Vault takes effect immediately without a restart.
+let sessionToken: string | null = null;
+let sessionTokenExpiry: number = 0;
 
 /**
- * Authenticate with EC3 using OAuth2 password grant
- * Returns a Bearer token for subsequent API requests
+ * Authenticate with EC3.
+ * Priority: EC3_API_KEY env var → cached session token → fresh login.
+ * If the env API key returns 401 the caller retries via login automatically.
  */
 async function authenticate(): Promise<string> {
-  // Return cached token if still valid (tokens typically last 24 hours)
-  if (cachedToken && Date.now() < tokenExpiry) {
-    return cachedToken;
-  }
-
-  // Prefer API key if set — no login round-trip needed
+  // Always prefer the env key — read fresh so key rotations take effect immediately
   if (ENV.ec3ApiKey) {
-    cachedToken = ENV.ec3ApiKey;
-    tokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
-    return cachedToken;
+    return ENV.ec3ApiKey;
   }
 
-  // Fall back to username/password login
+  // Return cached session token from a previous login if still valid
+  if (sessionToken && Date.now() < sessionTokenExpiry) {
+    return sessionToken;
+  }
+
+  // Login with username/password to get a session token
   if (!ENV.ec3Username || !ENV.ec3Password) {
     throw new Error("EC3 credentials missing — set EC3_API_KEY or both EC3_USERNAME and EC3_PASSWORD in .env.local");
   }
@@ -99,10 +101,11 @@ async function authenticate(): Promise<string> {
   }
 
   const data = await response.json() as EC3AuthResponse;
-  cachedToken = data.key;
-  tokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
+  sessionToken = data.key;
+  // EC3 session tokens last ~24 h; refresh 1 h early to avoid mid-sync expiry
+  sessionTokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
 
-  return cachedToken;
+  return sessionToken;
 }
 
 /**

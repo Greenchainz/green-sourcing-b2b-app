@@ -331,7 +331,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Agent System", () => {
         makeLLMResponse("This material has a CCPS score of 78...")
       );
 
-      const result = await handleChat(
+      await handleChat(
         "Is this material good?",
         "test-session-11",
         {

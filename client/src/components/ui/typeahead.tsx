@@ -37,6 +37,9 @@ export interface TypeaheadItem {
   sublabel?: string;
   /** Optional badge text (e.g. category, state) */
   badge?: string;
+  /** Geocoded coordinates — populated by LocationTypeahead results */
+  lat?: number;
+  lng?: number;
 }
 
 export interface TypeaheadProps {
@@ -108,6 +111,9 @@ export function Typeahead({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  // Track the value that was set by a selection so the debounce-triggered
+  // re-fetch doesn't reopen the dropdown after the user picks an item.
+  const lastSelectedValueRef = useRef<string | null>(null);
 
   const debouncedValue = useDebounce(value, debounceMs);
 
@@ -115,6 +121,14 @@ export function Typeahead({
   useEffect(() => {
     if (suppressFetch) {
       setSuppressFetch(false);
+      return;
+    }
+    // If the debounce fired on a value that was set by a selection (not user
+    // typing), skip the fetch so the dropdown doesn't reopen.
+    if (lastSelectedValueRef.current !== null && lastSelectedValueRef.current === debouncedValue) {
+      lastSelectedValueRef.current = null;
+      setSuggestions([]);
+      setIsOpen(false);
       return;
     }
     if (debouncedValue.trim().length < minChars) {
@@ -168,6 +182,8 @@ export function Typeahead({
   // ── Select a suggestion ────────────────────────────────────────────────────
   const handleSelect = useCallback(
     (item: TypeaheadItem) => {
+      // Record the selected label so the debounce effect knows not to re-fetch
+      lastSelectedValueRef.current = item.label;
       setSuppressFetch(true);
       onChange(item.label);
       onSelect?.(item);

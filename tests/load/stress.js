@@ -138,7 +138,7 @@ export function catalogStress() {
 
 // ── Scenario: RFQ write stress ────────────────────────────────────────────────
 export function rfqStress() {
-  const jar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD);
+  const jar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD, "architect");
   if (!jar) {
     sleep(3);
     return;
@@ -174,7 +174,7 @@ export function rfqStress() {
 export function authStress() {
   group("auth stress: login + me", () => {
     // Login (scrypt verify — CPU-bound, deliberate slowdown by design)
-    const jar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD);
+    const jar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD, "architect");
 
     if (jar) {
       // Immediate auth.me after login

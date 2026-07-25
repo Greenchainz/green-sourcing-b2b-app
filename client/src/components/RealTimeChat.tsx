@@ -168,7 +168,6 @@ export function RealTimeChat({ threadId, isBuyer, recipientName }: RealTimeChatP
       await sendMessageMutation.mutateAsync({
         threadId,
         message: input,
-        senderId: user!.id,
         senderType: isBuyer ? "buyer" : "supplier",
       });
 

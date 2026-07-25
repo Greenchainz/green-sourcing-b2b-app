@@ -22,7 +22,7 @@ if (existsSync(".env.local")) {
 
 import { getDb } from "../server/db";
 import { materials } from "../drizzle/schema";
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const force = process.argv.includes("--force");
 

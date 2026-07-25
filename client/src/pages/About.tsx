@@ -1,297 +1,327 @@
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import VideoPlaceholder from '../components/VideoPlaceholder';
-import { Card } from '../components/ui/card';
-import SEOHead from '../components/SEOHead';
-import StructuredData, { aboutPageSchema } from '../components/StructuredData';
+import { useEffect, useRef, useState } from "react";
+import { AlertCircle, VolumeX } from "lucide-react";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import { Card } from "../components/ui/card";
+import SEOHead from "../components/SEOHead";
+import StructuredData, { aboutPageSchema } from "../components/StructuredData";
+import { trpc } from "../lib/trpc";
 
 export default function About() {
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  const aboutVideoQuery = trpc.founderVideo.aboutVideo.useQuery(undefined, {
+    retry: false,
+    meta: { suppressGlobalErrorLogging: true },
+  });
+
+  const resolvedVideoUrl = aboutVideoQuery.data?.videoUrl ?? "";
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const showLoading = aboutVideoQuery.isLoading;
+  const showUnavailable =
+    !showLoading && !resolvedVideoUrl && !aboutVideoQuery.error;
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+
+    const onVolumeChange = () => setIsMuted(el.muted);
+    setVideoError(null);
+    setIsMuted(el.muted);
+    el.addEventListener("volumechange", onVolumeChange);
+    return () => el.removeEventListener("volumechange", onVolumeChange);
+  }, [resolvedVideoUrl]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
-        title="About GreenChainz — B2B Sustainable Building Materials Compliance Platform"
-        description="GreenChainz was built to fix construction's data access problem. Learn how our platform delivers 50,000+ verified EPDs, automated RFQ workflows, and real-time greenwashing detection for architects and GCs."
+        title="About GreenChainz | Verified Materials Decision Platform"
+        description="GreenChainz helps teams find validated low-carbon material swaps, route RFQs to qualified suppliers, and generate CSI-ready submittals."
         canonicalPath="/about"
       />
       <StructuredData data={aboutPageSchema} />
       <Header />
 
-      {/* Hero Section */}
-      <section className="relative py-20 md:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[oklch(0.85_0.15_145)] via-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] opacity-10 animate-gradient"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,oklch(0.80_0.20_145_/_0.3),transparent_50%)]"></div>
-        
-        <div className="container relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-6">
-            <div className="inline-block px-4 py-2 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-sm mb-4">
-              <span className="text-sm font-semibold text-primary">The Origin Story</span>
-            </div>
-            
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
-              We Opened the{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[oklch(0.85_0.15_145)] to-[oklch(0.65_0.14_145)]">
-                Door.
-              </span>
-              {' '}Bring Your Data.
-            </h1>
+      <main className="flex-1">
+        <section className="relative overflow-hidden py-20 md:py-32">
+          <div className="absolute inset-0 bg-gradient-to-br from-[oklch(0.85_0.15_145)] via-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] opacity-10" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,oklch(0.80_0.20_145_/_0.3),transparent_50%)]" />
 
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              For decades, sustainable material procurement was locked behind expensive consultants, siloed databases, and 3-day quote cycles. We built the platform that puts 50,000+ verified EPDs, instant RFQs, and real-time compliance data into every architect's hands. Data in. Specs out.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Founder Video Section */}
-      <section className="py-20 bg-secondary/30">
-        <div className="container">
-          <div className="max-w-5xl mx-auto space-y-8">
-            <div className="text-center">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                Straight from the Founder
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                No pitch deck. No corporate rehearsal. Hear why this platform exists and who it's coming for.
-              </p>
-            </div>
-            
-            <VideoPlaceholder
-              title="Meet Jerit Norville"
-              description="Founder & CEO shares the GreenChainz vision"
-              aspectRatio="16/9"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Mission & Vision */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20"></div>
-        
-        <div className="container relative z-10">
-          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            <Card className="p-8 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-xl transition-all duration-300">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)] flex items-center justify-center text-3xl mb-6">
-                🎯
+          <div className="container relative z-10">
+            <div className="mx-auto max-w-4xl text-center space-y-6">
+              <div className="inline-block rounded-full border border-primary/30 bg-primary/10 px-4 py-2 backdrop-blur-sm">
+                <span className="text-sm font-semibold text-primary">
+                  Why We Exist
+                </span>
               </div>
-              <h3 className="text-2xl font-bold text-foreground mb-4">Our Mission</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                To intercept legacy procurement at the exact point of decision and inject superior material data before the incumbents even notice. Green building shouldn't cost more time, money, or sanity—it should be the automatic default, enforced by software, not consultants.
-              </p>
-            </Card>
 
-            <Card className="p-8 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-xl transition-all duration-300">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] flex items-center justify-center text-3xl mb-6">
-                🔭
-              </div>
-              <h3 className="text-2xl font-bold text-foreground mb-4">Our Vision</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                An industry where carbon is tracked as rigorously as cost, where greenwashing is exposed on contact, and where the fastest, most data-driven suppliers win—not the ones with the biggest lobbying budget. "Buy Clean" stops being a regulation to fear and becomes the easiest path forward.
-              </p>
-            </Card>
-          </div>
-        </div>
-      </section>
+              <h1 className="text-4xl font-bold leading-tight text-foreground md:text-6xl">
+                Not a directory.{" "}
+                <span className="bg-gradient-to-r from-[oklch(0.85_0.15_145)] to-[oklch(0.65_0.14_145)] bg-clip-text text-transparent">
+                  A decision engine.
+                </span>
+              </h1>
 
-      {/* The Problem We're Solving */}
-      <section className="py-20 bg-secondary/30">
-        <div className="container">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                The Broken System We're Dismantling
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                While the rest of the world automated, construction procurement stayed manual, opaque, and controlled by incumbents who benefit directly from your confusion.
+              <p className="mx-auto max-w-3xl text-xl text-muted-foreground">
+                The data existed. The EPDs existed. What was missing was the
+                layer that takes a material decision, answers what to switch to,
+                routes an RFQ to suppliers who can actually reach your jobsite,
+                and hands the GC a submittal that passes first review.
               </p>
             </div>
+          </div>
+        </section>
 
-            <div className="space-y-6">
-              {[
-                {
-                  title: 'Manual EPD Lookups',
-                  problem: 'Teams waste hours digging through PDFs and databases to verify environmental product declarations.',
-                  solution: 'We automate it—instant lookups across 50K+ verified EPDs.',
-                  icon: '📄'
-                },
-                {
-                  title: 'Greenwashing Everywhere',
-                  problem: 'Suppliers make vague "eco-friendly" claims without data to back them up.',
-                  solution: 'We surface only certified, third-party verified products.',
-                  icon: '🚫'
-                },
-                {
-                  title: 'Compliance Chaos',
-                  problem: 'LEED, Buy Clean, and local regulations create a moving target of requirements.',
-                  solution: 'We track the rules and flag non-compliance in real-time.',
-                  icon: '⚖️'
-                },
-                {
-                  title: 'Disconnected Tools',
-                  problem: 'Sustainability data lives in separate platforms, forcing context-switching.',
-                  solution: 'We integrate directly into Excel, Revit, and your browser.',
-                  icon: '🔌'
-                }
-              ].map((item, index) => (
-                <Card
-                  key={index}
-                  className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)] flex items-center justify-center text-2xl">
-                      {item.icon}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-foreground mb-2">{item.title}</h3>
-                      <p className="text-muted-foreground mb-2">
-                        <span className="font-medium text-destructive">Problem:</span> {item.problem}
-                      </p>
-                      <p className="text-muted-foreground">
-                        <span className="font-medium text-primary">Solution:</span> {item.solution}
+        <section className="bg-secondary/30 py-20">
+          <div className="container">
+            <div className="mx-auto max-w-5xl space-y-8">
+              <div className="text-center">
+                <h2 className="mb-4 text-3xl font-bold text-foreground md:text-4xl">
+                  Straight from the Founder
+                </h2>
+                <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+                  No pitch deck. No corporate rehearsal. Hear why this platform
+                  exists and who it is coming for.
+                </p>
+              </div>
+
+              <div className="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl">
+                {showLoading ? (
+                  <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+                    Loading video…
+                  </div>
+                ) : resolvedVideoUrl ? (
+                  <video
+                    ref={videoRef}
+                    className="h-full w-full object-cover"
+                    controls
+                    preload="metadata"
+                    playsInline
+                    src={resolvedVideoUrl}
+                    onLoadedData={() => setVideoError(null)}
+                    onError={(event) => {
+                      if (import.meta.env.DEV) {
+                        console.warn("About video failed to load:", event);
+                      }
+                      setVideoError(
+                        "Video failed to load. The URL may be expired or access-restricted."
+                      );
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                    Founder video not configured yet.
+                  </div>
+                )}
+
+                {resolvedVideoUrl && isMuted ? (
+                  <button
+                    className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 rounded-full bg-black/75 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/70"
+                    onClick={() => {
+                      const el = videoRef.current;
+                      if (!el) return;
+                      el.muted = false;
+                      void el.play().catch((error) => {
+                        if (import.meta.env.DEV) {
+                          console.warn("About video playback failed:", error);
+                        }
+                      });
+                      setIsMuted(false);
+                    }}
+                    aria-label="Unmute video"
+                  >
+                    <VolumeX className="h-4 w-4" />
+                    Tap to unmute
+                  </button>
+                ) : null}
+
+                {(videoError || showUnavailable) && (
+                  <div className="absolute inset-x-0 bottom-0 flex items-start gap-2 bg-black/70 p-3 text-sm text-white">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p className="font-medium">Video unavailable</p>
+                      <p className="opacity-90">
+                        {videoError ??
+                          aboutVideoQuery.error?.message ??
+                          "This video could not be loaded. Ensure ABOUT_VIDEO_BLOB_KEY is configured on the server."}
                       </p>
                     </div>
                   </div>
-                </Card>
-              ))}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Founder Story */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20"></div>
-        
-        <div className="container relative z-10">
-          <div className="max-w-4xl mx-auto">
-            <Card className="p-8 md:p-12 bg-card/60 backdrop-blur-md border-border/50">
-              <div className="flex flex-col md:flex-row gap-8 items-start">
-                <div className="flex-shrink-0">
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.65_0.14_145)] flex items-center justify-center text-5xl">
-                    👤
-                  </div>
+        <section className="relative overflow-hidden py-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20" />
+          <div className="container relative z-10">
+            <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-2">
+              <Card className="border-border/50 bg-card/60 p-8 backdrop-blur-md transition-all duration-300 hover:shadow-xl">
+                <h3 className="mb-4 text-2xl font-bold text-foreground">
+                  Our Mission
+                </h3>
+                <p className="leading-relaxed text-muted-foreground">
+                  Capture the spec at the moment the material decision is made,
+                  then carry it through swap, RFQ, and submittal without
+                  dropping the verification context.
+                </p>
+              </Card>
+
+              <Card className="border-border/50 bg-card/60 p-8 backdrop-blur-md transition-all duration-300 hover:shadow-xl">
+                <h3 className="mb-4 text-2xl font-bold text-foreground">
+                  Our Vision
+                </h3>
+                <p className="leading-relaxed text-muted-foreground">
+                  A construction industry where verified suppliers win specs on
+                  merit, carbon is tracked as rigorously as cost, and the green
+                  workflow is the default instead of a burden.
+                </p>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-secondary/30 py-20">
+          <div className="container">
+            <div className="mx-auto max-w-4xl">
+              <div className="mb-12 text-center">
+                <h2 className="mb-4 text-3xl font-bold text-foreground md:text-4xl">
+                  The Broken System We&apos;re Dismantling
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  Procurement stayed manual, opaque, and controlled by
+                  incumbents who benefit from confusion.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {[
+                  {
+                    icon: "📄",
+                    title:
+                      "The Spec and the Sourcing Are Completely Disconnected",
+                    problem:
+                      "Project teams specify in BIM or on paper. Sourcing happens later in email, spreadsheets, and phone calls.",
+                    solution:
+                      "GreenChainz intercepts the decision at spec time, not after it.",
+                  },
+                  {
+                    icon: "🚫",
+                    title: "Self-Reported Sustainability Is Worthless",
+                    problem:
+                      "Every supplier claims to be green. None of it is verified.",
+                    solution:
+                      "Every material in GreenChainz is third-party verified and scored server-side.",
+                  },
+                  {
+                    icon: "⚖️",
+                    title: "RFQs Go to the Wrong Suppliers",
+                    problem:
+                      "A supplier 600 miles away is not a real option for local-heavy materials.",
+                    solution:
+                      "RFQs route by material type, shipping class, and delivery capacity.",
+                  },
+                  {
+                    icon: "🔌",
+                    title: "The Submittal Is an Afterthought",
+                    problem:
+                      "A material gets selected. Someone else assembles the submittal. It gets rejected.",
+                    solution:
+                      "GreenChainz generates the CSI-style submittal automatically from the approved selection.",
+                  },
+                ].map(item => (
+                  <Card
+                    key={item.title}
+                    className="border-border/50 bg-card/60 p-6 backdrop-blur-md transition-all duration-300 hover:shadow-lg"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)] text-2xl">
+                        {item.icon}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="mb-2 text-xl font-semibold text-foreground">
+                          {item.title}
+                        </h3>
+                        <p className="mb-2 text-muted-foreground">
+                          <span className="font-medium text-destructive">
+                            Problem:
+                          </span>{" "}
+                          {item.problem}
+                        </p>
+                        <p className="text-muted-foreground">
+                          <span className="font-medium text-primary">
+                            Solution:
+                          </span>{" "}
+                          {item.solution}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden py-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-background to-secondary/20" />
+          <div className="container relative z-10">
+            <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-[160px_1fr]">
+              <div className="flex justify-center md:justify-start">
+                <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.85_0.15_145)] to-[oklch(0.65_0.14_145)] text-5xl">
+                  👤
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-3xl font-bold text-foreground mb-4">Meet Jerit Norville</h2>
-                  <p className="text-lg text-muted-foreground mb-4">
-                    <span className="font-semibold text-foreground">Founder & CEO</span>
+              </div>
+              <div>
+                <h2 className="mb-4 text-3xl font-bold text-foreground">
+                  Meet Jerit Norville
+                </h2>
+                <p className="mb-4 text-lg text-muted-foreground">
+                  <span className="font-semibold text-foreground">
+                    Founder &amp; CEO
+                  </span>
+                </p>
+                <div className="space-y-4 leading-relaxed text-muted-foreground">
+                  <p>
+                    Jerit&apos;s path to GreenChainz started in the military,
+                    moved through construction project management, and landed in
+                    tech, where he saw an opportunity to fix a broken system.
                   </p>
-                  <div className="space-y-4 text-muted-foreground leading-relaxed">
-                    <p>
-                      Jerit's path to GreenChainz started in the military, moved through construction project management, and landed in tech—where he saw an opportunity to fix a broken system.
-                    </p>
-                    <p>
-                      After watching procurement teams struggle with LEED compliance on multi-million dollar projects, he realized the problem wasn't a lack of sustainable products—it was a lack of accessible data. Architects wanted to specify green materials. Contractors wanted to source them. But nobody had time to become an EPD expert.
-                    </p>
-                    <p>
-                      So Jerit built GreenChainz: a platform that treats sustainability data like any other spec—searchable, comparable, and built into the tools teams already use.
-                    </p>
-                    <p className="font-medium text-foreground">
-                      &ldquo;The construction industry doesn&rsquo;t have a sustainability problem. It has a data access problem. We&rsquo;re fixing that&mdash;with or without the legacy players&rsquo; permission.&rdquo;
-                    </p>
-                  </div>
+                  <p>
+                    After watching procurement teams struggle with LEED
+                    compliance on multi-million dollar projects, he realized the
+                    problem was not a lack of sustainable products. It was a
+                    lack of accessible data.
+                  </p>
+                  <p>
+                    So Jerit built GreenChainz: a platform that treats
+                    sustainability data like any other spec, searchable,
+                    comparable, and built into the tools teams already use.
+                  </p>
                 </div>
               </div>
-            </Card>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Values */}
-      <section className="py-20 bg-secondary/30">
-        <div className="container">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                Our Values
+        <section className="bg-secondary/30 py-20">
+          <div className="container">
+            <div className="mx-auto max-w-4xl text-center">
+              <h2 className="mb-4 text-3xl font-bold text-foreground md:text-4xl">
+                Built for the teams who need a faster path to verified materials
               </h2>
-              <p className="text-lg text-muted-foreground">
-                The principles that guide everything we build.
+              <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+                Whether you are a supplier, an architect, or a contractor,
+                GreenChainz is designed to reduce friction at the moment the
+                material decision is made.
               </p>
             </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {[
-                {
-                  icon: '⚡',
-                  title: 'Speed Over Perfection',
-                  description: 'Ship fast, iterate faster. The project timeline has no patience for endless polish.',
-                  color: 'from-[oklch(0.85_0.15_145)] to-[oklch(0.75_0.12_145)]'
-                },
-                {
-                  icon: '🔍',
-                  title: 'Data Over Marketing',
-                  description: 'We trust third-party certifications, not supplier claims. No greenwashing allowed.',
-                  color: 'from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)]'
-                },
-                {
-                  icon: '🤝',
-                  title: 'Integration Over Disruption',
-                  description: 'We meet users where they are - Excel, Revit, Chrome - not in yet another dashboard.',
-                  color: 'from-[oklch(0.65_0.14_145)] to-[oklch(0.55_0.16_145)]'
-                },
-                {
-                  icon: '💰',
-                  title: 'ROI Over Virtue Signaling',
-                  description: 'Sustainability should save money and time, not cost extra. We prove it.',
-                  color: 'from-[oklch(0.80_0.20_145)] to-[oklch(0.70_0.12_145)]'
-                },
-                {
-                  icon: '🌍',
-                  title: 'Access Over Exclusivity',
-                  description: 'Green building should not be a luxury. We price for scale, not prestige.',
-                  color: 'from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)]'
-                },
-                {
-                  icon: '🔧',
-                  title: 'Tools Over Consultants',
-                  description: 'Empower teams to do it themselves. No expensive audits required.',
-                  color: 'from-[oklch(0.70_0.12_145)] to-[oklch(0.60_0.14_145)]'
-                }
-              ].map((value, index) => (
-                <Card
-                  key={index}
-                  className="p-6 bg-card/60 backdrop-blur-md border-border/50 hover:shadow-xl hover:scale-105 transition-all duration-300 group"
-                >
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${value.color} flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                    {value.icon}
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">{value.title}</h3>
-                  <p className="text-muted-foreground">{value.description}</p>
-                </Card>
-              ))}
-            </div>
           </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[oklch(0.85_0.15_145_/_0.1)] to-[oklch(0.65_0.14_145_/_0.1)]"></div>
-        
-        <div className="container relative z-10">
-          <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Enter the Fight
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              The trillion-dollar construction materials market is changing hands. The incumbents are slow. The window is open. Get in.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <a href="/get-started" className="w-full sm:w-auto">
-                <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg bg-gradient-to-r from-[oklch(0.75_0.12_145)] to-[oklch(0.65_0.14_145)] text-white hover:shadow-lg hover:scale-105 transition-all duration-300">
-                  Get Bulletproof Specs
-                </button>
-              </a>
-              <a href="/contact" className="w-full sm:w-auto">
-                <button className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-lg border-2 border-primary/30 bg-background/50 backdrop-blur-sm hover:bg-primary/5 hover:border-primary/50 transition-all duration-300">
-                  Talk Strategy
-                </button>
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <Footer />
     </div>

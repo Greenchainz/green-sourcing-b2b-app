@@ -1,5 +1,16 @@
 # CSI Form 13.1A PDF Generator
 
+> [!IMPORTANT]
+> **Binding invariants apply to this generator.** Before changing the 1.5C / 13.1A
+> generators, the Submittal Log, or swap validation, read
+> [`docs/AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md`](./AEC_SCOPE_AND_COMPLIANCE_INVARIANTS.md):
+> 1. **Compliance is a hard GATE; sustainability is only the RANKING.** Never place a
+>    material that fails a showstopper check (ASTM, fire, structural, R-value, STC,
+>    UL/ICC-ES) into a packet, regardless of carbon. Sort greenest-first only among
+>    candidates that already passed, and include the showstopper-check summary as evidence.
+> 2. **The Submittal Log tracks GreenChainz-generated substitution packets ONLY** — no
+>    RFIs (G716), no payment certs (G702/G703), no whole-job submittals.
+
 ## Overview
 
 The CSI Form 13.1A PDF Generator automatically creates AIA-standard substitution request forms from swap validation results. This feature enables architects and contractors to quickly generate professional documentation for material substitution requests with comprehensive technical specifications, cost analysis, and environmental impact data.
@@ -18,7 +29,7 @@ The CSI Form 13.1A PDF Generator automatically creates AIA-standard substitution
 - **Technical Specifications**: Side-by-side comparison of ASTM codes, fire ratings, structural properties
 - **Automated Justification**: Context-aware justification text based on validation status
 
-## API Endpoint
+## API Endpoints
 
 ### Export CSI Form
 ```
@@ -36,6 +47,30 @@ GET /api/swap-validation/[id]/export-csi-form
 ```bash
 curl -O https://greenchainz.com/api/swap-validation/abc123/export-csi-form
 ```
+
+### Export CSI Form 1.5C (During Bidding/Negotiating)
+```
+GET /api/swap-validation/[id]/export-csi-1-5c
+```
+
+**Optional Query Parameters:**
+- `projectName`: project name used in the form and filename
+- `specSection`: CSI spec section shown in the header
+
+**Response:**
+- Content-Type: `application/pdf`
+- Content-Disposition: `attachment; filename="CSI-1.5C_{ProjectName}_Validation-{id}_{Date}.pdf"`
+
+**Example:**
+```bash
+curl -L -o csi-1-5c.pdf "https://greenchainz.com/api/swap-validation/123/export-csi-1-5c?projectName=Tower-A&specSection=08%2044%2013"
+```
+
+The 1.5C export reuses swap validation data and includes:
+- Standard bidding-stage substitution request metadata
+- Product/manufacturer details for specified and proposed materials
+- Cost impact summary
+- GreenChainz enhancement section (validation status, showstopper summary, carbon delta)
 
 ## PDF Structure
 

@@ -6,6 +6,7 @@ import { ScoreRing } from "@/components/MaterialCreditScore/ScoreRing";
 import { ScoreBreakdown } from "@/components/MaterialCreditScore/ScoreBreakdown";
 import { ScoreTrend } from "@/components/MaterialCreditScore/ScoreTrend";
 import { PdfDownloadGateModal } from "@/components/PdfDownloadGateModal";
+import { BadgeEmbedDialog } from "@/components/BadgeEmbedDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +19,7 @@ import {
   Circle,
   Building2,
   Download,
+  BadgeCheck,
 } from "lucide-react";
 
 // ── Improvement checklist ─────────────────────────────────────────────────────
@@ -91,6 +93,7 @@ export default function MaterialCreditScorePage() {
 
   const [gateOpen, setGateOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [badgeOpen, setBadgeOpen] = useState(false);
 
   const consumeCredit = trpc.architect.consumeDownloadCredit.useMutation({
     onSuccess: () => {
@@ -246,6 +249,19 @@ export default function MaterialCreditScorePage() {
                     </Button>
                   </div>
                 )}
+
+                {/* Embeddable "GreenChainz Verified" badge — for everyone */}
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 w-full sm:w-auto"
+                    onClick={() => setBadgeOpen(true)}
+                  >
+                    <BadgeCheck className="w-4 h-4 text-green-600" />
+                    Get your Verified badge
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -285,6 +301,14 @@ export default function MaterialCreditScorePage() {
         onOpenChange={setGateOpen}
         materialId={id}
         onCreditGranted={handleDownload}
+      />
+
+      {/* Embeddable Verified badge modal */}
+      <BadgeEmbedDialog
+        materialId={id}
+        materialName={materialName}
+        open={badgeOpen}
+        onOpenChange={setBadgeOpen}
       />
     </div>
   );

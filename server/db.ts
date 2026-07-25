@@ -14,11 +14,12 @@
  *   - lib/azure/postgres.ts is DEAD (zero importers) — delete it when convenient.
  */
 
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { getDb as getSharedDb } from '../lib/db';
+import type { DbUserRole } from "../shared/types/roles";
 
 // ─── Async accessor (preferred) ─────────────────────────────────────────────
 
@@ -114,6 +115,22 @@ export async function getUserByOpenId(openId: string) {
   const result = await resolvedDb
     .select()
     .from(users)
+    .where(and(eq(users.openId, openId), isNull(users.deletedAt)))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByOpenIdIncludingDeleted(openId: string) {
+  const resolvedDb = await getDb();
+  if (!resolvedDb) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await resolvedDb
+    .select()
+    .from(users)
     .where(eq(users.openId, openId))
     .limit(1);
 
@@ -122,7 +139,7 @@ export async function getUserByOpenId(openId: string) {
 
 export async function updateUserRole(
   userId: number,
-  role: "buyer" | "supplier" | "admin" | "user"
+  role: DbUserRole
 ): Promise<void> {
   const resolvedDb = await getDb();
   if (!resolvedDb) throw new Error("[Database] Cannot update user role: database not available");

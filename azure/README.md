@@ -37,7 +37,7 @@ Configure these in **greenchainz-vault** Key Vault:
 | greenchainz-frontend | Container App (Frontend) | East US | rg-greenchainz-prod-container |
 | greenchainz | Redis Cache | East US 2 | greenchainz-production |
 | greenchainz-vault | Key Vault | East US | greenchainz-production |
-| revitfiles | Storage Account | East US | rg-greenchainz |
+| greencontent | Storage Account | East US | DefaultResourceGroup-EUS |
 
 ## Quick Start
 
@@ -131,7 +131,7 @@ The `.github/workflows/deploy-azure.yml` workflow:
 
    `GET /api/health` returns `200`.
 
-   `GET /api/auth/me` without auth returns `401`.
+   `GET /api/auth/me` without auth returns `200` with `user: null`.
 
 ## Post-Deploy Verification (Day 2)
 
@@ -151,7 +151,7 @@ FRONTEND_FQDN=$(az containerapp show \
 # Backend public health must be 200
 curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/health"
 
-# Protected route must reject anonymous access with 401
+# Auth status endpoint returns 200 for anonymous access
 curl -s -o /dev/null -w "%{http_code}" "https://${BACKEND_FQDN}/api/auth/me"
 
 # Frontend root must be reachable
@@ -168,7 +168,7 @@ az containerapp show \
 Expected values:
 
 - `https://${BACKEND_FQDN}/api/health` => `200`
-- `https://${BACKEND_FQDN}/api/auth/me` => `401`
+- `https://${BACKEND_FQDN}/api/auth/me` => `200`
 - `https://${FRONTEND_FQDN}/` => `200`
 - `FRONTEND_URL` => `https://greenchainz.com`
 
@@ -198,7 +198,7 @@ Expected values:
 | Backend | `/api/health` | Public health check used by CI smoke tests |
 | Backend | `/health` | Container liveness probe |
 | Backend | `/ready` | Container readiness probe |
-| Backend | `/api/auth/me` | Protected route; should return `401` without auth |
+| Backend | `/api/auth/me` | Auth status route; returns `200` with `user: null` without auth |
 | Frontend | `/` | Liveness, readiness, and startup probes |
 
 ## Scaling

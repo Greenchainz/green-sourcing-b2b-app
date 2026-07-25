@@ -123,7 +123,7 @@ export async function removeUserFromGroup(
  * Check if user exists in a group
  */
 export async function userExistsInGroup(
-  groupName: string,
+  _groupName: string,
   userId: string,
   hubName: string = WEB_PUBSUB_HUB
 ): Promise<boolean> {

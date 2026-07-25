@@ -1,6 +1,6 @@
 import { getDb } from "./db";
-import { suppliersLocation, complianceRules, regionalSwapPatterns, shippingCosts, climateZoneAdjustments, locationPricingAdjustments, suppliers } from "../drizzle/schema";
-import { eq, and, lte, gte } from "drizzle-orm";
+import { complianceRules, regionalSwapPatterns, shippingCosts, climateZoneAdjustments, locationPricingAdjustments, suppliers } from "../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 
 /**
  * Location Service — Handles location-aware queries for swap engine

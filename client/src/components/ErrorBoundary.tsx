@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { AlertTriangle, RotateCcw } from "lucide-react";
-import { Component, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
@@ -9,16 +9,24 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  componentStack: string | null;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, componentStack: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, componentStack: null };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // Log the full component stack — this is the key diagnostic info
+    console.error("[ErrorBoundary] Caught render error:", error);
+    console.error("[ErrorBoundary] Component stack:", info.componentStack);
+    this.setState({ componentStack: info.componentStack ?? null });
   }
 
   render() {
@@ -36,6 +44,7 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
               <pre className="text-sm text-muted-foreground whitespace-break-spaces">
                 {this.state.error?.stack}
+                {this.state.componentStack ? `\n\nComponent Stack:${this.state.componentStack}` : ""}
               </pre>
             </div>
 

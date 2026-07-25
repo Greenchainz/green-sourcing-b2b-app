@@ -6,11 +6,11 @@ on:
       - main
   workflow_dispatch:
 
-# ─── Azure OIDC identifiers (non-secret, safe to commit) ────────────────────
+# --- Azure OIDC identifiers (non-secret, safe to commit) ---
 # App registration: greenchainz (8b597068-9347-4e99-8860-8c4e9a9bc112)
 # Tenant:          greenchainz12 (1d04bf50-8175-40af-a9d5-f8e441460b06)
 # Subscription:    f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
-# ─────────────────────────────────────────────────────────────────────────────
+# ---
 
 # Prevent concurrent deployments to the same ref (branch, tag, or PR); cancel any in-progress run.
 concurrency:
@@ -21,19 +21,20 @@ env:
   ACR: acrgreenchainzprod916
   RESOURCE_GROUP: rg-greenchainz-prod-container
   FRONTEND_APP: greenchainz-frontend
-  BACKEND_APP: greenchainz-backend
+  BACKEND_APP: greenchainz-backend-v2
   FRONTEND_IMAGE: greenchainz-frontend
   BACKEND_IMAGE: greenchainz-backend
   KEY_VAULT: Greenchainz-vault
   DB_SERVER_RG: rg-greenchainz
   DB_SERVER_NAME: greenchainz-db-prod
-  # OIDC login — referenced by azure/login in the build, migrate, and deploy jobs.
+  DB_NAME: greenchainz_prod
+  # OIDC login - referenced by azure/login in the build, migrate, and deploy jobs.
   AZURE_CLIENT_ID: 8b597068-9347-4e99-8860-8c4e9a9bc112
   AZURE_TENANT_ID: 1d04bf50-8175-40af-a9d5-f8e441460b06
   AZURE_SUBSCRIPTION_ID: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
 
 jobs:
-  # ── Job 1: Typecheck + unit tests ───────────────────────────────────────────────
+  # --- Job 1: Typecheck + unit tests ---
   test:
     name: Typecheck & Tests
     runs-on: ubuntu-latest
@@ -42,13 +43,13 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: "pnpm"
@@ -74,23 +75,27 @@ jobs:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: Run unit tests
-        run: pnpm test
+        run: pnpm vitest run --reporter=default --reporter=json --outputFile=vitest-results.json
 
-  # ── Job 2: Build + push both Docker images ──────────────────────────────────────────
+      - name: Enforce zero skipped tests in CI
+        run: |
+          node -e "const fs=require('fs');const p='vitest-results.json';if(!fs.existsSync(p)){console.error('Missing vitest report:',p);process.exit(1)};const r=JSON.parse(fs.readFileSync(p,'utf8'));const skipped=Number(r.numSkippedTests||0);const passed=Number(r.numPassedTests||0);const failed=Number(r.numFailedTests||0);console.log('Vitest summary => passed:',passed,'failed:',failed,'skipped:',skipped);if(skipped>0){console.error('? Production gate failed: skipped tests are not allowed in CI. Ensure required test env/secrets are configured so suites execute.');process.exit(1)}"
+
+  # --- Job 2: Build + push both Docker images ---
   build:
     name: Build & Push Images
     runs-on: ubuntu-latest
     needs: test
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       id-token: write
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Log in to Azure (OIDC — no stored credentials)
-        uses: azure/login@v2
+      - name: Log in to Azure (OIDC - no stored credentials)
+        uses: azure/login@v3
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
@@ -112,22 +117,147 @@ jobs:
           get_secret sentry-org
           get_secret sentry-project
 
-      - name: Validate required build secrets
+      - name: Validate build secrets
         run: |
           AZURE_MAPS_KEY="${{ steps.kv.outputs.azure-maps-key }}"
           if [ -z "$AZURE_MAPS_KEY" ]; then
-            echo "❌ azure-maps-key secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
-            exit 1
+            echo "?? azure-maps-key secret is missing from Key Vault '${{ env.KEY_VAULT }}' - frontend map features using subscription-key auth may be unavailable"
           fi
 
       - name: Set up Docker Buildx (layer caching)
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
-      - name: Log in to ACR (token-based — no username/password)
-        run: az acr login --name ${{ env.ACR }}
+      - name: Allow runner IP in ACR firewall
+        id: acr_firewall
+        run: |
+          if ! RUNNER_IP=$(curl -sf https://api.ipify.org); then
+            CURL_EXIT=$?
+            echo "? Could not determine runner IP (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
+          if [ -z "$RUNNER_IP" ]; then
+            echo "? Could not determine runner IP (empty response from api.ipify.org)"
+            exit 1
+          fi
+          echo "Runner IP: $RUNNER_IP"
+          # Record the prior publicNetworkAccess state so cleanup can restore it exactly.
+          # When publicNetworkAccess is "Disabled", IP allowlist rules are bypassed entirely
+          # and all public traffic is denied regardless of networkRuleSet entries.
+          # We must enable public network access before adding the IP rule so that the
+          # rule actually takes effect for the Docker login that follows.
+          if ! ACR_PUBLIC_ACCESS_WAS=$(az acr show --name ${{ env.ACR }} --query publicNetworkAccess --output tsv 2>&1); then
+            echo "? Could not query ACR publicNetworkAccess state: ${ACR_PUBLIC_ACCESS_WAS}"
+            exit 1
+          fi
+          echo "public-access-was=${ACR_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
+          if [ "$ACR_PUBLIC_ACCESS_WAS" != "Enabled" ]; then
+            echo "?? ACR publicNetworkAccess is '${ACR_PUBLIC_ACCESS_WAS}' - enabling temporarily for this workflow run"
+            az acr update --name ${{ env.ACR }} --public-network-enabled true
+          fi
+          az acr network-rule add \
+            --name ${{ env.ACR }} \
+            --ip-address "$RUNNER_IP"
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          # Allow firewall rule to propagate.
+          # ARM provisioningState flips to Succeeded quickly, but the data-plane
+          # firewall (which gates the /oauth2/exchange token endpoint and the /v2/
+          # endpoint used by Docker) can take up to 5 minutes to enforce the change
+          # on all Azure edge nodes. 60 s gives the fast-path a reasonable head start.
+          sleep 60
+
+      - name: Log in to ACR
+        id: acr_login
+        run: |
+          set -euo pipefail
+          # When ACR roleAssignmentMode is AbacRepositoryPermissions, push
+          # permissions are enforced via ABAC conditions at the repository level.
+          # In this mode az acr login --expose-token succeeds (the OIDC token is
+          # valid for authentication) but ACR only issues pull-scoped repository
+          # tokens for the service principal, causing docker/build-push-action to
+          # fail with "push access denied: insufficient_scope".  Detect ABAC mode
+          # up-front and skip the OIDC path so the step goes straight to admin
+          # credentials, which bypass ABAC and always grant push access.
+          ROLE_MODE=$(az acr show --name ${{ env.ACR }} --query roleAssignmentMode --output tsv 2>/dev/null || echo "")
+          if [ -z "$ROLE_MODE" ]; then
+            echo "?? Could not determine ACR roleAssignmentMode; assuming standard RBAC mode"
+          else
+            echo "ACR roleAssignmentMode: ${ROLE_MODE}"
+          fi
+
+          TOKEN=""
+          if [ "$ROLE_MODE" != "AbacRepositoryPermissions" ]; then
+            # Standard RBAC mode - try OIDC token first.
+            # Retry up to 5 times with 30 s back-off.
+            # The ACR IP-allowlist rule may still be propagating at this point, and
+            # traffic proxied via Azure Front Door / WAF can cause the first attempt
+            # to see a 403 even after the rule shows Succeeded in ARM.
+            # stderr is intentionally NOT suppressed so any error messages are
+            # visible in the job log on every failed attempt.
+            for attempt in 1 2 3 4 5; do
+              ERROR_LOG="/tmp/acr-login-error-${attempt}.log"
+              if TOKEN=$(az acr login --name ${{ env.ACR }} --expose-token --output tsv --query accessToken 2>"$ERROR_LOG"); then
+                rm -f "$ERROR_LOG"
+                break
+              fi
+              cat "$ERROR_LOG"
+              rm -f "$ERROR_LOG"
+              echo "??  ACR token request failed (attempt ${attempt}/5)."
+              # Skip the sleep on the last attempt so the job fails fast.
+              [ "$attempt" -lt 5 ] && sleep 30
+            done
+          else
+            echo "?? ABAC mode detected - skipping OIDC token path (would yield pull-only scope); using admin credentials directly"
+          fi
+
+          if [ -n "$TOKEN" ]; then
+            echo "::add-mask::$TOKEN"
+            if ! docker login ${{ env.ACR }}.azurecr.io \
+              --username 00000000-0000-0000-0000-000000000000 \
+              --password-stdin <<< "$TOKEN"; then
+              echo "? Docker login failed with AAD-issued ACR token"
+              exit 1
+            fi
+            exit 0
+          fi
+
+          echo "?? Using temporary ACR admin credentials"
+          # Record prior admin state before enabling so cleanup can restore it exactly
+          ACR_ADMIN_WAS_ENABLED=$(az acr show --name ${{ env.ACR }} --query adminUserEnabled --output tsv 2>/dev/null || echo "unknown")
+          echo "admin-was-enabled=${ACR_ADMIN_WAS_ENABLED}" >> $GITHUB_OUTPUT
+          if ! az acr update --name ${{ env.ACR }} --admin-enabled true; then
+            echo "? Failed to enable temporary ACR admin credentials"
+            exit 1
+          fi
+          if ! ACR_USERNAME=$(az acr credential show --name ${{ env.ACR }} --query username --output tsv); then
+            echo "? Failed to retrieve temporary ACR admin username"
+            exit 1
+          fi
+          if ! ACR_PASSWORD=$(az acr credential show --name ${{ env.ACR }} --query "passwords[0].value" --output tsv); then
+            echo "? Failed to retrieve temporary ACR admin password"
+            exit 1
+          fi
+          if [ -z "$ACR_USERNAME" ] || [ -z "$ACR_PASSWORD" ]; then
+            echo "? Failed to obtain temporary ACR admin credentials"
+            exit 1
+          fi
+          echo "::add-mask::$ACR_USERNAME"
+          echo "::add-mask::$ACR_PASSWORD"
+          # Retry docker login up to 5 times with 30 s back-off to absorb any
+          # remaining ACR data-plane firewall propagation delay.
+          for dl_attempt in 1 2 3 4 5; do
+            if docker login ${{ env.ACR }}.azurecr.io \
+              --username "$ACR_USERNAME" \
+              --password-stdin <<< "$ACR_PASSWORD"; then
+              exit 0
+            fi
+            echo "??  Docker login attempt ${dl_attempt}/5 failed."
+            [ "$dl_attempt" -lt 5 ] && sleep 30
+          done
+          echo "? Docker login failed with temporary ACR admin credentials after 5 attempts"
+          exit 1
 
       - name: Build & push frontend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.frontend
@@ -144,7 +274,7 @@ jobs:
             VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 
       - name: Build & push backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.backend
@@ -152,31 +282,92 @@ jobs:
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:latest
-          cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache
+          no-cache: true
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache,mode=max
+          # cache-from temporarily removed to force clean rebuild (stale registry cache)
+
+      - name: Remove runner IP from ACR firewall
+        if: always()
+        run: |
+          az acr network-rule remove \
+            --name ${{ env.ACR }} \
+            --ip-address "${{ steps.acr_firewall.outputs.runner-ip }}" || true
+          # Restore publicNetworkAccess to its state before this workflow ran.
+          PRIOR_ACCESS="${{ steps.acr_firewall.outputs.public-access-was }}"
+          if [ "$PRIOR_ACCESS" = "Disabled" ]; then
+            echo "?? Restoring ACR publicNetworkAccess to Disabled"
+            az acr update --name ${{ env.ACR }} --public-network-enabled false || true
+          elif [ "$PRIOR_ACCESS" = "Enabled" ]; then
+            echo "?? ACR publicNetworkAccess was already Enabled before this workflow ran; no change needed"
+          else
+            # Empty: the acr_firewall step failed before the state was recorded or changed - no cleanup needed.
+            echo "?? ACR publicNetworkAccess was not modified by this workflow; no cleanup needed"
+          fi
+
+      - name: Disable ACR admin account
+        if: always()
+        run: |
+          PRIOR="${{ steps.acr_login.outputs.admin-was-enabled }}"
+          if [ -z "$PRIOR" ]; then
+            # Fallback path was not taken - admin state was never changed by this workflow.
+            echo "?? ACR admin state was not changed by this workflow; skipping cleanup."
+            exit 0
+          fi
+          if [ "$PRIOR" = "true" ]; then
+            # Admin was already enabled before this workflow ran - leave it as-is.
+            echo "?? ACR admin was already enabled before this workflow ran; leaving state unchanged."
+            exit 0
+          fi
+          if [ "$PRIOR" = "unknown" ]; then
+            # Prior state could not be determined - cannot safely restore; leave state as-is.
+            echo "?? Could not determine prior ACR admin state; leaving current state unchanged to avoid unintended side-effects."
+            exit 0
+          fi
+          # Prior state was "false" - this workflow enabled admin; restore to disabled.
+          if ! ADMIN_ENABLED=$(az acr show --name ${{ env.ACR }} --query adminUserEnabled --output tsv 2>/dev/null); then
+            echo "?? Could not query ACR adminUserEnabled during cleanup; attempting best-effort disable"
+            az acr update --name ${{ env.ACR }} --admin-enabled false || true
+            exit 0
+          fi
+          if [ "$ADMIN_ENABLED" = "true" ]; then
+            az acr update --name ${{ env.ACR }} --admin-enabled false
+          fi
 
       - name: Azure logout
         run: az logout || true
         if: always()
 
-  # ── Job 3: Migrate + seed ──────────────────────────────────────────────────────────────
+  # --- Job 3: Migrate + seed ---
   migrate:
     name: Migrate & Seed DB
     runs-on: ubuntu-latest
     needs: build
+    # Single approval gate for the entire release. Because deploy `needs` migrate,
+    # pausing migrate here holds the whole downstream chain. Migrate is chosen over
+    # deploy as the gate point because it is the first job that mutates live production
+    # state (Drizzle schema changes + data seeds). Build only pushes inert images to
+    # ACR, which is safe to run ungated.
+    environment: Production
     timeout-minutes: 20
     permissions:
       id-token: write
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: "pnpm"
@@ -184,33 +375,138 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Log in to Azure (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ env.AZURE_CLIENT_ID }}
-          tenant-id: ${{ env.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+      - name: Allow runner IP in Key Vault firewall
+        id: kv_firewall
+        run: |
+          KV_QUERY_STDERR=$(mktemp)
+          if ! KV_PUBLIC_ACCESS_WAS=$(az keyvault show \
+            --name "${{ env.KEY_VAULT }}" \
+            --query properties.publicNetworkAccess \
+            --output tsv 2>"$KV_QUERY_STDERR"); then
+            KV_QUERY_EXIT=$?
+            echo "? Could not query Key Vault public network access state for '${{ env.KEY_VAULT }}' (exit code: $KV_QUERY_EXIT)"
+            echo "   Azure CLI error output:"
+            cat "$KV_QUERY_STDERR"
+            rm -f "$KV_QUERY_STDERR"
+            exit "$KV_QUERY_EXIT"
+          fi
+          rm -f "$KV_QUERY_STDERR"
+          if [ -z "$KV_PUBLIC_ACCESS_WAS" ]; then
+            echo "? Could not query Key Vault public network access state for '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          echo "kv-public-access-was=${KV_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
+          if [ "$KV_PUBLIC_ACCESS_WAS" = "Disabled" ]; then
+            echo "?? Key Vault publicNetworkAccess is Disabled - enabling temporarily for this workflow run"
+            az keyvault update \
+              --name "${{ env.KEY_VAULT }}" \
+              --public-network-access Enabled \
+              --output none
+            echo "kv-public-access-toggled=true" >> $GITHUB_OUTPUT
+          else
+            echo "kv-public-access-toggled=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Pull DATABASE_URL from Key Vault
+          if ! RUNNER_IP=$(curl -sf https://api.ipify.org); then
+            CURL_EXIT=$?
+            echo "? Could not determine runner IP (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
+          if [ -z "$RUNNER_IP" ]; then
+            echo "? Could not determine runner IP (empty response from api.ipify.org)"
+            exit 1
+          fi
+          if ! [[ "$RUNNER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "? Unexpected runner IP format from api.ipify.org: '$RUNNER_IP'"
+            exit 1
+          fi
+          echo "Runner IP: $RUNNER_IP"
+          az keyvault network-rule add \
+            --name "${{ env.KEY_VAULT }}" \
+            --ip-address "$RUNNER_IP" \
+            --output none
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          # Wait for Key Vault firewall rule to propagate - bounded retry with exponential backoff (max 60s)
+          KV_MAX_WAIT=60
+          KV_DELAY=5
+          KV_MAX_DELAY=20
+          KV_ELAPSED=0
+          echo "? Waiting for Key Vault firewall rule to propagate..."
+          until az keyvault secret list --vault-name "${{ env.KEY_VAULT }}" --query "length(@)" -o tsv >/dev/null 2>&1; do
+            if [ "$KV_ELAPSED" -ge "$KV_MAX_WAIT" ]; then
+              echo "?? Key Vault firewall propagation wait exceeded ${KV_MAX_WAIT}s - proceeding anyway"
+              break
+            fi
+            echo "? Not reachable yet - retrying in ${KV_DELAY}s (elapsed: ${KV_ELAPSED}s / max: ${KV_MAX_WAIT}s)..."
+            sleep "$KV_DELAY"
+            KV_ELAPSED=$((KV_ELAPSED + KV_DELAY))
+            KV_DELAY=$((KV_DELAY * 2))
+            [ "$KV_DELAY" -gt "$KV_MAX_DELAY" ] && KV_DELAY=$KV_MAX_DELAY
+          done
+
+      - name: Read DATABASE_URL from Key Vault
         id: kv
         run: |
-          DB_URL=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "Database-URL" --query value -o tsv 2>/dev/null) || DB_URL=""
-          [ -n "$DB_URL" ] && echo "::add-mask::$DB_URL"
+          # Read the password-based connection string stored in Key Vault.
+          # The OIDC azure/login step above gives the runner permission to read secrets.
+          # The secret must be a standard postgresql:// URL using a real Postgres role
+          # with a password and DDL rights (not an Entra/AAD principal).
+          # Retry with exponential backoff to handle Key Vault firewall propagation delay
+          # (avoids the flakiness of a fixed sleep while bounding total sleep time).
+          # KV_MAX_WAIT caps cumulative sleep seconds; actual wall-clock time is higher
+          # due to az keyvault secret show execution time.
+          KV_MAX_WAIT=60
+          KV_BACKOFF=5
+          KV_ELAPSED=0
+          while true; do
+            KV_STDERR=$(mktemp)
+            if DB_URL=$(az keyvault secret show \
+              --vault-name "${{ env.KEY_VAULT }}" \
+              --name "Database-URL" \
+              --query value -o tsv 2>"$KV_STDERR"); then
+              rm -f "$KV_STDERR"
+              break
+            fi
+            KV_EXIT=$?
+            KV_ERR=$(cat "$KV_STDERR")
+            rm -f "$KV_STDERR"
+            if [ $((KV_ELAPSED + KV_BACKOFF)) -le "$KV_MAX_WAIT" ] && echo "$KV_ERR" | grep -qiE "\b403\b|ForbiddenByFirewall|NetworkAclsViolation"; then
+              echo "? Key Vault firewall not yet propagated (exit $KV_EXIT), retrying in ${KV_BACKOFF}s... (${KV_ELAPSED}s elapsed)"
+              sleep "$KV_BACKOFF"
+              KV_ELAPSED=$((KV_ELAPSED + KV_BACKOFF))
+              KV_BACKOFF=$((KV_BACKOFF * 2))
+              continue
+            fi
+            echo "? 'az keyvault secret show' failed for vault '${{ env.KEY_VAULT }}' (exit code: $KV_EXIT)"
+            echo "   Azure CLI error output:"
+            echo "$KV_ERR"
+            exit "$KV_EXIT"
+          done
+          if [ -z "$DB_URL" ]; then
+            echo "? Database-URL secret not found in Key Vault '${{ env.KEY_VAULT }}'"
+            echo "   Ensure the secret exists and contains a password-based postgresql:// connection string."
+            exit 1
+          fi
+          echo "::add-mask::$DB_URL"
           echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
 
       - name: Open PostgreSQL firewall for runner
         id: firewall
         run: |
-          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          if ! RUNNER_IP=$(curl -sf https://api.ipify.org); then
+            CURL_EXIT=$?
+            echo "? Could not determine runner IP (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
           if [ -z "$RUNNER_IP" ]; then
-            echo "❌ Could not determine runner IP"
+            echo "? Could not determine runner IP (empty response from api.ipify.org)"
             exit 1
           fi
           echo "Runner IP: $RUNNER_IP"
           az postgres flexible-server firewall-rule create \
             --resource-group ${{ env.DB_SERVER_RG }} \
-            --name ${{ env.DB_SERVER_NAME }} \
-            --rule-name "github-actions-${{ github.run_id }}" \
+            --server-name ${{ env.DB_SERVER_NAME }} \
+            --name "github-actions-${{ github.run_id }}" \
             --start-ip-address "$RUNNER_IP" \
             --end-ip-address "$RUNNER_IP"
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
@@ -222,7 +518,7 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "? DATABASE_URL is empty - Key Vault read must have failed"
             exit 1
           fi
           pnpm db:migrate
@@ -232,14 +528,14 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "? DATABASE_URL is empty - Key Vault read must have failed"
             exit 1
           fi
           if [ ! -f "greenchainz-supplier-targets.csv" ]; then
-            echo "⚠️ greenchainz-supplier-targets.csv not found — skipping manufacturer seed."
-            echo "ℹ️  To seed: add the CSV to the repo root or run locally with pnpm tsx scripts/seed-manufacturers.ts"
+            echo "?? greenchainz-supplier-targets.csv not found - skipping manufacturer seed."
+            echo "??  To seed: add the CSV to the repo root or run locally with pnpm tsx scripts/seed-manufacturers.ts"
           else
-            echo "🌱 Seeding manufacturer profiles..."
+            echo "?? Seeding manufacturer profiles..."
             pnpm tsx scripts/seed-manufacturers.ts
           fi
 
@@ -248,41 +544,152 @@ jobs:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "? DATABASE_URL is empty - Key Vault read must have failed"
             exit 1
           fi
-          echo "🌱 Seeding lead time estimates..."
+          echo "?? Seeding lead time estimates..."
           pnpm tsx scripts/seed-lead-times.ts
+
+      - name: Seed materials catalog (idempotent - skips if already seeded)
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "? DATABASE_URL is empty - Key Vault read must have failed"
+            exit 1
+          fi
+          echo "?? Seeding static materials catalog..."
+          pnpm tsx scripts/seed-materials-static.ts
 
       - name: Close PostgreSQL firewall for runner
         if: always()
         run: |
           az postgres flexible-server firewall-rule delete \
             --resource-group ${{ env.DB_SERVER_RG }} \
-            --name ${{ env.DB_SERVER_NAME }} \
-            --rule-name "github-actions-${{ github.run_id }}" \
+            --server-name ${{ env.DB_SERVER_NAME }} \
+            --name "github-actions-${{ github.run_id }}" \
             --yes || true
+
+      - name: Close Key Vault firewall for runner
+        if: always()
+        run: |
+          RUNNER_IP="${{ steps.kv_firewall.outputs.runner-ip }}"
+          if [ -n "$RUNNER_IP" ]; then
+            az keyvault network-rule remove \
+              --name "${{ env.KEY_VAULT }}" \
+              --ip-address "$RUNNER_IP" \
+              --output none || true
+          fi
+
+          if [ "${{ steps.kv_firewall.outputs.kv-public-access-toggled }}" = "true" ] && [ -n "${{ steps.kv_firewall.outputs.kv-public-access-was }}" ]; then
+            echo "?? Restoring Key Vault publicNetworkAccess to '${{ steps.kv_firewall.outputs.kv-public-access-was }}'"
+            if ! az keyvault update \
+              --name "${{ env.KEY_VAULT }}" \
+              --public-network-access "${{ steps.kv_firewall.outputs.kv-public-access-was }}" \
+              --output none; then
+              RESTORE_EXIT=$?
+              echo "?? Failed to restore Key Vault publicNetworkAccess to '${{ steps.kv_firewall.outputs.kv-public-access-was }}' (exit code: $RESTORE_EXIT)"
+              echo "   ?? Manual intervention may be required: az keyvault update --name ${{ env.KEY_VAULT }} --public-network-access ${{ steps.kv_firewall.outputs.kv-public-access-was }}"
+            fi
+          fi
 
       - name: Azure logout
         run: az logout || true
         if: always()
 
-  # ── Job 4: Deploy both Container Apps ───────────────────────────────────────────────
+  # --- Job 4: Deploy both Container Apps ---
   deploy:
     name: Deploy to Azure
     runs-on: ubuntu-latest
     needs: migrate
+    # No separate environment gate here: the approval already fired on the `migrate`
+    # job above, and the deploy job uses no environment-scoped secrets (OIDC credentials
+    # are workflow-level env: vars, committed as non-secret identifiers; runtime secrets
+    # are pulled from Azure Key Vault via OIDC). Keeping a single gate avoids a second
+    # approval prompt on the same release for a solo founder.
     timeout-minutes: 30
     permissions:
       id-token: write
       contents: read
     steps:
+      - name: Sync system clock (prevents AADSTS700024 OIDC token timing errors)
+        run: sudo timedatectl set-ntp true || true
+
       - name: Log in to Azure (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Allow runner IP in Key Vault firewall
+        id: kv_firewall
+        run: |
+          KV_QUERY_STDERR=$(mktemp)
+          if ! KV_PUBLIC_ACCESS_WAS=$(az keyvault show \
+            --name "${{ env.KEY_VAULT }}" \
+            --query properties.publicNetworkAccess \
+            --output tsv 2>"$KV_QUERY_STDERR"); then
+            KV_QUERY_EXIT=$?
+            echo "? Could not query Key Vault public network access state for '${{ env.KEY_VAULT }}' (exit code: $KV_QUERY_EXIT)"
+            echo "   Azure CLI error output:"
+            cat "$KV_QUERY_STDERR"
+            rm -f "$KV_QUERY_STDERR"
+            exit "$KV_QUERY_EXIT"
+          fi
+          rm -f "$KV_QUERY_STDERR"
+          if [ -z "$KV_PUBLIC_ACCESS_WAS" ]; then
+            echo "? Could not query Key Vault public network access state for '${{ env.KEY_VAULT }}'"
+            exit 1
+          fi
+          echo "kv-public-access-was=${KV_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
+          if [ "$KV_PUBLIC_ACCESS_WAS" = "Disabled" ]; then
+            echo "?? Key Vault publicNetworkAccess is Disabled - enabling temporarily for this workflow run"
+            az keyvault update \
+              --name "${{ env.KEY_VAULT }}" \
+              --public-network-access Enabled \
+              --output none
+            echo "kv-public-access-toggled=true" >> $GITHUB_OUTPUT
+          else
+            echo "kv-public-access-toggled=false" >> $GITHUB_OUTPUT
+          fi
+
+          if ! RUNNER_IP=$(curl -sf https://api.ipify.org); then
+            CURL_EXIT=$?
+            echo "? Could not determine runner IP (curl exit code: $CURL_EXIT)"
+            exit 1
+          fi
+          if [ -z "$RUNNER_IP" ]; then
+            echo "? Could not determine runner IP (empty response from api.ipify.org)"
+            exit 1
+          fi
+          if ! [[ "$RUNNER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "? Unexpected runner IP format from api.ipify.org: '$RUNNER_IP'"
+            exit 1
+          fi
+          echo "Runner IP: $RUNNER_IP"
+          az keyvault network-rule add \
+            --name "${{ env.KEY_VAULT }}" \
+            --ip-address "$RUNNER_IP" \
+            --output none
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          # Wait for Key Vault firewall rule to propagate - bounded retry with exponential backoff (max 60s)
+          KV_MAX_WAIT=60
+          KV_DELAY=5
+          KV_MAX_DELAY=20
+          KV_ELAPSED=0
+          echo "? Waiting for Key Vault firewall rule to propagate..."
+          until az keyvault secret list --vault-name "${{ env.KEY_VAULT }}" --query "length(@)" -o tsv >/dev/null 2>&1; do
+            if [ "$KV_ELAPSED" -ge "$KV_MAX_WAIT" ]; then
+              echo "?? Key Vault firewall propagation wait exceeded ${KV_MAX_WAIT}s - proceeding anyway"
+              break
+            fi
+            echo "? Not reachable yet - retrying in ${KV_DELAY}s (elapsed: ${KV_ELAPSED}s / max: ${KV_MAX_WAIT}s)..."
+            sleep "$KV_DELAY"
+            KV_ELAPSED=$((KV_ELAPSED + KV_DELAY))
+            KV_DELAY=$((KV_DELAY * 2))
+            [ "$KV_DELAY" -gt "$KV_MAX_DELAY" ] && KV_DELAY=$KV_MAX_DELAY
+          done
 
       - name: Pull build secrets from Key Vault
         id: kv
@@ -303,6 +710,15 @@ jobs:
           # (KV-reference secrets fail when system identity path is missing)
           get_secret fred-api-key
           get_secret resend-api-key
+          get_secret ec3-api-key
+          get_secret azure-maps-client-id
+          # Core auth secrets - stored as Container App secrets so the backend can
+          # start successfully even before system-assigned MI RBAC fully propagates.
+          get_secret jwt-secret
+          get_secret microsoft-client-secret
+          # Application Insights connection string (contains instrumentation key)
+          # Store in Key Vault as: appinsights-connection
+          get_secret appinsights-connection
 
       - name: Remove stale user-assigned identities from backend
         run: |
@@ -311,130 +727,397 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query id -o tsv)
 
-          USER_IDS=$(az rest \
+          IDENTITY_TYPE=$(az rest \
             --method GET \
             --uri "${RESOURCE_ID}?api-version=2023-05-01" \
-            --query "identity.userAssignedIdentities" -o json 2>/dev/null || echo "null")
+            --query "identity.type" -o tsv 2>/dev/null || echo "")
 
-          if [ "$USER_IDS" = "null" ] || [ "$USER_IDS" = "{}" ] || [ -z "$USER_IDS" ]; then
-            echo "No user-assigned identities found — skipping cleanup."
+          if [[ ! "$IDENTITY_TYPE" =~ UserAssigned ]]; then
+            echo "Identity type '${IDENTITY_TYPE:-none}' has no user-assigned identities - skipping cleanup."
           else
-            PATCH_BODY=$(echo "$USER_IDS" | jq '{identity: {type: "SystemAssigned, UserAssigned", userAssignedIdentities: with_entries(.value = null)}}')
-            echo "Removing stale user-assigned identities..."
+            # When user-assigned identities exist (possibly pointing to deleted resources),
+            # declare the new desired state as SystemAssigned-only WITHOUT listing the old
+            # identity IDs. Nulling out deleted identity IDs causes InvalidIdentityValues.
+            echo "Stripping user-assigned identities (type was: ${IDENTITY_TYPE})..."
             az rest \
               --method PATCH \
               --uri "${RESOURCE_ID}?api-version=2023-05-01" \
-              --body "$PATCH_BODY" \
+              --body '{"identity":{"type":"SystemAssigned"}}' \
               --output none || true
-            sleep 15
+            # Poll until the app settles - the secret set step hangs if we
+            # proceed while the container app is still in a transitioning state.
+            for i in $(seq 1 12); do
+              STATE=$(az containerapp show \
+                --name ${{ env.BACKEND_APP }} \
+                --resource-group ${{ env.RESOURCE_GROUP }} \
+                --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+              echo "  ($i) provisioningState: ${STATE:-unknown}"
+              [ "$STATE" = "Succeeded" ] && break
+              sleep 10
+            done
           fi
 
       - name: Upsert backend runtime secrets in Container App
         env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
           FRED_API_KEY: ${{ steps.kv.outputs.fred-api-key }}
           RESEND_API_KEY: ${{ steps.kv.outputs.resend-api-key }}
+          JWT_SECRET: ${{ steps.kv.outputs.jwt-secret }}
+          AZURE_AD_CLIENT_SECRET: ${{ steps.kv.outputs.microsoft-client-secret }}
         run: |
-          if [ -z "$FRED_API_KEY" ] || [ -z "$RESEND_API_KEY" ]; then
-            echo "❌ Required backend secrets (fred-api-key/resend-api-key) missing from Key Vault '${{ env.KEY_VAULT }}'"
+          set -euo pipefail
+          if [ -z "$DATABASE_URL" ]; then
+            echo "? Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
-          az containerapp secret set \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --secrets \
-              "fred-api-key=$FRED_API_KEY" \
-              "resend-api-key=$RESEND_API_KEY"
+          SECRET_ARGS=("database-url=$DATABASE_URL")
+          if [ -n "$FRED_API_KEY" ]; then
+            SECRET_ARGS+=("fred-api-key=$FRED_API_KEY")
+          fi
+          if [ -n "$RESEND_API_KEY" ]; then
+            SECRET_ARGS+=("resend-api-key=$RESEND_API_KEY")
+          fi
+          # Store core auth secrets directly so the container can start even if
+          # Key Vault RBAC hasn't propagated by the time the new revision boots.
+          if [ -n "$JWT_SECRET" ]; then
+            SECRET_ARGS+=("jwt-secret=$JWT_SECRET")
+          else
+            echo "??  jwt-secret not found in Key Vault - backend will rely on KV load at runtime"
+          fi
+          if [ -n "$AZURE_AD_CLIENT_SECRET" ]; then
+            SECRET_ARGS+=("microsoft-client-secret=$AZURE_AD_CLIENT_SECRET")
+          else
+            echo "??  microsoft-client-secret not found in Key Vault - backend will rely on KV load at runtime"
+          fi
+          # Bounded retry window with capped exponential backoff to cover overlap
+          # while Azure finalizes a prior Container App provisioning op.
+          MAX_SECRET_SET_RETRIES=8
+          BASE_RETRY_SLEEP_SECONDS=5
+          MAX_RETRY_SLEEP_SECONDS=30
+          SECRET_ERR_FILE=$(mktemp)
+          STATE_ERR_FILE=$(mktemp)
+          trap 'rm -f "$SECRET_ERR_FILE" "$STATE_ERR_FILE"' EXIT
+
+          for attempt in $(seq 1 "$MAX_SECRET_SET_RETRIES"); do
+            echo "Upserting backend runtime secrets (attempt ${attempt}/${MAX_SECRET_SET_RETRIES})..."
+            if az containerapp secret set \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --secrets "${SECRET_ARGS[@]}" 2>"$SECRET_ERR_FILE"; then
+              echo "Backend runtime secrets updated."
+              exit 0
+            fi
+
+            # Azure CLI exposes this transient conflict using the
+            # ContainerAppOperationInProgress error code in stderr.
+            if grep -q "ContainerAppOperationInProgress" "$SECRET_ERR_FILE"; then
+              echo "Container App operation in progress; waiting before retry..."
+              STATE=""
+              if ! STATE=$(az containerapp show \
+                --name ${{ env.BACKEND_APP }} \
+                --resource-group ${{ env.RESOURCE_GROUP }} \
+                --query "properties.provisioningState" -o tsv 2>"$STATE_ERR_FILE"); then
+                echo "?? Warning (non-fatal): failed to read backend provisioningState for diagnostics: $(head -n 1 "$STATE_ERR_FILE")"
+              fi
+              echo "Current provisioningState: ${STATE:-unknown}"
+              if [ "$attempt" -eq "$MAX_SECRET_SET_RETRIES" ]; then
+                cat "$SECRET_ERR_FILE"
+                echo "? Timed out updating backend secrets while Container App was still provisioning."
+                exit 1
+              fi
+              sleep_seconds=$(( BASE_RETRY_SLEEP_SECONDS * (2 ** (attempt - 1)) ))
+              if [ "$sleep_seconds" -gt "$MAX_RETRY_SLEEP_SECONDS" ]; then
+                sleep_seconds="$MAX_RETRY_SLEEP_SECONDS"
+              fi
+              echo "Retrying in ${sleep_seconds}s..."
+              sleep "$sleep_seconds"
+              continue
+            fi
+
+            cat "$SECRET_ERR_FILE"
+            echo "? Failed to set backend runtime secrets."
+            exit 1
+          done
+
+      - name: Wait for backend to settle after secrets upsert
+        run: |
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+            echo "  ($i/18) provisioningState: ${STATE:-unknown}"
+            [ "$STATE" = "Succeeded" ] && break
+            # Don't spin 3 minutes on a terminal Failed state - bail early
+            if [ "$STATE" = "Failed" ]; then
+              echo "??  Container App reached Failed state after secrets upsert - continuing anyway"
+              break
+            fi
+            sleep 10
+          done
+
+      - name: Re-authenticate to Azure (refresh OIDC token before RBAC ops)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Ensure system identity + KV access
         run: |
+          set -euo pipefail
+          MAX_PRINCIPAL_RETRIES=6
+          MAX_ROLE_CREATE_RETRIES=3
+          RETRY_SLEEP_SECONDS=10
+          RBAC_PROPAGATION_WAIT_SECONDS=30
+          PRINCIPAL_ERR_FILE=$(mktemp)
+          PRINCIPAL_OUT_FILE=$(mktemp)
+          ASSIGNMENT_ERR_FILE=$(mktemp)
+          trap 'rm -f "$PRINCIPAL_ERR_FILE" "$PRINCIPAL_OUT_FILE" "$ASSIGNMENT_ERR_FILE"' EXIT
+
           # Enable system-assigned identity for the backend app.
           # Use || true because this command fails with BadRequest when the app still
           # holds a stale reference to a deleted user-assigned identity resource
           # (e.g. id-greenchainz-backend). The system identity is already present in
           # that case (Azure emits a warning), so the failure is safe to ignore.
           # The identity show + PRINCIPAL_ID check below validates the actual state.
-          az containerapp identity assign \
+          timeout 180 az containerapp identity assign \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --system-assigned || true
 
-          # Read back the principal ID after assignment.
-          PRINCIPAL_ID=$(az containerapp identity show \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query "principalId" --output tsv)
+          # Wait for the Container App to finish the identity-assign provisioning
+          # op before attempting to read the principal ID. Without this gate the
+          # identity show call below returns empty during the transition window.
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+            echo "  (settle $i/18) provisioningState: ${STATE:-unknown}"
+            [ "$STATE" = "Succeeded" ] && break
+            # Bail early on terminal Failed state - don't waste 3 minutes polling
+            [ "$STATE" = "Failed" ] && echo "??  App in Failed state - checking if identity is already present" && break
+            sleep 10
+          done
+
+          # Read back the principal ID after assignment, with retries for propagation.
+          PRINCIPAL_ID=""
+          for attempt in $(seq 1 "$MAX_PRINCIPAL_RETRIES"); do
+            if timeout 90 az containerapp identity show \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "principalId" --output tsv >"$PRINCIPAL_OUT_FILE" 2>"$PRINCIPAL_ERR_FILE"; then
+              PRINCIPAL_ID=$(cat "$PRINCIPAL_OUT_FILE")
+            else
+              PRINCIPAL_ID=""
+              echo "Principal lookup command failed (attempt ${attempt}/${MAX_PRINCIPAL_RETRIES}):"
+              cat "$PRINCIPAL_ERR_FILE" || true
+            fi
+            if [ -n "${PRINCIPAL_ID}" ]; then
+              break
+            fi
+            echo "Managed identity principal ID not available yet (attempt ${attempt}/${MAX_PRINCIPAL_RETRIES}); retrying in ${RETRY_SLEEP_SECONDS}s..."
+            sleep "$RETRY_SLEEP_SECONDS"
+          done
 
           if [ -z "$PRINCIPAL_ID" ]; then
-            echo "❌ Could not resolve managed identity principal ID for ${{ env.BACKEND_APP }}"
+            echo "? Could not resolve managed identity principal ID for ${{ env.BACKEND_APP }}"
             exit 1
           fi
 
           # Scope the Key Vault role assignment to the vault resource itself.
-          KV_ID=$(az keyvault show \
+          KV_ID=$(timeout 90 az keyvault show \
             --name ${{ env.KEY_VAULT }} \
             --query id --output tsv)
 
-          az role assignment create \
-            --role "Key Vault Secrets User" \
+          # Idempotent role assignment: skip create if assignment already exists.
+          ASSIGNMENT_COUNT=$(timeout 90 az role assignment list \
             --assignee-object-id "$PRINCIPAL_ID" \
-            --assignee-principal-type ServicePrincipal \
-            --scope "$KV_ID" || true
+            --scope "$KV_ID" \
+            --role "Key Vault Secrets User" \
+            --query "length(@)" \
+            --output tsv 2>"$ASSIGNMENT_ERR_FILE") || {
+              echo "? Failed to check existing Key Vault role assignment:"
+              cat "$ASSIGNMENT_ERR_FILE" || true
+              exit 1
+            }
+          ASSIGNMENT_COUNT=${ASSIGNMENT_COUNT:-0} # az can return empty output in transient states.
 
-          echo "Waiting 30s for RBAC propagation..."
-          sleep 30
+          if [ "${ASSIGNMENT_COUNT}" = "0" ]; then
+            CREATED="false"
+            for attempt in $(seq 1 "$MAX_ROLE_CREATE_RETRIES"); do
+              if timeout 120 az role assignment create \
+                --role "Key Vault Secrets User" \
+                --assignee-object-id "$PRINCIPAL_ID" \
+                --assignee-principal-type ServicePrincipal \
+                --scope "$KV_ID" \
+                --output none; then
+                CREATED="true"
+                break
+              fi
+              echo "Role assignment create attempt ${attempt}/${MAX_ROLE_CREATE_RETRIES} failed or timed out; retrying in ${RETRY_SLEEP_SECONDS}s..."
+              sleep "$RETRY_SLEEP_SECONDS"
+            done
+            if [ "${CREATED}" != "true" ]; then
+              VERIFY_COUNT=$(timeout 90 az role assignment list \
+                --assignee-object-id "$PRINCIPAL_ID" \
+                --scope "$KV_ID" \
+                --role "Key Vault Secrets User" \
+                --query "length(@)" \
+                --output tsv 2>"$ASSIGNMENT_ERR_FILE") || {
+                  echo "? Failed to verify Key Vault role assignment after retries:"
+                  cat "$ASSIGNMENT_ERR_FILE" || true
+                  exit 1
+                }
+              if [ "${VERIFY_COUNT:-0}" = "0" ]; then
+                echo "? Unable to create or verify Key Vault Secrets User role assignment after retries."
+                exit 1
+              fi
+            fi
+          else
+            echo "Key Vault Secrets User role assignment already exists for backend principal."
+          fi
+
+          echo "Waiting ${RBAC_PROPAGATION_WAIT_SECONDS}s for RBAC propagation..."
+          sleep "$RBAC_PROPAGATION_WAIT_SECONDS"
+
+      - name: Wait for backend to reach Succeeded before deploying
+        run: |
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+            echo "  ($i/18) provisioningState: ${STATE:-unknown}"
+            [ "$STATE" = "Succeeded" ] && break
+            [ "$i" -eq 18 ] && echo "? Timed out waiting for backend to reach Succeeded" && exit 1
+            sleep 10
+          done
 
       - name: Deploy backend
-        env:
-          AZURE_MI_CLIENT_ID: ${{ secrets.AZURE_MI_CLIENT_ID }}
         run: |
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
             "FRONTEND_URL=https://greenchainz.com"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
+            "DATABASE_URL=secretref:database-url"
+            # Bind core auth secrets directly from Container App secrets so the
+            # server can pass the required-env-vars check on first boot, before
+            # the system-assigned MI RBAC assignment has fully propagated to KV.
+            "JWT_SECRET=secretref:jwt-secret"
+            "AZURE_AD_CLIENT_SECRET=secretref:microsoft-client-secret"
+            # Public Entra app-registration identifiers for user sign-in (OAuth).
+            # NOT secrets - loadSecrets() deliberately does not pull these from Key
+            # Vault, so they must be set as plain env vars or the OAuth initiate
+            # route (/api/auth/microsoft) 500s on a missing identifier.
+            "AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112"
+            "AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06"
+            "AZURE_STORAGE_ACCOUNT_NAME=greencontent"
+            "ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true"
+            # Allow server to start during the brief window before system-assigned
+            # identity has full Key Vault access (Redis config is loaded from KV).
+            # Once KV is reachable the app uses Redis normally; this flag just
+            # prevents a FATAL crash when REDIS_HOST/REDIS_PORT are not yet set.
+            "REQUIRE_REDIS_CALL_SESSIONS=false"
           )
+          # Array for env vars to purge from the Container App (grows conditionally below)
+          STALE_TELEMETRY_VARS=()
+          # EC3 API key - powers the 24h material sync scheduler
+          if [ -n "${{ steps.kv.outputs.ec3-api-key }}" ]; then
+            ENV_VARS+=("EC3_API_KEY=${{ steps.kv.outputs.ec3-api-key }}")
+          else
+            echo "??  ec3-api-key not found in Key Vault - EC3 sync will be skipped"
+          fi
+          # Founder note: store the Azure Maps account Client ID (Portal ? Maps account
+          # ? Authentication ? Client ID) in Key Vault as "azure-maps-client-id".
+          # This is a non-secret GUID, stored in KV for config consistency.
+          if [ -n "${{ steps.kv.outputs.azure-maps-client-id }}" ]; then
+            ENV_VARS+=("AZURE_MAPS_CLIENT_ID=${{ steps.kv.outputs.azure-maps-client-id }}")
+          else
+            echo "?? azure-maps-client-id not found in Key Vault - Azure Maps managed-identity auth will be unavailable"
+          fi
           # FRED_API_KEY and RESEND_API_KEY are loaded at runtime from Key Vault
-          # by loadSecrets() using the user-assigned managed identity — no passthrough needed
+          # by loadSecrets() using the system-assigned managed identity
+          # Application Insights — inject connection string so Azure Monitor telemetry
+          # starts on every new revision automatically.
+          if [ -n "${{ steps.kv.outputs.appinsights-connection }}" ]; then
+            ENV_VARS+=(
+              "APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.kv.outputs.appinsights-connection }}"
+              "AZURE_MONITOR_ENABLED=true"
+              "FEATURE_AZURE_MONITORING=true"
+            )
+          else
+            echo "⚠️  appinsights-connection not found in Key Vault — telemetry disabled"
+            echo "    To enable: az keyvault secret set --vault-name ${{ env.KEY_VAULT }} --name appinsights-connection --value '<connection-string>'"
+            # Explicitly remove stale telemetry vars so a value from a previous
+            # revision does not remain active (az containerapp update preserves
+            # unmentioned env vars from the prior revision by default).
+            STALE_TELEMETRY_VARS=("APPLICATIONINSIGHTS_CONNECTION_STRING" "AZURE_MONITOR_ENABLED" "FEATURE_AZURE_MONITORING")
+          fi
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
               "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}"
               "SENTRY_RELEASE=${{ github.sha }}"
             )
           fi
+          # Use --remove-env-vars to properly delete stale identity vars.
+          # Setting KEY= (empty) via --set-env-vars is silently ignored by the
+          # Azure CLI, leaving the old user-assigned identity client ID in place.
+          # --remove-env-vars performs an explicit deletion, ensuring
+          # ManagedIdentityCredential() falls back to the system-assigned identity.
+          REMOVE_VARS=("AZURE_MI_CLIENT_ID" "MANAGED_IDENTITY_CLIENT_ID" "AZURE_CLIENT_ID")
+          # Add stale telemetry vars if appinsights-connection was absent this run
+          if [ ${#STALE_TELEMETRY_VARS[@]} -gt 0 ]; then
+            REMOVE_VARS+=("${STALE_TELEMETRY_VARS[@]}")
+          fi
           az containerapp update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
-            --set-env-vars "${ENV_VARS[@]}"
+            --set-env-vars "${ENV_VARS[@]}" \
+            --remove-env-vars "${REMOVE_VARS[@]}"
 
-          - name: Ensure backend allows unauthenticated requests
+      - name: Ensure backend ingress targetPort is 3000
+        run: |
+          az containerapp ingress update \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --target-port 3000 \
+            --type external \
+            --transport http
+
+      - name: Ensure backend allows unauthenticated requests
         run: |
           echo "Forcing AllowAnonymous on Container Apps auth (idempotent, safe if auth not yet configured)"
           az containerapp auth update \
             --name ${{ env.BACKEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --unauthenticated-client-action AllowAnonymous \
-            2>/dev/null || echo "Auth not configured or update skipped — continuing"
+            2>/dev/null || echo "Auth not configured or update skipped - continuing"
 
       - name: Fix frontend ACR registry (system identity)
+        shell: bash
         run: |
+          set -euo pipefail
           # Ensure the frontend system-assigned identity exists.
-          # Same || true guard as the backend step — a stale user-assigned identity
+          # Same || true guard as the backend step - a stale user-assigned identity
           # reference causes BadRequest even when the system identity is already present.
           az containerapp identity assign \
-            --name ${{ env.FRONTEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "${{ env.FRONTEND_APP }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
             --system-assigned || true
 
           FRONTEND_PRINCIPAL=$(az containerapp identity show \
-            --name ${{ env.FRONTEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "${{ env.FRONTEND_APP }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
             --query "principalId" -o tsv)
 
           ACR_ID=$(az acr show \
             --name ${{ env.ACR }} \
             --query id -o tsv)
 
-          # Grant AcrPull — idempotent, safe to run every deploy.
+          # Grant AcrPull - idempotent, safe to run every deploy.
           az role assignment create \
             --assignee-object-id "$FRONTEND_PRINCIPAL" \
             --assignee-principal-type ServicePrincipal \
@@ -442,19 +1125,46 @@ jobs:
             --scope "$ACR_ID" || true
 
           # Point the registry config at the system identity (not the dead user-assigned one).
-          az containerapp registry set \
-            --name ${{ env.FRONTEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --server ${{ env.ACR }}.azurecr.io \
-            --identity system
+          # Skip no-op updates because they can trigger a long-running revision operation.
+          ACR_SERVER="${{ env.ACR }}.azurecr.io"
+          CURRENT_REGISTRY_IDENTITY=""
+          REGISTRY_IDENTITY_QUERY_FAILED=false
+          REGISTRY_QUERY_ERR_FILE=$(mktemp)
+          if ! CURRENT_REGISTRY_IDENTITY=$(az containerapp show \
+            --name "${{ env.FRONTEND_APP }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query "properties.configuration.registries[?server=='${ACR_SERVER}'] | [0].identity" \
+            -o tsv 2>"$REGISTRY_QUERY_ERR_FILE"); then
+            REGISTRY_IDENTITY_QUERY_FAILED=true
+            echo "?? Could not read current frontend registry identity. Proceeding with update as a fail-safe. Error details:" >&2
+            cat "$REGISTRY_QUERY_ERR_FILE" >&2
+          fi
+          rm -f "$REGISTRY_QUERY_ERR_FILE"
+          # Normalize case defensively to avoid reconfiguration if Azure ever returns mixed-case values.
+          CURRENT_REGISTRY_IDENTITY=$(printf '%s' "$CURRENT_REGISTRY_IDENTITY" | tr '[:upper:]' '[:lower:]')
+          if [ "$REGISTRY_IDENTITY_QUERY_FAILED" = "false" ] && [ "$CURRENT_REGISTRY_IDENTITY" = "system" ]; then
+            echo "Frontend registry identity already set to 'system' - skipping update."
+          else
+            if [ "$REGISTRY_IDENTITY_QUERY_FAILED" = "true" ]; then
+              echo "Proceeding with registry identity update (current state could not be read - fail-safe)."
+            elif [ -z "$CURRENT_REGISTRY_IDENTITY" ]; then
+              echo "No registry identity currently configured for $ACR_SERVER - setting to 'system'."
+            else
+              echo "Frontend registry identity is '$CURRENT_REGISTRY_IDENTITY' - updating to 'system'."
+            fi
+            az containerapp registry set \
+              --name "${{ env.FRONTEND_APP }}" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --server "$ACR_SERVER" \
+              --identity system
+          fi
 
       - name: Deploy frontend
         env:
           DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
-          AZURE_MI_CLIENT_ID: ${{ secrets.AZURE_MI_CLIENT_ID }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
+            echo "? Database-URL secret is missing from Key Vault '${{ env.KEY_VAULT }}'"
             exit 1
           fi
           az containerapp secret set \
@@ -477,7 +1187,7 @@ jobs:
             --uri "${RESOURCE_ID}?api-version=2023-05-01" \
             --body '{"properties":{"template":{"scale":{"minReplicas":1,"maxReplicas":3,"rules":[]}}}}' \
             --output none 2>/dev/null; then
-            echo "KEDA scale rules cleared — waiting for operation to settle..."
+            echo "KEDA scale rules cleared - waiting for operation to settle..."
             for i in $(seq 1 18); do
               STATE=$(az containerapp show \
                 --name ${{ env.FRONTEND_APP }} \
@@ -488,7 +1198,7 @@ jobs:
               sleep 10
             done
           else
-            echo "PATCH skipped (rules already clear or request failed) — proceeding"
+            echo "PATCH skipped (rules already clear or request failed) - proceeding"
           fi
 
           ENV_VARS=(
@@ -496,7 +1206,14 @@ jobs:
             "NODE_ENV=production"
             "PORT=3000"
             "DATABASE_URL=secretref:database-url"
-            "AZURE_MI_CLIENT_ID=$AZURE_MI_CLIENT_ID"
+            "AZURE_STORAGE_ACCOUNT_NAME=greencontent"
+            "ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true"
+            "REQUIRE_REDIS_CALL_SESSIONS=false"
+            # Public Entra app-registration identifiers for user sign-in (OAuth).
+            # Not secrets - kept in sync with the backend so any auth code paths
+            # served from this container resolve the correct app registration.
+            "AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112"
+            "AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
@@ -509,9 +1226,23 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             --set-env-vars "${ENV_VARS[@]}" \
+            --remove-env-vars AZURE_MI_CLIENT_ID MANAGED_IDENTITY_CLIENT_ID AZURE_CLIENT_ID \
             --min-replicas 1 \
             --max-replicas 3
-          # Ensure ingress target port is always 3000 — guards against portal
+          # Wait for the containerapp update to reach Succeeded before issuing
+          # the ingress update. Running both writes back-to-back on the same
+          # entity causes ConflictingConcurrentWriteNotAllowed.
+          echo "Waiting for frontend containerapp update to settle..."
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show \
+              --name ${{ env.FRONTEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+            echo "  ($i) provisioningState: ${STATE:-unknown}"
+            [ "$STATE" = "Succeeded" ] && break
+            sleep 10
+          done
+          # Ensure ingress target port is always 3000 - guards against portal
           # misconfig or a previous deployment that set a different port.
           az containerapp ingress update \
             --name ${{ env.FRONTEND_APP }} \
@@ -530,11 +1261,20 @@ jobs:
             local method="${4:-GET}"
             local attempts="${5:-24}"
             local sleep_seconds="${6:-10}"
+            # Default to IPv4 + HTTP/1.1 for Azure CI stability; override via
+            # SMOKE_CURL_FLAGS (for example: "--http2" or "") when needed.
+            local smoke_curl_flags="${SMOKE_CURL_FLAGS--4 --http1.1}"
+            local -a smoke_curl_flag_args=()
+            if [ -n "$smoke_curl_flags" ]; then
+              read -r -a smoke_curl_flag_args <<< "$smoke_curl_flags"
+            fi
             local status=""
             local curl_exit_code=0
 
             for i in $(seq 1 "$attempts"); do
-              status=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
+              # Default SMOKE_CURL_FLAGS="-4 --http1.1" avoids intermittent GitHub runner
+              # -> Azure endpoint connectivity failures; override via env var when needed.
+              status=$(curl "${smoke_curl_flag_args[@]}" -sSL -o /dev/null -w "%{http_code}" --max-time 20 -X "$method" "$url")
               curl_exit_code=$?
               if [ "$curl_exit_code" -ne 0 ]; then
                 status="CURL_EXIT_${curl_exit_code}"
@@ -544,17 +1284,17 @@ jobs:
                 status="HTTP_CODE_PARSE_ERROR"
               fi
               if [ "$status" = "$expected_status" ]; then
-                echo "✅ ${label}: ${status}"
+                echo "? ${label}: ${status}"
                 return 0
               fi
 
-              echo "⏳ ${label}: expected ${expected_status}, got ${status} (attempt ${i}/${attempts})"
+              echo "? ${label}: expected ${expected_status}, got ${status} (attempt ${i}/${attempts})"
               if [ "$i" -lt "$attempts" ]; then
                 sleep "$sleep_seconds"
               fi
             done
 
-            echo "❌ ${label}: expected ${expected_status}, got ${status} after ${attempts} attempts"
+            echo "? ${label}: expected ${expected_status}, got ${status} after ${attempts} attempts"
             return 1
           }
           EOF
@@ -564,27 +1304,23 @@ jobs:
           # shellcheck source=/dev/null
           source /tmp/smoke_helpers.sh
 
-          BACKEND_FQDN=$(az containerapp show \
-            --name ${{ env.BACKEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query properties.configuration.ingress.fqdn -o tsv)
-          if [ -z "$BACKEND_FQDN" ]; then
-            echo "❌ Could not resolve backend ingress FQDN"
-            exit 1
-          fi
+          # The backend *.azurecontainerapps.io FQDN is locked behind Front Door.
+          # Smoke test via canonical host, where /api/* is routed to the backend.
+          BACKEND_PUBLIC="https://greenchainz.com"
 
           # Public endpoint should return 200.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/health" "200" "/api/health" || exit 1
-          wait_for_expected_status "https://${BACKEND_FQDN}/health" "200" "/health" || exit 1
+          # Use 36 attempts (6 min) to handle cold-start image pulls that can take ~6 min
+          # before Azure ingress routing propagates to the new revision.
+          wait_for_expected_status "${BACKEND_PUBLIC}/api/health" "200" "/api/health" "GET" "36" || exit 1
 
-          # Protected endpoint should reject unauthenticated requests.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/auth/me" "401" "/api/auth/me" || exit 1
+          # Auth status endpoint should return 200 for anonymous callers.
+          wait_for_expected_status "${BACKEND_PUBLIC}/api/auth/me" "200" "/api/auth/me" "GET" "36" || exit 1
 
           # Admin REST routes must reject unauthenticated callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST" "1" || exit 1
+          wait_for_expected_status "${BACKEND_PUBLIC}/api/admin/trigger-outreach" "401" "/api/admin/trigger-outreach" "POST" "1" || exit 1
 
           # RFQ PDF routes must reject unauthenticated callers.
-          wait_for_expected_status "https://${BACKEND_FQDN}/api/rfq/1/pdf/summary" "401" "/api/rfq/:rfqId/pdf/summary" || exit 1
+          wait_for_expected_status "${BACKEND_PUBLIC}/api/rfq/1/pdf/summary" "401" "/api/rfq/:rfqId/pdf/summary" || exit 1
 
       - name: Verify backend runtime frontend origin
         run: |
@@ -593,7 +1329,7 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query "properties.template.containers[0].env[?name=='FRONTEND_URL'].value | [0]" -o tsv)
           if [ "$FRONTEND_URL_VALUE" != "https://greenchainz.com" ]; then
-            echo "❌ Expected backend FRONTEND_URL=https://greenchainz.com, got '${FRONTEND_URL_VALUE}'"
+            echo "? Expected backend FRONTEND_URL=https://greenchainz.com, got '${FRONTEND_URL_VALUE}'"
             exit 1
           fi
 
@@ -602,16 +1338,9 @@ jobs:
           # shellcheck source=/dev/null
           source /tmp/smoke_helpers.sh
 
-          FRONTEND_FQDN=$(az containerapp show \
-            --name ${{ env.FRONTEND_APP }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query properties.configuration.ingress.fqdn -o tsv)
-          if [ -z "$FRONTEND_FQDN" ]; then
-            echo "❌ Could not resolve frontend ingress FQDN"
-            exit 1
-          fi
-
-          wait_for_expected_status "https://${FRONTEND_FQDN}/healthz" "200" "Frontend /healthz" || exit 1
+          # The frontend *.azurecontainerapps.io FQDN is locked behind Front Door.
+          # Smoke test via the public host and verify the SPA root is reachable.
+          wait_for_expected_status "https://greenchainz.com/" "200" "Frontend root" "GET" "36" || exit 1
 
       - name: Dump container logs on failure
         if: failure()
@@ -627,6 +1356,29 @@ jobs:
             --name ${{ env.FRONTEND_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --tail 100 2>/dev/null || echo "(log fetch failed)"
+
+      - name: Close Key Vault firewall for runner
+        if: always()
+        run: |
+          RUNNER_IP="${{ steps.kv_firewall.outputs.runner-ip }}"
+          if [ -n "$RUNNER_IP" ]; then
+            az keyvault network-rule remove \
+              --name "${{ env.KEY_VAULT }}" \
+              --ip-address "$RUNNER_IP" \
+              --output none || true
+          fi
+
+          if [ "${{ steps.kv_firewall.outputs.kv-public-access-toggled }}" = "true" ] && [ -n "${{ steps.kv_firewall.outputs.kv-public-access-was }}" ]; then
+            echo "?? Restoring Key Vault publicNetworkAccess to '${{ steps.kv_firewall.outputs.kv-public-access-was }}'"
+            if ! az keyvault update \
+              --name "${{ env.KEY_VAULT }}" \
+              --public-network-access "${{ steps.kv_firewall.outputs.kv-public-access-was }}" \
+              --output none; then
+              RESTORE_EXIT=$?
+              echo "?? Failed to restore Key Vault publicNetworkAccess to '${{ steps.kv_firewall.outputs.kv-public-access-was }}' (exit code: $RESTORE_EXIT)"
+              echo "   ?? Manual intervention may be required: az keyvault update --name ${{ env.KEY_VAULT }} --public-network-access ${{ steps.kv_firewall.outputs.kv-public-access-was }}"
+            fi
+          fi
 
       - name: Azure logout
         run: az logout || true

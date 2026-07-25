@@ -110,7 +110,6 @@ export function InsiderDashboard({ compact = false }: InsiderDashboardProps) {
 
   // Next milestone
   const nextMilestone = MILESTONES.find((m) => m.weeks > streak);
-  const prevMilestoneWeeks = MILESTONES.filter((m) => m.weeks <= streak).pop()?.weeks ?? 0;
   const progressMax = nextMilestone ? nextMilestone.weeks : 12;
   const progressPct = Math.min(100, (streak / progressMax) * 100);
 

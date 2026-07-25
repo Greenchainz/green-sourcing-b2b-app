@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
 import { parseArchitectSpec } from "../services/architect-spec-parser";
 import { matchSpecAlternatives } from "../services/architect-spec-matcher";
@@ -73,7 +74,7 @@ export const architectSpecRouter = router({
         return { success: true, blobUrl: url };
       } catch (error) {
         console.error("File upload failed:", error);
-        throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
       }
     }),
 
@@ -86,7 +87,7 @@ export const architectSpecRouter = router({
     .input(
       z.object({
         originalFilename: z.string().min(1),
-        blobUrl: z.string().url(),
+        blobUrl: z.string().optional(), // optional for quick-lookup (no blob upload needed)
         mimeType: z.string().optional(),
         fileBufferBase64: z.string().min(1),
         projectName: z.string().optional(),
@@ -97,18 +98,28 @@ export const architectSpecRouter = router({
     .mutation(async ({ input, ctx }) => {
       const buffer = Buffer.from(input.fileBufferBase64, "base64");
 
-      const result = await parseArchitectSpec({
-        architectId: ctx.user.id,
-        fileBuffer: buffer,
-        originalFilename: input.originalFilename,
-        blobUrl: input.blobUrl,
-        mimeType: input.mimeType,
-        projectName: input.projectName,
-        projectLocation: input.projectLocation,
-        estimatedValue: input.estimatedValue,
-      });
-
-      return result;
+      try {
+        const result = await parseArchitectSpec({
+          architectId: ctx.user.id,
+          fileBuffer: buffer,
+          originalFilename: input.originalFilename,
+          blobUrl:
+            input.blobUrl ??
+            `inline://architect-specs/${ctx.user.id}/${crypto.randomUUID()}-${input.originalFilename}`,
+          mimeType: input.mimeType,
+          projectName: input.projectName,
+          projectLocation: input.projectLocation,
+          estimatedValue: input.estimatedValue,
+        });
+        return result;
+      } catch (err) {
+        // Log the full error server-side for debugging, never expose DB internals to client
+        console.error("[architect-spec] uploadAndParse failed:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Failed to analyze assembly. Please try again.",
+        });
+      }
     }),
 
   /** Run the matcher across every parsed row in a spec. */

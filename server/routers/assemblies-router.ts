@@ -49,6 +49,14 @@ export const assemblySpecsRouter = router({
   }),
 });
 
+// Map EWS carbon tier (LOW/MID/HIGH) → sustainability tier (best/better/good).
+// LOW carbon = greenest = "best"; HIGH carbon = floor tier "good".
+const EWS_TIER_MAP: Record<string, 'good' | 'better' | 'best'> = {
+  LOW: 'best',
+  MID: 'better',
+  HIGH: 'good',
+};
+
 export const assembliesRouter = router({
   list: publicProcedure
     .input(
@@ -67,11 +75,53 @@ export const assembliesRouter = router({
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-      return db
+      const rows = await db
         .select()
         .from(assemblies)
         .where(whereClause)
         .orderBy(asc(assemblies.totalGwpPer1000Sqft));
+
+      // If architect-created assemblies exist, return them directly.
+      if (rows.length > 0) return rows;
+
+      // ── Fallback: serve from materialAssemblySpecs (EWS catalog) ──────────
+      // materialAssemblySpecs holds pre-built EWS curtain wall reference data
+      // seeded from the EWS Combined PDF. Normalize to the assemblies UI shape.
+      const specs = await db
+        .select()
+        .from(materialAssemblySpecs)
+        .orderBy(asc(materialAssemblySpecs.gwpPer1000sf));
+
+      return specs
+        .map((spec) => ({
+          id: spec.id,
+          name: spec.name,
+          code: spec.epdNumber ?? null,
+          assemblyType: spec.category,
+          description: spec.description ?? null,
+          sustainabilityTier: (EWS_TIER_MAP[spec.carbonTier ?? 'HIGH'] ?? 'good') as 'good' | 'better' | 'best',
+          totalGwpPer1000Sqft: spec.gwpPer1000sf ?? null,
+          totalRValue: null,
+          estimatedCostPer1000Sqft: null,
+          fireRating: null,
+          stcRating: null,
+          iicRating: null,
+          airPermeance: null,
+          vaporPermeance: null,
+          windUpliftRating: null,
+          flameSpreadIndex: null,
+          smokeDevelopmentIndex: null,
+          ulDesignNumber: null,
+          loadCapacityPsf: null,
+          impactResistance: null,
+          leedCredits: null,
+          createdAt: spec.createdAt,
+        }))
+        .filter((spec) => {
+          if (input?.assemblyType && spec.assemblyType !== input.assemblyType) return false;
+          if (input?.tier && spec.sustainabilityTier !== input.tier) return false;
+          return true;
+        });
     }),
 
   getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {

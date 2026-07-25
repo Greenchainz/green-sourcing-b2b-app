@@ -108,7 +108,7 @@ function StatusBadge({ status, cancelled }: { status: string; cancelled?: boolea
 
 // ── Timeline ───────────────────────────────────────────────────────────────────
 
-function Timeline({ status, cancelled, createdAt }: { status: string; cancelled: boolean; createdAt: string }) {
+function Timeline({ status, cancelled, createdAt: _createdAt }: { status: string; cancelled: boolean; createdAt: string }) {
   const steps = [
     { label: "Sent",      done: true,                              icon: Send },
     { label: "Received",  done: true,                              icon: Building2 },
@@ -251,7 +251,6 @@ export default function RFQDetailPage() {
   const matReq = parsed?.materialRequest;
   const isCancelled = !!parsed?.cancelledByArchitect;
   const isOwner = rfq.architectId === Number(user?.id);
-  const displayStatus = isCancelled ? "cancelled" : rfq.status;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

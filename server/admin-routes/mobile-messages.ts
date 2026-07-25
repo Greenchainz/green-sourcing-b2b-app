@@ -3,7 +3,7 @@
  * greenchainz-mobile fetch() consumers.
  */
 import express from 'express';
-import { sdk } from '../_core/sdk';
+import { requireEasyAuthUser } from '../_core/request-auth';
 
 function createErrorResponse(
   message: string,
@@ -37,7 +37,7 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
   app.get('/api/messages/threads', async (req, res) => {
     setMessagingCorsHeaders(res);
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
       const { getThreadsForMobile } = await import('../messaging-service');
       const threads = await getThreadsForMobile(user.id);
@@ -51,7 +51,7 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
   app.get('/api/messages/unread-count', async (req, res) => {
     setMessagingCorsHeaders(res);
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
       const { getUnreadMessageCount } = await import('../messaging-service');
       const count = await getUnreadMessageCount(user.id);
@@ -65,12 +65,12 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
   app.get('/api/messages/threads/:threadId', async (req, res) => {
     setMessagingCorsHeaders(res);
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
       const threadId = parseInt(req.params.threadId);
       if (isNaN(threadId)) return res.status(400).json(createErrorResponse('Invalid thread ID', (req as any).id));
       const { getConversationMessages } = await import('../messaging-service');
-      const msgs = await getConversationMessages(threadId);
+      const msgs = await getConversationMessages(threadId, user.id);
       const mobileMsgs = msgs.map((m: any) => ({
         id: String(m.id),
         content: m.content as string,
@@ -90,7 +90,7 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
   app.post('/api/messages/threads', async (req, res) => {
     setMessagingCorsHeaders(res);
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
       const { rfqId, supplierId, buyerId } = req.body;
       if (!supplierId || !buyerId) {
@@ -101,6 +101,7 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
         rfqId: rfqId ?? null,
         buyerId: Number(buyerId),
         supplierId: Number(supplierId),
+        requestingUserId: user.id,
       });
       res.json(conv);
     } catch (err) {
@@ -112,7 +113,7 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
   app.post('/api/messages/threads/:threadId/send', async (req, res) => {
     setMessagingCorsHeaders(res);
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
       const threadId = parseInt(req.params.threadId);
       if (isNaN(threadId)) return res.status(400).json(createErrorResponse('Invalid thread ID', (req as any).id));
@@ -132,7 +133,7 @@ export function registerMobileMessagesRoutes(app: express.Express): void {
   app.post('/api/messages/threads/:threadId/read', async (req, res) => {
     setMessagingCorsHeaders(res);
     try {
-      const user = await sdk.authenticateRequest(req).catch(() => null);
+      const user = await requireEasyAuthUser(req);
       if (!user) return res.status(401).json(createErrorResponse('Unauthorized', (req as any).id));
       const threadId = parseInt(req.params.threadId);
       if (isNaN(threadId)) return res.status(400).json(createErrorResponse('Invalid thread ID', (req as any).id));

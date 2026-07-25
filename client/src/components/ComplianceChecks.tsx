@@ -1,4 +1,3 @@
-import React from "react";
 import { AlertCircle, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

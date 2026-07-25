@@ -62,7 +62,15 @@
       "Bash(git worktree *)",
       "Bash(git branch *)",
       "Bash(git log *)",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(npx vitest *)",
+      "Bash(findstr azure *)",
+      "Bash(git checkout *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(pnpm run *)",
+      "Bash(pnpm exec *)"
     ]
   }
 }

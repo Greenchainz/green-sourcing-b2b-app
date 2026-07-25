@@ -10,7 +10,7 @@
  *
  * Setup:
  *   1. Resend dashboard → Webhooks → Add endpoint
- *   2. URL: https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io/api/webhooks/resend
+ *   2. URL: https://greenchainz.com/api/webhooks/resend
  *   3. Select events: email.bounced, email.opened, email.clicked, email.complained, email.delivered
  *   4. Copy the Signing Secret → store as RESEND_WEBHOOK_SECRET in Azure Key Vault
  *
@@ -205,3 +205,4 @@ export async function isEmailSuppressed(email: string): Promise<boolean> {
     return false;
   }
 }
+
