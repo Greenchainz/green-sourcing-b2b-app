@@ -6,6 +6,8 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
+const HASHED_ASSET_MIN_LENGTH = 8;
+
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -25,7 +27,7 @@ export async function setupVite(app: Express, server: Server) {
   app.use("{*path}", async (req, res, next) => {
     const url = req.originalUrl;
 
-    // Skip /api and /.auth routes — Easy Auth sidecar handles /.auth/*
+    // Skip /api routes (Express) and /.auth (legacy/reserved path)
     if (url.startsWith("/api") || url.startsWith("/.auth")) {
       res.status(404).json({ error: "Route not found", path: url });
       return;
@@ -68,7 +70,26 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        const normalized = filePath.replace(/\\/g, "/");
+        const fileName = path.basename(normalized);
+        const isHashedAsset =
+          normalized.includes("/assets/") &&
+          new RegExp(
+            `(?:-|\\.)[A-Za-z0-9]{${HASHED_ASSET_MIN_LENGTH},}\\.(js|css|png|jpg|jpeg|svg|gif|webp|ico|woff2?|ttf)$`
+          ).test(fileName);
+
+        if (isHashedAsset) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return;
+        }
+
+        res.setHeader("Cache-Control", "no-cache");
+      },
+    })
+  );
 
   // fall through to index.html if the file doesn't exist
   // IMPORTANT: skip /api routes so they are handled by Express, not the SPA catch-all

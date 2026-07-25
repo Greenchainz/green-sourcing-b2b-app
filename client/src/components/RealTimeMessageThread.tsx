@@ -46,7 +46,7 @@ export function RealTimeMessageThread({
     { refetchOnWindowFocus: false }
   );
 
-  const { data: messageHistory, refetch: refetchMessages } =
+  const { data: messageHistory } =
     trpc.messaging.getThreadMessages.useQuery(
       { threadId, limit: 50, offset: 0 },
       { refetchOnWindowFocus: false }
@@ -89,7 +89,7 @@ export function RealTimeMessageThread({
           const data = JSON.parse(event.data);
 
           switch (data.type) {
-            case "message":
+            case "message": {
               // New message received
               const newMsg: Message = {
                 id: Date.now(), // Temporary ID until we get real one
@@ -110,6 +110,7 @@ export function RealTimeMessageThread({
                 }, 1000);
               }
               break;
+            }
 
             case "message_sent":
               // Confirmation that our message was sent
@@ -290,11 +291,10 @@ export function RealTimeMessageThread({
               className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                  isOwnMessage
+                className={`max-w-[70%] rounded-lg px-4 py-2 ${isOwnMessage
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground"
-                }`}
+                  }`}
               >
                 <p className="text-sm break-words">{msg.content}</p>
                 <div className="flex items-center justify-between gap-2 mt-1">

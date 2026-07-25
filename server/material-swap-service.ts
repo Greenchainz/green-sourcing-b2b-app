@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { materials, materialSwaps, materialCertifications } from "../drizzle/schema";
-import { eq, and, or, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 /**
  * Material Swap Intelligence Service
@@ -115,8 +115,6 @@ export async function calculateSwapScore(
   }
 
   // Determine tier based on score
-  const tier = score >= 80 ? "best" : score >= 60 ? "better" : "good";
-
   return {
     score,
     reason: reasons.join(", "),

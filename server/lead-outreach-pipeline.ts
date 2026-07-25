@@ -135,7 +135,7 @@ export async function runLeadOutreachPipeline(): Promise<{
 
 // ── Subject line by role ───────────────────────────────────────────────────────
 
-function subjectLineForRole(role: string, company: string): string {
+export function subjectLineForRole(role: string, company: string): string {
   switch (role) {
     case "architect":
       return `Stop chasing EPD data — GreenChainz does it in seconds`;
@@ -152,7 +152,7 @@ function subjectLineForRole(role: string, company: string): string {
 
 // ── Plaintext fallback ────────────────────────────────────────────────────────
 
-function plaintextForRole(role: string, company: string, url: string): string {
+export function plaintextForRole(role: string, company: string, url: string): string {
   const opener =
     role === "architect"
       ? `Hi — if you're specifying sustainable materials, GreenChainz is the fastest way to get EPD data into your specs.`
@@ -173,7 +173,7 @@ Unsubscribe: ${BASE_URL}/unsubscribe?email={{email}}`;
 
 // ── HTML email ────────────────────────────────────────────────────────────────
 
-function generateBuyerOutreachEmail(data: {
+export function generateBuyerOutreachEmail(data: {
   role: string;
   company: string;
   name: string | null;

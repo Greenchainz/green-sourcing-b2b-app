@@ -24,40 +24,88 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules")) {
-            // PDF / document generation — large, rarely needed on first load
-            if (
-              id.includes("pdfjs-dist") ||
-              id.includes("@pdfme") ||
-              id.includes("jspdf") ||
-              id.includes("pdf-lib") ||
-              id.includes("html2canvas")
-            ) {
-              return "vendor-pdf";
-            }
-            // Charts — match recharts and d3-* packages at node_modules boundary
-            if (id.includes("recharts") || /\/node_modules\/d3-[a-z]/.test(id)) {
-              return "vendor-charts";
-            }
-            // Animation
-            if (id.includes("framer-motion")) {
-              return "vendor-motion";
-            }
-            // React core — match /node_modules/react/ and /node_modules/react-dom/ only
-            if (/\/node_modules\/react(-dom)?\//i.test(id)) {
-              return "vendor-react";
-            }
-            // tRPC + TanStack Query
-            if (
-              id.includes("@trpc") ||
-              id.includes("@tanstack/react-query") ||
-              id.includes("superjson")
-            ) {
-              return "vendor-trpc";
-            }
+          if (!id.includes("node_modules")) return;
+
+          // Core React runtime — must be synchronously available
+          if (/\/node_modules\/react(-dom)?\//i.test(id)) {
+            return "vendor-react";
+          }
+
+          // tRPC + data-fetching stack
+          if (
+            id.includes("@trpc") ||
+            id.includes("@tanstack/react-query") ||
+            id.includes("superjson")
+          ) {
+            return "vendor-trpc";
+          }
+
+          // Radix UI primitives — large collection, defer to its own chunk
+          if (id.includes("@radix-ui/")) {
+            return "vendor-radix";
+          }
+
+          // Charting — recharts + d3 deps — only used on dashboard pages
+          if (
+            id.includes("recharts") ||
+            id.includes("/d3-") ||
+            id.includes("victory-")
+          ) {
+            return "vendor-charts";
+          }
+
+          // Icon library — large but tree-shakeable; keep separate so it can
+          // be cached independently of UI primitives
+          if (id.includes("lucide-react")) {
+            return "vendor-icons";
+          }
+
+          // Form handling
+          if (
+            id.includes("react-hook-form") ||
+            id.includes("@hookform/")
+          ) {
+            return "vendor-forms";
+          }
+
+          // Date / time utilities
+          if (id.includes("date-fns")) {
+            return "vendor-dates";
+          }
+
+          // PDF generation — heavy, only used in a few pages
+          if (id.includes("@pdfme/") || id.includes("pdfkit")) {
+            return "vendor-pdf";
+          }
+
+          // Routing + styling utilities — small, but keep separate from React
+          if (
+            id.includes("wouter") ||
+            id.includes("clsx") ||
+            id.includes("class-variance-authority") ||
+            id.includes("tailwind-merge")
+          ) {
+            return "vendor-utils";
           }
         },
       },
+    },
+    // Only preload chunks needed on every initial page load.
+    // vendor-charts (recharts 465 KiB), vendor-radix (168 KiB), and
+    // vendor-icons (32 KiB) are only used by specific pages/components —
+    // removing them from preload saves ~665 KiB on the critical path.
+    // They still load on-demand when the pages that need them are visited.
+    modulePreload: {
+      resolveDependencies: (_filename: string, deps: string[]) =>
+        deps.filter(
+          (dep) =>
+            !dep.includes("vendor-charts") &&
+            !dep.includes("vendor-radix") &&
+            !dep.includes("vendor-icons") &&
+            !dep.includes("vendor-forms") &&
+            !dep.includes("vendor-dates") &&
+            !dep.includes("vendor-pdf")
+        ),
     },
   },
   server: {

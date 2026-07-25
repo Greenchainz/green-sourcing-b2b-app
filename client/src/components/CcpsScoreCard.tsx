@@ -14,8 +14,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import {
   Leaf, Shield, Award, DollarSign, Truck, Heart,
   ShieldCheck, ShieldAlert, AlertTriangle, XCircle,
@@ -120,7 +118,7 @@ function ConfidenceBadge({ confidence }: { confidence: DataQualityFlags["confide
     LOW:          { label: "Low confidence",  icon: AlertTriangle, cls: "bg-orange-100 text-orange-800 border-orange-300" },
     INSUFFICIENT: { label: "Insufficient data", icon: XCircle,    cls: "bg-red-100 text-red-800 border-red-300" },
   };
-  const { label, icon: Icon, cls } = map[confidence];
+  const { label, icon: Icon, cls } = map[confidence] ?? map.INSUFFICIENT;
   return (
     <Badge variant="outline" className={`gap-1.5 ${cls}`}>
       <Icon className="w-3 h-3" />
@@ -162,7 +160,20 @@ export function CcpsScoreCard({ ccpsByPersona, className }: CcpsScoreCardProps) 
   if (!ccps) return null;
 
   const weights = PERSONA_WEIGHTS[activePersona] ?? PERSONA_WEIGHTS.default;
-  const { dataQuality } = ccps;
+
+  // Guard: dataQuality (and its fields) may be missing/partial on shape drift.
+  // Normalize to safe defaults so the card degrades gracefully instead of
+  // throwing and blanking the whole page via the ErrorBoundary.
+  const rawDq = ccps.dataQuality as Partial<DataQualityFlags> | null | undefined;
+  const dataQuality: DataQualityFlags = {
+    confidence: rawDq?.confidence ?? "INSUFFICIENT",
+    disclaimer: rawDq?.disclaimer ?? "Data quality information is not available for this material.",
+    missingFields: Array.isArray(rawDq?.missingFields) ? rawDq.missingFields : [],
+    hasEpd: rawDq?.hasEpd ?? false,
+    hasVerifiedGwp: rawDq?.hasVerifiedGwp ?? false,
+    hasBaselineData: rawDq?.hasBaselineData ?? false,
+    hasPriceData: rawDq?.hasPriceData ?? false,
+  };
 
   const gradeLabel = ccps.ccpsTotal >= 85 ? "Excellent"
     : ccps.ccpsTotal >= 70 ? "Good"

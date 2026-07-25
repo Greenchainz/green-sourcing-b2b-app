@@ -22,7 +22,7 @@ if (existsSync(".env.local")) {
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { sql, isNull, eq } from "drizzle-orm";
+import { sql, isNull } from "drizzle-orm";
 import { materials, manufacturers } from "../drizzle/schema";
 import {
   buildSearchText,
@@ -73,6 +73,17 @@ async function main() {
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS idx_materials_embedding
         ON materials USING hnsw (embedding vector_cosine_ops)`
+  );
+
+  // Create a GIN full-text index matching the hybrid keyword query expression
+  // in server/services/search.ts (to_tsvector over name/productName/description).
+  // The expression must match the query's exactly for the planner to use it,
+  // so LIMIT-bounded keyword candidate lookups avoid a full-table scan + sort.
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS idx_materials_fts
+        ON materials USING gin (
+          to_tsvector('english', name || ' ' || COALESCE("productName", '') || ' ' || COALESCE(description, ''))
+        )`
   );
 
   // Fetch materials that don't have an embedding yet

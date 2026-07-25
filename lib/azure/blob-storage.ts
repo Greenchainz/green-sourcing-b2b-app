@@ -108,6 +108,9 @@ let accountUrl: string | null = null;
 export function getBlobServiceClient(): BlobServiceClient {
   const storageAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
   const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  const isProduction = process.env.NODE_ENV === "production";
+  const allowConnectionStringInProd =
+    process.env.ALLOW_STORAGE_CONNECTION_STRING_IN_PROD === "true";
 
   if (!storageAccountName && !connectionString) {
     throw new Error(
@@ -120,7 +123,7 @@ export function getBlobServiceClient(): BlobServiceClient {
   // Use managed identity if account name is provided (production)
   if (storageAccountName) {
     const currentAccountUrl = `https://${storageAccountName}.blob.core.windows.net`;
-    
+
     // Recreate client if account URL changed (useful for testing)
     if (blobServiceClient && accountUrl === currentAccountUrl) {
       return blobServiceClient;
@@ -140,6 +143,14 @@ export function getBlobServiceClient(): BlobServiceClient {
 
   // Fallback to connection string (local development)
   if (connectionString) {
+    if (isProduction && !allowConnectionStringInProd) {
+      throw new Error(
+        "Connection-string blob auth is blocked in production. " +
+        "Use managed identity (AZURE_STORAGE_ACCOUNT_NAME + AZURE_MI_CLIENT_ID) or set " +
+        "ALLOW_STORAGE_CONNECTION_STRING_IN_PROD=true as an emergency override."
+      );
+    }
+
     // Recreate client if connection string changed (useful for testing)
     if (blobServiceClient && accountUrl === connectionString) {
       return blobServiceClient;
@@ -178,7 +189,7 @@ export async function getContainer(
     });
   } catch (error) {
     console.error(`❌ Failed to create/access container '${containerName}':`, error);
-    throw new Error(`Failed to access container '${containerName}': ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to access container '${containerName}': ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 
   return containerClient;
@@ -223,9 +234,9 @@ export async function uploadBlob(
       tags: options.tags,
       onProgress: options.onProgress
         ? (progress) => {
-            const percent = Math.round((progress.loadedBytes / data.length) * 100);
-            options.onProgress!(percent);
-          }
+          const percent = Math.round((progress.loadedBytes / data.length) * 100);
+          options.onProgress!(percent);
+        }
         : undefined,
     });
 
@@ -241,7 +252,8 @@ export async function uploadBlob(
   } catch (error) {
     console.error(`❌ Failed to upload blob '${blobName}':`, error);
     throw new Error(
-      `Failed to upload blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to upload blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -260,7 +272,7 @@ export async function uploadBlobFromStream(
   containerName: string,
   blobName: string,
   stream: import("stream").Readable,
-  streamLength: number,
+  _streamLength: number,
   options: BlobUploadOptions = {}
 ): Promise<BlobUploadResult> {
   const container = await getContainer(containerName);
@@ -292,7 +304,8 @@ export async function uploadBlobFromStream(
   } catch (error) {
     console.error(`❌ Failed to upload blob from stream '${blobName}':`, error);
     throw new Error(
-      `Failed to upload blob from stream '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to upload blob from stream '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -322,7 +335,8 @@ export async function downloadBlob(
   } catch (error) {
     console.error(`❌ Failed to download blob '${blobName}':`, error);
     throw new Error(
-      `Failed to download blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to download blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -370,7 +384,8 @@ export async function deleteBlob(
   } catch (error) {
     console.error(`❌ Failed to delete blob '${blobName}':`, error);
     throw new Error(
-      `Failed to delete blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to delete blob '${blobName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -409,7 +424,8 @@ export async function listBlobs(
   } catch (error) {
     console.error(`❌ Failed to list blobs in '${containerName}':`, error);
     throw new Error(
-      `Failed to list blobs in '${containerName}': ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to list blobs in '${containerName}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error }
     );
   }
 }
@@ -441,7 +457,7 @@ export async function generateBlobSasUrl(
 
   // For connection string authentication, parse account key
   const connStr = process.env.AZURE_STORAGE_CONNECTION_STRING;
-  
+
   if (connStr) {
     // Local dev with connection string - use account key
     const accountNameMatch = connStr.match(/AccountName=([^;]+)/);

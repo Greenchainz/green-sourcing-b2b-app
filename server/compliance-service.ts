@@ -1,4 +1,5 @@
 import { Supplier, MaterialCertification } from "../drizzle/schema";
+import { evaluateEpdValidity } from "./services/epd-validity-policy";
 
 /**
  * Compliance Check Result for a single item
@@ -45,14 +46,10 @@ export function calculateDaysUntilExpiry(expiryDate: Date | null | undefined): n
  * Determine EPD expiry status
  */
 export function getEpdExpiryStatus(expiryDate: Date | null | undefined): "pass" | "warning" | "critical" {
-  if (!expiryDate) return "warning"; // No expiry date is a warning
-  
-  const daysUntilExpiry = calculateDaysUntilExpiry(expiryDate);
-  if (daysUntilExpiry === null) return "warning";
-  
-  if (daysUntilExpiry < 0) return "critical"; // Expired
-  if (daysUntilExpiry < 90) return "warning"; // Less than 3 months
-  return "pass"; // More than 3 months
+  const evaluation = evaluateEpdValidity(expiryDate);
+  if (evaluation.status === "expired") return "critical";
+  if (evaluation.status === "expiring_soon" || evaluation.status === "missing") return "warning";
+  return "pass";
 }
 
 /**

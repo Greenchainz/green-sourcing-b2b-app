@@ -58,19 +58,29 @@ export interface UsageEventResult {
 const MARKETPLACE_API_URL =
   "https://marketplaceapi.microsoft.com/api/usageEvents?api-version=2018-08-31";
 
+function getRequiredEnvAny(keys: string[]): string | null {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value && value.length > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
 /**
  * Get an access token for the Microsoft Marketplace API.
  * Uses client credentials flow with Azure AD.
  */
 async function getMarketplaceAccessToken(): Promise<string | null> {
-  const tenantId = process.env.AZURE_TENANT_ID;
+  const tenantId = getRequiredEnvAny(["AZURE_TENANT_ID", "AZURE_AD_TENANT_ID"]);
   // AZURE_AD_CLIENT_ID is the Entra app registration for user sign-in and Marketplace API.
   // Do NOT use MANAGED_IDENTITY_CLIENT_ID here — that is for Azure resource access only.
   // Note: AZURE_CLIENT_ID is kept as a deprecated fallback for backward compatibility only.
   // New deployments should set AZURE_AD_CLIENT_ID. Remove the AZURE_CLIENT_ID fallback
   // once all deployments have been updated.
-  const clientId = process.env.AZURE_AD_CLIENT_ID ?? process.env.AZURE_CLIENT_ID;
-  const clientSecret = process.env.AZURE_AD_CLIENT_SECRET ?? process.env.AZURE_CLIENT_SECRET;
+  const clientId = getRequiredEnvAny(["AZURE_AD_CLIENT_ID", "AZURE_CLIENT_ID"]);
+  const clientSecret = getRequiredEnvAny(["AZURE_AD_CLIENT_SECRET", "AZURE_CLIENT_SECRET"]);
 
   if (!tenantId || !clientId || !clientSecret) {
     console.error("[Metering] Missing Azure AD credentials");

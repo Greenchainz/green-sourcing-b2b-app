@@ -114,7 +114,7 @@ async function batchUpsert(
 ): Promise<void> {
   if (!db || epds.length === 0) return;
 
-  const transformed = transformEC3Batch(epds).filter((m) => !!m.ec3Id);
+  const transformed = (await transformEC3Batch(epds)).filter((m) => !!m.ec3Id);
   if (transformed.length === 0) return;
 
   const ec3Ids = transformed.map((m) => m.ec3Id!);

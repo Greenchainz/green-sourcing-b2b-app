@@ -1,18 +1,13 @@
-import { BlobServiceClient } from "@azure/storage-blob";
-import { ENV } from "./_core/env";
+import { getBlobServiceClient } from "../lib/azure/blob-storage";
 
 export async function storagePut(
   relKey: string,
   data: Buffer | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
-  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-  if (!connectionString) {
-    throw new Error("AZURE_STORAGE_CONNECTION_STRING not set in .env.local");
-  }
-
-  const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+  const blobServiceClient = getBlobServiceClient();
   const containerClient = blobServiceClient.getContainerClient("architect-specs");
+  await containerClient.createIfNotExists();
   const blockBlobClient = containerClient.getBlockBlobClient(relKey);
 
   const buffer = typeof data === "string" ? Buffer.from(data) : data;

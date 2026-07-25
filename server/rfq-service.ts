@@ -1,8 +1,7 @@
 import { getDb } from "./db";
-import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, notifications, rfqAnalytics, materials, users } from "../drizzle/schema";
-import { eq, and, or, gte, lte, desc, sql } from "drizzle-orm";
+import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, rfqAnalytics, materials, users } from "../drizzle/schema";
+import { eq, and, desc, sql, isNull, inArray } from "drizzle-orm";
 import { calculateCcps, personaToWeights } from "./ccps-engine";
-import type { PersonaWeights } from "./ccps-engine";
 import { geocodeAddress, calculateDistance, getDistanceScore, type Coordinates } from "./azure-maps-service";
 import { findMatchingSuppliers } from "../lib/greenchainz/matching/rfq-supplier-match";
 
@@ -34,12 +33,19 @@ export interface SupplierMatch {
   exclusiveWindowExpiresAt?: Date;
 }
 
+type RfqItemWithMaterialName = Pick<
+  typeof rfqItems.$inferSelect,
+  "id" | "rfqId" | "materialId" | "assemblyId" | "quantity" | "quantityUnit" | "notes" | "createdAt"
+> & { materialName?: string | null };
+
 export interface RfqWithBids {
   rfq: typeof rfqs.$inferSelect;
-  items: (typeof rfqItems.$inferSelect & { materialName?: string | null })[];
+  items: RfqItemWithMaterialName[];
   bids: Array<typeof rfqBids.$inferSelect & { supplierName: string; supplierEmail: string }>;
   analytics?: typeof rfqAnalytics.$inferSelect;
 }
+
+const OPEN_RFQ_STATUSES = ["submitted", "responded"] as const;
 
 /**
  * Submit an RFQ and automatically match to suppliers
@@ -106,6 +112,7 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
         rfqId: rfqId || null,
         buyerId: userId,
         supplierId: match.supplierId,
+        requestingUserId: userId,
       });
 
       // Send in-app notification
@@ -158,7 +165,7 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
 async function matchSuppliersToRfq(
   rfqId: number,
   projectLocation: string,
-  materials: Array<{ materialId: number; quantity: number; quantityUnit: string }>
+  _materials: Array<{ materialId: number; quantity: number; quantityUnit: string }>
 ): Promise<SupplierMatch[]> {
   // Use the full geo-distance + certification + material preference matching engine
   const results = await findMatchingSuppliers(rfqId, projectLocation, 20);
@@ -181,7 +188,7 @@ export async function getRfqWithBids(rfqId: number): Promise<RfqWithBids | null>
   const db = await getDb();
   if (!db) return null;
 
-  const rfq = await db.select().from(rfqs).where(eq(rfqs.id, rfqId)).execute();
+  const rfq = await db.select().from(rfqs).where(and(eq(rfqs.id, rfqId), isNull(rfqs.deletedAt))).execute();
   if (!rfq || rfq.length === 0) return null;
 
   const itemRows = await db
@@ -198,7 +205,7 @@ export async function getRfqWithBids(rfqId: number): Promise<RfqWithBids | null>
     })
     .from(rfqItems)
     .leftJoin(materials, eq(rfqItems.materialId, materials.id))
-    .where(eq(rfqItems.rfqId, rfqId))
+    .where(and(eq(rfqItems.rfqId, rfqId), isNull(rfqItems.deletedAt)))
     .execute();
   const items = itemRows;
 
@@ -210,7 +217,7 @@ export async function getRfqWithBids(rfqId: number): Promise<RfqWithBids | null>
     })
     .from(rfqBids)
     .leftJoin(suppliers, eq(rfqBids.supplierId, suppliers.id))
-    .where(eq(rfqBids.rfqId, rfqId))
+    .where(and(eq(rfqBids.rfqId, rfqId), isNull(rfqBids.deletedAt)))
     .execute();
 
   const analytics = await db.select().from(rfqAnalytics).where(eq(rfqAnalytics.rfqId, rfqId)).execute();
@@ -293,6 +300,7 @@ export async function submitBid(
       rfqId: rfqId || null,
       buyerId,
       supplierId,
+      requestingUserId: buyerId,
     });
 
     // Notify buyer of new bid
@@ -688,13 +696,14 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
       createdAt: rfqs.createdAt,
     })
     .from(rfqs)
+    .where(and(inArray(rfqs.status, OPEN_RFQ_STATUSES), isNull(rfqs.deletedAt)))
     .execute();
 
-  // Get supplier's existing bids
+  // Get supplier's existing bids (exclude soft-deleted bids)
   const supplierBids = await db
     .select({ rfqId: rfqBids.rfqId })
     .from(rfqBids)
-    .where(eq(rfqBids.supplierId, supplierId))
+    .where(and(eq(rfqBids.supplierId, supplierId), isNull(rfqBids.deletedAt)))
     .execute();
 
   const bidRfqIds = new Set(supplierBids.map((b) => b.rfqId));
@@ -702,11 +711,11 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
   // Calculate match scores for each RFQ
   const matchedRfqs = [];
   for (const rfq of openRfqs) {
-    // Get RFQ items
+    // Get RFQ items (exclude soft-deleted items)
     const items = await db
       .select()
       .from(rfqItems)
-      .where(eq(rfqItems.rfqId, rfq.id))
+      .where(and(eq(rfqItems.rfqId, rfq.id), isNull(rfqItems.deletedAt)))
       .execute();
 
     // Calculate match score
@@ -725,7 +734,7 @@ export async function getSupplierMatchedRfqs(supplierId: number) {
     // Calculate distance and drive time if coordinates are available
     let distanceMiles: number | null = null;
     let driveTimeMinutes: number | null = null;
-    const [rfqData] = await db.select().from(rfqs).where(eq(rfqs.id, rfq.id)).execute();
+    const [rfqData] = await db.select().from(rfqs).where(and(eq(rfqs.id, rfq.id), isNull(rfqs.deletedAt))).execute();
     if (supplier.latitude && supplier.longitude && rfqData?.latitude && rfqData?.longitude) {
       const supplierCoords: Coordinates = {
         latitude: Number(supplier.latitude),

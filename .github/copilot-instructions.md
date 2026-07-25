@@ -25,7 +25,7 @@ Every infrastructure service runs on Azure. Do not suggest AWS, GCP, Firebase, S
 | Service | Azure Product |
 |---|---|
 | App hosting | Azure Container Apps |
-| Authentication | Azure Entra ID (Easy Auth sidecar) |
+| Authentication | Azure Entra ID (custom OAuth PKCE) |
 | Secrets | Azure Key Vault |
 | Database | PostgreSQL on Azure |
 | Storage | Azure Blob Storage |
@@ -36,19 +36,17 @@ Every infrastructure service runs on Azure. Do not suggest AWS, GCP, Firebase, S
 | Maps | Azure Maps |
 | OCR / Forms | Azure AI Form Recognizer |
 | Config | Azure App Configuration |
-| Monitoring | Sentry (integrated with Azure) |
+| Monitoring | Azure Application Insights |
 
 ---
 
 ## Auth — Critical Rules
 
-- **Production auth is handled entirely by the Azure Easy Auth sidecar.** It intercepts all `/.auth/*` routes before the Express app sees them. Do not write any auth middleware that duplicates this.
-- **Local dev only**: `registerDevAuthShim()` in `server/_core/index.ts` simulates Easy Auth. It is guarded by `NODE_ENV !== 'production'`.
-- **User identity always comes from server-side Easy Auth headers** (`X-MS-CLIENT-PRINCIPAL-*`). Never trust `userId`, `orgId`, or `role` values from the request body, query string, or client-supplied JWT.
-- **Never mix** `MANAGED_IDENTITY_CLIENT_ID` (the managed identity for Key Vault access) with `CLIENT_ID` (the Entra ID app registration for user auth). They are different Azure resources.
-- `OAUTH_SERVER_URL` and all Azure credentials go in `.env`, never `.env.local`.
-- Azure Entra ID tenant: `ca4f78d4-c753-4893-9cd8-1b309922b4dc`
-- Client App ID: `479e2a01-70ab-4df9-baa4-560d317c3423`
+- **Production auth is handled by Express OAuth (PKCE) routes** in `server/_core/oauth-providers.ts`.
+- **The session is an HttpOnly JWT cookie** (`app_session_id`) verified server-side (see `server/_core/sdk.ts`).
+- **Never trust** `userId`, `orgId`, or `role` values from request body/query/client.
+- **Never mix** `MANAGED_IDENTITY_CLIENT_ID` (managed identity for Key Vault access) with the Entra ID app registration client id.
+- Keep Azure credentials in `.env` (not `.env.local`) for parity with production.
 
 ---
 

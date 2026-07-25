@@ -16,13 +16,15 @@ export default function Footer() {
           {/* Company Info */}
           <div className="col-span-2 md:col-span-1 space-y-4">
             <div className="flex items-center space-x-3">
-              <img
-                src="/brand/greenchainz-icon.png"
-                alt="GreenChainz Logo"
-                className="h-10 w-auto"
-                width={40}
-                height={40}
-              />
+              <picture>
+                <source srcSet="/brand/greenchainz-icon.webp" type="image/webp" />
+                <img
+                  src="/brand/greenchainz-icon.webp"
+                  alt="GreenChainz Logo"
+                  className="h-10 w-auto"
+                  width={40}
+                  height={40}
+                /></picture>
               <span className="text-lg font-bold text-foreground">GreenChainz</span>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -106,7 +108,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/manufacturers" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Supplier Directory
+                  Supplier Spotlight
                 </Link>
               </li>
               <li>
@@ -124,6 +126,11 @@ export default function Footer() {
               <li>
                 <Link href="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   About
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Blog
                 </Link>
               </li>
               <li>
@@ -193,10 +200,11 @@ export default function Footer() {
       <noscript>
         <nav aria-label="Site navigation fallback" style={{ padding: '1rem', fontSize: '0.75rem' }}>
           <a href="/">Home</a> | <a href="/about">About</a> | <a href="/features">Features</a> |{' '}
+          <a href="/blog">Blog</a> |{' '}
           <a href="/pricing">Pricing</a> | <a href="/materials">Materials</a> |{' '}
           <a href="/how-it-works">How It Works</a> | <a href="/carbon-compare">Carbon Compare</a> |{' '}
           <a href="/tools/extension">Browser Extension</a> | <a href="/tools/revit">Revit Plugin</a> |{' '}
-          <a href="/manufacturers">Supplier Directory</a> | <a href="/supplier/register">Supplier Sign Up</a> |{' '}
+          <a href="/manufacturers">Supplier Spotlight</a> | <a href="/supplier/register">Supplier Sign Up</a> |{' '}
           <a href="/support">Support</a> | <a href="/privacy">Privacy</a> | <a href="/terms">Terms</a>
         </nav>
       </noscript>

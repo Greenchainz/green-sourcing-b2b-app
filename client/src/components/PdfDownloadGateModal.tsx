@@ -31,7 +31,6 @@ import {
   ExternalLink,
   ArrowRight,
   Zap,
-  Circle,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -53,8 +52,8 @@ interface PdfDownloadGateModalProps {
 // ── Option A — Referral ───────────────────────────────────────────────────────
 
 function ReferralOption({
-  materialId,
-  onCreditGranted,
+  materialId: _materialId,
+  onCreditGranted: _onCreditGranted,
 }: {
   materialId: number;
   onCreditGranted: () => void;
@@ -219,7 +218,7 @@ function LinkedInOption({
 // ── Option C — Profile Completion ─────────────────────────────────────────────
 
 function ProfileOption({
-  materialId,
+  materialId: _materialId,
   profileCreditsAvailable,
   onCreditGranted,
 }: {

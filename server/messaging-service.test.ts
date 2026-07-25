@@ -53,6 +53,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Messaging Service", () => {
       rfqId: testRfqId,
       buyerId: testBuyerId,
       supplierId: testSupplierId,
+      requestingUserId: testBuyerId,
     });
 
     expect(conversation).toBeDefined();
@@ -67,6 +68,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Messaging Service", () => {
       rfqId: testRfqId,
       buyerId: testBuyerId,
       supplierId: testSupplierId,
+      requestingUserId: testBuyerId,
     });
 
     expect(existingConversation.id).toBe(testConversationId);
@@ -85,7 +87,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Messaging Service", () => {
     expect(message.isRead).toBe(0);
 
     // Test 4: Retrieve messages for a conversation
-    const conversationMessages = await getConversationMessages(testConversationId);
+    const conversationMessages = await getConversationMessages(testConversationId, testBuyerId);
 
     expect(conversationMessages).toBeDefined();
     expect(conversationMessages.length).toBeGreaterThan(0);
@@ -116,7 +118,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Messaging Service", () => {
       userId: testBuyerId,
     });
 
-    const updatedMessages = await getConversationMessages(testConversationId);
+    const updatedMessages = await getConversationMessages(testConversationId, testBuyerId);
     const buyerMessages = updatedMessages.filter((m: any) => m.senderId === testBuyerId);
     
     // Buyer's own messages should be marked as read

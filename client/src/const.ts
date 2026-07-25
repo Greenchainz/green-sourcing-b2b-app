@@ -1,36 +1,18 @@
-export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+export { ONE_YEAR_MS } from "@shared/const";
 
 // Generate login URL at runtime so redirect URI reflects the current origin.
-export const getLoginUrl = (returnPath?: string, role?: 'buyer' | 'supplier') => {
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
-  const appId = import.meta.env.VITE_APP_ID;
+export const getLoginUrl = (returnPath?: string, role?: 'architect' | 'supplier') => {
+  const query = returnPath
+    ? `?returnPath=${encodeURIComponent(returnPath)}${role ? `&role=${encodeURIComponent(role)}` : ''}`
+    : '';
 
-  // Fallback to Easy Auth login when OAuth portal URL is not configured.
-  // In dev the registerDevAuthShim handles /.auth/login/aad.
-  // In production Azure Container Apps Easy Auth handles it natively.
-  if (!oauthPortalUrl) {
-    const redirectParam = returnPath ? `?post_login_redirect_uri=${encodeURIComponent(returnPath)}` : '';
-    return `/.auth/login/aad${redirectParam}`;
-  }
+  return `/login${query}`;
+};
 
-  const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  
-  // Encode returnPath and role in state
-  const stateData = {
-    redirectUri,
-    returnPath: returnPath || '/',
-    role: role || null
-  };
-  const state = btoa(JSON.stringify(stateData));
+export const getMicrosoftLoginUrl = (returnPath?: string, role?: 'architect' | 'supplier') => {
+  const query = returnPath
+    ? `?returnPath=${encodeURIComponent(returnPath)}${role ? `&role=${encodeURIComponent(role)}` : ''}`
+    : '';
 
-  try {
-    const url = new URL(`${oauthPortalUrl}/app-auth`);
-    url.searchParams.set("appId", appId);
-    url.searchParams.set("redirectUri", redirectUri);
-    url.searchParams.set("state", state);
-    url.searchParams.set("type", "signIn");
-    return url.toString();
-  } catch {
-    return '/login';
-  }
+  return `/api/auth/microsoft${query}`;
 };

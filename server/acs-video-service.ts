@@ -10,11 +10,12 @@
  * 
  * Note: Requires Azure Communication Services credentials
  * Set these environment variables:
- * - ACS_CONNECTION_STRING
- * - ACS_ENDPOINT_URL
+ * - Preferred: AZURE_COMMUNICATION_SERVICES_ENDPOINT (+ managed identity)
+ * - Fallback: AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING
  */
 
 import { broadcastNotification } from "./webpubsub-manager";
+import { createDistributedCallSessionStore } from "./services/distributed-call-session-store";
 
 export interface ACSVideoCallSession {
   callId: string;
@@ -29,21 +30,32 @@ export interface ACSVideoCallSession {
   recordingEnabled?: boolean;
 }
 
-// In-memory store for active ACS video call sessions
-const acsActiveCalls = new Map<string, ACSVideoCallSession>();
+const acsCallSessionStore = createDistributedCallSessionStore<ACSVideoCallSession>("acs-video");
 
 /**
  * Check if Azure Communication Services is configured
  */
 export function isACSConfigured(): boolean {
-  return !!(process.env.ACS_CONNECTION_STRING && process.env.ACS_ENDPOINT_URL);
+  const endpoint =
+    process.env.AZURE_COMMUNICATION_SERVICES_ENDPOINT ||
+    process.env.ACS_ENDPOINT_URL;
+  const connectionString = process.env.AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING;
+  const isProduction = process.env.NODE_ENV === "production";
+  const allowConnectionStringInProd =
+    process.env.ALLOW_ACS_CONNECTION_STRING_IN_PROD === "true";
+
+  if (endpoint) return true;
+  if (connectionString) {
+    return !isProduction || allowConnectionStringInProd;
+  }
+  return false;
 }
 
 /**
  * Get ACS user access token
  * This token is used by the client to connect to Azure Communication Services
  */
-export async function getACSUserToken(userId: number): Promise<{ token: string; userId: string } | { success: false; error: string }> {
+export async function getACSUserToken(_userId: number): Promise<{ token: string; userId: string } | { success: false; error: string }> {
   if (!isACSConfigured()) {
     return {
       success: false,
@@ -93,7 +105,7 @@ export async function initiateACSVideoCall(params: {
     recordingEnabled,
   };
 
-  acsActiveCalls.set(callId, session);
+  await acsCallSessionStore.set(callId, session, [callerId, calleeId]);
 
   // Notify callee via Web PubSub
   await broadcastNotification(calleeId, {
@@ -112,11 +124,11 @@ export async function initiateACSVideoCall(params: {
  * Accept an ACS video call
  */
 export async function acceptACSVideoCall(callId: string): Promise<ACSVideoCallSession | null> {
-  const session = acsActiveCalls.get(callId);
+  const session = await acsCallSessionStore.get(callId);
   if (!session) return null;
 
   session.status = "active";
-  acsActiveCalls.set(callId, session);
+  await acsCallSessionStore.set(callId, session, [session.callerId, session.calleeId]);
 
   // Notify caller that call was accepted
   await broadcastNotification(session.callerId, {
@@ -136,8 +148,8 @@ export async function endACSVideoCall(params: {
   userId: number;
 }): Promise<{ durationMinutes: number } | null> {
   const { callId, userId } = params;
-  const session = acsActiveCalls.get(callId);
-  
+  const session = await acsCallSessionStore.get(callId);
+
   if (!session) return null;
 
   session.status = "ended";
@@ -148,7 +160,7 @@ export async function endACSVideoCall(params: {
   const durationMinutes = Math.ceil(durationMs / 60000); // Round up to nearest minute
   session.durationMinutes = durationMinutes;
 
-  acsActiveCalls.set(callId, session);
+  await acsCallSessionStore.set(callId, session, [session.callerId, session.calleeId], 60);
 
   // Notify other participant
   const otherUserId = userId === session.callerId ? session.calleeId : session.callerId;
@@ -164,8 +176,7 @@ export async function endACSVideoCall(params: {
     await trackVideoUsage(userId, durationMinutes);
   }
 
-  // Clean up after 1 minute
-  setTimeout(() => acsActiveCalls.delete(callId), 60000);
+  await acsCallSessionStore.delete(callId);
 
   return { durationMinutes };
 }
@@ -173,15 +184,15 @@ export async function endACSVideoCall(params: {
 /**
  * Get active ACS call session
  */
-export function getACSCallSession(callId: string): ACSVideoCallSession | null {
-  return acsActiveCalls.get(callId) || null;
+export async function getACSCallSession(callId: string): Promise<ACSVideoCallSession | null> {
+  return await acsCallSessionStore.get(callId);
 }
 
 /**
  * Start call recording (Premium feature)
  */
 export async function startCallRecording(callId: string): Promise<{ recordingId: string } | { success: false; error: string }> {
-  const session = acsActiveCalls.get(callId);
+  const session = await acsCallSessionStore.get(callId);
   if (!session) {
     return {
       success: false,
@@ -200,8 +211,8 @@ export async function startCallRecording(callId: string): Promise<{ recordingId:
 /**
  * Stop call recording
  */
-export async function stopCallRecording(callId: string, recordingId: string): Promise<void | { success: false; error: string }> {
-  const session = acsActiveCalls.get(callId);
+export async function stopCallRecording(callId: string, _recordingId: string): Promise<void | { success: false; error: string }> {
+  const session = await acsCallSessionStore.get(callId);
   if (!session) {
     return {
       success: false,

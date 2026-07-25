@@ -48,7 +48,7 @@
   - [ ] `AZURE_SQL_PASSWORD`
   - [ ] `AZURE_OPENAI_API_KEY`
   - [ ] `NEXT_PUBLIC_API_URL` (production URL)
-- [ ] Test production homepage: https://greenchainz-frontend.jollyrock-a66f2da6.eastus.azurecontainerapps.io
+- [ ] Test production homepage: https://greenchainz.com
 - [ ] Verify all tool links work
 
 ---
@@ -205,9 +205,7 @@ Set baseline before launch, then track:
 - ✅ `package.json` - Updated dependencies
 
 ### Documentation
-- ✅ `docs/EXCEL_ADDIN_SETUP.md`
 - ✅ `docs/EXCEL_SCRAPER_INTEGRATION.md`
-- ✅ `docs/TOOLBOX_LAUNCH_SUMMARY.md`
 - ✅ `docs/QUICK_START.md`
 - ✅ `docs/TOOLBOX_LAUNCH_CHECKLIST.md` (this file)
 

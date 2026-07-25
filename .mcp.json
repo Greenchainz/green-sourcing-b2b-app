@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "workiq": {
+      "type": "http",
+      "url": "https://workiq.svc.cloud.microsoft/mcp",
+      "oauthClientId": "ba081686-5d24-4bc6-a0d6-d034ecffed87",
+      "oauthPublicClient": true,
+      "auth": {
+        "redirectPort": 12798
+      }
+    },
+    "fabric": {
+      "type": "http",
+      "url": "REPLACE_WITH_FABRIC_MCP_URL",
+      "oauthClientId": "REPLACE_WITH_FABRIC_OAUTH_CLIENT_ID",
+      "oauthPublicClient": true,
+      "auth": {
+        "redirectPort": 12799
+      }
+    }
+  }
+}

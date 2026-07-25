@@ -2,6 +2,14 @@
 
 This document provides step-by-step instructions for configuring GreenChainz in Microsoft Partner Center to enable Azure Marketplace transactions.
 
+> **Security questionnaire / ISV review**: For the correct answers to the Partner Center security
+> review (hosting classification, malware protection, Defender scope, encryption), see
+> [`MICROSOFT_ISV_SECURITY_POSTURE.md`](./MICROSOFT_ISV_SECURITY_POSTURE.md).
+>
+> **Hosting classification note**: The marketplace *offer type* is "Software as a Service"
+> (subscription billing). The *infrastructure hosting classification* for security questionnaires
+> is **PaaS / Serverless** — GreenChainz runs on Azure Container Apps, not IaaS VMs.
+
 ---
 
 ## Prerequisites

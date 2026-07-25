@@ -52,6 +52,7 @@ import {
   validateSwap as validateSwapService,
   type MaterialSpec,
 } from '../services/swapValidationService';
+import { checkBccaCompliance } from '../services/bcca';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ interface MaterialRow {
   pricePerUnit: string | null;
   priceUnit: string | null;
   supplierName: string | null;
+  hasEpd: boolean;
 }
 
 interface SwapHistoryRow {
@@ -188,7 +190,6 @@ export const materialSwapRouter = router({
       if (specs.gwp != null) {
         conditions.push(`"gwpValue" < $${paramIdx}`);
         params.push(specs.gwp);
-        paramIdx += 1;
       }
 
       const whereClause = conditions.join(' AND ');
@@ -238,6 +239,8 @@ export const materialSwapRouter = router({
         // Approximate carbon savings per functional unit (kg CO2e)
         const carbonSavingsKgCO2 = parseFloat(gwpReduction.toFixed(4));
 
+        const bcca = checkBccaCompliance(r.category, toNum(r.gwpValue), r.name);
+
         return {
           materialId: r.id,
           materialName: r.name,
@@ -254,6 +257,14 @@ export const materialSwapRouter = router({
           carbonSavingsKgCO2,
           supplier: r.supplierName,
           pricePerUnit: toNum(r.pricePerUnit),
+          bcca: {
+            status:      bcca.status,
+            message:     bcca.message,
+            gwpMargin:   bcca.gwpMargin,
+            gwpMarginPct:bcca.gwpMarginPct,
+            threshold:   bcca.threshold?.maxGwp ?? null,
+            unit:        bcca.threshold?.unit ?? null,
+          },
         };
       });
     }),
@@ -448,7 +459,8 @@ export const materialSwapRouter = router({
         "recycledContentPct"::TEXT AS "recycledContentPct",
         "embodiedEnergy"::TEXT AS "embodiedEnergy",
         voc::TEXT AS voc, "epdUrl", certifications,
-        "pricePerUnit"::TEXT AS "pricePerUnit", "priceUnit", "supplierName"`;
+        "pricePerUnit"::TEXT AS "pricePerUnit", "priceUnit", "supplierName",
+        "hasEpd"`;
 
       const originalRow = await queryOne<MaterialRow>(
         `SELECT ${selectCols} FROM materials WHERE id = $1`,
@@ -490,16 +502,25 @@ export const materialSwapRouter = router({
         .slice(0, input.limit)
         .map(c => {
           const cPrice = toNum(c.pricePerUnit);
-          const cGwp = toNum(c.gwpValue);
           const priceDelta = origPrice !== null && cPrice !== null
             ? parseFloat((((cPrice - origPrice) / origPrice) * 100).toFixed(1))
             : null;
           const leadTimeDelta: number | null = null; // not stored in current schema
 
+          const bccaOriginal  = checkBccaCompliance(originalRow.category, toNum(originalRow.gwpValue), originalRow.name);
+          const bccaCandidate = checkBccaCompliance(c.category, toNum(c.gwpValue), c.name);
+
           return {
             original: originalRow,
             candidate: c,
             tradeoffs: { priceDelta, leadTimeDelta },
+            bcca: {
+              original:  { status: bccaOriginal.status,  message: bccaOriginal.message,  gwpMargin: bccaOriginal.gwpMargin },
+              candidate: { status: bccaCandidate.status, message: bccaCandidate.message, gwpMargin: bccaCandidate.gwpMargin },
+              /** True when original is non-compliant but candidate IS compliant — key differentiator */
+              upgradesCompliance: bccaOriginal.status === "non_compliant" && bccaCandidate.status === "compliant",
+            },
+            candidateHasEpd: c.hasEpd,
           };
         });
 

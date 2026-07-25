@@ -175,7 +175,7 @@ export function catalogBrowse() {
 // ── Scenario: Authenticated buyer flow ───────────────────────────────────────
 export function buyerFlow() {
   // Login once per VU iteration (jar persists for the iteration)
-  const jar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD);
+  const jar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD, "architect");
   if (!jar) {
     sleep(5);
     return;
@@ -259,7 +259,7 @@ export function buyerFlow() {
 
 // ── Scenario: Authenticated supplier flow ────────────────────────────────────
 export function supplierFlow() {
-  const jar = emailLogin(SUP_EMAIL, SUP_PASSWORD);
+  const jar = emailLogin(SUP_EMAIL, SUP_PASSWORD, "supplier");
   if (!jar) {
     sleep(5);
     return;
@@ -354,7 +354,7 @@ export function supplierFlow() {
 
 // ── Scenario: Concurrent messaging ───────────────────────────────────────────
 export function messagingFlow() {
-  const jar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD);
+  const jar = emailLogin(BUYER_EMAIL, BUYER_PASSWORD, "architect");
   if (!jar) {
     sleep(5);
     return;

@@ -28,6 +28,7 @@ import {
 } from "../../drizzle/schema-additions-mcs";
 import { getDocumentTablesFromAzure, type NormalizedTable } from "../../lib/azure/document-intelligence";
 import { eq } from "drizzle-orm";
+import { getAssemblyMappingByCode } from "./masterformat-mapping";
 
 // ─── Format-specific parsers ─────────────────────────────────────────────────
 
@@ -115,18 +116,6 @@ function resolveParser(
 /** Assembly codes recognized in the Embodied Carbon Tables. */
 const ASSEMBLY_CODE_PATTERN = /\b(EWS-?\d+[A-Z]?)\b/i;
 
-/** Map from raw text in the architect's spec → canonical assembly type. */
-const ASSEMBLY_TYPE_MAP: Record<string, string> = {
-  "EWS-1A": "Unitized Curtain Wall (Vision/Shadow/Spandrel)",
-  "EWS-1B": "Unitized Vision Fitted",
-  "EWS-2A": "Granite Panel",
-  "EWS-2B": "Natural Stone (Limestone/Sandstone)",
-  "EWS-3A": "Terracotta",
-  "EWS-3B": "UHPC",
-  "EWS-3C": "GFRC",
-  "EWS-5":  "Aluminum Metal Panel",
-};
-
 /** Structural sub-options (impact embodied carbon dramatically). */
 const STRUCTURAL_OPTIONS: Record<number, string> = {
   1: "CFMF Steel Studs (6\"-16\" OC)",
@@ -147,6 +136,7 @@ export interface ParseResult {
     id: number;
     assemblyCode: string | null;
     assemblyType: string | null;
+    masterformatSection: string | null;
     structuralOption: number | null;
     gwpPer1000sf: number | null;
   }>;
@@ -162,7 +152,7 @@ export async function parseArchitectSpec(opts: {
   architectId: number;
   fileBuffer: Buffer;
   originalFilename: string;
-  blobUrl: string;
+  blobUrl?: string;
   mimeType?: string;
   projectName?: string;
   projectLocation?: string;
@@ -175,7 +165,7 @@ export async function parseArchitectSpec(opts: {
   const insertSpec: InsertArchitectUploadedSpec = {
     architectId: opts.architectId,
     originalFilename: opts.originalFilename,
-    blobUrl: opts.blobUrl,
+    blobUrl: opts.blobUrl ?? "",
     mimeType: opts.mimeType ?? "application/pdf",
     fileSizeBytes: opts.fileBuffer.length,
     parseStatus: "processing",
@@ -234,7 +224,7 @@ export async function parseArchitectSpec(opts: {
     }
 
     // 4. Persist in one batch; capture inserted IDs for the matcher.
-    let inserted: Array<{ id: number; assemblyCode: string | null; assemblyType: string | null; structuralOption: number | null; gwpPer1000sf: string | null }> = [];
+    let inserted: Array<{ id: number; assemblyCode: string | null; assemblyType: string | null; masterformatSection: string | null; structuralOption: number | null; gwpPer1000sf: string | null }> = [];
     if (rows.length > 0) {
       inserted = await db
         .insert(architectSpecAssemblies)
@@ -243,6 +233,7 @@ export async function parseArchitectSpec(opts: {
           id: architectSpecAssemblies.id,
           assemblyCode: architectSpecAssemblies.assemblyCode,
           assemblyType: architectSpecAssemblies.assemblyType,
+          masterformatSection: architectSpecAssemblies.masterformatSection,
           structuralOption: architectSpecAssemblies.structuralOption,
           gwpPer1000sf: architectSpecAssemblies.gwpPer1000sf,
         });
@@ -266,6 +257,7 @@ export async function parseArchitectSpec(opts: {
         id: r.id,
         assemblyCode: r.assemblyCode,
         assemblyType: r.assemblyType,
+        masterformatSection: r.masterformatSection,
         structuralOption: r.structuralOption,
         gwpPer1000sf: r.gwpPer1000sf == null ? null : parseFloat(r.gwpPer1000sf),
       })),
@@ -312,7 +304,9 @@ function classifyRow(
 
   if (!assemblyCode) return null;  // skip rows without a recognizable assembly code
 
-  const assemblyType = ASSEMBLY_TYPE_MAP[assemblyCode] ?? assemblyCode;
+  const assemblyMapping = getAssemblyMappingByCode(assemblyCode);
+  const assemblyType = assemblyMapping?.assemblyType ?? assemblyCode;
+  const masterformatSection = assemblyMapping?.masterformatSection ?? null;
   const structuralOption = parseStructuralOption(allText);
 
   // GWP extraction — try column header match, fall back to numeric heuristic.
@@ -331,6 +325,7 @@ function classifyRow(
   return {
     assemblyCode,
     assemblyType,
+    masterformatSection,
     structuralOption,
     declaredUnit,
     gwpValue: gwpRaw == null ? undefined : gwpRaw.toString(),
@@ -360,7 +355,7 @@ function parseStructuralOption(text: string): number | null {
 
 function parseFloatSafe(s: string | undefined): number | null {
   if (!s) return null;
-  const cleaned = s.replace(/[,\s]/g, "").replace(/[^\d.\-]/g, "");
+  const cleaned = s.replace(/[,\s]/g, "").replace(/[^-\d.]/g, "");
   const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : null;
 }

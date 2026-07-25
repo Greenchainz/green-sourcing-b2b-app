@@ -8,7 +8,7 @@ properties:
     activeRevisionsMode: Single
     ingress:
       external: true
-      targetPort: 3001
+      targetPort: 3000
       transport: http
       allowInsecure: false
       traffic:
@@ -16,7 +16,6 @@ properties:
           weight: 100
       corsPolicy:
         allowedOrigins:
-          - "https://greenchainz-frontend.azurecontainerapps.io"
           - "https://greenchainz.com"
           - "https://www.greenchainz.com"
         allowedMethods:
@@ -26,7 +25,10 @@ properties:
           - DELETE
           - OPTIONS
         allowedHeaders:
-          - "*"
+          - "Content-Type"
+          - "Authorization"
+          - "X-Requested-With"
+          - "X-CSRF-Token"
         allowCredentials: true
     
     registries:
@@ -83,6 +85,10 @@ properties:
       - name: resend-api-key
         keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/RESEND-API-KEY
         identity: system
+      # Application Insights telemetry connection string
+      - name: appinsights-connection
+        keyVaultUrl: https://greenchainz-vault.vault.azure.net/secrets/appinsights-connection
+        identity: system
 
   template:
     containers:
@@ -99,7 +105,7 @@ properties:
           - name: NODE_ENV
             value: production
           - name: PORT
-            value: "3001"
+            value: "3000"
           
           # ─────────────────────────────────────────────────────────────
           # Frontend URL (for CORS)
@@ -160,8 +166,14 @@ properties:
           # ─────────────────────────────────────────────────────────────
           - name: FEATURE_REDIS_CACHING
             value: "true"
+          # Telemetry enabled — APPLICATIONINSIGHTS_CONNECTION_STRING is injected
+          # by the deploy workflow from Key Vault (appinsights-connection secret).
           - name: FEATURE_AZURE_MONITORING
-            value: "false"
+            value: "true"
+          - name: AZURE_MONITOR_ENABLED
+            value: "true"
+          - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+            secretRef: appinsights-connection
           - name: FEATURE_AI_DOCUMENT_ANALYSIS
             value: "false"
           - name: NOTIFICATIONS_ENABLED
@@ -188,11 +200,11 @@ properties:
 
           # ─────────────────────────────────────────────────────────────
           # User-Assigned Managed Identity (Azure resource access — NOT user sign-in)
-          # Identity: id-greenchainz-backend (rg-greenchainz-infra)
-          # Client ID: ec248abf-f6ce-4d7c-8888-740317709f1b
+          # Identity: id-greenchainz-backend (rg-greenchainz-prod-container)
+          # Client ID: fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e
           # ─────────────────────────────────────────────────────────────
           - name: MANAGED_IDENTITY_CLIENT_ID
-            value: "ec248abf-f6ce-4d7c-8888-740317709f1b"
+            value: "fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e"
 
           # ─────────────────────────────────────────────────────────────
           # Intercom & Internal API
@@ -224,9 +236,21 @@ properties:
           - name: AZURE_KEY_VAULT_URL
             value: https://greenchainz-vault.vault.azure.net/
           - name: AZURE_STORAGE_ACCOUNT_NAME
-            value: revitfiles
+            value: greencontent
           - name: AZURE_STORAGE_CONTAINER_NAME
             value: greenchainz-uploads
+          # ─────────────────────────────────────────────────────────────
+          # Azure OpenAI / AI Services (Foundry hub: greenchainz-resource)
+          # Auth: system-assigned managed identity (Azure AI Developer role)
+          # ─────────────────────────────────────────────────────────────
+          - name: AZURE_OPENAI_ENDPOINT
+            value: "https://greenchainz-resource.cognitiveservices.azure.com/"
+          - name: AZURE_OPENAI_DEPLOYMENT
+            value: "gpt-4o"
+          - name: AZURE_OPENAI_API_VERSION
+            value: "2024-08-01-preview"
+          - name: DOCUMENT_INTELLIGENCE_ENDPOINT
+            value: "https://greenchainz-content-intel.cognitiveservices.azure.com/"
         
         # ─────────────────────────────────────────────────────────────
         # Health Probes
@@ -237,7 +261,7 @@ properties:
           - type: liveness
             httpGet:
               path: /health
-              port: 3001
+              port: 3000
             initialDelaySeconds: 10
             periodSeconds: 30
             failureThreshold: 3
@@ -245,7 +269,7 @@ properties:
           - type: readiness
             httpGet:
               path: /ready
-              port: 3001
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
@@ -253,7 +277,7 @@ properties:
           - type: startup
             httpGet:
               path: /health
-              port: 3001
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 30

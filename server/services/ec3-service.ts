@@ -9,11 +9,10 @@
  */
 
 import type { OpenEPD } from "../../shared/types/openepd";
-import { openEPDToMaterial } from "../../shared/types/openepd";
 import type { EC3EPD } from "../ec3";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -132,7 +131,7 @@ export async function importEC3Materials(
     const raw = await fetchEC3EPDs(category, limit);
     if (raw.length === 0) return 0;
 
-    const transformed = transformEC3Batch(raw);
+    const transformed = await transformEC3Batch(raw);
     let created = 0;
 
     for (const mat of transformed) {

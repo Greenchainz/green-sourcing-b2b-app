@@ -15,15 +15,15 @@ import {
   scrapedSuppliers,
   scrapedLeads,
   rfqs,
-  rfqItems,
   conciergeRoutes,
 } from "../drizzle/schema";
 import { eq, desc, ilike, or, and, isNotNull, sql } from "drizzle-orm";
 import { sendEmail } from "./email-service";
+import { canAccessAdmin } from "./_core/admin-access";
 
 // ─── Admin guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
+  if (!canAccessAdmin(ctx.user)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({ ctx });
@@ -37,7 +37,7 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
  */
 function materialKeywords(materialType: string): string[] {
   const lower = materialType.toLowerCase();
-  const words = lower.split(/[\s,\-\/]+/).filter((w) => w.length > 2);
+  const words = lower.split(/[-\s,/]+/).filter((w) => w.length > 2);
   // Add common synonyms
   const synonyms: Record<string, string[]> = {
     concrete: ["cement", "ready-mix", "precast"],
@@ -256,11 +256,10 @@ export const conciergeRouter = router({
       View Supplier &amp; Request Bid →
     </a>
   </p>
-  ${
-    input.adminNote
-      ? `<p style="color:#555; font-size:14px;">${input.adminNote}</p>`
-      : ""
-  }
+  ${input.adminNote
+          ? `<p style="color:#555; font-size:14px;">${input.adminNote}</p>`
+          : ""
+        }
   <hr style="border:none; border-top:1px solid #e5e7eb; margin:32px 0;" />
   <p style="font-size:12px; color:#6b7280;">
     GreenChainz · Danville, VA · 

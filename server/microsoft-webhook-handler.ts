@@ -97,13 +97,14 @@ export async function handleMicrosoftWebhook(req: Request, res: Response): Promi
 
     // Handle different webhook actions
     switch (payload.action) {
-      case "activate":
+      case "activate": {
         const activated = await activateSubscription(userId, payload);
         console.log(`[Microsoft Webhook] Activated subscription ${activated.id} for user ${userId}`);
         res.status(200).json({ success: true, subscriptionId: activated.id });
         break;
+      }
 
-      case "renew":
+      case "renew": {
         const renewed = await renewSubscription(payload);
         if (renewed) {
           console.log(`[Microsoft Webhook] Renewed subscription ${renewed.id}`);
@@ -113,8 +114,9 @@ export async function handleMicrosoftWebhook(req: Request, res: Response): Promi
           res.status(404).json({ success: false, error: "Subscription not found" });
         }
         break;
+      }
 
-      case "cancel":
+      case "cancel": {
         const cancelled = await cancelSubscription(payload.subscriptionId);
         if (cancelled) {
           console.log(`[Microsoft Webhook] Cancelled subscription ${cancelled.id}`);
@@ -124,8 +126,9 @@ export async function handleMicrosoftWebhook(req: Request, res: Response): Promi
           res.status(404).json({ success: false, error: "Subscription not found" });
         }
         break;
+      }
 
-      case "suspend":
+      case "suspend": {
         const suspended = await suspendSubscription(payload.subscriptionId);
         if (suspended) {
           console.log(`[Microsoft Webhook] Suspended subscription ${suspended.id}`);
@@ -135,8 +138,9 @@ export async function handleMicrosoftWebhook(req: Request, res: Response): Promi
           res.status(404).json({ success: false, error: "Subscription not found" });
         }
         break;
+      }
 
-      case "reinstate":
+      case "reinstate": {
         const reinstated = await reinstateSubscription(payload.subscriptionId);
         if (reinstated) {
           console.log(`[Microsoft Webhook] Reinstated subscription ${reinstated.id}`);
@@ -146,6 +150,7 @@ export async function handleMicrosoftWebhook(req: Request, res: Response): Promi
           res.status(404).json({ success: false, error: "Subscription not found" });
         }
         break;
+      }
 
       default:
         console.error(`[Microsoft Webhook] Unknown action: ${payload.action}`);
@@ -164,13 +169,15 @@ export async function handleMicrosoftWebhook(req: Request, res: Response): Promi
  * configured in Partner Center → Technical Configuration → Webhook.
  * The signature is base64-encoded and sent in the `x-ms-signature` header.
  *
- * If MICROSOFT_WEBHOOK_SECRET is not set the check is skipped (dev mode).
+ * Fails CLOSED: if MICROSOFT_WEBHOOK_SECRET is not set, verification is
+ * rejected. The secret is enforced at startup (security-preflight.ts) so a
+ * misconfigured deployment never silently accepts unsigned billing webhooks.
  */
 export function verifyMicrosoftWebhookSignature(req: Request): boolean {
   const secret = process.env.MICROSOFT_WEBHOOK_SECRET;
   if (!secret) {
-    console.warn("[MS Webhook] MICROSOFT_WEBHOOK_SECRET not set — skipping signature check");
-    return true;
+    console.error("[MS Webhook] MICROSOFT_WEBHOOK_SECRET not set — rejecting webhook (fail-closed)");
+    return false;
   }
 
   const signature = req.headers["x-ms-signature"] as string | undefined;

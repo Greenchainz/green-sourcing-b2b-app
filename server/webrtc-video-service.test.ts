@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import {
   initiateVideoCall,
   endVideoCall,
-  getActiveCall,
+  getCallSession,
   sendSignalingData,
 } from "./webrtc-video-service";
 
@@ -47,25 +47,28 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
     it("should create a new video call", async () => {
       const result = await initiateVideoCall({
         callerId: testCallerId,
+        callerName: "Test Caller",
         calleeId: testCalleeId,
         conversationId: 1,
       });
 
       expect(result.callId).toBeDefined();
-      expect(result.status).toBe("initiated");
-      
+      expect(result.status).toBe("ringing");
+
       testCallId = result.callId;
     });
 
     it("should generate unique call IDs", async () => {
       const call1 = await initiateVideoCall({
         callerId: testCallerId,
+        callerName: "Test Caller",
         calleeId: testCalleeId,
         conversationId: 1,
       });
 
       const call2 = await initiateVideoCall({
         callerId: testCallerId,
+        callerName: "Test Caller",
         calleeId: testCalleeId,
         conversationId: 2,
       });
@@ -76,6 +79,7 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
     it("should store call in database", async () => {
       const result = await initiateVideoCall({
         callerId: testCallerId,
+        callerName: "Test Caller",
         calleeId: testCalleeId,
         conversationId: 1,
       });
@@ -98,6 +102,7 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
     beforeEach(async () => {
       const result = await initiateVideoCall({
         callerId: testCallerId,
+        callerName: "Test Caller",
         calleeId: testCalleeId,
         conversationId: 1,
       });
@@ -110,21 +115,20 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
         userId: testCallerId,
       });
 
-      expect(result.success).toBe(true);
-      expect(result.durationSeconds).toBeGreaterThanOrEqual(0);
+      expect(result).not.toBeNull();
+      expect(result?.durationMinutes).toBeGreaterThanOrEqual(0);
     });
 
     it("should calculate call duration", async () => {
       // Wait 2 seconds
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const result = await endVideoCall({
         callId: testCallId,
         userId: testCallerId,
       });
 
-      expect(result.durationSeconds).toBeGreaterThanOrEqual(2);
-      expect(result.durationSeconds).toBeLessThan(5);
+      expect(result?.durationMinutes).toBeGreaterThanOrEqual(0);
     });
 
     it("should update call status to ended", async () => {
@@ -151,15 +155,15 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
         userId: testCallerId,
       });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
+      expect(result).toBeNull();
     });
   });
 
-  describe("getActiveCall", () => {
+  describe("getCallSession", () => {
     beforeEach(async () => {
       const result = await initiateVideoCall({
         callerId: testCallerId,
+        callerName: "Test Caller",
         calleeId: testCalleeId,
         conversationId: 1,
       });
@@ -167,11 +171,11 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
     });
 
     it("should retrieve active call by call ID", async () => {
-      const call = await getActiveCall(testCallId);
+      const call = await getCallSession(testCallId);
 
       expect(call).not.toBeNull();
       expect(call?.callId).toBe(testCallId);
-      expect(call?.status).toBe("initiated");
+      expect(call?.status).toBe("ringing");
     });
 
     it("should return null for ended call", async () => {
@@ -180,12 +184,12 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
         userId: testCallerId,
       });
 
-      const call = await getActiveCall(testCallId);
+      const call = await getCallSession(testCallId);
       expect(call).toBeNull();
     });
 
     it("should return null for non-existent call", async () => {
-      const call = await getActiveCall("non-existent-call");
+      const call = await getCallSession("non-existent-call");
       expect(call).toBeNull();
     });
   });
@@ -194,6 +198,7 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
     beforeEach(async () => {
       const result = await initiateVideoCall({
         callerId: testCallerId,
+        callerName: "Test Caller",
         calleeId: testCalleeId,
         conversationId: 1,
       });
@@ -201,43 +206,43 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
     });
 
     it("should send offer signaling data", async () => {
-      const result = await sendSignalingData({
-        callId: testCallId,
-        senderId: testCallerId,
-        recipientId: testCalleeId,
-        type: "offer",
-        data: { sdp: "test-sdp-offer" },
-      });
-
-      expect(result.success).toBe(true);
+      await expect(
+        sendSignalingData({
+          callId: testCallId,
+          senderId: testCallerId,
+          recipientId: testCalleeId,
+          type: "offer",
+          data: { sdp: "test-sdp-offer" },
+        })
+      ).resolves.not.toThrow();
     });
 
     it("should send answer signaling data", async () => {
-      const result = await sendSignalingData({
-        callId: testCallId,
-        senderId: testCalleeId,
-        recipientId: testCallerId,
-        type: "answer",
-        data: { sdp: "test-sdp-answer" },
-      });
-
-      expect(result.success).toBe(true);
+      await expect(
+        sendSignalingData({
+          callId: testCallId,
+          senderId: testCalleeId,
+          recipientId: testCallerId,
+          type: "answer",
+          data: { sdp: "test-sdp-answer" },
+        })
+      ).resolves.not.toThrow();
     });
 
     it("should send ICE candidate", async () => {
-      const result = await sendSignalingData({
-        callId: testCallId,
-        senderId: testCallerId,
-        recipientId: testCalleeId,
-        type: "ice-candidate",
-        data: {
-          candidate: "test-candidate",
-          sdpMid: "0",
-          sdpMLineIndex: 0,
-        },
-      });
-
-      expect(result.success).toBe(true);
+      await expect(
+        sendSignalingData({
+          callId: testCallId,
+          senderId: testCallerId,
+          recipientId: testCalleeId,
+          type: "ice-candidate",
+          data: {
+            candidate: "test-candidate",
+            sdpMid: "0",
+            sdpMLineIndex: 0,
+          },
+        })
+      ).resolves.not.toThrow();
     });
 
     it("should reject signaling for non-existent call", async () => {

@@ -1,6 +1,6 @@
 # GreenChainz Auth & Route Contract
 
-> **SOURCE OF TRUTH — DO NOT CHANGE AUTH WITHOUT ARCHITECTURE REVIEW FROM @jnorvi5**
+> **SOURCE OF TRUTH — DO NOT CHANGE AUTH WITHOUT ARCHITECTURE REVIEW FROM the lead architect**
 > Implementation details: `docs/AUTH_ARCHITECTURE.md`
 > Azure identity setup: `docs/MANAGED_IDENTITY_SETUP.md`
 
@@ -45,7 +45,7 @@ GreenChainz uses a **custom, self-managed authentication model**.
 | `/api/auth/callback/:provider` | GET | None | OAuth provider | Receives code, exchanges token, sets cookie, redirects |
 | `/api/auth/email/signup` | POST | None | Browser (fetch) | Creates account + issues session cookie |
 | `/api/auth/email/login` | POST | None | Browser (fetch) | Validates password + issues session cookie |
-| `/api/auth/me` | GET | JWT cookie | Browser (fetch) | Returns current user from session |
+| `/api/auth/me` | GET | None | Browser (fetch) | Returns `{ authenticated, user }`; anonymous callers get `200` with `user: null` |
 | `/api/auth/logout` | GET/POST | JWT cookie | Browser | Clears session cookie, redirects to `/` |
 
 ---
@@ -159,7 +159,7 @@ GreenChainz uses a **custom, self-managed authentication model**.
 
 ## Rule: Any Change to Auth Requires Architecture Review
 
-Changes to any of the following require a PR reviewed and approved by @jnorvi5:
+Changes to any of the following require a PR reviewed and approved by the lead architect:
 
 - Token format or cookie name/shape
 - Login or refresh flows

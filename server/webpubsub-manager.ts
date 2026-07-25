@@ -1,22 +1,42 @@
 import { WebPubSubServiceClient } from "@azure/web-pubsub";
+import { DefaultAzureCredential } from "@azure/identity";
 import { getDb } from "./db";
 import { rfqMessages, rfqThreads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-const hubName = process.env.WEBPUBSUB_HUB || "greenchainzhub";
+const hubName = process.env.WEBPUBSUB_HUB ?? "greenchainz-hub";
 
-// Lazy-initialize so the module doesn't throw at startup before secrets are loaded
+// Lazy-initialize so the module doesn't throw at startup before secrets are loaded.
+// Returns null when AZURE_WEBPUBSUB_CONNECTION_STRING is not configured — callers
+// degrade gracefully (messages still persist to DB; real-time delivery is skipped).
 let _client: WebPubSubServiceClient | null = null;
+let _clientInitialized = false;
 
-function getClient(): WebPubSubServiceClient {
-  if (!_client) {
+function getClient(): WebPubSubServiceClient | null {
+  if (!_clientInitialized) {
+    _clientInitialized = true;
+    const endpoint = process.env.AZURE_WEBPUBSUB_ENDPOINT;
     const connectionString = process.env.AZURE_WEBPUBSUB_CONNECTION_STRING;
-    if (!connectionString) {
-      throw new Error(
-        "AZURE_WEBPUBSUB_CONNECTION_STRING is not set — add WEBPUBSUB-CONNECTION-STRING to Key Vault"
+
+    if (endpoint) {
+      try {
+        _client = new WebPubSubServiceClient(endpoint, new DefaultAzureCredential(), hubName);
+        console.log("[WebPubSub] Using managed identity authentication");
+      } catch (error) {
+        console.warn("[WebPubSub] Failed to initialize with managed identity:", error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    if (!_client && connectionString) {
+      _client = new WebPubSubServiceClient(connectionString, hubName);
+      console.log("[WebPubSub] Using connection-string authentication fallback");
+    }
+
+    if (!_client) {
+      console.warn(
+        "[WebPubSub] Neither AZURE_WEBPUBSUB_ENDPOINT nor AZURE_WEBPUBSUB_CONNECTION_STRING is configured — real-time notifications disabled"
       );
     }
-    _client = new WebPubSubServiceClient(connectionString, hubName);
   }
   return _client;
 }
@@ -24,16 +44,33 @@ function getClient(): WebPubSubServiceClient {
 /**
  * Broadcast notification to a specific user
  */
-export async function broadcastNotification(userId: number, notification: any) {
+export async function broadcastNotification(userId: number, notification: Record<string, unknown>) {
+  const c = getClient();
+  if (!c) return; // WebPubSub not configured — degrade silently
   try {
-    await getClient().sendToUser(`user-${userId}`, {
-      type: "notification",
-      data: notification,
-    });
-    console.log(`✅ Notification broadcast to user-${userId}`);
+    // Send the notification payload directly — no outer wrapper.
+    // Clients parse event.data and check notification.type at the top level.
+    await c.sendToUser(`user-${userId}`, notification);
+    console.log(`✅ Notification broadcast to user-${userId}: ${notification.type}`);
   } catch (error) {
     console.error("❌ Failed to broadcast notification:", error);
   }
+}
+
+/**
+ * Get access URL for user-level notification stream.
+ */
+export async function getNotificationAccessToken(userId: number): Promise<{ url: string } | null> {
+  const c = getClient();
+  if (!c) return null;
+
+  const token = await c.getClientAccessToken({
+    userId: `user-${userId}`,
+    expirationTimeInMinutes: 60,
+  });
+
+  const url = token.url ?? `${token.baseUrl}?access_token=${token.token}`;
+  return { url };
 }
 
 /**
@@ -58,7 +95,10 @@ export async function getWebSocketAccessToken(userId: number, threadId: number) 
     throw new Error("User does not have access to this thread");
   }
 
-  const token = await getClient().getClientAccessToken({
+  const c = getClient();
+  if (!c) throw new Error("Real-time messaging is not configured on this server.");
+
+  const token = await c.getClientAccessToken({
     userId: `user-${userId}`,
     expirationTimeInMinutes: 60,
     roles: [`thread-${threadId}`],
@@ -115,23 +155,25 @@ export async function sendMessageToThread(
 
   const c = getClient();
 
-  // Deliver to recipient
-  await c.sendToUser(`user-${isBuyer ? threadData.supplierId : threadData.buyerId}`, {
-    type: "message",
-    threadId,
-    senderId: userId,
-    senderType: isBuyer ? "buyer" : "supplier",
-    content: message,
-    timestamp: now.toISOString(),
-  });
+  if (c) {
+    // Deliver to recipient
+    await c.sendToUser(`user-${isBuyer ? threadData.supplierId : threadData.buyerId}`, {
+      type: "message",
+      threadId,
+      senderId: userId,
+      senderType: isBuyer ? "buyer" : "supplier",
+      content: message,
+      timestamp: now.toISOString(),
+    });
 
-  // Confirm to sender
-  await c.sendToUser(`user-${userId}`, {
-    type: "message_sent",
-    threadId,
-    messageId: insertedMessage?.id,
-    timestamp: now.toISOString(),
-  });
+    // Confirm to sender
+    await c.sendToUser(`user-${userId}`, {
+      type: "message_sent",
+      threadId,
+      messageId: insertedMessage?.id,
+      timestamp: now.toISOString(),
+    });
+  } // end if (c)
 
   return {
     success: true,
@@ -164,12 +206,15 @@ export async function broadcastTypingIndicator(
   const threadData = thread[0];
   const recipientId = isBuyer ? threadData.supplierId : threadData.buyerId;
 
-  await getClient().sendToUser(`user-${recipientId}`, {
-    type: "typing",
-    threadId,
-    userId,
-    senderType: isBuyer ? "buyer" : "supplier",
-  });
+  const c = getClient();
+  if (c) {
+    await c.sendToUser(`user-${recipientId}`, {
+      type: "typing",
+      threadId,
+      userId,
+      senderType: isBuyer ? "buyer" : "supplier",
+    });
+  }
 
   return { success: true };
 }
@@ -177,9 +222,29 @@ export async function broadcastTypingIndicator(
 /**
  * Mark message as read
  */
-export async function markMessageAsRead(messageId: number) {
+export async function markMessageAsRead(messageId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
+
+  // Verify the requesting user is a participant in the thread that owns this message
+  const rows = await db
+    .select({
+      buyerId: rfqThreads.buyerId,
+      supplierId: rfqThreads.supplierId,
+    })
+    .from(rfqMessages)
+    .innerJoin(rfqThreads, eq(rfqMessages.threadId, rfqThreads.id))
+    .where(eq(rfqMessages.id, messageId))
+    .limit(1);
+
+  if (!rows || rows.length === 0) {
+    throw new Error("Message not found");
+  }
+
+  const row = rows[0];
+  if (row.buyerId !== userId && row.supplierId !== userId) {
+    throw new Error("User does not have access to this message");
+  }
 
   await db
     .update(rfqMessages)
@@ -194,11 +259,27 @@ export async function markMessageAsRead(messageId: number) {
  */
 export async function getThreadMessages(
   threadId: number,
+  userId: number,
   limit: number = 50,
   offset: number = 0
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
+
+  const thread = await db
+    .select()
+    .from(rfqThreads)
+    .where(eq(rfqThreads.id, threadId))
+    .limit(1);
+
+  if (!thread || thread.length === 0) {
+    throw new Error("Thread not found");
+  }
+
+  const threadData = thread[0];
+  if (threadData.buyerId !== userId && threadData.supplierId !== userId) {
+    throw new Error("User does not have access to this thread");
+  }
 
   const messages = await db
     .select()
@@ -214,9 +295,23 @@ export async function getThreadMessages(
 /**
  * Close a thread (no more messages allowed)
  */
-export async function closeThread(threadId: number) {
+export async function closeThread(threadId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
+
+  const existing = await db
+    .select()
+    .from(rfqThreads)
+    .where(eq(rfqThreads.id, threadId))
+    .limit(1);
+
+  if (!existing || existing.length === 0) {
+    throw new Error("Thread not found");
+  }
+
+  if (existing[0].buyerId !== userId && existing[0].supplierId !== userId) {
+    throw new Error("User does not have access to this thread");
+  }
 
   await db
     .update(rfqThreads)
@@ -231,17 +326,19 @@ export async function closeThread(threadId: number) {
 
   if (thread && thread.length > 0) {
     const c = getClient();
-    const threadData = thread[0];
-    await c.sendToUser(`user-${threadData.buyerId}`, {
-      type: "thread_closed",
-      threadId,
-      reason: "RFQ has been finalized",
-    });
-    await c.sendToUser(`user-${threadData.supplierId}`, {
-      type: "thread_closed",
-      threadId,
-      reason: "RFQ has been finalized",
-    });
+    if (c) {
+      const threadData = thread[0];
+      await c.sendToUser(`user-${threadData.buyerId}`, {
+        type: "thread_closed",
+        threadId,
+        reason: "RFQ has been finalized",
+      });
+      await c.sendToUser(`user-${threadData.supplierId}`, {
+        type: "thread_closed",
+        threadId,
+        reason: "RFQ has been finalized",
+      });
+    }
   }
 
   return { success: true };

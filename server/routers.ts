@@ -33,12 +33,26 @@ import { microsoftSubscriptionRouter } from './routers/microsoft-subscription-ro
 import { notificationsRouter } from './routers/notifications-router';
 import { authRouter, rfqInternalRouter, agentRouter, leadsRouter, materialSwapsRouter } from './routers/misc-router';
 import { autodeskRouter } from './routers/autodesk-router';
+import { featuredRouter } from './featured-router';
+import { manufacturerSearchRouter } from './manufacturer-search-router';
+import { founderVideoRouter } from './routers/founder-video';
+import { catalogRouter } from './routers/catalog-router';
+import { auditRouter } from './routers/audit-router';
+import { sourcingRequestRouter } from './routers/sourcing-request-router';
+import { supplierResponseRouter } from './routers/supplier-response-router';
+import { supplierSustainabilityRouter } from './routers/supplier-sustainability-router';
+import { proofRouter } from './routers/blockchain-proof/proofRouter';
+import { submittalsRouter } from './routers/submittals-router';
+import { supplierAnalyticsRouter } from './routers/supplier-analytics-router';
+import { caDocumentsRouter } from './routers/ca-documents-router';
+import { arcadeRouter } from './routers/arcade-router';
 
 export const appRouter = router({
   system: systemRouter,
   rfqMarketplace: rfqMarketplaceRouter,
   supplier: supplierRouter,
   supplierRfq: supplierRfqRouter,
+  supplierAnalytics: supplierAnalyticsRouter,
   subscription: subscriptionRouter,
   admin: adminRouter,
   ec3: ec3Router,
@@ -67,6 +81,7 @@ export const appRouter = router({
   rfq: rfqInternalRouter,
   agent: agentRouter,
   leads: leadsRouter,
+  arcade: arcadeRouter,
   materialSwaps: materialSwapsRouter,
   messaging: messagingRouter,
   videoCalling: videoCallingRouter,
@@ -75,6 +90,17 @@ export const appRouter = router({
   concierge: conciergeRouter,
   suggestions: suggestionsRouter,
   autodesk: autodeskRouter,
+  featured: featuredRouter,
+  manufacturerSearch: manufacturerSearchRouter,
+  founderVideo: founderVideoRouter,
+  catalog: catalogRouter,
+  auditLog: auditRouter,
+  sourcingRequest: sourcingRequestRouter,
+  supplierResponse: supplierResponseRouter,
+  supplierSustainability: supplierSustainabilityRouter,
+  proof: proofRouter,
+  submittals: submittalsRouter,
+  caDocuments: caDocumentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,12 +1,14 @@
 import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
+import type { User } from '../../drizzle/schema';
 import type { TrpcContext } from './context';
 import {
   rateLimitMiddleware,
   agentRateLimitMiddleware,
   leadCaptureRateLimitMiddleware,
 } from './rateLimit';
+import { canAccessAdmin } from "./admin-access";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -36,12 +38,7 @@ const requireUser = t.middleware(async (opts) => {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: UNAUTHED_ERR_MSG });
   }
 
-  return next({
-    ctx: {
-      ...ctx,
-      user: ctx.user,
-    },
-  });
+  return next({ ctx: { ...ctx, user: ctx.user as User } });
 });
 
 export const protectedProcedure = t.procedure
@@ -52,16 +49,11 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== 'admin') {
+    if (!canAccessAdmin(ctx.user)) {
       throw new TRPCError({ code: 'FORBIDDEN', message: NOT_ADMIN_ERR_MSG });
     }
 
-    return next({
-      ctx: {
-        ...ctx,
-        user: ctx.user,
-      },
-    });
+    return next({ ctx: { ...ctx, user: ctx.user as User } });
   }),
 );
 
@@ -71,18 +63,14 @@ export const architectProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    if (!ctx.user) {
+    const role = ctx.user?.role;
+    if (!role) {
       throw new TRPCError({ code: 'UNAUTHORIZED', message: UNAUTHED_ERR_MSG });
     }
-    if (ctx.user.role !== 'buyer' && ctx.user.role !== 'admin') {
+    if (role !== 'buyer' && role !== 'admin') {
       throw new TRPCError({ code: 'FORBIDDEN', message: 'Architect access required.' });
     }
 
-    return next({
-      ctx: {
-        ...ctx,
-        user: ctx.user,
-      },
-    });
+    return next({ ctx: { ...ctx, user: ctx.user as User } });
   }),
 );

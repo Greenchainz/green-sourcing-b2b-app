@@ -7,11 +7,53 @@
  * directly from this module.
  */
 
-import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow, PoolConfig } from 'pg';
+import { DefaultAzureCredential, ManagedIdentityCredential, type TokenCredential } from '@azure/identity';
 
 // Force pg to use pure-JS implementation (no native bindings).
 // Prevents "Can't resolve 'pg-native'" in Alpine containers / Edge Runtime.
 delete process.env.NODE_PG_FORCE_NATIVE;
+
+// ============================================================================
+// AAD TOKEN AUTH (Entra-only Postgres Flexible Server)
+// ============================================================================
+
+/**
+ * Lazily-initialized Azure credential for fetching AAD tokens.
+ * - Production:  ManagedIdentityCredential bound to MANAGED_IDENTITY_CLIENT_ID
+ * - Local dev:   DefaultAzureCredential (uses az CLI / env / VS code creds)
+ */
+let _aadCredential: TokenCredential | null = null;
+function getAadCredential(): TokenCredential {
+  if (_aadCredential) return _aadCredential;
+  const miClientId = process.env.MANAGED_IDENTITY_CLIENT_ID;
+  // The DB lives in a different tenant than the app — override here.
+  const dbTenant = process.env.POSTGRES_AAD_TENANT_ID;
+  if (process.env.NODE_ENV === 'production' && miClientId) {
+    _aadCredential = new ManagedIdentityCredential(miClientId);
+  } else {
+    _aadCredential = new DefaultAzureCredential(dbTenant ? { tenantId: dbTenant } : undefined);
+  }
+  return _aadCredential;
+}
+
+const AAD_DB_SCOPE = 'https://ossrdbms-aad.database.windows.net/.default';
+
+/** Fetch a fresh AAD access token for Postgres. Called per pg connection. */
+async function fetchAadDbToken(): Promise<string> {
+  const credential = getAadCredential();
+  const token = await credential.getToken(AAD_DB_SCOPE);
+  if (!token) throw new Error('Failed to acquire AAD token for PostgreSQL');
+  return token.token;
+}
+
+/**
+ * Whether to use AAD token auth instead of password auth.
+ * Set POSTGRES_AUTH_MODE=aad to enable.
+ */
+function shouldUseAadAuth(): boolean {
+  return (process.env.POSTGRES_AUTH_MODE ?? '').toLowerCase() === 'aad';
+}
 
 // ============================================================================
 // POOL CONSTANTS
@@ -83,13 +125,16 @@ export function resolveConnectionString(): string | undefined {
   const user = process.env.AZURE_POSTGRESQL_USER;
   const db   = process.env.AZURE_POSTGRESQL_DATABASE;
   const port = process.env.AZURE_POSTGRESQL_PORT || '5432';
-  const password = process.env.AZURE_POSTGRESQL_PASSWORD ?? process.env.DB_PASSWORD;
   const sslMode  = process.env.AZURE_POSTGRESQL_SSL || 'require';
 
   if (host && user && db) {
+    // Production: POSTGRES_AUTH_MODE=aad — password omitted; Postgres AAD auth
+    // exchanges a managed-identity token (fetchAadDbToken) instead of a password.
+    // Never use AZURE_POSTGRESQL_PASSWORD or DB_PASSWORD — those are banned in prod.
+    // Local dev: use DATABASE_URL from .env.local (set above); this branch is for
+    // Service Connector override only and should never carry a password in prod.
     const u = encodeURIComponent(user);
-    const p = password ? encodeURIComponent(password) : '';
-    return `postgres://${u}:${p}@${host}:${port}/${db}?sslmode=${sslMode}`;
+    return `postgres://${u}@${host}:${port}/${db}?sslmode=${sslMode}`;
   }
 
   return undefined;
@@ -118,14 +163,34 @@ export function getPool(): Pool {
       );
     }
 
-    _pool = new Pool({
-      connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+    const baseConfig: PoolConfig = {
       max: MAX_POOL_SIZE,
-      idleTimeoutMillis:       IDLE_TIMEOUT_MS,
+      idleTimeoutMillis: IDLE_TIMEOUT_MS,
       connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
-      statement_timeout:       DEFAULT_QUERY_TIMEOUT_MS,
-    });
+      statement_timeout: DEFAULT_QUERY_TIMEOUT_MS,
+    };
+
+    if (shouldUseAadAuth()) {
+      // AAD token mode: parse host/port/db from URL, override user, fetch token per connection.
+      const parsed = parseConnectionString(connectionString);
+      const aadUser = process.env.POSTGRES_AAD_USER ?? parsed.user;
+      console.log(`[pg-pool] Using AAD token auth (user="${aadUser}")`);
+      _pool = new Pool({
+        ...baseConfig,
+        host: parsed.host,
+        port: parsed.port,
+        database: parsed.database,
+        user: aadUser,
+        password: fetchAadDbToken,
+        ssl: { rejectUnauthorized: false },
+      });
+    } else {
+      _pool = new Pool({
+        ...baseConfig,
+        connectionString,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+      });
+    }
   }
 
   return _pool;

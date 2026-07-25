@@ -144,13 +144,11 @@ describe.skipIf(!process.env.DATABASE_URL)("Material Spec Submission E2E Tests",
   });
 
   describe("Query Material Specs", () => {
-    let testSpecId: number;
-
     beforeEach(async () => {
       const db = await getDb();
       if (!db) throw new Error("Database not initialized");
 
-      const [spec] = await db
+      await db
         .insert(materialSpecs)
         .values({
           materialId: testMaterialId,
@@ -160,7 +158,6 @@ describe.skipIf(!process.env.DATABASE_URL)("Material Spec Submission E2E Tests",
           status: "pending",
         })
         .returning();
-      testSpecId = spec.id;
     });
 
     it("should get specs by material ID", async () => {

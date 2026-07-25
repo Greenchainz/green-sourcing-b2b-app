@@ -110,26 +110,30 @@ export const supplierRouter = router({
     .query(async ({ input }) => {
       const { getDb } = await import("./db");
       const { suppliers } = await import("../drizzle/schema");
-      const { like, or } = await import("drizzle-orm");
+      const { like, or, and, isNull } = await import("drizzle-orm");
       
       const db = await getDb();
       if (!db) throw new Error("Database connection failed");
 
-      let query = db.select().from(suppliers);
+      const searchTerm = input.query?.trim() ? `%${input.query.trim()}%` : null;
 
-      // Filter by search query if provided
-      if (input.query && input.query.trim()) {
-        const searchTerm = `%${input.query.trim()}%`;
-        query = query.where(
-          or(
-            like(suppliers.companyName, searchTerm),
-            like(suppliers.city, searchTerm),
-            like(suppliers.state, searchTerm)
-          )
-        ) as any;
-      }
+      const results = await db
+        .select()
+        .from(suppliers)
+        .where(
+          searchTerm
+            ? and(
+                isNull(suppliers.deletedAt),
+                or(
+                  like(suppliers.companyName, searchTerm),
+                  like(suppliers.city, searchTerm),
+                  like(suppliers.state, searchTerm)
+                )
+              )
+            : isNull(suppliers.deletedAt)
+        )
+        .limit(20);
 
-      const results = await query.limit(20).execute();
       return results;
     }),
 

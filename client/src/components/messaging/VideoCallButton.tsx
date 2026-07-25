@@ -23,7 +23,6 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
   const initiateWebRTCCall = trpc.videoCalling.initiateWebRTCCall.useMutation();
   const initiateACSCall = trpc.videoCalling.initiateACSCall.useMutation();
 
-  // VIDEO CALLING — disabled for launch; handler preserved for when ACS/WebRTC is ready
   const handleStartCall = async () => {
     if (!usageStats || !videoLimit) return;
 
@@ -39,7 +38,7 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
       // Route to correct video system based on tier
       if (usageStats.tier === "premium") {
         // Use Azure Communication Services for Premium
-        const result = await initiateACSCall.mutateAsync({
+        await initiateACSCall.mutateAsync({
           calleeId: otherPartyId,
           conversationId,
           recordingEnabled: false,
@@ -50,10 +49,9 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
         });
 
         // TODO: Open ACS video call UI
-        console.log("ACS call initiated:", result);
       } else if (usageStats.tier === "standard") {
         // Use WebRTC for Standard
-        const result = await initiateWebRTCCall.mutateAsync({
+        await initiateWebRTCCall.mutateAsync({
           calleeId: otherPartyId,
           conversationId,
         });
@@ -103,11 +101,15 @@ export function VideoCallButton({ conversationId, otherPartyId, otherPartyName }
         variant="outline"
         size="sm"
         onClick={handleStartCall}
-        disabled
-        title="Video calling coming soon"
+        disabled={isInitiating}
+        title={usageStats?.tier === "premium" ? "Start HD video call" : "Start video call"}
       >
-        <Video className="h-4 w-4 mr-2" />
-        {usageStats?.tier === "premium" ? "HD Video Call (coming soon)" : "Video Call (coming soon)"}
+        {isInitiating ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <Video className="h-4 w-4 mr-2" />
+        )}
+        {usageStats?.tier === "premium" ? "HD Video Call" : "Video Call"}
       </Button>
 
       {videoLimit && (

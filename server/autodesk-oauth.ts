@@ -31,11 +31,19 @@ export async function getApsAccessToken(): Promise<string> {
     return cachedToken.token;
   }
 
-  const clientId = process.env.AUTODESK_CLIENT_ID;
-  const clientSecret = process.env.AUTODESK_CLIENT_SECRET;
+  // Credentials are loaded from Azure Key Vault at startup (lib/secrets.ts).
+  // Key Vault secret names: "AUTODESK-CLIENT-ID", "AUTODESK-CLIENT-SECRET"
+  // The managed identity must have "Key Vault Secrets User" RBAC on the vault.
+  const { getSecret } = await import('../lib/secrets');
+  const clientId = getSecret('AUTODESK_CLIENT_ID');
+  const clientSecret = getSecret('AUTODESK_CLIENT_SECRET');
 
   if (!clientId || !clientSecret) {
-    throw new Error('Missing Autodesk credentials: AUTODESK_CLIENT_ID or AUTODESK_CLIENT_SECRET');
+    throw new Error(
+      'Missing Autodesk credentials. ' +
+      'Ensure Key Vault secrets "AUTODESK-CLIENT-ID" and "AUTODESK-CLIENT-SECRET" exist ' +
+      'and the managed identity has "Key Vault Secrets User" role.'
+    );
   }
 
   try {

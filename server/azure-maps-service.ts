@@ -1,6 +1,6 @@
 import axios from "axios";
+import { getAzureMapsAuth } from "../lib/azure/azure-maps-auth";
 
-const AZURE_MAPS_SUBSCRIPTION_KEY = process.env.AZURE_MAPS_SUBSCRIPTION_KEY || "";
 const AZURE_MAPS_BASE_URL = "https://atlas.microsoft.com";
 
 export interface Coordinates {
@@ -17,8 +17,9 @@ export interface DistanceResult {
  * Geocode an address to coordinates using Azure Maps Search API
  */
 export async function geocodeAddress(address: string): Promise<Coordinates | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return null;
   }
 
@@ -30,10 +31,10 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
     const response = await axios.get(`${AZURE_MAPS_BASE_URL}/search/address/json`, {
       params: {
         "api-version": "1.0",
-        "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
         query: address,
         limit: 1,
       },
+      headers: auth.headers,
     });
 
     const results = response.data?.results;
@@ -60,8 +61,9 @@ export async function calculateDistance(
   origin: Coordinates,
   destination: Coordinates
 ): Promise<DistanceResult | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return calculateHaversineDistance(origin, destination);
   }
 
@@ -81,8 +83,8 @@ export async function calculateDistance(
       {
         params: {
           "api-version": "1.0",
-          "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
         },
+        headers: auth.headers,
       }
     );
 
@@ -179,8 +181,9 @@ export async function calculateRoute(
   origin: Coordinates,
   destination: Coordinates
 ): Promise<RouteResult | null> {
-  if (!AZURE_MAPS_SUBSCRIPTION_KEY) {
-    console.warn("Azure Maps subscription key not configured");
+  const auth = await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("Azure Maps authentication is not configured");
     return null;
   }
 
@@ -188,9 +191,9 @@ export async function calculateRoute(
     const response = await axios.get(`${AZURE_MAPS_BASE_URL}/route/directions/json`, {
       params: {
         "api-version": "1.0",
-        "subscription-key": AZURE_MAPS_SUBSCRIPTION_KEY,
         query: `${origin.latitude},${origin.longitude}:${destination.latitude},${destination.longitude}`,
       },
+      headers: auth.headers,
     });
 
     const routes = response.data?.routes;

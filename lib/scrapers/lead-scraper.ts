@@ -12,7 +12,7 @@
  *
  * Env vars:
  *   BING_SEARCH_API_KEY, BING_SEARCH_ENDPOINT
- *   AZURE_MAPS_SUBSCRIPTION_KEY
+ *   AZURE_MAPS_CLIENT_ID (managed identity preferred)
  */
 
 import axios from "axios";
@@ -20,6 +20,7 @@ import { getDb } from "../../server/db";
 import { scrapedLeads, crmContacts, crmEmailSequences } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { ROLE_CONFIGS, type RoleConfig } from "./lead-role-config";
+import { getAzureMapsAuth } from "../azure/azure-maps-auth";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ async function searchBing(
   } catch (err: any) {
     if (err?.response?.status === 429) {
       console.warn("[lead-scraper] Bing rate limit — pausing Bing phase");
-      throw new Error("BING_RATE_LIMIT");
+      throw new Error("BING_RATE_LIMIT", { cause: err });
     }
     return [];
   }
@@ -89,14 +90,24 @@ function guessEmail(websiteUrl: string): string | undefined {
 
 async function searchMaps(
   query: string,
-  state: string
+  state: string,
+  authOverride?: Awaited<ReturnType<typeof getAzureMapsAuth>>
 ): Promise<Array<{ company: string; phone?: string; website?: string; city?: string; state: string }>> {
-  const key = process.env.AZURE_MAPS_SUBSCRIPTION_KEY;
-  if (!key) return [];
+  const auth = authOverride ?? await getAzureMapsAuth();
+  if (!auth) {
+    console.warn("[lead-scraper] Azure Maps auth unavailable — skipping Maps phase");
+    return [];
+  }
+
   try {
     const response = await axios.get("https://atlas.microsoft.com/search/poi/json", {
-      params: { "api-version": "1.0", "subscription-key": key,
-                query: `${query} ${state}`, countrySet: "US", limit: 20 },
+      params: {
+        "api-version": "1.0",
+        query: `${query} ${state}`,
+        countrySet: "US",
+        limit: 20,
+      },
+      headers: auth.headers,
       timeout: 10_000,
     });
     return (response.data?.results ?? []).map((r: any) => ({
@@ -255,14 +266,19 @@ export async function runLeadScraper(): Promise<{
 
   // ── Azure Maps phase ──────────────────────────────────────────────────────
   console.log("[lead-scraper] Maps phase...");
+  const azureMapsAuth = await getAzureMapsAuth();
+  if (!azureMapsAuth) {
+    console.warn("[lead-scraper] Azure Maps credentials not configured/usable — skipping Maps phase");
+  }
 
   for (const { query, crmCategory } of MAPS_QUERIES) {
+    if (!azureMapsAuth) break;
     const role = ROLE_CONFIGS.find((r) => r.crmCategory === crmCategory);
     if (!role) continue;
 
     for (const state of STATES) {
       try {
-        const results = await searchMaps(query, state);
+        const results = await searchMaps(query, state, azureMapsAuth);
         for (const r of results) {
           const email = r.website ? guessEmail(r.website) : undefined;
           const outcome = await saveLead(

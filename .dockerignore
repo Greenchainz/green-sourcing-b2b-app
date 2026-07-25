@@ -14,23 +14,41 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
+# Environment files — NEVER send secrets to the build daemon
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+
 # VCS
 .git
 .gitignore
 
 # Editor / OS
 .vscode
+.vs
+*.vsidx
+*.suo
+*.user
 .idea
 .DS_Store
 Thumbs.db
 
-# Tests and docs not needed for the frontend image
+# Tests and docs not needed in the image
 **/tests
 **/test
 **/__tests__
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
 playwright-report
 
 docs
+azure
+README.md
+*.md
 
 # Large data / backup files
 *.zip

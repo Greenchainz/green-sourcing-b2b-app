@@ -1,6 +1,6 @@
-import { eq, and, gte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "./db";
-import { buyerSubscriptions, supplierSubscriptions, users, suppliers } from "../drizzle/schema";
+import { buyerSubscriptions, supplierSubscriptions } from "../drizzle/schema";
 
 // ─── Microsoft Marketplace Pricing ───────────────────────────────────────────────────────
 // Professional: $99/user/mo | $79/user/mo billed annually (save 20%)
@@ -69,7 +69,7 @@ export const METERED_DIMENSIONS = {
 export const TIER_LIMITS = {
   buyer: {
     free: {
-      rfqsPerMonth: 0,
+      rfqsPerMonth: 3,
       aiQueriesPerMonth: 10,
       swapAnalysesPerMonth: 5,
       ccpsExportsPerMonth: 3,
@@ -148,6 +148,7 @@ export const TIER_LIMITS = {
         verifiedBadge: false,
         priorityRfqAccess: false,
         bidAnalytics: false,
+        viewerIdentities: false, // free suppliers see hit counts, not who viewed them
         apiAccess: false,
       },
     },
@@ -163,6 +164,7 @@ export const TIER_LIMITS = {
         verifiedBadge: true,
         priorityRfqAccess: true, // 24h head start on RFQs
         bidAnalytics: true,
+        viewerIdentities: true, // premium unlocks which firms viewed the profile
         apiAccess: true,
       },
     },
@@ -323,7 +325,7 @@ export async function checkBuyerFeatureAccess(
   feature: keyof typeof TIER_LIMITS.buyer.free.features
 ): Promise<boolean> {
   const subscription = await getBuyerSubscription(userId);
-  
+
   if (!subscription) {
     // No subscription = free tier
     return TIER_LIMITS.buyer.free.features[feature];
@@ -357,7 +359,7 @@ export async function checkSupplierFeatureAccess(
   feature: keyof typeof TIER_LIMITS.supplier.free.features
 ): Promise<boolean> {
   const subscription = await getSupplierSubscription(supplierId);
-  
+
   if (!subscription) {
     // No subscription = free tier
     return TIER_LIMITS.supplier.free.features[feature];
@@ -380,7 +382,7 @@ export async function checkSupplierFeatureAccess(
 
 export async function getBuyerTierLimits(userId: number) {
   const subscription = await getBuyerSubscription(userId);
-  
+
   if (!subscription) {
     return TIER_LIMITS.buyer.free;
   }
@@ -409,7 +411,7 @@ export async function getBuyerTierLimits(userId: number) {
 
 export async function getSupplierTierLimits(supplierId: number) {
   const subscription = await getSupplierSubscription(supplierId);
-  
+
   if (!subscription) {
     return TIER_LIMITS.supplier.free;
   }

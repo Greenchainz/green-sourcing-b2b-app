@@ -26,6 +26,16 @@ export async function searchEpds(_query: string, _category?: string, _limit?: nu
   return [];
 }
 
-export async function getEpdDetail(id: string): Promise<SDAProductEpd> {
-  throw new Error(`SDA shutdown — getEpdDetail(${id}) unavailable`);
+export async function getEpdDetail(_id: string): Promise<SDAProductEpd | null> {
+  // SDA shutdown — returns null so callers degrade gracefully.
+  // Callers (epd-sync-scheduler, tests) check `if (!detail)`, so null is the safe contract.
+  return null;
+}
+
+export async function findBestEpd(
+  _query: string,
+  _category?: string,
+): Promise<SDAProductEpd | null> {
+  // SDA shutdown — no EPD data available, returns null.
+  return null;
 }

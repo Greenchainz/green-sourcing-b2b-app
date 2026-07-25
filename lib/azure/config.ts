@@ -18,7 +18,6 @@
 
 import { BlobServiceClient } from "@azure/storage-blob";
 import { getAzureCredential } from "./credentials";
-let sql: any;
 
 function getMssqlUnavailableError(): Error {
     return new Error(
@@ -150,6 +149,9 @@ export function getBlobServiceClient(): BlobServiceClient {
     if (!blobService) {
         const storageAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
         const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+        const isProduction = process.env.NODE_ENV === "production";
+        const allowConnectionStringInProd =
+            process.env.ALLOW_STORAGE_CONNECTION_STRING_IN_PROD === "true";
 
         if (!storageAccountName && !connectionString) {
             throw new Error(
@@ -166,6 +168,14 @@ export function getBlobServiceClient(): BlobServiceClient {
             blobService = new BlobServiceClient(accountUrl, credential);
             console.log("✅ Legacy blob service client initialized with Managed Identity");
         } else if (connectionString) {
+            if (isProduction && !allowConnectionStringInProd) {
+                throw new Error(
+                    "Connection-string blob auth is blocked in production. " +
+                    "Use managed identity (AZURE_STORAGE_ACCOUNT_NAME + AZURE_MI_CLIENT_ID) or set " +
+                    "ALLOW_STORAGE_CONNECTION_STRING_IN_PROD=true as an emergency override."
+                );
+            }
+
             // Fallback to connection string (local development)
             blobService = BlobServiceClient.fromConnectionString(connectionString);
             console.log("✅ Legacy blob service client initialized with connection string (local dev)");
@@ -210,32 +220,9 @@ export async function uploadFileToBlob(
 // AZURE SQL DATABASE (Products, Suppliers, Users)
 // ============================================================================
 
-/**
- * Azure SQL configuration with connection pooling
- */
-const sqlConfig: any = {
-    user: process.env.AZURE_SQL_USER,
-    password: process.env.AZURE_SQL_PASSWORD,
-    server: process.env.AZURE_SQL_SERVER || '', // e.g., 'greenchainz.database.windows.net'
-    database: process.env.AZURE_SQL_DATABASE,
-    pool: {
-        max: 20,           // Increased pool size for better concurrency
-        min: 2,
-        idleTimeoutMillis: 30000,
-        acquireTimeoutMillis: 30000,  // Added acquire timeout
-    },
-    options: {
-        encrypt: true,
-        trustServerCertificate: false,
-        connectTimeout: 15000,
-        requestTimeout: 30000,  // Added request timeout
-        enableArithAbort: true,  // Required for newer SQL Server versions
-    },
-};
-
-// Connection pool (singleton)
+// Connection pool (singleton) — kept for future re-enable
 let sqlPool: any | null = null;
-let poolConnecting: Promise<any> | null = null;
+let _poolConnecting: Promise<any> | null = null;
 
 /**
  * Check if Azure SQL is configured
@@ -256,50 +243,6 @@ export function isAzureSQLConfigured(): boolean {
  */
 export async function getAzureSQLPool(): Promise<any> {
     throw getMssqlUnavailableError();
-
-    // Return existing connected pool
-    if (sqlPool && sqlPool.connected) {
-        return sqlPool;
-    }
-
-    // Return existing connection attempt (prevent connection storms)
-    if (poolConnecting) {
-        return poolConnecting;
-    }
-
-    // Create new connection with retry
-    poolConnecting = withRetry(async () => {
-        // Double-check in case another call connected while we waited
-        if (sqlPool && sqlPool.connected) {
-            return sqlPool;
-        }
-
-        // Close any stale pool
-        if (sqlPool) {
-            try {
-                await sqlPool.close();
-            } catch {
-                // Ignore close errors on stale pool
-            }
-            sqlPool = null;
-        }
-
-        throw getMssqlUnavailableError();
-        await sqlPool.connect();
-
-        console.log("✅ Connected to Azure SQL Database");
-        return sqlPool;
-    }, {
-        maxRetries: 3,
-        baseDelayMs: 1000,
-    });
-
-    try {
-        const pool = await poolConnecting;
-        return pool;
-    } finally {
-        poolConnecting = null;
-    }
 }
 
 /**
@@ -383,7 +326,7 @@ export function resetSQLPool(): void {
         sqlPool.close().catch(console.error);
         sqlPool = null;
     }
-    poolConnecting = null;
+    _poolConnecting = null;
     console.log("✅ Azure SQL pool reset");
 }
 

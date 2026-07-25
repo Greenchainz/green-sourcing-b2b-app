@@ -58,9 +58,9 @@ function check(key: string, limit: number, windowMs: number): void {
 }
 
 function getIp(ctx: TrpcContext): string {
-  const forwarded = ctx.req.headers['x-forwarded-for'];
+  const forwarded = ctx.req?.headers?.['x-forwarded-for'];
   if (Array.isArray(forwarded)) return forwarded[0]?.split(',')[0]?.trim() ?? 'unknown';
-  return forwarded?.split(',')[0]?.trim() ?? ctx.req.socket?.remoteAddress ?? 'unknown';
+  return forwarded?.split(',')[0]?.trim() ?? ctx.req?.socket?.remoteAddress ?? 'unknown';
 }
 
 // ── Middleware factory ────────────────────────────────────────────────────────

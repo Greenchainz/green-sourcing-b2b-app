@@ -59,7 +59,7 @@ describe("EC3 Integration", () => {
     }
 
     const epd = epds[0];
-    const material = transformEC3ToMaterial(epd);
+    const material = await transformEC3ToMaterial(epd);
 
     // Check required fields
     expect(material).toHaveProperty("name");
@@ -84,7 +84,7 @@ describe("EC3 Integration", () => {
       return;
     }
 
-    const mats = transformEC3Batch(epds);
+    const mats = await transformEC3Batch(epds);
 
     expect(mats.length).toBe(epds.length);
     mats.forEach((material, index) => {
@@ -101,7 +101,7 @@ describe("EC3 Integration", () => {
       return;
     }
 
-    const material = transformEC3ToMaterial(epds[0]);
+    const material = await transformEC3ToMaterial(epds[0]);
     const db = await getDb();
     expect(db).toBeDefined();
 

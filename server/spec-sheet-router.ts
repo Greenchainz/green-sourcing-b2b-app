@@ -8,11 +8,18 @@ import {
   specSheetTemplate,
   buildSpecSheetInputs,
 } from "./templates/spec-sheet-template";
+import { requireEasyAuthUser } from "./_core/request-auth";
 
 export const specSheetRouter = Router();
 
 specSheetRouter.get("/materials/:id/spec-sheet", async (req, res) => {
   try {
+    const user = await requireEasyAuthUser(req);
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     const materialId = parseInt(req.params.id);
     if (isNaN(materialId)) {
       res.status(400).json({ error: "Invalid material ID" });

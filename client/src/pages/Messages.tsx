@@ -13,7 +13,7 @@
  *   supplier           → threads labelled "Buyer: <name>" to highlight inbound leads
  *
  * Video calling:
- *   - useWebPubSub() at page root establishes WS for real-time call notifications
+ *   - App-level useWebPubSub() establishes WS for real-time call notifications
  *   - IncomingCallNotification handles callee-side incoming call dialog
  *   - VideoCallModal handles WebRTC peer connection + video streams
  *   - Call initiation button lives in ThreadPanel header
@@ -30,7 +30,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useWebPubSub } from "@/hooks/useWebPubSub";
 import { IncomingCallNotification } from "@/components/messaging/IncomingCallNotification";
 import {
   ArrowLeft,
@@ -40,7 +39,6 @@ import {
   MessageSquareDashed,
   Mic,
   MicOff,
-  Phone,
   PhoneOff,
   Search,
   Send,
@@ -87,6 +85,12 @@ interface ActiveCall {
   remoteUserId: number;
   remoteName: string;
   isInitiator: boolean;
+}
+
+interface PendingOutgoingCall {
+  callId: string;
+  remoteUserId: number;
+  remoteName: string;
 }
 
 interface IncomingCallData {
@@ -652,12 +656,12 @@ function ThreadPanel({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-green-600"
           onClick={handleVideoCall}
           title={`Start video call with ${name}`}
           disabled={!conv?.otherPartyId}
         >
-          <Phone className="h-4 w-4" />
+          <Video className="h-4 w-4" />
         </Button>
       </div>
 
@@ -737,10 +741,8 @@ export default function Messages() {
   const { user } = useAuth();
   const [selectedId, setSelectedId] = useState<number | undefined>();
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+  const [pendingOutgoingCall, setPendingOutgoingCall] = useState<PendingOutgoingCall | null>(null);
   const utils = trpc.useUtils();
-
-  // Establish WebSocket for real-time call notifications
-  useWebPubSub();
 
   const { data: rawConvs } = trpc.messaging.getConversations.useQuery(undefined, {
     refetchInterval: 15_000,
@@ -758,6 +760,57 @@ export default function Messages() {
   const initiateCallMutation = trpc.videoCalling.initiateWebRTCCall.useMutation();
   const acceptCallMutation = trpc.videoCalling.acceptWebRTCCall.useMutation();
 
+  useEffect(() => {
+    const onCallAccepted = (event: Event) => {
+      const detail = (event as CustomEvent<{ callId: string }>).detail;
+      if (!detail?.callId || !pendingOutgoingCall) return;
+      if (detail.callId !== pendingOutgoingCall.callId) return;
+
+      setActiveCall({
+        callId: pendingOutgoingCall.callId,
+        remoteUserId: pendingOutgoingCall.remoteUserId,
+        remoteName: pendingOutgoingCall.remoteName,
+        isInitiator: true,
+      });
+      setPendingOutgoingCall(null);
+      toast.success(`${pendingOutgoingCall.remoteName} accepted the call`);
+    };
+
+    const onCallRejected = (event: Event) => {
+      const detail = (event as CustomEvent<{ callId: string }>).detail;
+      if (!detail?.callId) return;
+      if (pendingOutgoingCall?.callId === detail.callId) {
+        toast.info(`${pendingOutgoingCall.remoteName} declined the call`);
+        setPendingOutgoingCall(null);
+      }
+      if (activeCall?.callId === detail.callId) {
+        setActiveCall(null);
+      }
+    };
+
+    const onCallEnded = (event: Event) => {
+      const detail = (event as CustomEvent<{ callId: string }>).detail;
+      if (!detail?.callId) return;
+      if (activeCall?.callId === detail.callId) {
+        setActiveCall(null);
+        toast.info("Call ended");
+      }
+      if (pendingOutgoingCall?.callId === detail.callId) {
+        setPendingOutgoingCall(null);
+      }
+    };
+
+    window.addEventListener("video-call-accepted", onCallAccepted);
+    window.addEventListener("video-call-rejected", onCallRejected);
+    window.addEventListener("video-call-ended", onCallEnded);
+
+    return () => {
+      window.removeEventListener("video-call-accepted", onCallAccepted);
+      window.removeEventListener("video-call-rejected", onCallRejected);
+      window.removeEventListener("video-call-ended", onCallEnded);
+    };
+  }, [activeCall?.callId, pendingOutgoingCall]);
+
   const handleSelect = (id: number) => {
     setSelectedId(id);
     markAsRead.mutate({ conversationId: id });
@@ -767,7 +820,7 @@ export default function Messages() {
 
   const handleStartCall = useCallback(
     async (remoteUserId: number, remoteName: string, conversationId: number) => {
-      if (activeCall) {
+      if (activeCall || pendingOutgoingCall) {
         toast.error("You're already in a call");
         return;
       }
@@ -776,18 +829,17 @@ export default function Messages() {
           calleeId: remoteUserId,
           conversationId,
         });
-        setActiveCall({
+        setPendingOutgoingCall({
           callId: session.callId,
           remoteUserId,
           remoteName,
-          isInitiator: true,
         });
         toast.success(`Calling ${remoteName}…`);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "Failed to start call");
       }
     },
-    [activeCall, initiateCallMutation]
+    [activeCall, initiateCallMutation, pendingOutgoingCall]
   );
 
   const handleAcceptCall = useCallback(
@@ -809,6 +861,7 @@ export default function Messages() {
 
   const handleEndCall = useCallback(() => {
     setActiveCall(null);
+    setPendingOutgoingCall(null);
   }, []);
 
   const role = user?.role ?? "architect";

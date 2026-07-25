@@ -51,7 +51,7 @@ export function RfqMapView({ rfqs, supplierLocation, radiusFilter, onRfqClick }:
           setIsLoading(false);
         };
         document.head.appendChild(script);
-      } catch (err) {
+      } catch {
         setError("Error initializing map");
         setIsLoading(false);
       }
@@ -62,8 +62,13 @@ export function RfqMapView({ rfqs, supplierLocation, radiusFilter, onRfqClick }:
 
       const atlas = (window as any).atlas;
       
-      // Get Azure Maps key from environment (injected via Manus proxy)
-      const subscriptionKey = import.meta.env.VITE_AZURE_MAPS_KEY || "YOUR_AZURE_MAPS_KEY";
+      // Azure Maps subscription key — must be set via VITE_AZURE_MAPS_KEY env var
+      const subscriptionKey = import.meta.env.VITE_AZURE_MAPS_KEY;
+      if (!subscriptionKey) {
+        setError("Azure Maps is not configured — set VITE_AZURE_MAPS_KEY");
+        setIsLoading(false);
+        return;
+      }
 
       // Calculate center point (supplier location or first RFQ)
       let center: [number, number] = [-98.5795, 39.8283]; // US center default

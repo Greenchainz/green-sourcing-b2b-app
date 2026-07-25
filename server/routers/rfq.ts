@@ -1,10 +1,15 @@
-import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
+import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { query, queryOne, queryMany, withTransaction } from "../../lib/pg-pool";
 import { getDb } from "../db";
-import { rfqRequests, suppliers } from "../../drizzle/schema";
-import { eq, desc, ilike, or } from "drizzle-orm";
+import { auditLog, AuditAction } from "../services/audit-log";
+import { publishRfqEvent } from "../services/event-bus";
+import { getSupplierVerificationSnapshots } from "../services/supplier-verification";
+import { rfqRequests, rfqDrafts, suppliers, suppliersLocation } from "../../drizzle/schema";
+import { eq, desc, ilike, or, not, inArray } from "drizzle-orm";
+import { getShippingClass, isWithinServiceArea } from "../lib/shipping-classes";
+import { recordSupplierViews } from "../services/supplier-profile-views";
 
 /**
  * RFQ Marketplace Lifecycle Router
@@ -65,6 +70,24 @@ export const rfqRouter = router({
         .where(eq(suppliers.id, input.supplierId))
         .limit(1);
 
+      void auditLog.record({
+        action: AuditAction.RFQ_CREATED,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "rfq",
+        resourceId: inserted.id,
+        metadata: {
+          supplierId: input.supplierId,
+          supplierName: supplierRow?.companyName ?? null,
+          materialType: input.materialType,
+        },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] rfq.create", err));
+
+      void publishRfqEvent({ type: "rfq.created", rfqId: inserted.id, supplierId: input.supplierId, buyerId: ctx.user.id })
+        .catch((err) => console.error("[event-bus] rfq.created", err));
+
       return { id: inserted.id, supplierName: supplierRow?.companyName ?? null };
     }),
 
@@ -82,7 +105,7 @@ export const rfqRouter = router({
       const limit = input?.limit ?? 20;
       const offset = (page - 1) * limit;
       const userId = ctx.user.id;
-      const role = ctx.user.role;
+      const role = ctx.auth?.role;
 
       let rows: Array<Record<string, unknown>>;
 
@@ -194,7 +217,7 @@ export const rfqRouter = router({
       if (
         row.architectId !== ctx.user.id &&
         row.supplierId !== ctx.user.id &&
-        ctx.user.role !== "admin"
+        ctx.auth?.role !== "admin"
       ) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
       }
@@ -221,7 +244,7 @@ export const rfqRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "supplier" && ctx.user.role !== "admin") {
+      if (ctx.auth?.role !== "supplier" && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only suppliers can respond to RFQs" });
       }
 
@@ -231,13 +254,17 @@ export const rfqRouter = router({
       const rows = await db
         .select({ supplierId: rfqRequests.supplierId, status: rfqRequests.status })
         .from(rfqRequests)
-        .where(eq(rfqRequests.id, input.id))
-        .limit(1);
+        .where(eq(rfqRequests.id, input.id));
 
       if (!rows.length) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rows[0].supplierId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (rows.length > 1) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Duplicate RFQ records found" });
+      }
+      const [row] = rows;
+
+      if (row.supplierId !== ctx.user.id && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "This RFQ was not assigned to you" });
       }
 
@@ -245,6 +272,20 @@ export const rfqRouter = router({
         .update(rfqRequests)
         .set({ status: input.status })
         .where(eq(rfqRequests.id, input.id));
+
+      void auditLog.record({
+        action: AuditAction.RFQ_RESPONDED,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "rfq",
+        resourceId: input.id,
+        metadata: { status: input.status },
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] rfq.respond", err));
+
+      void publishRfqEvent({ type: "rfq.responded", rfqId: input.id, status: input.status })
+        .catch((err) => console.error("[event-bus] rfq.responded", err));
 
       return { success: true };
     }),
@@ -265,7 +306,7 @@ export const rfqRouter = router({
       if (!rows.length) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rows[0].architectId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (rows[0].architectId !== ctx.user.id && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the RFQ owner can cancel it" });
       }
 
@@ -273,6 +314,19 @@ export const rfqRouter = router({
         .update(rfqRequests)
         .set({ status: "declined" })
         .where(eq(rfqRequests.id, input.id));
+
+      void auditLog.record({
+        action: AuditAction.RFQ_CANCELLED,
+        actorUserId: ctx.user?.id,
+        actorEmail: ctx.auth?.email ?? null,
+        actorRole: ctx.auth?.role ?? null,
+        resourceType: "rfq",
+        resourceId: input.id,
+        req: ctx.req,
+      }).catch((err) => console.error("[audit] rfq.cancel", err));
+
+      void publishRfqEvent({ type: "rfq.cancelled", rfqId: input.id })
+        .catch((err) => console.error("[event-bus] rfq.cancelled", err));
 
       return { success: true };
     }),
@@ -288,7 +342,7 @@ export const rfqRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "supplier" && ctx.user.role !== "admin") {
+      if (ctx.auth?.role !== "supplier" && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only suppliers can submit quotes" });
       }
 
@@ -360,7 +414,7 @@ export const rfqRouter = router({
       if (!rfq) {
         throw new TRPCError({ code: "NOT_FOUND", message: "RFQ not found" });
       }
-      if (rfq.userId !== userId && ctx.user.role !== "admin") {
+      if (rfq.userId !== userId && ctx.auth?.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the RFQ buyer can accept quotes" });
       }
       if (!["submitted", "responded"].includes(rfq.status)) {
@@ -389,21 +443,28 @@ export const rfqRouter = router({
       return { success: true };
     }),
 
-  // ── Scheduler: auto-expire overdue RFQs (no auth) ────────────────────────
+  // ── Manual trigger: force-expire overdue RFQs (admin only) ─────────────
+  // Auto-expiry runs every 15 min via notification-scheduler.ts expireOverdueRfqs().
+  // This endpoint exists only for manual intervention — requires admin role.
   // rfq_status enum: draft | submitted | responded | awarded | closed
-  expire: publicProcedure.mutation(async () => {
-    const result = await query(
-      `UPDATE rfqs SET status = 'closed', "updatedAt" = NOW()
-       WHERE status IN ('submitted', 'responded') AND "dueDate" < NOW()`,
-    );
+  expire: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      if (ctx.auth?.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin only" });
+      }
 
-    const count = result.rowCount ?? 0;
-    if (count > 0) {
-      console.log(`[rfq.expire] Expired ${count} overdue RFQ(s)`);
-    }
+      const result = await query(
+        `UPDATE rfqs SET status = 'closed', "updatedAt" = NOW()
+         WHERE status IN ('submitted', 'responded') AND "dueDate" < NOW()`,
+      );
 
-    return { expired_count: count };
-  }),
+      const count = result.rowCount ?? 0;
+      if (count > 0) {
+        console.log(`[rfq.expire] Manual trigger: expired ${count} overdue RFQ(s)`);
+      }
+
+      return { expired_count: count };
+    }),
 
   // ── List verified suppliers for RFQ targeting ────────────────────────────
   listSuppliers: protectedProcedure
@@ -427,14 +488,294 @@ export const rfqRouter = router({
 
       const rows = input?.search
         ? await baseQuery.where(
-            or(
-              ilike(suppliers.companyName, `%${input.search}%`),
-              ilike(suppliers.city, `%${input.search}%`)
-            )
+          or(
+            ilike(suppliers.companyName, `%${input.search}%`),
+            ilike(suppliers.city, `%${input.search}%`)
           )
+        )
         : await baseQuery;
 
-      return rows;
+      const verificationBySupplierId = await getSupplierVerificationSnapshots(rows.map((row) => row.id));
+
+      return rows.map((row) => ({
+        ...row,
+        verifiedSupplierStatus:
+          verificationBySupplierId.get(row.id)?.status ?? "UNVERIFIED",
+        verifiedSupplierReasons:
+          verificationBySupplierId.get(row.id)?.reasons ?? [],
+      }));
+    }),
+
+  // ── Smart supplier matching for RFQ targeting ────────────────────────────
+  // Scores every active supplier against the RFQ requirements and returns
+  // a ranked list of ≥5 results with isHighSustainability + isLocalSupplier flags.
+  matchSuppliers: protectedProcedure
+    .input(
+      z.object({
+        category: z.string().min(1),
+        certifications: z.array(z.string()).optional().default([]),
+        maxGwp: z.number().optional(),
+        projectState: z.string().optional(),
+        projectCity: z.string().optional(),
+        projectLat: z.number().optional(),
+        projectLng: z.number().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // Pull all non-rejected suppliers with fields needed for scoring
+      const rows = await db
+        .select({
+          id: suppliers.id,
+          companyName: suppliers.companyName,
+          city: suppliers.city,
+          state: suppliers.state,
+          materialCategories: suppliers.materialCategories,
+          certifications: suppliers.certifications,
+          verificationStatus: suppliers.verificationStatus,
+          isPremium: suppliers.isPremium,
+          sustainabilityScore: suppliers.sustainabilityScore,
+          weightedRankScore: suppliers.weightedRankScore,
+          tier: suppliers.tier,
+          latitude: suppliers.latitude,
+          longitude: suppliers.longitude,
+          // ── Service area fields (shipping-class routing) ──────────────────
+          serviceRadiusMiles: suppliers.serviceRadiusMiles,
+          statesServed: suppliers.statesServed,
+          shipsNationwide: suppliers.shipsNationwide,
+        })
+        .from(suppliers)
+        .where(not(eq(suppliers.verificationStatus, "rejected")));
+
+      const categoryLower = input.category.toLowerCase();
+      const projectState = (input.projectState ?? "").toUpperCase();
+
+      // ── Shipping class for this RFQ ────────────────────────────────────────
+      const shippingClass = getShippingClass(input.category);
+
+      // ── Haversine distance (miles) ─────────────────────────────────────────
+      function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+        const R = 3959;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLng = ((lng2 - lng1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      // Fetch supplier locations in one query for haversine scoring
+      const supplierIds = rows.map((r) => r.id);
+      const locationRows =
+        supplierIds.length > 0
+          ? await db
+            .select({
+              supplierId: suppliersLocation.supplierId,
+              lat: suppliersLocation.latitude,
+              lng: suppliersLocation.longitude,
+            })
+            .from(suppliersLocation)
+            .where(inArray(suppliersLocation.supplierId, supplierIds))
+          : [];
+
+      const locationMap = new Map<number, { lat: number; lng: number }>();
+      for (const row of rows) {
+        const lat = row.latitude != null ? parseFloat(String(row.latitude)) : NaN;
+        const lng = row.longitude != null ? parseFloat(String(row.longitude)) : NaN;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          locationMap.set(row.id, { lat, lng });
+        }
+      }
+      for (const loc of locationRows) {
+        locationMap.set(loc.supplierId, {
+          lat: parseFloat(String(loc.lat)),
+          lng: parseFloat(String(loc.lng)),
+        });
+      }
+
+      const projectLat = input.projectLat;
+      const projectLng = input.projectLng;
+
+      // Score each supplier — with shipping-class eligibility gate
+      const scored = rows.flatMap((s) => {
+        let score = 0;
+
+        // ── Category match: +40 ────────────────────────────────────────────
+        const supplierCats = (s.materialCategories ?? []).map((c) => c.toLowerCase());
+        const categoryMatch = supplierCats.some(
+          (c) => c.includes(categoryLower) || categoryLower.includes(c)
+        );
+        if (categoryMatch) score += 40;
+
+        // ── Distance & service-area eligibility gate ───────────────────────
+        const supplierCoords = locationMap.get(s.id);
+        let distanceMiles: number | null = null;
+        if (projectLat != null && projectLng != null && supplierCoords) {
+          distanceMiles = haversine(projectLat, projectLng, supplierCoords.lat, supplierCoords.lng);
+        }
+
+        const eligible = isWithinServiceArea({
+          distanceMiles,
+          projectState,
+          supplierState: s.state ?? null,
+          shipsNationwide: s.shipsNationwide ?? false,
+          statesServed: (s.statesServed as string[] | null) ?? null,
+          serviceRadiusMiles: s.serviceRadiusMiles ?? null,
+          shippingClass,
+        });
+
+        // Hard exclude ineligible suppliers.
+        //
+        // local_heavy (concrete, CMU, aggregates): always hard-exclude if out of range.
+        //   A concrete supplier 200mi away is effectively unreachable — freight kills the bid.
+        //
+        // regional (insulation, roofing, flooring, etc.): hard-exclude when we have real
+        //   distance data. When coordinates are unavailable, state-match already runs inside
+        //   isWithinServiceArea and decided eligibility — so !eligible with no coordinates
+        //   also means hard-exclude.
+        //
+        // national_specialty (structural steel, CLT, curtain wall): supplier-declared
+        //   statesServed restrictions are the only realistic exclusion. The defaultRadius
+        //   is 2,500mi (effectively nationwide), so !eligible here means the supplier
+        //   explicitly restricted to states that don't include the project. Respect that.
+        //
+        // Rule: never surface a supplier who cannot realistically deliver to the jobsite.
+        if (!eligible) {
+          if (shippingClass === "local_heavy") return [];
+          if (shippingClass === "regional") return [];
+          if (shippingClass === "national_specialty") return [];
+          // digital_data has no distance restriction; eligible is always true
+        }
+
+        // ── Distance scoring ───────────────────────────────────────────────
+        let isLocalSupplier = false;
+        if (distanceMiles != null) {
+          if (distanceMiles < 50) { score += 30; isLocalSupplier = true; }
+          else if (distanceMiles < 150) { score += 25; isLocalSupplier = true; }
+          else if (distanceMiles < 300) { score += 15; }
+          else if (distanceMiles < 500) { score += 8; }
+          else if (eligible) { score += 2; } // far but within declared service area
+        } else {
+          // No coordinates — fall back to state match
+          isLocalSupplier = !!(
+            projectState.length === 2 &&
+            s.state &&
+            s.state.trim().toUpperCase() === projectState
+          );
+          if (isLocalSupplier) score += 25;
+        }
+
+        // ── Certification overlap: +5 each, capped at +20 ─────────────────
+        const supplierCerts = (s.certifications ?? []).map((c) => c.toLowerCase());
+        const certificationMatches = (input.certifications ?? []).filter((rc) =>
+          supplierCerts.some(
+            (sc) => sc.includes(rc.toLowerCase()) || rc.toLowerCase().includes(sc)
+          )
+        );
+        score += Math.min(certificationMatches.length * 5, 20);
+
+        // ── Sustainability score (0–100 → up to +20) ──────────────────────
+        const sustScore = s.sustainabilityScore != null ? Number(s.sustainabilityScore) : 0;
+        score += (sustScore / 100) * 20;
+
+        // ── Quality & tier signals ─────────────────────────────────────────
+        if (s.isPremium) score += 5;
+        if (s.verificationStatus === "approved") score += 3;
+        if (s.weightedRankScore != null) score += Math.min(s.weightedRankScore * 2, 10);
+        if (s.tier === "premium") score += 8;
+        else if (s.tier === "standard") score += 4;
+        else if (s.tier === "free") score -= 5; // free suppliers are less likely to be RFQ-ready
+
+        return [{
+          ...s,
+          sustainabilityScore: s.sustainabilityScore != null ? Number(s.sustainabilityScore) : null,
+          weightedRankScore: s.weightedRankScore ?? null,
+          matchScore: Math.round(score),
+          isLocalSupplier,
+          certificationMatches,
+          isHighSustainability: false, // set after sorting below
+          shippingClass,
+        }];
+      });
+
+      // Sort by composite score
+      scored.sort((a, b) => b.matchScore - a.matchScore);
+
+      // Guarantee ≥5 results: prefer category matches, fall back to overall top
+      const categoryMatches = scored.filter((s) => s.matchScore >= 40);
+      const fallbackIds = new Set<number>();
+
+      let pool: typeof scored;
+      if (categoryMatches.length >= 5) {
+        pool = categoryMatches;
+      } else {
+        // Fill remaining slots from overall top; mark those as fallback
+        const fill = scored
+          .filter((s) => s.matchScore < 40)
+          .slice(0, Math.max(5 - categoryMatches.length, 0));
+        fill.forEach((s) => fallbackIds.add(s.id));
+        pool = [...categoryMatches, ...fill];
+      }
+
+      // Cap at 15 so the UI stays manageable
+      const results = pool.slice(0, 15);
+
+      // ── RFQ-MATCHING agent: semantic re-rank + sustainability flagging ────────
+      // Runs against the scored candidate pool. Falls back to score order on
+      // timeout/error — transparently, with zero impact on the user experience.
+      const { rankSuppliersWithAgent } = await import("../services/rfq-agent");
+      const agentRanking = await rankSuppliersWithAgent(results, {
+        category: input.category,
+        certifications: input.certifications,
+        maxGwp: input.maxGwp,
+        projectState: input.projectState,
+        projectCity: input.projectCity,
+        projectLat: input.projectLat,
+        projectLng: input.projectLng,
+      });
+
+      // Apply agent ranking order to results
+      const rankMap = new Map(
+        agentRanking.rankedIds.map((id, idx) => [id, idx])
+      );
+      results.sort(
+        (a, b) => (rankMap.get(a.id) ?? 999) - (rankMap.get(b.id) ?? 999)
+      );
+
+      // Use agent's high-sustainability judgement
+      const highIds = new Set(agentRanking.highSustainabilityIds);
+      if (highIds.size === 0 && results.length > 0) {
+        highIds.add(results[0].id); // guaranteed minimum
+      }
+      const verificationBySupplierId = await getSupplierVerificationSnapshots(
+        results.map((result) => result.id)
+      );
+
+      // Return only buyer-safe fields — strip internal tier and rank score
+      const mapped = results.map(({ weightedRankScore: _wr, tier: _tier, ...s }) => ({
+        ...s,
+        isHighSustainability: highIds.has(s.id),
+        isFallback: fallbackIds.has(s.id),
+        verifiedSupplierStatus:
+          verificationBySupplierId.get(s.id)?.status ?? "UNVERIFIED",
+        verifiedSupplierReasons:
+          verificationBySupplierId.get(s.id)?.reasons ?? [],
+        _agentSource: agentRanking.source, // dev signal — stripped by tRPC serialisation if needed
+      }));
+
+      // Record architect → supplier "hits" for the matched suppliers shown.
+      if (ctx.user?.role === "buyer" && mapped.length > 0) {
+        void recordSupplierViews({
+          supplierIds: mapped.map((s) => s.id),
+          viewerUserId: ctx.user.id,
+          viewerRole: ctx.user.role,
+          source: "rfq_match",
+        });
+      }
+
+      return mapped;
     }),
 
   // ── Create RFQ requests for multiple suppliers at once ────────────────────
@@ -542,4 +883,303 @@ export const rfqRouter = router({
       return { ...r, parsedSpecs };
     });
   }),
+
+  // ── HITL: Save AI-proposed RFQ as a draft for human review ───────────────
+  // Called immediately after the AI intake parses the user's text.
+  // Runs the swap engine (enrichment + supplier ranking) and persists the
+  // result as an rfq_draft row with status="draft".
+  // The architect then reviews and either approves (→ approveDraft) or edits.
+  saveDraft: protectedProcedure
+    .input(
+      z.object({
+        rawText: z.string().min(5, "Describe what you need (min 5 chars)"),
+        projectZip: z.string().regex(/^\d{5}$/).optional(),
+        // Allow the client to pass the already-parsed intent fields (from parse-text)
+        // so we don't have to re-parse. All are optional — engine fills gaps.
+        parsedIntent: z.object({
+          category: z.string().optional(),
+          description: z.string().optional(),
+          quantity: z.number().optional(),
+          unit: z.string().optional(),
+          certifications: z.array(z.string()).optional(),
+          maxGwp: z.number().optional(),
+          epdRequired: z.boolean().optional(),
+          projectName: z.string().optional(),
+          projectType: z.string().optional(),
+          projectCity: z.string().optional(),
+          projectState: z.string().optional(),
+          confidence: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
+          fieldsFound: z.array(z.string()).optional(),
+        }).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      const { runSwapEngine, intentFromParsed } = await import("../domain/swapEngine");
+      const { parseRfqText } = await import("../services/document-intelligence");
+      const { geocodeProjectLocation } = await import("../services/geocode-project-location");
+
+      // Build the intent — use provided parsed fields or re-parse the raw text
+      let intent;
+      if (input.parsedIntent && (input.parsedIntent.fieldsFound?.length ?? 0) > 0) {
+        intent = {
+          rawText: input.rawText,
+          category: input.parsedIntent.category,
+          description: input.parsedIntent.description,
+          quantity: input.parsedIntent.quantity,
+          unit: input.parsedIntent.unit,
+          certifications: input.parsedIntent.certifications,
+          maxGwp: input.parsedIntent.maxGwp,
+          epdRequired: input.parsedIntent.epdRequired,
+          projectName: input.parsedIntent.projectName,
+          projectType: input.parsedIntent.projectType,
+          projectCity: input.parsedIntent.projectCity,
+          projectState: input.parsedIntent.projectState,
+          projectZip: input.projectZip,
+          confidence: input.parsedIntent.confidence ?? "LOW",
+          fieldsFound: input.parsedIntent.fieldsFound ?? [],
+        };
+      } else {
+        // Re-parse (fallback if client didn't pass a parsed result)
+        const parsed = await parseRfqText(input.rawText);
+        intent = intentFromParsed(parsed, input.rawText, input.projectZip);
+      }
+
+      // Resolve project coordinates + climate zone so the swap engine can compute
+      // real distance-to-supplier rather than guessing by state.
+      const geocode = await geocodeProjectLocation({
+        city: intent.projectCity,
+        state: intent.projectState,
+        zip: intent.projectZip,
+      });
+      intent.projectLatitude = geocode.latitude ?? undefined;
+      intent.projectLongitude = geocode.longitude ?? undefined;
+      intent.projectClimateZone = geocode.climateZone ?? undefined;
+
+      // Run the swap engine — single source of supplier reasoning
+      const engineStart = Date.now();
+      const swapResult = await runSwapEngine(intent, {
+        userId: ctx.user.id,
+        role: ctx.auth?.role as "architect" | "admin" | "supplier",
+      });
+      const engineDurationMs = Date.now() - engineStart;
+
+      // Persist as a draft
+      // rfqDrafts already imported at top of file
+      const [draft] = await db
+        .insert(rfqDrafts)
+        .values({
+          architectId: ctx.user.id,
+          rawInput: input.rawText,
+          aiOutput: swapResult as unknown as Record<string, unknown>,
+          humanEdits: null,
+          fieldDecisions: null,
+          status: "draft",
+        })
+        .returning({ id: rfqDrafts.id, status: rfqDrafts.status });
+
+      if (!draft) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to save draft" });
+      }
+
+      console.log(`[rfq.saveDraft] user=${ctx.user.id} draftId=${draft.id} suppliers=${swapResult.candidateSuppliers.length} agentAvailable=${swapResult.agentAvailable} duration=${engineDurationMs}ms`);
+
+      // Append-only audit log for every engine run (fire-and-forget)
+      const { logMatchRun } = await import("../services/match-run-logger");
+      void logMatchRun({
+        draftId: draft.id,
+        userId: ctx.user.id,
+        personaKey: swapResult.personaKey,
+        agentAvailable: swapResult.agentAvailable,
+        matchSource: swapResult.matchSource,
+        candidateCount: swapResult.scoreBreakdowns.length,
+        shortlistCount: swapResult.candidateSuppliers.length,
+        scoreBreakdowns: swapResult.scoreBreakdowns,
+        reasoningTrace: swapResult.reasoningTrace,
+        durationMs: engineDurationMs,
+      }).catch((err) => console.error("[rfq.saveDraft] match-run log failed:", err));
+
+      return { draftId: draft.id, swapResult };
+    }),
+
+  // ── HITL: Get a draft by ID (for the review screen) ──────────────────────
+  getDraft: protectedProcedure
+    .input(z.object({ draftId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // rfqDrafts already imported at top of file
+      const [draft] = await db
+        .select()
+        .from(rfqDrafts)
+        .where(eq(rfqDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      }
+      if (draft.architectId !== ctx.user.id && ctx.auth?.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+
+      return draft;
+    }),
+
+  // ── HITL: Approve a draft → create rfq_request rows ──────────────────────
+  // The human has reviewed the AI's proposal, optionally edited fields,
+  // and chosen which suppliers to contact. This finalises the draft and
+  // creates one rfq_request per selected supplier.
+  approveDraft: protectedProcedure
+    .input(
+      z.object({
+        draftId: z.number().int(),
+        // Final (possibly human-edited) RFQ fields
+        finalFields: z.object({
+          materialType: z.string().min(1),
+          quantity: z.number().positive(),
+          specs: z.string().optional(),
+          message: z.string().optional(),
+        }),
+        // Which suppliers the human selected from the shortlist
+        selectedSupplierIds: z.array(z.number().int()).min(1, "Select at least one supplier"),
+        // Per-field decisions: which AI inferences the human accepted vs changed
+        fieldDecisions: z.record(z.string(), z.enum(["accepted", "edited", "rejected"])).optional(),
+        // Reason if the human is overriding significant AI suggestions
+        humanNote: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // rfqDrafts already imported at top of file
+
+      // Load and validate the draft
+      const [draft] = await db
+        .select()
+        .from(rfqDrafts)
+        .where(eq(rfqDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      }
+      if (draft.architectId !== ctx.user.id && ctx.auth?.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+      if (draft.status !== "draft") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Draft is already ${draft.status}` });
+      }
+
+      const { enforceAndTrack } = await import("../usage-tracking-service");
+
+      // Create one rfq_request per selected supplier
+      const createdIds: number[] = [];
+      for (const supplierId of input.selectedSupplierIds) {
+        await enforceAndTrack(ctx.user.id, "rfq_submission");
+
+        const [inserted] = await db
+          .insert(rfqRequests)
+          .values({
+            architectId: ctx.user.id,
+            supplierId,
+            materialType: input.finalFields.materialType,
+            quantity: String(input.finalFields.quantity),
+            specs: input.finalFields.specs ?? null,
+            message: input.finalFields.message ?? null,
+            status: "pending",
+            draftId: input.draftId,
+          })
+          .returning({ id: rfqRequests.id });
+
+        if (inserted) {
+          createdIds.push(inserted.id);
+          void auditLog.record({
+            action: AuditAction.RFQ_CREATED,
+            actorUserId: ctx.user.id,
+            actorEmail: ctx.user.email ?? null,
+            actorRole: ctx.auth?.role ?? null,
+            resourceType: "rfq",
+            resourceId: inserted.id,
+            metadata: { supplierId, draftId: input.draftId, source: "hitl_approved" },
+            req: ctx.req,
+          }).catch((err) => console.error("[audit] approveDraft", err));
+
+          void publishRfqEvent({ type: "rfq.created", rfqId: inserted.id, supplierId, buyerId: ctx.user.id })
+            .catch((err) => console.error("[event-bus] approveDraft", err));
+        }
+      }
+
+      // Mark the draft approved and record what the human chose
+      await db
+        .update(rfqDrafts)
+        .set({
+          status: "approved",
+          humanEdits: input.finalFields as unknown as Record<string, unknown>,
+          fieldDecisions: (input.fieldDecisions ?? {}) as unknown as Record<string, unknown>,
+          approvedAt: new Date(),
+          approvedByUserId: ctx.user.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(rfqDrafts.id, input.draftId));
+
+      console.log(`[rfq.approveDraft] user=${ctx.user.id} draftId=${input.draftId} rfqsCreated=${createdIds.length} suppliers=[${input.selectedSupplierIds.join(",")}]`);
+
+      return { rfqIds: createdIds, draftId: input.draftId, suppliersContacted: createdIds.length };
+    }),
+
+  // ── Carbon forecast — called at RFQ review step before submission ─────────
+  // Returns projected embodied carbon (kgCO2e A1-A3) for the RFQ line items.
+  // Uses EPD-backed DB averages where available, falls back to EC3 industry benchmarks.
+  // No auth required — this is a calculation, not a data mutation.
+  carbonForecast: protectedProcedure
+    .input(
+      z.object({
+        items: z.array(
+          z.object({
+            category: z.string().min(1),
+            quantity: z.number().positive(),
+            unit: z.enum(["SF", "LF", "CY", "tons", "EA"]),
+            materialId: z.number().int().optional(),
+          })
+        ).min(1).max(10),
+      })
+    )
+    .query(async ({ input }) => {
+      const { forecastRfqCarbon } = await import("../services/carbon-forecast");
+      return forecastRfqCarbon(input.items);
+    }),
+
+  // ── HITL: Reject a draft ──────────────────────────────────────────────────
+  rejectDraft: protectedProcedure
+    .input(z.object({
+      draftId: z.number().int(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+
+      // rfqDrafts already imported at top of file
+      const [draft] = await db
+        .select({ id: rfqDrafts.id, architectId: rfqDrafts.architectId, status: rfqDrafts.status })
+        .from(rfqDrafts)
+        .where(eq(rfqDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      if (draft.architectId !== ctx.user.id && ctx.auth?.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+
+      await db
+        .update(rfqDrafts)
+        .set({ status: "rejected", rejectionReason: input.reason ?? null, updatedAt: new Date() })
+        .where(eq(rfqDrafts.id, input.draftId));
+
+      return { draftId: input.draftId, status: "rejected" };
+    }),
 });

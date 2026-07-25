@@ -18,10 +18,10 @@
  */
 
 import { Request, Response } from "express";
-import { getMarketplaceAccessToken, getSubscriptionDetails } from "./marketplace-auth";
+import { createRemoteJWKSet, jwtVerify } from "jose";
+import { getSubscriptionDetails } from "./marketplace-auth";
 import type { MarketplaceSubscription } from "./marketplace-landing";
 import {
-  getBuyerSubscription,
   upgradeBuyerSubscription,
   cancelBuyerSubscription,
 } from "./subscription-service";
@@ -48,6 +48,37 @@ export interface WebhookPayload {
  * Webhook handler
  * POST /api/marketplace/webhook
  */
+const AAD_JWKS = createRemoteJWKSet(new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys"));
+
+function audMatches(aud: string | string[] | undefined, expected: string): boolean {
+  if (!aud) return false;
+  return Array.isArray(aud) ? aud.includes(expected) : aud === expected;
+}
+
+async function verifyMarketplaceWebhookAuthorization(authHeader: string | undefined): Promise<boolean> {
+  if (!authHeader?.startsWith("Bearer ")) return false;
+
+  const token = authHeader.slice("Bearer ".length);
+
+  try {
+    const { payload } = await jwtVerify(token, AAD_JWKS);
+
+    const iss = payload.iss;
+    if (typeof iss !== "string" || !(iss.includes("login.microsoftonline.com") || iss.includes("sts.windows.net"))) {
+      return false;
+    }
+
+    const expectedAudience = process.env.MARKETPLACE_WEBHOOK_AUDIENCE ?? process.env.MICROSOFT_CLIENT_ID;
+    if (expectedAudience && !audMatches(payload.aud as string | string[] | undefined, expectedAudience)) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function handleWebhook(req: Request, res: Response) {
   try {
     const payload: WebhookPayload = req.body;
@@ -60,32 +91,9 @@ export async function handleWebhook(req: Request, res: Response) {
 
     // Validate webhook authenticity
     // Microsoft signs webhooks with a JWT token in the Authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      console.error("[Marketplace Webhook] Missing authorization header");
+    if (!(await verifyMarketplaceWebhookAuthorization(req.headers.authorization))) {
+      console.error("[Marketplace Webhook] Invalid authorization token");
       return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    // Validate JWT signature with Azure AD public keys
-    const token = authHeader.replace('Bearer ', '');
-    try {
-      // Verify JWT token is from Microsoft
-      const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      
-      // Check token issuer is Microsoft
-      if (!decoded.iss || !decoded.iss.includes('microsoft')) {
-        console.error('[Marketplace Webhook] Invalid token issuer');
-        return res.status(401).json({ error: 'Unauthorized - Invalid issuer' });
-      }
-      
-      // Check token expiration
-      if (decoded.exp && decoded.exp < Math.floor(Date.now() / 1000)) {
-        console.error('[Marketplace Webhook] Token expired');
-        return res.status(401).json({ error: 'Unauthorized - Token expired' });
-      }
-    } catch (error) {
-      console.error('[Marketplace Webhook] JWT validation failed:', error);
-      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
     }
 
     // Get full subscription details from Microsoft
@@ -237,7 +245,7 @@ async function handleSubscribed(userId: number, subscription: MarketplaceSubscri
  * Handle "Unsubscribed" event
  * Subscription canceled
  */
-async function handleUnsubscribed(userId: number, msSubscriptionId: string) {
+async function handleUnsubscribed(userId: number, _msSubscriptionId: string) {
   console.log("[Marketplace Webhook] Handling Unsubscribed event for user:", userId);
 
   await cancelBuyerSubscription(userId);
@@ -268,7 +276,7 @@ async function handleUnsubscribed(userId: number, msSubscriptionId: string) {
  * Handle "Suspended" event
  * Subscription suspended (payment failed, etc.)
  */
-async function handleSuspended(userId: number, msSubscriptionId: string) {
+async function handleSuspended(userId: number, _msSubscriptionId: string) {
   console.log("[Marketplace Webhook] Handling Suspended event for user:", userId);
 
   const db = await getDb();
@@ -308,7 +316,7 @@ async function handleSuspended(userId: number, msSubscriptionId: string) {
  * Handle "Reinstated" event
  * Suspended subscription reactivated
  */
-async function handleReinstated(userId: number, subscription: MarketplaceSubscription) {
+async function handleReinstated(userId: number, _subscription: MarketplaceSubscription) {
   console.log("[Marketplace Webhook] Handling Reinstated event for user:", userId);
 
   const db = await getDb();

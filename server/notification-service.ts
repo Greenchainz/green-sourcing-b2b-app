@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { notifications } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { sendEmail } from "./email-service";
 
 export type NotificationType = "rfq_new" | "rfq_match" | "new_message" | "bid_accepted" | "bid_rejected" | "rfq_closed" | "rfq_bid_received";
@@ -26,7 +26,7 @@ export async function sendInAppNotification(payload: NotificationPayload) {
   }
   
   try {
-    const result = await db.insert(notifications).values({
+    await db.insert(notifications).values({
       userId: payload.userId,
       type: payload.type,
       title: payload.title,
@@ -246,7 +246,7 @@ export async function getUnreadNotifications(userId: number) {
     const unread = await db
       .select()
       .from(notifications)
-      .where(eq(notifications.userId, userId))
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)))
       .orderBy(notifications.createdAt);
     
     return unread;
@@ -270,7 +270,7 @@ export async function getUnreadNotificationCount(userId: number): Promise<number
     const unread = await db
       .select()
       .from(notifications)
-      .where(eq(notifications.userId, userId));
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
     
     return unread.length;
   } catch (error) {

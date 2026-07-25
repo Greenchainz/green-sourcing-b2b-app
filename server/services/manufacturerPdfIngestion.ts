@@ -149,52 +149,52 @@ export interface ExtractedSpecs {
 
 const PATTERNS = {
   // Fire ratings: "1-hour", "2 hr", "Class A", "Type X"
-  fireRating: /(?:fire\s*(?:rating|resistance|rated?)\s*[:\-]?\s*)(\d+[\s\-]?(?:hour|hr|min(?:ute)?s?)|Class\s*[ABC]|Type\s*[XVIC]+)/gi,
-  fireRatingClass: /(?:flame\s*spread\s*class|fire\s*class)\s*[:\-]?\s*(Class\s*[ABC]|[ABC])/gi,
+  fireRating: /(?:fire\s*(?:rating|resistance|rated?)\s*[-:]?\s*)(\d+[-\s]?(?:hour|hr|min(?:ute)?s?)|Class\s*[ABC]|Type\s*[XVIC]+)/gi,
+  fireRatingClass: /(?:flame\s*spread\s*class|fire\s*class)\s*[-:]?\s*(Class\s*[ABC]|[ABC])/gi,
 
   // Flame spread index: "FSI: 25", "Flame Spread Index = 25", "FSI ≤ 25"
-  flamespread: /(?:flame\s*spread\s*(?:index)?|FSI)\s*[:\-=≤<]?\s*(\d+)/gi,
+  flamespread: /(?:flame\s*spread\s*(?:index)?|FSI)\s*[-:=≤<]?\s*(\d+)/gi,
 
   // Smoke developed: "SDI: 450", "Smoke Developed Index = 450"
-  smokeDeveloped: /(?:smoke\s*developed\s*(?:index)?|SDI)\s*[:\-=≤<]?\s*(\d+)/gi,
+  smokeDeveloped: /(?:smoke\s*developed\s*(?:index)?|SDI)\s*[-:=≤<]?\s*(\d+)/gi,
 
   // R-value: "R-19", "R-Value: 19", "R = 19 per inch", "RSI 3.3"
   // Negative lookahead prevents matching ICC-ES report numbers (ESR-1234)
-  rValue: /(?:R[\s\-]value|R[\s\-]val|^R[\s\-]?\d)\s*[:\-=]?\s*(\d+(?:\.\d+)?)(?!\d{3,})/gim,
-  rValuePerInch: /(?:R[\s\-]?(?:value|val)?)\s*[:\-=]?\s*(\d+(?:\.\d+)?)\s*per\s*inch/gi,
+  rValue: /(?:R[-\s]value|R[-\s]val|^R[-\s]?\d)\s*[-:=]?\s*(\d+(?:\.\d+)?)(?!\d{3,})/gim,
+  rValuePerInch: /(?:R[-\s]?(?:value|val)?)\s*[-:=]?\s*(\d+(?:\.\d+)?)\s*per\s*inch/gi,
 
   // Compressive strength: "Compressive Strength: 25 psi", "25 PSI min"
-  compressive: /(?:compressive\s*strength)\s*[:\-]?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:psi|kPa|MPa)/gi,
+  compressive: /(?:compressive\s*strength)\s*[-:]?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:psi|kPa|MPa)/gi,
 
   // Tensile strength
-  tensile: /(?:tensile\s*strength)\s*[:\-]?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:psi|kPa|MPa)/gi,
+  tensile: /(?:tensile\s*strength)\s*[-:]?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:psi|kPa|MPa)/gi,
 
   // Flexural strength
-  flexural: /(?:flexural\s*(?:strength|modulus))\s*[:\-]?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:psi|kPa|MPa)/gi,
+  flexural: /(?:flexural\s*(?:strength|modulus))\s*[-:]?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:psi|kPa|MPa)/gi,
 
   // Modulus of elasticity
-  modulus: /(?:modulus\s*of\s*elasticity|elastic\s*modulus|E\s*=)\s*[:\-]?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:ksi|psi|GPa|MPa)/gi,
+  modulus: /(?:modulus\s*of\s*elasticity|elastic\s*modulus|E\s*=)\s*[-:]?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:ksi|psi|GPa|MPa)/gi,
 
   // Perm rating: "0.1 perm", "Permeance: 0.1"
-  perm: /(?:perm(?:eance)?(?:\s*rating)?)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(?:perm|ng\/|grain)/gi,
+  perm: /(?:perm(?:eance)?(?:\s*rating)?)\s*[-:]?\s*(\d+(?:\.\d+)?)\s*(?:perm|ng\/|grain)/gi,
 
   // STC: "STC 52", "Sound Transmission Class: 52"
-  stc: /(?:STC|sound\s*transmission\s*class)\s*[:\-]?\s*(\d+)/gi,
+  stc: /(?:STC|sound\s*transmission\s*class)\s*[-:]?\s*(\d+)/gi,
 
   // IIC: "IIC 51"
-  iic: /(?:IIC|impact\s*insulation\s*class)\s*[:\-]?\s*(\d+)/gi,
+  iic: /(?:IIC|impact\s*insulation\s*class)\s*[-:]?\s*(\d+)/gi,
 
   // NRC: "NRC 0.70", "Noise Reduction Coefficient: 0.70"
-  nrc: /(?:NRC|noise\s*reduction\s*coefficient)\s*[:\-]?\s*(0\.\d+|\d+(?:\.\d+)?)/gi,
+  nrc: /(?:NRC|noise\s*reduction\s*coefficient)\s*[-:]?\s*(0\.\d+|\d+(?:\.\d+)?)/gi,
 
   // Weight: "2.5 lbs/sq ft", "Weight: 2.5 lb/ft²"
-  weight: /(?:weight|mass)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(?:lbs?|kg|lb)\s*(?:per|\/)\s*(?:sq(?:uare)?\s*)?(?:ft|foot|feet|m²|m2)/gi,
+  weight: /(?:weight|mass)\s*[-:]?\s*(\d+(?:\.\d+)?)\s*(?:lbs?|kg|lb)\s*(?:per|\/)\s*(?:sq(?:uare)?\s*)?(?:ft|foot|feet|m²|m2)/gi,
 
   // Cure time: "Cure Time: 24 hours", "Full cure: 7 days"
-  cureTime: /(?:cure\s*time|curing\s*time|full\s*cure)\s*[:\-]?\s*(\d+)\s*(?:hours?|hrs?|days?)/gi,
+  cureTime: /(?:cure\s*time|curing\s*time|full\s*cure)\s*[-:]?\s*(\d+)\s*(?:hours?|hrs?|days?)/gi,
 
   // Warranty: "Limited Lifetime Warranty", "25-year warranty", "Warranty: 20 years"
-  warranty: /(?:(\d+)[\s\-]?(?:year|yr)s?\s*(?:limited\s*)?warranty|warranty\s*[:\-]?\s*(\d+)\s*(?:year|yr)s?|lifetime\s*warranty)/gi,
+  warranty: /(?:(\d+)[-\s]?(?:year|yr)s?\s*(?:limited\s*)?warranty|warranty\s*[-:]?\s*(\d+)\s*(?:year|yr)s?|lifetime\s*warranty)/gi,
 
   // ASTM standards: "ASTM C578", "ASTM E84"
   astm: /ASTM\s+[A-Z]\d+(?:\/[A-Z]\d+)?/gi,
@@ -203,7 +203,7 @@ const PATTERNS = {
   ulListed: /UL\s*(?:listed|classified|approved|certified)/gi,
 
   // ICC-ES Report
-  iccEs: /ICC[\s\-]?ES\s*(?:Report|ESR)[\s\-]?(?:No\.?\s*)?(\d+)/gi,
+  iccEs: /ICC[-\s]?ES\s*(?:Report|ESR)[-\s]?(?:No\.?\s*)?(\d+)/gi,
 };
 
 // ─── Text Extraction Helper ────────────────────────────────────────────────────
@@ -310,7 +310,7 @@ export function extractSpecsFromText(text: string): ExtractedSpecs {
     const cureNum = parseNumber(cureMatch);
     if (cureNum !== undefined) {
       // If the match contained "day", multiply by 24
-      const fullMatch = extractFirstMatch(text, /(?:cure\s*time|curing\s*time|full\s*cure)\s*[:\-]?\s*(\d+)\s*(hours?|hrs?|days?)/gi);
+      const fullMatch = extractFirstMatch(text, /(?:cure\s*time|curing\s*time|full\s*cure)\s*[-:]?\s*(\d+)\s*(hours?|hrs?|days?)/gi);
       specs.cureTimeHours = fullMatch?.includes("day") ? cureNum * 24 : cureNum;
       fieldsFound++;
     }
