@@ -1,24 +1,31 @@
 /**
  * Microsoft SaaS Accelerator - Landing Page Endpoint
- * 
+ *
  * This endpoint handles subscription activation when a customer purchases
  * GreenChainz from the Azure Marketplace. Microsoft redirects the customer
  * here with a marketplace token that must be resolved to get subscription details.
- * 
+ *
  * Flow:
  * 1. Customer clicks "Subscribe" in Azure Marketplace
  * 2. Microsoft redirects to this landing page with `token` query parameter
  * 3. We resolve the token to get subscription details (subscriptionId, planId, etc.)
  * 4. We create/update the subscription in our database
  * 5. We redirect the customer to their dashboard
- * 
+ *
  * Reference: https://learn.microsoft.com/en-us/azure/marketplace/partner-center-portal/pc-saas-fulfillment-subscription-api
  */
 
 import { Request, Response } from "express";
 import { redactSensitiveData } from "../lib/auth/diagnostics";
-import { validateMarketplaceToken, resolveSubscription } from "./marketplace-auth";
-import { getBuyerSubscription, createBuyerSubscription, upgradeBuyerSubscription } from "./subscription-service";
+import {
+  validateMarketplaceToken,
+  resolveSubscription,
+} from "./marketplace-auth";
+import {
+  getBuyerSubscription,
+  createBuyerSubscription,
+  upgradeBuyerSubscription,
+} from "./subscription-service";
 import { getDb } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -134,7 +141,10 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
-    console.log("[Marketplace Landing] Received token:", redactSensitiveData({ token }));
+    console.log(
+      "[Marketplace Landing] Received token:",
+      redactSensitiveData({ token })
+    );
 
     // Step 1: Validate the marketplace token with Azure AD
     const isValid = await validateMarketplaceToken(token);
@@ -160,11 +170,14 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
-    console.log("[Marketplace Landing] Resolved subscription:", redactSensitiveData({
-      id: subscription.id,
-      planId: subscription.planId,
-      email: subscription.beneficiary.emailId,
-    }));
+    console.log(
+      "[Marketplace Landing] Resolved subscription:",
+      redactSensitiveData({
+        id: subscription.id,
+        planId: subscription.planId,
+        email: subscription.beneficiary.emailId,
+      })
+    );
 
     // Step 3: Map Microsoft plan ID to our tier
     const tier = mapPlanIdToTier(subscription.planId);
@@ -181,7 +194,10 @@ export async function handleLandingPage(req: Request, res: Response) {
     try {
       if (!existingSubscription) {
         // Create new subscription
-        await createBuyerSubscription(userId, tier as "free" | "standard" | "premium");
+        await createBuyerSubscription(
+          userId,
+          tier as "free" | "standard" | "premium"
+        );
       }
 
       // Update with Microsoft marketplace details
@@ -194,7 +210,10 @@ export async function handleLandingPage(req: Request, res: Response) {
         );
       }
     } catch (provisionError) {
-      console.error("[Marketplace Landing] Provisioning error:", provisionError);
+      console.error(
+        "[Marketplace Landing] Provisioning error:",
+        provisionError
+      );
       return respondMarketplaceError(
         req,
         res,
@@ -204,18 +223,24 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
-    console.log("[Marketplace Landing] Subscription activated:", redactSensitiveData({
-      userId,
-      tier,
-      msSubscriptionId: subscription.id,
-    }));
+    console.log(
+      "[Marketplace Landing] Subscription activated:",
+      redactSensitiveData({
+        userId,
+        tier,
+        msSubscriptionId: subscription.id,
+      })
+    );
 
     // Step 6: Activate the subscription with Microsoft
     // This tells Microsoft that we've successfully provisioned the subscription
     try {
       await activateSubscription(subscription.id, subscription.planId);
     } catch (activationError) {
-      console.error("[Marketplace Landing] Activation handshake error:", activationError);
+      console.error(
+        "[Marketplace Landing] Activation handshake error:",
+        activationError
+      );
       return respondMarketplaceError(
         req,
         res,
@@ -228,21 +253,12 @@ export async function handleLandingPage(req: Request, res: Response) {
     // Step 7: Redirect to user dashboard
     const dashboardUrl = `${getFrontendBaseUrl(req)}/dashboard?welcome=true`;
     return res.redirect(dashboardUrl);
-
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[Marketplace Landing] Error:", redactSensitiveData(error));
     return res.status(500).json({
       error: "Internal server error",
       message: error instanceof Error ? error.message : "Unknown error",
     });
-    console.error("[Marketplace Landing] Error:", error);
-    return respondMarketplaceError(
-      req,
-      res,
-      500,
-      "internal_error",
-      error instanceof Error ? error.message : "Unexpected marketplace error."
-    );
   }
 }
 
@@ -251,7 +267,10 @@ export async function handleLandingPage(req: Request, res: Response) {
  * The user can later sign in via Microsoft Entra (Easy Auth) and the account will be recognised
  * by email or openId.
  */
-async function findOrCreateUserByEmail(email: string, objectId: string): Promise<number> {
+async function findOrCreateUserByEmail(
+  email: string,
+  objectId: string
+): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
 
@@ -287,7 +306,10 @@ async function findOrCreateUserByEmail(email: string, objectId: string): Promise
     })
     .returning({ id: users.id });
 
-  console.log("[Marketplace Landing] Created new user from AppSource:", redactSensitiveData({ id: inserted.id, email }));
+  console.log(
+    "[Marketplace Landing] Created new user from AppSource:",
+    redactSensitiveData({ id: inserted.id, email })
+  );
   return inserted.id;
 }
 
@@ -313,14 +335,17 @@ function mapPlanIdToTier(planId: string): "free" | "standard" | "premium" {
  * Activate subscription with Microsoft
  * This API call tells Microsoft that we've successfully provisioned the subscription
  */
-async function activateSubscription(subscriptionId: string, planId: string): Promise<void> {
+async function activateSubscription(
+  subscriptionId: string,
+  planId: string
+): Promise<void> {
   const activateUrl = `https://marketplaceapi.microsoft.com/api/saas/subscriptions/${subscriptionId}/activate?api-version=2018-08-31`;
 
   const response = await fetch(activateUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${await getMarketplaceAccessToken()}`,
+      Authorization: `Bearer ${await getMarketplaceAccessToken()}`,
     },
     body: JSON.stringify({
       planId,
@@ -330,7 +355,9 @@ async function activateSubscription(subscriptionId: string, planId: string): Pro
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to activate subscription: ${response.status} ${errorText}`);
+    throw new Error(
+      `Failed to activate subscription: ${response.status} ${errorText}`
+    );
   }
 
   console.log("[Marketplace Landing] Subscription activated successfully");
@@ -364,6 +391,6 @@ async function getMarketplaceAccessToken(): Promise<string> {
     throw new Error(`Failed to get access token: ${response.status}`);
   }
 
-  const data = await response.json() as { access_token: string };
+  const data = (await response.json()) as { access_token: string };
   return data.access_token;
 }
