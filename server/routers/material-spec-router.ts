@@ -31,14 +31,15 @@
  * -- );
  */
 
-import { z } from 'zod';
-import { publicProcedure, protectedProcedure, router } from '../_core/trpc';
-import { TRPCError } from '@trpc/server';
-import { queryMany, queryOne } from '../../lib/pg-pool';
-import { enforceAndTrack } from '../usage-tracking-service';
-import { getDb } from '../db';
-import { materialSpecs } from '../../drizzle/schema';
-import { storagePut } from '../storage';
+import { z } from "zod";
+import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { queryMany, queryOne } from "../../lib/pg-pool";
+import { enforceAndTrack } from "../usage-tracking-service";
+import { getDb } from "../db";
+import { materialSpecs, materials } from '../../drizzle/schema';
+import { storagePut } from "../storage";
+import { eq } from 'drizzle-orm';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -139,19 +140,69 @@ const SPEC_PROPERTIES: {
   key: string;
   property: string;
   unit: string;
-  bestDirection: 'low' | 'high' | 'none';
+  bestDirection: "low" | "high" | "none";
 }[] = [
-  { key: 'compressiveStrength', property: 'Compressive Strength', unit: 'psi', bestDirection: 'high' },
-  { key: 'tensileStrength', property: 'Tensile Strength', unit: 'psi', bestDirection: 'high' },
-  { key: 'flexuralStrength', property: 'Flexural Strength', unit: 'psi', bestDirection: 'high' },
-  { key: 'density', property: 'Density', unit: 'lb/ft³', bestDirection: 'none' },
-  { key: 'thermalConductivity', property: 'Thermal Conductivity', unit: 'W/mK', bestDirection: 'low' },
-  { key: 'fireRating', property: 'Fire Rating', unit: 'class', bestDirection: 'none' },
-  { key: 'waterAbsorption', property: 'Water Absorption', unit: '%', bestDirection: 'low' },
-  { key: 'gwp', property: 'Global Warming Potential', unit: 'kgCO₂e', bestDirection: 'low' },
-  { key: 'recycledContent', property: 'Recycled Content', unit: '%', bestDirection: 'high' },
-  { key: 'voc', property: 'VOC', unit: 'g/L', bestDirection: 'low' },
-  { key: 'embodiedEnergy', property: 'Embodied Energy', unit: 'MJ/kg', bestDirection: 'low' },
+  {
+    key: "compressiveStrength",
+    property: "Compressive Strength",
+    unit: "psi",
+    bestDirection: "high",
+  },
+  {
+    key: "tensileStrength",
+    property: "Tensile Strength",
+    unit: "psi",
+    bestDirection: "high",
+  },
+  {
+    key: "flexuralStrength",
+    property: "Flexural Strength",
+    unit: "psi",
+    bestDirection: "high",
+  },
+  {
+    key: "density",
+    property: "Density",
+    unit: "lb/ft³",
+    bestDirection: "none",
+  },
+  {
+    key: "thermalConductivity",
+    property: "Thermal Conductivity",
+    unit: "W/mK",
+    bestDirection: "low",
+  },
+  {
+    key: "fireRating",
+    property: "Fire Rating",
+    unit: "class",
+    bestDirection: "none",
+  },
+  {
+    key: "waterAbsorption",
+    property: "Water Absorption",
+    unit: "%",
+    bestDirection: "low",
+  },
+  {
+    key: "gwp",
+    property: "Global Warming Potential",
+    unit: "kgCO₂e",
+    bestDirection: "low",
+  },
+  {
+    key: "recycledContent",
+    property: "Recycled Content",
+    unit: "%",
+    bestDirection: "high",
+  },
+  { key: "voc", property: "VOC", unit: "g/L", bestDirection: "low" },
+  {
+    key: "embodiedEnergy",
+    property: "Embodied Energy",
+    unit: "MJ/kg",
+    bestDirection: "low",
+  },
 ];
 
 // ─── Router ─────────────────────────────────────────────────────────────────
@@ -170,7 +221,7 @@ export const materialSpecRouter = router({
 
       if (!row) {
         throw new TRPCError({
-          code: 'NOT_FOUND',
+          code: "NOT_FOUND",
           message: `Material with ID ${input.materialId} not found`,
         });
       }
@@ -191,28 +242,43 @@ export const materialSpecRouter = router({
     .query(async ({ ctx, input }) => {
       await enforceAndTrack(ctx.user.id, "material_comparison");
       if (input.materialIds.length === 0) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'At least 2 material IDs required' });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "At least 2 material IDs required",
+        });
       }
 
       // Build parameterized IN clause
-      const placeholders = input.materialIds.map((_, i) => `$${i + 1}`).join(', ');
+      const placeholders = input.materialIds
+        .map((_, i) => `$${i + 1}`)
+        .join(", ");
       const rows = await queryMany<MaterialSpecRow>(
         `SELECT ${SELECT_COLS} FROM materials WHERE id IN (${placeholders})`,
         input.materialIds
       );
 
       if (rows.length === 0) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'No materials found for given IDs' });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No materials found for given IDs",
+        });
       }
 
       const materials = rows.map(rowToSpec);
 
       // Build comparison matrix
-      const comparisonMatrix: Record<string, {
-        property: string;
-        unit: string;
-        values: { materialId: number; value: number | string | null; isBest: boolean }[];
-      }> = {};
+      const comparisonMatrix: Record<
+        string,
+        {
+          property: string;
+          unit: string;
+          values: {
+            materialId: number;
+            value: number | string | null;
+            isBest: boolean;
+          }[];
+        }
+      > = {};
 
       for (const prop of SPEC_PROPERTIES) {
         const values = materials.map(m => {
@@ -221,20 +287,23 @@ export const materialSpecRouter = router({
         });
 
         // Determine best value
-        if (prop.bestDirection !== 'none') {
+        if (prop.bestDirection !== "none") {
           const numericValues = values
-            .map(v => ({ ...v, numVal: typeof v.value === 'number' ? v.value : null }))
+            .map(v => ({
+              ...v,
+              numVal: typeof v.value === "number" ? v.value : null,
+            }))
             .filter(v => v.numVal != null);
 
           if (numericValues.length > 0) {
             let bestVal: number;
-            if (prop.bestDirection === 'high') {
+            if (prop.bestDirection === "high") {
               bestVal = Math.max(...numericValues.map(v => v.numVal!));
             } else {
               bestVal = Math.min(...numericValues.map(v => v.numVal!));
             }
             for (const v of values) {
-              if (typeof v.value === 'number' && v.value === bestVal) {
+              if (typeof v.value === "number" && v.value === bestVal) {
                 v.isBest = true;
               }
             }
@@ -298,23 +367,23 @@ export const materialSpecRouter = router({
         params.push(input.maxPrice);
       }
 
-      const whereClause = conditions.length > 0
-        ? `WHERE ${conditions.join(' AND ')}`
-        : '';
+      const whereClause =
+        conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
       // Validate sortBy to prevent SQL injection
       const allowedSortColumns: Record<string, string> = {
-        name: 'name',
-        category: 'category',
+        name: "name",
+        category: "category",
         gwp: '"gwpValue"',
         compressiveStrength: '"compressiveStrength"',
         tensileStrength: '"tensileStrength"',
-        density: 'density',
+        density: "density",
         recycledContent: '"recycledContentPct"',
         price: '"pricePerUnit"',
         embodiedEnergy: '"embodiedEnergy"',
       };
-      const sortCol = (input.sortBy && allowedSortColumns[input.sortBy]) ?? '"gwpValue"';
+      const sortCol =
+        (input.sortBy && allowedSortColumns[input.sortBy]) ?? '"gwpValue"';
       const orderClause = `ORDER BY ${sortCol} ASC NULLS LAST`;
 
       const rows = await queryMany<MaterialSpecRow>(
@@ -419,7 +488,11 @@ export const materialSpecRouter = router({
     .mutation(async ({ input, ctx }) => {
       await enforceAndTrack(input.supplierId, "rfq_submission");
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database not available",
+        });
 
       const [row] = await db
         .insert(materialSpecs)
@@ -434,10 +507,14 @@ export const materialSpecRouter = router({
           thermalUValue: input.thermalUValue?.toString(),
           compressiveStrength: input.compressiveStrength,
           tensileStrength: input.tensileStrength,
-          astmStandards: input.astmStandards ? input.astmStandards.join(",") : undefined,
+          astmStandards: input.astmStandards
+            ? input.astmStandards.join(",")
+            : undefined,
           meetsTitle24: input.meetsTitle24,
           meetsIecc: input.meetsIecc,
-          buildingCodes: input.buildingCodes ? input.buildingCodes.join(",") : undefined,
+          buildingCodes: input.buildingCodes
+            ? input.buildingCodes.join(",")
+            : undefined,
           pricePerUnit: input.pricePerUnit?.toString(),
           priceUnit: input.priceUnit,
           minimumOrderQuantity: input.minimumOrderQuantity,
@@ -447,7 +524,9 @@ export const materialSpecRouter = router({
           manufacturingLocation: input.manufacturingLocation,
           usManufactured: input.usManufactured,
           regionalAvailabilityMiles: input.regionalAvailabilityMiles,
-          shippingRegions: input.shippingRegions ? input.shippingRegions.join(",") : undefined,
+          shippingRegions: input.shippingRegions
+            ? input.shippingRegions.join(",")
+            : undefined,
           inStock: input.inStock,
           stockQuantity: input.stockQuantity,
           vocLevel: input.vocLevel,
@@ -461,10 +540,14 @@ export const materialSpecRouter = router({
           hasC2c: input.hasC2c,
           hasGreenguard: input.hasGreenguard,
           hasDeclare: input.hasDeclare,
-          certificationUrls: input.certificationUrls ? JSON.stringify(input.certificationUrls) : undefined,
+          certificationUrls: input.certificationUrls
+            ? JSON.stringify(input.certificationUrls)
+            : undefined,
           datasheetUrl: input.datasheetUrl,
           specSheetUrl: input.specSheetUrl,
-          testReportUrls: input.testReportUrls ? JSON.stringify(input.testReportUrls) : undefined,
+          testReportUrls: input.testReportUrls
+            ? JSON.stringify(input.testReportUrls)
+            : undefined,
           notes: input.notes,
           recycledContentPct: input.recycledContentPct?.toString(),
           warrantyYears: input.warrantyYears,
@@ -492,20 +575,27 @@ export const materialSpecRouter = router({
     .mutation(async ({ input }) => {
       const { updates, specId } = input;
 
-      const setClauses: string[] = ['"updatedAt" = NOW()'];
-      const params: unknown[] = [];
-      let idx = 1;
+      const db = await getDb();
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database not available",
+        });
 
-      if (updates.pricePerUnit !== undefined) { setClauses.push(`"pricePerUnit" = $${idx++}`); params.push(updates.pricePerUnit); }
-      if (updates.priceUnit !== undefined) { setClauses.push(`"priceUnit" = $${idx++}`); params.push(updates.priceUnit); }
-      if (updates.leadTimeDays !== undefined) { setClauses.push(`"leadTimeDays" = $${idx++}`); params.push(updates.leadTimeDays); }
+      const updateData: Partial<typeof materials.$inferInsert> = {};
 
-      if (setClauses.length > 1) {
-        params.push(specId);
-        await queryOne(
-          `UPDATE materials SET ${setClauses.join(', ')} WHERE id = $${idx}`,
-          params
-        );
+      if (updates.pricePerUnit !== undefined)
+        updateData.pricePerUnit = updates.pricePerUnit?.toString();
+      if (updates.priceUnit !== undefined)
+        updateData.priceUnit = updates.priceUnit;
+      if (updates.leadTimeDays !== undefined)
+        updateData.leadTimeDays = updates.leadTimeDays;
+
+      if (Object.keys(updateData).length > 0) {
+        await db
+          .update(materials)
+          .set(updateData)
+          .where(eq(materials.id, specId));
       }
 
       return { success: true };
