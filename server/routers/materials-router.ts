@@ -9,6 +9,7 @@ import {
   decisionMakerPersonas,
 } from '../../drizzle/schema';
 import { getCachedBaselines } from '../services/baselines-cache';
+import { getCachedCategories } from '../services/categories-cache';
 import { eq, like, ilike, and, lte, sql, or, not, getTableColumns, asc, desc, inArray } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
@@ -282,16 +283,7 @@ export const materialsRouter = router({
     }),
 
   categories: publicProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) return [];
-    const rows = await db
-      .select({
-        category: materials.category,
-        count: sql<number>`count(*)`,
-      })
-      .from(materials)
-      .groupBy(materials.category);
-    return rows;
+    return getCachedCategories();
   }),
 
   getScore: protectedProcedure
