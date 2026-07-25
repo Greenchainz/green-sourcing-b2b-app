@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import {
   initiateVideoCall,
   endVideoCall,
-  getActiveCall,
+  getCallSession,
   sendSignalingData,
 } from "./webrtc-video-service";
 
@@ -156,10 +156,11 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
     });
   });
 
-  describe("getActiveCall", () => {
+  describe("getCallSession", () => {
     beforeEach(async () => {
       const result = await initiateVideoCall({
         callerId: testCallerId,
+        callerName: "Test Caller",
         calleeId: testCalleeId,
         conversationId: 1,
       });
@@ -167,11 +168,11 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
     });
 
     it("should retrieve active call by call ID", async () => {
-      const call = await getActiveCall(testCallId);
+      const call = await getCallSession(testCallId);
 
       expect(call).not.toBeNull();
       expect(call?.callId).toBe(testCallId);
-      expect(call?.status).toBe("initiated");
+      expect(call?.status).toBe("ringing");
     });
 
     it("should return null for ended call", async () => {
@@ -180,12 +181,12 @@ describe.skipIf(!process.env.DATABASE_URL)("WebRTC Video Service", () => {
         userId: testCallerId,
       });
 
-      const call = await getActiveCall(testCallId);
+      const call = await getCallSession(testCallId);
       expect(call).toBeNull();
     });
 
     it("should return null for non-existent call", async () => {
-      const call = await getActiveCall("non-existent-call");
+      const call = await getCallSession("non-existent-call");
       expect(call).toBeNull();
     });
   });
