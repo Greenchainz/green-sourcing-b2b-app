@@ -44,6 +44,13 @@ import { runStartupSecurityPreflight } from "./security-preflight";
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
   const counts = new Map<string, { count: number; resetAt: number }>();
+  // Prune expired entries every 5 min to prevent unbounded memory growth
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of counts) {
+      if (entry.resetAt < now) counts.delete(key);
+    }
+  }, 5 * 60_000).unref();
   return function rateLimitMiddleware(
     req: express.Request,
     res: express.Response,
