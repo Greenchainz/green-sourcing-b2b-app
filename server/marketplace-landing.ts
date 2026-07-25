@@ -16,6 +16,7 @@
  */
 
 import { Request, Response } from "express";
+import { redactSensitiveData } from "../lib/auth/diagnostics";
 import { validateMarketplaceToken, resolveSubscription } from "./marketplace-auth";
 import { getBuyerSubscription, createBuyerSubscription, upgradeBuyerSubscription } from "./subscription-service";
 import { getDb } from "./db";
@@ -133,7 +134,7 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
-    console.log("[Marketplace Landing] Received token:", token.substring(0, 20) + "...");
+    console.log("[Marketplace Landing] Received token:", redactSensitiveData({ token }));
 
     // Step 1: Validate the marketplace token with Azure AD
     const isValid = await validateMarketplaceToken(token);
@@ -159,11 +160,11 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
-    console.log("[Marketplace Landing] Resolved subscription:", {
+    console.log("[Marketplace Landing] Resolved subscription:", redactSensitiveData({
       id: subscription.id,
       planId: subscription.planId,
       email: subscription.beneficiary.emailId,
-    });
+    }));
 
     // Step 3: Map Microsoft plan ID to our tier
     const tier = mapPlanIdToTier(subscription.planId);
@@ -203,11 +204,11 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
-    console.log("[Marketplace Landing] Subscription activated:", {
+    console.log("[Marketplace Landing] Subscription activated:", redactSensitiveData({
       userId,
       tier,
       msSubscriptionId: subscription.id,
-    });
+    }));
 
     // Step 6: Activate the subscription with Microsoft
     // This tells Microsoft that we've successfully provisioned the subscription
@@ -229,6 +230,11 @@ export async function handleLandingPage(req: Request, res: Response) {
     return res.redirect(dashboardUrl);
 
   } catch (error) {
+    console.error("[Marketplace Landing] Error:", redactSensitiveData(error));
+    return res.status(500).json({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
     console.error("[Marketplace Landing] Error:", error);
     return respondMarketplaceError(
       req,
@@ -281,7 +287,7 @@ async function findOrCreateUserByEmail(email: string, objectId: string): Promise
     })
     .returning({ id: users.id });
 
-  console.log("[Marketplace Landing] Created new user from AppSource:", { id: inserted.id, email });
+  console.log("[Marketplace Landing] Created new user from AppSource:", redactSensitiveData({ id: inserted.id, email }));
   return inserted.id;
 }
 
