@@ -67,16 +67,18 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
 
   const rfqId = (rfqResult as any).insertId;
 
-  // Add RFQ items
-  for (const item of input.materials) {
+  // Add RFQ items in bulk
+  if (input.materials.length > 0) {
     await db
       .insert(rfqItems)
-      .values({
-        rfqId,
-        materialId: item.materialId,
-        quantity: item.quantity.toString(),
-        quantityUnit: item.quantityUnit,
-      })
+      .values(
+        input.materials.map((item) => ({
+          rfqId,
+          materialId: item.materialId,
+          quantity: item.quantity.toString(),
+          quantityUnit: item.quantityUnit,
+        }))
+      )
       .execute();
   }
 
