@@ -339,8 +339,8 @@ export const materialSwapRouter = router({
     )
     .query(async ({ input }) => {
       const conditions: string[] = [];
-      const params: unknown[] = [];
-      let paramIdx = 1;
+      const params: unknown[] = [input.limit, input.offset];
+      let paramIdx = 3;
 
       if (input.userId != null) {
         conditions.push(`"userId" = $${paramIdx++}`);
@@ -355,10 +355,6 @@ export const materialSwapRouter = router({
         ? `WHERE ${conditions.join(' AND ')}`
         : '';
 
-      const limitParam = `$${paramIdx++}`;
-      const offsetParam = `$${paramIdx}`;
-      params.push(input.limit, input.offset);
-
       const rows = await queryMany<SwapHistoryRow>(
         `SELECT id, "userId", "projectId",
                 "originalMaterialId", "substituteMaterialId",
@@ -369,7 +365,7 @@ export const materialSwapRouter = router({
          FROM material_swap_history
          ${whereClause}
          ORDER BY "createdAt" DESC
-         LIMIT ${limitParam} OFFSET ${offsetParam}`,
+         LIMIT $1 OFFSET $2`,
         params
       );
 
