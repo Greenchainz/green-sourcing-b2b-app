@@ -270,8 +270,8 @@ export const materialSpecRouter = router({
     )
     .query(async ({ input }) => {
       const conditions: string[] = [];
-      const params: unknown[] = [];
-      let paramIdx = 1;
+      const params: unknown[] = [input.limit, input.offset];
+      let paramIdx = 3;
 
       if (input.category) {
         conditions.push(`category = $${paramIdx++}`);
@@ -317,16 +317,12 @@ export const materialSpecRouter = router({
       const sortCol = (input.sortBy && allowedSortColumns[input.sortBy]) ?? '"gwpValue"';
       const orderClause = `ORDER BY ${sortCol} ASC NULLS LAST`;
 
-      const limitParam = `$${paramIdx++}`;
-      const offsetParam = `$${paramIdx}`;
-      params.push(input.limit, input.offset);
-
       const rows = await queryMany<MaterialSpecRow>(
         `SELECT ${SELECT_COLS}
          FROM materials
          ${whereClause}
          ${orderClause}
-         LIMIT ${limitParam} OFFSET ${offsetParam}`,
+         LIMIT $1 OFFSET $2`,
         params
       );
 
