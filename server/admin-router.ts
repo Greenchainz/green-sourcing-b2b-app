@@ -868,10 +868,17 @@ export const adminRouter = router({
     let sent = 0;
     let failed = 0;
 
-    for (const payload of payloads) {
-      const ok = await sendEmail({ to: payload.to, subject: payload.subject, html: payload.html });
-      if (ok) sent++;
-      else failed++;
+    // Send in parallel batches of 5 to avoid overwhelming the email provider
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
+      const batch = payloads.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map((payload) => sendEmail({ to: payload.to, subject: payload.subject, html: payload.html }))
+      );
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) sent++;
+        else failed++;
+      }
     }
 
     return { total: payloads.length, sent, failed };
@@ -888,10 +895,17 @@ export const adminRouter = router({
     let sent = 0;
     let failed = 0;
 
-    for (const payload of payloads) {
-      const ok = await sendEmail({ to: payload.to, subject: payload.subject, html: payload.html });
-      if (ok) sent++;
-      else failed++;
+    // Send in parallel batches of 5 to avoid overwhelming the email provider
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
+      const batch = payloads.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map((payload) => sendEmail({ to: payload.to, subject: payload.subject, html: payload.html }))
+      );
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) sent++;
+        else failed++;
+      }
     }
 
     return { total: payloads.length, sent, failed };
