@@ -4,12 +4,12 @@
  * categories rarely change (only when new materials are added).
  * This cache holds the rows for 10 minutes, saving a DB round-trip per request.
  */
-import { getDb } from '../db';
-import { materials } from '../../drizzle/schema';
-import { sql } from 'drizzle-orm';
+import { getDb } from "../db";
+import { materials } from "../../drizzle/schema";
+import { sql } from "drizzle-orm";
 
-interface CategoryRow {
-  category: string | null;
+export interface CategoryRow {
+  category: string;
   count: number;
 }
 
@@ -28,15 +28,17 @@ export async function getCachedCategories(): Promise<CategoryRow[]> {
 
   const rows = await db
     .select({
-      category: materials.category,
+      category: sql<string>`COALESCE(${materials.category}, '')`,
       count: sql<number>`count(*)`,
     })
     .from(materials)
     .groupBy(materials.category);
 
-  cachedCategories = rows;
+  const filteredRows = rows.filter(r => r.category !== "") as CategoryRow[];
+
+  cachedCategories = filteredRows;
   cacheTimestamp = now;
-  return rows;
+  return filteredRows;
 }
 
 export function invalidateCategoriesCache(): void {
