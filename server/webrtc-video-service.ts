@@ -171,6 +171,7 @@ export async function sendSignalingData(params: {
   senderId: number;
   recipientId: number;
   type: "offer" | "answer" | "ice-candidate";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
 }): Promise<void> {
   const { callId, senderId, recipientId, type, data } = params;
