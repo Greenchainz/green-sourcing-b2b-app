@@ -142,7 +142,6 @@ const RfqDetail = lazy(() => import("./pages/RfqDetail"));
 const Compare = lazy(() => import("./pages/Compare"));
 const CarbonCompare = lazy(() => import("./pages/CarbonCompare"));
 const CarbonDashboard = lazy(() => import("./pages/CarbonDashboard"));
-// TODO: verify no external links to /supplier-dashboard, then remove this import and SupplierDashboard.tsx
 const BuyerRfqDashboard = lazy(() => import("./pages/BuyerRfqDashboard"));
 const RfqDashboard = lazy(() => import("./pages/RfqDashboard"));
 const SupplierRegistration = lazy(() =>
@@ -255,7 +254,6 @@ function Router() {
       <Route path="/compare" component={Compare} />
       <Route path="/carbon-compare" component={CarbonCompare} />
       <Route path="/carbon-dashboard" component={CarbonDashboard} />
-      <Route path="/supplier-dashboard">{() => <Redirect to="/supplier/dashboard" />}</Route>
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
       <Route path="/supplier/onboarding" component={SupplierOnboarding} />
