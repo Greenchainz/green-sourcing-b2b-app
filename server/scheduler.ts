@@ -92,9 +92,13 @@ export async function startSchedulers(): Promise<void> {
               );
               totalCreated += toCreate.length;
             }
-            for (const m of toUpdate) {
-              await db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!));
-              totalUpdated++;
+            if (toUpdate.length > 0) {
+              await Promise.all(
+                toUpdate.map((m) =>
+                  db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!))
+                )
+              );
+              totalUpdated += toUpdate.length;
             }
 
             // Stop if we got a partial page (last page) or hit 2000 EPDs per category (safety cap)
