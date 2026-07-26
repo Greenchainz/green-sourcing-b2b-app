@@ -33,7 +33,7 @@ Configure these in **greenchainz-vault** Key Vault:
 | --- | --- | --- | --- |
 | acrgreenchainzprod916 | Container Registry | East US | rg-greenchainz-prod-container |
 | cae-greenchainz-env | Container Apps Environment | East US | rg-greenchainz-prod-container |
-| greenchainz-backend | Container App (Backend) | East US | rg-greenchainz-prod-container |
+| greenchainz-backend-v2 | Container App (Backend) | East US | rg-greenchainz-prod-container |
 | greenchainz-frontend | Container App (Frontend) | East US | rg-greenchainz-prod-container |
 | greenchainz | Redis Cache | East US 2 | greenchainz-production |
 | greenchainz-vault | Key Vault | East US | greenchainz-production |
@@ -96,9 +96,9 @@ git push origin main
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            Azure Container Apps                              │
 │  ┌─────────────────────────────┐   ┌─────────────────────────────────────┐  │
-│  │    greenchainz-frontend     │   │       greenchainz-backend           │  │
-│  │         (Next.js)           │──▶│       (Node.js + Express)           │  │
-│  │    Port: 3000               │   │       Port: 3001                    │  │
+│  │    greenchainz-frontend     │   │      greenchainz-backend-v2         │  │
+│  │      (Vite React SPA)       │──▶│       (Node.js + Express)           │  │
+│  │    Port: 3000               │   │       Port: 3000                    │  │
 │  └─────────────────────────────┘   └─────────────────────────────────────┘  │
 │              │                                    │                          │
 └──────────────┼────────────────────────────────────┼──────────────────────────┘
@@ -244,11 +244,13 @@ PRINCIPAL_ID=$(az containerapp show \
   --resource-group rg-greenchainz-prod-container \
   --query "identity.principalId" -o tsv)
 
-# Grant Key Vault access
-az keyvault set-policy \
-  --name greenchainz-vault \
-  --object-id $PRINCIPAL_ID \
-  --secret-permissions get list
+# Grant Key Vault access (RBAC mode)
+KV_ID=$(az keyvault show --name greenchainz-vault --query id -o tsv)
+az role assignment create \
+  --assignee-object-id $PRINCIPAL_ID \
+  --assignee-principal-type ServicePrincipal \
+  --role "Key Vault Secrets User" \
+  --scope "$KV_ID"
 ```
 
 ### Redis Connection Issues

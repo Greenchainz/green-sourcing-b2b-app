@@ -56,10 +56,7 @@ properties:
             secretRef: azure-ad-tenant-id
           - name: AZURE_TENANT_ID
             secretRef: azure-ad-tenant-id
-          # User-Assigned Managed Identity (Azure resource access — NOT user sign-in)
-          # Identity: id-greenchainz-backend (rg-greenchainz-infra)
-          - name: MANAGED_IDENTITY_CLIENT_ID
-            value: "ec248abf-f6ce-4d7c-8888-740317709f1b"
+          # Uses system-assigned managed identity for Azure resource access.
           # Public runtime config (also baked in at build time via Docker build args)
           # VITE_BACKEND_URL is intentionally empty — frontend uses relative URLs to hit the same origin
           - name: NEXT_PUBLIC_BACKEND_URL
@@ -70,7 +67,7 @@ properties:
             value: "8b597068-9347-4e99-8860-8c4e9a9bc112"
         
         # ─────────────────────────────────────────────────────────────
-        # Health Probes (use root path for Next.js)
+        # Health probes (root path for the Vite-served SPA container)
         # ─────────────────────────────────────────────────────────────
         probes:
           - type: startup
