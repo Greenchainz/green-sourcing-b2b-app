@@ -11,7 +11,7 @@ import { DocumentAnalysisClient, AzureKeyCredential } from "@azure/ai-form-recog
 import axios from "axios";
 import { getDb } from "../db";
 import { materialTechnicalSpecs, materials } from "../../drizzle/schema";
-import { eq, ilike, or, inArray } from "drizzle-orm";
+import { ilike, or, inArray } from "drizzle-orm";
 
 // ─── Manufacturer Spec Sheet Catalog ──────────────────────────────────────────
 // Each entry maps a manufacturer + product category to a public PDF URL.
