@@ -254,6 +254,7 @@ function Router() {
       <Route path="/compare" component={Compare} />
       <Route path="/carbon-compare" component={CarbonCompare} />
       <Route path="/carbon-dashboard" component={CarbonDashboard} />
+      <Route path="/supplier-dashboard">{() => <Redirect to="/supplier/dashboard" />}</Route>
       <Route path="/rfq-dashboard" component={BuyerRfqDashboard} />
       <Route path="/rfq-status" component={RfqDashboard} />
       <Route path="/supplier/onboarding" component={SupplierOnboarding} />
