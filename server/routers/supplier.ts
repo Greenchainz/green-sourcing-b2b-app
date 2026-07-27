@@ -6,6 +6,7 @@ import { suppliers, suppliersLocation } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sendSupplierWelcomeEmail, sendFounderNewSupplierAlert } from "../email-service";
 import { parseEpdPdf } from "../services/epd-intelligence";
+import { geocodeProjectLocation } from "../services/geocode-project-location";
 import { getSupplierVerificationSnapshot } from "../services/supplier-verification";
 
 /**
@@ -68,7 +69,6 @@ async function syncSupplierLocationRecord(
 ): Promise<void> {
   if (!input.city || !input.state || !input.zipCode) return;
 
-  const { geocodeProjectLocation } = await import("../services/geocode-project-location");
   const geocode = await geocodeProjectLocation({
     city: input.city,
     state: input.state,
