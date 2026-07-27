@@ -294,7 +294,11 @@ const REQUEST_TYPE_LABELS: Record<string, string> = {
 
 function SmartRequestsTab() {
   const [, navigate] = useLocation();
-  const { data: requests, isLoading, error } = trpc.sourcingRequest.listMine.useQuery({ limit: 25 });
+  const { data: requests, isLoading, error } =
+    trpc.sourcingRequest.listMine.useQuery(
+      { limit: 25 },
+      { placeholderData: prev => prev }
+    );
 
   if (isLoading) {
     return (
