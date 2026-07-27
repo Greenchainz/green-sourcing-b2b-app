@@ -142,7 +142,6 @@ const RfqDetail = lazy(() => import("./pages/RfqDetail"));
 const Compare = lazy(() => import("./pages/Compare"));
 const CarbonCompare = lazy(() => import("./pages/CarbonCompare"));
 const CarbonDashboard = lazy(() => import("./pages/CarbonDashboard"));
-// TODO: verify no external links to /supplier-dashboard, then remove this import and SupplierDashboard.tsx
 const BuyerRfqDashboard = lazy(() => import("./pages/BuyerRfqDashboard"));
 const RfqDashboard = lazy(() => import("./pages/RfqDashboard"));
 const SupplierRegistration = lazy(() =>
