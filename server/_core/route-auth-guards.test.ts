@@ -39,25 +39,14 @@ describe("requireAdminUser", () => {
         expect(res.json).toHaveBeenCalledWith({ error: "Forbidden" });
     });
 
-    it("returns user when authenticated user is founder admin", async () => {
-        const res = createMockResponse();
-        const authenticateRequest = vi.fn(async () => ({ id: 1, role: "admin", email: "founder@greenchainz.com" }));
-
-        const user = await requireAdminUser({} as Request, res, authenticateRequest as any);
-
-        expect(user).toEqual({ id: 1, role: "admin", email: "founder@greenchainz.com" });
-        expect(res.status).not.toHaveBeenCalled();
-    });
-
-    it("returns 403 when authenticated admin is not founder email", async () => {
+    it("returns user when authenticated user is admin", async () => {
         const res = createMockResponse();
         const authenticateRequest = vi.fn(async () => ({ id: 1, role: "admin", email: "admin@example.com" }));
 
         const user = await requireAdminUser({} as Request, res, authenticateRequest as any);
 
-        expect(user).toBeNull();
-        expect(res.status).toHaveBeenCalledWith(403);
-        expect(res.json).toHaveBeenCalledWith({ error: "Forbidden" });
+        expect(user).toEqual({ id: 1, role: "admin", email: "admin@example.com" });
+        expect(res.status).not.toHaveBeenCalled();
     });
 });
 
@@ -67,11 +56,7 @@ describe("canAccessRfqPdf", () => {
     });
 
     it("allows admin even when not owner", () => {
-        expect(canAccessRfqPdf({ id: 99, role: "admin", email: "founder@greenchainz.com" } as any, 7)).toBe(true);
-    });
-
-    it("denies non-founder admin when not owner", () => {
-        expect(canAccessRfqPdf({ id: 99, role: "admin", email: "admin@example.com" } as any, 7)).toBe(false);
+        expect(canAccessRfqPdf({ id: 99, role: "admin", email: "admin@example.com" } as any, 7)).toBe(true);
     });
 
     it("denies non-owner non-admin", () => {

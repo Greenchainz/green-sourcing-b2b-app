@@ -6,7 +6,6 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
-import { canAccessAdmin } from "./admin-access";
 
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
@@ -154,16 +153,6 @@ class SDKServer {
     }
 
     const now = new Date();
-    if (user.role === "admin" && !canAccessAdmin(user)) {
-      console.warn(`[Auth] Blocking admin role for non-founder account: ${user.email ?? user.openId}`);
-      await db.upsertUser({
-        openId: user.openId,
-        role: "buyer",
-        lastSignedIn: now,
-      });
-
-      return { ...user, role: "buyer" };
-    }
 
     await db.upsertUser({
       openId: user.openId,
