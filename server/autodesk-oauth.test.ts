@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getApsAccessToken, clearCachedToken } from './autodesk-oauth';
 
 const hasCredentials = !!(
@@ -54,5 +54,68 @@ describe('Autodesk OAuth Token Service', () => {
     // After cache clear, should get new token (might be same or different)
     expect(token1).toBeDefined();
     expect(token2).toBeDefined();
+  });
+
+  describe('Mocked clearCachedToken tests', () => {
+    let originalFetch: typeof global.fetch;
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it('should fetch a new token after clearCachedToken is called', async () => {
+      // Temporarily set credentials to bypass the missing credentials check
+      const originalId = process.env.AUTODESK_CLIENT_ID;
+      const originalSecret = process.env.AUTODESK_CLIENT_SECRET;
+
+      process.env.AUTODESK_CLIENT_ID = 'mock-client-id';
+      process.env.AUTODESK_CLIENT_SECRET = 'mock-client-secret';
+
+      try {
+        let fetchCallCount = 0;
+
+        // Mock fetch to track calls and return a dummy token
+        global.fetch = async () => {
+          fetchCallCount++;
+          return new Response(JSON.stringify({
+            access_token: `mock-token-${fetchCallCount}`,
+            expires_in: 3600,
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        };
+
+        // First call: should trigger fetch
+        const token1 = await getApsAccessToken();
+        expect(token1).toBe('mock-token-1');
+        expect(fetchCallCount).toBe(1);
+
+        // Second call: should use cache
+        const token2 = await getApsAccessToken();
+        expect(token2).toBe('mock-token-1');
+        expect(fetchCallCount).toBe(1);
+
+        // Clear cache
+        clearCachedToken();
+
+        // Third call: should trigger fetch again
+        const token3 = await getApsAccessToken();
+        expect(token3).toBe('mock-token-2');
+        expect(fetchCallCount).toBe(2);
+
+      } finally {
+        // Restore credentials
+        if (originalId !== undefined) process.env.AUTODESK_CLIENT_ID = originalId;
+        else delete process.env.AUTODESK_CLIENT_ID;
+
+        if (originalSecret !== undefined) process.env.AUTODESK_CLIENT_SECRET = originalSecret;
+        else delete process.env.AUTODESK_CLIENT_SECRET;
+      }
+    });
   });
 });

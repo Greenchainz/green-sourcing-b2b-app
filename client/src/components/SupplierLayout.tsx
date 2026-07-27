@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/supplier/rfqs", label: "RFQs", icon: FileText },
-  { href: "/supplier-dashboard", label: "Messages", icon: MessageSquare },
+  { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/supplier/materials", label: "Materials", icon: Package },
   { href: "/supplier/filters", label: "Filters", icon: SlidersHorizontal },
   { href: "/supplier/analytics", label: "Analytics", icon: BarChart3 },

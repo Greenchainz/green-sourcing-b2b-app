@@ -114,16 +114,27 @@ export const ec3Router = router({
         
         const transformedMaterials = await transformEC3Batch(epds);
 
-        for (const material of transformedMaterials) {
-          // Check if exists
-          const existing = await db
-            .select()
-            .from(materials)
-            .where(eq(materials.ec3Id, material.ec3Id!))
-            .limit(1);
+        if (transformedMaterials.length > 0) {
+          const ec3Ids = transformedMaterials.map((m) => m.ec3Id!).filter(Boolean);
 
-          if (existing.length === 0) {
+          let existingSet = new Set<string>();
+          if (ec3Ids.length > 0) {
+            const existingMaterials = await db
+              .select({ ec3Id: materials.ec3Id })
+              .from(materials)
+              .where(inArray(materials.ec3Id, ec3Ids));
+
+            existingSet = new Set(existingMaterials.map((m) => m.ec3Id as string));
+          }
+
+          const toInsert = transformedMaterials.filter((m) => m.ec3Id && !existingSet.has(m.ec3Id));
+
+          for (const material of toInsert) {
+            if (material.ec3Id && existingSet.has(material.ec3Id)) {
+              continue; // Ensure intra-batch duplicates are not inserted
+            }
             await db.insert(materials).values(material as (typeof materials)["$inferInsert"]);
+            if (material.ec3Id) existingSet.add(material.ec3Id);
             synced++;
           }
         }
