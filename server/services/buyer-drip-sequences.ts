@@ -10,11 +10,15 @@
 
 import { Resend } from "resend";
 import { getDb } from "../db";
-import { crmContacts, crmEmailSequences, crmEvents } from "../../drizzle/schema";
-import { eq, and, lte } from "drizzle-orm";
+import {
+  crmContacts,
+  crmEmailSequences,
+  crmEvents,
+} from "../../drizzle/schema";
+import { eq, and, lte, inArray } from "drizzle-orm";
 import { ROLE_BY_CATEGORY } from "../../lib/scrapers/lead-role-config";
 
-const FROM     = "noreply@updates.greenchainz.com";
+const FROM = "noreply@updates.greenchainz.com";
 const REPLY_TO = "hello@greenchainz.com";
 const BASE_URL = process.env.FRONTEND_URL ?? "https://greenchainz.com";
 
@@ -63,11 +67,11 @@ function renderStep(
   const cfg = role.steps[step - 1];
   const subject = cfg.subject.replace(/\{\{company\}\}/g, company);
   const utmRole = encodeURIComponent(crmCategory);
-  const ctaUrl  = `${BASE_URL}/get-started?utm_source=buyer_drip&utm_medium=email&utm_campaign=${utmRole}&utm_content=step${step}`;
+  const ctaUrl = `${BASE_URL}/get-started?utm_source=buyer_drip&utm_medium=email&utm_campaign=${utmRole}&utm_content=step${step}`;
   const unsubUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
 
   const bulletsHtml = cfg.bullets.length
-    ? `<div class="box"><ul>${cfg.bullets.map((b) => `<li>${b}</li>`).join("")}</ul></div>`
+    ? `<div class="box"><ul>${cfg.bullets.map(b => `<li>${b}</li>`).join("")}</ul></div>`
     : "";
 
   const html = wrapEmail(`
@@ -94,7 +98,11 @@ function renderStep(
 
 // ── Drip processor ────────────────────────────────────────────────────────────
 
-export async function processBuyerRoleDrip(): Promise<{ sent: number; errors: number; skipped: number }> {
+export async function processBuyerRoleDrip(): Promise<{
+  sent: number;
+  errors: number;
+  skipped: number;
+}> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("[buyer-drip] RESEND_API_KEY not set — skipping");
@@ -102,7 +110,9 @@ export async function processBuyerRoleDrip(): Promise<{ sent: number; errors: nu
   }
 
   if (process.env.LEAD_OUTREACH_ENABLED !== "true") {
-    console.log("[buyer-drip] Disabled — set LEAD_OUTREACH_ENABLED=true to enable");
+    console.log(
+      "[buyer-drip] Disabled — set LEAD_OUTREACH_ENABLED=true to enable"
+    );
     return { sent: 0, errors: 0, skipped: 0 };
   }
 
@@ -110,26 +120,38 @@ export async function processBuyerRoleDrip(): Promise<{ sent: number; errors: nu
   if (!db) return { sent: 0, errors: 0, skipped: 0 };
 
   const resend = new Resend(apiKey);
-  const now    = new Date();
+  const now = new Date();
 
   // Pull all pending buyer_role_drip steps that are due
   const due = await db
     .select({ seq: crmEmailSequences, contact: crmContacts })
     .from(crmEmailSequences)
     .innerJoin(crmContacts, eq(crmEmailSequences.contactId, crmContacts.id))
-    .where(and(
-      eq(crmEmailSequences.sequenceName, "buyer_role_drip"),
-      eq(crmEmailSequences.status, "pending"),
-      lte(crmEmailSequences.scheduledAt, now),
-    ))
+    .where(
+      and(
+        eq(crmEmailSequences.sequenceName, "buyer_role_drip"),
+        eq(crmEmailSequences.status, "pending"),
+        lte(crmEmailSequences.scheduledAt, now)
+      )
+    )
     .limit(50); // max 50 per daily run
 
-  let sent = 0; let errors = 0; let skipped = 0;
+  let sent = 0;
+  let errors = 0;
+  let skipped = 0;
+
+  const skippedSeqIds: number[] = [];
+  const errorSeqIds: number[] = [];
 
   for (const { seq, contact } of due) {
     // Skip missing email, unsubscribed, dead stage
-    if (!contact.email || contact.stage === "dead" || contact.stage === "churned" || seq.unsubscribedAt) {
-      await db.update(crmEmailSequences).set({ status: "skipped" }).where(eq(crmEmailSequences.id, seq.id));
+    if (
+      !contact.email ||
+      contact.stage === "dead" ||
+      contact.stage === "churned" ||
+      seq.unsubscribedAt
+    ) {
+      skippedSeqIds.push(seq.id);
       skipped++;
       continue;
     }
@@ -143,53 +165,89 @@ export async function processBuyerRoleDrip(): Promise<{ sent: number; errors: nu
 
     if (!rendered) {
       // Unknown role category — skip gracefully
-      await db.update(crmEmailSequences).set({ status: "skipped" }).where(eq(crmEmailSequences.id, seq.id));
+      skippedSeqIds.push(seq.id);
       skipped++;
       continue;
     }
 
     try {
       const { data, error } = await resend.emails.send({
-        from: FROM, replyTo: REPLY_TO,
+        from: FROM,
+        replyTo: REPLY_TO,
         to: contact.email,
         subject: rendered.subject,
         html: rendered.html,
         tags: [
           { name: "sequence", value: "buyer_role_drip" },
-          { name: "step",     value: String(seq.step) },
-          { name: "role",     value: contact.category ?? "unknown" },
+          { name: "step", value: String(seq.step) },
+          { name: "role", value: contact.category ?? "unknown" },
         ],
       });
 
-      if (error || !data) throw new Error(error?.message ?? "Resend returned no data");
+      if (error || !data)
+        throw new Error(error?.message ?? "Resend returned no data");
 
-      await db.update(crmEmailSequences)
-        .set({ status: "sent", sentAt: new Date(), resendMessageId: data.id })
-        .where(eq(crmEmailSequences.id, seq.id));
+      await Promise.all([
+        db
+          .update(crmEmailSequences)
+          .set({ status: "sent", sentAt: new Date(), resendMessageId: data.id })
+          .where(eq(crmEmailSequences.id, seq.id)),
 
-      await db.insert(crmEvents).values({
-        contactId: contact.id,
-        eventType: "email_sent",
-        subject: rendered.subject,
-        performedBy: "system",
-        metadata: { sequenceName: "buyer_role_drip", step: seq.step, role: contact.category, resendId: data.id },
-      });
+        db.insert(crmEvents).values({
+          contactId: contact.id,
+          eventType: "email_sent",
+          subject: rendered.subject,
+          performedBy: "system",
+          metadata: {
+            sequenceName: "buyer_role_drip",
+            step: seq.step,
+            role: contact.category,
+            resendId: data.id,
+          },
+        }),
 
-      await db.update(crmContacts)
-        .set({ lastContactedAt: new Date(), updatedAt: new Date(), stage: "contacted" })
-        .where(eq(crmContacts.id, contact.id));
+        db
+          .update(crmContacts)
+          .set({
+            lastContactedAt: new Date(),
+            updatedAt: new Date(),
+            stage: "contacted",
+          })
+          .where(eq(crmContacts.id, contact.id)),
+      ]);
 
       sent++;
-      console.log(`[buyer-drip] ✅ Step ${seq.step} → ${contact.email} (${contact.category})`);
+      console.log(
+        `[buyer-drip] ✅ Step ${seq.step} → ${contact.email} (${contact.category})`
+      );
     } catch (err: any) {
-      console.error(`[buyer-drip] ❌ Step ${seq.step} for ${contact.email}:`, err?.message);
-      await db.update(crmEmailSequences).set({ status: "error" }).where(eq(crmEmailSequences.id, seq.id));
+      console.error(
+        `[buyer-drip] ❌ Step ${seq.step} for ${contact.email}:`,
+        err?.message
+      );
+      errorSeqIds.push(seq.id);
       errors++;
     }
 
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 200));
   }
 
-  console.log(`[buyer-drip] Done — sent=${sent} skipped=${skipped} errors=${errors}`);
+  if (skippedSeqIds.length > 0) {
+    await db
+      .update(crmEmailSequences)
+      .set({ status: "skipped" })
+      .where(inArray(crmEmailSequences.id, skippedSeqIds));
+  }
+
+  if (errorSeqIds.length > 0) {
+    await db
+      .update(crmEmailSequences)
+      .set({ status: "error" })
+      .where(inArray(crmEmailSequences.id, errorSeqIds));
+  }
+
+  console.log(
+    `[buyer-drip] Done — sent=${sent} skipped=${skipped} errors=${errors}`
+  );
   return { sent, errors, skipped };
 }
