@@ -403,15 +403,18 @@ function AssemblyDetailPage() {
     { enabled: !!id }
   );
   const { data: materialResults, isLoading: materialsLoading } =
-    trpc.materials.list.useQuery({
-      category: materialFilters.category || undefined,
-      categorySearch: materialFilters.categorySearch || undefined,
-      hasEpd: materialFilters.hasEpd || undefined,
-      usManufactured: materialFilters.usManufactured || undefined,
-      limit: materialFetchLimit,
-      sortBy: "name",
-      sortOrder: "asc",
-    });
+    trpc.materials.list.useQuery(
+      {
+        category: materialFilters.category || undefined,
+        categorySearch: materialFilters.categorySearch || undefined,
+        hasEpd: materialFilters.hasEpd || undefined,
+        usManufactured: materialFilters.usManufactured || undefined,
+        limit: materialFetchLimit,
+        sortBy: "name",
+        sortOrder: "asc",
+      },
+      { placeholderData: prev => prev }
+    );
   const { data: rawCategories } = trpc.materials.categories.useQuery();
 
   const [name, setName] = useState("");

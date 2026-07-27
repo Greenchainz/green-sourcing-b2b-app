@@ -165,12 +165,15 @@ function ContactList() {
     onError: (e) => toast.error(e.message),
   });
 
-  const { data, isLoading, refetch } = trpc.crm.contacts.list.useQuery({
-    stage: stage as any,
-    search: debouncedSearch || undefined,
-    limit: LIMIT,
-    offset,
-  });
+  const { data, isLoading, refetch } = trpc.crm.contacts.list.useQuery(
+    {
+      stage: stage as any,
+      search: debouncedSearch || undefined,
+      limit: LIMIT,
+      offset,
+    },
+    { placeholderData: prev => prev }
+  );
 
   return (
     <div className="space-y-3">
