@@ -1,6 +1,6 @@
 const n_plus_1 = async (items: any[]) => {
   // Simulate db call
-  for(const item of items) {
+  for (let i = 0; i < items.length; i++) {
     await new Promise(r => setTimeout(r, 10)); // 10ms per query
   }
 }
