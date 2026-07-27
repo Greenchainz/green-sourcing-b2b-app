@@ -52,4 +52,7 @@ async function benchmark() {
   process.exit(0);
 }
 
-benchmark().catch(console.error);
+benchmark().catch((error: unknown) => {
+  console.error(error);
+  process.exitCode = 1;
+});
