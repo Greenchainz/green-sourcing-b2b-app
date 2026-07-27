@@ -95,13 +95,15 @@ export async function startSchedulers(): Promise<void> {
             if (toUpdate.length > 0) {
 const UPDATE_CONCURRENCY = 5;
               for (let i = 0; i < toUpdate.length; i += UPDATE_CONCURRENCY) {
-                await Promise.all(
+                const results = await Promise.allSettled(
                   toUpdate.slice(i, i + UPDATE_CONCURRENCY).map((m) =>
                     db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!))
                   )
                 );
+                totalUpdated += results.filter((result) => result.status === 'fulfilled').length;
+                const failure = results.find((result) => result.status === 'rejected');
+                if (failure?.status === 'rejected') throw failure.reason;
               }
-              totalUpdated += toUpdate.length;
             }
 
             // Stop if we got a partial page (last page) or hit 2000 EPDs per category (safety cap)
