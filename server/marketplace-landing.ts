@@ -267,8 +267,6 @@ export async function handleLandingPage(req: Request, res: Response) {
     const dashboardUrl = `${getFrontendBaseUrl(req)}/dashboard?welcome=true`;
     return res.redirect(dashboardUrl);
 
-  } catch (error) {
-    console.error("[Marketplace Landing] Error:", error);
   } catch (error: unknown) {
     console.error("[Marketplace Landing] Error:", redactSensitiveData(error));
     return res.status(500).json({
