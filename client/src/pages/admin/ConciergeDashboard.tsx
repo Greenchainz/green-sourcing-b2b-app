@@ -222,7 +222,7 @@ function SupplierMatchCards({
 }) {
   const { data, isLoading, refetch } = trpc.concierge.matchSuppliers.useQuery(
     { materialType, limit: 10 },
-    { enabled: materialType.length > 2, placeholderData: prev => prev }
+    { enabled: materialType.length > 2 }
   );
 
   if (!materialType || materialType.length < 3) {
