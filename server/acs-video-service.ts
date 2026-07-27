@@ -14,7 +14,7 @@
  * - Fallback: AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING
  */
 
-import { randomBytes } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { broadcastNotification } from "./webpubsub-manager";
 import { createDistributedCallSessionStore } from "./services/distributed-call-session-store";
 
@@ -110,7 +110,7 @@ export async function initiateACSVideoCall(params: {
     };
   }
 
-  const callId = `acs-call-${Date.now()}-${randomBytes(4).toString("hex")}`;
+  const callId = `acs-call-${randomUUID()}`;
 
   const session: ACSVideoCallSession = {
     callId,
