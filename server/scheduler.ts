@@ -93,11 +93,14 @@ export async function startSchedulers(): Promise<void> {
               totalCreated += toCreate.length;
             }
             if (toUpdate.length > 0) {
-              await Promise.all(
-                toUpdate.map((m) =>
-                  db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!))
-                )
-              );
+const UPDATE_CONCURRENCY = 5;
+              for (let i = 0; i < toUpdate.length; i += UPDATE_CONCURRENCY) {
+                await Promise.all(
+                  toUpdate.slice(i, i + UPDATE_CONCURRENCY).map((m) =>
+                    db.update(materials).set({ ...m, updatedAt: new Date() }).where(eq(materials.ec3Id, m.ec3Id!))
+                  )
+                );
+              }
               totalUpdated += toUpdate.length;
             }
 
