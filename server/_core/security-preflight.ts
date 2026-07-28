@@ -39,6 +39,14 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     const hasOpenAiKey = hasValue("AZURE_OPENAI_API_KEY");
     const allowOpenAiKeyInProd = process.env.ALLOW_AZURE_OPENAI_API_KEY_IN_PROD === "true";
 
+    const managedIdentityClientId =
+        process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID || "";
+    const authClientIds = [
+        process.env.AZURE_AD_CLIENT_ID,
+        process.env.AZURE_CLIENT_ID,
+        process.env.MICROSOFT_CLIENT_ID,
+    ].filter((value): value is string => !!value && value.length > 0);
+
     const hasRedisUrl = hasValue("REDIS_URL");
     const hasRedisHostPort = hasValue("REDIS_HOST") && hasValue("REDIS_PORT");
     const requireRedisCallSessions = process.env.REQUIRE_REDIS_CALL_SESSIONS !== "false";
@@ -97,6 +105,25 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
         add(checks, "Azure Maps Auth", "PASS", "Using managed identity + AZURE_MAPS_CLIENT_ID");
     } else {
         add(checks, "Azure Maps Auth", "WARN", "Managed identity Maps auth not fully configured (requires AZURE_MAPS_CLIENT_ID + MI client id)");
+    }
+
+    if (
+        managedIdentityClientId &&
+        authClientIds.some((clientId) => clientId === managedIdentityClientId)
+    ) {
+        add(
+            checks,
+            "Identity Separation",
+            "FAIL",
+            "Managed identity client ID matches the user-auth app registration client ID. These must be different identities."
+        );
+    } else {
+        add(
+            checks,
+            "Identity Separation",
+            "PASS",
+            "Managed identity and user-auth app registration identities are separated."
+        );
     }
 
     if (hasAcsEndpoint) {
