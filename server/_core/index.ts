@@ -281,25 +281,6 @@ async function startServer() {
       }
     }
 
-    // Guard: managed identity client ID must never equal the user-auth app registration client ID.
-    // Mixing these causes silent auth failures in production.
-    const managedIdentityClientId =
-      process.env.AZURE_MI_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID;
-    const authClientIds = [
-      process.env.AZURE_AD_CLIENT_ID,
-      process.env.AZURE_CLIENT_ID,
-      process.env.MICROSOFT_CLIENT_ID,
-    ].filter((value): value is string => typeof value === "string" && value.length > 0);
-    if (
-      managedIdentityClientId &&
-      authClientIds.some((clientId) => clientId === managedIdentityClientId)
-    ) {
-      console.error(
-        "[startup] FATAL: Managed identity client ID must not equal user-auth app registration client ID. " +
-        "These are different credentials — check Azure Portal."
-      );
-      process.exit(1);
-    }
   }
 
   const app = express();
