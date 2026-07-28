@@ -39,7 +39,7 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     const hasOpenAiKey = hasValue("AZURE_OPENAI_API_KEY");
     const allowOpenAiKeyInProd = process.env.ALLOW_AZURE_OPENAI_API_KEY_IN_PROD === "true";
 
-    const normalizeClientId = (value: string | undefined): string | null => {
+    const normalizeClientId = (value: string | null | undefined): string | null => {
         if (typeof value !== "string") return null;
         const trimmed = value.trim();
         return trimmed.length > 0 ? trimmed.toLowerCase() : null;
@@ -51,13 +51,19 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     ]
         .map(normalizeClientId)
         .filter((value): value is string => value !== null);
-    const authClientIds = [
-        process.env.AZURE_AD_CLIENT_ID,
-        process.env.AZURE_CLIENT_ID,
-        process.env.MICROSOFT_CLIENT_ID,
-    ]
-        .map(normalizeClientId)
-        .filter((value): value is string => value !== null);
+    const defaultOAuthClientId = normalizeClientId("8b597068-9347-4e99-8860-8c4e9a9bc112");
+    const resolvedOAuthClientId = normalizeClientId(process.env.AZURE_AD_CLIENT_ID) ?? defaultOAuthClientId;
+    const authClientIds = Array.from(
+        new Set(
+            [
+                resolvedOAuthClientId,
+                process.env.AZURE_CLIENT_ID,
+                process.env.MICROSOFT_CLIENT_ID,
+            ]
+                .map(normalizeClientId)
+                .filter((value): value is string => value !== null)
+        )
+    );
 
     const hasRedisUrl = hasValue("REDIS_URL");
     const hasRedisHostPort = hasValue("REDIS_HOST") && hasValue("REDIS_PORT");
