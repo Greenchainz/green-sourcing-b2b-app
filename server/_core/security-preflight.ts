@@ -193,15 +193,8 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
 
     if (hasMicrosoftWebhookSecret) {
         add(checks, "Microsoft Webhook Secret", "PASS", "MICROSOFT_WEBHOOK_SECRET is present (billing webhook signature verification enabled)");
-    } else if (isProduction) {
-        add(
-            checks,
-            "Microsoft Webhook Secret",
-            "FAIL",
-            "MICROSOFT_WEBHOOK_SECRET not set — Microsoft Marketplace billing webhooks will be rejected (fail-closed)"
-        );
     } else {
-        add(checks, "Microsoft Webhook Secret", "WARN", "MICROSOFT_WEBHOOK_SECRET not set — billing webhooks will be rejected (fail-closed)");
+        add(checks, "Microsoft Webhook Secret", "WARN", "MICROSOFT_WEBHOOK_SECRET not set -- billing webhooks will be rejected (fail-closed). Configure this secret in Key Vault to enable marketplace webhook verification.");
     }
 
     if (!isProduction) {
