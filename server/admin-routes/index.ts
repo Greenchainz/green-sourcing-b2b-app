@@ -162,14 +162,114 @@ export function registerAdminRoutes(
         return;
       }
 
+      // Fetch live business context to ground the AI in real numbers
+      let liveContext = "";
+      try {
+        const { getDb } = await import('../db');
+        const { sql } = await import("drizzle-orm");
+        const db = await getDb();
+        if (db) {
+          // Core business counts
+          const countsResult = await db.execute<{
+            suppliers_count: string | number;
+            rfqs_count: string | number;
+            leads_count: string | number;
+            pending_emails: string | number;
+            sent_emails: string | number;
+            failed_emails: string | number;
+          }>(sql`
+            SELECT
+              (SELECT COUNT(*) FROM suppliers) AS suppliers_count,
+              (SELECT COUNT(*) FROM rfqs) AS rfqs_count,
+              (SELECT COUNT(*) FROM crm_contacts) AS leads_count,
+              (SELECT COUNT(*) FROM crm_email_sequences WHERE status = 'pending') AS pending_emails,
+              (SELECT COUNT(*) FROM crm_email_sequences WHERE status = 'sent') AS sent_emails,
+              (SELECT COUNT(*) FROM crm_email_sequences WHERE status = 'failed') AS failed_emails
+          `);
+          const c = countsResult.rows[0];
+          liveContext += `\n## Live GreenChainz Business Data (as of now)\n`;
+          liveContext += `- Suppliers on platform: ${Number(c?.suppliers_count ?? 0)}\n`;
+          liveContext += `- RFQs submitted: ${Number(c?.rfqs_count ?? 0)}\n`;
+          liveContext += `- CRM leads: ${Number(c?.leads_count ?? 0)}\n`;
+          liveContext += `- Outreach emails pending: ${Number(c?.pending_emails ?? 0)}, sent: ${Number(c?.sent_emails ?? 0)}, failed: ${Number(c?.failed_emails ?? 0)}\n`;
+
+          // Recent scraper activity
+          const scrapersResult = await db.execute<{
+            scraper_name: string;
+            status: string;
+            records_found: string | number | null;
+            started_at: Date | string | null;
+          }>(sql`
+            SELECT DISTINCT ON (scraper_name) scraper_name, status, records_found, started_at
+            FROM scraper_runs
+            ORDER BY scraper_name, started_at DESC
+            LIMIT 10
+          `).catch(() => ({ rows: [] as Array<{ scraper_name: string; status: string; records_found: string | number | null; started_at: Date | string | null }> }));
+          if (scrapersResult.rows.length > 0) {
+            liveContext += `- Recent scraper activity:\n`;
+            for (const row of scrapersResult.rows) {
+              const records = row.records_found != null ? ` (${Number(row.records_found)} records)` : "";
+              const ran = row.started_at ? ` — last ran ${new Date(row.started_at).toLocaleDateString()}` : "";
+              liveContext += `  • ${row.scraper_name}: ${row.status}${records}${ran}\n`;
+            }
+          }
+
+          // Recent leads breakdown by category
+          const categoryResult = await db.execute<{
+            category: string | null;
+            count: string | number;
+          }>(sql`
+            SELECT category, COUNT(*) AS count
+            FROM crm_contacts
+            WHERE category IS NOT NULL
+            GROUP BY category
+            ORDER BY count DESC
+            LIMIT 8
+          `).catch(() => ({ rows: [] as Array<{ category: string | null; count: string | number }> }));
+          if (categoryResult.rows.length > 0) {
+            liveContext += `- Lead categories: ${categoryResult.rows.map((r) => `${r.category} (${Number(r.count)})`).join(", ")}\n`;
+          }
+        }
+      } catch (ctxErr) {
+        // Non-fatal — AI still works without live context
+        console.warn("[admin] AI chat context fetch failed:", ctxErr);
+      }
+
+      // Optionally enrich with Fabric workspace items
+      let fabricContext = "";
+      const fabricWorkspaceId = process.env.FABRIC_WORKSPACE_ID ?? "";
+      if (fabricWorkspaceId) {
+        try {
+          const fabricToken = await getClientCredentialsToken("https://api.fabric.microsoft.com/.default");
+          const fabricResponse = await fetch(
+            `https://api.fabric.microsoft.com/v1/workspaces/${encodeURIComponent(fabricWorkspaceId)}/items`,
+            { headers: { Authorization: `Bearer ${fabricToken}` } }
+          );
+          if (fabricResponse.ok) {
+            const fabricPayload = await fabricResponse.json() as {
+              value?: Array<{ displayName?: string; type?: string }>;
+            };
+            const items = fabricPayload.value ?? [];
+            if (items.length > 0) {
+              fabricContext = `\n## Microsoft Fabric Workspace\n- Items: ${items.map((i) => `${i.displayName ?? "unnamed"} (${i.type ?? "unknown"})`).join(", ")}\n`;
+            }
+          }
+        } catch (fabricErr) {
+          console.warn("[admin] AI chat Fabric context fetch failed:", fabricErr);
+        }
+      }
+
+      const systemPrompt =
+        "You are the founder's internal GreenChainz AI copilot. GreenChainz is a B2B marketplace for verified sustainable building materials, targeting architects and contractors. " +
+        "Prioritize: supplier onboarding to hit 50 verified suppliers, RFQ conversion, lead progression through the CRM, and actionable growth decisions. " +
+        "Keep answers concise, practical, and revenue-focused. Use the live business data below to give grounded, specific answers — not generic advice." +
+        liveContext +
+        fabricContext;
+
       const { invokeLLM } = await import('../_core/llm');
       const result = await invokeLLM({
         messages: [
-          {
-            role: "system",
-            content:
-              "You are the founder's internal GreenChainz AI copilot. GreenChainz is a B2B marketplace for verified sustainable building materials. Prioritize supplier onboarding, RFQ conversion, lead progression, and actionable growth decisions. Keep answers concise, practical, and revenue-focused.",
-          },
+          { role: "system", content: systemPrompt },
           ...messages.map((message) => ({
             role: message.role,
             content: message.content,
