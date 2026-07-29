@@ -14,7 +14,7 @@
  *   - lib/azure/postgres.ts is DEAD (zero importers) — delete it when convenient.
  */
 
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -106,6 +106,22 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 }
 
 export async function getUserByOpenId(openId: string) {
+  const resolvedDb = await getDb();
+  if (!resolvedDb) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await resolvedDb
+    .select()
+    .from(users)
+    .where(and(eq(users.openId, openId), isNull(users.deletedAt)))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByOpenIdIncludingDeleted(openId: string) {
   const resolvedDb = await getDb();
   if (!resolvedDb) {
     console.warn("[Database] Cannot get user: database not available");

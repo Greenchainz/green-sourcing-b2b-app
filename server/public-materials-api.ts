@@ -89,14 +89,7 @@ async function verifyExtensionToken(req: Request): Promise<string | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
-  try {
-    const payload = await sdk.verifySession(token);
-    if (!payload) return null;
-    if ((payload as Record<string, unknown>).ext !== 'forma') return null;
-    return payload.openId;
-  } catch {
-    return null;
-  }
+  return sdk.verifyFormaToken(token);
 }
 
 // ── GET /api/public/materials/search ─────────────────────────────────────────

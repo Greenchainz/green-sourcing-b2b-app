@@ -27,6 +27,7 @@ import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { unsubscribeRouter } from "../unsubscribe-route";
 import { specSheetRouter } from "../spec-sheet-router";
 import { registerAdminRoutes } from "../admin-routes/index";
+import { registerIntelligenceRoutes } from "../intelligence-routes";
 import { publicMaterialsRouter } from "../public-materials-api";
 import { registerPdfRoutes } from "../admin-routes/pdf-routes";
 import { registerMobileMessagesRoutes } from "../admin-routes/mobile-messages";
@@ -43,6 +44,13 @@ import { runStartupSecurityPreflight } from "./security-preflight";
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
   const counts = new Map<string, { count: number; resetAt: number }>();
+  // Prune expired entries every 5 min to prevent unbounded memory growth
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of counts) {
+      if (entry.resetAt < now) counts.delete(key);
+    }
+  }, 5 * 60_000).unref();
   return function rateLimitMiddleware(
     req: express.Request,
     res: express.Response,
@@ -273,19 +281,6 @@ async function startServer() {
       }
     }
 
-    // Guard: managed identity client ID must never equal the app client ID.
-    // Mixing these causes silent auth failures in production.
-    if (
-      process.env.MANAGED_IDENTITY_CLIENT_ID &&
-      process.env.MICROSOFT_CLIENT_ID &&
-      process.env.MANAGED_IDENTITY_CLIENT_ID === process.env.MICROSOFT_CLIENT_ID
-    ) {
-      console.error(
-        "[startup] FATAL: MANAGED_IDENTITY_CLIENT_ID must not equal MICROSOFT_CLIENT_ID. " +
-        "These are different credentials — check Azure Portal."
-      );
-      process.exit(1);
-    }
   }
 
   const app = express();
@@ -718,6 +713,7 @@ async function startServer() {
 
   // ── Delegated route groups ────────────────────────────────────────────────
   registerAdminRoutes(app, adminRateLimit);
+  registerIntelligenceRoutes(app, adminRateLimit);
   registerPdfRoutes(app, rfqPdfRateLimit, materialScorePdfRateLimit);
   registerMobileMessagesRoutes(app);
 

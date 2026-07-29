@@ -1365,8 +1365,8 @@ async function seed() {
 
     const specId = inserted.id;
 
-    for (const c of assembly.components) {
-      await db.insert(ewsCarbonComponents).values({
+    if (assembly.components.length > 0) {
+      const componentsToInsert = assembly.components.map((c) => ({
         assemblySpecId: specId,
         zone: c.zone,
         layerOrder: c.layerOrder,
@@ -1382,7 +1382,9 @@ async function seed() {
         msfFactor: c.msfFactor,
         carbonPer1000sf: c.carbonPer1000sf,
         notes: c.notes,
-      });
+      }));
+
+      await db.insert(ewsCarbonComponents).values(componentsToInsert);
     }
 
     console.log(`  ✓  ${assembly.name}  (${assembly.components.length} components)`);

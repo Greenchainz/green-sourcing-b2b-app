@@ -16,7 +16,7 @@
 
 import { getDb } from "../db";
 import { suppliers } from "../../drizzle/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, isNull } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -197,6 +197,7 @@ export async function matchSuppliersForRfx(
         and(
           eq(suppliers.verificationStatus, "approved"),
           gt(suppliers.leadCredits, 0),
+          isNull(suppliers.deletedAt),
         )
       );
 

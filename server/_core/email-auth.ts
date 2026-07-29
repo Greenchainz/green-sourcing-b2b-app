@@ -251,7 +251,7 @@ export function registerEmailAuthRoutes(app: Express): void {
       await ensureTable();
 
       const result = await pool.query(
-        `SELECT ec.salt, ec.hash, ec."userId", u."openId", u.name, u.role
+        `SELECT ec.salt, ec.hash, ec."userId", u."openId", u.name, u.role, u.deleted_at AS "deletedAt"
            FROM email_credentials ec
            JOIN users u ON u.id = ec."userId"
           WHERE ec.email = $1`,
@@ -264,6 +264,10 @@ export function registerEmailAuthRoutes(app: Express): void {
       }
 
       const row = result.rows[0];
+      if (row.deletedAt) {
+        return void res.status(403).json({ error: "This account has been deactivated. Contact support." });
+      }
+
       const salt = Buffer.isBuffer(row.salt) ? row.salt : Buffer.from(row.salt);
       const hash = Buffer.isBuffer(row.hash) ? row.hash : Buffer.from(row.hash);
 

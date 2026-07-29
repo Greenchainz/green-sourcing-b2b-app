@@ -58,9 +58,9 @@ const ROUTE_SEO_FALLBACKS: Record<string, { title: string; description: string; 
     canonicalPath: "/insider",
   },
   "/manufacturers": {
-    title: "Verified Sustainable Manufacturers Directory | GreenChainz",
+    title: "Supplier Spotlight: Emerging Sustainable Manufacturers | GreenChainz",
     description:
-      "Browse verified sustainable manufacturers, review product documentation, and discover suppliers ready for specification.",
+      "A curated spotlight on new and emerging sustainable material manufacturers. To source, search materials by carbon, EPD, price and lead time — or start an RFQ.",
     canonicalPath: "/manufacturers",
   },
   "/privacy": {
@@ -142,7 +142,6 @@ const RfqDetail = lazy(() => import("./pages/RfqDetail"));
 const Compare = lazy(() => import("./pages/Compare"));
 const CarbonCompare = lazy(() => import("./pages/CarbonCompare"));
 const CarbonDashboard = lazy(() => import("./pages/CarbonDashboard"));
-// TODO: verify no external links to /supplier-dashboard, then remove this import and SupplierDashboard.tsx
 const BuyerRfqDashboard = lazy(() => import("./pages/BuyerRfqDashboard"));
 const RfqDashboard = lazy(() => import("./pages/RfqDashboard"));
 const SupplierRegistration = lazy(() =>
@@ -173,6 +172,7 @@ const AdminSupplierDashboard = lazy(() =>
   import("./pages/AdminSupplierDashboard").then((m) => ({ default: m.AdminSupplierDashboard }))
 );
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminManufacturers = lazy(() => import("./pages/AdminManufacturers"));
 const CrmDashboard = lazy(() => import("./pages/admin/CrmDashboard"));
 const ConciergeDashboard = lazy(() => import("./pages/admin/ConciergeDashboard"));
 const AboutVideos = lazy(() => import("./pages/admin/AboutVideos"));
@@ -282,6 +282,7 @@ function Router() {
       <Route path="/admin/verification" component={AdminVerificationQueue} />
       <Route path="/admin/verification-queue">{() => <Redirect to="/admin/verification" />}</Route>
       <Route path="/admin/suppliers" component={AdminSupplierDashboard} />
+      <Route path="/admin/manufacturers" component={AdminManufacturers} />
       <Route path="/admin/users">{() => <Redirect to="/admin?tab=users" />}</Route>
       <Route path="/admin/crm" component={CrmDashboard} />
       <Route path="/admin/concierge" component={ConciergeDashboard} />
@@ -468,6 +469,7 @@ function ArchitectOnboardingGuard() {
         path === "/" ||
         path === "/get-started" ||
         path === "/pricing" ||
+        path === "/for-suppliers" ||
         path === "/features" ||
         path === "/about" ||
         path === "/terms" ||

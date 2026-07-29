@@ -42,7 +42,10 @@ export default function SubmittalLogPage() {
   const [selectedSubmittalId, setSelectedSubmittalId] = useState<number | null>(null);
 
   const status = statusFilter === "all" ? undefined : statusFilter;
-  const listQuery = trpc.submittals.listMine.useQuery({ status, limit: 200 });
+  const listQuery = trpc.submittals.listMine.useQuery(
+    { status, limit: 200 },
+    { placeholderData: prev => prev }
+  );
   const detailQuery = trpc.submittals.getById.useQuery(
     { submittalId: selectedSubmittalId ?? 0 },
     { enabled: selectedSubmittalId !== null },
