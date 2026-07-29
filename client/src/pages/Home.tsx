@@ -5,8 +5,15 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import SEOHead from '../components/SEOHead';
 import StructuredData, { homepageSchema, faqPageSchema } from '../components/StructuredData';
+import { trpc } from '../lib/trpc';
+import { openArcade } from '../components/arcade/arcadeBus';
 
 export default function Home() {
+  const { data: arcadeTop } = trpc.arcade.topScores.useQuery(
+    { gameId: "green-round", limit: 1 },
+    { staleTime: 60_000 }
+  );
+  const leader = arcadeTop?.scores[0] ?? null;
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead
@@ -89,6 +96,46 @@ export default function Home() {
               <span className="px-4 py-1.5 rounded-full border border-primary/30 bg-background text-sm font-medium text-foreground">
                 Verified Suppliers
               </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 🏌️ Golf Prize Strip — Season 1 */}
+      <section className="py-5 bg-gradient-to-r from-emerald-950 via-zinc-950 to-black border-y border-emerald-800/30">
+        <div className="container">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-3xl mx-auto">
+            <div className="flex items-center gap-3 text-center sm:text-left">
+              <span className="text-2xl shrink-0">🏌️</span>
+              <div>
+                <p className="text-sm font-bold text-white leading-tight">
+                  Play The Round · Win $500
+                </p>
+                <p className="text-xs text-emerald-400 mt-0.5">
+                  Season 1 ends Aug 1 2026
+                  {leader && (
+                    <span className="text-emerald-300">
+                      {" "}· Top score: {leader.initials} {leader.score.toLocaleString()} pts
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {leader && (
+                <button
+                  type="button"
+                  onClick={() => openArcade({ gameId: "green-round", reason: "home-strip" })}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
+                >
+                  Can you beat {leader.initials}?
+                </button>
+              )}
+              <Link href="/arcade">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs px-4 py-2 transition-colors cursor-pointer">
+                  ⛳ See Leaderboard
+                </span>
+              </Link>
             </div>
           </div>
         </div>

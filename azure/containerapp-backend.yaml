@@ -183,7 +183,7 @@ properties:
           # ─────────────────────────────────────────────────────────────
           # Azure AD Authentication (Entra app registration — user sign-in only)
           # App registration 8b597068-9347-4e99-8860-8c4e9a9bc112
-          # Do NOT use this for Azure resource access — use MANAGED_IDENTITY_CLIENT_ID instead.
+          # Do NOT use this for Azure resource access — Container Apps uses managed identity.
           # ─────────────────────────────────────────────────────────────
           - name: AZURE_AD_CLIENT_ID
             secretRef: azure-client-id
@@ -198,13 +198,9 @@ properties:
           - name: AZURE_TENANT_ID
             secretRef: azure-tenant-id
 
-          # ─────────────────────────────────────────────────────────────
-          # User-Assigned Managed Identity (Azure resource access — NOT user sign-in)
-          # Identity: id-greenchainz-backend (rg-greenchainz-prod-container)
-          # Client ID: fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e
-          # ─────────────────────────────────────────────────────────────
-          - name: MANAGED_IDENTITY_CLIENT_ID
-            value: "fbfc75a8-97d1-4c3d-9236-fe1d2fe86d3e"
+          # Uses system-assigned managed identity for Azure resource access.
+          # Do not set MANAGED_IDENTITY_CLIENT_ID here; CI/CD removes it to avoid
+          # stale user-assigned identity drift.
 
           # ─────────────────────────────────────────────────────────────
           # Intercom & Internal API

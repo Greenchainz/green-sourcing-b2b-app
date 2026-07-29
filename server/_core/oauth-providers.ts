@@ -29,6 +29,37 @@ function buildRedirectUri(_req: Request, provider: string): string {
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
+// Trusted external origins that may receive a short-lived auth code via returnPath redirect.
+// After OAuth completes the user is redirected to the returnPath with ?code=<uuid>.
+// The Forma extension exchanges that code at GET /api/auth/forma-token for a
+// short-lived JWT carrying ext:'forma', which it can then use against /api/public/*.
+const ALLOWED_EXTERNAL_ORIGINS: readonly string[] = [
+  "https://forma.greenchainz.com",
+];
+
+// Single-use auth-code store for the Forma extension token-exchange flow.
+// code → { openId, name, expiresAt }  (expires in 5 min; deleted on first use)
+const FORMA_CODE_TTL_MS = 5 * 60 * 1000;
+const formaAuthCodes = new Map<string, { openId: string; name: string; expiresAt: number }>();
+
+function pruneFormaAuthCodes(): void {
+  const now = Date.now();
+  for (const [code, entry] of formaAuthCodes) {
+    if (entry.expiresAt < now) formaAuthCodes.delete(code);
+  }
+}
+
+function isAllowedReturnPath(raw: string): boolean {
+  if (typeof raw !== "string" || !raw) return false;
+  if (/^\/(?!\/)/.test(raw)) return true; // relative path on same origin
+  // Use string-prefix matching to avoid potential URL-parser quirks in the deployed env.
+  // An absolute returnPath is allowed when it starts with an allowlisted origin.
+  const allowed = ALLOWED_EXTERNAL_ORIGINS.some(
+    (origin) => raw === origin || raw.startsWith(origin + "/")
+  );
+  return allowed;
+}
+
 type OAuthRole = "supplier" | "buyer" | null;
 
 interface OAuthStatePayload {
@@ -91,7 +122,7 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
       return null;
     }
 
-    const safeReturnPath = /^\/(?!\/)/.test(payload.returnPath) ? payload.returnPath : "/";
+    const safeReturnPath = isAllowedReturnPath(payload.returnPath) ? payload.returnPath : "/";
     const safeRole: OAuthRole = payload.role === "supplier" || payload.role === "buyer" ? payload.role : null;
     return { returnPath: safeReturnPath, role: safeRole };
   } catch {
@@ -357,7 +388,7 @@ export function registerOAuthProviderRoutes(app: Express) {
   app.get("/api/auth/:provider", (req: Request, res: Response) => {
     const provider = Array.isArray(req.params.provider) ? req.params.provider[0] : req.params.provider;
     const rawReturnPath = (req.query.returnPath as string) || "/";
-    const returnPath = /^\/(?!\/)/.test(rawReturnPath) ? rawReturnPath : "/";
+    const returnPath = isAllowedReturnPath(rawReturnPath) ? rawReturnPath : "/";
     const requestedRole = (req.query.role as string) || null;
     const role: OAuthRole = requestedRole === "supplier" || requestedRole === "buyer" ? requestedRole : null;
 
@@ -432,28 +463,26 @@ export function registerOAuthProviderRoutes(app: Express) {
           return;
       }
 
-      // Determine role: admin if greenchainz.com email, else use provided role or default to buyer
+      // Determine role.
       let assignedRole: "buyer" | "supplier" | "admin" | "user" = "buyer";
-      if (userInfo.email?.endsWith("@greenchainz.com")) {
-        assignedRole = "admin";
-      } else if (role === "supplier") {
+      if (role === "supplier") {
         assignedRole = "supplier";
       } else if (role === "buyer") {
         assignedRole = "buyer";
       }
 
-      // Check if this is a new user before upserting
-      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      // Check if this is a new user before upserting.
+      const existingUser = await db.getUserByOpenIdIncludingDeleted(userInfo.openId);
+      if (existingUser?.deletedAt) {
+        res.redirect(302, `/login?error=${encodeURIComponent("This account has been deactivated. Contact support.")}`);
+        return;
+      }
       const isNewUser = !existingUser;
 
-      // Preserve existing role unless we need to elevate an internal account.
+      // Preserve existing role.
       let roleForUpsert: "buyer" | "supplier" | "admin" | "user" | undefined = assignedRole;
       if (existingUser?.role) {
-        if (existingUser.role !== "admin" && userInfo.email?.endsWith("@greenchainz.com")) {
-          roleForUpsert = "admin";
-        } else {
-          roleForUpsert = undefined;
-        }
+        roleForUpsert = undefined;
       }
 
       await db.upsertUser({
@@ -485,11 +514,54 @@ export function registerOAuthProviderRoutes(app: Express) {
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie("app_session_id", sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-      res.redirect(302, returnPath || "/");
+
+      // For external allowlisted origins (e.g. the Forma extension auth-callback page),
+      // issue a short-lived single-use code instead of embedding the session JWT in the
+      // URL (which would expose a 1-year bearer token to logs and browser history).
+      // The Forma extension exchanges the code at GET /api/auth/forma-token for a
+      // short-lived JWT with ext:'forma' that can authenticate /api/public/* calls.
+      let finalRedirect = returnPath || "/";
+      try {
+        const u = new URL(finalRedirect);
+        if (ALLOWED_EXTERNAL_ORIGINS.includes(u.origin)) {
+          pruneFormaAuthCodes();
+          const code = crypto.randomUUID();
+          formaAuthCodes.set(code, {
+            openId: userInfo.openId,
+            name: userInfo.name ?? "",
+            expiresAt: Date.now() + FORMA_CODE_TTL_MS,
+          });
+          u.searchParams.set("code", code);
+          finalRedirect = u.toString();
+        }
+      } catch {
+        // relative path — no external code needed
+      }
+      res.redirect(302, finalRedirect);
     } catch (err) {
       console.error(`[Auth] Callback failed for ${provider}:`, err);
       res.redirect(302, `/login?error=callback_failed`);
     }
+  });
+
+  // ── GET /api/auth/forma-token?code=<uuid> ────────────────────────────────
+  // Exchanges a single-use short-lived auth code (issued during the OAuth
+  // callback redirect to an allowlisted external origin) for a Forma extension
+  // JWT carrying ext:'forma'. The extension uses that token as a Bearer token
+  // against /api/public/* endpoints.
+  app.get("/api/auth/forma-token", async (req: Request, res: Response) => {
+    const code = typeof req.query.code === "string" ? req.query.code.trim() : null;
+    if (!code) return res.status(400).json({ error: "Missing code" });
+
+    const entry = formaAuthCodes.get(code);
+    formaAuthCodes.delete(code); // single-use regardless of outcome
+
+    if (!entry || Date.now() > entry.expiresAt) {
+      return res.status(401).json({ error: "Invalid or expired code" });
+    }
+
+    const token = await sdk.createFormaExtensionToken(entry.openId, entry.name);
+    return res.json({ token });
   });
 
 }

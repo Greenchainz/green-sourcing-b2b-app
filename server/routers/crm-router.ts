@@ -34,10 +34,11 @@ import {
 } from "../services/outreach-email-service";
 import { sendSupplierClaimConfirmationEmail } from "../email-service";
 import type { TrpcContext } from "../_core/context";
+import { canAccessAdmin } from "../_core/admin-access";
 
 // ── Guard: admin only ──────────────────────────────────────────────────────────
 function requireAdmin(ctx: Pick<TrpcContext, "user">) {
-  if (ctx.user?.role !== "admin") {
+  if (!canAccessAdmin(ctx.user)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin only" });
   }
 }

@@ -17,7 +17,7 @@ export const supplierRfqRouter = router({
     const [supplier] = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.userId, ctx.user.id))
+      .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
       .limit(1);
 
     if (!supplier) {
@@ -49,12 +49,12 @@ export const supplierRfqRouter = router({
       const [supplier] = await db
         .select({ id: suppliers.id })
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       const role = ctx.auth?.role;
       if (!supplier && role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "A supplier account is required to view available RFQs" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
       }
 
       const allRfqs = await db
@@ -131,11 +131,11 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier.length) {
-        throw new Error("Supplier not found");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
       }
 
       // Check if bid already exists
@@ -202,7 +202,7 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier.length) {
@@ -244,11 +244,11 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier.length) {
-        throw new Error("Supplier not found");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
       }
 
       const bid = await db
@@ -286,11 +286,11 @@ export const supplierRfqRouter = router({
       const supplier = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier.length) {
-        throw new Error("Supplier not found");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Supplier account is not active" });
       }
 
       // Verify bid belongs to supplier
@@ -329,7 +329,7 @@ export const supplierRfqRouter = router({
     const [supplier] = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.userId, ctx.user.id))
+      .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
       .limit(1);
 
     if (!supplier) {
@@ -369,7 +369,7 @@ export const supplierRfqRouter = router({
       const [supplier] = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.userId, ctx.user.id))
+        .where(and(eq(suppliers.userId, ctx.user.id), isNull(suppliers.deletedAt)))
         .limit(1);
 
       if (!supplier || !supplier.latitude || !supplier.longitude) {

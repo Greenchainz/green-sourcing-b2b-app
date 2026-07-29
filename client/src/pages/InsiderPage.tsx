@@ -4,6 +4,8 @@ import { InsiderDashboard } from "@/components/InsiderDashboard";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 import {
   Flame,
   Award,
@@ -15,6 +17,8 @@ import {
   Users,
   CheckCircle2,
 } from "lucide-react";
+import { openArcade } from "@/components/arcade/arcadeBus";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CREDIT_ACTIONS = [
   { action: "Weekly Check-in", credits: 1, icon: CheckCircle2, description: "Check in once per week to maintain your streak" },
@@ -46,10 +50,18 @@ const TIER_INFO = [
 ];
 
 export default function InsiderPage() {
+  const { user } = useAuth();
   const { data: leaderboard, isLoading: lbLoading } = trpc.engagement.getLeaderboard.useQuery(
     undefined,
     { staleTime: 60_000 }
   );
+
+  // Arcade — Season 1 top score for The Round (public board)
+  const { data: roundBoard } = trpc.arcade.topScores.useQuery(
+    { gameId: "green-round", limit: 3 },
+    { staleTime: 60_000 }
+  );
+  const leader = roundBoard?.scores[0] ?? null;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -72,6 +84,96 @@ export default function InsiderPage() {
 
           {/* Dashboard widget (full size) */}
           <InsiderDashboard />
+
+          {/* ⛳ Arcade Season 1 — prominent CTA */}
+          <Card className="border-amber-500/40 bg-gradient-to-br from-emerald-950/60 via-zinc-900 to-black overflow-hidden">
+            <CardContent className="p-0">
+              <div className="flex flex-col md:flex-row items-stretch">
+                {/* Left: season info */}
+                <div className="flex-1 p-6 space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className="bg-amber-500 text-black font-bold text-xs px-2.5 py-0.5 rounded-full animate-pulse">
+                      SEASON 1 LIVE
+                    </Badge>
+                    <Badge className="bg-emerald-700 text-white font-bold text-xs px-2.5 py-0.5 rounded-full">
+                      $500 PRIZE
+                    </Badge>
+                  </div>
+                  <h2 className="text-lg font-bold text-white leading-snug">
+                    ⛳ Play The Round — Championship Golf
+                  </h2>
+                  <p className="text-sm text-emerald-300 leading-relaxed">
+                    Top score on The Round when Season 1 ends{" "}
+                    <span className="font-semibold text-white">Aug 1 2026</span> wins{" "}
+                    <span className="font-semibold text-amber-400">$500 cash</span>.
+                    {leader && (
+                      <span className="block mt-1 text-emerald-400">
+                        Current leader: <span className="text-white font-bold">{leader.initials}</span>{" "}
+                        with{" "}
+                        <span className="text-amber-400 font-bold">
+                          {leader.score.toLocaleString()} pts
+                        </span>
+                        {leader.company && ` · ${leader.company}`}
+                      </span>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-3 pt-1 flex-wrap">
+                    <Button
+                      onClick={() => openArcade({ gameId: "green-round", reason: "insider-cta" })}
+                      className="bg-amber-400 hover:bg-amber-300 text-black font-bold text-sm px-5 py-2 shadow-md hover:shadow-amber-400/40 transition-all"
+                    >
+                      ⛳ Play The Round
+                    </Button>
+                    <Link href="/arcade">
+                      <span className="text-xs text-emerald-400 hover:text-emerald-300 underline underline-offset-2 cursor-pointer transition-colors">
+                        View full leaderboard →
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Right: mini top-3 board */}
+                <div className="md:w-52 bg-black/30 border-t md:border-t-0 md:border-l border-emerald-900/40 p-4 flex flex-col justify-center">
+                  <p className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold mb-3">
+                    Top 3 · The Round
+                  </p>
+                  {!roundBoard?.scores.length ? (
+                    <p className="text-xs text-muted-foreground">No scores yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {roundBoard.scores.map((entry) => {
+                        const medal =
+                          entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉";
+                        return (
+                          <div
+                            key={`${entry.rank}-${entry.initials}`}
+                            className="flex items-center gap-2"
+                          >
+                            <span className="text-sm">{medal}</span>
+                            <span className="text-xs font-semibold text-white truncate flex-1">
+                              {entry.initials}
+                            </span>
+                            <span className="text-xs text-amber-400 font-bold tabular-nums shrink-0">
+                              {entry.score.toLocaleString()}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {user && (
+                    <p className="text-[10px] text-emerald-600 mt-4 leading-snug">
+                      Signed in as{" "}
+                      <span className="text-emerald-400 font-semibold">
+                        {user.name ?? user.email}
+                      </span>
+                      . Submit a score to claim your rank.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Leaderboard */}
           <Card className="border-emerald-500/20">

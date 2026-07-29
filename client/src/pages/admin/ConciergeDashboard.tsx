@@ -313,10 +313,13 @@ function ArchitectPicker({
   onSelect: (a: ArchitectLead) => void;
 }) {
   const [search, setSearch] = useState("");
-  const { data, isLoading } = trpc.concierge.findArchitectLeads.useQuery({
-    search: search.length > 1 ? search : undefined,
-    limit: 20,
-  });
+  const { data, isLoading } = trpc.concierge.findArchitectLeads.useQuery(
+    {
+      search: search.length > 1 ? search : undefined,
+      limit: 20,
+    },
+    { placeholderData: prev => prev }
+  );
 
   return (
     <div>
@@ -481,10 +484,13 @@ function SendConfirmDialog({
 // ─── Sent Log ─────────────────────────────────────────────────────────────────
 
 function SentLog() {
-  const { data, isLoading, refetch } = trpc.concierge.listSentRoutes.useQuery({
-    limit: 50,
-    offset: 0,
-  });
+  const { data, isLoading, refetch } = trpc.concierge.listSentRoutes.useQuery(
+    {
+      limit: 50,
+      offset: 0,
+    },
+    { placeholderData: prev => prev }
+  );
   const markReplied = trpc.concierge.markReplied.useMutation({
     onSuccess: () => {
       toast.success("Marked as replied");
