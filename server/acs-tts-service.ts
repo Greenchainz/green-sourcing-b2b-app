@@ -73,7 +73,8 @@ export interface TtsCallResult {
  */
 export async function sendTtsCall(options: TtsCallOptions): Promise<TtsCallResult> {
   // Outbound calls use the local number (+14175014967); SMS uses toll-free (+18333236128)
-  const fromNumber = process.env.ACS_LOCAL_NUMBER ?? process.env.ACS_TOLL_FREE_NUMBER ?? '';
+  const configuredFrom = process.env.ACS_LOCAL_NUMBER ?? process.env.ACS_TOLL_FREE_NUMBER ?? '';
+  const fromNumber = normalizePhoneE164(configuredFrom);
   if (!fromNumber) {
     return { success: false, error: 'ACS_LOCAL_NUMBER (or ACS_TOLL_FREE_NUMBER) is not set' };
   }
@@ -137,7 +138,8 @@ function storePendingTts(callConnectionId: string, text: string, voice: AcsVoice
   _pendingTts.set(callConnectionId, { text, voice, createdAt: Date.now() });
 
   // Clean up stale entries after 10 minutes
-  setTimeout(() => _pendingTts.delete(callConnectionId), 10 * 60 * 1000);
+  const cleanupTimer = setTimeout(() => _pendingTts.delete(callConnectionId), 10 * 60 * 1000);
+  cleanupTimer.unref();
 }
 
 export function getPendingTts(callConnectionId: string): PendingTts | undefined {

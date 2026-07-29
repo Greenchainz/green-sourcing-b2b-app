@@ -43,7 +43,8 @@ export async function sendSms(
   message: string,
   from?: string,
 ): Promise<SmsSendResult> {
-  const fromNumber = from ?? process.env.ACS_TOLL_FREE_NUMBER ?? '';
+  const configuredFrom = from ?? process.env.ACS_TOLL_FREE_NUMBER ?? '';
+  const fromNumber = normalizePhoneE164(configuredFrom);
   if (!fromNumber) {
     console.error('[ACS SMS] ACS_TOLL_FREE_NUMBER is not set');
     return { to, success: false, error: 'Sender number not configured' };
