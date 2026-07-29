@@ -1,5 +1,3 @@
-import { useEffect, useRef, useState } from "react";
-import { AlertCircle, VolumeX } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Card } from "../components/ui/card";
@@ -7,32 +5,20 @@ import SEOHead from "../components/SEOHead";
 import StructuredData, { aboutPageSchema } from "../components/StructuredData";
 import { trpc } from "../lib/trpc";
 
-export default function About() {
-  const [videoError, setVideoError] = useState<string | null>(null);
+// Extract an 11-char YouTube video ID from a full URL or bare ID.
+function parseYoutubeId(input: string): string {
+  const m = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/.exec(input);
+  return m ? m[1] : input.slice(0, 20);
+}
 
-  const aboutVideoQuery = trpc.founderVideo.aboutVideo.useQuery(undefined, {
+export default function About() {
+  const aboutVideosQuery = trpc.founderVideo.aboutVideos.useQuery(undefined, {
     retry: false,
     meta: { suppressGlobalErrorLogging: true },
   });
 
-  const resolvedVideoUrl = aboutVideoQuery.data?.videoUrl ?? "";
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const videos = aboutVideosQuery.data?.videos ?? [];
 
-  const showLoading = aboutVideoQuery.isLoading;
-  const showUnavailable =
-    !showLoading && !resolvedVideoUrl && !aboutVideoQuery.error;
-
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-
-    const onVolumeChange = () => setIsMuted(el.muted);
-    setVideoError(null);
-    setIsMuted(el.muted);
-    el.addEventListener("volumechange", onVolumeChange);
-    return () => el.removeEventListener("volumechange", onVolumeChange);
-  }, [resolvedVideoUrl]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -87,68 +73,26 @@ export default function About() {
                 </p>
               </div>
 
-              <div className="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl">
-                {showLoading ? (
-                  <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                    Loading video…
+              <div className="space-y-6">
+                {aboutVideosQuery.isLoading ? (
+                  <div className="relative aspect-video overflow-hidden rounded-2xl bg-secondary animate-pulse" />
+                ) : videos.length === 0 ? (
+                  <div className="relative aspect-video overflow-hidden rounded-2xl bg-secondary/50 flex items-center justify-center text-sm text-muted-foreground">
+                    No videos added yet.
                   </div>
-                ) : resolvedVideoUrl ? (
-                  <video
-                    ref={videoRef}
-                    className="h-full w-full object-cover"
-                    controls
-                    preload="metadata"
-                    playsInline
-                    src={resolvedVideoUrl}
-                    onLoadedData={() => setVideoError(null)}
-                    onError={(event) => {
-                      if (import.meta.env.DEV) {
-                        console.warn("About video failed to load:", event);
-                      }
-                      setVideoError(
-                        "Video failed to load. The URL may be expired or access-restricted."
-                      );
-                    }}
-                  />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                    Founder video not configured yet.
-                  </div>
-                )}
-
-                {resolvedVideoUrl && isMuted ? (
-                  <button
-                    className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 rounded-full bg-black/75 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/70"
-                    onClick={() => {
-                      const el = videoRef.current;
-                      if (!el) return;
-                      el.muted = false;
-                      void el.play().catch((error) => {
-                        if (import.meta.env.DEV) {
-                          console.warn("About video playback failed:", error);
-                        }
-                      });
-                      setIsMuted(false);
-                    }}
-                    aria-label="Unmute video"
-                  >
-                    <VolumeX className="h-4 w-4" />
-                    Tap to unmute
-                  </button>
-                ) : null}
-
-                {(videoError || showUnavailable) && (
-                  <div className="absolute inset-x-0 bottom-0 flex items-start gap-2 bg-black/70 p-3 text-sm text-white">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <div>
-                      <p className="font-medium">Video unavailable</p>
-                      <p className="opacity-90">
-                        {videoError ??
-                          aboutVideoQuery.error?.message ??
-                          "This video could not be loaded. Ensure ABOUT_VIDEO_BLOB_KEY is configured on the server."}
-                      </p>
+                  videos.map((v) => (
+                    <div key={v.id} className="relative aspect-video overflow-hidden rounded-2xl shadow-2xl">
+                      <iframe
+                        src={`https://www.youtube-nocookie.com/embed/${parseYoutubeId(v.youtubeId)}?rel=0&modestbranding=1`}
+                        title={v.title || "Founder video"}
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        loading="lazy"
+                      />
                     </div>
-                  </div>
+                  ))
                 )}
               </div>
             </div>
