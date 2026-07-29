@@ -226,3 +226,15 @@ export function blobKeyForVideo(videoId: number, createdAt: Date = new Date(), e
   return `${yyyy}-${mm}/${videoId}.${safeExt}`;
 }
 
+/**
+ * Delete a blob from the founder-videos container.
+ * No-ops in local mode (local dev files are ephemeral tmp files).
+ * Treats a 404 as success — the blob is gone either way.
+ */
+export async function deleteFounderVideoBlob(blobKey: string): Promise<void> {
+  if (!blobKey || isLocalMode()) return;
+  const client = getBlobServiceClient();
+  const blobClient = client.getContainerClient(CONTAINER_NAME).getBlobClient(blobKey);
+  await blobClient.deleteIfExists();
+}
+
