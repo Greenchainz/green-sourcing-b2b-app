@@ -97,9 +97,10 @@ function normalizePhone(raw: string): string | null {
  * after the message completes.
  */
 export async function sendTtsCall(options: TtsCallOptions): Promise<TtsCallResult> {
-  const fromNumber = process.env.ACS_TOLL_FREE_NUMBER ?? '';
+  // Outbound calls use the local number (+14175014967); SMS uses toll-free (+18333236128)
+  const fromNumber = process.env.ACS_LOCAL_NUMBER ?? process.env.ACS_TOLL_FREE_NUMBER ?? '';
   if (!fromNumber) {
-    return { success: false, error: 'ACS_TOLL_FREE_NUMBER is not set' };
+    return { success: false, error: 'ACS_LOCAL_NUMBER (or ACS_TOLL_FREE_NUMBER) is not set' };
   }
 
   const normalizedTo = normalizePhone(options.to);
