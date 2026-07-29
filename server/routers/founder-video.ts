@@ -635,19 +635,23 @@ export const founderVideoRouter = router({
         })
         .where(eq(founderVideos.id, video.id));
 
-      // Fire-and-forget: alert the founder that their video was watched
+      // Fire-and-forget: alert the founder that their video was watched.
+      // Marketing-library entries use a synthetic .local sentinel address and have no
+      // real recipient, so suppress the watch alert for them (view counters are still
+      // incremented above).
       const newWatchedCount = video.watchedCount + 1;
-      const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
-
-      void sendFounderVideoWatchAlert({
-        founderEmail: FOUNDER_EMAIL,
-        recipientName: video.recipientName,
-        recipientEmail: video.recipientEmail,
-        subject: video.subject,
-        durationWatchedSec: input.durationWatchedSec ?? null,
-        watchedCount: newWatchedCount,
-        shareUrl,
-      }).catch((err: unknown) => console.error("[founderVideo.publicLogView] watch alert failed:", err));
+      if (video.recipientEmail !== MARKETING_LIBRARY_EMAIL) {
+        const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
+        void sendFounderVideoWatchAlert({
+          founderEmail: FOUNDER_EMAIL,
+          recipientName: video.recipientName,
+          recipientEmail: video.recipientEmail,
+          subject: video.subject,
+          durationWatchedSec: input.durationWatchedSec ?? null,
+          watchedCount: newWatchedCount,
+          shareUrl,
+        }).catch((err: unknown) => console.error("[founderVideo.publicLogView] watch alert failed:", err));
+      }
 
       return { ok: true };
     }),
