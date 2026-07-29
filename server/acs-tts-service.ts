@@ -18,36 +18,20 @@
  *   en-US-DavisNeural    — confident, energetic male
  */
 
-import { CallAutomationClient, CallInvite, SsmlSource } from '@azure/communication-call-automation';
+import { CallAutomationClient, CallInvite } from '@azure/communication-call-automation';
 import { PhoneNumberIdentifier } from '@azure/communication-common';
 import { getAzureCredential } from '../lib/azure/credentials';
+import {
+  buildAcsCallEventsCallbackUri,
+  getAcsConnectionSettings,
+  normalizePhoneE164,
+} from './acs-config';
 
 let _client: CallAutomationClient | null = null;
 
-function getConnectionSettings(): { endpoint: string; connectionString?: string } {
-  const endpoint =
-    process.env.AZURE_COMMUNICATION_SERVICES_ENDPOINT ||
-    process.env.ACS_ENDPOINT_URL ||
-    '';
-  const connectionString = process.env.AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING;
-
-  if (endpoint) return { endpoint, connectionString };
-
-  if (connectionString) {
-    const match = connectionString.match(/endpoint=([^;]+)/i);
-    if (!match?.[1]) throw new Error('Cannot parse ACS endpoint from connection string');
-    return { endpoint: match[1], connectionString };
-  }
-
-  throw new Error(
-    'ACS Call Automation is not configured. Set AZURE_COMMUNICATION_SERVICES_ENDPOINT or ' +
-    'AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING.',
-  );
-}
-
 function getClient(): CallAutomationClient {
   if (!_client) {
-    const { endpoint, connectionString } = getConnectionSettings();
+    const { endpoint, connectionString } = getAcsConnectionSettings('ACS Call Automation');
     if (connectionString) {
       _client = new CallAutomationClient(connectionString);
     } else {
@@ -82,15 +66,6 @@ export interface TtsCallResult {
   error?: string;
 }
 
-/** Normalize a US phone number to E.164 (+1XXXXXXXXXX). Returns null if invalid. */
-function normalizePhone(raw: string): string | null {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  if (raw.startsWith('+') && digits.length >= 11) return `+${digits}`;
-  return null;
-}
-
 /**
  * Place an outbound TTS call. ACS dials `to`, waits for answer, then plays
  * `text` using the selected neural voice. The call disconnects automatically
@@ -103,7 +78,7 @@ export async function sendTtsCall(options: TtsCallOptions): Promise<TtsCallResul
     return { success: false, error: 'ACS_LOCAL_NUMBER (or ACS_TOLL_FREE_NUMBER) is not set' };
   }
 
-  const normalizedTo = normalizePhone(options.to);
+  const normalizedTo = normalizePhoneE164(options.to);
   if (!normalizedTo) {
     return { success: false, error: `Invalid phone number: ${options.to}` };
   }
@@ -111,7 +86,7 @@ export async function sendTtsCall(options: TtsCallOptions): Promise<TtsCallResul
   // ACS Call Automation requires a public callback URL even for fire-and-forget
   // TTS calls. We register a lightweight handler on /api/acs/call-events below.
   const callbackBase = process.env.APP_BASE_URL ?? 'https://greenchainz.com';
-  const callbackUri = `${callbackBase}/api/acs/call-events`;
+  const callbackUri = buildAcsCallEventsCallbackUri(callbackBase);
 
   try {
     const client = getClient();

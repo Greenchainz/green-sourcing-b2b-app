@@ -1438,7 +1438,7 @@ export const adminRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    // Arcade leads with a phone number = SMS-reachable pool
+    // Arcade leads currently store email (phone capture not yet in schema).
     const smsLeadsRows = await db
       .select({ count: count() })
       .from(leads)
@@ -1506,22 +1506,23 @@ export const adminRouter = router({
         gameId: z.string().optional(),
       }),
     )
-    .mutation(async () => {
+    .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      // Pull phone numbers from arcade_scores (players who opted in via the
-      // score submission form — phone stored there, deduplicated by number).
+      const arcadeSourceFilter = input.gameId
+        ? sql`${leads.source} = ${`arcade:${input.gameId}`}`
+        : sql`${leads.source} LIKE 'arcade:%'`;
+
+      // Leads currently store emails; phone enrichment comes in a later migration.
       const rows = await db
-        .selectDistinct({ phone: arcadeScores.email }) // using email column as opt-in identifier; actual phone blast uses leads table
+        .selectDistinct({ email: leads.email })
         .from(leads)
         .where(
-          sql`${leads.source} LIKE 'arcade:%' AND ${leads.email} IS NOT NULL`,
+          sql`${arcadeSourceFilter} AND ${leads.email} IS NOT NULL`,
         );
 
-      // We stored emails not phones in leads — pull unique arcade player emails
-      // and cross them to users.phone where available.
-      const emailList = rows.map((r) => r.phone).filter(Boolean) as string[];
+      const emailList = rows.map((r) => r.email).filter(Boolean) as string[];
 
       if (emailList.length === 0) {
         return { sent: 0, failed: 0, skipped: 0 };
@@ -1914,7 +1915,6 @@ export const adminRouter = router({
       return { success: true };
     }),
 });
-
 
 
 

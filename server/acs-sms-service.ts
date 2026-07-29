@@ -11,33 +11,13 @@
 
 import { SmsClient } from '@azure/communication-sms';
 import { getAzureCredential } from '../lib/azure/credentials';
+import { getAcsConnectionSettings, normalizePhoneE164 } from './acs-config';
 
 let _smsClient: SmsClient | null = null;
 
-function getAcsConnectionSettings(): { endpoint: string; connectionString?: string } {
-  const endpoint =
-    process.env.AZURE_COMMUNICATION_SERVICES_ENDPOINT ||
-    process.env.ACS_ENDPOINT_URL ||
-    '';
-  const connectionString = process.env.AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING;
-
-  if (endpoint) return { endpoint, connectionString };
-
-  if (connectionString) {
-    const match = connectionString.match(/endpoint=([^;]+)/i);
-    if (!match?.[1]) throw new Error('Cannot parse ACS endpoint from connection string');
-    return { endpoint: match[1], connectionString };
-  }
-
-  throw new Error(
-    'ACS SMS is not configured. Set AZURE_COMMUNICATION_SERVICES_ENDPOINT or ' +
-    'AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING.',
-  );
-}
-
 function getSmsClient(): SmsClient {
   if (!_smsClient) {
-    const { endpoint, connectionString } = getAcsConnectionSettings();
+    const { endpoint, connectionString } = getAcsConnectionSettings('ACS SMS');
     if (connectionString) {
       _smsClient = new SmsClient(connectionString);
     } else {
@@ -70,7 +50,7 @@ export async function sendSms(
   }
 
   // Normalize to E.164 (add +1 if bare 10-digit US number)
-  const normalizedTo = normalizePhone(to);
+  const normalizedTo = normalizePhoneE164(to);
   if (!normalizedTo) {
     return { to, success: false, error: `Invalid phone number: ${to}` };
   }
@@ -105,14 +85,11 @@ export async function sendSmsBatch(
   message: string,
   from?: string,
 ): Promise<SmsSendResult[]> {
-  return Promise.all(recipients.map((to) => sendSms(to, message, from)));
-}
-
-/** Normalize a US phone number to E.164 (+1XXXXXXXXXX).  Returns null if invalid. */
-function normalizePhone(raw: string): string | null {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  if (raw.startsWith('+') && digits.length >= 11) return `+${digits}`;
-  return null;
+  const settled = await Promise.allSettled(recipients.map((to) => sendSms(to, message, from)));
+  return settled.map((result, index) => {
+    if (result.status === 'fulfilled') return result.value;
+    const to = recipients[index] ?? '';
+    const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+    return { to, success: false, error: msg };
+  });
 }

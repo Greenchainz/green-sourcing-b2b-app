@@ -6,30 +6,24 @@
  * the queued TTS SSML, then hang up when it finishes.
  *
  * Route: POST /api/acs/call-events
- * Auth: none (ACS events are unsigned — we guard via obscure callback path only).
+ * Auth: shared callback secret (query/header token check).
  */
 
 import { Router } from 'express';
-import { CallAutomationClient, TextSource, SsmlSource } from '@azure/communication-call-automation';
+import { CallAutomationClient, SsmlSource } from '@azure/communication-call-automation';
 import { getAzureCredential } from '../lib/azure/credentials';
+import { getAcsConnectionSettings, isValidAcsCallbackToken } from './acs-config';
 import { getPendingTts, deletePendingTts, buildSsml, DEFAULT_VOICE } from './acs-tts-service';
 
 let _callClient: CallAutomationClient | null = null;
 
 function getCallClient(): CallAutomationClient {
   if (!_callClient) {
-    const endpoint =
-      process.env.AZURE_COMMUNICATION_SERVICES_ENDPOINT ||
-      process.env.ACS_ENDPOINT_URL ||
-      '';
-    const connectionString = process.env.AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING;
-
+    const { endpoint, connectionString } = getAcsConnectionSettings('ACS Call Events');
     if (connectionString) {
       _callClient = new CallAutomationClient(connectionString);
-    } else if (endpoint) {
-      _callClient = new CallAutomationClient(endpoint, getAzureCredential());
     } else {
-      throw new Error('ACS not configured for call events handler');
+      _callClient = new CallAutomationClient(endpoint, getAzureCredential());
     }
   }
   return _callClient;
@@ -38,14 +32,23 @@ function getCallClient(): CallAutomationClient {
 export const acsCallEventsRouter = Router();
 
 acsCallEventsRouter.post('/api/acs/call-events', async (req, res) => {
-  // Respond 200 immediately so ACS doesn't retry
-  res.status(200).json({ received: true });
+  if (!isValidAcsCallbackToken(req.query.acsToken, req.header('x-acs-callback-token'))) {
+    res.status(401).json({ error: 'Unauthorized callback' });
+    return;
+  }
+
+  // Acknowledge quickly so ACS doesn't retry while we process asynchronously.
+  res.sendStatus(202);
 
   const events: Array<{ type: string; data: Record<string, unknown> }> = Array.isArray(req.body)
     ? req.body
     : [req.body];
 
   for (const event of events) {
+    if (!event || typeof event !== 'object') {
+      continue;
+    }
+
     const eventType: string = (event.type as string) ?? (event as unknown as Record<string, string>).eventType ?? '';
     const callConnectionId: string =
       (event.data?.callConnectionId as string) ?? '';

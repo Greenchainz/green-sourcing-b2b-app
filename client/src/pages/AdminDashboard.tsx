@@ -47,6 +47,7 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   Search,
   Mail,
   Eye,
@@ -3311,7 +3312,7 @@ function AccessDenied() {
 // ─── Comms Tab ───────────────────────────────────────────────────────────────
 
 function CommsTab() {
-  const { data: stats, isLoading } = trpc.admin.getCommsStats.useQuery();
+  const { data: stats, isLoading, error } = trpc.admin.getCommsStats.useQuery();
   const sendTest = trpc.admin.sendTestSms.useMutation();
   const broadcast = trpc.admin.broadcastArcadeSms.useMutation();
   const sendTts = trpc.admin.sendTtsCall.useMutation();
@@ -3341,7 +3342,11 @@ function CommsTab() {
     if (!blastBody.trim()) return;
     try {
       const res = await broadcast.mutateAsync({ body: blastBody });
-      toast.success(`Blast sent — ${res.sent} delivered, ${res.failed} failed, ${res.skipped} skipped (no phone on file)`);
+      if (res.sent === 0) {
+        toast.warning(`No messages sent — ${res.skipped} recipients have no phone number on file`);
+      } else {
+        toast.success(`Blast sent — ${res.sent} delivered, ${res.failed} failed, ${res.skipped} skipped`);
+      }
       setBlastBody('');
     } catch (e: unknown) {
       toast.error(`Broadcast failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -3393,6 +3398,13 @@ function CommsTab() {
 
   return (
     <div className="space-y-8">
+      {error && (
+        <div className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-900/20 p-3 text-sm text-red-300">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>Unable to load communication stats: {error.message}</span>
+        </div>
+      )}
+
       {/* Channel overview */}
       <div>
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-400">
@@ -3500,7 +3512,7 @@ function CommsTab() {
                 ) : (
                   stats?.smsLeads ?? 0
                 )}{' '}
-                arcade leads with phone numbers on file
+                arcade leads captured by email
               </p>
             </div>
             <div className="space-y-1.5">
@@ -3540,7 +3552,7 @@ function CommsTab() {
             Text-to-Speech Call (ACS Call Automation)
           </CardTitle>
           <CardDescription className="text-gray-400">
-            Place an outbound call from your toll-free number. ACS dials the number, reads your message
+            Place an outbound call from your configured ACS caller number. ACS dials the number, reads your message
             in the chosen neural voice, then hangs up automatically.
           </CardDescription>
         </CardHeader>
@@ -3864,7 +3876,6 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
 
 
 
