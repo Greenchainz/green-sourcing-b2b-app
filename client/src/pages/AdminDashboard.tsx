@@ -1904,7 +1904,7 @@ function AIChatTab() {
     {
       id: 'seed-assistant-message',
       role: 'assistant',
-      content: 'I am your GreenChainz dashboard copilot. Ask about lead strategy, supplier onboarding, outreach, or growth decisions.',
+      content: 'I am your GreenChainz founder copilot — connected to your live database (leads, RFQs, suppliers, scraper activity) and Microsoft Fabric if configured. Ask about lead strategy, supplier onboarding, outreach status, or any growth decision.',
       createdAt: Date.now(),
     },
   ]);
