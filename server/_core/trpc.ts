@@ -8,6 +8,7 @@ import {
   agentRateLimitMiddleware,
   leadCaptureRateLimitMiddleware,
 } from './rateLimit';
+import { canAccessAdmin } from "./admin-access";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -48,8 +49,7 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    const role = ctx.user?.role;
-    if (!role || role !== 'admin') {
+    if (!canAccessAdmin(ctx.user)) {
       throw new TRPCError({ code: 'FORBIDDEN', message: NOT_ADMIN_ERR_MSG });
     }
 

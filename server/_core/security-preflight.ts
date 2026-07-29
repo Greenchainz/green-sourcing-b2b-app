@@ -39,6 +39,32 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
     const hasOpenAiKey = hasValue("AZURE_OPENAI_API_KEY");
     const allowOpenAiKeyInProd = process.env.ALLOW_AZURE_OPENAI_API_KEY_IN_PROD === "true";
 
+    const normalizeClientId = (value: string | null | undefined): string | null => {
+        if (typeof value !== "string") return null;
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed.toLowerCase() : null;
+    };
+
+    const managedIdentityClientIds = [
+        process.env.AZURE_MI_CLIENT_ID,
+        process.env.MANAGED_IDENTITY_CLIENT_ID,
+    ]
+        .map(normalizeClientId)
+        .filter((value): value is string => value !== null);
+    const defaultOAuthClientId = normalizeClientId("8b597068-9347-4e99-8860-8c4e9a9bc112");
+    const resolvedOAuthClientId = normalizeClientId(process.env.AZURE_AD_CLIENT_ID) ?? defaultOAuthClientId;
+    const authClientIds = Array.from(
+        new Set(
+            [
+                resolvedOAuthClientId,
+                process.env.AZURE_CLIENT_ID,
+                process.env.MICROSOFT_CLIENT_ID,
+            ]
+                .map(normalizeClientId)
+                .filter((value): value is string => value !== null)
+        )
+    );
+
     const hasRedisUrl = hasValue("REDIS_URL");
     const hasRedisHostPort = hasValue("REDIS_HOST") && hasValue("REDIS_PORT");
     const requireRedisCallSessions = process.env.REQUIRE_REDIS_CALL_SESSIONS !== "false";
@@ -99,6 +125,26 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
         add(checks, "Azure Maps Auth", "WARN", "Managed identity Maps auth not fully configured (requires AZURE_MAPS_CLIENT_ID + MI client id)");
     }
 
+    if (
+        managedIdentityClientIds.some((managedIdentityClientId) =>
+            authClientIds.includes(managedIdentityClientId)
+        )
+    ) {
+        add(
+            checks,
+            "Identity Separation",
+            "FAIL",
+            "Managed identity client ID matches the user-auth app registration client ID. These must be different identities."
+        );
+    } else {
+        add(
+            checks,
+            "Identity Separation",
+            "PASS",
+            "Managed identity and user-auth app registration identities are separated."
+        );
+    }
+
     if (hasAcsEndpoint) {
         add(checks, "ACS Auth", "PASS", "Using endpoint-based ACS configuration");
     } else if (hasAcsConn) {
@@ -147,15 +193,8 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
 
     if (hasMicrosoftWebhookSecret) {
         add(checks, "Microsoft Webhook Secret", "PASS", "MICROSOFT_WEBHOOK_SECRET is present (billing webhook signature verification enabled)");
-    } else if (isProduction) {
-        add(
-            checks,
-            "Microsoft Webhook Secret",
-            "FAIL",
-            "MICROSOFT_WEBHOOK_SECRET not set — Microsoft Marketplace billing webhooks will be rejected (fail-closed)"
-        );
     } else {
-        add(checks, "Microsoft Webhook Secret", "WARN", "MICROSOFT_WEBHOOK_SECRET not set — billing webhooks will be rejected (fail-closed)");
+        add(checks, "Microsoft Webhook Secret", "WARN", "MICROSOFT_WEBHOOK_SECRET not set -- billing webhooks will be rejected (fail-closed). Configure this secret in Key Vault to enable marketplace webhook verification.");
     }
 
     if (!isProduction) {

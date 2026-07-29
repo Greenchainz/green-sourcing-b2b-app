@@ -56,7 +56,7 @@ describe("canAccessRfqPdf", () => {
     });
 
     it("allows admin even when not owner", () => {
-        expect(canAccessRfqPdf({ id: 99, role: "admin" } as any, 7)).toBe(true);
+        expect(canAccessRfqPdf({ id: 99, role: "admin", email: "admin@example.com" } as any, 7)).toBe(true);
     });
 
     it("denies non-owner non-admin", () => {

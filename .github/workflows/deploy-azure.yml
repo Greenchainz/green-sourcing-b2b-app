@@ -1,4 +1,4 @@
-name: Deploy to Azure Container Apps
+﻿name: Deploy to Azure Container Apps
 
 on:
   push:
@@ -43,13 +43,13 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
@@ -92,10 +92,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Log in to Azure (OIDC - no stored credentials)
-        uses: azure/login@v3
+        uses: azure/login@v2
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
@@ -125,7 +125,7 @@ jobs:
           fi
 
       - name: Set up Docker Buildx (layer caching)
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v3
 
       - name: Allow runner IP in ACR firewall
         id: acr_firewall
@@ -257,7 +257,7 @@ jobs:
           exit 1
 
       - name: Build & push frontend image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.frontend
@@ -274,7 +274,7 @@ jobs:
             VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 
       - name: Build & push backend image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.backend
@@ -354,20 +354,20 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Log in to Azure (OIDC)
-        uses: azure/login@v3
+        uses: azure/login@v2
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
@@ -616,7 +616,7 @@ jobs:
         run: sudo timedatectl set-ntp true || true
 
       - name: Log in to Azure (OIDC)
-        uses: azure/login@v3
+        uses: azure/login@v2
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
@@ -857,7 +857,7 @@ jobs:
           done
 
       - name: Re-authenticate to Azure (refresh OIDC token before RBAC ops)
-        uses: azure/login@v3
+        uses: azure/login@v2
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}

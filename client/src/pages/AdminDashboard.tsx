@@ -60,9 +60,11 @@ import {
   LayoutDashboard,
   ListFilter,
   Package,
+  Factory,
   Leaf,
   Download,
   Trash2,
+  RotateCcw,
   ShieldCheck,
   BarChart3,
   TrendingUp,
@@ -74,6 +76,7 @@ import {
   FileText,
   Send,
 } from 'lucide-react';
+import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
 
 // ─── Type definitions ────────────────────────────────────────────────────────
 
@@ -98,6 +101,13 @@ interface AdminUser {
   lastSignedIn: Date | string | null;
   tier: string;
   subscriptionStatus: string;
+  deletedAt: Date | string | null;
+}
+
+function getUserConfirmIdentifier(user: AdminUser | null): string {
+  if (!user) return '';
+  const email = user.email?.trim();
+  return email ? email : `#${user.id}`;
 }
 
 interface IntelligenceChatMessage {
@@ -586,6 +596,42 @@ function UsersTab() {
     },
   });
 
+  // Destructive data control (soft-delete / restore / hard-purge)
+  const { user: authUser } = useAuth();
+  const [deleteDialogUser, setDeleteDialogUser] = useState<AdminUser | null>(null);
+  const [purgeDialogUser, setPurgeDialogUser] = useState<AdminUser | null>(null);
+
+  const deleteUserMutation = trpc.admin.deleteUser.useMutation({
+    onSuccess: () => {
+      toast.success('User deleted');
+      void refetch();
+      setDeleteDialogUser(null);
+    },
+    onError: (err) => toast.error(err.message ?? 'Failed to delete user'),
+  });
+
+  const restoreUserMutation = trpc.admin.restoreUser.useMutation({
+    onSuccess: () => {
+      toast.success('User restored');
+      void refetch();
+    },
+    onError: (err) => toast.error(err.message ?? 'Failed to restore user'),
+  });
+
+  const purgeUserMutation = trpc.admin.purgeUser.useMutation({
+    onSuccess: () => {
+      toast.success('User permanently purged');
+      void refetch();
+      setPurgeDialogUser(null);
+    },
+    onError: (err) => toast.error(err.message ?? 'Failed to purge user'),
+  });
+
+  // Self-protection: frontend AuthContext user.id is the openId string, so match by email.
+  const isSelf = (u: AdminUser) => !!authUser?.email && authUser.email === u.email;
+  const deleteConfirmIdentifier = getUserConfirmIdentifier(deleteDialogUser);
+  const purgeConfirmIdentifier = getUserConfirmIdentifier(purgeDialogUser);
+
   const filtered = (allUsers ?? []).filter((u) => {
     const q = search.toLowerCase();
     const matchesSearch =
@@ -667,10 +713,17 @@ function UsersTab() {
                   </TableRow>
                 ) : (
                   filtered.map((u) => (
-                    <TableRow key={u.id} className="border-gray-800 hover:bg-gray-800/50">
+                    <TableRow key={u.id} className={`border-gray-800 hover:bg-gray-800/50 ${u.deletedAt ? 'opacity-60' : ''}`}>
                       <TableCell className="text-gray-500 text-xs font-mono">#{u.id}</TableCell>
                       <TableCell className="font-medium text-white">
-                        {u.name ?? <span className="text-gray-500 italic">—</span>}
+                        <div className="flex items-center gap-2">
+                          <span>{u.name ?? <span className="text-gray-500 italic">—</span>}</span>
+                          {u.deletedAt && (
+                            <Badge variant="outline" className="border-red-800 text-[10px] text-red-400">
+                              Deleted
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-gray-300 text-sm">{u.email}</TableCell>
                       <TableCell>{roleBadge(u.role)}</TableCell>
@@ -708,6 +761,44 @@ function UsersTab() {
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                           </a>
+                          {u.deletedAt ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-emerald-800 bg-gray-800 text-xs text-emerald-400 hover:bg-emerald-950 hover:text-emerald-300"
+                                onClick={() => restoreUserMutation.mutate({ userId: u.id })}
+                                disabled={restoreUserMutation.isPending}
+                                title="Restore user"
+                              >
+                                <RotateCcw className="mr-1 h-3 w-3" />
+                                Restore
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-800 bg-gray-800 text-xs text-red-400 hover:bg-red-950 hover:text-red-300 disabled:opacity-40"
+                                onClick={() => setPurgeDialogUser(u)}
+                                disabled={isSelf(u)}
+                                title={isSelf(u) ? "You can't purge your own account" : 'Permanently delete user'}
+                              >
+                                <Trash2 className="mr-1 h-3 w-3" />
+                                Purge
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-800 bg-gray-800 text-xs text-red-400 hover:bg-red-950 hover:text-red-300 disabled:opacity-40"
+                              onClick={() => setDeleteDialogUser(u)}
+                              disabled={isSelf(u)}
+                              title={isSelf(u) ? "You can't delete your own account" : 'Delete user'}
+                            >
+                              <Trash2 className="mr-1 h-3 w-3" />
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -733,6 +824,41 @@ function UsersTab() {
         onOpenChange={(open) => { if (!open) setTierDialogUser(null); }}
         onConfirm={(userId, tier) => setUserTierMutation.mutate({ userId, tier })}
         isPending={setUserTierMutation.isPending}
+      />
+      <DeleteConfirmDialog
+        open={deleteDialogUser !== null}
+        onOpenChange={(open) => { if (!open) setDeleteDialogUser(null); }}
+        title="Delete user?"
+        description={
+          <>
+            This revokes access for{' '}
+            <span className="font-semibold text-white">{deleteConfirmIdentifier}</span>{' '}
+            and hides the account. It&apos;s reversible — you can restore it afterwards.
+            Type the identifier below to confirm.
+          </>
+        }
+        confirmWord={deleteConfirmIdentifier}
+        confirmLabel="Delete user"
+        onConfirm={() => { if (deleteDialogUser) deleteUserMutation.mutate({ userId: deleteDialogUser.id }); }}
+        isPending={deleteUserMutation.isPending}
+      />
+      <DeleteConfirmDialog
+        open={purgeDialogUser !== null}
+        onOpenChange={(open) => { if (!open) setPurgeDialogUser(null); }}
+        title="Permanently purge user?"
+        description={
+          <>
+            This <span className="font-semibold text-red-400">permanently deletes</span>{' '}
+            <span className="font-semibold text-white">{purgeConfirmIdentifier}</span>{' '}
+            and destroys their profile records, submittals, CA documents, CA document messages,
+            other dependent AEC data, and login credentials. This cannot be undone. Type the
+            identifier below to confirm.
+          </>
+        }
+        confirmWord={purgeConfirmIdentifier}
+        confirmLabel="Purge forever"
+        onConfirm={() => { if (purgeDialogUser) purgeUserMutation.mutate({ userId: purgeDialogUser.id }); }}
+        isPending={purgeUserMutation.isPending}
       />
     </div>
   );
@@ -916,7 +1042,7 @@ function SupplierDetailPanel({
 
 function SuppliersTab() {
   const { data: allSuppliers, isLoading, refetch } = trpc.admin.getAllSuppliers.useQuery();
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getSupplierStats.useQuery();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.admin.getSupplierStats.useQuery();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -937,6 +1063,16 @@ function SuppliersTab() {
       setExpandedId(null);
     },
     onError: (err) => toast.error(err.message ?? 'Rejection failed'),
+  });
+
+  const deleteSupplierMutation = trpc.admin.deleteSupplier.useMutation({
+    onSuccess: () => {
+      toast.success('Supplier deleted');
+      void refetch();
+      void refetchStats();
+      setExpandedId(null);
+    },
+    onError: (err) => toast.error(err.message ?? 'Failed to delete supplier'),
   });
 
   const filtered = (allSuppliers ?? []).filter((s) => {
@@ -1090,6 +1226,25 @@ function SuppliersTab() {
                               </Button>
                             </>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-700/40 bg-red-900/20 text-xs text-red-400 hover:bg-red-900/40 hover:text-red-300"
+                            disabled={deleteSupplierMutation.isPending}
+                            title="Delete supplier"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Delete ${s.companyName}? This permanently removes the supplier record and cannot be undone.`
+                                )
+                              ) {
+                                deleteSupplierMutation.mutate({ supplierId: s.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            Delete
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -2284,9 +2439,52 @@ function WorkIQTab() {
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
 function SystemTab() {
+  const clearTestUsers = trpc.admin.clearTestUsers.useMutation({
+    onSuccess: (res) => {
+      toast.success(
+        res.count > 0
+          ? `Cleared ${res.count} test user${res.count === 1 ? '' : 's'}`
+          : 'No test users found to clear'
+      );
+    },
+    onError: (err) => toast.error(err.message ?? 'Failed to clear test users'),
+  });
+
   return (
     <div className="space-y-6">
-      {/* Test user role switching was removed with the legacy cookie-session flow. */}
+      {/* Data Maintenance */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Trash2 className="h-4 w-4 text-gray-400" />
+            Data Maintenance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-white">Clear test users</p>
+              <p className="text-xs text-gray-500">
+                Removes internal test accounts (openId matching <code className="text-gray-400">test-*-gcz-internal</code>). Real users are never touched.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-700/40 bg-red-900/20 text-red-400 hover:bg-red-900/40 hover:text-red-300"
+              disabled={clearTestUsers.isPending}
+              onClick={() => {
+                if (window.confirm('Delete all internal test users? This cannot be undone.')) {
+                  clearTestUsers.mutate();
+                }
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {clearTestUsers.isPending ? 'Clearing…' : 'Clear Test Users'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Quick Links */}
       <Card className="border-gray-800 bg-gray-900">
@@ -2301,6 +2499,12 @@ function SystemTab() {
             <Link href="/admin/suppliers">
               <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
                 <Building2 className="mr-2 h-4 w-4" />Supplier Dashboard
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin/manufacturers">
+              <Button variant="outline" size="sm" className="border-amber-800 bg-amber-950 text-amber-300 hover:bg-amber-900 hover:text-white">
+                <Factory className="mr-2 h-4 w-4" />Manufacturers
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
@@ -2342,7 +2546,7 @@ function SystemTab() {
             </Link>
             <Link href="/manufacturers">
               <Button variant="outline" size="sm" className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white">
-                <Building2 className="mr-2 h-4 w-4" />Suppliers Directory
+                <Building2 className="mr-2 h-4 w-4" />Supplier Spotlight
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>

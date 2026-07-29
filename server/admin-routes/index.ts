@@ -4,6 +4,7 @@
  */
 import express from 'express';
 import { requireEasyAuthUser } from '../_core/request-auth';
+import { canAccessAdmin } from '../_core/admin-access';
 
 type Role = "user" | "assistant";
 type ChatMessage = {
@@ -113,7 +114,7 @@ async function requireEasyAuthAdminUser(req: express.Request, res: express.Respo
     return null;
   }
 
-  if (user.role !== 'admin') {
+  if (!canAccessAdmin(user)) {
     res.status(403).json({ error: 'Forbidden' });
     return null;
   }

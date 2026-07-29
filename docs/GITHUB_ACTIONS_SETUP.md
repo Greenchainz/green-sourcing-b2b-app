@@ -54,7 +54,7 @@ Add the output as a GitHub secret named `ACR_PASSWORD`.
 
 ## Adding Secrets to GitHub
 
-1. Go to https://github.com/jnorvi5/green-sourcing-b2b-app/settings/secrets/actions
+1. Go to https://github.com/Greenchainz/green-sourcing-b2b-app/settings/secrets/actions
 2. Click "New repository secret"
 3. Add each of the 3 secrets above
 
@@ -63,7 +63,7 @@ Add the output as a GitHub secret named `ACR_PASSWORD`.
 Once secrets are added:
 
 1. Push any commit to `main` branch
-2. Go to https://github.com/jnorvi5/green-sourcing-b2b-app/actions
+2. Go to https://github.com/Greenchainz/green-sourcing-b2b-app/actions
 3. Watch the "Deploy to Azure Container Apps" workflow run
 4. Deployment takes ~5-10 minutes
 5. Check greenchainz.com to see the updated app
@@ -72,7 +72,7 @@ Once secrets are added:
 
 You can also trigger the workflow manually:
 
-1. Go to https://github.com/jnorvi5/green-sourcing-b2b-app/actions
+1. Go to https://github.com/Greenchainz/green-sourcing-b2b-app/actions
 2. Select "Deploy to Azure Container Apps" workflow
 3. Click "Run workflow" → "Run workflow"
 

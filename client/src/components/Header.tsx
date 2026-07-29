@@ -179,6 +179,9 @@ export default function Header() {
           <Link href="/about" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             About
           </Link>
+          <Link href="/blog" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Blog
+          </Link>
           <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
             Explore
           </Link>
@@ -308,6 +311,10 @@ export default function Header() {
             <Link href="/about" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
               onClick={() => setMobileMenuOpen(false)}>
               About
+            </Link>
+            <Link href="/blog" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
+              onClick={() => setMobileMenuOpen(false)}>
+              Blog
             </Link>
             <Link href="/materials" className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-4 hover:bg-accent rounded-md block"
               onClick={() => setMobileMenuOpen(false)}>

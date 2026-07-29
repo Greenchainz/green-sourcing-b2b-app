@@ -62,7 +62,8 @@ const STATUS_STYLES: Record<string, string> = {
 export default function BuyerRequestsPage() {
   const [, navigate] = useLocation();
 
-  const { data: requests, isLoading, error } = trpc.sourcingRequest.listMine.useQuery({ limit: 50 });
+  const { data: requests, isLoading, error } =
+    trpc.sourcingRequest.listMine.useQuery({ limit: 50 });
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
