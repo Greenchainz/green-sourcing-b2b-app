@@ -217,7 +217,7 @@ export const ec3Router = router({
         .select({
           totalMaterials: sql<number>`count(*)::int`,
           ec3Materials: sql<number>`count(${materials.ec3Id})::int`,
-          lastSynced: sql<Date | null>`max(${materials.ec3SyncedAt})`,
+          lastSynced: sql<Date | null>`max(${materials.ec3SyncedAt}) filter (where ${isNotNull(materials.ec3Id)})`,
         })
         .from(materials);
 
