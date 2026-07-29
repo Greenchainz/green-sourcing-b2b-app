@@ -16,8 +16,6 @@
  */
 
 import { Request, Response } from "express";
-import { validateMarketplaceToken, resolveSubscription } from "./marketplace-auth";
-import { getBuyerSubscription, createBuyerSubscription, upgradeBuyerSubscription } from "./subscription-service";
 import { redactSensitiveData } from "../lib/auth/diagnostics";
 import {
   validateMarketplaceToken,
