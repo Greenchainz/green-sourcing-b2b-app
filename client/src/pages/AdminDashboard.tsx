@@ -946,17 +946,19 @@ function GodModeTab() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35"
+                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => runSupplierOutreach.mutate()}
-                  disabled={runSupplierOutreach.isPending}
+                  disabled={runSupplierOutreach.isPending || !scraperStatus.data.flags.supplierOutreachEnabled}
+                  title={!scraperStatus.data.flags.supplierOutreachEnabled ? 'Set OUTREACH_ENABLED=true to enable' : undefined}
                 >
                   {runSupplierOutreach.isPending ? 'Running supplier outreach…' : 'Run Supplier Outreach'}
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35"
+                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => runLeadOutreach.mutate()}
-                  disabled={runLeadOutreach.isPending}
+                  disabled={runLeadOutreach.isPending || !scraperStatus.data.flags.leadOutreachEnabled}
+                  title={!scraperStatus.data.flags.leadOutreachEnabled ? 'Set LEAD_OUTREACH_ENABLED=true to enable' : undefined}
                 >
                   {runLeadOutreach.isPending ? 'Running lead outreach…' : 'Run Lead Outreach'}
                 </Button>
