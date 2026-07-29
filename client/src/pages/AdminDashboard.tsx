@@ -1455,6 +1455,8 @@ function VideosTab() {
           <div className="mt-4 space-y-2">
             {videosQuery.isLoading ? (
               <p className="text-sm text-gray-500">Loading…</p>
+            ) : videosQuery.isError ? (
+              <p className="text-sm text-red-400">Unable to load videos: {videosQuery.error.message}</p>
             ) : videos.length === 0 ? (
               <p className="text-sm text-gray-500">No videos yet — add one above.</p>
             ) : (
