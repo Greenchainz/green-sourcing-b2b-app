@@ -3341,12 +3341,8 @@ function CommsTab() {
   const handleBroadcast = async () => {
     if (!blastBody.trim()) return;
     try {
-      const res = await broadcast.mutateAsync({ body: blastBody });
-      if (res.sent === 0) {
-        toast.warning(`No messages sent — ${res.skipped} recipients have no phone number on file`);
-      } else {
-        toast.success(`Blast sent — ${res.sent} delivered, ${res.failed} failed, ${res.skipped} skipped`);
-      }
+      await broadcast.mutateAsync({ body: blastBody });
+      toast.success('Broadcast sent');
       setBlastBody('');
     } catch (e: unknown) {
       toast.error(`Broadcast failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -3876,7 +3872,6 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
 
 
 

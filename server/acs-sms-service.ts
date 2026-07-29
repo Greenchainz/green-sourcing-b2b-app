@@ -14,14 +14,22 @@ import { getAzureCredential } from '../lib/azure/credentials';
 import { getAcsConnectionSettings, normalizePhoneE164 } from './acs-config';
 
 let _smsClient: SmsClient | null = null;
+const SEND_CONCURRENCY = 10;
+
+function maskPhoneForLogs(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 4 ? `***${digits.slice(-4)}` : '***';
+}
 
 function getSmsClient(): SmsClient {
   if (!_smsClient) {
     const { endpoint, connectionString } = getAcsConnectionSettings('ACS SMS');
-    if (connectionString) {
+    if (endpoint && !connectionString) {
+      _smsClient = new SmsClient(endpoint, getAzureCredential());
+    } else if (connectionString) {
       _smsClient = new SmsClient(connectionString);
     } else {
-      _smsClient = new SmsClient(endpoint, getAzureCredential());
+      throw new Error('ACS SMS is not configured.');
     }
   }
   return _smsClient;
@@ -63,16 +71,18 @@ export async function sendSms(
       { enableDeliveryReport: true },
     );
 
+    const maskedTo = maskPhoneForLogs(normalizedTo);
+
     if (result.successful) {
-      console.log(`[ACS SMS] ✅ Sent to ${normalizedTo} — messageId: ${result.messageId}`);
+      console.log(`[ACS SMS] ✅ Sent to ${maskedTo} — messageId: ${result.messageId}`);
       return { to: normalizedTo, success: true, messageId: result.messageId };
     }
 
-    console.warn(`[ACS SMS] ⚠️ Failed to ${normalizedTo}: ${result.errorMessage}`);
+    console.warn(`[ACS SMS] ⚠️ Failed to ${maskedTo}: ${result.errorMessage}`);
     return { to: normalizedTo, success: false, error: result.errorMessage };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[ACS SMS] ❌ Exception sending to ${normalizedTo}:`, msg);
+    console.error(`[ACS SMS] ❌ Exception sending to ${maskPhoneForLogs(normalizedTo)}:`, msg);
     return { to: normalizedTo, success: false, error: msg };
   }
 }
@@ -86,11 +96,23 @@ export async function sendSmsBatch(
   message: string,
   from?: string,
 ): Promise<SmsSendResult[]> {
-  const settled = await Promise.allSettled(recipients.map((to) => sendSms(to, message, from)));
-  return settled.map((result, index) => {
-    if (result.status === 'fulfilled') return result.value;
-    const to = recipients[index] ?? '';
-    const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
-    return { to, success: false, error: msg };
-  });
+  const results: SmsSendResult[] = [];
+
+  for (let i = 0; i < recipients.length; i += SEND_CONCURRENCY) {
+    const chunk = recipients.slice(i, i + SEND_CONCURRENCY);
+    const settled = await Promise.allSettled(chunk.map((to) => sendSms(to, message, from)));
+    for (let idx = 0; idx < settled.length; idx += 1) {
+      const result = settled[idx];
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+        continue;
+      }
+
+      const to = chunk[idx] ?? '';
+      const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      results.push({ to, success: false, error: msg });
+    }
+  }
+
+  return results;
 }

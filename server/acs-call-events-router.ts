@@ -20,10 +20,12 @@ let _callClient: CallAutomationClient | null = null;
 function getCallClient(): CallAutomationClient {
   if (!_callClient) {
     const { endpoint, connectionString } = getAcsConnectionSettings('ACS Call Events');
-    if (connectionString) {
+    if (endpoint && !connectionString) {
+      _callClient = new CallAutomationClient(endpoint, getAzureCredential());
+    } else if (connectionString) {
       _callClient = new CallAutomationClient(connectionString);
     } else {
-      _callClient = new CallAutomationClient(endpoint, getAzureCredential());
+      throw new Error('ACS Call Events is not configured.');
     }
   }
   return _callClient;

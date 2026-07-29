@@ -1442,7 +1442,7 @@ export const adminRouter = router({
     const smsLeadsRows = await db
       .select({ count: count() })
       .from(leads)
-      .where(sql`${leads.email} IS NOT NULL AND ${leads.source} LIKE 'arcade:%'`);
+      .where(sql`${leads.source} LIKE 'arcade:%'`);
 
     // Total arcade score submissions ever
     const arcadeSubRows = await db
@@ -1502,35 +1502,14 @@ export const adminRouter = router({
       z.object({
         /** Body of the message — plain text, ≤130 chars (footer will be added). */
         body: z.string().min(1).max(130),
-        /** Optional: restrict blast to a specific game. Omit for all arcade games. */
-        gameId: z.string().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-
-      const arcadeSourceFilter = input.gameId
-        ? sql`${leads.source} = ${`arcade:${input.gameId}`}`
-        : sql`${leads.source} LIKE 'arcade:%'`;
-
-      // Leads currently store emails; phone enrichment comes in a later migration.
-      const rows = await db
-        .selectDistinct({ email: leads.email })
-        .from(leads)
-        .where(
-          sql`${arcadeSourceFilter} AND ${leads.email} IS NOT NULL`,
-        );
-
-      const emailList = rows.map((r) => r.email).filter(Boolean) as string[];
-
-      if (emailList.length === 0) {
-        return { sent: 0, failed: 0, skipped: 0 };
-      }
-
-      // users table doesn't have a phone column yet. Arcade leads hold emails only.
-      // Return skipped count — wire up phone blast once users.phone migration is done.
-      return { sent: 0, failed: 0, skipped: emailList.length };
+    .mutation(async () => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "SMS blast is not available yet. Phone storage and recipient wiring are still pending.",
+      });
     }),
 
   // ════════════════════════════════════════════════════════════════════════
@@ -1915,7 +1894,5 @@ export const adminRouter = router({
       return { success: true };
     }),
 });
-
-
 
 

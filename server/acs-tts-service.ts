@@ -1,14 +1,16 @@
 /**
  * Azure Communication Services — Text-to-Speech outbound calls (Call Automation)
  *
- * Places an outbound call from the registered toll-free number to any E.164
+ * Places an outbound call from the registered local number (fallback: toll-free)
+ * to any E.164
  * phone, then reads a TTS message using Azure Neural voices. The call is
  * terminated automatically when the message finishes playing.
  *
  * Env vars required:
  *   AZURE_COMMUNICATION_SERVICES_ENDPOINT  (preferred, managed identity)
  *   AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING  (local dev fallback)
- *   ACS_TOLL_FREE_NUMBER   e.g. +18332550000
+ *   ACS_LOCAL_NUMBER       e.g. +14175550123 (preferred caller ID)
+ *   ACS_TOLL_FREE_NUMBER   e.g. +18332550000 (caller ID fallback)
  *   APP_BASE_URL           e.g. https://greenchainz.com  (callback base URL)
  *
  * Voice options for the GreenChainz agent persona:
@@ -32,10 +34,12 @@ let _client: CallAutomationClient | null = null;
 function getClient(): CallAutomationClient {
   if (!_client) {
     const { endpoint, connectionString } = getAcsConnectionSettings('ACS Call Automation');
-    if (connectionString) {
+    if (endpoint && !connectionString) {
+      _client = new CallAutomationClient(endpoint, getAzureCredential());
+    } else if (connectionString) {
       _client = new CallAutomationClient(connectionString);
     } else {
-      _client = new CallAutomationClient(endpoint, getAzureCredential());
+      throw new Error('ACS Call Automation is not configured.');
     }
   }
   return _client;
