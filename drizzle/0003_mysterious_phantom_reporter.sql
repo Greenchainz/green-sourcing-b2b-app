@@ -459,11 +459,6 @@ ALTER TABLE "suppliers" ADD COLUMN "microsoftSubscriptionId" text;--> statement-
 ALTER TABLE "suppliers" ADD COLUMN "microsoftPlanId" text;--> statement-breakpoint
 ALTER TABLE "suppliers" ADD COLUMN "tierUpdatedAt" timestamp;--> statement-breakpoint
 ALTER TABLE "suppliers" ADD COLUMN "specSheetUrl" text;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "serviceRadiusMiles" integer;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "statesServed" json;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "shipsNationwide" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "minOrderQuantity" numeric(12, 2);--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "maxOrderQuantity" numeric(12, 2);--> statement-breakpoint
 ALTER TABLE "suppliers" ADD COLUMN "otif_percentage" numeric(5, 2);--> statement-breakpoint
 ALTER TABLE "suppliers" ADD COLUMN "avg_lead_time_days" integer;--> statement-breakpoint
 ALTER TABLE "suppliers" ADD COLUMN "lead_time_variance_days" integer;--> statement-breakpoint
