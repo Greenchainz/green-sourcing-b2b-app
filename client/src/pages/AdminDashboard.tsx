@@ -509,13 +509,27 @@ function MarketingVideosTab() {
 
     const ext = (file.name.split('.').pop() ?? 'mp4').toLowerCase();
     setUploading(true);
+    let createdVideoId: number | null = null;
     try {
+      // Validate duration before touching the server so we don't leave orphan blobs.
+      const MAX_ALLOWED_SEC = 600; // must match server MAX_DURATION_SEC
+      const rawDurationSec = Math.round(await getDurationSec(file));
+      if (rawDurationSec > MAX_ALLOWED_SEC) {
+        toast.error(
+          `Video is too long (${Math.ceil(rawDurationSec / 60)} min). Maximum allowed is ${MAX_ALLOWED_SEC / 60} minutes.`
+        );
+        setUploading(false);
+        return;
+      }
+      const durationSec = Math.max(1, rawDurationSec);
+
       const created = await createMutation.mutateAsync({
         title: title.trim(),
         note: note.trim() || undefined,
         extension: ext,
         contentType: file.type || 'video/mp4',
       });
+      createdVideoId = created.videoId;
 
       const uploadRes = await fetch(created.uploadUrl, {
         method: 'PUT',
@@ -531,12 +545,11 @@ function MarketingVideosTab() {
         throw new Error(`Upload failed (${uploadRes.status}) ${detail.slice(0, 140)}`);
       }
 
-      const durationSec = Math.max(1, Math.min(600, Math.round(await getDurationSec(file))));
-
       await finalizeMutation.mutateAsync({
         videoId: created.videoId,
         durationSec,
       });
+      createdVideoId = null; // finalized successfully — no cleanup needed
 
       setTitle('');
       setNote('');
@@ -547,6 +560,12 @@ function MarketingVideosTab() {
     } catch (err) {
       console.error('[admin-marketing-videos] upload failed:', err);
       toast.error(err instanceof Error ? err.message : 'Upload failed');
+      // Clean up the orphaned draft row so the library does not render a broken entry.
+      if (createdVideoId !== null) {
+        void deleteMutation.mutateAsync({ videoId: createdVideoId }).catch((delErr: unknown) =>
+          console.error('[admin-marketing-videos] draft cleanup failed:', delErr),
+        );
+      }
     } finally {
       setUploading(false);
     }
@@ -936,17 +955,19 @@ function GodModeTab() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35"
+                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => runSupplierOutreach.mutate()}
-                  disabled={runSupplierOutreach.isPending}
+                  disabled={runSupplierOutreach.isPending || !scraperStatus.data.flags.supplierOutreachEnabled}
+                  title={!scraperStatus.data.flags.supplierOutreachEnabled ? 'Set OUTREACH_ENABLED=true to enable' : undefined}
                 >
                   {runSupplierOutreach.isPending ? 'Running supplier outreach…' : 'Run Supplier Outreach'}
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35"
+                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => runLeadOutreach.mutate()}
-                  disabled={runLeadOutreach.isPending}
+                  disabled={runLeadOutreach.isPending || !scraperStatus.data.flags.leadOutreachEnabled}
+                  title={!scraperStatus.data.flags.leadOutreachEnabled ? 'Set LEAD_OUTREACH_ENABLED=true to enable' : undefined}
                 >
                   {runLeadOutreach.isPending ? 'Running lead outreach…' : 'Run Lead Outreach'}
                 </Button>

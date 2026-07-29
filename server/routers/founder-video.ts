@@ -11,6 +11,7 @@ import {
   generateReadSasUrl,
   buildBlobUrl,
   blobKeyForVideo,
+  deleteFounderVideoBlob,
 } from "../../lib/founder-video-storage";
 import { transcribeFounderVideo } from "../services/founder-video-transcribe";
 import { sendFounderVideoEmail, sendFounderVideoWatchAlert, FOUNDER_EMAIL } from "../email-service";
@@ -184,7 +185,8 @@ export const founderVideoRouter = router({
       });
 
       const shareToken = nanoid(SHARE_TOKEN_LENGTH);
-      const expiresAt = new Date(Date.now() + DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+      // Marketing library links must never expire: the resend procedure rejects them,
+      // so a time-limited entry would become permanently unusable after 90 days.
 
       const [inserted] = await db
         .insert(founderVideos)
@@ -200,7 +202,7 @@ export const founderVideoRouter = router({
           durationSec: 0,
           transcriptStatus: "pending",
           status: "draft",
-          expiresAt,
+          expiresAt: null,
         })
         .returning({ id: founderVideos.id });
 
@@ -304,17 +306,31 @@ export const founderVideoRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      const deleted = await db
-        .delete(founderVideos)
+      // Fetch first so we can delete the blob and verify ownership before touching data.
+      const [video] = await db
+        .select({ id: founderVideos.id, blobKey: founderVideos.blobKey })
+        .from(founderVideos)
         .where(and(
           eq(founderVideos.id, input.videoId),
           eq(founderVideos.ownerUserId, ctx.user.id),
           eq(founderVideos.recipientEmail, MARKETING_LIBRARY_EMAIL),
-        ))
-        .returning({ id: founderVideos.id });
+        ));
 
-      if (deleted.length === 0) {
+      if (!video) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Marketing video not found" });
+      }
+
+      // Delete child view rows and parent row transactionally.
+      await db.transaction(async (tx) => {
+        await tx.delete(founderVideoViews).where(eq(founderVideoViews.videoId, video.id));
+        await tx.delete(founderVideos).where(eq(founderVideos.id, video.id));
+      });
+
+      // Delete the blob after DB rows are gone; best-effort (log on failure, don't surface).
+      if (video.blobKey) {
+        await deleteFounderVideoBlob(video.blobKey).catch((err: unknown) =>
+          console.error("[deleteMarketingFile] blob delete failed:", err),
+        );
       }
 
       return { ok: true };
@@ -634,19 +650,23 @@ export const founderVideoRouter = router({
         })
         .where(eq(founderVideos.id, video.id));
 
-      // Fire-and-forget: alert the founder that their video was watched
+      // Fire-and-forget: alert the founder that their video was watched.
+      // Marketing-library entries use a synthetic .local sentinel address and have no
+      // real recipient, so suppress the watch alert for them (view counters are still
+      // incremented above).
       const newWatchedCount = video.watchedCount + 1;
-      const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
-
-      void sendFounderVideoWatchAlert({
-        founderEmail: FOUNDER_EMAIL,
-        recipientName: video.recipientName,
-        recipientEmail: video.recipientEmail,
-        subject: video.subject,
-        durationWatchedSec: input.durationWatchedSec ?? null,
-        watchedCount: newWatchedCount,
-        shareUrl,
-      }).catch((err: unknown) => console.error("[founderVideo.publicLogView] watch alert failed:", err));
+      if (video.recipientEmail !== MARKETING_LIBRARY_EMAIL) {
+        const shareUrl = `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`;
+        void sendFounderVideoWatchAlert({
+          founderEmail: FOUNDER_EMAIL,
+          recipientName: video.recipientName,
+          recipientEmail: video.recipientEmail,
+          subject: video.subject,
+          durationWatchedSec: input.durationWatchedSec ?? null,
+          watchedCount: newWatchedCount,
+          shareUrl,
+        }).catch((err: unknown) => console.error("[founderVideo.publicLogView] watch alert failed:", err));
+      }
 
       return { ok: true };
     }),
