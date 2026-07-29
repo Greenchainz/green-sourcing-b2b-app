@@ -1,10 +1,10 @@
 import { router, adminProcedure, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb } from "../db";
-import { founderVideos, founderVideoViews } from "../../drizzle/schema";
+import { founderVideos, founderVideoViews, aboutYoutubeVideos } from "../../drizzle/schema";
 import {
   ensureFounderVideosContainer,
   generateUploadSasUrl,
@@ -258,21 +258,46 @@ export const founderVideoRouter = router({
       return { ok: true };
     }),
 
-  // ── Public: About page video — returns a SAS URL for the static about video ──
-  aboutVideo: publicProcedure.query(async () => {
-    const blobKey = process.env.ABOUT_VIDEO_BLOB_KEY;
-    if (!blobKey) {
-      return { videoUrl: null };
-    }
-
-    try {
-      const videoUrl = await generateReadSasUrl(blobKey);
-      return { videoUrl };
-    } catch (err) {
-      console.error("[founderVideo.aboutVideo] SAS generation failed:", err);
-      return { videoUrl: null };
-    }
+  // ── Public: About page YouTube videos — ordered list of video IDs ───────────
+  aboutVideos: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { videos: [] };
+    const rows = await db
+      .select()
+      .from(aboutYoutubeVideos)
+      .orderBy(asc(aboutYoutubeVideos.sortOrder), asc(aboutYoutubeVideos.createdAt));
+    return { videos: rows };
   }),
+
+  // ── Admin: add a YouTube video to the About page ─────────────────────────
+  addAboutVideo: adminProcedure
+    .input(
+      z.object({
+        youtubeId: z.string().min(6).max(20),
+        title: z.string().max(200).default(""),
+        sortOrder: z.number().int().default(0),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [row] = await db
+        .insert(aboutYoutubeVideos)
+        .values({ youtubeId: input.youtubeId, title: input.title, sortOrder: input.sortOrder })
+        .onConflictDoNothing()
+        .returning();
+      return { video: row ?? null };
+    }),
+
+  // ── Admin: remove a YouTube video from the About page ────────────────────
+  removeAboutVideo: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(aboutYoutubeVideos).where(eq(aboutYoutubeVideos.id, input.id));
+      return { ok: true };
+    }),
 
   // ── Public: watch page metadata + short-lived read SAS URL ────────────────
   publicGet: publicProcedure

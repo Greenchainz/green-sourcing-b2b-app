@@ -69,6 +69,7 @@ import {
   BarChart3,
   TrendingUp,
   Video,
+  Plus,
   Bot,
   FolderOpen,
   Database,
@@ -2438,6 +2439,129 @@ function WorkIQTab() {
 
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
+// ─── Videos Tab ──────────────────────────────────────────────────────────────
+
+function parseYoutubeId(input: string): string {
+  const m = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/.exec(input);
+  return m ? m[1] : input.trim().slice(0, 20);
+}
+
+function VideosTab() {
+  const [urlInput, setUrlInput] = useState('');
+  const [titleInput, setTitleInput] = useState('');
+  const utils = trpc.useUtils();
+
+  const videosQuery = trpc.founderVideo.aboutVideos.useQuery();
+  const videos = videosQuery.data?.videos ?? [];
+
+  const addMutation = trpc.founderVideo.addAboutVideo.useMutation({
+    onSuccess: () => {
+      void utils.founderVideo.aboutVideos.invalidate();
+      setUrlInput('');
+      setTitleInput('');
+      toast.success('Video added to About page');
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const removeMutation = trpc.founderVideo.removeAboutVideo.useMutation({
+    onSuccess: () => { void utils.founderVideo.aboutVideos.invalidate(); toast.success('Video removed'); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  function handleAdd() {
+    const youtubeId = parseYoutubeId(urlInput);
+    if (youtubeId.length < 6) { toast.error('Paste a valid YouTube URL or video ID'); return; }
+    addMutation.mutate({ youtubeId, title: titleInput.trim(), sortOrder: videos.length });
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Add */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Video className="h-4 w-4 text-blue-400" />
+            About Page Videos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-gray-400">
+            Paste a YouTube URL or video ID. Set videos to <strong className="text-gray-300">Unlisted</strong> on YouTube so they only play on your site.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="YouTube URL or video ID"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+              className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+            />
+            <Input
+              placeholder="Label (optional)"
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+              className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+            />
+            <Button
+              onClick={handleAdd}
+              disabled={addMutation.isPending || urlInput.trim() === ''}
+              className="shrink-0 gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </div>
+
+          {/* List */}
+          <div className="mt-4 space-y-2">
+            {videosQuery.isLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : videosQuery.isError ? (
+              <p className="text-sm text-red-400">Unable to load videos: {videosQuery.error.message}</p>
+            ) : videos.length === 0 ? (
+              <p className="text-sm text-gray-500">No videos yet — add one above.</p>
+            ) : (
+              videos.map((v) => (
+                <div key={v.id} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-800/50 p-2">
+                  <img
+                    src={`https://img.youtube.com/vi/${v.youtubeId}/default.jpg`}
+                    alt=""
+                    className="h-12 w-[86px] shrink-0 rounded object-cover bg-gray-700"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{v.title || v.youtubeId}</p>
+                    <a
+                      href={`https://youtu.be/${v.youtubeId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-400 hover:underline"
+                    >
+                      {v.youtubeId}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-red-400 hover:bg-red-950 hover:text-red-300"
+                    disabled={removeMutation.isPending}
+                    onClick={() => removeMutation.mutate({ id: v.id })}
+                    aria-label="Remove video"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function SystemTab() {
   const clearTestUsers = trpc.admin.clearTestUsers.useMutation({
     onSuccess: (res) => {
@@ -2690,6 +2814,11 @@ export default function AdminDashboard() {
               Catalog
             </TabsTrigger>
             <TabsTrigger
+              value="videos"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Video className="mr-1.5 h-4 w-4" />
+              Videos
               value="leads"
               className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
             >
@@ -2763,6 +2892,8 @@ export default function AdminDashboard() {
             <CatalogTab />
           </TabsContent>
 
+          <TabsContent value="videos">
+            <VideosTab />
           <TabsContent value="leads">
             <LeadsTab />
           </TabsContent>

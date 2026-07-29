@@ -2295,6 +2295,22 @@ export const auditLogs = pgTable("audit_logs", {
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 
+// ── About Page YouTube Videos ─────────────────────────────────────────────────
+// Ordered list of YouTube video IDs shown on the /about founder section.
+// Admin can add/remove via /admin/about-videos.
+// Set videos to "Unlisted" on YouTube so they only play on your site.
+
+export const aboutYoutubeVideos = pgTable("about_youtube_videos", {
+  id: serial("id").primaryKey(),
+  youtubeId: varchar("youtubeId", { length: 20 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull().default(""),
+  sortOrder: integer("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AboutYoutubeVideo = typeof aboutYoutubeVideos.$inferSelect;
+export type InsertAboutYoutubeVideo = typeof aboutYoutubeVideos.$inferInsert;
+
 // ── RFQ Match Runs — append-only SWAP Engine audit ────────────────────────────
 // Every invocation of runSwapEngine writes one row. Never update or delete.
 // Used for: supplier scorecard analytics, per-run reasoning audit, CCPS trend analysis.
