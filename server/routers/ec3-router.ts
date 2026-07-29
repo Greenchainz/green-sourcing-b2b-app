@@ -11,7 +11,7 @@ import { fetchEC3EPDs, searchEC3EPDs } from "../ec3";
 import { transformEC3Batch } from "../ec3-transform";
 import { getDb } from "../db";
 import { materials } from "../../drizzle/schema";
-import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, inArray, sql, isNotNull } from "drizzle-orm";
 
 export const ec3Router = router({
   /**
@@ -209,28 +209,27 @@ export const ec3Router = router({
    */
   getSyncStatus: publicProcedure
     .query(async () => {
-      // Count materials by data source
       const db = await getDb();
       if (!db) throw new Error("Database connection failed");
-      
-      const allMaterials = await db.select().from(materials);
-      const ec3Materials = allMaterials.filter((m) => m.ec3Id !== null);
 
-      const totalMaterials = await db.select().from(materials);
+      // Single aggregate query instead of loading all rows into memory
+      const [stats] = await db
+        .select({
+          totalMaterials: sql<number>`count(*)::int`,
+          ec3Materials: sql<number>`count(${materials.ec3Id})::int`,
+          lastSynced: sql<Date | null>`max(${materials.ec3SyncedAt})`,
+        })
+        .from(materials);
 
-      // Get last sync time
-      const lastSynced = ec3Materials.length > 0
-        ? Math.max(...ec3Materials.map((m) => m.ec3SyncedAt?.getTime() ?? 0))
-        : null;
+      const total = stats.totalMaterials ?? 0;
+      const ec3Count = stats.ec3Materials ?? 0;
 
       return {
         success: true,
-        totalMaterials: totalMaterials.length,
-        ec3Materials: ec3Materials.length,
-        lastSynced: lastSynced ? new Date(lastSynced) : null,
-        syncPercentage: totalMaterials.length > 0
-          ? Math.round((ec3Materials.length / totalMaterials.length) * 100)
-          : 0,
+        totalMaterials: total,
+        ec3Materials: ec3Count,
+        lastSynced: stats.lastSynced ?? null,
+        syncPercentage: total > 0 ? Math.round((ec3Count / total) * 100) : 0,
       };
     }),
 });
