@@ -509,6 +509,7 @@ function MarketingVideosTab() {
 
     const ext = (file.name.split('.').pop() ?? 'mp4').toLowerCase();
     setUploading(true);
+    let createdVideoId: number | null = null;
     try {
       // Validate duration before touching the server so we don't leave orphan blobs.
       const MAX_ALLOWED_SEC = 600; // must match server MAX_DURATION_SEC
@@ -528,6 +529,7 @@ function MarketingVideosTab() {
         extension: ext,
         contentType: file.type || 'video/mp4',
       });
+      createdVideoId = created.videoId;
 
       const uploadRes = await fetch(created.uploadUrl, {
         method: 'PUT',
@@ -547,6 +549,7 @@ function MarketingVideosTab() {
         videoId: created.videoId,
         durationSec,
       });
+      createdVideoId = null; // finalized successfully — no cleanup needed
 
       setTitle('');
       setNote('');
@@ -557,6 +560,12 @@ function MarketingVideosTab() {
     } catch (err) {
       console.error('[admin-marketing-videos] upload failed:', err);
       toast.error(err instanceof Error ? err.message : 'Upload failed');
+      // Clean up the orphaned draft row so the library does not render a broken entry.
+      if (createdVideoId !== null) {
+        void deleteMutation.mutateAsync({ videoId: createdVideoId }).catch((delErr: unknown) =>
+          console.error('[admin-marketing-videos] draft cleanup failed:', delErr),
+        );
+      }
     } finally {
       setUploading(false);
     }
