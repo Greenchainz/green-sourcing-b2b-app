@@ -76,6 +76,10 @@ export default function About() {
               <div className="space-y-6">
                 {aboutVideosQuery.isLoading ? (
                   <div className="relative aspect-video overflow-hidden rounded-2xl bg-secondary animate-pulse" />
+                ) : aboutVideosQuery.isError ? (
+                  <div className="relative aspect-video overflow-hidden rounded-2xl bg-secondary/50 flex items-center justify-center text-sm text-muted-foreground">
+                    Unable to load videos.
+                  </div>
                 ) : videos.length === 0 ? (
                   <div className="relative aspect-video overflow-hidden rounded-2xl bg-secondary/50 flex items-center justify-center text-sm text-muted-foreground">
                     No videos added yet.
