@@ -1420,6 +1420,12 @@ function SystemTab() {
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
+            <Link href="/admin/about-videos">
+              <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
+                <Video className="mr-2 h-4 w-4" />About Page Videos
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
             <Link href="/admin/founder-videos/analytics">
               <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
                 <BarChart3 className="mr-2 h-4 w-4" />Video Analytics
