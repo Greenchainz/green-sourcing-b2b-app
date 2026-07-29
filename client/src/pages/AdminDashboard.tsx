@@ -2819,6 +2819,8 @@ export default function AdminDashboard() {
             >
               <Video className="mr-1.5 h-4 w-4" />
               Videos
+            </TabsTrigger>
+            <TabsTrigger
               value="leads"
               className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
             >
@@ -2894,6 +2896,8 @@ export default function AdminDashboard() {
 
           <TabsContent value="videos">
             <VideosTab />
+          </TabsContent>
+
           <TabsContent value="leads">
             <LeadsTab />
           </TabsContent>
