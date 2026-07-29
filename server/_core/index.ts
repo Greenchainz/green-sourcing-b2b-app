@@ -24,6 +24,7 @@ import { handleMicrosoftWebhook } from "../microsoft-webhook-handler";
 import { uploadRouter } from "../upload-route";
 import { zeptomailWebhookRouter } from "../zeptomail-webhook";
 import { unsubscribeRouter } from "../unsubscribe-route";
+import { acsCallEventsRouter } from "../acs-call-events-router";
 import { specSheetRouter } from "../spec-sheet-router";
 import { registerAdminRoutes } from "../admin-routes/index";
 import { publicMaterialsRouter } from "../public-materials-api";
@@ -606,6 +607,7 @@ async function startServer() {
   }
   app.use(zeptomailWebhookRouter);
   app.use(unsubscribeRouter);
+  app.use(acsCallEventsRouter);
   app.use("/api", specSheetRouter);
   // Public REST API for Forma Extension (unauthenticated)
   app.use("/api/public", publicApiRateLimit, publicMaterialsRouter);
