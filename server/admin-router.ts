@@ -5,7 +5,7 @@ import {
   suppliers, users, materials, materialCertifications, buyerSubscriptions,
   rfqs, rfqBids, leads, conversations, messages,
   subscriptions, arcadeScores,
-  subscriptions, manufacturers, architects,
+  manufacturers, architects,
   supplierSubscriptions, supplierProfileViews, supplierBuyerFitInputs,
   supplierSustainabilityProfiles, agentHandoffRules, supplierFilters,
   suppliersLocation, rfqSupplierInvites, epdMaterials, supplierMaterialEpds,
@@ -1506,7 +1506,7 @@ export const adminRouter = router({
         gameId: z.string().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async () => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -1530,6 +1530,8 @@ export const adminRouter = router({
       // users table doesn't have a phone column yet. Arcade leads hold emails only.
       // Return skipped count — wire up phone blast once users.phone migration is done.
       return { sent: 0, failed: 0, skipped: emailList.length };
+    }),
+
   // ════════════════════════════════════════════════════════════════════════
   // Admin destructive data control — users / manufacturers / suppliers
   // Soft-delete + restore is the safe default; hard-purge is the irreversible
@@ -1912,11 +1914,6 @@ export const adminRouter = router({
       return { success: true };
     }),
 });
-
-
-
-
-
 
 
 
