@@ -1,22 +1,23 @@
 /**
  * Microsoft SaaS Accelerator - Metering API Integration
- * 
+ *
  * This module handles usage-based billing by reporting metered usage to Microsoft.
  * Microsoft bills customers based on the usage we report through this API.
- * 
+ *
  * Metered Dimensions (from greenchainz-pricing-strategy.md):
  * - rfq_submissions: RFQ submissions (5/mo Standard, unlimited Premium)
  * - ai_queries: ChainBot AI queries (25/mo Standard, unlimited Premium)
  * - swap_analyses: Material swap analyses (20/mo Standard, unlimited Premium)
  * - ccps_exports: CCPS report exports (10/mo Standard, unlimited Premium)
  * - material_comparisons: Material comparisons (50/mo Standard, unlimited Premium)
- * 
+ *
  * Reference: https://learn.microsoft.com/en-us/partner-center/marketplace-offers/marketplace-metering-service-apis
  */
 
+import { randomUUID } from "node:crypto";
 import { getMarketplaceAccessToken } from "./marketplace-auth";
 
-export type MeteringDimension = 
+export type MeteringDimension =
   | "rfq_submissions"
   | "ai_queries"
   | "swap_analyses"
@@ -33,7 +34,16 @@ export interface UsageEvent {
 
 export interface UsageEventResult {
   usageEventId: string;
-  status: "Accepted" | "Expired" | "Duplicate" | "Error" | "ResourceNotFound" | "ResourceNotAuthorized" | "InvalidDimension" | "InvalidQuantity" | "BadArgument";
+  status:
+    | "Accepted"
+    | "Expired"
+    | "Duplicate"
+    | "Error"
+    | "ResourceNotFound"
+    | "ResourceNotAuthorized"
+    | "InvalidDimension"
+    | "InvalidQuantity"
+    | "BadArgument";
   messageTime: string;
   resourceId: string;
   quantity: number;
@@ -44,20 +54,23 @@ export interface UsageEventResult {
 
 /**
  * Report usage event to Microsoft Marketplace Metering API
- * 
+ *
  * This function sends a single usage event to Microsoft for billing.
  * Microsoft will charge the customer based on the reported usage.
- * 
+ *
  * Important notes:
  * - Usage events must be reported within 24 hours of occurrence
  * - Duplicate events (same resourceId, dimension, effectiveStartTime) are rejected
  * - Quantity must be a positive integer
  * - effectiveStartTime must be within the current billing period
  */
-export async function reportUsageEvent(event: UsageEvent): Promise<UsageEventResult | null> {
+export async function reportUsageEvent(
+  event: UsageEvent
+): Promise<UsageEventResult | null> {
   try {
     const accessToken = await getMarketplaceAccessToken();
-    const url = "https://marketplaceapi.microsoft.com/api/usageEvent?api-version=2018-08-31";
+    const url =
+      "https://marketplaceapi.microsoft.com/api/usageEvent?api-version=2018-08-31";
 
     console.log("[Metering API] Reporting usage event:", {
       resourceId: event.resourceId,
@@ -69,7 +82,7 @@ export async function reportUsageEvent(event: UsageEvent): Promise<UsageEventRes
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         "x-ms-requestid": generateRequestId(),
         "x-ms-correlationid": generateCorrelationId(),
       },
@@ -78,12 +91,16 @@ export async function reportUsageEvent(event: UsageEvent): Promise<UsageEventRes
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[Metering API] Failed to report usage:", response.status, errorText);
+      console.error(
+        "[Metering API] Failed to report usage:",
+        response.status,
+        errorText
+      );
       return null;
     }
 
-    const result = await response.json() as UsageEventResult;
-    
+    const result = (await response.json()) as UsageEventResult;
+
     console.log("[Metering API] Usage event reported successfully:", {
       usageEventId: result.usageEventId,
       status: result.status,
@@ -98,13 +115,15 @@ export async function reportUsageEvent(event: UsageEvent): Promise<UsageEventRes
 
 /**
  * Report batch usage events to Microsoft Marketplace Metering API
- * 
+ *
  * This function sends multiple usage events in a single API call.
  * Useful for reporting accumulated usage at the end of a billing period.
- * 
+ *
  * Maximum 25 events per batch.
  */
-export async function reportBatchUsageEvents(events: UsageEvent[]): Promise<UsageEventResult[]> {
+export async function reportBatchUsageEvents(
+  events: UsageEvent[]
+): Promise<UsageEventResult[]> {
   try {
     if (events.length === 0) {
       return [];
@@ -115,7 +134,8 @@ export async function reportBatchUsageEvents(events: UsageEvent[]): Promise<Usag
     }
 
     const accessToken = await getMarketplaceAccessToken();
-    const url = "https://marketplaceapi.microsoft.com/api/batchUsageEvent?api-version=2018-08-31";
+    const url =
+      "https://marketplaceapi.microsoft.com/api/batchUsageEvent?api-version=2018-08-31";
 
     console.log("[Metering API] Reporting batch usage events:", {
       count: events.length,
@@ -125,7 +145,7 @@ export async function reportBatchUsageEvents(events: UsageEvent[]): Promise<Usag
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         "x-ms-requestid": generateRequestId(),
         "x-ms-correlationid": generateCorrelationId(),
       },
@@ -136,11 +156,15 @@ export async function reportBatchUsageEvents(events: UsageEvent[]): Promise<Usag
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[Metering API] Failed to report batch usage:", response.status, errorText);
+      console.error(
+        "[Metering API] Failed to report batch usage:",
+        response.status,
+        errorText
+      );
       return [];
     }
 
-    const result = await response.json() as { result?: UsageEventResult[] };
+    const result = (await response.json()) as { result?: UsageEventResult[] };
     const results: UsageEventResult[] = result.result || [];
 
     console.log("[Metering API] Batch usage events reported:", {
@@ -158,7 +182,7 @@ export async function reportBatchUsageEvents(events: UsageEvent[]): Promise<Usag
 
 /**
  * Report usage for a buyer subscription
- * 
+ *
  * This is a convenience wrapper that integrates with our usage tracking service.
  * It reports usage to Microsoft only if the subscription is paid (not free tier).
  */
@@ -171,7 +195,9 @@ export async function reportBuyerUsage(
   try {
     // Don't report usage for free tier or beta users
     if (!msSubscriptionId || !msPlanId) {
-      console.log("[Metering API] Skipping usage report (free tier or beta user)");
+      console.log(
+        "[Metering API] Skipping usage report (free tier or beta user)"
+      );
       return true;
     }
 
@@ -208,28 +234,28 @@ export async function reportBuyerUsage(
  * Generate unique request ID for API calls
  */
 function generateRequestId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  return randomUUID();
 }
 
 /**
  * Generate correlation ID for tracking related API calls
  */
 function generateCorrelationId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  return randomUUID();
 }
 
 /**
  * Get overage rates for metered dimensions
- * 
+ *
  * These rates are charged when customers exceed their plan's included usage.
  * Rates are defined in Partner Center and must match exactly.
  */
 export const OVERAGE_RATES: Record<MeteringDimension, number> = {
-  rfq_submissions: 15.00, // $15 per RFQ over limit
-  ai_queries: 0.50, // $0.50 per query over limit
-  swap_analyses: 2.00, // $2 per analysis over limit
-  ccps_exports: 3.00, // $3 per export over limit
-  material_comparisons: 0.00, // No overage (Premium = unlimited)
+  rfq_submissions: 15.0, // $15 per RFQ over limit
+  ai_queries: 0.5, // $0.50 per query over limit
+  swap_analyses: 2.0, // $2 per analysis over limit
+  ccps_exports: 3.0, // $3 per export over limit
+  material_comparisons: 0.0, // No overage (Premium = unlimited)
 };
 
 /**

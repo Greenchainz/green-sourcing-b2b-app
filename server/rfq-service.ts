@@ -1,7 +1,7 @@
 import { getDb } from "./db";
-import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, rfqAnalytics, materials, users } from "../drizzle/schema";
+import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, rfqAnalytics, materials, users, decisionMakerPersonas } from "../drizzle/schema";
 import { eq, and, desc, sql, isNull, inArray } from "drizzle-orm";
-import { calculateCcps, personaToWeights } from "./ccps-engine";
+import { calculateCcps, personaToWeights, type PersonaWeights } from "./ccps-engine";
 import { geocodeAddress, calculateDistance, getDistanceScore, type Coordinates } from "./azure-maps-service";
 import { findMatchingSuppliers } from "../lib/greenchainz/matching/rfq-supplier-match";
 
@@ -73,16 +73,18 @@ export async function submitRfq(userId: number, input: RfqSubmissionInput): Prom
 
   const rfqId = rfqResult.id;
 
-  // Add RFQ items
-  for (const item of input.materials) {
+  // Add RFQ items in bulk
+  if (input.materials.length > 0) {
     await db
       .insert(rfqItems)
-      .values({
-        rfqId,
-        materialId: item.materialId,
-        quantity: item.quantity.toString(),
-        quantityUnit: item.quantityUnit,
-      })
+      .values(
+        input.materials.map((item) => ({
+          rfqId,
+          materialId: item.materialId,
+          quantity: item.quantity.toString(),
+          quantityUnit: item.quantityUnit,
+        }))
+      )
       .execute();
   }
 
@@ -616,15 +618,24 @@ export async function acceptBid(rfqId: number, bidId: number): Promise<{ success
  * Enrich RFQ with CCPS data and sustainability insights (for agent)
  */
 export async function enrichRfqWithCcps(rfqId: number, buyerPersona: string = "default"): Promise<{ enrichedData: any }> {
-  // Type assertion to fix persona type mismatch
-  const personaKey = buyerPersona as any;
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
 
   const rfq = await getRfqWithBids(rfqId);
   if (!rfq) throw new Error("RFQ not found");
 
-  const weights = personaToWeights(personaKey);
+  let weights: PersonaWeights | undefined;
+  if (buyerPersona && buyerPersona !== "default") {
+    const personaRows = await db
+      .select()
+      .from(decisionMakerPersonas)
+      .where(eq(decisionMakerPersonas.personaKey, buyerPersona))
+      .limit(1);
+
+    if (personaRows.length > 0) {
+      weights = personaToWeights(personaRows[0]);
+    }
+  }
 
   // Calculate CCPS for each material in the RFQ
   const enrichedItems = [];
@@ -646,7 +657,7 @@ export async function enrichRfqWithCcps(rfqId: number, buyerPersona: string = "d
         .where(sql`materialId = ${item.materialId}`)
         .execute();
       
-      const ccps = calculateCcps(material[0] as any, baseline[0] as any, weights as any);
+      const ccps = calculateCcps(material[0] as any, baseline[0] as any, weights);
       enrichedItems.push({
         ...item,
         material: material[0] as any,

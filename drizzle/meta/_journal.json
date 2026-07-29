@@ -1,4 +1,37 @@
 {
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1773088532690,
+      "tag": "0000_romantic_lizard",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775105679839,
+      "tag": "0001_public_captain_midlands",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1747267200000,
+      "tag": "0034_supplier_service_area",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785338499690,
+      "tag": "0003_mysterious_phantom_reporter",
+      "breakpoints": true
+    }
+  ]
+}
     "version":  "7",
     "dialect":  "postgresql",
     "entries":  [
@@ -21,6 +54,13 @@
                         "version":  "7",
                         "when":  1747267200000,
                         "tag":  "0034_supplier_service_area",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  3,
+                        "version":  "7",
+                        "when":  1784073600000,
+                        "tag":  "0040_admin_soft_delete",
                         "breakpoints":  true
                     }
                 ]

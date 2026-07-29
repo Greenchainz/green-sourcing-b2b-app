@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, adminProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { manufacturers, materials } from "../drizzle/schema";
-import { eq, asc, sql, desc } from "drizzle-orm";
+import { eq, asc, sql, desc, and, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { SUPPLIERS, SupplierCategory } from "../lib/research/supplierCategories";
 
@@ -70,8 +70,24 @@ function researchFallback(categoryFilter?: string): ManufacturerRow[] {
     }));
 }
 
+type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+async function hasManufacturerRows(db: Db): Promise<boolean> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(manufacturers);
+
+  return Number(row?.count ?? 0) > 0;
+}
+
 export const manufacturerRouter = router({
-  getAll: publicProcedure
+  /**
+   * Full supplier inventory — ADMIN ONLY. This is the curated/scraped moat and
+   * must never be dumped to the public client. Buyers source via Material Search
+   * (`/search`) + RFQ; the public `/manufacturers` page uses `getSpotlight`
+   * (featured-only). Kept (not deleted) so admin tooling can still enumerate.
+   */
+  getAll: adminProcedure
     .input(
       z.object({
         category: z.string().optional(),
@@ -81,7 +97,7 @@ export const manufacturerRouter = router({
       const db = await getDb();
       if (!db) return researchFallback(input?.category);
 
-      const conditions: SQL<unknown>[] = [];
+      const conditions: SQL<unknown>[] = [isNull(manufacturers.deletedAt)];
       if (input?.category) {
         conditions.push(eq(manufacturers.category, input.category));
       }
@@ -105,9 +121,7 @@ export const manufacturerRouter = router({
         .leftJoin(materialCounts, eq(manufacturers.id, materialCounts.manufacturerId))
         .orderBy(desc(manufacturers.featured), asc(manufacturers.name));
 
-      const rows = conditions.length > 0
-        ? await query.where(conditions[0])
-        : await query;
+      const rows = await query.where(and(...conditions));
 
       const dbResults = rows.map((r) => ({
         ...r.manufacturer,
@@ -115,9 +129,9 @@ export const manufacturerRouter = router({
         materialCount: Number(r.materialCount),
       }));
 
-      // If the DB table has no rows yet, surface the research library
+      // Only use the first-run fallback before manufacturer inventory has been seeded.
       if (dbResults.length === 0) {
-        return researchFallback(input?.category);
+        return (await hasManufacturerRows(db)) ? [] : researchFallback(input?.category);
       }
 
       return dbResults;
@@ -132,7 +146,7 @@ export const manufacturerRouter = router({
       const rows = await db
         .select()
         .from(manufacturers)
-        .where(eq(manufacturers.id, input.id))
+        .where(and(eq(manufacturers.id, input.id), isNull(manufacturers.deletedAt)))
         .limit(1);
 
       if (rows.length === 0) return null;
@@ -160,8 +174,78 @@ export const manufacturerRouter = router({
         .set({
           profileViews: sql`COALESCE(${manufacturers.profileViews}, 0) + 1`,
         })
-        .where(eq(manufacturers.id, input.id));
+        .where(and(eq(manufacturers.id, input.id), isNull(manufacturers.deletedAt)));
 
       return { success: true };
+    }),
+
+  /**
+   * Curated editorial spotlight for the /manufacturers page.
+   * Returns ONLY featured suppliers (never the full inventory) so the moat
+   * stays server-side. The most-recently-featured row is the "Supplier of the
+   * Week" hero; the remainder are the "Emerging / New & Noteworthy" set.
+   */
+  getSpotlight: publicProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(12).optional() }).optional())
+    .query(async ({ input }) => {
+      const limit = input?.limit ?? 7;
+      const db = await getDb();
+      if (!db) {
+        return researchFallback().filter((m) => m.featured).slice(0, limit);
+      }
+
+      const materialCounts = db
+        .select({
+          manufacturerId: materials.manufacturerId,
+          count: sql<number>`count(*)`.as("count"),
+        })
+        .from(materials)
+        .groupBy(materials.manufacturerId)
+        .as("materialCounts");
+
+      const rows = await db
+        .select({
+          manufacturer: manufacturers,
+          materialCount: sql<number>`COALESCE(${materialCounts.count}, 0)`,
+        })
+        .from(manufacturers)
+        .leftJoin(materialCounts, eq(manufacturers.id, materialCounts.manufacturerId))
+        .where(and(eq(manufacturers.featured, true), isNull(manufacturers.deletedAt)))
+        .orderBy(desc(manufacturers.updatedAt))
+        .limit(limit);
+
+      const dbResults = rows.map((r) => ({
+        ...r.manufacturer,
+        companyName: r.manufacturer.name,
+        materialCount: Number(r.materialCount),
+      }));
+
+      // Only use the first-run fallback before manufacturer inventory has been seeded.
+      if (dbResults.length === 0) {
+        return (await hasManufacturerRows(db))
+          ? []
+          : researchFallback().filter((m) => m.featured).slice(0, limit);
+      }
+
+      return dbResults;
+    }),
+
+  /**
+   * Admin-only: feature / un-feature a supplier. Stamping updatedAt makes the
+   * newest pick the "Supplier of the Week" hero (getSpotlight orders by it).
+   * No schema migration — reuses the existing `featured` flag.
+   */
+  setFeatured: adminProcedure
+    .input(z.object({ id: z.number().int().positive(), featured: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { success: false as const };
+
+      await db
+        .update(manufacturers)
+        .set({ featured: input.featured, updatedAt: new Date() })
+        .where(eq(manufacturers.id, input.id));
+
+      return { success: true as const, id: input.id, featured: input.featured };
     }),
 });

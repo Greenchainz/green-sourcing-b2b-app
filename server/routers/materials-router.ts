@@ -9,6 +9,7 @@ import {
   decisionMakerPersonas,
 } from '../../drizzle/schema';
 import { getCachedBaselines } from '../services/baselines-cache';
+import { getCachedCategories } from '../services/categories-cache';
 import { eq, like, ilike, and, lte, sql, or, not, getTableColumns, asc, desc, inArray } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { calculateCcps, personaToWeights, calcCarbonDelta } from '../ccps-engine';
@@ -177,28 +178,30 @@ export const materialsRouter = router({
 
     const baseline = allBaselines.find(b => b.category === rows[0].material.category) || {} as any;
 
-    const personaRows = await db.select().from(decisionMakerPersonas);
+    const { embedding: _e2, searchText: _s2, ...altColumns } = getTableColumns(materials);
+
+    // Run persona + alternatives queries in parallel — they're independent
+    const [personaRows, altRows] = await Promise.all([
+      db.select().from(decisionMakerPersonas),
+      db.select({
+          material: altColumns,
+          manufacturerName: manufacturers.name,
+        })
+        .from(materials)
+        .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
+        .where(
+          and(
+            eq(materials.category, rows[0].material.category),
+            sql`${materials.id} != ${input.id}`
+          )
+        )
+        .limit(5),
+    ]);
+
     const ccpsByPersona: Record<string, any> = {};
     for (const p of personaRows) {
       ccpsByPersona[p.personaKey] = calculateCcps(rows[0].material, baseline, personaToWeights(p));
     }
-
-    const { embedding: _e2, searchText: _s2, ...altColumns } = getTableColumns(materials);
-
-    const altRows = await db
-      .select({
-        material: altColumns,
-        manufacturerName: manufacturers.name,
-      })
-      .from(materials)
-      .leftJoin(manufacturers, eq(materials.manufacturerId, manufacturers.id))
-      .where(
-        and(
-          eq(materials.category, rows[0].material.category),
-          sql`${materials.id} != ${input.id}`
-        )
-      )
-      .limit(5);
 
     const alternatives = altRows.map((r) => {
       const altCcps = calculateCcps(r.material, baseline);
@@ -282,16 +285,7 @@ export const materialsRouter = router({
     }),
 
   categories: publicProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) return [];
-    const rows = await db
-      .select({
-        category: materials.category,
-        count: sql<number>`count(*)`,
-      })
-      .from(materials)
-      .groupBy(materials.category);
-    return rows;
+    return getCachedCategories();
   }),
 
   getScore: protectedProcedure

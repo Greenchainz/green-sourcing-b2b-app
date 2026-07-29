@@ -14,6 +14,7 @@
  *   "grid" (default) — vertical card
  *   "list"           — compact horizontal row
  */
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -232,7 +233,22 @@ export default function MaterialCard(props: MaterialCardProps) {
   };
 
   const avatar = materialAvatar(name, category);
-  const imageSrc = getMaterialImage(category, props.imageUrl);
+  // Graceful image fallback chain: external/DB imageUrl -> local category
+  // placeholder -> avatar initials. getMaterialImage always returns a
+  // non-empty string, so a broken external url would otherwise render a
+  // permanent broken-image icon with no fallback.
+  const placeholderSrc = getMaterialImage(category, null, subcategory);
+  const initialSrc = getMaterialImage(category, props.imageUrl, subcategory);
+  const [imgSrc, setImgSrc] = useState(initialSrc);
+  const [imgBroken, setImgBroken] = useState(false);
+  useEffect(() => {
+    setImgSrc(initialSrc);
+    setImgBroken(false);
+  }, [initialSrc, placeholderSrc]);
+  const handleImgError = () => {
+    if (imgSrc !== placeholderSrc) setImgSrc(placeholderSrc);
+    else setImgBroken(true);
+  };
 
   // ── List variant ────────────────────────────────────────────────────────────
   if (variant === "list") {
@@ -241,8 +257,8 @@ export default function MaterialCard(props: MaterialCardProps) {
 
         {/* Thumbnail */}
         <div className={`shrink-0 w-10 h-10 rounded overflow-hidden border ${avatar.border} ${avatar.bg} flex items-center justify-center`}>
-          {imageSrc ? (
-            <img src={imageSrc} alt={name} className="w-full h-full object-cover" loading="lazy" />
+          {!imgBroken ? (
+            <img src={imgSrc} alt={name} onError={handleImgError} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <span className={`text-xs font-bold ${avatar.text}`}>{avatar.initials}</span>
           )}
@@ -385,11 +401,12 @@ export default function MaterialCard(props: MaterialCardProps) {
 
         {/* ── Hero image / avatar ─────────────────────────────────────── */}
         <div className={`relative w-full h-32 overflow-hidden ${props.imageUrl ? "bg-muted" : `${avatar.bg} border-b ${avatar.border}`}`}>
-          {imageSrc ? (
+          {!imgBroken ? (
             <>
               <img
-                src={imageSrc}
+                src={imgSrc}
                 alt={name}
+                onError={handleImgError}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
               />

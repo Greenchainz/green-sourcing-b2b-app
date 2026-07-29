@@ -11,7 +11,13 @@
  * Filter state lives in React; URL params are serialized on every change so
  * views are shareable by copying the browser address bar.
  */
-import { useState, useCallback, useMemo, useEffect, type ElementType } from "react";
+import {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  type ElementType,
+} from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -63,7 +69,14 @@ import { toast } from "sonner";
 // ── 7-Layer Procurement Personas ──────────────────────────────────────────────
 // Source: The Anatomy of Strategic Procurement — Sustainable Built Environment
 
-type PersonaId = "L1_architect" | "L2_qs" | "L3_gc" | "L4_fm" | "L5_csuite" | "L6_sector" | "L7_supply";
+type PersonaId =
+  | "L1_architect"
+  | "L2_qs"
+  | "L3_gc"
+  | "L4_fm"
+  | "L5_csuite"
+  | "L6_sector"
+  | "L7_supply";
 
 interface ProcurementPersona {
   id: PersonaId;
@@ -169,19 +182,19 @@ const PROCUREMENT_PERSONAS: ProcurementPersona[] = [
 // `keyword` is sent as `categorySearch` → ILIKE match on the category field.
 
 const CSI_DIVISIONS = [
-  { code: "03", label: "Concrete",   keyword: "concrete"  },
-  { code: "04", label: "Masonry",    keyword: "mason"     },
-  { code: "05", label: "Metals",     keyword: "steel"     },
-  { code: "06", label: "Wood",       keyword: "wood"      },
-  { code: "07", label: "Insulation", keyword: "insul"     },
-  { code: "07", label: "Roofing",    keyword: "roofing"   },
-  { code: "08", label: "Glazing",    keyword: "glaz"      },
-  { code: "09", label: "Flooring",   keyword: "floor"     },
-  { code: "09", label: "Drywall",    keyword: "drywall"   },
+  { code: "03", label: "Concrete", keyword: "concrete" },
+  { code: "04", label: "Masonry", keyword: "mason" },
+  { code: "05", label: "Metals", keyword: "steel" },
+  { code: "06", label: "Wood", keyword: "wood" },
+  { code: "07", label: "Insulation", keyword: "insul" },
+  { code: "07", label: "Roofing", keyword: "roofing" },
+  { code: "08", label: "Glazing", keyword: "glaz" },
+  { code: "09", label: "Flooring", keyword: "floor" },
+  { code: "09", label: "Drywall", keyword: "drywall" },
 ] as const;
 
 type CertKey = "EPD" | "HPD" | "FSC" | "C2C" | "GREENGUARD" | "Declare";
-type SortBy  = "ccps" | "carbon" | "price" | "name" | "leadTime";
+type SortBy = "ccps" | "carbon" | "price" | "name" | "leadTime";
 type ViewMode = "grid" | "list";
 
 // ── Filter state ──────────────────────────────────────────────────────────────
@@ -189,12 +202,12 @@ type ViewMode = "grid" | "list";
 interface FilterState {
   search: string;
   category: string;
-  categorySearch: string;   // CSI division keyword (ILIKE)
+  categorySearch: string; // CSI division keyword (ILIKE)
   sortBy: SortBy;
   hasEpd: boolean;
   usManufactured: boolean;
   certifications: CertKey[];
-  minScore: number;         // min CCPS score (0 = off)
+  minScore: number; // min CCPS score (0 = off)
   maxGwp: number | undefined;
 }
 
@@ -235,7 +248,8 @@ function paramsToFilters(search: string): FilterState {
     sortBy: (p.get("sort") as SortBy) ?? "ccps",
     hasEpd: p.get("epd") === "1",
     usManufactured: p.get("us") === "1",
-    certifications: (p.get("certs")?.split(",").filter(Boolean) as CertKey[]) ?? [],
+    certifications:
+      (p.get("certs")?.split(",").filter(Boolean) as CertKey[]) ?? [],
     minScore: Number(p.get("score") ?? 0),
     maxGwp: p.get("gwp") ? Number(p.get("gwp")) : undefined,
   };
@@ -254,26 +268,30 @@ interface FilterPanelProps {
 function FilterPanel({ filters, categories, onChange }: FilterPanelProps) {
   const toggleCert = (cert: CertKey) => {
     const next = filters.certifications.includes(cert)
-      ? filters.certifications.filter((c) => c !== cert)
+      ? filters.certifications.filter(c => c !== cert)
       : [...filters.certifications, cert];
     onChange({ certifications: next });
   };
 
   return (
     <div className="space-y-5 text-sm">
-
       {/* CSI Division quick pills */}
       <div>
         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
           CSI Division
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {CSI_DIVISIONS.map((div) => {
+          {CSI_DIVISIONS.map(div => {
             const active = filters.categorySearch === div.keyword;
             return (
               <button
                 key={div.keyword}
-                onClick={() => onChange({ categorySearch: active ? "" : div.keyword, category: "" })}
+                onClick={() =>
+                  onChange({
+                    categorySearch: active ? "" : div.keyword,
+                    category: "",
+                  })
+                }
                 className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
                   active
                     ? "border-green-600 bg-green-50 text-green-700 font-medium"
@@ -305,19 +323,25 @@ function FilterPanel({ filters, categories, onChange }: FilterPanelProps) {
         </Label>
         <Select
           value={filters.category || "all"}
-          onValueChange={(v) => onChange({ category: v === "all" ? "" : v, categorySearch: "" })}
+          onValueChange={v =>
+            onChange({ category: v === "all" ? "" : v, categorySearch: "" })
+          }
         >
           <SelectTrigger className="w-full text-xs h-8">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {categories.filter((c) => !!c.category && c.category.trim() !== "").map((c) => (
-              <SelectItem key={c.category} value={c.category}>
-                {c.category}
-                <span className="text-muted-foreground ml-1">({c.count})</span>
-              </SelectItem>
-            ))}
+            {categories
+              .filter(c => !!c.category && c.category.trim() !== "")
+              .map(c => (
+                <SelectItem key={c.category} value={c.category}>
+                  {c.category}
+                  <span className="text-muted-foreground ml-1">
+                    ({c.count})
+                  </span>
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </div>
@@ -338,7 +362,7 @@ function FilterPanel({ filters, categories, onChange }: FilterPanelProps) {
               <Switch
                 id="epd-toggle"
                 checked={filters.hasEpd}
-                onCheckedChange={(v) => onChange({ hasEpd: v })}
+                onCheckedChange={v => onChange({ hasEpd: v })}
               />
             </div>
             <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
@@ -352,7 +376,7 @@ function FilterPanel({ filters, categories, onChange }: FilterPanelProps) {
             <Switch
               id="us-toggle"
               checked={filters.usManufactured}
-              onCheckedChange={(v) => onChange({ usManufactured: v })}
+              onCheckedChange={v => onChange({ usManufactured: v })}
             />
           </div>
         </div>
@@ -364,7 +388,9 @@ function FilterPanel({ filters, categories, onChange }: FilterPanelProps) {
           Certifications
         </p>
         <div className="space-y-2">
-          {(["EPD", "HPD", "FSC", "C2C", "GREENGUARD", "Declare"] as CertKey[]).map((cert) => (
+          {(
+            ["EPD", "HPD", "FSC", "C2C", "GREENGUARD", "Declare"] as CertKey[]
+          ).map(cert => (
             <div key={cert} className="flex items-center gap-2">
               <Checkbox
                 id={`cert-${cert}`}
@@ -372,7 +398,10 @@ function FilterPanel({ filters, categories, onChange }: FilterPanelProps) {
                 onCheckedChange={() => toggleCert(cert)}
                 className="h-3.5 w-3.5"
               />
-              <Label htmlFor={`cert-${cert}`} className="text-xs cursor-pointer">
+              <Label
+                htmlFor={`cert-${cert}`}
+                className="text-xs cursor-pointer"
+              >
                 {cert}
               </Label>
             </div>
@@ -405,7 +434,6 @@ function FilterPanel({ filters, categories, onChange }: FilterPanelProps) {
           <span className="text-[9px] text-muted-foreground">90+</span>
         </div>
       </div>
-
     </div>
   );
 }
@@ -422,35 +450,52 @@ function ActiveChips({
   const chips: { label: string; onRemove: () => void }[] = [];
 
   if (filters.search)
-    chips.push({ label: `"${filters.search}"`, onRemove: () => onChange({ search: "" }) });
+    chips.push({
+      label: `"${filters.search}"`,
+      onRemove: () => onChange({ search: "" }),
+    });
   if (filters.category)
-    chips.push({ label: filters.category, onRemove: () => onChange({ category: "" }) });
+    chips.push({
+      label: filters.category,
+      onRemove: () => onChange({ category: "" }),
+    });
   if (filters.categorySearch) {
-    const div = CSI_DIVISIONS.find((d) => d.keyword === filters.categorySearch);
+    const div = CSI_DIVISIONS.find(d => d.keyword === filters.categorySearch);
     chips.push({
       label: div ? `Div ${div.code} · ${div.label}` : filters.categorySearch,
       onRemove: () => onChange({ categorySearch: "" }),
     });
   }
   if (filters.hasEpd)
-    chips.push({ label: "Verified Data", onRemove: () => onChange({ hasEpd: false }) });
+    chips.push({
+      label: "Verified Data",
+      onRemove: () => onChange({ hasEpd: false }),
+    });
   if (filters.usManufactured)
-    chips.push({ label: "US Made", onRemove: () => onChange({ usManufactured: false }) });
-  filters.certifications.forEach((c) =>
+    chips.push({
+      label: "US Made",
+      onRemove: () => onChange({ usManufactured: false }),
+    });
+  filters.certifications.forEach(c =>
     chips.push({
       label: c,
       onRemove: () =>
-        onChange({ certifications: filters.certifications.filter((x) => x !== c) }),
+        onChange({
+          certifications: filters.certifications.filter(x => x !== c),
+        }),
     })
   );
   if (filters.minScore > 0)
-    chips.push({ label: `GreenScore ≥ ${filters.minScore}`, onRemove: () => onChange({ minScore: 0 }) });
+    chips.push({
+      label: `GreenScore ≥ ${filters.minScore}`,
+      onRemove: () => onChange({ minScore: 0 }),
+    });
 
   if (!chips.length) return null;
 
   return (
     <div className="flex flex-wrap gap-1.5 mb-4">
-      {chips.map((chip) => (
+      {chips.map(chip => (
         <Badge
           key={chip.label}
           variant="secondary"
@@ -493,7 +538,7 @@ export default function MaterialsCatalog() {
   );
 
   const updateFilters = useCallback((patch: Partial<FilterState>) => {
-    setFilters((prev) => ({ ...prev, ...patch }));
+    setFilters(prev => ({ ...prev, ...patch }));
   }, []);
 
   const resetFilters = useCallback(() => setFilters(DEFAULT_FILTERS), []);
@@ -512,7 +557,9 @@ export default function MaterialsCatalog() {
   const [nudged, setNudged] = useState(false);
   useEffect(() => {
     if (!user && !nudged) {
-      toast.info("Sign in for personalised recommendations", { duration: 4000 });
+      toast.info("Sign in for personalised recommendations", {
+        duration: 4000,
+      });
       setNudged(true);
     }
   }, [user, nudged]);
@@ -525,17 +572,21 @@ export default function MaterialsCatalog() {
       persona: "default",
       sortBy: filters.sortBy,
       sortOrder:
-        filters.sortBy === "carbon" || filters.sortBy === "price" || filters.sortBy === "leadTime"
+        filters.sortBy === "carbon" ||
+        filters.sortBy === "price" ||
+        filters.sortBy === "leadTime"
           ? "asc"
           : "desc",
       limit: 48,
       offset: 0,
       hasEpd: filters.hasEpd || undefined,
       usManufactured: filters.usManufactured || undefined,
-      certifications: filters.certifications.length ? filters.certifications : undefined,
+      certifications: filters.certifications.length
+        ? filters.certifications
+        : undefined,
       minScore: filters.minScore > 0 ? filters.minScore : undefined,
     },
-    { placeholderData: (prev) => prev }
+    { placeholderData: prev => prev }
   );
 
   // Semantic search: fires when search text has 3+ words
@@ -547,18 +598,19 @@ export default function MaterialsCatalog() {
       { query: debouncedSearch, limit: 48 },
       {
         enabled: useSemanticMode && !!debouncedSearch,
-        placeholderData: (prev) => prev,
+        placeholderData: prev => prev,
         staleTime: 30_000,
       }
     );
 
-  const showSemantic = useSemanticMode && semanticData && semanticData.items.length > 0;
+  const showSemantic =
+    useSemanticMode && semanticData && semanticData.items.length > 0;
 
   const { data: rawCategories } = trpc.materials.categories.useQuery();
   const categories = rawCategories ?? [];
   const totalMatches = showSemantic
     ? semanticData.items.length
-    : data?.total ?? 0;
+    : (data?.total ?? 0);
 
   // Count of active filters for mobile badge
   const activeFilterCount = useMemo(
@@ -603,9 +655,13 @@ export default function MaterialsCatalog() {
       {/* ── Supplier acquisition strip ─────────────────────────────────── */}
       <div className="shrink-0 bg-green-950 text-green-100 px-4 py-1.5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 text-[11px]">
-          <span className="font-semibold text-green-300">{totalMatches > 0 ? totalMatches : "480"}+ verified materials</span>
+          <span className="font-semibold text-green-300">
+            {totalMatches > 0 ? totalMatches : "480"}+ verified materials
+          </span>
           <span className="hidden sm:inline text-green-400/70">·</span>
-          <span className="hidden sm:inline text-green-300/80">Architects search this database daily to specify products</span>
+          <span className="hidden sm:inline text-green-300/80">
+            Architects search this database daily to specify products
+          </span>
         </div>
         <a
           href="/supplier/register"
@@ -621,7 +677,7 @@ export default function MaterialsCatalog() {
           <span className="hidden lg:flex items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider pr-3 mr-1 border-r border-border whitespace-nowrap self-center">
             I am a…
           </span>
-          {PROCUREMENT_PERSONAS.map((persona) => {
+          {PROCUREMENT_PERSONAS.map(persona => {
             const Icon = persona.icon;
             const isActive = activePersona === persona.id;
             return (
@@ -636,36 +692,49 @@ export default function MaterialsCatalog() {
               >
                 <Icon className="w-3 h-3 shrink-0" />
                 <span className="font-semibold">{persona.label}</span>
-                <span className="hidden xl:inline text-[10px] opacity-70">· {persona.driver}</span>
+                <span className="hidden xl:inline text-[10px] opacity-70">
+                  · {persona.driver}
+                </span>
               </button>
             );
           })}
           {activePersona && (
             <button
-              onClick={() => { setActivePersona(null); resetFilters(); }}
+              onClick={() => {
+                setActivePersona(null);
+                resetFilters();
+              }}
               className="flex items-center gap-1 px-2 py-1 ml-1 rounded text-[11px] text-muted-foreground hover:text-foreground border border-dashed border-border"
             >
               <X className="w-3 h-3" /> Clear persona
             </button>
           )}
         </div>
-        {activePersona && (() => {
-          const p = PROCUREMENT_PERSONAS.find((x) => x.id === activePersona)!;
-          return (
-            <div className={`px-4 py-1.5 text-[11px] border-t ${p.color} flex items-center gap-3`}>
-              <span className="font-semibold">{p.role}</span>
-              <span className="opacity-60">·</span>
-              <span>Decision driver: <span className="font-medium">{p.driver}</span></span>
-              <span className="opacity-60">·</span>
-              <span className="opacity-70">Catalog sorted and filtered for your procurement priorities. Badges highlighted: {p.badgeHints.join(" · ")}</span>
-            </div>
-          );
-        })()}
+        {activePersona &&
+          (() => {
+            const p = PROCUREMENT_PERSONAS.find(x => x.id === activePersona)!;
+            return (
+              <div
+                className={`px-4 py-1.5 text-[11px] border-t ${p.color} flex items-center gap-3`}
+              >
+                <span className="font-semibold">{p.role}</span>
+                <span className="opacity-60">·</span>
+                <span>
+                  Decision driver:{" "}
+                  <span className="font-medium">{p.driver}</span>
+                </span>
+                <span className="opacity-60">·</span>
+                <span className="opacity-70">
+                  Catalog sorted and filtered for your procurement priorities.
+                  Badges highlighted: {p.badgeHints.join(" · ")}
+                </span>
+              </div>
+            );
+          })()}
       </div>
 
       {/* ── Hero / search bar ──────────────────────────────────────────── */}
       <div className="shrink-0 bg-background border-b shadow-sm px-4 md:px-6 py-3 flex items-center gap-3 z-10">
-
         {/* Page identity — desktop only */}
         <div className="hidden lg:block shrink-0 pr-3 border-r border-border">
           <h1 className="text-sm font-bold leading-tight">Materials</h1>
@@ -681,7 +750,7 @@ export default function MaterialsCatalog() {
             className="pl-9 h-9 text-sm"
             placeholder="Search by name, category, manufacturer…"
             value={filters.search}
-            onChange={(e) => updateFilters({ search: e.target.value })}
+            onChange={e => updateFilters({ search: e.target.value })}
           />
           {filters.search && (
             <button
@@ -694,7 +763,8 @@ export default function MaterialsCatalog() {
           )}
           {!filters.search && (
             <p className="absolute -bottom-4 left-0 text-[10px] text-muted-foreground/60 hidden lg:block">
-              Try: &quot;low-carbon insulation for cold climates&quot; or &quot;fire-rated concrete alternative&quot;
+              Try: &quot;low-carbon insulation for cold climates&quot; or
+              &quot;fire-rated concrete alternative&quot;
             </p>
           )}
         </div>
@@ -751,7 +821,6 @@ export default function MaterialsCatalog() {
 
       {/* ── Body: sidebar + main ──────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
-
         {/* Left-rail sidebar — desktop only */}
         <aside className="w-64 shrink-0 border-r overflow-y-auto hidden md:flex flex-col bg-muted/20">
           {/* Sidebar header */}
@@ -780,15 +849,16 @@ export default function MaterialsCatalog() {
         {/* Main content area */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 md:p-6">
-
             {/* Results header: count + sort + view toggle */}
             <div className="flex items-center justify-between mb-3 gap-3">
               <p className="text-sm text-muted-foreground shrink-0">
-                {(isLoading || (useSemanticMode && semanticLoading)) ? (
+                {isLoading || (useSemanticMode && semanticLoading) ? (
                   <span className="inline-block w-24 h-4 bg-muted animate-pulse rounded align-middle" />
                 ) : (
                   <>
-                    <span className="font-medium text-foreground">{totalMatches}</span>{" "}
+                    <span className="font-medium text-foreground">
+                      {totalMatches}
+                    </span>{" "}
                     material{totalMatches !== 1 ? "s" : ""}
                     {showSemantic && (
                       <span className="ml-1.5 text-[10px] text-emerald-600 font-medium">
@@ -803,7 +873,7 @@ export default function MaterialsCatalog() {
                 {/* Sort selector */}
                 <Select
                   value={filters.sortBy}
-                  onValueChange={(v) => updateFilters({ sortBy: v as SortBy })}
+                  onValueChange={v => updateFilters({ sortBy: v as SortBy })}
                 >
                   <SelectTrigger className="h-8 text-xs w-40">
                     <SelectValue />
@@ -888,23 +958,26 @@ export default function MaterialsCatalog() {
               }
 
               return (
-              <div className="text-center py-20">
-                <Search className="w-10 h-10 text-muted-foreground/25 mx-auto mb-3" />
-                <p className="text-sm font-medium mb-1">No materials found</p>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Try broader filters or a different search term.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <Button variant="outline" size="sm" onClick={resetFilters}>
-                    Clear all filters
-                  </Button>
-                  <a href="/supplier/register">
-                    <Button size="sm" className="bg-green-700 hover:bg-green-800 text-white gap-1.5">
-                      Supplier? Get your product listed
+                <div className="text-center py-20">
+                  <Search className="w-10 h-10 text-muted-foreground/25 mx-auto mb-3" />
+                  <p className="text-sm font-medium mb-1">No materials found</p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Try broader filters or a different search term.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <Button variant="outline" size="sm" onClick={resetFilters}>
+                      Clear all filters
                     </Button>
-                  </a>
+                    <a href="/supplier/register">
+                      <Button
+                        size="sm"
+                        className="bg-green-700 hover:bg-green-800 text-white gap-1.5"
+                      >
+                        Supplier? Get your product listed
+                      </Button>
+                    </a>
+                  </div>
                 </div>
-              </div>
               );
             })()}
 

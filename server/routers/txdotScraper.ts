@@ -8,6 +8,9 @@ import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../_core/trpc';
 import { scrapeTxdotPricingData } from '../services/txdotScraper';
 import { storePricingData, updateAllMaterialAveragePricing, getRegionalPricing } from '../services/pricingDataService';
+import { getDb } from '../db';
+import { scraperRuns, pricingData } from '../../drizzle/schema';
+import { desc, eq, sql } from 'drizzle-orm';
 
 export const txdotScraperRouter = router({
   /**
@@ -20,6 +23,18 @@ export const txdotScraperRouter = router({
     }))
     .mutation(async ({ input }) => {
       const startTime = Date.now();
+      const db = await getDb();
+      let runId: number | undefined;
+
+      if (db) {
+        const [run] = await db.insert(scraperRuns).values({
+          scraperName: 'txdot',
+          status: 'running',
+          startedAt: new Date(),
+          metadata: { dryRun: input.dryRun },
+        }).returning({ id: scraperRuns.id });
+        runId = run.id;
+      }
       
       try {
         // Scrape TXDOT pricing data
@@ -27,6 +42,18 @@ export const txdotScraperRouter = router({
         const scrapedData = await scrapeTxdotPricingData();
         
         if (input.dryRun) {
+          if (db && runId) {
+            await db.update(scraperRuns)
+              .set({
+                status: 'success',
+                recordsProcessed: scrapedData.length,
+                completedAt: new Date(),
+                durationMs: Date.now() - startTime,
+                metadata: { dryRun: true, note: 'Dry run completed' },
+              })
+              .where(eq(scraperRuns.id, runId));
+          }
+
           return {
             success: true,
             dryRun: true,
@@ -47,6 +74,19 @@ export const txdotScraperRouter = router({
         console.log('[TXDOT Scraper] Updating material average pricing...');
         await updateAllMaterialAveragePricing();
         
+        if (db && runId) {
+          await db.update(scraperRuns)
+            .set({
+              status: storeResult.success ? 'success' : 'error',
+              recordsProcessed: scrapedData.length,
+              recordsCreated: storeResult.recordsInserted,
+              completedAt: new Date(),
+              durationMs: Date.now() - startTime,
+              errorMessage: storeResult.errors.length > 0 ? storeResult.errors.join(', ') : null,
+            })
+            .where(eq(scraperRuns.id, runId));
+        }
+
         return {
           success: storeResult.success,
           dryRun: false,
@@ -57,14 +97,27 @@ export const txdotScraperRouter = router({
           durationMs: Date.now() - startTime,
         };
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
         console.error('[TXDOT Scraper] Error:', error);
+
+        if (db && runId) {
+          await db.update(scraperRuns)
+            .set({
+              status: 'error',
+              errorMessage: errorMsg,
+              completedAt: new Date(),
+              durationMs: Date.now() - startTime,
+            })
+            .where(eq(scraperRuns.id, runId));
+        }
+
         return {
           success: false,
           dryRun: input.dryRun,
           recordsScraped: 0,
           recordsInserted: 0,
           recordsSkipped: 0,
-          errors: [error instanceof Error ? error.message : String(error)],
+          errors: [errorMsg],
           durationMs: Date.now() - startTime,
         };
       }
@@ -90,11 +143,42 @@ export const txdotScraperRouter = router({
    */
   getScraperStatus: protectedProcedure
     .query(async () => {
-      // TODO: Implement scraper run history tracking
+      const db = await getDb();
+      if (!db) {
+        return {
+          lastRunAt: null,
+          totalRecords: 0,
+          status: 'idle',
+        };
+      }
+
+      // Get latest run
+      const latestRuns = await db.select()
+        .from(scraperRuns)
+        .where(eq(scraperRuns.scraperName, 'txdot'))
+        .orderBy(desc(scraperRuns.startedAt))
+        .limit(1);
+
+      const latestRun = latestRuns[0];
+
+      // Get total records in pricing_data
+      const recordCountResult = await db.select({
+        count: sql<number>`count(*)`,
+      })
+      .from(pricingData)
+      .where(eq(pricingData.isActive, true));
+
+      const totalRecords = Number(recordCountResult[0]?.count || 0);
+
       return {
-        lastRunAt: null,
-        totalRecords: 0,
-        status: 'idle',
+        lastRunAt: latestRun?.completedAt || latestRun?.startedAt || null,
+        totalRecords,
+        status: latestRun?.status || 'idle',
+        lastRunDetails: latestRun ? {
+          recordsProcessed: latestRun.recordsProcessed,
+          recordsCreated: latestRun.recordsCreated,
+          errorMessage: latestRun.errorMessage,
+        } : null,
       };
     }),
 });

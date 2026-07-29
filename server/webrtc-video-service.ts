@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { broadcastNotification } from "./webpubsub-manager";
 import { createDistributedCallSessionStore } from "./services/distributed-call-session-store";
 
@@ -17,7 +18,8 @@ export interface VideoCallSession {
   status: "ringing" | "active" | "ended" | "rejected";
 }
 
-const callSessionStore = createDistributedCallSessionStore<VideoCallSession>("webrtc-video");
+const callSessionStore =
+  createDistributedCallSessionStore<VideoCallSession>("webrtc-video");
 
 /**
  * Initiate a video call
@@ -30,7 +32,7 @@ export async function initiateVideoCall(params: {
 }): Promise<VideoCallSession> {
   const { callerId, callerName, calleeId, conversationId } = params;
 
-  const callId = `call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  const callId = `call-${Date.now()}-${randomUUID()}`;
 
   const session: VideoCallSession = {
     callId,
@@ -58,12 +60,17 @@ export async function initiateVideoCall(params: {
 /**
  * Accept a video call
  */
-export async function acceptVideoCall(callId: string): Promise<VideoCallSession | null> {
+export async function acceptVideoCall(
+  callId: string
+): Promise<VideoCallSession | null> {
   const session = await callSessionStore.get(callId);
   if (!session) return null;
 
   session.status = "active";
-  await callSessionStore.set(callId, session, [session.callerId, session.calleeId]);
+  await callSessionStore.set(callId, session, [
+    session.callerId,
+    session.calleeId,
+  ]);
 
   // Notify caller that call was accepted
   await broadcastNotification(session.callerId, {
@@ -84,7 +91,12 @@ export async function rejectVideoCall(callId: string): Promise<void> {
 
   session.status = "rejected";
   session.endedAt = new Date();
-  await callSessionStore.set(callId, session, [session.callerId, session.calleeId], 60);
+  await callSessionStore.set(
+    callId,
+    session,
+    [session.callerId, session.calleeId],
+    60
+  );
 
   // Notify caller that call was rejected
   await broadcastNotification(session.callerId, {
@@ -115,10 +127,16 @@ export async function endVideoCall(params: {
   const durationMinutes = Math.ceil(durationMs / 60000); // Round up to nearest minute
   session.durationMinutes = durationMinutes;
 
-  await callSessionStore.set(callId, session, [session.callerId, session.calleeId], 60);
+  await callSessionStore.set(
+    callId,
+    session,
+    [session.callerId, session.calleeId],
+    60
+  );
 
   // Notify other participant
-  const otherUserId = userId === session.callerId ? session.calleeId : session.callerId;
+  const otherUserId =
+    userId === session.callerId ? session.calleeId : session.callerId;
   await broadcastNotification(otherUserId, {
     type: "video_call_ended",
     callId,
@@ -139,7 +157,9 @@ export async function endVideoCall(params: {
 /**
  * Get active call session
  */
-export async function getCallSession(callId: string): Promise<VideoCallSession | null> {
+export async function getCallSession(
+  callId: string
+): Promise<VideoCallSession | null> {
   return await callSessionStore.get(callId);
 }
 
@@ -151,6 +171,7 @@ export async function sendSignalingData(params: {
   senderId: number;
   recipientId: number;
   type: "offer" | "answer" | "ice-candidate";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
 }): Promise<void> {
   const { callId, senderId, recipientId, type, data } = params;

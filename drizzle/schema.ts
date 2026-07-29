@@ -134,6 +134,7 @@ export const users = pgTable("users", {
   linkedinVerifiedAt: timestamp("linkedin_verified_at"),
   avatarUrl: text("avatarUrl"),
   acsUserId: text("acs_user_id"),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -167,6 +168,7 @@ export const manufacturers = pgTable("manufacturers", {
   featured: boolean("featured").default(false),
   dataSource: varchar("dataSource", { length: 100 }),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type Manufacturer = typeof manufacturers.$inferSelect;
@@ -642,6 +644,7 @@ export const suppliers = pgTable("suppliers", {
   hitsDigestLastSentAt: timestamp("hits_digest_last_sent_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type Supplier = typeof suppliers.$inferSelect;
@@ -2078,6 +2081,24 @@ export const crmEmailSequences = pgTable(
 export type CrmEmailSequence = typeof crmEmailSequences.$inferSelect;
 export type InsertCrmEmailSequence = typeof crmEmailSequences.$inferInsert;
 
+/**
+ * Read-only mirror used by the separate intelligence Azure Functions app.
+ * This app does not own migrations for this table.
+ */
+export const emailSequences = pgTable(
+  "email_sequences",
+  {
+    id: serial("id").primaryKey(),
+    contactEmail: varchar("contact_email", { length: 320 }),
+    step: integer("step").notNull().default(1),
+    status: varchar("status", { length: 50 }).notNull().default("pending"),
+    sentAt: timestamp("sent_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  }
+);
+
+export type EmailSequence = typeof emailSequences.$inferSelect;
+
 // ─── Price Indices (BLS/FRED) ─────────────────────────────────────────────────
 
 export const priceIndices = pgTable(
@@ -2273,6 +2294,22 @@ export const auditLogs = pgTable("audit_logs", {
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+// ── About Page YouTube Videos ─────────────────────────────────────────────────
+// Ordered list of YouTube video IDs shown on the /about founder section.
+// Admin can add/remove via /admin/about-videos.
+// Set videos to "Unlisted" on YouTube so they only play on your site.
+
+export const aboutYoutubeVideos = pgTable("about_youtube_videos", {
+  id: serial("id").primaryKey(),
+  youtubeId: varchar("youtubeId", { length: 20 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull().default(""),
+  sortOrder: integer("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AboutYoutubeVideo = typeof aboutYoutubeVideos.$inferSelect;
+export type InsertAboutYoutubeVideo = typeof aboutYoutubeVideos.$inferInsert;
 
 // ── RFQ Match Runs — append-only SWAP Engine audit ────────────────────────────
 // Every invocation of runSwapEngine writes one row. Never update or delete.

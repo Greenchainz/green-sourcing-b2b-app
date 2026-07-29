@@ -242,13 +242,18 @@ export default function MaterialDetail() {
       </div>
     );
 
+  // Guard: ccpsByPersona can be null/undefined or an empty object when the API
+  // returns partial data — never call Object.keys() on it unconditionally.
+  const ccpsByPersona = m.ccpsByPersona ?? {};
   const defaultCcps =
-    m.ccpsByPersona?.default ||
-    m.ccpsByPersona?.[Object.keys(m.ccpsByPersona)[0]] ||
+    ccpsByPersona.default ||
+    ccpsByPersona[Object.keys(ccpsByPersona)[0]] ||
     {};
 
-  // Map findAlternatives results → MaterialSwapCard shape
-  const liveSwapCards = (alternatives ?? []).slice(0, 6).map((alt) => {
+  // Map findAlternatives results → MaterialSwapCard shape.
+  // Guard: findAlternatives may resolve to a non-array (e.g. an error object)
+  // on shape drift; `?? []` only covers null/undefined, so type-check here.
+  const liveSwapCards = (Array.isArray(alternatives) ? alternatives : []).slice(0, 6).map((alt) => {
     const pct = alt.gwpReductionPercent ?? 0;
     const tier: "good" | "better" | "best" =
       pct >= 30 ? "best" : pct >= 15 ? "better" : "good";
@@ -833,7 +838,7 @@ export default function MaterialDetail() {
                     </p>
                   </CardHeader>
                   <CardContent>
-                    {m.leedCredits ? (
+                    {typeof m.leedCredits === "string" && m.leedCredits.trim() ? (
                       <div className="space-y-3">
                         {m.leedCredits
                           .split(/[,\n]+/)
