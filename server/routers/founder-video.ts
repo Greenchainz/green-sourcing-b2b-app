@@ -184,7 +184,8 @@ export const founderVideoRouter = router({
       });
 
       const shareToken = nanoid(SHARE_TOKEN_LENGTH);
-      const expiresAt = new Date(Date.now() + DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+      // Marketing library links must never expire: the resend procedure rejects them,
+      // so a time-limited entry would become permanently unusable after 90 days.
 
       const [inserted] = await db
         .insert(founderVideos)
@@ -200,7 +201,7 @@ export const founderVideoRouter = router({
           durationSec: 0,
           transcriptStatus: "pending",
           status: "draft",
-          expiresAt,
+          expiresAt: null,
         })
         .returning({ id: founderVideos.id });
 
