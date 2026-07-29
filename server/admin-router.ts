@@ -4,7 +4,7 @@ import { getDb } from "./db";
 import {
   suppliers, users, materials, materialCertifications, buyerSubscriptions,
   rfqs, rfqBids, leads, conversations, messages,
-  subscriptions,
+  subscriptions, scrapedSuppliers, scrapedLeads,
 } from "../drizzle/schema";
 import { eq, and, inArray, desc, count, sql, gte } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -938,6 +938,185 @@ export const adminRouter = router({
     }),
 
   /**
+   * Integration command-center status (safe metadata only, no secret values).
+   */
+  getIntegrationStatus: adminProcedure.query(() => {
+    const hasAny = (...keys: string[]) => keys.some((key) => !!process.env[key]?.trim());
+    const hasAll = (...keys: string[]) => keys.every((key) => !!process.env[key]?.trim());
+
+    const salesforceConnected =
+      hasAll("SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET") &&
+      hasAny(
+        "SALESFORCE_REFRESH_TOKEN",
+        "SALESFORCE_ACCESS_TOKEN",
+        "SALESFORCE_USERNAME"
+      );
+
+    const hubspotConnected = hasAny("HUBSPOT_ACCESS_TOKEN", "HUBSPOT_PRIVATE_APP_TOKEN", "HUBSPOT_API_KEY");
+    const resendConnected = hasAll("RESEND_API_KEY", "RESEND_FROM_EMAIL");
+    const dataverseConnected =
+      hasAll("DATAVERSE_ENVIRONMENT_URL", "DATAVERSE_TENANT_ID") &&
+      hasAny("DATAVERSE_CLIENT_ID", "MANAGED_IDENTITY_CLIENT_ID");
+
+    const fabricConnected =
+      hasAll("AZURE_FABRIC_WORKSPACE_ID", "AZURE_FABRIC_TENANT_ID") &&
+      hasAny("AZURE_FABRIC_CLIENT_ID", "MANAGED_IDENTITY_CLIENT_ID");
+
+    const integrations = [
+      {
+        id: "salesforce",
+        name: "Salesforce",
+        connected: salesforceConnected,
+        requiredKeys: ["SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET", "SALESFORCE_REFRESH_TOKEN"],
+        dashboardUrl: process.env.SALESFORCE_LOGIN_URL?.trim() || "https://login.salesforce.com",
+      },
+      {
+        id: "hubspot",
+        name: "HubSpot",
+        connected: hubspotConnected,
+        requiredKeys: ["HUBSPOT_ACCESS_TOKEN"],
+        dashboardUrl: "https://app.hubspot.com",
+      },
+      {
+        id: "resend",
+        name: "Resend",
+        connected: resendConnected,
+        requiredKeys: ["RESEND_API_KEY", "RESEND_FROM_EMAIL"],
+        dashboardUrl: "https://resend.com/emails",
+      },
+      {
+        id: "dataverse",
+        name: "Microsoft Dataverse",
+        connected: dataverseConnected,
+        requiredKeys: ["DATAVERSE_ENVIRONMENT_URL", "DATAVERSE_TENANT_ID", "DATAVERSE_CLIENT_ID"],
+        dashboardUrl: process.env.DATAVERSE_ENVIRONMENT_URL?.trim() || "https://make.powerapps.com",
+      },
+      {
+        id: "fabric",
+        name: "Microsoft Fabric",
+        connected: fabricConnected,
+        requiredKeys: ["AZURE_FABRIC_WORKSPACE_ID", "AZURE_FABRIC_TENANT_ID", "AZURE_FABRIC_CLIENT_ID"],
+        dashboardUrl: "https://app.fabric.microsoft.com",
+      },
+      {
+        id: "webhook",
+        name: "Automation Webhook Slot",
+        connected: hasAny("AUTOMATION_WEBHOOK_URL", "N8N_WEBHOOK_URL", "MAKE_WEBHOOK_URL"),
+        requiredKeys: ["AUTOMATION_WEBHOOK_URL"],
+        dashboardUrl: process.env.AUTOMATION_WEBHOOK_URL?.trim() || null,
+      },
+    ];
+
+    return {
+      connectedCount: integrations.filter((item) => item.connected).length,
+      totalCount: integrations.length,
+      integrations,
+    };
+  }),
+
+  /**
+   * Scraper + outreach pipeline status for Admin God Mode.
+   */
+  getScraperPipelineStatus: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const [supplierTotals, leadTotals, recentSuppliers, recentLeads] = await Promise.all([
+      db
+        .select({
+          total: count(),
+          contacted: sql<number>`COUNT(CASE WHEN ${scrapedSuppliers.outreachSentAt} IS NOT NULL THEN 1 END)`,
+          pending: sql<number>`COUNT(CASE WHEN ${scrapedSuppliers.outreachSentAt} IS NULL THEN 1 END)`,
+          invalid: sql<number>`COUNT(CASE WHEN ${scrapedSuppliers.emailStatus} IN ('invalid','unsubscribed','bounced') THEN 1 END)`,
+          latestIngestedAt: sql<Date | null>`MAX(${scrapedSuppliers.createdAt})`,
+          latestOutreachAt: sql<Date | null>`MAX(${scrapedSuppliers.outreachSentAt})`,
+        })
+        .from(scrapedSuppliers),
+      db
+        .select({
+          total: count(),
+          contacted: sql<number>`COUNT(CASE WHEN ${scrapedLeads.outreachSentAt} IS NOT NULL THEN 1 END)`,
+          pending: sql<number>`COUNT(CASE WHEN ${scrapedLeads.outreachSentAt} IS NULL THEN 1 END)`,
+          invalid: sql<number>`COUNT(CASE WHEN ${scrapedLeads.emailStatus} IN ('invalid','unsubscribed','bounced') THEN 1 END)`,
+          latestIngestedAt: sql<Date | null>`MAX(${scrapedLeads.createdAt})`,
+          latestOutreachAt: sql<Date | null>`MAX(${scrapedLeads.outreachSentAt})`,
+        })
+        .from(scrapedLeads),
+      db
+        .select({
+          id: scrapedSuppliers.id,
+          companyName: scrapedSuppliers.companyName,
+          email: scrapedSuppliers.email,
+          state: scrapedSuppliers.state,
+          createdAt: scrapedSuppliers.createdAt,
+          outreachSentAt: scrapedSuppliers.outreachSentAt,
+          emailStatus: scrapedSuppliers.emailStatus,
+        })
+        .from(scrapedSuppliers)
+        .orderBy(desc(scrapedSuppliers.createdAt))
+        .limit(8),
+      db
+        .select({
+          id: scrapedLeads.id,
+          fullName: scrapedLeads.fullName,
+          company: scrapedLeads.company,
+          role: scrapedLeads.role,
+          email: scrapedLeads.email,
+          createdAt: scrapedLeads.createdAt,
+          outreachSentAt: scrapedLeads.outreachSentAt,
+          emailStatus: scrapedLeads.emailStatus,
+        })
+        .from(scrapedLeads)
+        .orderBy(desc(scrapedLeads.createdAt))
+        .limit(8),
+    ]);
+
+    return {
+      flags: {
+        supplierOutreachEnabled: process.env.OUTREACH_ENABLED === "true",
+        leadOutreachEnabled: process.env.LEAD_OUTREACH_ENABLED === "true",
+      },
+      suppliers: {
+        total: Number(supplierTotals[0]?.total ?? 0),
+        contacted: Number(supplierTotals[0]?.contacted ?? 0),
+        pending: Number(supplierTotals[0]?.pending ?? 0),
+        invalid: Number(supplierTotals[0]?.invalid ?? 0),
+        latestIngestedAt: supplierTotals[0]?.latestIngestedAt ?? null,
+        latestOutreachAt: supplierTotals[0]?.latestOutreachAt ?? null,
+        recent: recentSuppliers,
+      },
+      leads: {
+        total: Number(leadTotals[0]?.total ?? 0),
+        contacted: Number(leadTotals[0]?.contacted ?? 0),
+        pending: Number(leadTotals[0]?.pending ?? 0),
+        invalid: Number(leadTotals[0]?.invalid ?? 0),
+        latestIngestedAt: leadTotals[0]?.latestIngestedAt ?? null,
+        latestOutreachAt: leadTotals[0]?.latestOutreachAt ?? null,
+        recent: recentLeads,
+      },
+    };
+  }),
+
+  runSupplierScraperNow: adminProcedure.mutation(async () => {
+    const { runSupplierScraper } = await import("../lib/scrapers/supplier-scraper");
+    return runSupplierScraper();
+  }),
+
+  runLeadScraperNow: adminProcedure.mutation(async () => {
+    const { runLeadScraper } = await import("../lib/scrapers/lead-scraper");
+    return runLeadScraper();
+  }),
+
+  runSupplierOutreachNow: adminProcedure.mutation(async () => {
+    const { runScraperOutreachPipeline } = await import("./scraper-outreach-pipeline");
+    return runScraperOutreachPipeline();
+  }),
+
+  runLeadOutreachNow: adminProcedure.mutation(async () => {
+    const { runLeadOutreachPipeline } = await import("./lead-outreach-pipeline");
+    return runLeadOutreachPipeline();
+  }),
+/**
    * List all active promo grants.
    */
   listPromos: adminProcedure.query(async () => {
@@ -964,3 +1143,11 @@ export const adminRouter = router({
     return rows;
   }),
 });
+
+
+
+
+
+
+
+

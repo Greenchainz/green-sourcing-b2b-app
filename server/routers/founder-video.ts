@@ -33,7 +33,9 @@ import { sendFounderVideoEmail, sendFounderVideoWatchAlert, FOUNDER_EMAIL } from
 
 const SHARE_TOKEN_LENGTH = 16;
 const DEFAULT_RETENTION_DAYS = 90;
-const MAX_DURATION_SEC = 90; // accept slightly over 60 for trim slack
+const MAX_DURATION_SEC = 600; // supports short marketing videos and founder clips
+const MARKETING_LIBRARY_EMAIL = "marketing-library@greenchainz.local";
+const MARKETING_LIBRARY_NAME = "Marketing Video Library";
 
 export const founderVideoRouter = router({
   // ── Founder: create a video draft + return upload SAS URL ─────────────────
@@ -160,6 +162,163 @@ export const founderVideoRouter = router({
       };
     }),
 
+
+  // ── Admin: upload marketing videos as files (no recipient required) ──────
+  createMarketingFile: adminProcedure
+    .input(
+      z.object({
+        title: z.string().min(1).max(255),
+        note: z.string().max(2000).optional(),
+        extension: z.string().min(2).max(10).default("mp4"),
+        contentType: z.string().min(3).max(120).default("video/mp4"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+      }
+
+      await ensureFounderVideosContainer().catch((err) => {
+        console.error("[founderVideo.createMarketingFile] container check failed:", err);
+      });
+
+      const shareToken = nanoid(SHARE_TOKEN_LENGTH);
+      const expiresAt = new Date(Date.now() + DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+      const [inserted] = await db
+        .insert(founderVideos)
+        .values({
+          ownerUserId: ctx.user.id,
+          recipientEmail: MARKETING_LIBRARY_EMAIL,
+          recipientName: MARKETING_LIBRARY_NAME,
+          subject: input.title,
+          note: input.note ?? null,
+          shareToken,
+          blobKey: "",
+          blobUrl: "",
+          durationSec: 0,
+          transcriptStatus: "pending",
+          status: "draft",
+          expiresAt,
+        })
+        .returning({ id: founderVideos.id });
+
+      if (!inserted) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create marketing video draft" });
+      }
+
+      const blobKey = blobKeyForVideo(inserted.id, new Date(), input.extension);
+      const blobUrl = buildBlobUrl(blobKey);
+      const uploadUrl = await generateUploadSasUrl(blobKey, input.contentType);
+
+      await db
+        .update(founderVideos)
+        .set({ blobKey, blobUrl })
+        .where(eq(founderVideos.id, inserted.id));
+
+      return {
+        videoId: inserted.id,
+        uploadUrl,
+        shareUrl: `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${shareToken}`,
+      };
+    }),
+
+  finalizeMarketingFile: adminProcedure
+    .input(
+      z.object({
+        videoId: z.number().int().positive(),
+        durationSec: z.number().int().min(1).max(MAX_DURATION_SEC).default(120),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database connection failed" });
+      }
+
+      const [video] = await db
+        .select({
+          id: founderVideos.id,
+          shareToken: founderVideos.shareToken,
+          status: founderVideos.status,
+          recipientEmail: founderVideos.recipientEmail,
+        })
+        .from(founderVideos)
+        .where(and(eq(founderVideos.id, input.videoId), eq(founderVideos.ownerUserId, ctx.user.id)))
+        .limit(1);
+
+      if (!video || video.recipientEmail !== MARKETING_LIBRARY_EMAIL) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Marketing video draft not found" });
+      }
+
+      if (video.status !== "draft") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Marketing video already finalized" });
+      }
+
+      await db
+        .update(founderVideos)
+        .set({
+          durationSec: input.durationSec,
+          status: "ready",
+          transcriptStatus: "done",
+        })
+        .where(eq(founderVideos.id, input.videoId));
+
+      return {
+        videoId: input.videoId,
+        shareUrl: `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${video.shareToken}`,
+      };
+    }),
+
+  marketingLibrary: adminProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const rows = await db
+        .select({
+          id: founderVideos.id,
+          subject: founderVideos.subject,
+          note: founderVideos.note,
+          durationSec: founderVideos.durationSec,
+          status: founderVideos.status,
+          watchedCount: founderVideos.watchedCount,
+          createdAt: founderVideos.createdAt,
+          lastWatchedAt: founderVideos.lastWatchedAt,
+          shareToken: founderVideos.shareToken,
+        })
+        .from(founderVideos)
+        .where(and(eq(founderVideos.ownerUserId, ctx.user.id), eq(founderVideos.recipientEmail, MARKETING_LIBRARY_EMAIL)))
+        .orderBy(desc(founderVideos.createdAt));
+
+      return rows.map((row) => ({
+        ...row,
+        shareUrl: `${process.env.FRONTEND_URL ?? "https://greenchainz.com"}/v/${row.shareToken}`,
+      }));
+    }),
+
+  deleteMarketingFile: adminProcedure
+    .input(z.object({ videoId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const deleted = await db
+        .delete(founderVideos)
+        .where(and(
+          eq(founderVideos.id, input.videoId),
+          eq(founderVideos.ownerUserId, ctx.user.id),
+          eq(founderVideos.recipientEmail, MARKETING_LIBRARY_EMAIL),
+        ))
+        .returning({ id: founderVideos.id });
+
+      if (deleted.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Marketing video not found" });
+      }
+
+      return { ok: true };
+    }),
   // ── Founder: list my sent videos with view stats ──────────────────────────
   list: adminProcedure
     .input(
@@ -192,7 +351,7 @@ export const founderVideoRouter = router({
           expiresAt: founderVideos.expiresAt,
         })
         .from(founderVideos)
-        .where(eq(founderVideos.ownerUserId, ctx.user.id))
+        .where(and(eq(founderVideos.ownerUserId, ctx.user.id), sql`${founderVideos.recipientEmail} <> ${MARKETING_LIBRARY_EMAIL}`))
         .orderBy(desc(founderVideos.createdAt))
         .limit(limit);
 
@@ -216,6 +375,7 @@ export const founderVideoRouter = router({
 
       if (!video) throw new TRPCError({ code: "NOT_FOUND", message: "Video not found" });
       if (video.status !== "ready") throw new TRPCError({ code: "BAD_REQUEST", message: "Video is not ready to send" });
+      if (video.recipientEmail === MARKETING_LIBRARY_EMAIL) throw new TRPCError({ code: "BAD_REQUEST", message: "Marketing library videos do not support resend" });
 
       const newExpiresAt = new Date(Date.now() + DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
@@ -343,7 +503,7 @@ export const founderVideoRouter = router({
         })
         .from(founderVideos)
         .leftJoin(founderVideoViews, eq(founderVideoViews.videoId, founderVideos.id))
-        .where(and(eq(founderVideos.ownerUserId, ctx.user.id), eq(founderVideos.status, "ready")))
+        .where(and(eq(founderVideos.ownerUserId, ctx.user.id), eq(founderVideos.status, "ready"), sql`${founderVideos.recipientEmail} <> ${MARKETING_LIBRARY_EMAIL}`))
         .groupBy(founderVideos.id)
         .orderBy(desc(founderVideos.createdAt));
 
@@ -466,3 +626,8 @@ export const founderVideoRouter = router({
       return { ok: true };
     }),
 });
+
+
+
+
+
