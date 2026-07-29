@@ -510,6 +510,18 @@ function MarketingVideosTab() {
     const ext = (file.name.split('.').pop() ?? 'mp4').toLowerCase();
     setUploading(true);
     try {
+      // Validate duration before touching the server so we don't leave orphan blobs.
+      const MAX_ALLOWED_SEC = 600; // must match server MAX_DURATION_SEC
+      const rawDurationSec = Math.round(await getDurationSec(file));
+      if (rawDurationSec > MAX_ALLOWED_SEC) {
+        toast.error(
+          `Video is too long (${Math.ceil(rawDurationSec / 60)} min). Maximum allowed is ${MAX_ALLOWED_SEC / 60} minutes.`
+        );
+        setUploading(false);
+        return;
+      }
+      const durationSec = Math.max(1, rawDurationSec);
+
       const created = await createMutation.mutateAsync({
         title: title.trim(),
         note: note.trim() || undefined,
@@ -530,8 +542,6 @@ function MarketingVideosTab() {
         const detail = await uploadRes.text().catch(() => '');
         throw new Error(`Upload failed (${uploadRes.status}) ${detail.slice(0, 140)}`);
       }
-
-      const durationSec = Math.max(1, Math.min(600, Math.round(await getDurationSec(file))));
 
       await finalizeMutation.mutateAsync({
         videoId: created.videoId,
