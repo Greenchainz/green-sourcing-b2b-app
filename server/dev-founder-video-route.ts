@@ -2,11 +2,11 @@
  * Dev-only local storage routes for founder videos.
  * Only mounted when AZURE_STORAGE_CONNECTION_STRING is not set.
  *
- * PUT /api/dev/fv-upload/<yyyy-mm>/<videoId>.webm
- *   — Browser sends raw video/webm blob; saved to tmp/founder-videos/
+ * PUT /api/dev/fv-upload/<yyyy-mm>/<videoId>.<ext>
+ *   — Browser sends raw video blob (webm, mp4, mov, …); saved to tmp/founder-videos/
  *
- * GET /api/dev/fv/<yyyy-mm>/<videoId>.webm
- *   — Streams the saved file back (used by the watch page)
+ * GET /api/dev/fv/<yyyy-mm>/<videoId>.<ext>
+ *   — Streams the saved file back with a MIME type derived from the file extension.
  *
  * Uses router.use() (plain prefix matching) to avoid path-to-regexp v8
  * incompatibility with wildcard patterns that include slashes.
@@ -54,7 +54,16 @@ devFounderVideoRouter.use(
   },
 );
 
-// GET /api/dev/fv/<yyyy-mm>/<videoId>.webm
+// GET /api/dev/fv/<yyyy-mm>/<videoId>.<ext>
+const MIME_BY_EXT: Record<string, string> = {
+  webm: "video/webm",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  ogg: "video/ogg",
+  avi: "video/x-msvideo",
+  mkv: "video/x-matroska",
+};
+
 devFounderVideoRouter.use("/fv", (req: Request, res: Response) => {
   if (req.method !== "GET") { res.status(405).end(); return; }
 
@@ -69,7 +78,9 @@ devFounderVideoRouter.use("/fv", (req: Request, res: Response) => {
     return;
   }
 
-  res.setHeader("Content-Type", "video/webm");
+  const ext = path.extname(blobKey).replace(/^\./, "").toLowerCase();
+  const contentType = MIME_BY_EXT[ext] ?? "video/webm";
+  res.setHeader("Content-Type", contentType);
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Cache-Control", "no-store");
   createReadStream(filePath).pipe(res);
