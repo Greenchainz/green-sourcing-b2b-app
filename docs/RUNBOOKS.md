@@ -20,7 +20,7 @@
 
 ## RB-01: Break-Glass — Emergency Deployment Bypass
 
-**When to use:** Production is down and the normal deployment path (PR → CI → manual approval → deploy) is too slow. The break-glass procedure allows bypassing the GitHub Environment protection rules.
+**When to use:** Production is down and the normal deployment path (PR → CI → manual approval → deploy) is too slow. This runbook is a manual deployment path and still requires the Production environment approval gate.
 
 **Authorization:** Requires an audited break-glass identity. Before proceeding:
 - Authenticate with MFA on the account you will use to trigger the deployment.
@@ -35,7 +35,7 @@
    Incident: <short description>
    Date/Time UTC: <timestamp>
    Git SHA deployed: <commit SHA>
-   Phases bypassed: CI gate / staging validation / manual approval
+   Phases expedited: CI gate / staging validation
    Justification: <why this can't wait>
    Post-deploy validation: <what you will verify after>
    ```
@@ -56,7 +56,7 @@
    > **Do NOT** use `git push origin main --force` — this rewrites history, bypasses
    > CI, and can promote arbitrary code to production without an audit trail.
 
-3. **Approve the Production environment gate** in GitHub Actions → Environments → Production.
+3. **Approve the Production environment gate** in GitHub Actions → Environments → Production (required for this runbook).
 
 4. **Post-deploy validation** (within 10 minutes of deploy):
    - Hit `/health` and `/ready` endpoints
