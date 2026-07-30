@@ -27,7 +27,8 @@ on:
 
 concurrency:
   group: staging-deploy-${{ github.ref }}
-  cancel-in-progress: true
+  # Migrations run in this workflow; cancelling mid-migration risks partial schema state.
+  cancel-in-progress: false
 
 # --- Azure OIDC identifiers (non-secret, safe to commit) ---
 # App registration: greenchainz (8b597068-9347-4e99-8860-8c4e9a9bc112)
@@ -59,6 +60,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -91,6 +94,8 @@ jobs:
       image_sha: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
@@ -102,18 +107,36 @@ jobs:
       - name: Pull build secrets from Key Vault
         id: kv
         run: |
+          # Write optional secrets to the job environment file (not to GITHUB_OUTPUT)
+          # so that masked values never appear in step outputs.
           get_secret() {
             local name="$1"
-            local value
-            value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "$name" --query value -o tsv 2>/dev/null) || value=""
-            [ -n "$value" ] && echo "::add-mask::$value"
-            echo "${name}=${value}" >> $GITHUB_OUTPUT
+            local env_name="$2"
+            local value stderr_file
+            stderr_file=$(mktemp)
+            if value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "$name" --query value -o tsv 2>"$stderr_file"); then
+              rm -f "$stderr_file"
+              [ -n "$value" ] && echo "::add-mask::$value"
+              echo "${env_name}=${value}" >> "$GITHUB_ENV"
+            else
+              local exit_code=$?
+              local stderr_content
+              stderr_content=$(cat "$stderr_file" 2>/dev/null || true)
+              rm -f "$stderr_file"
+              if echo "$stderr_content" | grep -qi "SecretNotFound\|was not found\|does not exist"; then
+                echo "Secret '$name' not found in Key Vault (optional — continuing)"
+                echo "${env_name}=" >> "$GITHUB_ENV"
+              else
+                echo "::error::Key Vault lookup failed for '$name' (exit $exit_code): $stderr_content"
+                exit 1
+              fi
+            fi
           }
-          get_secret azure-maps-key
-          get_secret sentry-dsn
-          get_secret sentry-auth-token
-          get_secret sentry-org
-          get_secret sentry-project
+          get_secret azure-maps-key    AZURE_MAPS_KEY
+          get_secret sentry-dsn        SENTRY_DSN
+          get_secret sentry-auth-token SENTRY_AUTH_TOKEN
+          get_secret sentry-org        SENTRY_ORG
+          get_secret sentry-project    SENTRY_PROJECT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -123,7 +146,11 @@ jobs:
         run: |
           RUNNER_IP=$(curl -sf https://api.ipify.org)
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
-          ACR_PUBLIC_ACCESS_WAS=$(az acr show --name ${{ env.ACR }} --query publicNetworkAccess --output tsv 2>&1)
+          ACR_PUBLIC_ACCESS_WAS=$(az acr show --name "${{ env.ACR }}" --query publicNetworkAccess --output tsv)
+          case "$ACR_PUBLIC_ACCESS_WAS" in
+            Enabled|Disabled) ;;
+            *) echo "Unexpected publicNetworkAccess value: $ACR_PUBLIC_ACCESS_WAS"; exit 1 ;;
+          esac
           echo "public-access-was=${ACR_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
           if [ "$ACR_PUBLIC_ACCESS_WAS" != "Enabled" ]; then
             az acr update --name ${{ env.ACR }} --public-network-enabled true
@@ -155,7 +182,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache,mode=max
           build-args: |
             VITE_BACKEND_URL=
-            VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
+            VITE_AZURE_MAPS_KEY=${{ env.AZURE_MAPS_KEY }}
             VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
             VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 
@@ -213,6 +240,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
@@ -238,20 +267,12 @@ jobs:
             --name "Database-URL-Staging" \
             --query value -o tsv 2>/dev/null || echo "")
           if [ -z "$DB_URL" ]; then
-            # Fall back to the production secret name if staging-specific one absent.
-            # Remove this fallback once a dedicated staging DB secret is provisioned.
-            DB_URL=$(az keyvault secret show \
-              --vault-name "${{ env.KEY_VAULT }}" \
-              --name "Database-URL" \
-              --query value -o tsv 2>/dev/null || echo "")
-          fi
-          if [ -z "$DB_URL" ]; then
-            echo "? No staging DATABASE_URL found in Key Vault - skipping migrations"
+            echo "::warning::Database-URL-Staging not found in Key Vault - skipping staging migrations"
             echo "skipped=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           echo "::add-mask::$DB_URL"
-          echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
+          echo "STAGING_DATABASE_URL=${DB_URL}" >> "$GITHUB_ENV"
           echo "skipped=false" >> $GITHUB_OUTPUT
 
       - name: Open PostgreSQL firewall for runner
@@ -271,7 +292,7 @@ jobs:
       - name: Run Drizzle migrations
         if: steps.kv.outputs.skipped != 'true'
         env:
-          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+          DATABASE_URL: ${{ env.STAGING_DATABASE_URL }}
         run: pnpm db:migrate
 
       - name: Close PostgreSQL firewall
@@ -307,9 +328,12 @@ jobs:
 
       - name: Deploy backend to staging
         run: |
-          # Deploy the exact immutable image built in this workflow run.
-          # Uses the digest (not tag) for maximum reproducibility.
-          BACKEND_IMAGE="${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ needs.build.outputs.image_sha }}"
+          # Deploy the exact immutable image built in this workflow run using the pushed digest.
+          BACKEND_IMAGE="${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}@${{ needs.build.outputs.backend_digest }}"
+          if ! az containerapp show --name "${{ env.BACKEND_APP_STAGING }}" --resource-group "${{ env.RESOURCE_GROUP }}" -o none 2>/dev/null; then
+            echo "::warning::Staging backend app not provisioned — skipping"
+            exit 0
+          fi
           az containerapp update \
             --name ${{ env.BACKEND_APP_STAGING }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -322,12 +346,15 @@ jobs:
               "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net" \
               "FRONTEND_URL=https://staging.greenchainz.com" \
               "ENVIRONMENT=staging" \
-              "GIT_SHA=${{ github.sha }}" \
-            2>/dev/null || echo "Staging backend app not yet provisioned - skipping"
+              "GIT_SHA=${{ github.sha }}"
 
       - name: Deploy frontend to staging
         run: |
-          FRONTEND_IMAGE="${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ needs.build.outputs.image_sha }}"
+          FRONTEND_IMAGE="${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}@${{ needs.build.outputs.frontend_digest }}"
+          if ! az containerapp show --name "${{ env.FRONTEND_APP_STAGING }}" --resource-group "${{ env.RESOURCE_GROUP }}" -o none 2>/dev/null; then
+            echo "::warning::Staging frontend app not provisioned — skipping"
+            exit 0
+          fi
           az containerapp update \
             --name ${{ env.FRONTEND_APP_STAGING }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -336,12 +363,16 @@ jobs:
               "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
               "NODE_ENV=production" \
               "ENVIRONMENT=staging" \
-              "GIT_SHA=${{ github.sha }}" \
-            2>/dev/null || echo "Staging frontend app not yet provisioned - skipping"
+              "GIT_SHA=${{ github.sha }}"
 
       - name: Staging smoke tests
         run: |
           STAGING_URL="https://staging.greenchainz.com"
+          # Check whether staging is provisioned; if not, skip non-fatally.
+          if ! az containerapp show --name "${{ env.BACKEND_APP_STAGING }}" --resource-group "${{ env.RESOURCE_GROUP }}" -o none 2>/dev/null; then
+            echo "::warning::Staging backend not provisioned — skipping smoke tests"
+            exit 0
+          fi
           echo "Running smoke tests against: $STAGING_URL"
           for i in $(seq 1 12); do
             STATUS=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 10 \
@@ -353,9 +384,8 @@ jobs:
             echo "⏳ Staging not ready yet (status=$STATUS, attempt $i/12) — retrying in 10s"
             sleep 10
           done
-          echo "⚠️  Staging smoke test did not return 200 after 2 minutes — staging may not be provisioned yet"
-          # Non-fatal: staging app may not be created yet for new repos.
-          exit 0
+          echo "❌ Staging smoke test failed after 2 minutes — the candidate image is not healthy"
+          exit 1
 
       - name: Azure logout
         if: always()

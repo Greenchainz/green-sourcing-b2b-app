@@ -31,11 +31,11 @@ Only use this procedure when **all** of the following are true:
 
 Copy and complete this for every break-glass event. File it in the incident log (private Notion/Linear/email thread — not Git).
 
-```
+```text
 BREAK-GLASS INCIDENT RECORD
 ============================
 Date/Time (UTC):         ____________________
-Incident Severity:       Sev-1 / Sev-2
+Incident Severity:       Sev-1
 Initiated By:            ____________________
 
 INCIDENT SUMMARY
@@ -84,10 +84,8 @@ ROLLBACK PLAN (if this deploy also fails)
 ------------------------------------------
 Prior known-good revision:    ____________________
 Rollback command:
-  az containerapp ingress traffic set \
-    --name greenchainz-backend-v2 \
-    --resource-group rg-greenchainz-prod-container \
-    --revision-weight <prior-revision-name>=100
+  See "Immediate Rollback" section below — copy the containerapp update command
+  with the known-good SHA and execute it immediately.
 
 RESOLUTION
 -----------
@@ -101,74 +99,151 @@ Post-mortem scheduled:       Yes / No — Date: ____________________
 
 ## Executing the Break-Glass Deploy
 
-### Option A: Promote an already-built staging image
+### Option A: Promote an already-built staging image (fast path — approval gate still applies)
+
+> ⚠️ **This path requires the same Production environment approval as the normal release path.**
+> Use this when the fix exists as a pre-built, staging-validated image and an approver is available.
+> If the approval gate itself is unavailable, use Option B.
 
 If the fix was merged to `main` and built by `build-and-stage.yml`:
 
 1. Find the git SHA from the `build-and-stage` run:
-   ```
+
+   ```bash
    gh run list --workflow=build-and-stage.yml --limit 5
    ```
 
 2. Dispatch `release-production.yml` with that SHA:
-   ```
+
+   ```bash
    gh workflow run release-production.yml \
-     --field image_sha=<40-char-sha> \
+     --field image_sha=FULL_40_CHAR_SHA \
      --field skip_smoke_tests=false
    ```
 
 3. Approve the Production environment gate in the GitHub Actions UI — or use the GitHub API to approve if the UI is unreachable.
 
-### Option B: Emergency direct deploy (no existing build)
+### Option B: Emergency direct deploy (no existing build — bypasses the approval gate)
 
-**Use only when Option A is impossible.** This rebuilds from source and bypasses the staging validation gate.
+> ⚠️ **Use only when Option A is impossible.** This rebuilds from source and bypasses the staging validation gate.
+> Requires Azure CLI access and write permission on the production Container Apps.
+> Select the affected component(s): **Backend**, **Frontend**, or **Both**.
 
 ```bash
+# 0. Ensure the working tree is clean — no uncommitted or untracked files.
+git stash  # or: git status and address any diff
+git status  # must show "nothing to commit, working tree clean"
+
 # 1. Authenticate to Azure
 az login
 
-# 2. Build and push the emergency image
-COMMIT_SHA=$(git rev-parse HEAD)
-az acr build \
-  --registry acrgreenchainzprod916 \
-  --image greenchainz-backend:${COMMIT_SHA} \
-  --file Dockerfile.backend .
+# ─── BACKEND ───────────────────────────────────────────────────────────────
 
-# 3. Deploy directly
+# 2. Build and push the emergency backend image; capture the immutable digest.
+COMMIT_SHA=$(git rev-parse HEAD)
+BACKEND_DIGEST=$(az acr build \
+  --registry acrgreenchainzprod916 \
+  --image "greenchainz-backend:${COMMIT_SHA}" \
+  --file Dockerfile.backend \
+  --query "outputImages[0].digest" \
+  --output tsv \
+  .)
+
+if [ -z "$BACKEND_DIGEST" ]; then
+  echo "ERROR: ACR build did not return a digest — aborting" >&2
+  exit 1
+fi
+echo "Backend digest: $BACKEND_DIGEST"
+
+# 3. Deploy directly using the immutable digest (not the mutable tag).
 az containerapp update \
   --name greenchainz-backend-v2 \
   --resource-group rg-greenchainz-prod-container \
-  --image acrgreenchainzprod916.azurecr.io/greenchainz-backend:${COMMIT_SHA}
+  --image "acrgreenchainzprod916.azurecr.io/greenchainz-backend@${BACKEND_DIGEST}"
 
-# 4. Watch the revision come up
-az containerapp revision list \
-  --name greenchainz-backend-v2 \
+# 4. Wait for the revision to become ready and validate health.
+for i in $(seq 1 24); do
+  STATUS=$(curl --fail --silent --show-error --max-time 10 \
+    -o /dev/null -w "%{http_code}" \
+    https://greenchainz.com/api/health 2>/dev/null || echo "FAIL")
+  if [ "$STATUS" = "200" ]; then
+    echo "✅ Backend health check passed (attempt $i)"
+    break
+  fi
+  echo "⏳ Waiting for backend... (status=$STATUS, attempt $i/24)"
+  sleep 10
+done
+if [ "$STATUS" != "200" ]; then
+  echo "❌ Backend did not become healthy — consider rollback (see section below)"
+  exit 1
+fi
+
+# ─── FRONTEND ──────────────────────────────────────────────────────────────
+
+# 5. (If a frontend emergency deploy is also needed) Build and push the frontend image.
+FRONTEND_DIGEST=$(az acr build \
+  --registry acrgreenchainzprod916 \
+  --image "greenchainz-frontend:${COMMIT_SHA}" \
+  --file Dockerfile.frontend \
+  --query "outputImages[0].digest" \
+  --output tsv \
+  .)
+
+if [ -z "$FRONTEND_DIGEST" ]; then
+  echo "ERROR: ACR build did not return a frontend digest — aborting" >&2
+  exit 1
+fi
+echo "Frontend digest: $FRONTEND_DIGEST"
+
+az containerapp update \
+  --name greenchainz-frontend \
   --resource-group rg-greenchainz-prod-container \
-  --output table
+  --image "acrgreenchainzprod916.azurecr.io/greenchainz-frontend@${FRONTEND_DIGEST}"
+
+# 6. Validate frontend health.
+for i in $(seq 1 24); do
+  STATUS=$(curl --fail --silent --show-error --max-time 10 \
+    -o /dev/null -w "%{http_code}" \
+    https://greenchainz.com/ 2>/dev/null || echo "FAIL")
+  if [ "$STATUS" = "200" ]; then
+    echo "✅ Frontend health check passed (attempt $i)"
+    break
+  fi
+  echo "⏳ Waiting for frontend... (status=$STATUS, attempt $i/24)"
+  sleep 10
+done
+if [ "$STATUS" != "200" ]; then
+  echo "❌ Frontend did not become healthy — consider rollback (see section below)"
+  exit 1
+fi
 ```
 
 ---
 
 ## Immediate Rollback (< 5 minutes)
 
-If the production deployment is causing harm, roll back traffic to the prior revision instantly:
+> **Both Container Apps run in Single revision mode.** The prior revision is inactive.
+> Rolling back means deploying the last known-good image using its immutable digest.
 
 ```bash
-# List active revisions
-az containerapp revision list \
+# 1. Find the known-good digest for the backend (from ACR or from the prior build-and-stage run).
+KNOWN_GOOD_BACKEND_SHA="REPLACE_WITH_PRIOR_40_CHAR_SHA"
+KNOWN_GOOD_FRONTEND_SHA="REPLACE_WITH_PRIOR_40_CHAR_SHA"
+
+# 2. Roll back the backend by deploying the known-good image.
+az containerapp update \
   --name greenchainz-backend-v2 \
   --resource-group rg-greenchainz-prod-container \
-  --query "[].{name:name, active:properties.active, traffic:properties.trafficWeight}" \
-  --output table
+  --image "acrgreenchainzprod916.azurecr.io/greenchainz-backend:${KNOWN_GOOD_BACKEND_SHA}"
 
-# Shift all traffic to the prior known-good revision
-az containerapp ingress traffic set \
-  --name greenchainz-backend-v2 \
+# 3. Roll back the frontend (if also impacted).
+az containerapp update \
+  --name greenchainz-frontend \
   --resource-group rg-greenchainz-prod-container \
-  --revision-weight <PRIOR_REVISION_NAME>=100
+  --image "acrgreenchainzprod916.azurecr.io/greenchainz-frontend:${KNOWN_GOOD_FRONTEND_SHA}"
 
-# Verify
-curl -v https://greenchainz.com/api/health
+# 4. Verify the rollback is healthy — fail-closed: non-2xx means the rollback has not taken effect.
+curl --fail --show-error --silent --max-time 10 https://greenchainz.com/api/health
 ```
 
 Rollback SLA: **< 15 minutes** from incident detection to traffic shift.
