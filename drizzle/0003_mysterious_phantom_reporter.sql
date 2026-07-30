@@ -367,107 +367,107 @@ CREATE TABLE IF NOT EXISTS "supplier_sustainability_profiles" (
 	CONSTRAINT "supplier_sustainability_profiles_supplier_id_unique" UNIQUE("supplier_id")
 );
 --> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "stcRating" integer;--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "iicRating" integer;--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "airPermeance" varchar(120);--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "vaporPermeance" varchar(120);--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "windUpliftRating" varchar(120);--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "flameSpreadIndex" integer;--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "smokeDevelopmentIndex" integer;--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "ulDesignNumber" varchar(80);--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "loadCapacityPsf" integer;--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "impactResistance" varchar(200);--> statement-breakpoint
-ALTER TABLE "assemblies" ADD COLUMN "leedCredits" text;--> statement-breakpoint
-ALTER TABLE "call_history" ADD COLUMN "group_call_id" text;--> statement-breakpoint
-ALTER TABLE "crm_contacts" ADD COLUMN "claim_token" uuid DEFAULT gen_random_uuid();--> statement-breakpoint
-ALTER TABLE "crm_contacts" ADD COLUMN "claim_token_expires_at" timestamp;--> statement-breakpoint
-ALTER TABLE "crm_contacts" ADD COLUMN "claim_token_used_at" timestamp;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "epd_expiry" date;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "epd_program_operator" varchar(100);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "interior_exterior" varchar(20);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "r_value" numeric(6, 2);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "fire_rating" varchar(50);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "astm_standards" json;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "msf_factor" numeric(10, 4);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "title24_compliant" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "iecc_compliant" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "voc_compliant" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "not_on_red_list" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "hpd_available" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "c2c_certified" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "fsc_certified" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "greenguard_gold" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "declare_label" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "recycled_content_pct" numeric(5, 2);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "regional_availability" json;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "regional_within_500mi" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "lead_time_days" integer;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "price_per_unit" numeric(12, 4);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "price_unit" varchar(30);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "take_back_program" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "min_order_quantity" integer;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "leed_credits" json;--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "hardness_mohs" numeric(4, 1);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "installability_hrs_sf" numeric(6, 3);--> statement-breakpoint
-ALTER TABLE "epd_materials" ADD COLUMN "lifespan_years" integer;--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "cdphCompliant" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "weightPerSf" numeric(8, 3);--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "wlcPaybackYears" integer;--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "annualEnergySavingsPct" numeric(5, 2);--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "maintenanceCostPerSfPerYear" numeric(8, 2);--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "isSeamless" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "bleachResistant" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "cleaningProtocol" varchar(120);--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "scope3EmissionsKgCo2e" numeric(10, 3);--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "carbon_score" numeric(5, 2);--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "sectorTags" text[];--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "sourcewellListed" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "leedDocReady" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "materials" ADD COLUMN "ccps_score" real;--> statement-breakpoint
-ALTER TABLE "rfq_bids" ADD COLUMN "can_fulfill" boolean;--> statement-breakpoint
-ALTER TABLE "rfq_bids" ADD COLUMN "field_values" json;--> statement-breakpoint
-ALTER TABLE "rfq_bids" ADD COLUMN "gwp_value" numeric(14, 4);--> statement-breakpoint
-ALTER TABLE "rfq_bids" ADD COLUMN "epd_reference" text;--> statement-breakpoint
-ALTER TABLE "rfq_bids" ADD COLUMN "rfx_total_score" numeric(6, 2);--> statement-breakpoint
-ALTER TABLE "rfq_bids" ADD COLUMN "data_quality_level" varchar(2);--> statement-breakpoint
-ALTER TABLE "rfq_bids" ADD COLUMN "gwp_meets_target" boolean;--> statement-breakpoint
-ALTER TABLE "rfq_bids" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
-ALTER TABLE "rfq_items" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
-ALTER TABLE "rfq_requests" ADD COLUMN "draft_id" integer;--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "geocoded_at" timestamp;--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "geocode_source" varchar(32);--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "project_climate_zone" varchar(10);--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "request_type" varchar(40) DEFAULT 'rfq_quote';--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "response_field_schema" json;--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "scoring_weights" json;--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "shadow_carbon_price" numeric(10, 2);--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "gwp_cap_per_unit" numeric(10, 4);--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "gwp_cap_unit" varchar(50);--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "gwp_reduction_target" numeric(5, 2);--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "epd_required" boolean DEFAULT false NOT NULL;--> statement-breakpoint
-ALTER TABLE "rfqs" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "verified_supplier_status" "supplier_verified_badge_status" DEFAULT 'UNVERIFIED' NOT NULL;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "verified_supplier_reasons" json DEFAULT '[]'::json NOT NULL;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "verified_supplier_computed_at" timestamp;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "verified_supplier_expires_at" timestamp;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "epdUrl" text;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "epdProgramOperator" varchar(150);--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "tier" "supplier_tier" DEFAULT 'free' NOT NULL;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "leadCredits" integer DEFAULT 3 NOT NULL;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "weightedRankScore" real;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "microsoftSubscriptionId" text;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "microsoftPlanId" text;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "tierUpdatedAt" timestamp;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "specSheetUrl" text;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "otif_percentage" numeric(5, 2);--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "avg_lead_time_days" integer;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "lead_time_variance_days" integer;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "supplier_z_score" numeric(5, 2);--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "inventory_visibility" boolean DEFAULT false;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "vet_last_updated_at" timestamp;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "hits_digest_last_sent_at" timestamp;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "avatarUrl" text;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "acs_user_id" text;--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "stcRating" integer;--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "iicRating" integer;--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "airPermeance" varchar(120);--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "vaporPermeance" varchar(120);--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "windUpliftRating" varchar(120);--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "flameSpreadIndex" integer;--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "smokeDevelopmentIndex" integer;--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "ulDesignNumber" varchar(80);--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "loadCapacityPsf" integer;--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "impactResistance" varchar(200);--> statement-breakpoint
+ALTER TABLE "assemblies" ADD COLUMN IF NOT EXISTS "leedCredits" text;--> statement-breakpoint
+ALTER TABLE "call_history" ADD COLUMN IF NOT EXISTS "group_call_id" text;--> statement-breakpoint
+ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "claim_token" uuid DEFAULT gen_random_uuid();--> statement-breakpoint
+ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "claim_token_expires_at" timestamp;--> statement-breakpoint
+ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "claim_token_used_at" timestamp;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "epd_expiry" date;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "epd_program_operator" varchar(100);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "interior_exterior" varchar(20);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "r_value" numeric(6, 2);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "fire_rating" varchar(50);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "astm_standards" json;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "msf_factor" numeric(10, 4);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "title24_compliant" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "iecc_compliant" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "voc_compliant" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "not_on_red_list" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "hpd_available" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "c2c_certified" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "fsc_certified" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "greenguard_gold" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "declare_label" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "recycled_content_pct" numeric(5, 2);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "regional_availability" json;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "regional_within_500mi" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "lead_time_days" integer;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "price_per_unit" numeric(12, 4);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "price_unit" varchar(30);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "take_back_program" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "min_order_quantity" integer;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "leed_credits" json;--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "hardness_mohs" numeric(4, 1);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "installability_hrs_sf" numeric(6, 3);--> statement-breakpoint
+ALTER TABLE "epd_materials" ADD COLUMN IF NOT EXISTS "lifespan_years" integer;--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "cdphCompliant" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "weightPerSf" numeric(8, 3);--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "wlcPaybackYears" integer;--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "annualEnergySavingsPct" numeric(5, 2);--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "maintenanceCostPerSfPerYear" numeric(8, 2);--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "isSeamless" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "bleachResistant" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "cleaningProtocol" varchar(120);--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "scope3EmissionsKgCo2e" numeric(10, 3);--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "carbon_score" numeric(5, 2);--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "sectorTags" text[];--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "sourcewellListed" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "leedDocReady" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "materials" ADD COLUMN IF NOT EXISTS "ccps_score" real;--> statement-breakpoint
+ALTER TABLE "rfq_bids" ADD COLUMN IF NOT EXISTS "can_fulfill" boolean;--> statement-breakpoint
+ALTER TABLE "rfq_bids" ADD COLUMN IF NOT EXISTS "field_values" json;--> statement-breakpoint
+ALTER TABLE "rfq_bids" ADD COLUMN IF NOT EXISTS "gwp_value" numeric(14, 4);--> statement-breakpoint
+ALTER TABLE "rfq_bids" ADD COLUMN IF NOT EXISTS "epd_reference" text;--> statement-breakpoint
+ALTER TABLE "rfq_bids" ADD COLUMN IF NOT EXISTS "rfx_total_score" numeric(6, 2);--> statement-breakpoint
+ALTER TABLE "rfq_bids" ADD COLUMN IF NOT EXISTS "data_quality_level" varchar(2);--> statement-breakpoint
+ALTER TABLE "rfq_bids" ADD COLUMN IF NOT EXISTS "gwp_meets_target" boolean;--> statement-breakpoint
+ALTER TABLE "rfq_bids" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;--> statement-breakpoint
+ALTER TABLE "rfq_items" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;--> statement-breakpoint
+ALTER TABLE "rfq_requests" ADD COLUMN IF NOT EXISTS "draft_id" integer;--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "geocoded_at" timestamp;--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "geocode_source" varchar(32);--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "project_climate_zone" varchar(10);--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "request_type" varchar(40) DEFAULT 'rfq_quote';--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "response_field_schema" json;--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "scoring_weights" json;--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "shadow_carbon_price" numeric(10, 2);--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "gwp_cap_per_unit" numeric(10, 4);--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "gwp_cap_unit" varchar(50);--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "gwp_reduction_target" numeric(5, 2);--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "epd_required" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "rfqs" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "verified_supplier_status" "supplier_verified_badge_status" DEFAULT 'UNVERIFIED' NOT NULL;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "verified_supplier_reasons" json DEFAULT '[]'::json NOT NULL;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "verified_supplier_computed_at" timestamp;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "verified_supplier_expires_at" timestamp;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "epdUrl" text;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "epdProgramOperator" varchar(150);--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "tier" "supplier_tier" DEFAULT 'free' NOT NULL;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "leadCredits" integer DEFAULT 3 NOT NULL;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "weightedRankScore" real;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "microsoftSubscriptionId" text;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "microsoftPlanId" text;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "tierUpdatedAt" timestamp;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "specSheetUrl" text;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "otif_percentage" numeric(5, 2);--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "avg_lead_time_days" integer;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "lead_time_variance_days" integer;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "supplier_z_score" numeric(5, 2);--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "inventory_visibility" boolean DEFAULT false;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "vet_last_updated_at" timestamp;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "hits_digest_last_sent_at" timestamp;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatarUrl" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "acs_user_id" text;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "ca_document_messages" ADD CONSTRAINT "ca_document_messages_document_id_ca_documents_id_fk" FOREIGN KEY ("document_id") REFERENCES "public"."ca_documents"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
