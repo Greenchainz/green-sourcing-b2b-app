@@ -327,23 +327,32 @@ gh workflow run deploy-azure.yml --ref main
 ### Diagnostic query for tenant boundary violations
 
 ```sql
--- Find RFQs and their bid-invitation records to identify unexpected supplier visibility.
--- rfqs.userId is the owner; rfq_supplier_invitations links rfqs to invited suppliers.
--- Replace with queries over your access/audit tables once those are in place.
-SELECT r.id          AS rfq_id,
-       r."userId"    AS owner_user_id,
-       r."status",
-       r."createdAt"::date AS created_date,
+-- Find RFQ access attempts where the actor is neither the RFQ owner nor an invited supplier user.
+-- Ownership: rfqs.userId. Assignment: rfq_supplier_invites.supplier_id -> suppliers.userId.
+WITH invited_supplier_users AS (
+  SELECT rsi.rfq_id, array_agg(DISTINCT s."userId") AS invited_user_ids
+  FROM rfq_supplier_invites rsi
+  JOIN suppliers s ON s.id = rsi.supplier_id
+  GROUP BY rsi.rfq_id
+)
+SELECT r.id AS rfq_id,
+       r."userId" AS owner_user_id,
+       COALESCE(isu.invited_user_ids, ARRAY[]::integer[]) AS invited_user_ids,
        al."actorUserId",
        al."action",
        al."outcome",
-       al."createdAt"  AS audit_created_at
+       al."resourceId",
+       al."createdAt" AS audit_created_at
 FROM rfqs r
 JOIN audit_logs al
   ON al."resourceType" = 'rfq'
- AND al."resourceId"   = r.id::text
+ AND al."resourceId" = r.id::text
+LEFT JOIN invited_supplier_users isu
+  ON isu.rfq_id = r.id
 WHERE r."deletedAt" IS NULL
-  AND al."outcome" != 'success'   -- flag blocked or failed access attempts
+  AND al."actorUserId" IS NOT NULL
+  AND al."actorUserId" <> r."userId"
+  AND NOT (al."actorUserId" = ANY(COALESCE(isu.invited_user_ids, ARRAY[]::integer[])))
 ORDER BY al."createdAt" DESC
 LIMIT 50;
 ```
