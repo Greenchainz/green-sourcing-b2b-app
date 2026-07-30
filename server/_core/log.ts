@@ -92,6 +92,9 @@ const REDACTED_KEYS = new Set([
  * Works on plain objects and arrays; primitives are returned as-is.
  */
 function redactKeys(value: unknown): unknown {
+  if (typeof value === "string") {
+    return scrub(value);
+  }
   if (Array.isArray(value)) {
     return value.map(redactKeys);
   }
@@ -124,9 +127,9 @@ function emit(level: LogLevel, event: string, fields: Record<string, unknown> = 
 
   if (USE_JSON) {
     // Redact sensitive keys before serialisation, then apply string-level
-    // scrubbing (IP addresses, query tokens).  Redacting structured fields
-    // first is safer than post-hoc regex on serialised JSON.
-    const safe = scrub(JSON.stringify(redactKeys(entry)));
+    // scrubbing (IP addresses, query tokens) while traversing the object.
+    // Avoid post-hoc regex over serialised JSON.
+    const safe = JSON.stringify(redactKeys(entry));
     process.stdout.write(safe + "\n");
   } else {
     // Human-readable dev output — mirror what scrubbed console.log provides.
