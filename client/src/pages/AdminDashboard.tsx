@@ -3701,7 +3701,11 @@ function CommsTab() {
               <Button
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={handleSaveMissedCallForwarding}
-                disabled={saveMissedCallForwarding.isPending || !forwardingPhone.trim()}
+                disabled={
+                  saveMissedCallForwarding.isPending ||
+                  !forwardingLoaded ||
+                  !forwardingPhone.trim()
+                }
               >
                 {saveMissedCallForwarding.isPending ? 'Saving…' : 'Save Forwarding'}
               </Button>
