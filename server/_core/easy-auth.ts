@@ -30,6 +30,7 @@
 
 import type { Request, Response, NextFunction } from "express";
 import { log } from "./log";
+import { sdk } from "./sdk";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -185,28 +186,22 @@ export function easyAuthMiddleware(
 }
 
 /**
- * Guard: reject requests where Easy Auth is required but absent.
+ * Guard: enforce canonical server-side JWT cookie authentication.
  *
- * IMPORTANT: This guard checks only that the x-ms-client-principal header is
- * present and parseable. Because the header is client-supplied, it MUST only be
- * used when network-level isolation (Azure Container Apps Easy Auth sidecar +
- * Front Door) guarantees that direct callers cannot forge it. Do NOT use this
- * as a standalone authentication check; protected tRPC endpoints must use
- * `protectedProcedure` (JWT cookie verification) for authorization.
- *
- * Only use this when the Container App has Easy Auth enabled in production.
- * Do NOT mount this in local dev (process.env.REQUIRE_EASY_AUTH === 'true').
+ * This guard intentionally does NOT trust `x-ms-client-principal` as an auth
+ * signal. It delegates to the same signed cookie verification path used by
+ * `protectedProcedure` via sdk.authenticateRequest(req).
  */
-export function requireEasyAuth(
+export async function requireEasyAuth(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
-  const easyAuth = (req as Request & { easyAuth?: ParsedEasyAuthIdentity }).easyAuth;
-  if (!easyAuth?.isEasyAuthRequest) {
+): Promise<void> {
+  const user = await sdk.authenticateRequest(req);
+  if (!user) {
     res.status(401).json({
       error: "Unauthorized",
-      detail: "Request must pass through Azure Easy Auth.",
+      detail: "Valid authenticated session is required.",
     });
     return;
   }
