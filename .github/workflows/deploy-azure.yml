@@ -1,9 +1,6 @@
 name: Deploy to Azure Container Apps
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 # --- Azure OIDC identifiers (non-secret, safe to commit) ---
