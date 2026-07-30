@@ -39,6 +39,7 @@ import { isLocalMode } from "../../lib/founder-video-storage";
 import { sdaConnectorRouter } from "../sda-connector-routes";
 import { registerEmailAuthRoutes } from "./email-auth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
+import { registerHibpProxyRoute } from "../hibp-proxy-route";
 import { sdk } from "./sdk";
 import { runStartupSecurityPreflight } from "./security-preflight";
 
@@ -450,6 +451,16 @@ async function startServer() {
     })
   );
 
+  // Additional security headers not covered by helmet defaults.
+  app.use((_req, res, next) => {
+    // Opt legacy browsers into the XSS filter; modern browsers ignore this but it's
+    // required by several security audit checklists.
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    // Restrict access to browser features that GreenChainz does not use.
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+  });
+
   app.use(createRequestIdMiddleware);
   app.use(express.json({
     limit: "5mb",
@@ -712,6 +723,7 @@ async function startServer() {
 
   registerEmailAuthRoutes(app);
   registerOAuthProviderRoutes(app);
+  registerHibpProxyRoute(app);
 
   // ── Delegated route groups ────────────────────────────────────────────────
   registerAdminRoutes(app, adminRateLimit);
