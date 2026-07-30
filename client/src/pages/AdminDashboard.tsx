@@ -6,7 +6,7 @@ import { trpc } from '@/lib/trpc';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
@@ -46,6 +47,7 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   Search,
   Mail,
   Eye,
@@ -69,6 +71,11 @@ import {
   BarChart3,
   TrendingUp,
   Video,
+  MessageSquare,
+  Phone,
+  Megaphone,
+  Wifi,
+  WifiOff,
   Upload,
   MailOpen,
   Copy,
@@ -3302,6 +3309,307 @@ function AccessDenied() {
   );
 }
 
+// ─── Comms Tab ───────────────────────────────────────────────────────────────
+
+function CommsTab() {
+  const { data: stats, isLoading, error } = trpc.admin.getCommsStats.useQuery();
+  const sendTest = trpc.admin.sendTestSms.useMutation();
+  const broadcast = trpc.admin.broadcastArcadeSms.useMutation();
+  const sendTts = trpc.admin.sendTtsCall.useMutation();
+
+  const [testPhone, setTestPhone] = useState('');
+  const [testMsg, setTestMsg] = useState('GreenChainz: This is a test from your admin panel. Reply STOP to opt out.');
+  const [blastBody, setBlastBody] = useState('');
+  const [ttsPhone, setTtsPhone] = useState('');
+  const [ttsText, setTtsText] = useState(
+    "Hi, this is the GreenChainz platform calling. I'm your AI sourcing assistant, helping AEC teams find verified sustainable building materials. Visit greenchainz.com to explore our marketplace and start your free trial today. Have a great day!",
+  );
+  const [ttsVoice, setTtsVoice] = useState<'en-US-AriaNeural' | 'en-US-GuyNeural' | 'en-US-JennyNeural' | 'en-US-DavisNeural'>('en-US-AriaNeural');
+
+  const charsLeft = 130 - blastBody.length;
+
+  const handleTestSms = async () => {
+    if (!testPhone) return;
+    try {
+      await sendTest.mutateAsync({ to: testPhone, message: testMsg });
+      toast.success('Test SMS sent ✅');
+    } catch (e: unknown) {
+      toast.error(`SMS failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const handleBroadcast = async () => {
+    if (!blastBody.trim()) return;
+    try {
+      await broadcast.mutateAsync({ body: blastBody });
+      toast.success('Broadcast sent');
+      setBlastBody('');
+    } catch (e: unknown) {
+      toast.error(`Broadcast failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const channelConfig = [
+    {
+      key: 'email',
+      icon: <Mail className="h-5 w-5 text-blue-400" />,
+      accent: 'bg-blue-500/10',
+      label: 'Email',
+      sub: 'ZeptoMail SMTP',
+      stat: isLoading ? '—' : String(stats?.emailUsers ?? 0),
+      statLabel: 'users with email',
+      status: 'active' as const,
+    },
+    {
+      key: 'sms',
+      icon: <Phone className="h-5 w-5 text-emerald-400" />,
+      accent: 'bg-emerald-500/10',
+      label: 'SMS',
+      sub: stats?.channels.sms.number ?? 'ACS Toll-Free',
+      stat: isLoading ? '—' : String(stats?.smsLeads ?? 0),
+      statLabel: 'arcade leads',
+      status: stats?.channels.sms.status ?? 'needs_setup',
+    },
+    {
+      key: 'inApp',
+      icon: <MessageSquare className="h-5 w-5 text-purple-400" />,
+      accent: 'bg-purple-500/10',
+      label: 'In-App',
+      sub: 'Azure Web PubSub',
+      stat: isLoading ? '—' : String(stats?.arcadeSubmissions ?? 0),
+      statLabel: 'arcade runs recorded',
+      status: 'active' as const,
+    },
+    {
+      key: 'voiceVideo',
+      icon: <Video className="h-5 w-5 text-rose-400" />,
+      accent: 'bg-rose-500/10',
+      label: 'Voice / Video',
+      sub: 'Azure Communication Services',
+      stat: '—',
+      statLabel: 'active sessions',
+      status: 'active' as const,
+    },
+  ] as const;
+
+  return (
+    <div className="space-y-8">
+      {error && (
+        <div className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-900/20 p-3 text-sm text-red-300">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>Unable to load communication stats: {error.message}</span>
+        </div>
+      )}
+
+      {/* Channel overview */}
+      <div>
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-400">
+          Channel Status
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {channelConfig.map((ch) => (
+            <Card key={ch.key} className="border-gray-800 bg-gray-900">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-white">{ch.label}</p>
+                    <p className="text-xs text-gray-500">{ch.sub}</p>
+                    {isLoading ? (
+                      <Skeleton className="mt-2 h-5 w-16" />
+                    ) : (
+                      <p className="mt-1 text-xl font-bold text-white">
+                        {ch.stat}
+                        <span className="ml-1 text-xs font-normal text-gray-400">
+                          {ch.statLabel}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className={`rounded-lg p-2 ${ch.accent}`}>{ch.icon}</div>
+                    {ch.status === 'active' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400">
+                        <Wifi className="h-3 w-3" /> Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-400">
+                        <WifiOff className="h-3 w-3" /> Setup needed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Test SMS */}
+        <Card className="border-gray-800 bg-gray-900">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base text-white">
+              <Phone className="h-4 w-4 text-emerald-400" />
+              Send Test SMS
+            </CardTitle>
+            <CardDescription className="text-gray-400">
+              Verify your toll-free number is live before blasting.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Phone number</Label>
+              <Input
+                placeholder="+12065550100"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Message</Label>
+              <Textarea
+                value={testMsg}
+                onChange={(e) => setTestMsg(e.target.value)}
+                rows={3}
+                maxLength={160}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+              <p className="text-right text-xs text-gray-500">{testMsg.length}/160</p>
+            </div>
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handleTestSms}
+              disabled={!testPhone || sendTest.isPending}
+            >
+              {sendTest.isPending ? 'Sending…' : 'Send Test SMS'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Arcade blast */}
+        <Card className="border-gray-800 bg-gray-900">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base text-white">
+              <Megaphone className="h-4 w-4 text-amber-400" />
+              Arcade Player Blast
+            </CardTitle>
+            <CardDescription className="text-gray-400">
+              SMS all arcade players who opted in. "GreenChainz: " and the STOP footer
+              are added automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-3">
+              <p className="text-xs text-gray-400">Audience</p>
+              <p className="mt-0.5 text-sm font-medium text-white">
+                {isLoading ? (
+                  <Skeleton className="inline-block h-4 w-10" />
+                ) : (
+                  stats?.smsLeads ?? 0
+                )}{' '}
+                arcade leads captured by email
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">
+                Message body{' '}
+                <span className={charsLeft < 20 ? 'text-red-400' : 'text-gray-500'}>
+                  ({charsLeft} chars left)
+                </span>
+              </Label>
+              <Textarea
+                placeholder="Think you can top the board? Come get your swing at greenchainz.com/arcade"
+                value={blastBody}
+                onChange={(e) => setBlastBody(e.target.value.slice(0, 130))}
+                rows={3}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+              <p className="text-xs text-gray-500">
+                Final message: <span className="text-gray-300">GreenChainz: {blastBody || '…'} Txt STOP to opt out.</span>
+              </p>
+            </div>
+            <Button
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={handleBroadcast}
+              disabled={!blastBody.trim() || broadcast.isPending}
+            >
+              {broadcast.isPending ? 'Sending…' : `Blast SMS to Arcade Players`}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* TTS Call */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-white">
+            <Phone className="h-4 w-4 text-blue-400" />
+            Text-to-Speech Call (ACS Call Automation)
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Place an outbound call from your configured ACS caller number. ACS dials the number, reads your message
+            in the chosen neural voice, then hangs up automatically.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Phone number</Label>
+              <Input
+                placeholder="+14343592460"
+                value={ttsPhone}
+                onChange={(e) => setTtsPhone(e.target.value)}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Voice</Label>
+              <Select value={ttsVoice} onValueChange={(v) => setTtsVoice(v as typeof ttsVoice)}>
+                <SelectTrigger className="border-gray-700 bg-gray-800 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-gray-700 bg-gray-900 text-white">
+                  <SelectItem value="en-US-AriaNeural">Aria — warm, conversational ✨</SelectItem>
+                  <SelectItem value="en-US-JennyNeural">Jenny — friendly, approachable</SelectItem>
+                  <SelectItem value="en-US-GuyNeural">Guy — clear, professional</SelectItem>
+                  <SelectItem value="en-US-DavisNeural">Davis — confident, energetic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={async () => {
+                  if (!ttsPhone || !ttsText) return;
+                  try {
+                    await sendTts.mutateAsync({ to: ttsPhone, text: ttsText, voice: ttsVoice });
+                    toast.success('Call placed ✅ — answer your phone!');
+                  } catch (e: unknown) {
+                    toast.error(`Call failed: ${e instanceof Error ? e.message : String(e)}`);
+                  }
+                }}
+                disabled={!ttsPhone || !ttsText || sendTts.isPending}
+              >
+                {sendTts.isPending ? 'Calling…' : '📞 Place TTS Call'}
+              </Button>
+            </div>
+          </div>
+          <div className="mt-4 space-y-1.5">
+            <Label className="text-xs text-gray-400">Message script ({ttsText.length}/800 chars)</Label>
+            <Textarea
+              value={ttsText}
+              onChange={(e) => setTtsText(e.target.value.slice(0, 800))}
+              rows={4}
+              className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -3487,6 +3795,13 @@ export default function AdminDashboard() {
               <Server className="mr-1.5 h-4 w-4" />
               System
             </TabsTrigger>
+            <TabsTrigger
+              value="comms"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Megaphone className="mr-1.5 h-4 w-4" />
+              Comms
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -3546,6 +3861,10 @@ export default function AdminDashboard() {
           <TabsContent value="system">
             <SystemTab />
           </TabsContent>
+
+          <TabsContent value="comms">
+            <CommsTab />
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -3553,9 +3872,6 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-
-
 
 
 

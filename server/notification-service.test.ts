@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   sendEmailNotification,
   sendSmsNotification,
@@ -7,6 +7,11 @@ import {
   generateBidAcceptedEmail,
   generateNewMessageEmail,
 } from "./notification-service";
+import { sendSms } from "./acs-sms-service";
+
+vi.mock("./acs-sms-service", () => ({
+  sendSms: vi.fn().mockResolvedValue({ success: true, messageId: "msg_test_123" }),
+}));
 
 describe("Notification Service", () => {
   describe("generateNotificationContent", () => {
@@ -153,6 +158,7 @@ describe("Notification Service", () => {
     });
 
     it("should process SMS notification when provided", async () => {
+      const sendSmsMock = vi.mocked(sendSms);
       const result = await sendSmsNotification({
         userId: 1,
         type: "rfq_match",
@@ -164,6 +170,10 @@ describe("Notification Service", () => {
       // Returns a result object (success or failure) without throwing
       expect(result).toBeDefined();
       expect(result).toHaveProperty("success");
+      expect(sendSmsMock).toHaveBeenCalledWith(
+        "+1234567890",
+        "GreenChainz: Test. Test content Txt STOP to opt out.",
+      );
     });
   });
 

@@ -4,7 +4,8 @@ import { getDb } from "./db";
 import {
   suppliers, users, materials, materialCertifications, buyerSubscriptions,
   rfqs, rfqBids, leads, conversations, messages,
-  subscriptions, manufacturers, architects,
+  subscriptions, arcadeScores,
+  manufacturers, architects,
   supplierSubscriptions, supplierProfileViews, supplierBuyerFitInputs,
   supplierSustainabilityProfiles, agentHandoffRules, supplierFilters,
   suppliersLocation, rfqSupplierInvites, epdMaterials, supplierMaterialEpds,
@@ -1401,6 +1402,116 @@ export const adminRouter = router({
     return rows;
   }),
 
+  /**
+   * Place an outbound text-to-speech call via ACS Call Automation.
+   * ACS dials `to`, waits for answer, plays the SSML using a Neural voice,
+   * then hangs up automatically.
+   */
+  sendTtsCall: adminProcedure
+    .input(
+      z.object({
+        to: z.string().min(7).max(20),
+        text: z.string().min(1).max(800),
+        voice: z.enum([
+          'en-US-AriaNeural',
+          'en-US-GuyNeural',
+          'en-US-JennyNeural',
+          'en-US-DavisNeural',
+          'en-US-NancyNeural',
+          'en-US-TonyNeural',
+        ]).default('en-US-AriaNeural'),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const { sendTtsCall } = await import('./acs-tts-service');
+      const result = await sendTtsCall({ to: input.to, text: input.text, voice: input.voice });
+      if (!result.success) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: result.error ?? 'TTS call failed' });
+      }
+      return { ok: true, callConnectionId: result.callConnectionId };
+    }),
+
+  // ── Communications (ACS SMS + multi-channel) ────────────────────────────────
+
+  /** Get a quick summary of communication channels and recent usage. */
+  getCommsStats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    // Arcade leads currently store email (phone capture not yet in schema).
+    const smsLeadsRows = await db
+      .select({ count: count() })
+      .from(leads)
+      .where(sql`${leads.source} LIKE 'arcade:%'`);
+
+    // Total arcade score submissions ever
+    const arcadeSubRows = await db
+      .select({ count: count() })
+      .from(arcadeScores);
+
+    // Users who have an email on file
+    const emailUsersRows = await db
+      .select({ count: count() })
+      .from(users)
+      .where(sql`${users.email} IS NOT NULL`);
+
+    return {
+      emailUsers: emailUsersRows[0]?.count ?? 0,
+      smsLeads: smsLeadsRows[0]?.count ?? 0,
+      arcadeSubmissions: arcadeSubRows[0]?.count ?? 0,
+      channels: {
+        email: { label: "Email", status: "active" as const },
+        sms: {
+          label: "SMS (ACS Toll-Free)",
+          status: (process.env.ACS_TOLL_FREE_NUMBER ? "active" : "needs_setup") as "active" | "needs_setup",
+          number: process.env.ACS_TOLL_FREE_NUMBER ?? null,
+        },
+        inApp: { label: "In-App (WebPubSub)", status: "active" as const },
+        voiceVideo: { label: "Voice / Video (ACS)", status: "active" as const },
+      },
+    };
+  }),
+
+  /**
+   * Send a single test SMS to any phone number.
+   * Use to verify the toll-free number is working before a blast.
+   */
+  sendTestSms: adminProcedure
+    .input(
+      z.object({
+        to: z.string().min(7).max(20),
+        message: z.string().min(1).max(160),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const { sendSms } = await import("./acs-sms-service");
+      const result = await sendSms(input.to, input.message);
+      if (!result.success) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error ?? "SMS failed" });
+      }
+      return { ok: true, messageId: result.messageId };
+    }),
+
+  /**
+   * Broadcast an SMS to all arcade leads who provided an email (opted in).
+   * The message is prepended with "GreenChainz: " and appended with the
+   * STOP opt-out footer automatically.
+   */
+  broadcastArcadeSms: adminProcedure
+    .input(
+      z.object({
+        /** Body of the message — plain text, ≤130 chars (footer will be added). */
+        body: z.string().min(1).max(130),
+      }),
+    )
+    .mutation(async () => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "SMS blast is not available yet. Phone storage and recipient wiring are still pending.",
+      });
+    }),
+
   // ════════════════════════════════════════════════════════════════════════
   // Admin destructive data control — users / manufacturers / suppliers
   // Soft-delete + restore is the safe default; hard-purge is the irreversible
@@ -1783,13 +1894,5 @@ export const adminRouter = router({
       return { success: true };
     }),
 });
-
-
-
-
-
-
-
-
 
 
