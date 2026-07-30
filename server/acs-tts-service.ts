@@ -22,6 +22,7 @@
 
 import { CallAutomationClient, CallInvite } from '@azure/communication-call-automation';
 import { PhoneNumberIdentifier } from '@azure/communication-common';
+import { randomUUID } from 'node:crypto';
 import { getAzureCredential } from '../lib/azure/credentials';
 import { createDistributedCallSessionStore } from './services/distributed-call-session-store';
 import {
@@ -55,6 +56,7 @@ export type AcsVoiceName =
   | 'en-US-TonyNeural';
 
 export const DEFAULT_VOICE: AcsVoiceName = 'en-US-AriaNeural';
+export type CallerNumberType = 'local' | 'tollFree';
 
 export interface TtsCallOptions {
   /** E.164 destination number, e.g. +14343592460 */
@@ -63,6 +65,8 @@ export interface TtsCallOptions {
   text: string;
   /** Azure Neural voice name — defaults to en-US-AriaNeural */
   voice?: AcsVoiceName;
+  /** Pick caller ID source: local (default) or toll-free */
+  fromNumberType?: CallerNumberType;
 }
 
 export interface TtsCallResult {
@@ -77,11 +81,16 @@ export interface TtsCallResult {
  * after the message completes.
  */
 export async function sendTtsCall(options: TtsCallOptions): Promise<TtsCallResult> {
-  // Outbound calls use the local number (+14175014967); SMS uses toll-free (+18333236128)
-  const configuredFrom = process.env.ACS_LOCAL_NUMBER ?? process.env.ACS_TOLL_FREE_NUMBER ?? '';
+  const configuredFrom =
+    options.fromNumberType === 'tollFree'
+      ? process.env.ACS_TOLL_FREE_NUMBER ?? ''
+      : process.env.ACS_LOCAL_NUMBER ?? process.env.ACS_TOLL_FREE_NUMBER ?? '';
   const fromNumber = normalizePhoneE164(configuredFrom);
   if (!fromNumber) {
-    return { success: false, error: 'ACS_LOCAL_NUMBER (or ACS_TOLL_FREE_NUMBER) is not set' };
+    const missingKey = options.fromNumberType === 'tollFree'
+      ? 'ACS_TOLL_FREE_NUMBER'
+      : 'ACS_LOCAL_NUMBER (or ACS_TOLL_FREE_NUMBER fallback)';
+    return { success: false, error: `${missingKey} is not set` };
   }
 
   const normalizedTo = normalizePhoneE164(options.to);
@@ -93,10 +102,12 @@ export async function sendTtsCall(options: TtsCallOptions): Promise<TtsCallResul
   // TTS calls. We register a lightweight handler on /api/acs/call-events below.
   const callbackBase = process.env.APP_BASE_URL ?? 'https://greenchainz.com';
   const callbackUri = buildAcsCallEventsCallbackUri(callbackBase);
+  let operationContext: string | null = null;
 
   try {
     const client = getClient();
     const voice = options.voice ?? DEFAULT_VOICE;
+    operationContext = `tts-${randomUUID()}`;
 
     const target: PhoneNumberIdentifier = { phoneNumber: normalizedTo };
     const caller: PhoneNumberIdentifier = { phoneNumber: fromNumber };
@@ -106,23 +117,28 @@ export async function sendTtsCall(options: TtsCallOptions): Promise<TtsCallResul
       sourceCallIdNumber: caller,
     };
 
-    const result = await client.createCall(invite, callbackUri);
+    await storePendingTts(operationContext, options.text, voice);
+
+    const result = await client.createCall(invite, callbackUri, {
+      operationContext,
+    });
     const callId = result.callConnectionProperties.callConnectionId;
 
     if (!callId) {
       throw new Error('ACS createCall returned no callConnectionId');
     }
 
-    console.log(`[ACS TTS] ✅ Call placed to ${normalizedTo} — connectionId: ${callId}`);
+    console.log(`[ACS TTS] ✅ Call placed from ${fromNumber} to ${normalizedTo} — connectionId: ${callId}`);
 
     // Kick off the "play TTS and hang up" sequence once ACS fires CallConnected.
     // We do this asynchronously — the webhook handler at /api/acs/call-events
     // will play the SSML when the call connects, then terminate.
     // Store the pending TTS job so the webhook can pick it up.
-    await storePendingTts(callId, options.text, voice);
-
     return { success: true, callConnectionId: callId };
   } catch (err) {
+    if (operationContext) {
+      await deletePendingTts(operationContext);
+    }
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[ACS TTS] ❌ Failed to place call to ${normalizedTo}:`, msg);
     return { success: false, error: msg };
@@ -175,3 +191,4 @@ export function buildSsml(text: string, voice: AcsVoiceName): string {
     `</speak>`
   );
 }
+

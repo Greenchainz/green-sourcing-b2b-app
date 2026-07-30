@@ -1420,11 +1420,17 @@ export const adminRouter = router({
           'en-US-NancyNeural',
           'en-US-TonyNeural',
         ]).default('en-US-AriaNeural'),
+        fromNumberType: z.enum(['local', 'tollFree']).default('local'),
       }),
     )
     .mutation(async ({ input }) => {
       const { sendTtsCall } = await import('./acs-tts-service');
-      const result = await sendTtsCall({ to: input.to, text: input.text, voice: input.voice });
+      const result = await sendTtsCall({
+        to: input.to,
+        text: input.text,
+        voice: input.voice,
+        fromNumberType: input.fromNumberType,
+      });
       if (!result.success) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: result.error ?? 'TTS call failed' });
       }
@@ -1432,6 +1438,33 @@ export const adminRouter = router({
     }),
 
   // ── Communications (ACS SMS + multi-channel) ────────────────────────────────
+
+  getMissedCallForwardingSettings: adminProcedure.query(async () => {
+    const { getMissedCallForwardingSettings } = await import("./call-forwarding-service");
+    return getMissedCallForwardingSettings();
+  }),
+
+  setMissedCallForwardingSettings: adminProcedure
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        phone: z.string().min(7).max(20).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const { setMissedCallForwardingSettings } = await import("./call-forwarding-service");
+        return await setMissedCallForwardingSettings({
+          enabled: input.enabled,
+          phone: input.phone,
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Invalid call forwarding settings",
+        });
+      }
+    }),
 
   /** Get a quick summary of communication channels and recent usage. */
   getCommsStats: adminProcedure.query(async () => {

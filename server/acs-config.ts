@@ -31,10 +31,16 @@ export function getAcsConnectionSettings(serviceName: string): {
 
 /** Normalize a US phone number to E.164 (+1XXXXXXXXXX). Returns null if invalid. */
 export function normalizePhoneE164(raw: string): string | null {
+  const trimmed = raw.trim();
   const digits = raw.replace(/\D/g, '');
+  if (trimmed.startsWith('+')) {
+    if (digits.length >= 8 && digits.length <= 15 && /^[1-9]/.test(digits)) {
+      return `+${digits}`;
+    }
+    return null;
+  }
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  if (raw.startsWith('+') && digits.length >= 11) return `+${digits}`;
   return null;
 }
 
