@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
+    "db:indexes": "tsx scripts/run-concurrent-indexes.ts",
     "db:studio": "drizzle-kit studio",
     "seed:ews": "tsx scripts/seed-ews-assemblies.ts",
     "seed:suppliers": "tsx scripts/seed-suppliers.ts",
