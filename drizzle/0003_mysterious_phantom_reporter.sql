@@ -1,13 +1,13 @@
-CREATE TYPE "public"."ca_document_status" AS ENUM('draft', 'open', 'answered', 'pending_approval', 'approved', 'rejected', 'closed');--> statement-breakpoint
-CREATE TYPE "public"."ca_document_type" AS ENUM('rfi', 'change_request');--> statement-breakpoint
-CREATE TYPE "public"."data_subject_request_status" AS ENUM('pending', 'in_progress', 'completed', 'rejected');--> statement-breakpoint
-CREATE TYPE "public"."data_subject_request_type" AS ENUM('access', 'correction', 'deletion');--> statement-breakpoint
-CREATE TYPE "public"."founder_video_status" AS ENUM('draft', 'ready', 'deleted');--> statement-breakpoint
-CREATE TYPE "public"."founder_video_transcript_status" AS ENUM('pending', 'done', 'failed');--> statement-breakpoint
-CREATE TYPE "public"."rfq_draft_status" AS ENUM('draft', 'approved', 'rejected');--> statement-breakpoint
-CREATE TYPE "public"."submittal_ball_in_court" AS ENUM('buyer', 'architect', 'supplier');--> statement-breakpoint
-CREATE TYPE "public"."submittal_status" AS ENUM('draft', 'submitted', 'approved_as_noted', 'revise_and_resubmit', 'rejected', 'closed');--> statement-breakpoint
-CREATE TYPE "public"."supplier_verified_badge_status" AS ENUM('UNVERIFIED', 'PARTIAL', 'VERIFIED');--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."ca_document_status" AS ENUM('draft', 'open', 'answered', 'pending_approval', 'approved', 'rejected', 'closed'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."ca_document_type" AS ENUM('rfi', 'change_request'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."data_subject_request_status" AS ENUM('pending', 'in_progress', 'completed', 'rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."data_subject_request_type" AS ENUM('access', 'correction', 'deletion'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."founder_video_status" AS ENUM('draft', 'ready', 'deleted'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."founder_video_transcript_status" AS ENUM('pending', 'done', 'failed'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."rfq_draft_status" AS ENUM('draft', 'approved', 'rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."submittal_ball_in_court" AS ENUM('buyer', 'architect', 'supplier'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."submittal_status" AS ENUM('draft', 'submitted', 'approved_as_noted', 'revise_and_resubmit', 'rejected', 'closed'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN CREATE TYPE "public"."supplier_verified_badge_status" AS ENUM('UNVERIFIED', 'PARTIAL', 'VERIFIED'); EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
 ALTER TYPE "public"."supplier_tier" ADD VALUE IF NOT EXISTS 'standard' BEFORE 'premium';--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "about_youtube_videos" (
 	"id" serial PRIMARY KEY NOT NULL,
