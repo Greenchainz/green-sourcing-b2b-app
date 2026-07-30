@@ -1,6 +1,4 @@
--- NOTE: All index builds use CREATE INDEX CONCURRENTLY which cannot run inside a transaction.
--- Run this migration outside a transaction block (e.g. `drizzle-kit migrate` with disableTransactions,
--- or execute the file directly via psql without BEGIN/COMMIT wrapping).
+-- no transaction
 -- "email_sequences" is owned and migrated by the intelligence Azure Functions app.
 ALTER TABLE "rfqs" ALTER COLUMN "deposit_amount" SET DATA TYPE numeric(12, 2);--> statement-breakpoint
 ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;--> statement-breakpoint
