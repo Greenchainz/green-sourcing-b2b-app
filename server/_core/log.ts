@@ -141,8 +141,11 @@ function emit(level: LogLevel, event: string, fields: Record<string, unknown> = 
     const safe = JSON.stringify(redactKeys(entry));
     process.stdout.write(safe + "\n");
   } else {
-    // Human-readable dev output — mirror what scrubbed console.log provides.
-    const { timestamp, level: lvl, event: evt, ...rest } = entry;
+    // Human-readable dev output — apply the same key-based redaction as the
+    // JSON path so sensitive fields (token, password, etc.) are never printed
+    // as plain text even in local development.
+    const safeEntry = redactKeys(entry) as LogEntry;
+    const { timestamp, level: lvl, event: evt, ...rest } = safeEntry;
     const prefix = `[${timestamp}] ${lvl.toUpperCase().padEnd(5)} ${evt}`;
     const extras = Object.keys(rest).length > 0 ? ` ${JSON.stringify(rest)}` : "";
     // Route through console so the log-scrubber's monkey-patch covers us.
