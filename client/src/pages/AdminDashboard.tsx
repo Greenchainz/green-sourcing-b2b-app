@@ -3341,7 +3341,7 @@ function CommsTab() {
   const [ttsVoice, setTtsVoice] = useState<'en-US-AriaNeural' | 'en-US-GuyNeural' | 'en-US-JennyNeural' | 'en-US-DavisNeural'>('en-US-AriaNeural');
   const [ttsFromNumberType, setTtsFromNumberType] = useState<'local' | 'tollFree'>('local');
   const [forwardingEnabled, setForwardingEnabled] = useState(false);
-  const [forwardingPhone, setForwardingPhone] = useState('+14343592460');
+  const [forwardingPhone, setForwardingPhone] = useState('');
   const [forwardingLoaded, setForwardingLoaded] = useState(false);
 
   const charsLeft = 130 - blastBody.length;
