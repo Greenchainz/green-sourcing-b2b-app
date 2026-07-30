@@ -295,8 +295,8 @@ gh workflow run deploy-azure.yml --ref main
      --type external --target-port 3001 --transport auto
    ```
 
-   > **Note:** `DISABLE_SIGNUP` is not currently enforced in the codebase. Do not
-   > rely on it as a containment step until it is implemented and tested.
+   > **Note:** Set `DISABLE_SIGNUP=true` to block `/api/auth/email/signup` while
+   > containment is in progress.
 
 2. **Identify the affected users** — query the audit log using the actual schema
    columns (`actorUserId`, `resourceType`, `resourceId`, `action`, `metadata`,
