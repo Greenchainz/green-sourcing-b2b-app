@@ -264,7 +264,6 @@ jobs:
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-            ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:latest
           cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache,mode=max
           build-args: |
@@ -281,7 +280,6 @@ jobs:
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-            ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:latest
           no-cache: true
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache,mode=max
           # cache-from temporarily removed to force clean rebuild (stale registry cache)
