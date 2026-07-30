@@ -92,8 +92,6 @@ function extractHostname(headerValue: string): string | null {
 // ── Route exemptions ──────────────────────────────────────────────────────────
 
 function isExemptPath(path: string): boolean {
-  // OAuth callbacks and initiation have their own state param CSRF protection
-  if (path.startsWith("/api/auth/")) return true;
   // Webhooks carry cryptographic signatures — Origin checks are inappropriate
   if (path.startsWith("/api/webhooks/")) return true;
   if (path === "/api/marketplace-webhook") return true;
