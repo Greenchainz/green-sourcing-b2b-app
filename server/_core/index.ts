@@ -41,6 +41,8 @@ import { registerEmailAuthRoutes } from "./email-auth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { sdk } from "./sdk";
 import { runStartupSecurityPreflight } from "./security-preflight";
+import { requestLoggerMiddleware, log } from "./log";
+import { easyAuthMiddleware } from "./easy-auth";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -255,7 +257,7 @@ async function startServer() {
 
   const preflight = runStartupSecurityPreflight();
   if (process.env.NODE_ENV === "production" && preflight.hasFailures) {
-    console.error("[startup] FATAL: Security preflight failed in production");
+    log.error("startup.preflight.failed", { checks: preflight.checks.filter(c => c.status === "FAIL") });
     process.exit(1);
   }
 
@@ -451,6 +453,11 @@ async function startServer() {
   );
 
   app.use(createRequestIdMiddleware);
+  // Easy Auth: parse x-ms-client-principal when Azure sidecar is active.
+  // Safe no-op in local dev (header absent → empty identity attached).
+  app.use(easyAuthMiddleware);
+  // Structured JSON request logging (replaces console.log for HTTP traffic).
+  app.use(requestLoggerMiddleware);
   app.use(express.json({
     limit: "5mb",
     verify: (req: any, _res, buf) => { req.rawBody = buf; },
