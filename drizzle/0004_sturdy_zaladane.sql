@@ -1,8 +1,8 @@
 -- "email_sequences" is owned and migrated by the intelligence Azure Functions app.
 ALTER TABLE "rfqs" ALTER COLUMN "deposit_amount" SET DATA TYPE numeric(12, 2);--> statement-breakpoint
-ALTER TABLE "manufacturers" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
-ALTER TABLE "suppliers" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
+ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;--> statement-breakpoint
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_agent_conversations_user" ON "agent_conversations" USING btree ("userId");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_agent_conversations_session" ON "agent_conversations" USING btree ("sessionId");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_architect_download_events_architect" ON "architect_download_events" USING btree ("architect_id");--> statement-breakpoint
