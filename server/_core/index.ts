@@ -1,7 +1,5 @@
 import "dotenv/config";
 import "./log-scrubber"; // must be second — scrubs all subsequent console.* calls
-import { log } from "./logger"; // structured Pino logger — use instead of console.* for new code
-import { correlationIdMiddleware, httpAccessLogMiddleware } from "./http-logger";
 import { initTelemetry } from "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
@@ -44,6 +42,8 @@ import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { registerHibpProxyRoute } from "../hibp-proxy-route";
 import { sdk } from "./sdk";
 import { runStartupSecurityPreflight } from "./security-preflight";
+import { requestLoggerMiddleware, log } from "./log";
+import { easyAuthMiddleware } from "./easy-auth";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -258,7 +258,7 @@ async function startServer() {
 
   const preflight = runStartupSecurityPreflight();
   if (process.env.NODE_ENV === "production" && preflight.hasFailures) {
-    console.error("[startup] FATAL: Security preflight failed in production");
+    log.error("startup.preflight.failed", { checks: preflight.checks.filter(c => c.status === "FAIL") });
     process.exit(1);
   }
 
@@ -291,11 +291,13 @@ async function startServer() {
   app.set("trust proxy", true);
   const server = createServer(app);
 
-  // ── Correlation ID + structured HTTP access log ───────────────────────────
-  // Must run before any route handlers so req.id is set for all downstream use.
+  // ── Correlation ID + structured request logging ───────────────────────────
+  // Must be installed before any middleware that can terminate requests
+  // (redirect, network guard) so that every response — including 308 redirects
+  // and 403 rejections — carries X-Correlation-ID and is captured in the
+  // structured http.request log.
   app.use(createRequestIdMiddleware);
-  app.use(correlationIdMiddleware);
-  app.use(httpAccessLogMiddleware);
+  app.use(requestLoggerMiddleware);
 
   app.use((req, res, next) => {
     // Never redirect API, health, or crawl-critical files. Behind Azure Front
@@ -459,6 +461,26 @@ async function startServer() {
     })
   );
 
+  // Easy Auth: never trust caller-supplied x-ms-client-principal in production.
+  // The canonical auth path is sdk.authenticateRequest(req) via signed cookie.
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV !== "production") {
+      next();
+      return;
+    }
+
+    const easyAuthHeader = req.headers["x-ms-client-principal"];
+    if (typeof easyAuthHeader === "string" && easyAuthHeader.length > 0) {
+      console.warn(
+        `[network-guard] Ignoring x-ms-client-principal header path=${req.path} host=${String(req.headers.host ?? "")}`
+      );
+      delete req.headers["x-ms-client-principal"];
+    }
+    next();
+  });
+
+  // Safe no-op in local dev (header absent → empty identity attached).
+  app.use(easyAuthMiddleware);
   // Additional security headers not covered by helmet defaults.
   app.use((_req, res, next) => {
     // Opt legacy browsers into the XSS filter; modern browsers ignore this but it's

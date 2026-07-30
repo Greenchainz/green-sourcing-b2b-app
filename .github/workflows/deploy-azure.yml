@@ -278,7 +278,6 @@ jobs:
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-            ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:latest
           cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache,mode=max
           build-args: |
@@ -295,7 +294,6 @@ jobs:
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-            ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:latest
           no-cache: true
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache,mode=max
           # cache-from temporarily removed to force clean rebuild (stale registry cache)
@@ -1013,6 +1011,7 @@ jobs:
         run: |
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            "DEPLOYMENT_SHA=${{ github.sha }}"
             "FRONTEND_URL=https://greenchainz.com"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
             "DATABASE_URL=secretref:database-url"
