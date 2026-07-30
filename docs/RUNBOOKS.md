@@ -350,12 +350,15 @@ JOIN audit_logs al
 LEFT JOIN invited_supplier_users isu
   ON isu.rfq_id = r.id
 WHERE r."deletedAt" IS NULL
+  AND al."outcome" = 'success'
   AND al."actorUserId" IS NOT NULL
   AND al."actorUserId" <> r."userId"
   AND NOT (al."actorUserId" = ANY(COALESCE(isu.invited_user_ids, ARRAY[]::integer[])))
 ORDER BY al."createdAt" DESC
 LIMIT 50;
 ```
+
+If tenant identifiers are not present in `audit_logs`, use the Azure Log Analytics source that records both actor and owner tenant IDs for successful access events, then flag rows where actor and owner tenant IDs differ.
 
 ---
 
