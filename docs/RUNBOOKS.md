@@ -87,15 +87,15 @@
      --output table
    ```
 
-2. **Shift 100% traffic back to the prior revision:**
+2. **Activate the prior revision (Single revision mode):**
 
    ```bash
    GOOD_REVISION="<revision-name-from-step-1>"
    
-   az containerapp ingress traffic set \
+   az containerapp revision activate \
      --name greenchainz-backend-v2 \
      --resource-group rg-greenchainz-prod-container \
-     --revision-weight "${GOOD_REVISION}=100"
+     --revision "${GOOD_REVISION}"
    ```
 
 3. **Deactivate the bad revision:**
