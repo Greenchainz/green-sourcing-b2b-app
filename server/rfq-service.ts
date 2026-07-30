@@ -251,6 +251,29 @@ export async function submitBid(
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
+  // Reject submissions against terminal RFQs (awarded/closed) to prevent
+  // overwriting an accepted bid or corrupting an awarded RFQ's state.
+  const [rfqState] = await db
+    .select({ status: rfqs.status })
+    .from(rfqs)
+    .where(eq(rfqs.id, rfqId))
+    .limit(1)
+    .execute();
+
+  if (!rfqState) throw new Error("RFQ not found");
+  if (rfqState.status === "awarded" || rfqState.status === "closed") {
+    throw new Error(`Cannot submit a bid on an ${rfqState.status} RFQ`);
+  }
+
+  const [existingBid] = await db
+    .select({ id: rfqBids.id, status: rfqBids.status })
+    .from(rfqBids)
+    .where(and(eq(rfqBids.rfqId, rfqId), eq(rfqBids.supplierId, supplierId)))
+    .limit(1)
+    .execute();
+
+  const isNewBid = !existingBid;
+
   const [bidResult] = await db
     .insert(rfqBids)
     .values({
@@ -262,28 +285,45 @@ export async function submitBid(
       notes,
       expiresAt,
     })
+    .onConflictDoUpdate({
+      target: [rfqBids.rfqId, rfqBids.supplierId],
+      set: {
+        bidPrice: bidPrice.toString(),
+        leadDays,
+        notes,
+        expiresAt,
+        updatedAt: new Date(),
+        // Preserve terminal bid statuses (accepted/rejected) — only move a
+        // mutable bid back to submitted. Similarly, leave deletedAt alone for
+        // terminal bids so soft-deleted accepted rows are not accidentally restored.
+        status: sql`CASE WHEN ${rfqBids.status} IN ('accepted', 'rejected') THEN ${rfqBids.status} ELSE 'submitted' END`,
+        deletedAt: sql`CASE WHEN ${rfqBids.status} IN ('accepted', 'rejected') THEN ${rfqBids.deletedAt} ELSE NULL END`,
+      },
+    })
     .returning({ id: rfqBids.id });
 
   const bidId = bidResult.id;
 
-  // Update RFQ analytics
-  const analytics = await db.select().from(rfqAnalytics).where(eq(rfqAnalytics.rfqId, rfqId)).execute();
-  if (analytics.length > 0) {
-    const currentBids = analytics[0].totalBidsReceived || 0;
-    const newAvgPrice = analytics[0].avgBidPrice ? (parseFloat(analytics[0].avgBidPrice.toString()) * currentBids + bidPrice) / (currentBids + 1) : bidPrice;
-    const newLowest = analytics[0].lowestBidPrice ? Math.min(parseFloat(analytics[0].lowestBidPrice.toString()), bidPrice) : bidPrice;
-    const newHighest = analytics[0].highestBidPrice ? Math.max(parseFloat(analytics[0].highestBidPrice.toString()), bidPrice) : bidPrice;
+  // Update RFQ analytics — only increment counts for first-time bids
+  if (isNewBid) {
+    const analytics = await db.select().from(rfqAnalytics).where(eq(rfqAnalytics.rfqId, rfqId)).execute();
+    if (analytics.length > 0) {
+      const currentBids = analytics[0].totalBidsReceived || 0;
+      const newAvgPrice = analytics[0].avgBidPrice ? (parseFloat(analytics[0].avgBidPrice.toString()) * currentBids + bidPrice) / (currentBids + 1) : bidPrice;
+      const newLowest = analytics[0].lowestBidPrice ? Math.min(parseFloat(analytics[0].lowestBidPrice.toString()), bidPrice) : bidPrice;
+      const newHighest = analytics[0].highestBidPrice ? Math.max(parseFloat(analytics[0].highestBidPrice.toString()), bidPrice) : bidPrice;
 
-    await db
-      .update(rfqAnalytics)
-      .set({
-        totalBidsReceived: currentBids + 1,
-        avgBidPrice: newAvgPrice.toString(),
-        lowestBidPrice: newLowest.toString(),
-        highestBidPrice: newHighest.toString(),
-      })
-      .where(eq(rfqAnalytics.rfqId, rfqId))
-      .execute();
+      await db
+        .update(rfqAnalytics)
+        .set({
+          totalBidsReceived: currentBids + 1,
+          avgBidPrice: newAvgPrice.toString(),
+          lowestBidPrice: newLowest.toString(),
+          highestBidPrice: newHighest.toString(),
+        })
+        .where(eq(rfqAnalytics.rfqId, rfqId))
+        .execute();
+    }
   }
 
   // Get buyer's userId from RFQ
