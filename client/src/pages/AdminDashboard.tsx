@@ -3254,15 +3254,27 @@ function SystemTab() {
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
+            <Link href="/admin/about-videos">
+              <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
+                <Video className="mr-2 h-4 w-4" />About Page Videos
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
             <Link href="/admin/founder-videos">
               <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
-                <Video className="mr-2 h-4 w-4" />Founder Videos
+                <BarChart3 className="mr-2 h-4 w-4" />Founder Outreach Videos
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
             <Link href="/admin/founder-videos/analytics">
               <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
                 <BarChart3 className="mr-2 h-4 w-4" />Video Analytics
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin?tab=comms">
+              <Button variant="outline" size="sm" className="border-rose-800 bg-rose-950 text-rose-300 hover:bg-rose-900 hover:text-white">
+                <Phone className="mr-2 h-4 w-4" />Dialer / SMS Comms
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
@@ -3313,9 +3325,11 @@ function AccessDenied() {
 
 function CommsTab() {
   const { data: stats, isLoading, error } = trpc.admin.getCommsStats.useQuery();
+  const { data: missedCallForwarding } = trpc.admin.getMissedCallForwardingSettings.useQuery();
   const sendTest = trpc.admin.sendTestSms.useMutation();
   const broadcast = trpc.admin.broadcastArcadeSms.useMutation();
   const sendTts = trpc.admin.sendTtsCall.useMutation();
+  const saveMissedCallForwarding = trpc.admin.setMissedCallForwardingSettings.useMutation();
 
   const [testPhone, setTestPhone] = useState('');
   const [testMsg, setTestMsg] = useState('GreenChainz: This is a test from your admin panel. Reply STOP to opt out.');
@@ -3325,8 +3339,19 @@ function CommsTab() {
     "Hi, this is the GreenChainz platform calling. I'm your AI sourcing assistant, helping AEC teams find verified sustainable building materials. Visit greenchainz.com to explore our marketplace and start your free trial today. Have a great day!",
   );
   const [ttsVoice, setTtsVoice] = useState<'en-US-AriaNeural' | 'en-US-GuyNeural' | 'en-US-JennyNeural' | 'en-US-DavisNeural'>('en-US-AriaNeural');
+  const [ttsFromNumberType, setTtsFromNumberType] = useState<'local' | 'tollFree'>('local');
+  const [forwardingEnabled, setForwardingEnabled] = useState(false);
+  const [forwardingPhone, setForwardingPhone] = useState('+14343592460');
+  const [forwardingLoaded, setForwardingLoaded] = useState(false);
 
   const charsLeft = 130 - blastBody.length;
+
+  useEffect(() => {
+    if (!missedCallForwarding || forwardingLoaded) return;
+    setForwardingEnabled(missedCallForwarding.enabled);
+    setForwardingPhone(missedCallForwarding.phone);
+    setForwardingLoaded(true);
+  }, [forwardingLoaded, missedCallForwarding]);
 
   const handleTestSms = async () => {
     if (!testPhone) return;
@@ -3346,6 +3371,18 @@ function CommsTab() {
       setBlastBody('');
     } catch (e: unknown) {
       toast.error(`Broadcast failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const handleSaveMissedCallForwarding = async () => {
+    try {
+      await saveMissedCallForwarding.mutateAsync({
+        enabled: forwardingEnabled,
+        phone: forwardingPhone,
+      });
+      toast.success('Missed-call forwarding saved ✅');
+    } catch (e: unknown) {
+      toast.error(`Could not save forwarding: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -3548,12 +3585,12 @@ function CommsTab() {
             Text-to-Speech Call (ACS Call Automation)
           </CardTitle>
           <CardDescription className="text-gray-400">
-            Place an outbound call from your configured ACS caller number. ACS dials the number, reads your message
+            Place an outbound call from your selected ACS caller number (Local or Toll-Free). ACS dials the number, reads your message
             in the chosen neural voice, then hangs up automatically.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-400">Phone number</Label>
               <Input
@@ -3577,13 +3614,30 @@ function CommsTab() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Caller ID number</Label>
+              <Select value={ttsFromNumberType} onValueChange={(v) => setTtsFromNumberType(v as typeof ttsFromNumberType)}>
+                <SelectTrigger className="border-gray-700 bg-gray-800 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-gray-700 bg-gray-900 text-white">
+                  <SelectItem value="local">Local number (recommended for calls)</SelectItem>
+                  <SelectItem value="tollFree">Toll-free number</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-end">
               <Button
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={async () => {
                   if (!ttsPhone || !ttsText) return;
                   try {
-                    await sendTts.mutateAsync({ to: ttsPhone, text: ttsText, voice: ttsVoice });
+                    await sendTts.mutateAsync({
+                      to: ttsPhone,
+                      text: ttsText,
+                      voice: ttsVoice,
+                      fromNumberType: ttsFromNumberType,
+                    });
                     toast.success('Call placed ✅ — answer your phone!');
                   } catch (e: unknown) {
                     toast.error(`Call failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -3603,6 +3657,55 @@ function CommsTab() {
               rows={4}
               className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-white">
+            <Phone className="h-4 w-4 text-emerald-400" />
+            Missed Call Forwarding
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            If an in-app call is missed, send an SMS alert to your real phone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Forwarding</Label>
+              <Select
+                value={forwardingEnabled ? 'enabled' : 'disabled'}
+                onValueChange={(value) => setForwardingEnabled(value === 'enabled')}
+              >
+                <SelectTrigger className="border-gray-700 bg-gray-800 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-gray-700 bg-gray-900 text-white">
+                  <SelectItem value="enabled">On (send SMS when call is missed)</SelectItem>
+                  <SelectItem value="disabled">Off</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Forward-to phone</Label>
+              <Input
+                placeholder="+14343592460"
+                value={forwardingPhone}
+                onChange={(e) => setForwardingPhone(e.target.value)}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleSaveMissedCallForwarding}
+                disabled={saveMissedCallForwarding.isPending || !forwardingPhone.trim()}
+              >
+                {saveMissedCallForwarding.isPending ? 'Saving…' : 'Save Forwarding'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -3872,6 +3975,9 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+
+
 
 
 

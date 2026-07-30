@@ -52,11 +52,13 @@ acsCallEventsRouter.post('/api/acs/call-events', async (req, res) => {
     const eventType: string = (event.type as string) ?? (event as unknown as Record<string, string>).eventType ?? '';
     const callConnectionId: string =
       (event.data?.callConnectionId as string) ?? '';
+    const operationContext: string = (event.data?.operationContext as string) ?? '';
+    const pendingTtsKey = operationContext || callConnectionId;
 
-    console.log(`[ACS CallEvents] ${eventType} — connectionId: ${callConnectionId}`);
+    console.log(`[ACS CallEvents] ${eventType} — connectionId: ${callConnectionId} — operationContext: ${operationContext}`);
 
     if (eventType === 'Microsoft.Communication.CallConnected' && callConnectionId) {
-      const pending = await getPendingTts(callConnectionId);
+      const pending = pendingTtsKey ? await getPendingTts(pendingTtsKey) : null;
       if (!pending) {
         console.warn(`[ACS CallEvents] No pending TTS for ${callConnectionId} — hanging up`);
         try {
@@ -82,7 +84,9 @@ acsCallEventsRouter.post('/api/acs/call-events', async (req, res) => {
           operationContext: `tts-${callConnectionId}`,
         });
 
-        await deletePendingTts(callConnectionId);
+        if (pendingTtsKey) {
+          await deletePendingTts(pendingTtsKey);
+        }
         console.log(`[ACS CallEvents] ▶ Playing TTS on ${callConnectionId}`);
       } catch (e) {
         hadProcessingFailure = true;

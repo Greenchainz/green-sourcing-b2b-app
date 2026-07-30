@@ -9,7 +9,7 @@ import { trpc } from "../../lib/trpc";
 
 // Accept full YouTube URLs or bare video IDs.
 function parseYoutubeId(input: string): string {
-  const m = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/.exec(input);
+  const m = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/.exec(input);
   return m ? m[1] : input.trim().slice(0, 20);
 }
 
@@ -136,3 +136,4 @@ export default function AboutVideos() {
     </div>
   );
 }
+
