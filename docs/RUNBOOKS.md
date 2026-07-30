@@ -181,11 +181,13 @@
    #    every commit and file path that contains it:
    git log --all -p | grep -n "<exact-secret-value>"
 
-   # 3. Rewrite history to remove every file containing the secret.
-   #    Replace <file-path> with each path identified in step 2.
-   #    Run once per file path (git-filter-repo removes from all branches/tags):
+   # 3. Rewrite the exact revoked value while preserving the containing files.
+   #    Keep the replacements file private and delete it immediately afterward.
    pip install git-filter-repo
-   git filter-repo --path <file-path> --invert-paths
+   umask 077
+   printf '%s\n' '<exact-secret-value>==>[REDACTED]' > /tmp/secret-replacements.txt
+   git filter-repo --replace-text /tmp/secret-replacements.txt
+   rm -f /tmp/secret-replacements.txt
 
    # 4. Verify the secret no longer appears in any ref:
    git log --all -p | grep "<exact-secret-value>"
