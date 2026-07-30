@@ -1641,6 +1641,7 @@ export const caDocuments = pgTable(
     createdByIdx: index("idx_ca_documents_created_by").on(table.createdBy),
     submittalIdx: index("idx_ca_documents_submittal").on(table.submittalId),
     rfqIdx: index("idx_ca_documents_related_rfq").on(table.relatedRfqId),
+    swapValidationIdx: index("idx_ca_documents_swap_validation").on(table.relatedSwapValidationId),
   }),
 );
 
@@ -1909,6 +1910,7 @@ export const rfqRequests = pgTable("rfq_requests", {
   supplierIdx: index("idx_rfq_requests_supplier").on(table.supplierId),
   materialIdx: index("idx_rfq_requests_material").on(table.materialId),
   statusIdx: index("idx_rfq_requests_status").on(table.status),
+  draftIdx: index("idx_rfq_requests_draft").on(table.draftId),
 }));
 
 export type RfqRequest = typeof rfqRequests.$inferSelect;
@@ -2329,6 +2331,7 @@ export const conciergeRoutes = pgTable(
     architectEmailIdx: index("idx_concierge_routes_architect_email").on(t.architectEmail),
     sentAtIdx: index("idx_concierge_routes_sent_at").on(t.sentAt),
     repliedIdx: index("idx_concierge_routes_replied").on(t.architectReplied),
+    rfqIdx: index("idx_concierge_routes_rfq").on(t.rfqId),
   })
 );
 
