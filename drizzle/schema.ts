@@ -258,7 +258,11 @@ export const materials = pgTable("materials", {
   // Semantic search: pgvector embedding (text-embedding-3-small, 1536 dim)
   embedding: vector("embedding", { dimensions: 1536 }),
   searchText: text("searchText"),
-});
+}, (t) => ({
+  manufacturerIdx: index("idx_materials_manufacturer").on(t.manufacturerId),
+  categoryIdx: index("idx_materials_category").on(t.category),
+  hasEpdIdx: index("idx_materials_has_epd").on(t.hasEpd),
+}));
 
 export type Material = typeof materials.$inferSelect;
 
@@ -327,6 +331,7 @@ export const materialCertifications = pgTable("material_certifications", {
   leedPointsValue: integer("leedPointsValue"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
+  materialIdx: index("idx_material_certs_material").on(t.materialId),
   materialIdx: index("idx_material_certifications_material").on(t.materialId),
   typeIdx: index("idx_material_certifications_type").on(t.certificationType),
 }));
@@ -428,6 +433,7 @@ export const ccpsScores = pgTable("ccps_scores", {
   sourcingDifficulty: integer("sourcingDifficulty"),
   calculatedAt: timestamp("calculatedAt").defaultNow().notNull(),
 }, (t) => ({
+  materialIdx: index("idx_ccps_scores_material").on(t.materialId),
   materialPersonaIdx: uniqueIndex("idx_ccps_scores_material_persona").on(t.materialId, t.personaKey),
 }));
 
@@ -823,6 +829,7 @@ export const supplierSubscriptions = pgTable("supplier_subscriptions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
+  supplierIdx: uniqueIndex("idx_supplier_subscriptions_supplier").on(t.supplierId),
   supplierIdx: index("idx_supplier_subscriptions_supplier").on(t.supplierId),
   statusIdx: index("idx_supplier_subscriptions_status").on(t.status),
 }));
@@ -937,6 +944,7 @@ export const supplierFilters = pgTable("supplier_filters", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
+  supplierIdx: index("idx_supplier_filters_supplier").on(t.supplierId),
   supplierIdx: uniqueIndex("idx_supplier_filters_supplier").on(t.supplierId),
 }));
 
@@ -972,6 +980,10 @@ export const rfqBids = pgTable("rfq_bids", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
+  rfqIdx: index("idx_rfq_bids_rfq").on(t.rfqId),
+  supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
+  // Composite: most bid queries filter by both rfqId and supplierId
+  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
   supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
   rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
   statusIdx: index("idx_rfq_bids_status").on(t.status),
@@ -1030,6 +1042,8 @@ export const notifications = pgTable("notifications", {
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
+  userIdx: index("idx_notifications_user").on(t.userId),
+  // Unread notifications are the hot path — partial index for speed
   userUnreadIdx: index("idx_notifications_user_unread").on(t.userId, t.isRead),
 }));
 
@@ -1203,6 +1217,8 @@ export const messageReactions = pgTable("message_reactions", {
   reactionType: varchar("reactionType", { length: 20 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
+  messageIdx: index("idx_message_reactions_message").on(t.messageId),
+  userIdx: index("idx_message_reactions_user").on(t.userId),
   userIdx: index("idx_message_reactions_user").on(t.userId),
   uniqueReaction: uniqueIndex("idx_message_reactions_unique").on(t.messageId, t.userId, t.reactionType),
 }));
@@ -1243,6 +1259,7 @@ export const monthlyCallUsage = pgTable("monthly_call_usage", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
+  userIdx: index("idx_monthly_call_usage_user").on(t.userId),
   userMonthIdx: uniqueIndex("idx_monthly_call_usage_user_month").on(t.userId, t.month),
 }));
 

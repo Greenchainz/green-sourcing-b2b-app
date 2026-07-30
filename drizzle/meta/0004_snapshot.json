@@ -1,4 +1,5 @@
 {
+  "id": "ffed9fc2-f670-43f7-9316-60229f17b00e",
   "id": "8fb20e44-6fca-4c5e-8070-d53410853be0",
   "prevId": "7a022dd5-6c28-4e78-8ade-44fa11416c23",
   "version": "7",
@@ -126,6 +127,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_agent_analytics_session": {
           "name": "idx_agent_analytics_session",
@@ -536,6 +538,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_architect_download_events_architect": {
           "name": "idx_architect_download_events_architect",
@@ -617,6 +620,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_architect_referrals_referrer": {
           "name": "idx_architect_referrals_referrer",
@@ -1054,6 +1058,7 @@
           "notNull": false
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_assembly_components_assembly": {
           "name": "idx_assembly_components_assembly",
@@ -2304,8 +2309,36 @@
         }
       },
       "indexes": {
+        "idx_ccps_scores_material": {
+          "name": "idx_ccps_scores_material",
         "idx_ccps_scores_material_persona": {
           "name": "idx_ccps_scores_material_persona",
+          "columns": [
+            {
+              "expression": "materialId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+            },
+            {
+              "expression": "personaKey",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ccps_scores_material_persona": {
+          "name": "idx_ccps_scores_material_persona",
+        "idx_ccps_scores_material": {
+          "name": "idx_ccps_scores_material",
           "columns": [
             {
               "expression": "materialId",
@@ -2321,18 +2354,6 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_ccps_scores_material": {
-          "name": "idx_ccps_scores_material",
-          "columns": [
-            {
-              "expression": "materialId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
             }
           ],
           "isUnique": false,
@@ -2500,6 +2521,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_company_of_week_supplier": {
           "name": "idx_company_of_week_supplier",
@@ -3725,6 +3747,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_email_credentials_user": {
           "name": "idx_email_credentials_user",
@@ -3891,6 +3914,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_engagement_log_user": {
           "name": "idx_engagement_log_user",
@@ -5257,6 +5281,7 @@
           "notNull": false
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_manufacturers_claimed_by": {
           "name": "idx_manufacturers_claimed_by",
@@ -5631,6 +5656,8 @@
         }
       },
       "indexes": {
+        "idx_material_certs_material": {
+          "name": "idx_material_certs_material",
         "idx_material_certifications_material": {
           "name": "idx_material_certifications_material",
           "columns": [
@@ -6251,6 +6278,13 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
         },
         "idx_material_specs_status": {
           "name": "idx_material_specs_status",
@@ -7133,6 +7167,53 @@
           "notNull": false
         }
       },
+      "indexes": {
+        "idx_materials_manufacturer": {
+          "name": "idx_materials_manufacturer",
+          "columns": [
+            {
+              "expression": "manufacturerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_materials_category": {
+          "name": "idx_materials_category",
+          "columns": [
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_materials_has_epd": {
+          "name": "idx_materials_has_epd",
+          "columns": [
+            {
+              "expression": "hasEpd",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
@@ -7408,6 +7489,21 @@
         }
       },
       "indexes": {
+        "idx_monthly_call_usage_user": {
+          "name": "idx_monthly_call_usage_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "idx_monthly_call_usage_user_month": {
           "name": "idx_monthly_call_usage_user_month",
           "columns": [
@@ -7898,6 +7994,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_referrals_referrer": {
           "name": "idx_referrals_referrer",
@@ -8410,6 +8507,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_rfq_drafts_architect": {
           "name": "idx_rfq_drafts_architect",
@@ -8866,6 +8964,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_rfq_requests_architect": {
           "name": "idx_rfq_requests_architect",
@@ -10623,6 +10722,7 @@
               "nulls": "last"
             }
           ],
+          "isUnique": false,
           "isUnique": true,
           "concurrently": false,
           "method": "btree",
@@ -10767,6 +10867,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_supplier_material_epds_supplier": {
           "name": "idx_supplier_material_epds_supplier",
@@ -11018,6 +11119,7 @@
               "nulls": "last"
             }
           ],
+          "isUnique": true,
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
@@ -11573,6 +11675,7 @@
           "notNull": false
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_suppliers_user_id": {
           "name": "idx_suppliers_user_id",
@@ -12259,6 +12362,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_user_engagement_user": {
           "name": "idx_user_engagement_user",
