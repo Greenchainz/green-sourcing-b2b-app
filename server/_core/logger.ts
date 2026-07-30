@@ -74,7 +74,7 @@ const baseOptions: pino.LoggerOptions = {
   serializers: {
     req: (req: { method?: string; url?: string; id?: string }) => ({
       method: req.method,
-      url: req.url,
+      url: req.url ? new URL(req.url, "http://localhost").pathname : undefined,
       id: req.id,
     }),
     res: (res: { statusCode?: number }) => ({
