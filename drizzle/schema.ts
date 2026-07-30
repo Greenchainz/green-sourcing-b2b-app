@@ -169,7 +169,10 @@ export const manufacturers = pgTable("manufacturers", {
   dataSource: varchar("dataSource", { length: 100 }),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
-});
+}, (t) => ({
+  claimedByIdx: index("idx_manufacturers_claimed_by").on(t.claimedByUserId),
+  categoryIdx: index("idx_manufacturers_category").on(t.category),
+}));
 
 export type Manufacturer = typeof manufacturers.$inferSelect;
 
@@ -304,7 +307,10 @@ export const assemblyComponents = pgTable("assembly_components", {
   thickness: varchar("thickness", { length: 50 }),
   gwpContribution: decimal("gwpContribution", { precision: 12, scale: 4 }),
   notes: text("notes"),
-});
+}, (t) => ({
+  assemblyIdx: index("idx_assembly_components_assembly").on(t.assemblyId),
+  materialIdx: index("idx_assembly_components_material").on(t.materialId),
+}));
 
 export type AssemblyComponent = typeof assemblyComponents.$inferSelect;
 
@@ -326,6 +332,8 @@ export const materialCertifications = pgTable("material_certifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
   materialIdx: index("idx_material_certs_material").on(t.materialId),
+  materialIdx: index("idx_material_certifications_material").on(t.materialId),
+  typeIdx: index("idx_material_certifications_type").on(t.certificationType),
 }));
 
 export type MaterialCertification = typeof materialCertifications.$inferSelect;
@@ -388,6 +396,7 @@ export const materialSpecs = pgTable("material_specs", {
   materialIdx: index("idx_material_specs_material").on(t.materialId),
   supplierIdx: index("idx_material_specs_supplier").on(t.supplierId),
   submittedByIdx: index("idx_material_specs_submitted_by").on(t.submittedBy),
+  statusIdx: index("idx_material_specs_status").on(t.status),
 }));
 
 export type MaterialSpec = typeof materialSpecs.$inferSelect;
@@ -497,6 +506,7 @@ export const rfqs = pgTable("rfqs", {
 }, (t) => ({
   userIdx: index("idx_rfqs_user").on(t.userId),
   statusIdx: index("idx_rfqs_status").on(t.status),
+  createdAtIdx: index("idx_rfqs_created_at").on(t.createdAt.desc()),
 }));
 
 export type Rfq = typeof rfqs.$inferSelect;
@@ -517,6 +527,7 @@ export const rfqItems = pgTable("rfq_items", {
 }, (t) => ({
   rfqIdx: index("idx_rfq_items_rfq").on(t.rfqId),
   materialIdx: index("idx_rfq_items_material").on(t.materialId),
+  assemblyIdx: index("idx_rfq_items_assembly").on(t.assemblyId),
 }));
 
 export type RfqItem = typeof rfqItems.$inferSelect;
@@ -596,7 +607,9 @@ export const agentAnalytics = pgTable("agent_analytics", {
   escalated: boolean("escalated").default(false),
   handedOffToHuman: boolean("handedOffToHuman").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  sessionIdx: index("idx_agent_analytics_session").on(t.sessionId),
+}));
 
 export type AgentAnalytic = typeof agentAnalytics.$inferSelect;
 
@@ -667,7 +680,11 @@ export const suppliers = pgTable("suppliers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
-});
+}, (t) => ({
+  userIdx: uniqueIndex("idx_suppliers_user_id").on(t.userId),
+  tierIdx: index("idx_suppliers_tier").on(t.tier),
+  verifiedIdx: index("idx_suppliers_verified").on(t.verified),
+}));
 
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = typeof suppliers.$inferInsert;
@@ -739,7 +756,10 @@ export const architectReferrals = pgTable("architect_referrals", {
   refereeId: integer("referee_id"),                 // architects.id — set when they sign up
   creditedAt: timestamp("credited_at"),             // null until +3 credits granted to referrer
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  referrerIdx: index("idx_architect_referrals_referrer").on(t.referrerId),
+  refereeIdx: index("idx_architect_referrals_referee").on(t.refereeId),
+}));
 
 export type ArchitectReferral = typeof architectReferrals.$inferSelect;
 
@@ -752,7 +772,10 @@ export const architectDownloadEvents = pgTable("architect_download_events", {
   // bypass method: null=standard credit, 'linkedin'=LinkedIn share, 'referral'=referral credit
   bypassMethod: varchar("bypass_method", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  architectIdx: index("idx_architect_download_events_architect").on(t.architectId),
+  materialIdx: index("idx_architect_download_events_material").on(t.materialId),
+}));
 
 export type ArchitectDownloadEvent = typeof architectDownloadEvents.$inferSelect;
 
@@ -783,7 +806,11 @@ export const supplierMaterialEpds = pgTable("supplier_material_epds", {
   status: verificationStatusEnum("status").default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  supplierIdx: index("idx_supplier_material_epds_supplier").on(t.supplierId),
+  materialIdx: index("idx_supplier_material_epds_material").on(t.materialId),
+  statusIdx: index("idx_supplier_material_epds_status").on(t.status),
+}));
 
 export type SupplierMaterialEpd = typeof supplierMaterialEpds.$inferSelect;
 export type InsertSupplierMaterialEpd = typeof supplierMaterialEpds.$inferInsert;
@@ -803,6 +830,8 @@ export const supplierSubscriptions = pgTable("supplier_subscriptions", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
   supplierIdx: uniqueIndex("idx_supplier_subscriptions_supplier").on(t.supplierId),
+  supplierIdx: index("idx_supplier_subscriptions_supplier").on(t.supplierId),
+  statusIdx: index("idx_supplier_subscriptions_status").on(t.status),
 }));
 
 export type SupplierSubscription = typeof supplierSubscriptions.$inferSelect;
@@ -846,7 +875,10 @@ export const companyOfWeekSlots = pgTable("company_of_week_slots", {
   showcasePageSlug: text("showcasePageSlug").notNull().unique(),
   emailSentAt: timestamp("emailSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  supplierIdx: index("idx_company_of_week_supplier").on(t.supplierId),
+  weekIdx: index("idx_company_of_week_date").on(t.weekStartDate),
+}));
 
 export type CompanyOfWeekSlot = typeof companyOfWeekSlots.$inferSelect;
 export type InsertCompanyOfWeekSlot = typeof companyOfWeekSlots.$inferInsert;
@@ -868,6 +900,7 @@ export const buyerSubscriptions = pgTable("buyer_subscriptions", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
   userIdx: uniqueIndex("idx_buyer_subscriptions_user").on(t.userId),
+  statusIdx: index("idx_buyer_subscriptions_status").on(t.status),
 }));
 
 export type BuyerSubscription = typeof buyerSubscriptions.$inferSelect;
@@ -912,6 +945,7 @@ export const supplierFilters = pgTable("supplier_filters", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
   supplierIdx: index("idx_supplier_filters_supplier").on(t.supplierId),
+  supplierIdx: uniqueIndex("idx_supplier_filters_supplier").on(t.supplierId),
 }));
 
 export type SupplierFilter = typeof supplierFilters.$inferSelect;
@@ -950,6 +984,9 @@ export const rfqBids = pgTable("rfq_bids", {
   supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
   // Composite: most bid queries filter by both rfqId and supplierId
   rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
+  supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
+  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
+  statusIdx: index("idx_rfq_bids_status").on(t.status),
 }));
 
 export type RfqBid = typeof rfqBids.$inferSelect;
@@ -1120,6 +1157,7 @@ export const subscriptions = pgTable("subscriptions", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
   userIdx: index("idx_subscriptions_user").on(t.userId),
+  statusIdx: index("idx_subscriptions_status").on(t.status),
 }));
 
 export type Subscription = typeof subscriptions.$inferSelect;
@@ -1181,6 +1219,8 @@ export const messageReactions = pgTable("message_reactions", {
 }, (t) => ({
   messageIdx: index("idx_message_reactions_message").on(t.messageId),
   userIdx: index("idx_message_reactions_user").on(t.userId),
+  userIdx: index("idx_message_reactions_user").on(t.userId),
+  uniqueReaction: uniqueIndex("idx_message_reactions_unique").on(t.messageId, t.userId, t.reactionType),
 }));
 
 export type MessageReaction = typeof messageReactions.$inferSelect;
@@ -1273,6 +1313,7 @@ export const suppliersLocation = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
+    supplierIdx: index("idx_suppliers_location_supplier").on(table.supplierId),
     stateIdx: index("idx_suppliers_location_state").on(table.state),
     cityIdx: index("idx_suppliers_location_city").on(table.city),
     latLngIdx: index("idx_suppliers_location_latlng").on(table.latitude, table.longitude),
@@ -1840,7 +1881,10 @@ export const rfqDrafts = pgTable("rfq_drafts", {
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  architectIdx: index("idx_rfq_drafts_architect").on(t.architectId),
+  statusIdx: index("idx_rfq_drafts_status").on(t.status),
+}));
 
 export type RfqDraft = typeof rfqDrafts.$inferSelect;
 export type InsertRfqDraft = typeof rfqDrafts.$inferInsert;
@@ -1870,7 +1914,13 @@ export const rfqRequests = pgTable("rfq_requests", {
   // FK to the draft that produced this request (for audit trail)
   draftId: integer("draft_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  architectIdx: index("idx_rfq_requests_architect").on(t.architectId),
+  supplierIdx: index("idx_rfq_requests_supplier").on(t.supplierId),
+  materialIdx: index("idx_rfq_requests_material").on(t.materialId),
+  draftIdx: index("idx_rfq_requests_draft").on(t.draftId),
+  statusIdx: index("idx_rfq_requests_status").on(t.status),
+}));
 
 export type RfqRequest = typeof rfqRequests.$inferSelect;
 export type InsertRfqRequest = typeof rfqRequests.$inferInsert;
@@ -1884,7 +1934,9 @@ export const referrals = pgTable("referrals", {
   referredEmail: varchar("referred_email", { length: 320 }).notNull(),
   status: varchar("status", { length: 50 }).default("pending").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  referrerIdx: index("idx_referrals_referrer").on(t.referrerId),
+}));
 
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
@@ -1909,7 +1961,9 @@ export const emailCredentials = pgTable("email_credentials", {
   salt: bytea("salt").notNull(),
   hash: bytea("hash").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: uniqueIndex("idx_email_credentials_user").on(t.userId),
+}));
 
 export type EmailCredential = typeof emailCredentials.$inferSelect;
 
@@ -1930,7 +1984,9 @@ export const userEngagement = pgTable("user_engagement", {
   specSheetsGenerated: integer("specSheetsGenerated").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: uniqueIndex("idx_user_engagement_user").on(t.userId),
+}));
 
 export type UserEngagement = typeof userEngagement.$inferSelect;
 
@@ -1941,7 +1997,10 @@ export const engagementLog = pgTable("engagement_log", {
   creditsEarned: integer("creditsEarned").default(0).notNull(),
   metadata: json("metadata"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: index("idx_engagement_log_user").on(t.userId),
+  actionIdx: index("idx_engagement_log_action").on(t.action),
+}));
 
 export type EngagementLog = typeof engagementLog.$inferSelect;
 
