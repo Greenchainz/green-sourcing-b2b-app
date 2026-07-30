@@ -123,15 +123,6 @@ function getRequestHost(req: express.Request): string {
   return /^[a-z0-9.-]+(?::\d+)?$/.test(host) ? host : "";
 }
 
-function getFrontDoorIdHeader(req: express.Request): string {
-  const frontDoorIdHeader = req.headers["x-azure-fdid"];
-  const rawFrontDoorId = Array.isArray(frontDoorIdHeader)
-    ? frontDoorIdHeader[0]
-    : String(frontDoorIdHeader ?? "").split(",")[0].trim();
-  const frontDoorId = rawFrontDoorId.toLowerCase();
-  return /^[a-f0-9-]{36}$/.test(frontDoorId) ? frontDoorId : "";
-}
-
 function isHostAllowedForPublicApi(req: express.Request): boolean {
   const forwardedHost = getForwardedHost(req);
   const host = getRequestHost(req);
@@ -470,9 +461,8 @@ async function startServer() {
     })
   );
 
-  // Easy Auth: parse x-ms-client-principal when Azure sidecar is active.
-  // In production, only trust the header when the request carries the
-  // configured Azure Front Door ID marker.
+  // Easy Auth: never trust caller-supplied x-ms-client-principal in production.
+  // The canonical auth path is sdk.authenticateRequest(req) via signed cookie.
   app.use((req, res, next) => {
     if (process.env.NODE_ENV !== "production") {
       next();
@@ -480,22 +470,13 @@ async function startServer() {
     }
 
     const easyAuthHeader = req.headers["x-ms-client-principal"];
-    if (typeof easyAuthHeader !== "string" || easyAuthHeader.length === 0) {
-      next();
-      return;
+    if (typeof easyAuthHeader === "string" && easyAuthHeader.length > 0) {
+      console.warn(
+        `[network-guard] Ignoring x-ms-client-principal header path=${req.path} host=${String(req.headers.host ?? "")}`
+      );
+      delete req.headers["x-ms-client-principal"];
     }
-
-    const expectedFrontDoorId = String(process.env.AZURE_FRONT_DOOR_ID ?? "").toLowerCase().trim();
-    const actualFrontDoorId = getFrontDoorIdHeader(req);
-    if (expectedFrontDoorId && actualFrontDoorId === expectedFrontDoorId) {
-      next();
-      return;
-    }
-
-    console.warn(
-      `[network-guard] Rejected untrusted x-ms-client-principal path=${req.path} host=${String(req.headers.host ?? "")}`
-    );
-    res.status(403).json(createErrorResponse("Forbidden", req.id, "Untrusted Easy Auth provenance."));
+    next();
   });
 
   // Safe no-op in local dev (header absent → empty identity attached).
