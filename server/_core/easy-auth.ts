@@ -121,10 +121,22 @@ export function parseEasyAuthHeader(req: Request): ParsedEasyAuthIdentity {
     return empty;
   }
 
+  // Filter to structurally valid claims only. A well-formed header could still
+  // contain null entries or objects missing string typ/val fields; dereferencing
+  // those would throw and turn this middleware into a 500.
+  // Cast to unknown[] first so the type guard performs a real runtime check
+  // rather than a tautological one against the declared EasyAuthClaim type.
+  const claims = (principal.claims as unknown[]).filter(
+    (claim): claim is EasyAuthClaim =>
+      Boolean(claim) &&
+      typeof (claim as Partial<EasyAuthClaim>).typ === "string" &&
+      typeof (claim as Partial<EasyAuthClaim>).val === "string"
+  );
+
   // ── Extract specific claims ───────────────────────────────────────────────
   const getClaim = (...types: string[]): string | null => {
     for (const typ of types) {
-      const match = principal.claims.find(
+      const match = claims.find(
         (c) => c.typ === typ || c.typ.toLowerCase() === typ.toLowerCase()
       );
       if (match?.val) return match.val;
@@ -137,7 +149,7 @@ export function parseEasyAuthHeader(req: Request): ParsedEasyAuthIdentity {
   const name = getClaim(CLAIM_TYPES.name, CLAIM_TYPES.shortName);
 
   // App Role Assignments — Azure injects one claim per assigned role
-  const appRoles = principal.claims
+  const appRoles = claims
     .filter((c) => c.typ === CLAIM_TYPES.roles)
     .map((c) => c.val)
     .filter(Boolean);
@@ -174,6 +186,13 @@ export function easyAuthMiddleware(
 
 /**
  * Guard: reject requests where Easy Auth is required but absent.
+ *
+ * IMPORTANT: This guard checks only that the x-ms-client-principal header is
+ * present and parseable. Because the header is client-supplied, it MUST only be
+ * used when network-level isolation (Azure Container Apps Easy Auth sidecar +
+ * Front Door) guarantees that direct callers cannot forge it. Do NOT use this
+ * as a standalone authentication check; protected tRPC endpoints must use
+ * `protectedProcedure` (JWT cookie verification) for authorization.
  *
  * Only use this when the Container App has Easy Auth enabled in production.
  * Do NOT mount this in local dev (process.env.REQUIRE_EASY_AUTH === 'true').

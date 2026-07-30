@@ -70,6 +70,41 @@ export function getLogContext(): LogContext {
   return logContextStorage.getStore() ?? {};
 }
 
+// ── Sensitive key redaction ───────────────────────────────────────────────────
+
+/**
+ * Keys whose values must be redacted from structured log entries.
+ * Checked case-insensitively against every key in the log field tree.
+ */
+const REDACTED_KEYS = new Set([
+  "token", "accesstoken", "access_token", "refreshtoken", "refresh_token",
+  "idtoken", "id_token", "jwt", "authorization", "cookie",
+  "password", "passwd", "pwd",
+  "secret", "client_secret", "clientsecret",
+  "apikey", "api_key", "apiKey",
+  "key",
+  "sig", "signature",
+  "ssn", "creditcard", "credit_card",
+]);
+
+/**
+ * Recursively redact values whose keys appear in REDACTED_KEYS.
+ * Works on plain objects and arrays; primitives are returned as-is.
+ */
+function redactKeys(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(redactKeys);
+  }
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = REDACTED_KEYS.has(k.toLowerCase()) ? "[REDACTED]" : redactKeys(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 // ── Core emitter ──────────────────────────────────────────────────────────────
 
 function emit(level: LogLevel, event: string, fields: Record<string, unknown> = {}): void {
@@ -88,10 +123,10 @@ function emit(level: LogLevel, event: string, fields: Record<string, unknown> = 
   };
 
   if (USE_JSON) {
-    // Scrub then JSON-encode. The scrubber patches console.* but we call
-    // process.stdout.write directly here so we must manually scrub.
-    const raw = JSON.stringify(entry);
-    const safe = scrub(raw);
+    // Redact sensitive keys before serialisation, then apply string-level
+    // scrubbing (IP addresses, query tokens).  Redacting structured fields
+    // first is safer than post-hoc regex on serialised JSON.
+    const safe = scrub(JSON.stringify(redactKeys(entry)));
     process.stdout.write(safe + "\n");
   } else {
     // Human-readable dev output — mirror what scrubbed console.log provides.

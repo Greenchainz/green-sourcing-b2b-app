@@ -290,6 +290,14 @@ async function startServer() {
   app.set("trust proxy", true);
   const server = createServer(app);
 
+  // ── Correlation ID + structured request logging ───────────────────────────
+  // Must be installed before any middleware that can terminate requests
+  // (redirect, network guard) so that every response — including 308 redirects
+  // and 403 rejections — carries X-Correlation-ID and is captured in the
+  // structured http.request log.
+  app.use(createRequestIdMiddleware);
+  app.use(requestLoggerMiddleware);
+
   app.use((req, res, next) => {
     // Never redirect API, health, or crawl-critical files. Behind Azure Front
     // Door the origin Host header is rewritten to the container FQDN, which can
@@ -452,12 +460,11 @@ async function startServer() {
     })
   );
 
-  app.use(createRequestIdMiddleware);
   // Easy Auth: parse x-ms-client-principal when Azure sidecar is active.
-  // Safe no-op in local dev (header absent → empty identity attached).
+  // Mounted after the host guard so forged headers from direct traffic are
+  // rejected before parsing. Safe no-op in local dev (header absent → empty
+  // identity attached).
   app.use(easyAuthMiddleware);
-  // Structured JSON request logging (replaces console.log for HTTP traffic).
-  app.use(requestLoggerMiddleware);
   app.use(express.json({
     limit: "5mb",
     verify: (req: any, _res, buf) => { req.rawBody = buf; },

@@ -19,8 +19,8 @@ This guide covers safe migration patterns for a live B2B platform. Violations of
 
 ```bash
 # ✅ Safe — creates a versioned SQL file and applies it
-pnpm db:generate
-pnpm db:migrate
+pnpm run db:generate
+pnpm run db:migrate
 
 # ❌ Never — destroys audit trail, breaks rollbacks
 pnpm run db:push
@@ -28,7 +28,7 @@ pnpm run db:push
 
 ### 2. Migrations run ONCE, in a dedicated job, BEFORE traffic shifts
 
-Never run `drizzle-kit migrate` inside the application startup path (`server/index.ts`). If you do:
+Never run `drizzle-kit migrate` inside the application startup path (`server/_core/index.ts`). If you do:
 - Multiple container replicas will race to apply the same migration
 - One replica will win; others will fail mid-request with lock errors
 - Drizzle's `__drizzle_migrations` table does NOT lock for distributed concurrency
@@ -37,9 +37,10 @@ The `deploy-azure.yml` workflow already gates migrations behind the Production e
 
 ### 3. Commit migration files
 
-After `drizzle-kit generate`, **always commit both**:
+After `drizzle-kit generate`, **always commit all three**:
 - `drizzle/XXXX_<description>.sql` — the generated SQL
 - `drizzle/meta/XXXX_snapshot.json` — the schema snapshot Drizzle uses for drift detection
+- `drizzle/meta/_journal.json` — the migration journal Drizzle reads to discover ordered migrations
 
 These must be committed before the PR merges. They are part of your code history.
 
@@ -106,7 +107,7 @@ You **cannot** do these in a single deployment. The application and database mus
 ### Phase 1: Expand (add the new structure, keep the old)
 
 ```sql
--- Add the new column with a default (non-blocking for most column types)
+-- Add the new nullable column; backfill it in a later step
 ALTER TABLE "rfqs" ADD COLUMN "buyer_user_id" integer;
 ```
 
@@ -171,7 +172,7 @@ ALTER TABLE "rfqs" DROP COLUMN "architect_id";
 pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }),
 
 // ✅ Target pattern
-pricePerUnitCents: integer("price_per_unit_cents"),  // $10.50 → 1050
+pricePerUnitCents: bigint("price_per_unit_cents", { mode: "number" }),  // $10.50 → 1050
 ```
 
 ### Migration approach
@@ -180,7 +181,7 @@ Use expand-and-contract (see above). The backfill SQL:
 
 ```sql
 UPDATE catalog_items
-SET price_per_unit_cents = ROUND(price_per_unit::numeric * 100)::integer
+SET price_per_unit_cents = ROUND(price_per_unit::numeric * 100)::bigint
 WHERE price_per_unit_cents IS NULL;
 ```
 
@@ -246,6 +247,8 @@ Before applying any migration to production:
 ### Drop an index if a migration goes wrong
 
 ```sql
+-- DROP INDEX CONCURRENTLY cannot run inside a transaction block.
+-- Run this outside a transaction (remove BEGIN/COMMIT if present in the migration file).
 DROP INDEX CONCURRENTLY IF EXISTS "rfq_bids_rfq_id_idx";
 ```
 
@@ -256,18 +259,37 @@ DROP INDEX CONCURRENTLY IF EXISTS "rfq_bids_rfq_id_idx";
 ROLLBACK;
 ```
 
-### Manually mark a migration as unapplied (emergency)
+### Manually recover from a failed migration (emergency)
+
+Deleting the migration journal row is **not** a safe default recovery procedure. If
+the migration was partially applied, re-running it can cause data corruption or
+duplicate operations.
+
+**Preferred: forward repair migration**
+
+Create a new migration file that corrects the schema to the desired state and
+add it via the normal `pnpm run db:generate` + `pnpm run db:migrate` flow.
+This preserves the audit trail and is safe for destructive or non-transactional
+migrations.
+
+**Last resort: manual journal manipulation** (only if the migration was completely
+rolled back and the schema is verified to be in the pre-migration state)
 
 ```sql
 -- Check current migration state
 SELECT * FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 10;
 
--- Remove the failed migration entry (after fixing the schema manually)
+-- ⚠️ DANGER: Only remove the entry if you have manually verified:
+--   1. The schema matches the state BEFORE this migration ran
+--   2. The migration is safe to re-run from scratch
+--   3. No other migrations depend on this one's outcome
 DELETE FROM __drizzle_migrations 
 WHERE hash = '<migration-hash>';
 ```
 
-> ⚠️ Only do this if you've manually verified the schema matches the state before the migration. Drizzle compares its migration table against actual schema on the next run.
+> ⚠️ If you delete the journal entry and the schema is not fully reverted, the
+> next `pnpm run db:migrate` will re-apply the migration against a partially
+> changed schema and may corrupt data.
 
 ---
 

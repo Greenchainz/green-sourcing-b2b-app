@@ -8,21 +8,24 @@
 
 | Runbook | Severity | Trigger |
 |---------|----------|---------|
-| [RB-01: Emergency Deployment Bypass (Break-Glass)](#rb-01-break-glass) | Sev-1 | Production outage requiring immediate deploy without normal approval |
+| [RB-01: Emergency Deployment Bypass (Break-Glass)](#rb-01-break-glass--emergency-deployment-bypass) | Sev-1 | Production outage requiring immediate deploy without normal approval |
 | [RB-02: Production Rollback](#rb-02-production-rollback) | Sev-1 | New revision degrading production; must revert in < 15 min |
 | [RB-03: Credential Compromise](#rb-03-credential-compromise) | Sev-1 | Exposed secret, unauthorized access, or leaked token |
 | [RB-04: Database Restoration](#rb-04-database-restoration) | Sev-1 | Data corruption, catastrophic migration failure, or accidental deletion |
 | [RB-05: Cross-Tenant Data Exposure](#rb-05-cross-tenant-data-exposure) | Sev-1 | User A can see User B's data — immediate freeze required |
-| [RB-06: Auth Loop / All Users Locked Out](#rb-06-auth-lockout) | Sev-1 | OAuth callback failure or JWT secret rotation breaking sessions |
-| [RB-07: High Error Rate Alert (5xx > 2%)](#rb-07-high-error-rate) | Sev-2 | Azure Monitor alert fires |
+| [RB-06: Auth Loop / All Users Locked Out](#rb-06-auth-lockout--all-users-signed-out) | Sev-1 | OAuth callback failure or JWT secret rotation breaking sessions |
+| [RB-07: High Error Rate Alert (5xx > 2%)](#rb-07-high-error-rate-alert-5xx--2) | Sev-2 | Azure Monitor alert fires |
 
 ---
 
-## RB-01: Break-Glass — Emergency Deployment Bypass {#rb-01-break-glass}
+## RB-01: Break-Glass — Emergency Deployment Bypass
 
 **When to use:** Production is down and the normal deployment path (PR → CI → manual approval → deploy) is too slow. The break-glass procedure allows bypassing the GitHub Environment protection rules.
 
-**Authorization:** Solo founder (you). No other approvals required.
+**Authorization:** Requires an audited break-glass identity. Before proceeding:
+- Authenticate with MFA on the account you will use to trigger the deployment.
+- Link this action to an open GitHub Issue tagged `incident` (create one now if none exists).
+- A post-incident review is mandatory after every break-glass use.
 
 ### Steps
 
@@ -39,33 +42,34 @@
 
    Save this in a GitHub Issue tagged `incident`.
 
-2. **Trigger the workflow manually** (workflow_dispatch skips the push-to-main trigger but still fires the Production environment gate):
+2. **Trigger the workflow manually** via GitHub Actions UI:
+
+   Open GitHub Actions → `deploy-azure.yml` → **Run workflow** → select the exact
+   commit SHA you intend to deploy → click **Run workflow**.
+
+   Alternatively, use the CLI (workflow must be triggered from the target ref):
 
    ```bash
-   gh workflow run deploy-azure.yml --ref main -f bypass_reason="<incident number>"
+   gh workflow run deploy-azure.yml --ref <commit-sha-or-branch>
    ```
 
-3. **Or bypass entirely** by pushing directly with `--force` using the emergency credential path:
+   > **Do NOT** use `git push origin main --force` — this rewrites history, bypasses
+   > CI, and can promote arbitrary code to production without an audit trail.
 
-   ```bash
-   # ONLY in true break-glass. Document this commit in the incident issue.
-   git push origin main --force
-   ```
+3. **Approve the Production environment gate** in GitHub Actions → Environments → Production.
 
-4. **Approve the Production environment gate** in GitHub Actions → Environments → Production.
-
-5. **Post-deploy validation** (within 10 minutes of deploy):
+4. **Post-deploy validation** (within 10 minutes of deploy):
    - Hit `/health` and `/ready` endpoints
    - Run a manual smoke test: sign in, submit a test RFQ, verify response
    - Check Azure Monitor for 5xx spike
 
-6. **Close the incident** in the GitHub Issue. Note the commit SHA, what was bypassed, and the outcome.
+5. **Close the incident** in the GitHub Issue. Note the commit SHA, what was bypassed, and the outcome.
 
 > **Policy:** Every break-glass use is reviewed at the next available opportunity. Repeat use without improvement to the deployment process is a process failure.
 
 ---
 
-## RB-02: Production Rollback {#rb-02-production-rollback}
+## RB-02: Production Rollback
 
 **Target time:** < 15 minutes from alert to rollback complete.
 
@@ -105,25 +109,19 @@
      --revision "${BAD_REVISION}"
    ```
 
-4. **Repeat for frontend** if the frontend was also deployed:
+   > **Note:** The server and client are packaged in a single container image on
+   > `greenchainz-backend-v2`. There is no separate frontend app to roll back.
 
-   ```bash
-   az containerapp revision list \
-     --name greenchainz-frontend \
-     --resource-group rg-greenchainz-prod-container \
-     --output table
-   ```
-
-5. **Verify rollback success:**
+4. **Verify rollback success:**
    - Check `/health` → 200
    - Check `/ready` → 200 (DB connected)
    - Azure Monitor → HTTP 5xx rate should drop to baseline
 
-6. **Post-mortem:** Create a GitHub Issue with `post-mortem` label. Capture what failed and what guard would have caught it.
+5. **Post-mortem:** Create a GitHub Issue with `post-mortem` label. Capture what failed and what guard would have caught it.
 
 ---
 
-## RB-03: Credential Compromise {#rb-03-credential-compromise}
+## RB-03: Credential Compromise
 
 **Triggers:** Exposed secret in git history, unauthorized API calls, leaked token in logs, Sentry alert about unusual auth activity.
 
@@ -136,11 +134,23 @@
    - Sentry auth token → Sentry source maps access is compromised
    - Resend / SendGrid API key → email sending is compromised
 
-2. **Revoke immediately** in the relevant system:
-   - Azure Key Vault: `az keyvault secret set --vault-name Greenchainz-vault --name <secret-name> --value "REVOKED-$(date +%s)"`
-   - Azure AD: Portal → App Registrations → Certificates & secrets → Delete
-   - Sentry: Settings → Auth Tokens → Revoke
-   - Resend: Dashboard → API Keys → Delete
+2. **Revoke immediately at the issuing service first** — replacing the Key Vault
+   value alone does NOT revoke the credential; the old value remains valid at
+   the issuer until explicitly invalidated there:
+   - **JWT_SECRET**: generate a new value and redeploy (see Step 3 below)
+   - **Azure AD client secret**: Portal → App Registrations → Certificates & secrets → Delete the compromised secret
+   - **Sentry auth token**: Settings → Auth Tokens → Revoke
+   - **Resend API key**: Dashboard → API Keys → Delete
+   - **Database password**: `ALTER ROLE <user> WITH PASSWORD '<new-password>'` in psql, then update Key Vault
+
+   Once revoked at the issuer, update Key Vault with the replacement value:
+
+   ```bash
+   az keyvault secret set \
+     --vault-name Greenchainz-vault \
+     --name <secret-name> \
+     --value "<new-value>"
+   ```
 
 3. **Force session invalidation** (if JWT_SECRET was compromised):
 
@@ -164,14 +174,31 @@
 6. **Scrub git history** if the secret was committed:
 
    ```bash
-   # Using git-filter-repo (install: pip install git-filter-repo)
-   git filter-repo --path .env.sentry-build-plugin --invert-paths
-   # Force-push all branches
+   # 1. Revoke the credential at its issuer BEFORE rewriting history.
+   #    Rewriting history does NOT invalidate already-cloned copies.
+
+   # 2. Scan ALL files and ALL refs for the exact secret value to find
+   #    every commit and file path that contains it:
+   git log --all -p | grep -n "<exact-secret-value>"
+
+   # 3. Rewrite history to remove every file containing the secret.
+   #    Replace <file-path> with each path identified in step 2.
+   #    Run once per file path (git-filter-repo removes from all branches/tags):
+   pip install git-filter-repo
+   git filter-repo --path <file-path> --invert-paths
+
+   # 4. Verify the secret no longer appears in any ref:
+   git log --all -p | grep "<exact-secret-value>"
+   # Output must be empty before proceeding.
+
+   # 5. Force-push the cleaned history to all branches and tags:
    git push origin --force --all
    git push origin --force --tags
    ```
 
-   Then notify all contributors to re-clone.
+   Then notify all contributors to re-clone. The secret remains valid in any
+   clone that existed before the rewrite — revocation at the issuer (Step 2
+   above) is the only reliable containment.
 
 7. **Audit blast radius:**
    - Review Azure Monitor logs for unauthorized access during the window
@@ -180,7 +207,7 @@
 
 ---
 
-## RB-04: Database Restoration {#rb-04-database-restoration}
+## RB-04: Database Restoration
 
 **RTO target:** < 4 hours  
 **RPO target:** < 24 hours (automated daily backup)
@@ -240,29 +267,50 @@ gh workflow run deploy-azure.yml --ref main
 
 ---
 
-## RB-05: Cross-Tenant Data Exposure {#rb-05-cross-tenant-data-exposure}
+## RB-05: Cross-Tenant Data Exposure
 
 **Severity: Sev-1 — STOP ALL ONBOARDING IMMEDIATELY**
 
 ### Immediate actions (< 10 minutes)
 
-1. **Halt all new user onboarding** — disable sign-up in the Azure Container App environment variable:
+1. **Halt all new user onboarding** — the fastest option is to roll back to the
+   last known-good revision (see RB-02), which simultaneously removes the
+   vulnerable code and prevents new sign-ups on the faulty path.
+
+   If a rollback is not yet possible, disable the Container App ingress to block
+   all public traffic while the vulnerability is assessed:
 
    ```bash
-   az containerapp update \
+   az containerapp ingress disable \
      --name greenchainz-backend-v2 \
-     --resource-group rg-greenchainz-prod-container \
-     --set-env-vars DISABLE_SIGNUP=true
+     --resource-group rg-greenchainz-prod-container
    ```
 
-2. **Identify the affected users** — query the audit log:
+   Re-enable once a patch or rollback is in place:
+
+   ```bash
+   az containerapp ingress enable \
+     --name greenchainz-backend-v2 \
+     --resource-group rg-greenchainz-prod-container \
+     --type external --target-port 3001 --transport auto
+   ```
+
+   > **Note:** `DISABLE_SIGNUP` is not currently enforced in the codebase. Do not
+   > rely on it as a containment step until it is implemented and tested.
+
+2. **Identify the affected users** — query the audit log using the actual schema
+   columns (`actorUserId`, `resourceType`, `resourceId`, `action`, `metadata`,
+   `createdAt`):
 
    ```sql
-   SELECT user_id, action, target_user_id, created_at
+   -- Find authorization-failure events that may indicate cross-tenant access
+   SELECT "actorUserId", "actorEmail", "action", "resourceType", "resourceId",
+          "outcome", "metadata", "createdAt"
    FROM audit_logs
-   WHERE action LIKE '%cross_tenant%'
-     OR (target_user_id IS NOT NULL AND target_user_id != user_id)
-   ORDER BY created_at DESC
+   WHERE "action" LIKE '%access%'
+      OR "action" LIKE '%view%'
+      OR "outcome" = 'blocked'
+   ORDER BY "createdAt" DESC
    LIMIT 100;
    ```
 
@@ -270,26 +318,39 @@ gh workflow run deploy-azure.yml --ref main
 
 4. **Patch the vulnerability** — rollback or hotfix the specific router procedure.
 
-5. **Notify affected users** per GDPR/CCPA requirements within 72 hours if PII was exposed.
+5. **Notify affected users** per GDPR/CCPA requirements if PII was exposed:
+   - **Supervisory authority (GDPR Art. 33):** notify within **72 hours** of becoming aware, even if the investigation is incomplete. Late notification must include the reason for delay.
+   - **Affected data subjects (GDPR Art. 34):** notify **without undue delay** when the breach is likely to result in high risk. No fixed 72-hour deadline, but prompt action is required.
 
 6. **Document in a GitHub Issue** with `security` label. Include: affected users, data types, exposure window, remediation.
 
 ### Diagnostic query for tenant boundary violations
 
 ```sql
--- Find any RFQ visible to users who aren't the owner or assigned supplier
-SELECT r.id, r."architectId", r."supplierId", 
-       r."createdAt"::date as created_date
+-- Find RFQs and their bid-invitation records to identify unexpected supplier visibility.
+-- rfqs.userId is the owner; rfq_supplier_invitations links rfqs to invited suppliers.
+-- Replace with queries over your access/audit tables once those are in place.
+SELECT r.id          AS rfq_id,
+       r."userId"    AS owner_user_id,
+       r."status",
+       r."createdAt"::date AS created_date,
+       al."actorUserId",
+       al."action",
+       al."outcome",
+       al."createdAt"  AS audit_created_at
 FROM rfqs r
-WHERE r."architectId" != r."supplierId"  -- basic sanity
-  AND r."deletedAt" IS NULL
-ORDER BY r."createdAt" DESC
+JOIN audit_logs al
+  ON al."resourceType" = 'rfq'
+ AND al."resourceId"   = r.id::text
+WHERE r."deletedAt" IS NULL
+  AND al."outcome" != 'success'   -- flag blocked or failed access attempts
+ORDER BY al."createdAt" DESC
 LIMIT 50;
 ```
 
 ---
 
-## RB-06: Auth Lockout — All Users Signed Out {#rb-06-auth-lockout}
+## RB-06: Auth Lockout — All Users Signed Out
 
 **Triggers:** JWT_SECRET rotation, OAuth callback misconfiguration, cookie domain change.
 
@@ -339,7 +400,7 @@ az monitor log-analytics query \
 
 ---
 
-## RB-07: High Error Rate Alert (5xx > 2%) {#rb-07-high-error-rate}
+## RB-07: High Error Rate Alert (5xx > 2%)
 
 ### Initial triage (< 5 minutes)
 
@@ -401,9 +462,13 @@ az monitor metrics list \
 
 | Role | Contact | Channel |
 |------|---------|---------|
-| Founder / Primary Responder | [your name] | Direct |
-| Azure Support | [Azure support case URL] | Portal: support.azure.com |
+| Founder / Primary Responder | See team contact list in the GreenChainz internal wiki | Direct / on-call rotation |
+| Azure Support | Open a case at support.azure.com (Sev A for production outages) | Portal: support.azure.com |
 | Database (PostgreSQL Flexible Server) | Azure Support P1 | +1-800-642-7676 |
+
+> **Maintain this table.** If the Founder or on-call contact changes, update
+> this file and the internal wiki in the same PR. Stale contacts make Sev-1
+> escalation non-actionable.
 
 ---
 
