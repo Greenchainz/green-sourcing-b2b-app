@@ -491,7 +491,6 @@ async function startServer() {
     next();
   });
 
-  app.use(createRequestIdMiddleware);
   app.use(express.json({
     limit: "5mb",
     verify: (req: any, _res, buf) => { req.rawBody = buf; },
