@@ -21,7 +21,6 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_call_history_conversation" ON "call
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_call_history_caller" ON "call_history" USING btree ("callerId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_call_history_receiver" ON "call_history" USING btree ("receiverId");
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "idx_ccps_scores_material_persona" ON "ccps_scores" USING btree ("materialId","personaKey");
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_ccps_scores_material" ON "ccps_scores" USING btree ("materialId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_company_of_week_supplier" ON "company_of_week_slots" USING btree ("supplierId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_company_of_week_date" ON "company_of_week_slots" USING btree ("weekStartDate");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_conversations_buyer" ON "conversations" USING btree ("buyerId");
@@ -41,17 +40,14 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_material_specs_submitted_by" ON "ma
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_material_specs_status" ON "material_specs" USING btree ("status");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_material_swaps_material" ON "material_swaps" USING btree ("materialId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_material_swaps_swap_material" ON "material_swaps" USING btree ("swapMaterialId");
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_message_reactions_message" ON "message_reactions" USING btree ("messageId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_message_reactions_user" ON "message_reactions" USING btree ("userId");
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "idx_message_reactions_unique" ON "message_reactions" USING btree ("messageId","userId","reactionType");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_messages_conversation" ON "messages" USING btree ("conversationId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_messages_sender" ON "messages" USING btree ("senderId");
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "idx_monthly_call_usage_user_month" ON "monthly_call_usage" USING btree ("userId","month");
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_notifications_user" ON "notifications" USING btree ("userId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_notifications_user_unread" ON "notifications" USING btree ("userId","isRead");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_referrals_referrer" ON "referrals" USING btree ("referrer_id");
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "idx_rfq_analytics_rfq" ON "rfq_analytics" USING btree ("rfqId");
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_rfq_bids_rfq" ON "rfq_bids" USING btree ("rfqId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_rfq_bids_supplier" ON "rfq_bids" USING btree ("supplierId");
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "idx_rfq_bids_rfq_supplier" ON "rfq_bids" USING btree ("rfqId","supplierId");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_rfq_bids_status" ON "rfq_bids" USING btree ("status");

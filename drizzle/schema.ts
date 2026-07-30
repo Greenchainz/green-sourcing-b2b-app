@@ -429,7 +429,6 @@ export const ccpsScores = pgTable("ccps_scores", {
   calculatedAt: timestamp("calculatedAt").defaultNow().notNull(),
 }, (t) => ({
   materialPersonaIdx: uniqueIndex("idx_ccps_scores_material_persona").on(t.materialId, t.personaKey),
-  materialIdx: index("idx_ccps_scores_material").on(t.materialId),
 }));
 
 export type CcpsScore = typeof ccpsScores.$inferSelect;
@@ -973,7 +972,6 @@ export const rfqBids = pgTable("rfq_bids", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
-  rfqIdx: index("idx_rfq_bids_rfq").on(t.rfqId),
   supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
   rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
   statusIdx: index("idx_rfq_bids_status").on(t.status),
@@ -1032,7 +1030,6 @@ export const notifications = pgTable("notifications", {
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
-  userIdx: index("idx_notifications_user").on(t.userId),
   userUnreadIdx: index("idx_notifications_user_unread").on(t.userId, t.isRead),
 }));
 
@@ -1206,7 +1203,6 @@ export const messageReactions = pgTable("message_reactions", {
   reactionType: varchar("reactionType", { length: 20 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
-  messageIdx: index("idx_message_reactions_message").on(t.messageId),
   userIdx: index("idx_message_reactions_user").on(t.userId),
   uniqueReaction: uniqueIndex("idx_message_reactions_unique").on(t.messageId, t.userId, t.reactionType),
 }));

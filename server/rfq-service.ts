@@ -251,8 +251,22 @@ export async function submitBid(
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
+  // Reject submissions against terminal RFQs (awarded/closed) to prevent
+  // overwriting an accepted bid or corrupting an awarded RFQ's state.
+  const [rfqState] = await db
+    .select({ status: rfqs.status })
+    .from(rfqs)
+    .where(eq(rfqs.id, rfqId))
+    .limit(1)
+    .execute();
+
+  if (!rfqState) throw new Error("RFQ not found");
+  if (rfqState.status === "awarded" || rfqState.status === "closed") {
+    throw new Error(`Cannot submit a bid on an ${rfqState.status} RFQ`);
+  }
+
   const [existingBid] = await db
-    .select({ id: rfqBids.id })
+    .select({ id: rfqBids.id, status: rfqBids.status })
     .from(rfqBids)
     .where(and(eq(rfqBids.rfqId, rfqId), eq(rfqBids.supplierId, supplierId)))
     .limit(1)
@@ -274,13 +288,16 @@ export async function submitBid(
     .onConflictDoUpdate({
       target: [rfqBids.rfqId, rfqBids.supplierId],
       set: {
-        status: "submitted",
         bidPrice: bidPrice.toString(),
         leadDays,
         notes,
         expiresAt,
         updatedAt: new Date(),
-        deletedAt: null,
+        // Preserve terminal bid statuses (accepted/rejected) — only move a
+        // mutable bid back to submitted. Similarly, leave deletedAt alone for
+        // terminal bids so soft-deleted accepted rows are not accidentally restored.
+        status: sql`CASE WHEN ${rfqBids.status} IN ('accepted', 'rejected') THEN ${rfqBids.status} ELSE 'submitted' END`,
+        deletedAt: sql`CASE WHEN ${rfqBids.status} IN ('accepted', 'rejected') THEN ${rfqBids.deletedAt} ELSE NULL END`,
       },
     })
     .returning({ id: rfqBids.id });

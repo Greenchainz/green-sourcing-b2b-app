@@ -51,7 +51,13 @@ export const logger = pino(
     : undefined
 );
 
-/** Child logger pre-bound with a correlation/request ID. */
-export function requestLogger(correlationId: string) {
-  return logger.child({ correlationId });
+/** Child logger pre-bound with a correlation/request ID.
+ *
+ * Accepts the raw Node.js header value (`string | string[] | undefined`) so
+ * callers can pass `req.headers["x-correlation-id"]` directly without
+ * needing to normalise the type themselves.
+ */
+export function requestLogger(correlationId: string | string[] | undefined) {
+  const id = Array.isArray(correlationId) ? correlationId[0] : (correlationId ?? "");
+  return logger.child({ correlationId: id });
 }

@@ -997,6 +997,7 @@ jobs:
         run: |
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            "DEPLOYMENT_SHA=${{ github.sha }}"
             "FRONTEND_URL=https://greenchainz.com"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
             "DATABASE_URL=secretref:database-url"
