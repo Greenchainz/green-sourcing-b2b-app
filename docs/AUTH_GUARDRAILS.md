@@ -75,7 +75,7 @@ Secrets are stored in Azure Key Vault (`Greenchainz-vault-2026`), not in env var
 | Provider | Client ID env var | Key Vault secret |
 |----------|------------------|-----------------|
 | Microsoft | `AZURE_AD_CLIENT_ID` | `microsoft-client-secret` → `AZURE_AD_CLIENT_SECRET` |
-| Google | `GOOGLE_CLIENT_ID` | `LINKEDIN-SECRET` → `GOOGLE_CLIENT_SECRET` |
+| Google | `GOOGLE_CLIENT_ID` | `GOOGLE-SECRET` → `GOOGLE_CLIENT_SECRET` |
 | LinkedIn | `LINKEDIN_CLIENT_ID` | `LINKEDIN-SECRET` → `LINKEDIN_CLIENT_SECRET` |
 
 ---
