@@ -1,12 +1,4 @@
-CREATE TABLE IF NOT EXISTS "email_sequences" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"contact_email" varchar(320),
-	"step" integer DEFAULT 1 NOT NULL,
-	"status" varchar(50) DEFAULT 'pending' NOT NULL,
-	"sent_at" timestamp,
-	"created_at" timestamp DEFAULT now() NOT NULL
-);
---> statement-breakpoint
+-- "email_sequences" is owned and migrated by the intelligence Azure Functions app.
 ALTER TABLE "rfqs" ALTER COLUMN "deposit_amount" SET DATA TYPE numeric(12, 2);--> statement-breakpoint
 ALTER TABLE "manufacturers" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
 ALTER TABLE "suppliers" ADD COLUMN "deleted_at" timestamp;--> statement-breakpoint
