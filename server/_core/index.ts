@@ -122,6 +122,15 @@ function getRequestHost(req: express.Request): string {
   return /^[a-z0-9.-]+(?::\d+)?$/.test(host) ? host : "";
 }
 
+function getFrontDoorIdHeader(req: express.Request): string {
+  const frontDoorIdHeader = req.headers["x-azure-fdid"];
+  const rawFrontDoorId = Array.isArray(frontDoorIdHeader)
+    ? frontDoorIdHeader[0]
+    : String(frontDoorIdHeader ?? "").split(",")[0].trim();
+  const frontDoorId = rawFrontDoorId.toLowerCase();
+  return /^[a-f0-9-]{36}$/.test(frontDoorId) ? frontDoorId : "";
+}
+
 function isHostAllowedForPublicApi(req: express.Request): boolean {
   const forwardedHost = getForwardedHost(req);
   const host = getRequestHost(req);
@@ -461,9 +470,34 @@ async function startServer() {
   );
 
   // Easy Auth: parse x-ms-client-principal when Azure sidecar is active.
-  // Mounted after the host guard so forged headers from direct traffic are
-  // rejected before parsing. Safe no-op in local dev (header absent → empty
-  // identity attached).
+  // In production, only trust the header when the request carries the
+  // configured Azure Front Door ID marker.
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV !== "production") {
+      next();
+      return;
+    }
+
+    const easyAuthHeader = req.headers["x-ms-client-principal"];
+    if (typeof easyAuthHeader !== "string" || easyAuthHeader.length === 0) {
+      next();
+      return;
+    }
+
+    const expectedFrontDoorId = String(process.env.AZURE_FRONT_DOOR_ID ?? "").toLowerCase().trim();
+    const actualFrontDoorId = getFrontDoorIdHeader(req);
+    if (expectedFrontDoorId && actualFrontDoorId === expectedFrontDoorId) {
+      next();
+      return;
+    }
+
+    console.warn(
+      `[network-guard] Rejected untrusted x-ms-client-principal path=${req.path} host=${String(req.headers.host ?? "")}`
+    );
+    res.status(403).json(createErrorResponse("Forbidden", req.id, "Untrusted Easy Auth provenance."));
+  });
+
+  // Safe no-op in local dev (header absent → empty identity attached).
   app.use(easyAuthMiddleware);
   app.use(express.json({
     limit: "5mb",
