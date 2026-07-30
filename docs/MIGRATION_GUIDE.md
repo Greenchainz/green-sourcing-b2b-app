@@ -64,21 +64,13 @@ CREATE INDEX IF NOT EXISTS "rfq_bids_rfq_id_idx" ON "rfq_bids" ("rfq_id");
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "rfq_bids_rfq_id_idx" ON "rfq_bids" ("rfq_id");
 ```
 
-### Important constraint: CONCURRENTLY cannot run in a transaction
+### Important constraint: CONCURRENTLY cannot run in Drizzle's migration transaction
 
-Drizzle wraps migration files in `BEGIN`/`COMMIT` by default. `CREATE INDEX CONCURRENTLY` **cannot run inside a transaction**. You must manually remove the transaction wrapper from that specific migration file:
+Production runs `pnpm db:migrate`, and Drizzle's PostgreSQL migrator executes pending migrations inside a transaction. `CREATE INDEX CONCURRENTLY` **cannot run inside that transaction**.
 
-```sql
--- ❌ This will fail with: ERROR: CREATE INDEX CONCURRENTLY cannot run inside a transaction block
-BEGIN;
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "rfq_bids_rfq_id_idx" ON "rfq_bids" ("rfq_id");
-COMMIT;
+Because the transaction is opened by the migrator, deleting `BEGIN`/`COMMIT` text from generated SQL files (or splitting files) does not make `CONCURRENTLY` valid in `pnpm db:migrate`.
 
--- ✅ Run outside a transaction
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "rfq_bids_rfq_id_idx" ON "rfq_bids" ("rfq_id");
-```
-
-If the migration file also contains non-CONCURRENTLY operations, split it into two files: one for the CONCURRENTLY index, one for the rest.
+Use a dedicated autocommit `psql` or script step for `CREATE INDEX CONCURRENTLY`, and record successful execution in the deployment runbook before shifting traffic.
 
 ### Which tables require CONCURRENTLY?
 
