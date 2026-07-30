@@ -2089,12 +2089,16 @@ export const emailSequences = pgTable(
   "email_sequences",
   {
     id: serial("id").primaryKey(),
-    contactEmail: varchar("contact_email", { length: 320 }),
+    contactEmail: varchar("contact_email", { length: 320 }).notNull(),
     step: integer("step").notNull().default(1),
     status: varchar("status", { length: 50 }).notNull().default("pending"),
     sentAt: timestamp("sent_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-  }
+  },
+  (t) => ({
+    contactEmailIdx: index("idx_email_seq_contact_email").on(t.contactEmail),
+    statusSentAtIdx: index("idx_email_seq_status_sent_at").on(t.status, t.sentAt),
+  })
 );
 
 export type EmailSequence = typeof emailSequences.$inferSelect;
