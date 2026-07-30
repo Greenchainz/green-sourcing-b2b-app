@@ -53,7 +53,7 @@ export function registerHibpProxyRoute(app: Express): void {
       return;
     }
 
-    const { prefix } = req.params;
+    const prefix = req.params['prefix'] as string;
     if (!PREFIX_RE.test(prefix)) {
       res.status(400).send('Bad Request');
       return;
