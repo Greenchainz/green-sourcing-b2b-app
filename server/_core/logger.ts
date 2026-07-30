@@ -23,7 +23,7 @@ import pino from "pino";
 
 // ── Build-time metadata stamped on every log line ───────────────────────────
 
-const GIT_SHA = process.env.GITHUB_SHA ?? process.env.SENTRY_RELEASE ?? "local";
+const GIT_SHA = process.env.GIT_SHA ?? process.env.GITHUB_SHA ?? process.env.SENTRY_RELEASE ?? "local";
 const ENV_NAME = process.env.NODE_ENV ?? "development";
 const APP_VERSION = process.env.npm_package_version ?? "0.0.0";
 
