@@ -474,77 +474,29 @@ EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "ca_document_messages" ADD CONSTRAINT "ca_document_messages_author_user_id_users_id_fk" FOREIGN KEY ("author_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "ca_document_messages" ADD CONSTRAINT "ca_document_messages_author_user_id_users_id_fk" FOREIGN KEY ("author_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "ca_documents" ADD CONSTRAINT "ca_documents_submittal_id_submittals_id_fk" FOREIGN KEY ("submittal_id") REFERENCES "public"."submittals"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "ca_documents" ADD CONSTRAINT "ca_documents_submittal_id_submittals_id_fk" FOREIGN KEY ("submittal_id") REFERENCES "public"."submittals"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "ca_documents" ADD CONSTRAINT "ca_documents_related_rfq_id_rfqs_id_fk" FOREIGN KEY ("related_rfq_id") REFERENCES "public"."rfqs"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "ca_documents" ADD CONSTRAINT "ca_documents_related_rfq_id_rfqs_id_fk" FOREIGN KEY ("related_rfq_id") REFERENCES "public"."rfqs"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "ca_documents" ADD CONSTRAINT "ca_documents_related_swap_validation_id_swap_validations_id_fk" FOREIGN KEY ("related_swap_validation_id") REFERENCES "public"."swap_validations"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "ca_documents" ADD CONSTRAINT "ca_documents_related_swap_validation_id_swap_validations_id_fk" FOREIGN KEY ("related_swap_validation_id") REFERENCES "public"."swap_validations"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "ca_documents" ADD CONSTRAINT "ca_documents_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "ca_documents" ADD CONSTRAINT "ca_documents_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "concierge_routes" ADD CONSTRAINT "concierge_routes_rfq_id_rfqs_id_fk" FOREIGN KEY ("rfq_id") REFERENCES "public"."rfqs"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "concierge_routes" ADD CONSTRAINT "concierge_routes_rfq_id_rfqs_id_fk" FOREIGN KEY ("rfq_id") REFERENCES "public"."rfqs"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "submittal_items" ADD CONSTRAINT "submittal_items_submittal_id_submittals_id_fk" FOREIGN KEY ("submittal_id") REFERENCES "public"."submittals"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "submittal_items" ADD CONSTRAINT "submittal_items_submittal_id_submittals_id_fk" FOREIGN KEY ("submittal_id") REFERENCES "public"."submittals"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "submittal_items" ADD CONSTRAINT "submittal_items_material_id_materials_id_fk" FOREIGN KEY ("material_id") REFERENCES "public"."materials"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "submittal_items" ADD CONSTRAINT "submittal_items_material_id_materials_id_fk" FOREIGN KEY ("material_id") REFERENCES "public"."materials"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "submittal_items" ADD CONSTRAINT "submittal_items_supplier_id_suppliers_id_fk" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "submittal_items" ADD CONSTRAINT "submittal_items_supplier_id_suppliers_id_fk" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "submittals" ADD CONSTRAINT "submittals_related_rfq_id_rfqs_id_fk" FOREIGN KEY ("related_rfq_id") REFERENCES "public"."rfqs"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "submittals" ADD CONSTRAINT "submittals_related_rfq_id_rfqs_id_fk" FOREIGN KEY ("related_rfq_id") REFERENCES "public"."rfqs"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "submittals" ADD CONSTRAINT "submittals_related_swap_validation_id_swap_validations_id_fk" FOREIGN KEY ("related_swap_validation_id") REFERENCES "public"."swap_validations"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "submittals" ADD CONSTRAINT "submittals_related_swap_validation_id_swap_validations_id_fk" FOREIGN KEY ("related_swap_validation_id") REFERENCES "public"."swap_validations"("id") ON DELETE set null ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "submittals" ADD CONSTRAINT "submittals_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+DO $$ BEGIN ALTER TABLE "submittals" ADD CONSTRAINT "submittals_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "arcade_scores_board_idx" ON "arcade_scores" USING btree ("gameId","eventKey","score" DESC NULLS LAST,"createdAt");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "audit_logs_actor_idx" ON "audit_logs" USING btree ("actorUserId");--> statement-breakpoint
