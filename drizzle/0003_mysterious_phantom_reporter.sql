@@ -469,7 +469,7 @@ ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "hits_digest_last_sent_at" time
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatarUrl" text;--> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "acs_user_id" text;--> statement-breakpoint
 DO $$ BEGIN
-DO $$ BEGIN ALTER TABLE "ca_document_messages" ADD CONSTRAINT "ca_document_messages_document_id_ca_documents_id_fk" FOREIGN KEY ("document_id") REFERENCES "public"."ca_documents"("id") ON DELETE cascade ON UPDATE no action; EXCEPTION WHEN duplicate_object THEN null; END $$;
+ ALTER TABLE "ca_document_messages" ADD CONSTRAINT "ca_document_messages_document_id_ca_documents_id_fk" FOREIGN KEY ("document_id") REFERENCES "public"."ca_documents"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
