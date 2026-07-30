@@ -8,7 +8,6 @@ Three variables most commonly missing in local dev:
 |---|---|---|
 | `FRED_API_KEY` | [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html) — free, instant | FRED PPI scraper (PCU32411324 etc.) |
 | `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys | Buyer drip emails, outreach notifications |
-| `OAUTH_SERVER_URL` | Must be set in `.env` (not `.env.local`) | Dev auth shim — Easy Auth sidecar |
 
 ## Setup Steps
 
@@ -40,15 +39,6 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
 
 > **Note:** Use `onboarding@resend.dev` as the from address until you verify `greenchainz.com` as a sending domain in the Resend dashboard. After verification, switch to `noreply@greenchainz.com`.
-
-### 4. OAUTH_SERVER_URL placement rule
-
-⚠️ This must be in `.env`, **not** `.env.local`. The dev auth shim (`registerDevAuthShim()`) reads from `.env` only — `.env.local` values are not visible to the Express shim at startup.
-
-```env
-# .env  ← correct
-OAUTH_SERVER_URL=https://login.microsoftonline.com/1d04bf50-8175-40af-a9d5-f8e441460b06/v2.0
-```
 
 ## Production (Azure)
 

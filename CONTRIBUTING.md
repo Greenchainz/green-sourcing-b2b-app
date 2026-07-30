@@ -77,15 +77,15 @@ pnpm run dev
 docker compose up --build
 ```
 
-> **Never put secrets in `.env.local`** — `OAUTH_SERVER_URL` and all Azure credentials must be in `.env` (not `.env.local`). Easy Auth reads from the environment at container startup.
+> **Never put secrets in `.env.local`** — all Azure credentials must be in `.env` (not `.env.local`).
 
 ---
 
 ## Auth Rules (Critical)
 
-- **Prod**: Azure Easy Auth sidecar handles all `/.auth/*` routes automatically. Do not reimplement it.
-- **Local**: Call `registerDevAuthShim()` in `server/_core/index.ts` for dev-only simulation.
-- **Never mix** `MANAGED_IDENTITY_CLIENT_ID` with `CLIENT_ID` — they are different Azure app registrations.
+- **Prod**: Custom Express OAuth routes in `server/_core/oauth-providers.ts` handle all auth flows. Do not add Easy Auth or NextAuth.
+- **Local**: Set `AZURE_AD_CLIENT_SECRET` in `.env` — the same OAuth flow runs in dev against the real Entra app registration.
+- **Never mix** `MANAGED_IDENTITY_CLIENT_ID` with `AZURE_AD_CLIENT_ID` — they are different Azure identities.
 - **Never derive user identity from the request body or query string.** Always read from the Easy Auth principal headers (`X-MS-CLIENT-PRINCIPAL-*`) server-side.
 
 ---
