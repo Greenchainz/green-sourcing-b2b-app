@@ -1,5 +1,7 @@
 import "dotenv/config";
 import "./log-scrubber"; // must be second — scrubs all subsequent console.* calls
+import { log } from "./logger"; // structured Pino logger — use instead of console.* for new code
+import { correlationIdMiddleware, httpAccessLogMiddleware } from "./http-logger";
 import { initTelemetry } from "../instrument";
 import { getSecret } from "../../lib/secrets";
 import { config } from "dotenv";
@@ -289,6 +291,12 @@ async function startServer() {
   app.set("trust proxy", true);
   const server = createServer(app);
 
+  // ── Correlation ID + structured HTTP access log ───────────────────────────
+  // Must run before any route handlers so req.id is set for all downstream use.
+  app.use(createRequestIdMiddleware);
+  app.use(correlationIdMiddleware);
+  app.use(httpAccessLogMiddleware);
+
   app.use((req, res, next) => {
     // Never redirect API, health, or crawl-critical files. Behind Azure Front
     // Door the origin Host header is rewritten to the container FQDN, which can
@@ -461,7 +469,6 @@ async function startServer() {
     next();
   });
 
-  app.use(createRequestIdMiddleware);
   app.use(express.json({
     limit: "5mb",
     verify: (req: any, _res, buf) => { req.rawBody = buf; },

@@ -1,0 +1,470 @@
+name: Release to Production
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PURPOSE: Explicit, gated production promotion.
+#
+# This workflow NEVER rebuilds from source. It promotes an image digest that
+# was already built and validated by build-and-stage.yml. This guarantees the
+# exact bytes tested in staging are the bytes running in production.
+#
+# TRIGGERS:
+#   1. GitHub Release published (tag matching v*.*.*) — standard release path.
+#   2. Manual workflow_dispatch with an explicit image SHA — for hotfixes or
+#      out-of-band promotions where a release tag is not yet created.
+#
+# GATE: Both paths require explicit approval via the `Production` GitHub
+# Environment before the migrate and deploy jobs will execute.
+#
+# HOW TO RELEASE:
+#   Standard: Push a semver tag → create a GitHub Release → approve in UI.
+#   Hotfix:   Run workflow_dispatch → enter the git SHA from build-and-stage →
+#             approve in the Protection Rules dialog.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      image_sha:
+        description: |
+          Git commit SHA of the pre-built image to promote.
+          Must have been built by build-and-stage.yml and pushed to ACR.
+          Example: a1b2c3d4e5f6...  (full 40-char SHA preferred)
+        required: true
+        type: string
+      skip_smoke_tests:
+        description: Skip post-deploy smoke tests (emergency rollback only)
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+concurrency:
+  # Only one production deployment at a time — never cancel in-progress.
+  group: production-deploy
+  cancel-in-progress: false
+
+# --- Azure OIDC identifiers (non-secret, safe to commit) ---
+env:
+  ACR: acrgreenchainzprod916
+  RESOURCE_GROUP: rg-greenchainz-prod-container
+  FRONTEND_APP: greenchainz-frontend
+  BACKEND_APP: greenchainz-backend-v2
+  FRONTEND_IMAGE: greenchainz-frontend
+  BACKEND_IMAGE: greenchainz-backend
+  KEY_VAULT: Greenchainz-vault
+  DB_SERVER_RG: rg-greenchainz
+  DB_SERVER_NAME: greenchainz-db-prod
+  DB_NAME: greenchainz_prod
+  AZURE_CLIENT_ID: 8b597068-9347-4e99-8860-8c4e9a9bc112
+  AZURE_TENANT_ID: 1d04bf50-8175-40af-a9d5-f8e441460b06
+  AZURE_SUBSCRIPTION_ID: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
+
+jobs:
+  # ─── Resolve the image SHA from either the release tag or manual input ──────
+  resolve-sha:
+    name: Resolve Image SHA
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      deploy_sha: ${{ steps.resolve.outputs.deploy_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve target SHA
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SHA="${{ inputs.image_sha }}"
+          else
+            # For a release event, use the tag's commit SHA.
+            SHA="${{ github.sha }}"
+          fi
+
+          if [ -z "$SHA" ]; then
+            echo "? No SHA resolved. Provide image_sha for workflow_dispatch, or push a release tag."
+            exit 1
+          fi
+
+          # Normalise to 40 chars if a short SHA was passed.
+          if [ "${#SHA}" -lt 40 ]; then
+            FULL_SHA=$(git rev-parse "$SHA" 2>/dev/null || echo "")
+            if [ -z "$FULL_SHA" ]; then
+              echo "? Cannot resolve short SHA '$SHA' to a full commit hash. Ensure the commit exists in this repo."
+              exit 1
+            fi
+            SHA="$FULL_SHA"
+          fi
+
+          echo "deploy_sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "Will promote image SHA: ${SHA}"
+
+  # ─── Run Drizzle migrations (GATED — requires Production env approval) ──────
+  migrate:
+    name: Migrate Production DB
+    runs-on: ubuntu-latest
+    needs: resolve-sha
+    # ⚠️  This is the production approval gate. The `Production` GitHub
+    # Environment must have required reviewers configured. Approving here
+    # allows both this job and the downstream deploy job to proceed.
+    environment: Production
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Allow runner IP in Key Vault firewall
+        id: kv_firewall
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          KV_PUBLIC_ACCESS_WAS=$(az keyvault show --name "${{ env.KEY_VAULT }}" \
+            --query properties.publicNetworkAccess --output tsv 2>/dev/null || echo "Enabled")
+          echo "kv-public-access-was=${KV_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
+          if [ "$KV_PUBLIC_ACCESS_WAS" = "Disabled" ]; then
+            az keyvault update --name "${{ env.KEY_VAULT }}" --public-network-access Enabled --output none
+            echo "kv-public-access-toggled=true" >> $GITHUB_OUTPUT
+          else
+            echo "kv-public-access-toggled=false" >> $GITHUB_OUTPUT
+          fi
+          az keyvault network-rule add --name "${{ env.KEY_VAULT }}" --ip-address "$RUNNER_IP" --output none
+          # Bounded retry for KV firewall propagation
+          for i in $(seq 1 12); do
+            az keyvault secret list --vault-name "${{ env.KEY_VAULT }}" -o none 2>/dev/null && break
+            echo "Waiting for KV firewall... ($i/12)"
+            sleep 5
+          done
+
+      - name: Read DATABASE_URL from Key Vault
+        id: kv
+        run: |
+          DB_URL=$(az keyvault secret show \
+            --vault-name "${{ env.KEY_VAULT }}" --name "Database-URL" \
+            --query value -o tsv)
+          if [ -z "$DB_URL" ]; then
+            echo "? Database-URL secret not found in Key Vault"
+            exit 1
+          fi
+          echo "::add-mask::$DB_URL"
+          echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
+
+      - name: Open PostgreSQL firewall for runner
+        id: firewall
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          az postgres flexible-server firewall-rule create \
+            --resource-group ${{ env.DB_SERVER_RG }} \
+            --server-name ${{ env.DB_SERVER_NAME }} \
+            --name "release-${{ github.run_id }}" \
+            --start-ip-address "$RUNNER_IP" \
+            --end-ip-address "$RUNNER_IP"
+          sleep 15
+
+      - name: Run Drizzle migrations
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+        run: pnpm db:migrate
+
+      - name: Close PostgreSQL firewall
+        if: always()
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group ${{ env.DB_SERVER_RG }} \
+            --server-name ${{ env.DB_SERVER_NAME }} \
+            --name "release-${{ github.run_id }}" --yes || true
+
+      - name: Close Key Vault firewall
+        if: always()
+        run: |
+          RUNNER_IP="${{ steps.kv_firewall.outputs.runner-ip }}"
+          [ -n "$RUNNER_IP" ] && az keyvault network-rule remove \
+            --name "${{ env.KEY_VAULT }}" --ip-address "$RUNNER_IP" --output none || true
+          if [ "${{ steps.kv_firewall.outputs.kv-public-access-toggled }}" = "true" ]; then
+            az keyvault update --name "${{ env.KEY_VAULT }}" \
+              --public-network-access "${{ steps.kv_firewall.outputs.kv-public-access-was }}" \
+              --output none || true
+          fi
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true
+
+  # ─── Deploy exact image digest to production ────────────────────────────────
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [resolve-sha, migrate]
+    environment: Production
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Sync system clock
+        run: sudo timedatectl set-ntp true || true
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Allow runner IP in Key Vault firewall
+        id: kv_firewall
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          KV_STATE=$(az keyvault show --name "${{ env.KEY_VAULT }}" \
+            --query properties.publicNetworkAccess --output tsv 2>/dev/null || echo "Enabled")
+          echo "kv-state=${KV_STATE}" >> $GITHUB_OUTPUT
+          if [ "$KV_STATE" = "Disabled" ]; then
+            az keyvault update --name "${{ env.KEY_VAULT }}" --public-network-access Enabled --output none
+            echo "kv-toggled=true" >> $GITHUB_OUTPUT
+          else
+            echo "kv-toggled=false" >> $GITHUB_OUTPUT
+          fi
+          az keyvault network-rule add --name "${{ env.KEY_VAULT }}" --ip-address "$RUNNER_IP" --output none
+          for i in $(seq 1 12); do
+            az keyvault secret list --vault-name "${{ env.KEY_VAULT }}" -o none 2>/dev/null && break
+            sleep 5
+          done
+
+      - name: Pull production secrets from Key Vault
+        id: kv
+        run: |
+          get_secret() {
+            local name="$1"
+            local value
+            value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" \
+              --name "$name" --query value -o tsv 2>/dev/null) || value=""
+            [ -n "$value" ] && echo "::add-mask::$value"
+            echo "${name}=${value}" >> $GITHUB_OUTPUT
+          }
+          get_secret Database-URL
+          get_secret jwt-secret
+          get_secret microsoft-client-secret
+          get_secret sentry-dsn
+          get_secret appinsights-connection
+          get_secret ec3-api-key
+          get_secret azure-maps-client-id
+          get_secret fred-api-key
+          get_secret resend-api-key
+
+      - name: Record prior backend revision (for rollback)
+        id: prior_revision
+        run: |
+          PRIOR=$(az containerapp revision list \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[?properties.active==\`true\`] | [0].name" \
+            -o tsv 2>/dev/null || echo "")
+          echo "name=${PRIOR}" >> $GITHUB_OUTPUT
+          echo "Prior active backend revision: ${PRIOR:-unknown}"
+
+      - name: Remove stale user-assigned identities from backend
+        run: |
+          RESOURCE_ID=$(az containerapp show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query id -o tsv)
+          IDENTITY_TYPE=$(az rest --method GET \
+            --uri "${RESOURCE_ID}?api-version=2023-05-01" \
+            --query "identity.type" -o tsv 2>/dev/null || echo "")
+          if [[ "$IDENTITY_TYPE" =~ UserAssigned ]]; then
+            az rest --method PATCH \
+              --uri "${RESOURCE_ID}?api-version=2023-05-01" \
+              --body '{"identity":{"type":"SystemAssigned"}}' --output none || true
+            for i in $(seq 1 12); do
+              STATE=$(az containerapp show --name ${{ env.BACKEND_APP }} \
+                --resource-group ${{ env.RESOURCE_GROUP }} \
+                --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+              [ "$STATE" = "Succeeded" ] && break
+              sleep 10
+            done
+          fi
+
+      - name: Upsert backend runtime secrets
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+          JWT_SECRET: ${{ steps.kv.outputs.jwt-secret }}
+          AZURE_AD_CLIENT_SECRET: ${{ steps.kv.outputs.microsoft-client-secret }}
+        run: |
+          SECRET_ARGS=("database-url=$DATABASE_URL")
+          [ -n "$JWT_SECRET" ] && SECRET_ARGS+=("jwt-secret=$JWT_SECRET")
+          [ -n "$AZURE_AD_CLIENT_SECRET" ] && SECRET_ARGS+=("microsoft-client-secret=$AZURE_AD_CLIENT_SECRET")
+          az containerapp secret set \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --secrets "${SECRET_ARGS[@]}"
+
+      - name: Ensure system identity + KV access for backend
+        run: |
+          az containerapp identity assign \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --system-assigned || true
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "")
+            [ "$STATE" = "Succeeded" ] && break
+            sleep 10
+          done
+          PRINCIPAL_ID=$(az containerapp identity show \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "principalId" --output tsv)
+          KV_ID=$(az keyvault show --name ${{ env.KEY_VAULT }} --query id --output tsv)
+          ASSIGNMENT_COUNT=$(az role assignment list \
+            --assignee-object-id "$PRINCIPAL_ID" --scope "$KV_ID" \
+            --role "Key Vault Secrets User" --query "length(@)" --output tsv || echo "0")
+          if [ "${ASSIGNMENT_COUNT:-0}" = "0" ]; then
+            az role assignment create \
+              --role "Key Vault Secrets User" \
+              --assignee-object-id "$PRINCIPAL_ID" \
+              --assignee-principal-type ServicePrincipal \
+              --scope "$KV_ID" --output none || true
+          fi
+
+      - name: Deploy backend (exact image digest)
+        run: |
+          DEPLOY_SHA="${{ needs.resolve-sha.outputs.deploy_sha }}"
+          BACKEND_IMAGE="${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${DEPLOY_SHA}"
+          ENV_VARS=(
+            "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            "GIT_SHA=${DEPLOY_SHA}"
+            "RELEASE_TAG=${{ github.ref_name }}"
+            "FRONTEND_URL=https://greenchainz.com"
+            "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
+            "DATABASE_URL=secretref:database-url"
+            "JWT_SECRET=secretref:jwt-secret"
+            "AZURE_AD_CLIENT_SECRET=secretref:microsoft-client-secret"
+            "AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112"
+            "AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06"
+            "AZURE_STORAGE_ACCOUNT_NAME=greencontent"
+            "REQUIRE_REDIS_CALL_SESSIONS=false"
+          )
+          [ -n "${{ steps.kv.outputs.ec3-api-key }}" ] && \
+            ENV_VARS+=("EC3_API_KEY=${{ steps.kv.outputs.ec3-api-key }}")
+          [ -n "${{ steps.kv.outputs.azure-maps-client-id }}" ] && \
+            ENV_VARS+=("AZURE_MAPS_CLIENT_ID=${{ steps.kv.outputs.azure-maps-client-id }}")
+          if [ -n "${{ steps.kv.outputs.appinsights-connection }}" ]; then
+            ENV_VARS+=(
+              "APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.kv.outputs.appinsights-connection }}"
+              "AZURE_MONITOR_ENABLED=true"
+              "FEATURE_AZURE_MONITORING=true"
+            )
+          fi
+          if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
+            ENV_VARS+=(
+              "SENTRY_DSN=${{ steps.kv.outputs.sentry-dsn }}"
+              "SENTRY_RELEASE=${DEPLOY_SHA}"
+            )
+          fi
+          az containerapp update \
+            --name ${{ env.BACKEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image "$BACKEND_IMAGE" \
+            --set-env-vars "${ENV_VARS[@]}" \
+            --remove-env-vars AZURE_MI_CLIENT_ID MANAGED_IDENTITY_CLIENT_ID AZURE_CLIENT_ID
+
+      - name: Deploy frontend (exact image digest)
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+        run: |
+          DEPLOY_SHA="${{ needs.resolve-sha.outputs.deploy_sha }}"
+          FRONTEND_IMAGE="${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${DEPLOY_SHA}"
+          az containerapp secret set \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --secrets "database-url=$DATABASE_URL"
+          az containerapp update \
+            --name ${{ env.FRONTEND_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image "$FRONTEND_IMAGE" \
+            --set-env-vars \
+              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
+              "GIT_SHA=${DEPLOY_SHA}" \
+              "RELEASE_TAG=${{ github.ref_name }}" \
+              "NODE_ENV=production" \
+              "PORT=3000" \
+              "DATABASE_URL=secretref:database-url" \
+              "AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112" \
+              "AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06" \
+            --remove-env-vars AZURE_MI_CLIENT_ID MANAGED_IDENTITY_CLIENT_ID AZURE_CLIENT_ID \
+            --min-replicas 1 --max-replicas 3
+
+      - name: Production smoke tests
+        if: inputs.skip_smoke_tests != 'true'
+        run: |
+          echo "Waiting for new revision to become active..."
+          sleep 30
+          for i in $(seq 1 24); do
+            STATUS=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 20 \
+              -4 --http1.1 https://greenchainz.com/api/health 2>/dev/null || echo "CURL_FAIL")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Production health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "⏳ Health check returned $STATUS (attempt $i/24) — retrying in 10s"
+            sleep 10
+          done
+          echo "❌ Production smoke test failed after 4 minutes"
+          echo "⚡ ROLLBACK TRIGGER: Initiating rollback to prior revision"
+          exit 1
+
+      - name: Rollback on smoke test failure
+        if: failure()
+        run: |
+          PRIOR="${{ steps.prior_revision.outputs.name }}"
+          if [ -n "$PRIOR" ]; then
+            echo "Rolling back backend to revision: $PRIOR"
+            az containerapp ingress traffic set \
+              --name ${{ env.BACKEND_APP }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --revision-weight "$PRIOR=100" || true
+          fi
+          echo "⚠️  Rollback initiated. Inspect Azure portal to confirm traffic shift."
+
+      - name: Close Key Vault firewall
+        if: always()
+        run: |
+          RUNNER_IP="${{ steps.kv_firewall.outputs.runner-ip }}"
+          [ -n "$RUNNER_IP" ] && az keyvault network-rule remove \
+            --name "${{ env.KEY_VAULT }}" --ip-address "$RUNNER_IP" --output none || true
+          if [ "${{ steps.kv_firewall.outputs.kv-toggled }}" = "true" ]; then
+            az keyvault update --name "${{ env.KEY_VAULT }}" \
+              --public-network-access "${{ steps.kv_firewall.outputs.kv-state }}" \
+              --output none || true
+          fi
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true

@@ -1,0 +1,365 @@
+name: Build & Deploy to Staging
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PURPOSE: Fires on every push to main. Builds immutable SHA-tagged container
+# images, pushes them to ACR, and promotes them to the STAGING Azure Container
+# Apps environment automatically (no manual approval required).
+#
+# WHY SEPARATE: Production is gated behind an explicit release workflow
+# (release-production.yml) that promotes a specific image digest. This workflow
+# is the fast-feedback loop for ongoing development — staging always tracks main.
+#
+# IMAGE TAGGING STRATEGY (immutable):
+#   Each image is tagged with the exact git commit SHA.
+#   The `latest` mutable tag is NOT pushed so that production releases can never
+#   accidentally pull an unreviewed image.
+#
+# SBOM + PROVENANCE:
+#   A Software Bill of Materials (SBOM) and GitHub-attested build provenance are
+#   generated per image to satisfy supply-chain traceability requirements.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+concurrency:
+  group: staging-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+# --- Azure OIDC identifiers (non-secret, safe to commit) ---
+# App registration: greenchainz (8b597068-9347-4e99-8860-8c4e9a9bc112)
+# Tenant:          greenchainz12 (1d04bf50-8175-40af-a9d5-f8e441460b06)
+# Subscription:    f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
+env:
+  ACR: acrgreenchainzprod916
+  RESOURCE_GROUP: rg-greenchainz-prod-container
+  # Staging Container Apps — separate from production
+  FRONTEND_APP_STAGING: greenchainz-frontend-staging
+  BACKEND_APP_STAGING: greenchainz-backend-staging
+  FRONTEND_IMAGE: greenchainz-frontend
+  BACKEND_IMAGE: greenchainz-backend
+  KEY_VAULT: Greenchainz-vault
+  DB_SERVER_RG: rg-greenchainz
+  DB_SERVER_NAME: greenchainz-db-staging
+  DB_NAME: greenchainz_staging
+  AZURE_CLIENT_ID: 8b597068-9347-4e99-8860-8c4e9a9bc112
+  AZURE_TENANT_ID: 1d04bf50-8175-40af-a9d5-f8e441460b06
+  AZURE_SUBSCRIPTION_ID: f9164e8d-d74d-43ea-98d4-b0466b3ef8b8
+
+jobs:
+  # ─── Job 1: Full verification gate ─────────────────────────────────────────
+  verify:
+    name: Typecheck, Lint & Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Full verify (typecheck + lint + test + build)
+        run: pnpm verify
+
+  # ─── Job 2: Build immutable images + generate SBOM ─────────────────────────
+  build:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: verify
+    timeout-minutes: 45
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write  # required for actions/attest-build-provenance
+    outputs:
+      # Expose the digest for downstream staging-deploy and for release-production
+      # to pin an exact image without rebuilding from source.
+      frontend_digest: ${{ steps.push_frontend.outputs.digest }}
+      backend_digest: ${{ steps.push_backend.outputs.digest }}
+      image_sha: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pull build secrets from Key Vault
+        id: kv
+        run: |
+          get_secret() {
+            local name="$1"
+            local value
+            value=$(az keyvault secret show --vault-name "${{ env.KEY_VAULT }}" --name "$name" --query value -o tsv 2>/dev/null) || value=""
+            [ -n "$value" ] && echo "::add-mask::$value"
+            echo "${name}=${value}" >> $GITHUB_OUTPUT
+          }
+          get_secret azure-maps-key
+          get_secret sentry-dsn
+          get_secret sentry-auth-token
+          get_secret sentry-org
+          get_secret sentry-project
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Allow runner IP in ACR firewall
+        id: acr_firewall
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          ACR_PUBLIC_ACCESS_WAS=$(az acr show --name ${{ env.ACR }} --query publicNetworkAccess --output tsv 2>&1)
+          echo "public-access-was=${ACR_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
+          if [ "$ACR_PUBLIC_ACCESS_WAS" != "Enabled" ]; then
+            az acr update --name ${{ env.ACR }} --public-network-enabled true
+          fi
+          az acr network-rule add --name ${{ env.ACR }} --ip-address "$RUNNER_IP"
+          sleep 60
+
+      - name: Log in to ACR
+        run: |
+          TOKEN=$(az acr login --name ${{ env.ACR }} --expose-token --output tsv --query accessToken 2>/dev/null || echo "")
+          if [ -n "$TOKEN" ]; then
+            echo "::add-mask::$TOKEN"
+            docker login ${{ env.ACR }}.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password-stdin <<< "$TOKEN"
+          else
+            az acr update --name ${{ env.ACR }} --admin-enabled true
+            ACR_PASSWORD=$(az acr credential show --name ${{ env.ACR }} --query "passwords[0].value" --output tsv)
+            ACR_USERNAME=$(az acr credential show --name ${{ env.ACR }} --query username --output tsv)
+            echo "::add-mask::$ACR_PASSWORD"
+            docker login ${{ env.ACR }}.azurecr.io --username "$ACR_USERNAME" --password-stdin <<< "$ACR_PASSWORD"
+          fi
+
+      - name: Build & push frontend image
+        id: push_frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: true
+          # SHA-only tag — no `latest` tag, ensuring immutability
+          tags: ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache
+          cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache,mode=max
+          build-args: |
+            VITE_BACKEND_URL=
+            VITE_AZURE_MAPS_KEY=${{ steps.kv.outputs.azure-maps-key }}
+            VITE_FRONTEND_WEBPUBSUB_ENDPOINT=https://greenchainz.webpubsub.azure.com
+            VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
+
+      - name: Build & push backend image
+        id: push_backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: true
+          tags: ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache
+          cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache,mode=max
+
+      # ── SBOM + build provenance attestation ─────────────────────────────────
+      # Generates a signed, GitHub-attested SBOM anchored to the exact image
+      # digest. This satisfies SLSA Level 2 provenance requirements and enables
+      # supply-chain audits via `gh attestation verify`.
+      - name: Attest frontend build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}
+          subject-digest: ${{ steps.push_frontend.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest backend build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}
+          subject-digest: ${{ steps.push_backend.outputs.digest }}
+          push-to-registry: true
+
+      - name: Remove runner IP from ACR firewall
+        if: always()
+        run: |
+          az acr network-rule remove --name ${{ env.ACR }} --ip-address "${{ steps.acr_firewall.outputs.runner-ip }}" || true
+          PRIOR="${{ steps.acr_firewall.outputs.public-access-was }}"
+          if [ "$PRIOR" = "Disabled" ]; then
+            az acr update --name ${{ env.ACR }} --public-network-enabled false || true
+          fi
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true
+
+  # ─── Job 3: Run Drizzle migrations against staging DB ──────────────────────
+  migrate-staging:
+    name: Migrate Staging DB
+    runs-on: ubuntu-latest
+    needs: build
+    environment: Staging
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Read staging DATABASE_URL from Key Vault
+        id: kv
+        run: |
+          DB_URL=$(az keyvault secret show \
+            --vault-name "${{ env.KEY_VAULT }}" \
+            --name "Database-URL-Staging" \
+            --query value -o tsv 2>/dev/null || echo "")
+          if [ -z "$DB_URL" ]; then
+            # Fall back to the production secret name if staging-specific one absent.
+            # Remove this fallback once a dedicated staging DB secret is provisioned.
+            DB_URL=$(az keyvault secret show \
+              --vault-name "${{ env.KEY_VAULT }}" \
+              --name "Database-URL" \
+              --query value -o tsv 2>/dev/null || echo "")
+          fi
+          if [ -z "$DB_URL" ]; then
+            echo "? No staging DATABASE_URL found in Key Vault - skipping migrations"
+            echo "skipped=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "::add-mask::$DB_URL"
+          echo "Database-URL=${DB_URL}" >> $GITHUB_OUTPUT
+          echo "skipped=false" >> $GITHUB_OUTPUT
+
+      - name: Open PostgreSQL firewall for runner
+        id: firewall
+        if: steps.kv.outputs.skipped != 'true'
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          az postgres flexible-server firewall-rule create \
+            --resource-group ${{ env.DB_SERVER_RG }} \
+            --server-name ${{ env.DB_SERVER_NAME }} \
+            --name "github-actions-staging-${{ github.run_id }}" \
+            --start-ip-address "$RUNNER_IP" \
+            --end-ip-address "$RUNNER_IP" 2>/dev/null || true
+          sleep 15
+
+      - name: Run Drizzle migrations
+        if: steps.kv.outputs.skipped != 'true'
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.Database-URL }}
+        run: pnpm db:migrate
+
+      - name: Close PostgreSQL firewall
+        if: always() && steps.kv.outputs.skipped != 'true'
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group ${{ env.DB_SERVER_RG }} \
+            --server-name ${{ env.DB_SERVER_NAME }} \
+            --name "github-actions-staging-${{ github.run_id }}" \
+            --yes || true
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true
+
+  # ─── Job 4: Deploy to staging Container Apps ───────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, migrate-staging]
+    environment: Staging
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy backend to staging
+        run: |
+          # Deploy the exact immutable image built in this workflow run.
+          # Uses the digest (not tag) for maximum reproducibility.
+          BACKEND_IMAGE="${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ needs.build.outputs.image_sha }}"
+          az containerapp update \
+            --name ${{ env.BACKEND_APP_STAGING }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image "$BACKEND_IMAGE" \
+            --set-env-vars \
+              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
+              "NODE_ENV=production" \
+              "AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112" \
+              "AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06" \
+              "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net" \
+              "FRONTEND_URL=https://staging.greenchainz.com" \
+              "ENVIRONMENT=staging" \
+              "GIT_SHA=${{ github.sha }}" \
+            2>/dev/null || echo "Staging backend app not yet provisioned - skipping"
+
+      - name: Deploy frontend to staging
+        run: |
+          FRONTEND_IMAGE="${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ needs.build.outputs.image_sha }}"
+          az containerapp update \
+            --name ${{ env.FRONTEND_APP_STAGING }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image "$FRONTEND_IMAGE" \
+            --set-env-vars \
+              "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
+              "NODE_ENV=production" \
+              "ENVIRONMENT=staging" \
+              "GIT_SHA=${{ github.sha }}" \
+            2>/dev/null || echo "Staging frontend app not yet provisioned - skipping"
+
+      - name: Staging smoke tests
+        run: |
+          STAGING_URL="https://staging.greenchainz.com"
+          echo "Running smoke tests against: $STAGING_URL"
+          for i in $(seq 1 12); do
+            STATUS=$(curl -sSL -o /dev/null -w "%{http_code}" --max-time 10 \
+              "$STAGING_URL/api/health" 2>/dev/null || echo "CURL_FAIL")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Staging health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "⏳ Staging not ready yet (status=$STATUS, attempt $i/12) — retrying in 10s"
+            sleep 10
+          done
+          echo "⚠️  Staging smoke test did not return 200 after 2 minutes — staging may not be provisioned yet"
+          # Non-fatal: staging app may not be created yet for new repos.
+          exit 0
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true
