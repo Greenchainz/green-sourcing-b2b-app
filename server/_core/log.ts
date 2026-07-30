@@ -91,19 +91,28 @@ const REDACTED_KEYS = new Set([
  * Recursively redact values whose keys appear in REDACTED_KEYS.
  * Works on plain objects and arrays; primitives are returned as-is.
  */
-function redactKeys(value: unknown): unknown {
+function redactKeys(value: unknown, ancestors = new WeakSet<object>()): unknown {
   if (typeof value === "string") {
     return scrub(value);
   }
-  if (Array.isArray(value)) {
-    return value.map(redactKeys);
-  }
   if (value !== null && typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = REDACTED_KEYS.has(k.toLowerCase()) ? "[REDACTED]" : redactKeys(v);
+    if (ancestors.has(value)) return "[CIRCULAR]";
+    ancestors.add(value);
+    try {
+      if (Array.isArray(value)) {
+        return value.map((item) => redactKeys(item, ancestors));
+      }
+
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        out[k] = REDACTED_KEYS.has(k.toLowerCase())
+          ? "[REDACTED]"
+          : redactKeys(v, ancestors);
+      }
+      return out;
+    } finally {
+      ancestors.delete(value);
     }
-    return out;
   }
   return value;
 }
