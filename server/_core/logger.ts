@@ -85,8 +85,8 @@ const baseOptions: pino.LoggerOptions = {
 };
 
 function createLogger(): Logger {
-  if (isDev) {
-    // In development, try pino-pretty for human-readable output. If it's not
+  if (isDev && process.stdout.isTTY) {
+    // In interactive development terminals, try pino-pretty for human-readable output. If it's not
     // installed this falls through to raw JSON (never blocks startup).
     try {
       return pino({
