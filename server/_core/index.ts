@@ -1,6 +1,5 @@
 import "dotenv/config";
 import "./log-scrubber"; // must be second — scrubs all subsequent console.* calls
-import { log } from "./logger"; // structured Pino logger — use instead of console.* for new code
 import { correlationIdMiddleware, httpAccessLogMiddleware } from "./http-logger";
 import { initTelemetry } from "../instrument";
 import { getSecret } from "../../lib/secrets";
