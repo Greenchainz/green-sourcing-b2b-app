@@ -138,11 +138,8 @@ jobs:
             echo "::add-mask::$TOKEN"
             docker login ${{ env.ACR }}.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password-stdin <<< "$TOKEN"
           else
-            az acr update --name ${{ env.ACR }} --admin-enabled true
-            ACR_PASSWORD=$(az acr credential show --name ${{ env.ACR }} --query "passwords[0].value" --output tsv)
-            ACR_USERNAME=$(az acr credential show --name ${{ env.ACR }} --query username --output tsv)
-            echo "::add-mask::$ACR_PASSWORD"
-            docker login ${{ env.ACR }}.azurecr.io --username "$ACR_USERNAME" --password-stdin <<< "$ACR_PASSWORD"
+            echo "Failed to acquire an OIDC-backed ACR access token"
+            exit 1
           fi
 
       - name: Build & push frontend image
