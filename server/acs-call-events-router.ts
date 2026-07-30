@@ -39,12 +39,10 @@ acsCallEventsRouter.post('/api/acs/call-events', async (req, res) => {
     return;
   }
 
-  // Acknowledge quickly so ACS doesn't retry while we process asynchronously.
-  res.sendStatus(202);
-
   const events: Array<{ type: string; data: Record<string, unknown> }> = Array.isArray(req.body)
     ? req.body
     : [req.body];
+  let hadProcessingFailure = false;
 
   for (const event of events) {
     if (!event || typeof event !== 'object') {
@@ -58,7 +56,7 @@ acsCallEventsRouter.post('/api/acs/call-events', async (req, res) => {
     console.log(`[ACS CallEvents] ${eventType} — connectionId: ${callConnectionId}`);
 
     if (eventType === 'Microsoft.Communication.CallConnected' && callConnectionId) {
-      const pending = getPendingTts(callConnectionId);
+      const pending = await getPendingTts(callConnectionId);
       if (!pending) {
         console.warn(`[ACS CallEvents] No pending TTS for ${callConnectionId} — hanging up`);
         try {
@@ -66,6 +64,7 @@ acsCallEventsRouter.post('/api/acs/call-events', async (req, res) => {
           const conn = client.getCallConnection(callConnectionId);
           await conn.hangUp(true);
         } catch (e) {
+          hadProcessingFailure = true;
           console.error('[ACS CallEvents] hangup error:', e);
         }
         continue;
@@ -83,9 +82,10 @@ acsCallEventsRouter.post('/api/acs/call-events', async (req, res) => {
           operationContext: `tts-${callConnectionId}`,
         });
 
-        deletePendingTts(callConnectionId);
+        await deletePendingTts(callConnectionId);
         console.log(`[ACS CallEvents] ▶ Playing TTS on ${callConnectionId}`);
       } catch (e) {
+        hadProcessingFailure = true;
         console.error(`[ACS CallEvents] ❌ play failed on ${callConnectionId}:`, e);
       }
     }
@@ -102,8 +102,16 @@ acsCallEventsRouter.post('/api/acs/call-events', async (req, res) => {
         await conn.hangUp(true);
         console.log(`[ACS CallEvents] 📵 Hung up ${callConnectionId} after TTS`);
       } catch (e) {
+        hadProcessingFailure = true;
         console.error('[ACS CallEvents] hangup error:', e);
       }
     }
   }
+
+  if (hadProcessingFailure) {
+    res.status(500).json({ error: 'Failed to process one or more ACS events' });
+    return;
+  }
+
+  res.status(200).json({ ok: true });
 });

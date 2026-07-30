@@ -23,6 +23,7 @@
 import { CallAutomationClient, CallInvite } from '@azure/communication-call-automation';
 import { PhoneNumberIdentifier } from '@azure/communication-common';
 import { getAzureCredential } from '../lib/azure/credentials';
+import { createDistributedCallSessionStore } from './services/distributed-call-session-store';
 import {
   buildAcsCallEventsCallbackUri,
   getAcsConnectionSettings,
@@ -118,7 +119,7 @@ export async function sendTtsCall(options: TtsCallOptions): Promise<TtsCallResul
     // We do this asynchronously — the webhook handler at /api/acs/call-events
     // will play the SSML when the call connects, then terminate.
     // Store the pending TTS job so the webhook can pick it up.
-    storePendingTts(callId, options.text, voice);
+    await storePendingTts(callId, options.text, voice);
 
     return { success: true, callConnectionId: callId };
   } catch (err) {
@@ -136,22 +137,23 @@ interface PendingTts {
   createdAt: number;
 }
 
-const _pendingTts = new Map<string, PendingTts>();
+const pendingTtsStore = createDistributedCallSessionStore<PendingTts>('acs-tts-pending');
 
-function storePendingTts(callConnectionId: string, text: string, voice: AcsVoiceName) {
-  _pendingTts.set(callConnectionId, { text, voice, createdAt: Date.now() });
-
-  // Clean up stale entries after 10 minutes
-  const cleanupTimer = setTimeout(() => _pendingTts.delete(callConnectionId), 10 * 60 * 1000);
-  cleanupTimer.unref();
+async function storePendingTts(callConnectionId: string, text: string, voice: AcsVoiceName) {
+  await pendingTtsStore.set(
+    callConnectionId,
+    { text, voice, createdAt: Date.now() },
+    [],
+    10 * 60, // 10 minutes
+  );
 }
 
-export function getPendingTts(callConnectionId: string): PendingTts | undefined {
-  return _pendingTts.get(callConnectionId);
+export async function getPendingTts(callConnectionId: string): Promise<PendingTts | null> {
+  return pendingTtsStore.get(callConnectionId);
 }
 
-export function deletePendingTts(callConnectionId: string) {
-  _pendingTts.delete(callConnectionId);
+export async function deletePendingTts(callConnectionId: string): Promise<void> {
+  await pendingTtsStore.delete(callConnectionId);
 }
 
 /**
