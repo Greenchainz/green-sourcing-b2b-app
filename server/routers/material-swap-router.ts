@@ -347,7 +347,7 @@ export const materialSwapRouter = router({
         params.push(input.userId);
       }
       if (input.projectId != null) {
-        conditions.push(`"projectId" = $${paramIdx++}`);
+        conditions.push(`"projectId" = $${paramIdx}`);
         params.push(input.projectId);
       }
 

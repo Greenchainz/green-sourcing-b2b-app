@@ -104,6 +104,19 @@ export async function rejectVideoCall(callId: string): Promise<void> {
     callId,
   });
 
+  // Optional missed-call forwarding SMS for founders/admins who want real-phone fallback.
+  void import("./call-forwarding-service")
+    .then(({ sendMissedCallForwardingSms }) =>
+      sendMissedCallForwardingSms({
+        callerId: session.callerId,
+        calleeId: session.calleeId,
+        callType: "video",
+      }),
+    )
+    .catch((error: unknown) => {
+      console.error("[Call Forwarding] Failed to send missed-call SMS:", error);
+    });
+
   await callSessionStore.delete(callId);
 }
 

@@ -27,16 +27,17 @@ export const notificationsRouter = router({
 
   send: protectedProcedure
     .input(z.object({
-      userId: z.number(),
       type: z.enum(['rfq_match', 'new_message', 'bid_accepted', 'bid_rejected', 'rfq_closed']),
       title: z.string(),
       content: z.string(),
       relatedId: z.number().optional(),
-      email: z.string().email().optional(),
-      phone: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { sendNotification } = await import('../notification-service');
-      return sendNotification(input);
+      return sendNotification({
+        ...input,
+        userId: ctx.user.id,
+        email: ctx.user.email ?? undefined,
+      });
     }),
 });

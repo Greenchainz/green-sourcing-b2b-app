@@ -124,7 +124,9 @@ export async function sendWelcomeEmail(user: { name: string; email: string; role
 }
 
 /**
- * Send SMS notification via Azure Communication Services
+ * Send SMS notification via Azure Communication Services.
+ * Delegates to acs-sms-service so the ACS client is initialised lazily and
+ * only when a phone number is actually present.
  */
 export async function sendSmsNotification(payload: NotificationPayload) {
   if (!payload.phone) {
@@ -133,14 +135,13 @@ export async function sendSmsNotification(payload: NotificationPayload) {
   }
 
   try {
-    // TODO: Integrate with Azure Communication Services
-    // For now, log the notification
-    console.log(`📱 SMS notification queued:`, {
-      to: payload.phone,
-      message: `${payload.title}: ${payload.content}`,
-    });
-    
-    return { success: true, message: "SMS queued for delivery" };
+    const { sendSms } = await import("./acs-sms-service");
+    const message = `GreenChainz: ${payload.title}. ${payload.content} Txt STOP to opt out.`;
+    const result = await sendSms(payload.phone, message);
+    if (result.success) {
+      return { success: true, messageId: result.messageId };
+    }
+    return { success: false, error: result.error };
   } catch (error) {
     console.error("❌ Failed to send SMS notification:", error);
     return { success: false, error: String(error) };

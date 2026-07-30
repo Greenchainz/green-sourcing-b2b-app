@@ -4,13 +4,14 @@ import { getDb } from "./db";
 import {
   suppliers, users, materials, materialCertifications, buyerSubscriptions,
   rfqs, rfqBids, leads, conversations, messages,
-  subscriptions, manufacturers, architects,
+  subscriptions, arcadeScores,
+  manufacturers, architects,
   supplierSubscriptions, supplierProfileViews, supplierBuyerFitInputs,
   supplierSustainabilityProfiles, agentHandoffRules, supplierFilters,
   suppliersLocation, rfqSupplierInvites, epdMaterials, supplierMaterialEpds,
   crmContacts, crmEmailSequences, scraperRuns, emailCredentials,
   materialSpecs, companyOfWeekSlots, usageTracking, conciergeRoutes,
-  learningEvents,
+  learningEvents, scrapedSuppliers, scrapedLeads,
 } from "../drizzle/schema";
 import { eq, and, inArray, desc, asc, count, sql, gte, isNull, ne, like } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -1196,6 +1197,185 @@ export const adminRouter = router({
     }),
 
   /**
+   * Integration command-center status (safe metadata only, no secret values).
+   */
+  getIntegrationStatus: adminProcedure.query(() => {
+    const hasAny = (...keys: string[]) => keys.some((key) => !!process.env[key]?.trim());
+    const hasAll = (...keys: string[]) => keys.every((key) => !!process.env[key]?.trim());
+
+    const salesforceConnected =
+      hasAll("SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET") &&
+      hasAny(
+        "SALESFORCE_REFRESH_TOKEN",
+        "SALESFORCE_ACCESS_TOKEN",
+        "SALESFORCE_USERNAME"
+      );
+
+    const hubspotConnected = hasAny("HUBSPOT_ACCESS_TOKEN", "HUBSPOT_PRIVATE_APP_TOKEN", "HUBSPOT_API_KEY");
+    const resendConnected = hasAll("RESEND_API_KEY", "RESEND_FROM_EMAIL");
+    const dataverseConnected =
+      hasAll("DATAVERSE_ENVIRONMENT_URL", "DATAVERSE_TENANT_ID") &&
+      hasAny("DATAVERSE_CLIENT_ID", "MANAGED_IDENTITY_CLIENT_ID");
+
+    const fabricConnected =
+      hasAll("AZURE_FABRIC_WORKSPACE_ID", "AZURE_FABRIC_TENANT_ID") &&
+      hasAny("AZURE_FABRIC_CLIENT_ID", "MANAGED_IDENTITY_CLIENT_ID");
+
+    const integrations = [
+      {
+        id: "salesforce",
+        name: "Salesforce",
+        connected: salesforceConnected,
+        requiredKeys: ["SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET", "SALESFORCE_REFRESH_TOKEN"],
+        dashboardUrl: process.env.SALESFORCE_LOGIN_URL?.trim() || "https://login.salesforce.com",
+      },
+      {
+        id: "hubspot",
+        name: "HubSpot",
+        connected: hubspotConnected,
+        requiredKeys: ["HUBSPOT_ACCESS_TOKEN"],
+        dashboardUrl: "https://app.hubspot.com",
+      },
+      {
+        id: "resend",
+        name: "Resend",
+        connected: resendConnected,
+        requiredKeys: ["RESEND_API_KEY", "RESEND_FROM_EMAIL"],
+        dashboardUrl: "https://resend.com/emails",
+      },
+      {
+        id: "dataverse",
+        name: "Microsoft Dataverse",
+        connected: dataverseConnected,
+        requiredKeys: ["DATAVERSE_ENVIRONMENT_URL", "DATAVERSE_TENANT_ID", "DATAVERSE_CLIENT_ID"],
+        dashboardUrl: process.env.DATAVERSE_ENVIRONMENT_URL?.trim() || "https://make.powerapps.com",
+      },
+      {
+        id: "fabric",
+        name: "Microsoft Fabric",
+        connected: fabricConnected,
+        requiredKeys: ["AZURE_FABRIC_WORKSPACE_ID", "AZURE_FABRIC_TENANT_ID", "AZURE_FABRIC_CLIENT_ID"],
+        dashboardUrl: "https://app.fabric.microsoft.com",
+      },
+      {
+        id: "webhook",
+        name: "Automation Webhook Slot",
+        connected: hasAny("AUTOMATION_WEBHOOK_URL", "N8N_WEBHOOK_URL", "MAKE_WEBHOOK_URL"),
+        requiredKeys: ["AUTOMATION_WEBHOOK_URL"],
+        dashboardUrl: process.env.AUTOMATION_WEBHOOK_URL?.trim() || null,
+      },
+    ];
+
+    return {
+      connectedCount: integrations.filter((item) => item.connected).length,
+      totalCount: integrations.length,
+      integrations,
+    };
+  }),
+
+  /**
+   * Scraper + outreach pipeline status for Admin God Mode.
+   */
+  getScraperPipelineStatus: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const [supplierTotals, leadTotals, recentSuppliers, recentLeads] = await Promise.all([
+      db
+        .select({
+          total: count(),
+          contacted: sql<number>`COUNT(CASE WHEN ${scrapedSuppliers.outreachSentAt} IS NOT NULL THEN 1 END)`,
+          pending: sql<number>`COUNT(CASE WHEN ${scrapedSuppliers.outreachSentAt} IS NULL THEN 1 END)`,
+          invalid: sql<number>`COUNT(CASE WHEN ${scrapedSuppliers.emailStatus} IN ('invalid','unsubscribed','bounced') THEN 1 END)`,
+          latestIngestedAt: sql<Date | null>`MAX(${scrapedSuppliers.createdAt})`,
+          latestOutreachAt: sql<Date | null>`MAX(${scrapedSuppliers.outreachSentAt})`,
+        })
+        .from(scrapedSuppliers),
+      db
+        .select({
+          total: count(),
+          contacted: sql<number>`COUNT(CASE WHEN ${scrapedLeads.outreachSentAt} IS NOT NULL THEN 1 END)`,
+          pending: sql<number>`COUNT(CASE WHEN ${scrapedLeads.outreachSentAt} IS NULL THEN 1 END)`,
+          invalid: sql<number>`COUNT(CASE WHEN ${scrapedLeads.emailStatus} IN ('invalid','unsubscribed','bounced') THEN 1 END)`,
+          latestIngestedAt: sql<Date | null>`MAX(${scrapedLeads.createdAt})`,
+          latestOutreachAt: sql<Date | null>`MAX(${scrapedLeads.outreachSentAt})`,
+        })
+        .from(scrapedLeads),
+      db
+        .select({
+          id: scrapedSuppliers.id,
+          companyName: scrapedSuppliers.companyName,
+          email: scrapedSuppliers.email,
+          state: scrapedSuppliers.state,
+          createdAt: scrapedSuppliers.createdAt,
+          outreachSentAt: scrapedSuppliers.outreachSentAt,
+          emailStatus: scrapedSuppliers.emailStatus,
+        })
+        .from(scrapedSuppliers)
+        .orderBy(desc(scrapedSuppliers.createdAt))
+        .limit(8),
+      db
+        .select({
+          id: scrapedLeads.id,
+          fullName: scrapedLeads.fullName,
+          company: scrapedLeads.company,
+          role: scrapedLeads.role,
+          email: scrapedLeads.email,
+          createdAt: scrapedLeads.createdAt,
+          outreachSentAt: scrapedLeads.outreachSentAt,
+          emailStatus: scrapedLeads.emailStatus,
+        })
+        .from(scrapedLeads)
+        .orderBy(desc(scrapedLeads.createdAt))
+        .limit(8),
+    ]);
+
+    return {
+      flags: {
+        supplierOutreachEnabled: process.env.OUTREACH_ENABLED === "true",
+        leadOutreachEnabled: process.env.LEAD_OUTREACH_ENABLED === "true",
+      },
+      suppliers: {
+        total: Number(supplierTotals[0]?.total ?? 0),
+        contacted: Number(supplierTotals[0]?.contacted ?? 0),
+        pending: Number(supplierTotals[0]?.pending ?? 0),
+        invalid: Number(supplierTotals[0]?.invalid ?? 0),
+        latestIngestedAt: supplierTotals[0]?.latestIngestedAt ?? null,
+        latestOutreachAt: supplierTotals[0]?.latestOutreachAt ?? null,
+        recent: recentSuppliers,
+      },
+      leads: {
+        total: Number(leadTotals[0]?.total ?? 0),
+        contacted: Number(leadTotals[0]?.contacted ?? 0),
+        pending: Number(leadTotals[0]?.pending ?? 0),
+        invalid: Number(leadTotals[0]?.invalid ?? 0),
+        latestIngestedAt: leadTotals[0]?.latestIngestedAt ?? null,
+        latestOutreachAt: leadTotals[0]?.latestOutreachAt ?? null,
+        recent: recentLeads,
+      },
+    };
+  }),
+
+  runSupplierScraperNow: adminProcedure.mutation(async () => {
+    const { runSupplierScraper } = await import("../lib/scrapers/supplier-scraper");
+    return runSupplierScraper();
+  }),
+
+  runLeadScraperNow: adminProcedure.mutation(async () => {
+    const { runLeadScraper } = await import("../lib/scrapers/lead-scraper");
+    return runLeadScraper();
+  }),
+
+  runSupplierOutreachNow: adminProcedure.mutation(async () => {
+    const { runScraperOutreachPipeline } = await import("./scraper-outreach-pipeline");
+    return runScraperOutreachPipeline();
+  }),
+
+  runLeadOutreachNow: adminProcedure.mutation(async () => {
+    const { runLeadOutreachPipeline } = await import("./lead-outreach-pipeline");
+    return runLeadOutreachPipeline();
+  }),
+/**
    * List all active promo grants.
    */
   listPromos: adminProcedure.query(async () => {
@@ -1221,6 +1401,149 @@ export const adminRouter = router({
 
     return rows;
   }),
+
+  /**
+   * Place an outbound text-to-speech call via ACS Call Automation.
+   * ACS dials `to`, waits for answer, plays the SSML using a Neural voice,
+   * then hangs up automatically.
+   */
+  sendTtsCall: adminProcedure
+    .input(
+      z.object({
+        to: z.string().min(7).max(20),
+        text: z.string().min(1).max(800),
+        voice: z.enum([
+          'en-US-AriaNeural',
+          'en-US-GuyNeural',
+          'en-US-JennyNeural',
+          'en-US-DavisNeural',
+          'en-US-NancyNeural',
+          'en-US-TonyNeural',
+        ]).default('en-US-AriaNeural'),
+        fromNumberType: z.enum(['local', 'tollFree']).default('local'),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const { sendTtsCall } = await import('./acs-tts-service');
+      const result = await sendTtsCall({
+        to: input.to,
+        text: input.text,
+        voice: input.voice,
+        fromNumberType: input.fromNumberType,
+      });
+      if (!result.success) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: result.error ?? 'TTS call failed' });
+      }
+      return { ok: true, callConnectionId: result.callConnectionId };
+    }),
+
+  // ── Communications (ACS SMS + multi-channel) ────────────────────────────────
+
+  getMissedCallForwardingSettings: adminProcedure.query(async () => {
+    const { getMissedCallForwardingSettings } = await import("./call-forwarding-service");
+    return getMissedCallForwardingSettings();
+  }),
+
+  setMissedCallForwardingSettings: adminProcedure
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        phone: z.string().min(7).max(20).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const { setMissedCallForwardingSettings } = await import("./call-forwarding-service");
+        return await setMissedCallForwardingSettings({
+          enabled: input.enabled,
+          phone: input.phone,
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Invalid call forwarding settings",
+        });
+      }
+    }),
+
+  /** Get a quick summary of communication channels and recent usage. */
+  getCommsStats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    // Arcade leads currently store email (phone capture not yet in schema).
+    const smsLeadsRows = await db
+      .select({ count: count() })
+      .from(leads)
+      .where(sql`${leads.source} LIKE 'arcade:%'`);
+
+    // Total arcade score submissions ever
+    const arcadeSubRows = await db
+      .select({ count: count() })
+      .from(arcadeScores);
+
+    // Users who have an email on file
+    const emailUsersRows = await db
+      .select({ count: count() })
+      .from(users)
+      .where(sql`${users.email} IS NOT NULL`);
+
+    return {
+      emailUsers: emailUsersRows[0]?.count ?? 0,
+      smsLeads: smsLeadsRows[0]?.count ?? 0,
+      arcadeSubmissions: arcadeSubRows[0]?.count ?? 0,
+      channels: {
+        email: { label: "Email", status: "active" as const },
+        sms: {
+          label: "SMS (ACS Toll-Free)",
+          status: (process.env.ACS_TOLL_FREE_NUMBER ? "active" : "needs_setup") as "active" | "needs_setup",
+          number: process.env.ACS_TOLL_FREE_NUMBER ?? null,
+        },
+        inApp: { label: "In-App (WebPubSub)", status: "active" as const },
+        voiceVideo: { label: "Voice / Video (ACS)", status: "active" as const },
+      },
+    };
+  }),
+
+  /**
+   * Send a single test SMS to any phone number.
+   * Use to verify the toll-free number is working before a blast.
+   */
+  sendTestSms: adminProcedure
+    .input(
+      z.object({
+        to: z.string().min(7).max(20),
+        message: z.string().min(1).max(160),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const { sendSms } = await import("./acs-sms-service");
+      const result = await sendSms(input.to, input.message);
+      if (!result.success) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error ?? "SMS failed" });
+      }
+      return { ok: true, messageId: result.messageId };
+    }),
+
+  /**
+   * Broadcast an SMS to all arcade leads who provided an email (opted in).
+   * The message is prepended with "GreenChainz: " and appended with the
+   * STOP opt-out footer automatically.
+   */
+  broadcastArcadeSms: adminProcedure
+    .input(
+      z.object({
+        /** Body of the message — plain text, ≤130 chars (footer will be added). */
+        body: z.string().min(1).max(130),
+      }),
+    )
+    .mutation(async () => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "SMS blast is not available yet. Phone storage and recipient wiring are still pending.",
+      });
+    }),
 
   // ════════════════════════════════════════════════════════════════════════
   // Admin destructive data control — users / manufacturers / suppliers
@@ -1604,3 +1927,5 @@ export const adminRouter = router({
       return { success: true };
     }),
 });
+
+

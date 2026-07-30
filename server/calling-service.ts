@@ -15,7 +15,6 @@ import {
   supplierSubscriptions,
 } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { randomBytes } from "node:crypto";
 import { broadcastNotification } from "./webpubsub-manager";
 import { createDistributedCallSessionStore } from "./services/distributed-call-session-store";
 
@@ -252,6 +251,19 @@ export async function rejectCall(callId: string): Promise<void> {
     type: "call_rejected",
     callId,
   });
+
+  // Optional missed-call forwarding SMS for founders/admins who want real-phone fallback.
+  void import("./call-forwarding-service")
+    .then(({ sendMissedCallForwardingSms }) =>
+      sendMissedCallForwardingSms({
+        callerId: session.callerId,
+        calleeId: session.receiverId,
+        callType: session.callType,
+      }),
+    )
+    .catch((error: unknown) => {
+      console.error("[Call Forwarding] Failed to send missed-call SMS:", error);
+    });
 
   await callSessionStore.delete(callId);
 }

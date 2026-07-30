@@ -6,7 +6,7 @@ import { trpc } from '@/lib/trpc';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
@@ -46,6 +47,7 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   Search,
   Mail,
   Eye,
@@ -69,10 +71,19 @@ import {
   BarChart3,
   TrendingUp,
   Video,
+  MessageSquare,
+  Phone,
+  Megaphone,
+  Wifi,
+  WifiOff,
+  Upload,
+  MailOpen,
+  Copy,
+  Plus,
+  Check,
   Bot,
   FolderOpen,
   Database,
-  Upload,
   FileText,
   Send,
 } from 'lucide-react';
@@ -177,6 +188,19 @@ function formatDateTime(d: Date | string | number | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+function formatRelativeTime(d: Date | string | null | undefined): string {
+  if (!d) return 'Never';
+  const date = new Date(d);
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `${diffDay}d ago`;
+  return formatDate(d);
 }
 
 function roleBadge(role: string) {
@@ -350,6 +374,26 @@ function OverviewTab() {
               )}
             </Button>
           </Link>
+          <Link href="/admin?tab=marketing-videos">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+            >
+              <Video className="mr-2 h-4 w-4" />
+              Marketing Videos
+            </Button>
+          </Link>
+          <Link href="/admin?tab=god-mode">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-700/40 bg-red-900/20 text-red-300 hover:bg-red-900/35 hover:text-red-200"
+            >
+              <Zap className="mr-2 h-4 w-4" />
+              God Mode
+            </Button>
+          </Link>
         </CardContent>
       </Card>
 
@@ -411,6 +455,567 @@ function OverviewTab() {
   );
 }
 
+
+// ─── Marketing Videos Tab ───────────────────────────────────────────────────
+
+function MarketingVideosTab() {
+  const [title, setTitle] = useState('');
+  const [note, setNote] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+
+  const analyticsQuery = trpc.founderVideo.analytics.useQuery();
+  const libraryQuery = trpc.founderVideo.marketingLibrary.useQuery();
+
+  const createMutation = trpc.founderVideo.createMarketingFile.useMutation();
+  const finalizeMutation = trpc.founderVideo.finalizeMarketingFile.useMutation();
+  const deleteMutation = trpc.founderVideo.deleteMarketingFile.useMutation({
+    onSuccess: () => {
+      toast.success('Video removed');
+      void libraryQuery.refetch();
+    },
+    onError: (err) => toast.error(err.message ?? 'Failed to remove video'),
+  });
+
+  const marketingSummary = useMemo(() => {
+    const videos = libraryQuery.data ?? [];
+    const views = videos.reduce((sum, v) => sum + (v.watchedCount ?? 0), 0);
+    const opened = videos.filter((v) => (v.watchedCount ?? 0) > 0).length;
+    return {
+      total: videos.length,
+      opened,
+      views,
+    };
+  }, [libraryQuery.data]);
+
+  async function getDurationSec(videoFile: File): Promise<number> {
+    return await new Promise((resolve) => {
+      const el = document.createElement('video');
+      const objectUrl = URL.createObjectURL(videoFile);
+      const done = (duration: number) => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(Number.isFinite(duration) && duration > 0 ? duration : 120);
+      };
+      el.preload = 'metadata';
+      el.onloadedmetadata = () => done(el.duration);
+      el.onerror = () => done(120);
+      el.src = objectUrl;
+    });
+  }
+
+  async function handleUpload(): Promise<void> {
+    if (!title.trim()) {
+      toast.error('Add a video title');
+      return;
+    }
+    if (!file) {
+      toast.error('Choose a video file first');
+      return;
+    }
+
+    const ext = (file.name.split('.').pop() ?? 'mp4').toLowerCase();
+    setUploading(true);
+    let createdVideoId: number | null = null;
+    try {
+      // Validate duration before touching the server so we don't leave orphan blobs.
+      const MAX_ALLOWED_SEC = 600; // must match server MAX_DURATION_SEC
+      const rawDurationSec = Math.round(await getDurationSec(file));
+      if (rawDurationSec > MAX_ALLOWED_SEC) {
+        toast.error(
+          `Video is too long (${Math.ceil(rawDurationSec / 60)} min). Maximum allowed is ${MAX_ALLOWED_SEC / 60} minutes.`
+        );
+        setUploading(false);
+        return;
+      }
+      const durationSec = Math.max(1, rawDurationSec);
+
+      const created = await createMutation.mutateAsync({
+        title: title.trim(),
+        note: note.trim() || undefined,
+        extension: ext,
+        contentType: file.type || 'video/mp4',
+      });
+      createdVideoId = created.videoId;
+
+      const uploadRes = await fetch(created.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'x-ms-blob-type': 'BlockBlob',
+          'Content-Type': file.type || 'video/mp4',
+        },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        const detail = await uploadRes.text().catch(() => '');
+        throw new Error(`Upload failed (${uploadRes.status}) ${detail.slice(0, 140)}`);
+      }
+
+      await finalizeMutation.mutateAsync({
+        videoId: created.videoId,
+        durationSec,
+      });
+      createdVideoId = null; // finalized successfully — no cleanup needed
+
+      setTitle('');
+      setNote('');
+      setFile(null);
+      toast.success('Marketing video uploaded');
+      void libraryQuery.refetch();
+      void analyticsQuery.refetch();
+    } catch (err) {
+      console.error('[admin-marketing-videos] upload failed:', err);
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      // Clean up the orphaned draft row so the library does not render a broken entry.
+      if (createdVideoId !== null) {
+        void deleteMutation.mutateAsync({ videoId: createdVideoId }).catch((delErr: unknown) =>
+          console.error('[admin-marketing-videos] draft cleanup failed:', delErr),
+        );
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function copyLink(videoId: number, shareUrl: string): void {
+    void navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopiedId(videoId);
+      toast.success('Link copied');
+      setTimeout(() => setCopiedId(null), 1800);
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          title="Library Videos"
+          value={marketingSummary.total}
+          icon={<Video className="h-5 w-5 text-emerald-400" />}
+          accent="bg-emerald-500/10"
+          loading={libraryQuery.isLoading}
+        />
+        <KpiCard
+          title="Opened"
+          value={marketingSummary.opened}
+          icon={<MailOpen className="h-5 w-5 text-blue-400" />}
+          accent="bg-blue-500/10"
+          loading={libraryQuery.isLoading}
+        />
+        <KpiCard
+          title="Total Views"
+          value={marketingSummary.views}
+          icon={<Eye className="h-5 w-5 text-purple-400" />}
+          accent="bg-purple-500/10"
+          loading={libraryQuery.isLoading}
+        />
+        <KpiCard
+          title="Email Video Open Rate"
+          value={`${analyticsQuery.data?.summary.totalVideos ? Math.round((analyticsQuery.data.summary.openedCount / analyticsQuery.data.summary.totalVideos) * 100) : 0}%`}
+          icon={<TrendingUp className="h-5 w-5 text-amber-400" />}
+          accent="bg-amber-500/10"
+          loading={analyticsQuery.isLoading}
+        />
+      </div>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Add Marketing Video File</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm text-gray-400">Title</p>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Architect Listing Demo — July"
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+                disabled={uploading}
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-400">Video file</p>
+              <Input
+                type="file"
+                accept="video/*"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="border-gray-700 bg-gray-800 text-gray-300"
+                disabled={uploading}
+              />
+              {file && (
+                <p className="text-xs text-gray-500">
+                  {file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MB
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm text-gray-400">Note (optional)</p>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Where this video is used (AppSource, email, About page, etc.)"
+              className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              rows={3}
+              disabled={uploading}
+            />
+          </div>
+
+          <Button
+            onClick={() => void handleUpload()}
+            disabled={uploading || !file || title.trim().length === 0}
+            className="bg-emerald-600 text-white hover:bg-emerald-500"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {uploading ? 'Uploading…' : 'Upload Video'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Marketing Video Library</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {libraryQuery.isLoading && <Skeleton className="h-24 w-full" />}
+
+          {libraryQuery.error && (
+            <div className="rounded-md border border-red-500/30 bg-red-900/20 p-3 text-sm text-red-300">
+              {libraryQuery.error.message}
+            </div>
+          )}
+
+          {libraryQuery.data?.length === 0 && (
+            <p className="text-sm text-gray-500">No marketing videos uploaded yet.</p>
+          )}
+
+          {libraryQuery.data?.map((video) => (
+            <div key={video.id} className="rounded-lg border border-gray-800 bg-gray-950 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="truncate font-medium text-white">{video.subject}</p>
+                  {video.note && <p className="text-sm text-gray-400">{video.note}</p>}
+                  <p className="text-xs text-gray-500">
+                    Added {formatRelativeTime(video.createdAt)} · Views {video.watchedCount ?? 0}
+                    {video.lastWatchedAt ? ` · Last watch ${formatRelativeTime(video.lastWatchedAt)}` : ''}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    onClick={() => window.open(video.shareUrl, '_blank')}
+                  >
+                    Open
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    onClick={() => copyLink(video.id, video.shareUrl)}
+                  >
+                    {copiedId === video.id ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
+                    Copy Link
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-400 hover:bg-red-900/20 hover:text-red-300"
+                    onClick={() => {
+                      if (!confirm('Delete this marketing video?')) return;
+                      deleteMutation.mutate({ videoId: video.id });
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── God Mode Tab ───────────────────────────────────────────────────────────
+
+function GodModeTab() {
+  const [, navigate] = useLocation();
+  const { data: allUsers, isLoading: usersLoading } = trpc.admin.getAllUsers.useQuery();
+  const { data: supplierStats, isLoading: supplierLoading } = trpc.admin.getSupplierStats.useQuery();
+  const founderAnalytics = trpc.founderVideo.analytics.useQuery();
+  const marketingLibrary = trpc.founderVideo.marketingLibrary.useQuery();
+  const integrationStatus = trpc.admin.getIntegrationStatus.useQuery();
+  const scraperStatus = trpc.admin.getScraperPipelineStatus.useQuery();
+
+  const runSupplierScraper = trpc.admin.runSupplierScraperNow.useMutation({
+    onSuccess: () => {
+      toast.success("Supplier scraper finished");
+      void scraperStatus.refetch();
+    },
+    onError: (err) => toast.error(err.message ?? "Supplier scraper failed"),
+  });
+
+  const runLeadScraper = trpc.admin.runLeadScraperNow.useMutation({
+    onSuccess: () => {
+      toast.success("Lead scraper finished");
+      void scraperStatus.refetch();
+    },
+    onError: (err) => toast.error(err.message ?? "Lead scraper failed"),
+  });
+
+  const runSupplierOutreach = trpc.admin.runSupplierOutreachNow.useMutation({
+    onSuccess: () => {
+      toast.success("Supplier outreach pipeline finished");
+      void scraperStatus.refetch();
+    },
+    onError: (err) => toast.error(err.message ?? "Supplier outreach failed"),
+  });
+
+  const runLeadOutreach = trpc.admin.runLeadOutreachNow.useMutation({
+    onSuccess: () => {
+      toast.success("Lead outreach pipeline finished");
+      void scraperStatus.refetch();
+    },
+    onError: (err) => toast.error(err.message ?? "Lead outreach failed"),
+  });
+
+  const unopenedEmailVideos =
+    (founderAnalytics.data?.summary.totalVideos ?? 0) -
+    (founderAnalytics.data?.summary.openedCount ?? 0);
+
+  const launchpad = [
+    { label: 'Users', path: '/admin?tab=users', icon: <Users className="h-4 w-4" /> },
+    { label: 'Suppliers', path: '/admin?tab=suppliers', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Verification Queue', path: '/admin/verification', icon: <ShieldAlert className="h-4 w-4" /> },
+    { label: 'CRM Inbox', path: '/admin/crm', icon: <MailOpen className="h-4 w-4" /> },
+    { label: 'Concierge', path: '/admin/concierge', icon: <Zap className="h-4 w-4" /> },
+    { label: 'Marketing Videos', path: '/admin?tab=marketing-videos', icon: <Video className="h-4 w-4" /> },
+    { label: 'Founder Video Emails', path: '/admin/founder-videos', icon: <MailOpen className="h-4 w-4" /> },
+    { label: 'Message Threads', path: '/messages', icon: <Eye className="h-4 w-4" /> },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          title="Total Users"
+          value={allUsers?.length ?? 0}
+          icon={<Users className="h-5 w-5 text-emerald-400" />}
+          accent="bg-emerald-500/10"
+          loading={usersLoading}
+        />
+        <KpiCard
+          title="Pending Verification"
+          value={supplierStats?.pending ?? 0}
+          icon={<ShieldAlert className="h-5 w-5 text-amber-400" />}
+          accent="bg-amber-500/10"
+          loading={supplierLoading}
+        />
+        <KpiCard
+          title="Unopened Email Videos"
+          value={Math.max(0, unopenedEmailVideos)}
+          icon={<MailOpen className="h-5 w-5 text-blue-400" />}
+          accent="bg-blue-500/10"
+          loading={founderAnalytics.isLoading}
+        />
+        <KpiCard
+          title="Integrations Connected"
+          value={`${integrationStatus.data?.connectedCount ?? 0}/${integrationStatus.data?.totalCount ?? 0}`}
+          icon={<Zap className="h-5 w-5 text-purple-400" />}
+          accent="bg-purple-500/10"
+          loading={integrationStatus.isLoading}
+        />
+      </div>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">God Mode Launchpad</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {launchpad.map((item) => (
+              <Button
+                key={item.label}
+                variant="outline"
+                className="justify-start border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                onClick={() => navigate(item.path)}
+              >
+                <span className="mr-2">{item.icon}</span>
+                {item.label}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card id="integrations" className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Integration Hub</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {integrationStatus.isLoading && <Skeleton className="h-20 w-full" />}
+
+          {integrationStatus.error && (
+            <div className="rounded-md border border-red-500/30 bg-red-900/20 p-3 text-sm text-red-300">
+              {integrationStatus.error.message}
+            </div>
+          )}
+
+          {integrationStatus.data?.integrations.map((integration) => (
+            <div key={integration.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-800 bg-gray-950 px-3 py-2">
+              <div className="min-w-0">
+                <p className="font-medium text-white">{integration.name}</p>
+                <p className="text-xs text-gray-500">
+                  {integration.connected
+                    ? 'Connected'
+                    : `Missing: ${integration.requiredKeys.join(', ')}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={integration.connected ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300'}
+                >
+                  {integration.connected ? 'Connected' : 'Needs setup'}
+                </Badge>
+                {integration.dashboardUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    onClick={() => window.open(integration.dashboardUrl!, '_blank', 'noopener,noreferrer')}
+                  >
+                    Open
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <p className="text-xs text-gray-500">
+            Set these env vars in Azure Container Apps + Key Vault, then refresh this page.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card id="scraper-pipeline" className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Scraper Pipeline Command Center</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {scraperStatus.isLoading && <Skeleton className="h-20 w-full" />}
+
+          {scraperStatus.error && (
+            <div className="rounded-md border border-red-500/30 bg-red-900/20 p-3 text-sm text-red-300">
+              {scraperStatus.error.message}
+            </div>
+          )}
+
+          {scraperStatus.data && (
+            <>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-gray-800 bg-gray-950 p-3">
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Supplier Scraper</p>
+                  <p className="mt-1 text-sm text-gray-300">
+                    {scraperStatus.data.suppliers.total} total · {scraperStatus.data.suppliers.pending} pending outreach · {scraperStatus.data.suppliers.contacted} contacted
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Last ingest: {formatRelativeTime(scraperStatus.data.suppliers.latestIngestedAt)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-800 bg-gray-950 p-3">
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Lead Scraper</p>
+                  <p className="mt-1 text-sm text-gray-300">
+                    {scraperStatus.data.leads.total} total · {scraperStatus.data.leads.pending} pending outreach · {scraperStatus.data.leads.contacted} contacted
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Last ingest: {formatRelativeTime(scraperStatus.data.leads.latestIngestedAt)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                  onClick={() => runSupplierScraper.mutate()}
+                  disabled={runSupplierScraper.isPending}
+                >
+                  {runSupplierScraper.isPending ? 'Running supplier scraper…' : 'Run Supplier Scraper'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                  onClick={() => runLeadScraper.mutate()}
+                  disabled={runLeadScraper.isPending}
+                >
+                  {runLeadScraper.isPending ? 'Running lead scraper…' : 'Run Lead Scraper'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => runSupplierOutreach.mutate()}
+                  disabled={runSupplierOutreach.isPending || !scraperStatus.data.flags.supplierOutreachEnabled}
+                  title={!scraperStatus.data.flags.supplierOutreachEnabled ? 'Set OUTREACH_ENABLED=true to enable' : undefined}
+                >
+                  {runSupplierOutreach.isPending ? 'Running supplier outreach…' : 'Run Supplier Outreach'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-emerald-700/50 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/35 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => runLeadOutreach.mutate()}
+                  disabled={runLeadOutreach.isPending || !scraperStatus.data.flags.leadOutreachEnabled}
+                  title={!scraperStatus.data.flags.leadOutreachEnabled ? 'Set LEAD_OUTREACH_ENABLED=true to enable' : undefined}
+                >
+                  {runLeadOutreach.isPending ? 'Running lead outreach…' : 'Run Lead Outreach'}
+                </Button>
+              </div>
+
+              <div className="rounded-lg border border-gray-800 bg-gray-950 p-3 text-xs text-gray-400">
+                Supplier outreach enabled: {scraperStatus.data.flags.supplierOutreachEnabled ? 'Yes' : 'No'} · Lead outreach enabled: {scraperStatus.data.flags.leadOutreachEnabled ? 'Yes' : 'No'}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Immediate Attention</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-gray-300">
+          <div className="flex items-center justify-between rounded border border-gray-800 bg-gray-950 px-3 py-2">
+            <span>Suppliers waiting for verification</span>
+            <Badge variant="outline" className="border-amber-500/40 text-amber-300">
+              {supplierStats?.pending ?? 0}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between rounded border border-gray-800 bg-gray-950 px-3 py-2">
+            <span>Email videos not opened</span>
+            <Badge variant="outline" className="border-blue-500/40 text-blue-300">
+              {Math.max(0, unopenedEmailVideos)}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between rounded border border-gray-800 bg-gray-950 px-3 py-2">
+            <span>Marketing videos with zero views</span>
+            <Badge variant="outline" className="border-purple-500/40 text-purple-300">
+              {(marketingLibrary.data ?? []).filter((v) => (v.watchedCount ?? 0) === 0).length}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 // ─── Users Tab ───────────────────────────────────────────────────────────────
 
 interface ChangeRoleDialogProps {
@@ -1904,7 +2509,7 @@ function AIChatTab() {
     {
       id: 'seed-assistant-message',
       role: 'assistant',
-      content: 'I am your GreenChainz dashboard copilot. Ask about lead strategy, supplier onboarding, outreach, or growth decisions.',
+      content: 'I am your GreenChainz founder copilot — connected to your live database (leads, RFQs, suppliers, scraper activity) and Microsoft Fabric if configured. Ask about lead strategy, supplier onboarding, outreach status, or any growth decision.',
       createdAt: Date.now(),
     },
   ]);
@@ -2438,6 +3043,129 @@ function WorkIQTab() {
 
 // ─── System Tab ──────────────────────────────────────────────────────────────
 
+// ─── Videos Tab ──────────────────────────────────────────────────────────────
+
+function parseYoutubeId(input: string): string {
+  const m = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/.exec(input);
+  return m ? m[1] : input.trim().slice(0, 20);
+}
+
+function VideosTab() {
+  const [urlInput, setUrlInput] = useState('');
+  const [titleInput, setTitleInput] = useState('');
+  const utils = trpc.useUtils();
+
+  const videosQuery = trpc.founderVideo.aboutVideos.useQuery();
+  const videos = videosQuery.data?.videos ?? [];
+
+  const addMutation = trpc.founderVideo.addAboutVideo.useMutation({
+    onSuccess: () => {
+      void utils.founderVideo.aboutVideos.invalidate();
+      setUrlInput('');
+      setTitleInput('');
+      toast.success('Video added to About page');
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const removeMutation = trpc.founderVideo.removeAboutVideo.useMutation({
+    onSuccess: () => { void utils.founderVideo.aboutVideos.invalidate(); toast.success('Video removed'); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  function handleAdd() {
+    const youtubeId = parseYoutubeId(urlInput);
+    if (youtubeId.length < 6) { toast.error('Paste a valid YouTube URL or video ID'); return; }
+    addMutation.mutate({ youtubeId, title: titleInput.trim(), sortOrder: videos.length });
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Add */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+            <Video className="h-4 w-4 text-blue-400" />
+            About Page Videos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-gray-400">
+            Paste a YouTube URL or video ID. Set videos to <strong className="text-gray-300">Unlisted</strong> on YouTube so they only play on your site.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="YouTube URL or video ID"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+              className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+            />
+            <Input
+              placeholder="Label (optional)"
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+              className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+            />
+            <Button
+              onClick={handleAdd}
+              disabled={addMutation.isPending || urlInput.trim() === ''}
+              className="shrink-0 gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </div>
+
+          {/* List */}
+          <div className="mt-4 space-y-2">
+            {videosQuery.isLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : videosQuery.isError ? (
+              <p className="text-sm text-red-400">Unable to load videos: {videosQuery.error.message}</p>
+            ) : videos.length === 0 ? (
+              <p className="text-sm text-gray-500">No videos yet — add one above.</p>
+            ) : (
+              videos.map((v) => (
+                <div key={v.id} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-800/50 p-2">
+                  <img
+                    src={`https://img.youtube.com/vi/${v.youtubeId}/default.jpg`}
+                    alt=""
+                    className="h-12 w-[86px] shrink-0 rounded object-cover bg-gray-700"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{v.title || v.youtubeId}</p>
+                    <a
+                      href={`https://youtu.be/${v.youtubeId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-400 hover:underline"
+                    >
+                      {v.youtubeId}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-red-400 hover:bg-red-950 hover:text-red-300"
+                    disabled={removeMutation.isPending}
+                    onClick={() => removeMutation.mutate({ id: v.id })}
+                    aria-label="Remove video"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function SystemTab() {
   const clearTestUsers = trpc.admin.clearTestUsers.useMutation({
     onSuccess: (res) => {
@@ -2526,15 +3254,27 @@ function SystemTab() {
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
+            <Link href="/admin/about-videos">
+              <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
+                <Video className="mr-2 h-4 w-4" />About Page Videos
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
             <Link href="/admin/founder-videos">
               <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
-                <Video className="mr-2 h-4 w-4" />Founder Videos
+                <BarChart3 className="mr-2 h-4 w-4" />Founder Outreach Videos
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
             <Link href="/admin/founder-videos/analytics">
               <Button variant="outline" size="sm" className="border-blue-800 bg-blue-950 text-blue-300 hover:bg-blue-900 hover:text-white">
                 <BarChart3 className="mr-2 h-4 w-4" />Video Analytics
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Button>
+            </Link>
+            <Link href="/admin?tab=comms">
+              <Button variant="outline" size="sm" className="border-rose-800 bg-rose-950 text-rose-300 hover:bg-rose-900 hover:text-white">
+                <Phone className="mr-2 h-4 w-4" />Dialer / SMS Comms
                 <ExternalLink className="ml-2 h-3 w-3" />
               </Button>
             </Link>
@@ -2577,6 +3317,402 @@ function AccessDenied() {
           Back to Home
         </Button>
       </Link>
+    </div>
+  );
+}
+
+// ─── Comms Tab ───────────────────────────────────────────────────────────────
+
+function CommsTab() {
+  const { data: stats, isLoading, error } = trpc.admin.getCommsStats.useQuery();
+  const { data: missedCallForwarding } = trpc.admin.getMissedCallForwardingSettings.useQuery();
+  const sendTest = trpc.admin.sendTestSms.useMutation();
+  const broadcast = trpc.admin.broadcastArcadeSms.useMutation();
+  const sendTts = trpc.admin.sendTtsCall.useMutation();
+  const saveMissedCallForwarding = trpc.admin.setMissedCallForwardingSettings.useMutation();
+
+  const [testPhone, setTestPhone] = useState('');
+  const [testMsg, setTestMsg] = useState('GreenChainz: This is a test from your admin panel. Reply STOP to opt out.');
+  const [blastBody, setBlastBody] = useState('');
+  const [ttsPhone, setTtsPhone] = useState('');
+  const [ttsText, setTtsText] = useState(
+    "Hi, this is the GreenChainz platform calling. I'm your AI sourcing assistant, helping AEC teams find verified sustainable building materials. Visit greenchainz.com to explore our marketplace and start your free trial today. Have a great day!",
+  );
+  const [ttsVoice, setTtsVoice] = useState<'en-US-AriaNeural' | 'en-US-GuyNeural' | 'en-US-JennyNeural' | 'en-US-DavisNeural'>('en-US-AriaNeural');
+  const [ttsFromNumberType, setTtsFromNumberType] = useState<'local' | 'tollFree'>('local');
+  const [forwardingEnabled, setForwardingEnabled] = useState(false);
+  const [forwardingPhone, setForwardingPhone] = useState('+14343592460');
+  const [forwardingLoaded, setForwardingLoaded] = useState(false);
+
+  const charsLeft = 130 - blastBody.length;
+
+  useEffect(() => {
+    if (!missedCallForwarding || forwardingLoaded) return;
+    setForwardingEnabled(missedCallForwarding.enabled);
+    setForwardingPhone(missedCallForwarding.phone);
+    setForwardingLoaded(true);
+  }, [forwardingLoaded, missedCallForwarding]);
+
+  const handleTestSms = async () => {
+    if (!testPhone) return;
+    try {
+      await sendTest.mutateAsync({ to: testPhone, message: testMsg });
+      toast.success('Test SMS sent ✅');
+    } catch (e: unknown) {
+      toast.error(`SMS failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const handleBroadcast = async () => {
+    if (!blastBody.trim()) return;
+    try {
+      await broadcast.mutateAsync({ body: blastBody });
+      toast.success('Broadcast sent');
+      setBlastBody('');
+    } catch (e: unknown) {
+      toast.error(`Broadcast failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const handleSaveMissedCallForwarding = async () => {
+    try {
+      await saveMissedCallForwarding.mutateAsync({
+        enabled: forwardingEnabled,
+        phone: forwardingPhone,
+      });
+      toast.success('Missed-call forwarding saved ✅');
+    } catch (e: unknown) {
+      toast.error(`Could not save forwarding: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const channelConfig = [
+    {
+      key: 'email',
+      icon: <Mail className="h-5 w-5 text-blue-400" />,
+      accent: 'bg-blue-500/10',
+      label: 'Email',
+      sub: 'ZeptoMail SMTP',
+      stat: isLoading ? '—' : String(stats?.emailUsers ?? 0),
+      statLabel: 'users with email',
+      status: 'active' as const,
+    },
+    {
+      key: 'sms',
+      icon: <Phone className="h-5 w-5 text-emerald-400" />,
+      accent: 'bg-emerald-500/10',
+      label: 'SMS',
+      sub: stats?.channels.sms.number ?? 'ACS Toll-Free',
+      stat: isLoading ? '—' : String(stats?.smsLeads ?? 0),
+      statLabel: 'arcade leads',
+      status: stats?.channels.sms.status ?? 'needs_setup',
+    },
+    {
+      key: 'inApp',
+      icon: <MessageSquare className="h-5 w-5 text-purple-400" />,
+      accent: 'bg-purple-500/10',
+      label: 'In-App',
+      sub: 'Azure Web PubSub',
+      stat: isLoading ? '—' : String(stats?.arcadeSubmissions ?? 0),
+      statLabel: 'arcade runs recorded',
+      status: 'active' as const,
+    },
+    {
+      key: 'voiceVideo',
+      icon: <Video className="h-5 w-5 text-rose-400" />,
+      accent: 'bg-rose-500/10',
+      label: 'Voice / Video',
+      sub: 'Azure Communication Services',
+      stat: '—',
+      statLabel: 'active sessions',
+      status: 'active' as const,
+    },
+  ] as const;
+
+  return (
+    <div className="space-y-8">
+      {error && (
+        <div className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-900/20 p-3 text-sm text-red-300">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>Unable to load communication stats: {error.message}</span>
+        </div>
+      )}
+
+      {/* Channel overview */}
+      <div>
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-400">
+          Channel Status
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {channelConfig.map((ch) => (
+            <Card key={ch.key} className="border-gray-800 bg-gray-900">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-white">{ch.label}</p>
+                    <p className="text-xs text-gray-500">{ch.sub}</p>
+                    {isLoading ? (
+                      <Skeleton className="mt-2 h-5 w-16" />
+                    ) : (
+                      <p className="mt-1 text-xl font-bold text-white">
+                        {ch.stat}
+                        <span className="ml-1 text-xs font-normal text-gray-400">
+                          {ch.statLabel}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className={`rounded-lg p-2 ${ch.accent}`}>{ch.icon}</div>
+                    {ch.status === 'active' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400">
+                        <Wifi className="h-3 w-3" /> Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-400">
+                        <WifiOff className="h-3 w-3" /> Setup needed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Test SMS */}
+        <Card className="border-gray-800 bg-gray-900">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base text-white">
+              <Phone className="h-4 w-4 text-emerald-400" />
+              Send Test SMS
+            </CardTitle>
+            <CardDescription className="text-gray-400">
+              Verify your toll-free number is live before blasting.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Phone number</Label>
+              <Input
+                placeholder="+12065550100"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Message</Label>
+              <Textarea
+                value={testMsg}
+                onChange={(e) => setTestMsg(e.target.value)}
+                rows={3}
+                maxLength={160}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+              <p className="text-right text-xs text-gray-500">{testMsg.length}/160</p>
+            </div>
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handleTestSms}
+              disabled={!testPhone || sendTest.isPending}
+            >
+              {sendTest.isPending ? 'Sending…' : 'Send Test SMS'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Arcade blast */}
+        <Card className="border-gray-800 bg-gray-900">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base text-white">
+              <Megaphone className="h-4 w-4 text-amber-400" />
+              Arcade Player Blast
+            </CardTitle>
+            <CardDescription className="text-gray-400">
+              SMS all arcade players who opted in. "GreenChainz: " and the STOP footer
+              are added automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-3">
+              <p className="text-xs text-gray-400">Audience</p>
+              <p className="mt-0.5 text-sm font-medium text-white">
+                {isLoading ? (
+                  <Skeleton className="inline-block h-4 w-10" />
+                ) : (
+                  stats?.smsLeads ?? 0
+                )}{' '}
+                arcade leads captured by email
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">
+                Message body{' '}
+                <span className={charsLeft < 20 ? 'text-red-400' : 'text-gray-500'}>
+                  ({charsLeft} chars left)
+                </span>
+              </Label>
+              <Textarea
+                placeholder="Think you can top the board? Come get your swing at greenchainz.com/arcade"
+                value={blastBody}
+                onChange={(e) => setBlastBody(e.target.value.slice(0, 130))}
+                rows={3}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+              <p className="text-xs text-gray-500">
+                Final message: <span className="text-gray-300">GreenChainz: {blastBody || '…'} Txt STOP to opt out.</span>
+              </p>
+            </div>
+            <Button
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={handleBroadcast}
+              disabled={!blastBody.trim() || broadcast.isPending}
+            >
+              {broadcast.isPending ? 'Sending…' : `Blast SMS to Arcade Players`}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* TTS Call */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-white">
+            <Phone className="h-4 w-4 text-blue-400" />
+            Text-to-Speech Call (ACS Call Automation)
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Place an outbound call from your selected ACS caller number (Local or Toll-Free). ACS dials the number, reads your message
+            in the chosen neural voice, then hangs up automatically.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Phone number</Label>
+              <Input
+                placeholder="+14343592460"
+                value={ttsPhone}
+                onChange={(e) => setTtsPhone(e.target.value)}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Voice</Label>
+              <Select value={ttsVoice} onValueChange={(v) => setTtsVoice(v as typeof ttsVoice)}>
+                <SelectTrigger className="border-gray-700 bg-gray-800 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-gray-700 bg-gray-900 text-white">
+                  <SelectItem value="en-US-AriaNeural">Aria — warm, conversational ✨</SelectItem>
+                  <SelectItem value="en-US-JennyNeural">Jenny — friendly, approachable</SelectItem>
+                  <SelectItem value="en-US-GuyNeural">Guy — clear, professional</SelectItem>
+                  <SelectItem value="en-US-DavisNeural">Davis — confident, energetic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Caller ID number</Label>
+              <Select value={ttsFromNumberType} onValueChange={(v) => setTtsFromNumberType(v as typeof ttsFromNumberType)}>
+                <SelectTrigger className="border-gray-700 bg-gray-800 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-gray-700 bg-gray-900 text-white">
+                  <SelectItem value="local">Local number (recommended for calls)</SelectItem>
+                  <SelectItem value="tollFree">Toll-free number</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={async () => {
+                  if (!ttsPhone || !ttsText) return;
+                  try {
+                    await sendTts.mutateAsync({
+                      to: ttsPhone,
+                      text: ttsText,
+                      voice: ttsVoice,
+                      fromNumberType: ttsFromNumberType,
+                    });
+                    toast.success('Call placed ✅ — answer your phone!');
+                  } catch (e: unknown) {
+                    toast.error(`Call failed: ${e instanceof Error ? e.message : String(e)}`);
+                  }
+                }}
+                disabled={!ttsPhone || !ttsText || sendTts.isPending}
+              >
+                {sendTts.isPending ? 'Calling…' : '📞 Place TTS Call'}
+              </Button>
+            </div>
+          </div>
+          <div className="mt-4 space-y-1.5">
+            <Label className="text-xs text-gray-400">Message script ({ttsText.length}/800 chars)</Label>
+            <Textarea
+              value={ttsText}
+              onChange={(e) => setTtsText(e.target.value.slice(0, 800))}
+              rows={4}
+              className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-white">
+            <Phone className="h-4 w-4 text-emerald-400" />
+            Missed Call Forwarding
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            If an in-app call is missed, send an SMS alert to your real phone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Forwarding</Label>
+              <Select
+                value={forwardingEnabled ? 'enabled' : 'disabled'}
+                onValueChange={(value) => setForwardingEnabled(value === 'enabled')}
+              >
+                <SelectTrigger className="border-gray-700 bg-gray-800 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-gray-700 bg-gray-900 text-white">
+                  <SelectItem value="enabled">On (send SMS when call is missed)</SelectItem>
+                  <SelectItem value="disabled">Off</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400">Forward-to phone</Label>
+              <Input
+                placeholder="+14343592460"
+                value={forwardingPhone}
+                onChange={(e) => setForwardingPhone(e.target.value)}
+                className="border-gray-700 bg-gray-800 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleSaveMissedCallForwarding}
+                disabled={
+                  saveMissedCallForwarding.isPending ||
+                  !forwardingLoaded ||
+                  !forwardingPhone.trim()
+                }
+              >
+                {saveMissedCallForwarding.isPending ? 'Saving…' : 'Save Forwarding'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -2669,6 +3805,20 @@ export default function AdminDashboard() {
               Overview
             </TabsTrigger>
             <TabsTrigger
+              value="marketing-videos"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Video className="mr-1.5 h-4 w-4" />
+              Marketing Videos
+            </TabsTrigger>
+            <TabsTrigger
+              value="god-mode"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-red-300 text-gray-400"
+            >
+              <Zap className="mr-1.5 h-4 w-4" />
+              God Mode
+            </TabsTrigger>
+            <TabsTrigger
               value="users"
               className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
             >
@@ -2688,6 +3838,13 @@ export default function AdminDashboard() {
             >
               <Package className="mr-1.5 h-4 w-4" />
               Catalog
+            </TabsTrigger>
+            <TabsTrigger
+              value="videos"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Video className="mr-1.5 h-4 w-4" />
+              Videos
             </TabsTrigger>
             <TabsTrigger
               value="leads"
@@ -2745,10 +3902,23 @@ export default function AdminDashboard() {
               <Server className="mr-1.5 h-4 w-4" />
               System
             </TabsTrigger>
+            <TabsTrigger
+              value="comms"
+              className="data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-400 text-gray-400"
+            >
+              <Megaphone className="mr-1.5 h-4 w-4" />
+              Comms
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
             <OverviewTab />
+          </TabsContent>
+          <TabsContent value="marketing-videos">
+            <MarketingVideosTab />
+          </TabsContent>
+          <TabsContent value="god-mode">
+            <GodModeTab />
           </TabsContent>
 
           <TabsContent value="users">
@@ -2761,6 +3931,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="catalog">
             <CatalogTab />
+          </TabsContent>
+
+          <TabsContent value="videos">
+            <VideosTab />
           </TabsContent>
 
           <TabsContent value="leads">
@@ -2794,6 +3968,10 @@ export default function AdminDashboard() {
           <TabsContent value="system">
             <SystemTab />
           </TabsContent>
+
+          <TabsContent value="comms">
+            <CommsTab />
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -2801,3 +3979,12 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
