@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   pgEnum,
@@ -973,7 +974,9 @@ export const rfqBids = pgTable("rfq_bids", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
   supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
-  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
+  // Partial unique index: allows one live (non-deleted) bid per rfqId/supplierId
+  // while soft-deleted rows and revisions are unrestricted.
+  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId).where(sql`deleted_at IS NULL`),
   statusIdx: index("idx_rfq_bids_status").on(t.status),
 }));
 
@@ -1030,7 +1033,9 @@ export const notifications = pgTable("notifications", {
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
-  userUnreadIdx: index("idx_notifications_user_unread").on(t.userId, t.isRead),
+  // Partial index: covers only unread notifications, which is the hot-path query.
+  // userId alone is sufficient as the leading column; isRead = false is the predicate.
+  userUnreadIdx: index("idx_notifications_user_unread").on(t.userId).where(sql`"isRead" = false`),
 }));
 
 export type Notification = typeof notifications.$inferSelect;
