@@ -8,7 +8,7 @@
 
 | Runbook | Severity | Trigger |
 |---------|----------|---------|
-| [RB-01: Emergency Deployment Bypass (Break-Glass)](#rb-01-break-glass--emergency-deployment-bypass) | Sev-1 | Production outage requiring immediate deploy without normal approval |
+| [RB-01: Emergency Manual Deployment (Break-Glass)](#rb-01-emergency-manual-deployment-break-glass) | Sev-1 | Production outage requiring immediate deploy with expedited human approval |
 | [RB-02: Production Rollback](#rb-02-production-rollback) | Sev-1 | New revision degrading production; must revert in < 15 min |
 | [RB-03: Credential Compromise](#rb-03-credential-compromise) | Sev-1 | Exposed secret, unauthorized access, or leaked token |
 | [RB-04: Database Restoration](#rb-04-database-restoration) | Sev-1 | Data corruption, catastrophic migration failure, or accidental deletion |
@@ -18,7 +18,7 @@
 
 ---
 
-## RB-01: Break-Glass — Emergency Deployment Bypass
+## RB-01: Emergency Manual Deployment (Break-Glass)
 
 **When to use:** Production is down and the normal deployment path (PR → CI → manual approval → deploy) is too slow. This runbook is a manual deployment path and still requires the Production environment approval gate.
 
@@ -58,6 +58,10 @@
 
 3. **Approve the Production environment gate** in GitHub Actions → Environments → Production (required for this runbook).
 
+   > This is still a standard protected-environment approval. If no approver is
+   > available, escalate to the on-call approver per incident policy; do not
+   > assume a technical bypass exists in `deploy-azure.yml`.
+
 4. **Post-deploy validation** (within 10 minutes of deploy):
    - Hit `/health` and `/ready` endpoints
    - Run a manual smoke test: sign in, submit a test RFQ, verify response
@@ -73,44 +77,40 @@
 
 **Target time:** < 15 minutes from alert to rollback complete.
 
-**Goal:** Restore the last known-good revision without redeploying from source.
+**Goal:** Restore the last known-good deploy by re-pointing both Container Apps to known-good image tags.
 
 ### Steps
 
-1. **Identify the last good revision:**
+1. **Identify the last known-good image tags** (backend and frontend):
 
    ```bash
-   az containerapp revision list \
-     --name greenchainz-backend-v2 \
-     --resource-group rg-greenchainz-prod-container \
-     --query "[].{name:name, traffic:properties.trafficWeight, created:properties.createdTime, active:properties.active}" \
-     --output table
+   # Pick a known-good commit SHA from GitHub Actions deploy history,
+   # then use it as the image tag for both apps.
+   GOOD_SHA="<known-good-commit-sha>"
+   BACKEND_IMAGE="acrgreenchainzprod916.azurecr.io/greenchainz-backend:${GOOD_SHA}"
+   FRONTEND_IMAGE="acrgreenchainzprod916.azurecr.io/greenchainz-frontend:${GOOD_SHA}"
    ```
 
-2. **Activate the prior revision (Single revision mode):**
+2. **Roll back backend app** (`greenchainz-backend-v2`):
 
    ```bash
-   GOOD_REVISION="<revision-name-from-step-1>"
-   
-   az containerapp revision activate \
+   az containerapp update \
      --name greenchainz-backend-v2 \
      --resource-group rg-greenchainz-prod-container \
-     --revision "${GOOD_REVISION}"
+     --image "${BACKEND_IMAGE}"
    ```
 
-3. **Deactivate the bad revision:**
+3. **Roll back frontend app** (`greenchainz-frontend`):
 
    ```bash
-   BAD_REVISION="<failing-revision-name>"
-   
-   az containerapp revision deactivate \
-     --name greenchainz-backend-v2 \
+   az containerapp update \
+     --name greenchainz-frontend \
      --resource-group rg-greenchainz-prod-container \
-     --revision "${BAD_REVISION}"
+     --image "${FRONTEND_IMAGE}"
    ```
 
-   > **Note:** The server and client are packaged in a single container image on
-   > `greenchainz-backend-v2`. There is no separate frontend app to roll back.
+   > **Note:** The checked-in deployment workflow deploys backend and frontend as
+   > separate Container Apps. Rollback must cover both apps when both were updated.
 
 4. **Verify rollback success:**
    - Check `/health` → 200
@@ -303,16 +303,23 @@ gh workflow run deploy-azure.yml --ref main
    `createdAt`):
 
    ```sql
-   -- Find authorization-failure events that may indicate cross-tenant access
+   -- Find successful/blocked resource access events for RFQs and extract any
+   -- tenant context that was logged in metadata.
    SELECT "actorUserId", "actorEmail", "action", "resourceType", "resourceId",
-          "outcome", "metadata", "createdAt"
+         "outcome",
+         "metadata"->>'actorOrgId' AS actor_org_id,
+         "metadata"->>'ownerOrgId' AS owner_org_id,
+         "metadata",
+         "createdAt"
    FROM audit_logs
-   WHERE "action" LIKE '%access%'
-      OR "action" LIKE '%view%'
-      OR "outcome" = 'blocked'
+   WHERE ("action" LIKE '%access%' OR "action" LIKE '%view%' OR "action" LIKE '%read%')
+    AND "resourceType" = 'rfq'
    ORDER BY "createdAt" DESC
    LIMIT 100;
    ```
+
+   If `actor_org_id` / `owner_org_id` are null, use `resourceId` + `actorUserId`
+   to correlate against ownership records and request logs to determine cross-tenant exposure.
 
 3. **Determine blast radius** — which records were exposed, for how long, to whom.
 
@@ -350,6 +357,7 @@ JOIN audit_logs al
 LEFT JOIN invited_supplier_users isu
   ON isu.rfq_id = r.id
 WHERE r."deletedAt" IS NULL
+  AND (al."action" LIKE '%access%' OR al."action" LIKE '%view%' OR al."action" LIKE '%read%')
   AND al."outcome" = 'success'
   AND al."actorUserId" IS NOT NULL
   AND al."actorUserId" <> r."userId"

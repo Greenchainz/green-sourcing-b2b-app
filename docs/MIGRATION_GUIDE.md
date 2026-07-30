@@ -225,7 +225,7 @@ Before applying any migration to production:
 - [ ] Migration file committed to git
 - [ ] Migration file reviewed for destructive operations (DROP, RENAME, ALTER TYPE)
 - [ ] Large-table indexes modified to use `CONCURRENTLY`
-- [ ] `CONCURRENTLY` indexes removed from transaction blocks
+- [ ] `CONCURRENTLY` indexes executed via dedicated autocommit step (not Drizzle transaction)
 - [ ] Destructive changes use expand-and-contract (not a single-step DROP)
 - [ ] Backfill for new columns ran and completed (0 NULL rows verified)
 - [ ] Migration tested against staging with real schema size
@@ -240,7 +240,7 @@ Before applying any migration to production:
 
 ```sql
 -- DROP INDEX CONCURRENTLY cannot run inside a transaction block.
--- Run this outside a transaction (remove BEGIN/COMMIT if present in the migration file).
+-- Run this in an explicit autocommit step (for example, via psql -c).
 DROP INDEX CONCURRENTLY IF EXISTS "rfq_bids_rfq_id_idx";
 ```
 
