@@ -29,10 +29,10 @@ export function getAcsConnectionSettings(serviceName: string): {
   );
 }
 
-/** Normalize a US phone number to E.164 (+1XXXXXXXXXX). Returns null if invalid. */
+/** Normalize a phone number to E.164. Returns null if invalid. */
 export function normalizePhoneE164(raw: string): string | null {
   const trimmed = raw.trim();
-  const digits = raw.replace(/\D/g, '');
+  const digits = trimmed.replace(/\D/g, '');
   if (trimmed.startsWith('+')) {
     if (digits.length >= 8 && digits.length <= 15 && /^[1-9]/.test(digits)) {
       return `+${digits}`;
