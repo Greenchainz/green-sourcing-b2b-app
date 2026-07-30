@@ -46,6 +46,8 @@ async function benchmark() {
   }
   const endInArray = Date.now();
 
+  console.log(`N+1 found count: ${foundNPlus1}`);
+  console.log(`IN array found count: ${foundInArray}`);
   console.log(`N+1 Query Time: ${endNPlus1 - startNPlus1}ms`);
   console.log(`IN Array Query Time: ${endInArray - startInArray}ms`);
   console.log(`Speedup: ${((endNPlus1 - startNPlus1) / Math.max(1, (endInArray - startInArray))).toFixed(2)}x`);

@@ -5,7 +5,7 @@ const n_plus_1 = async (items: any[]) => {
   }
 }
 
-const in_array = async (items: any[]) => {
+const in_array = async (_items: any[]) => {
   // Simulate 1 db call for all
   await new Promise(r => setTimeout(r, 15)); // 15ms for slightly larger query
 }

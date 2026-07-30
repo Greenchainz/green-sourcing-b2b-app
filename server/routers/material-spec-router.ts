@@ -363,7 +363,7 @@ export const materialSpecRouter = router({
         params.push(input.fireRating);
       }
       if (input.maxPrice != null) {
-        conditions.push(`"pricePerUnit" <= $${paramIdx++}`);
+        conditions.push(`"pricePerUnit" <= $${paramIdx}`);
         params.push(input.maxPrice);
       }
 
