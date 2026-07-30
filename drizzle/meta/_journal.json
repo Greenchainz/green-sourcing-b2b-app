@@ -29,6 +29,13 @@
       "when": 1785338499690,
       "tag": "0003_mysterious_phantom_reporter",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785429558190,
+      "tag": "0004_vengeful_gladiator",
+      "breakpoints": true
     }
   ]
 }
