@@ -169,7 +169,10 @@ export const manufacturers = pgTable("manufacturers", {
   dataSource: varchar("dataSource", { length: 100 }),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
-});
+}, (t) => ({
+  claimedByIdx: index("idx_manufacturers_claimed_by").on(t.claimedByUserId),
+  categoryIdx: index("idx_manufacturers_category").on(t.category),
+}));
 
 export type Manufacturer = typeof manufacturers.$inferSelect;
 
@@ -300,7 +303,10 @@ export const assemblyComponents = pgTable("assembly_components", {
   thickness: varchar("thickness", { length: 50 }),
   gwpContribution: decimal("gwpContribution", { precision: 12, scale: 4 }),
   notes: text("notes"),
-});
+}, (t) => ({
+  assemblyIdx: index("idx_assembly_components_assembly").on(t.assemblyId),
+  materialIdx: index("idx_assembly_components_material").on(t.materialId),
+}));
 
 export type AssemblyComponent = typeof assemblyComponents.$inferSelect;
 
@@ -320,7 +326,10 @@ export const materialCertifications = pgTable("material_certifications", {
   leedCreditNumber: varchar("leedCreditNumber", { length: 50 }),
   leedPointsValue: integer("leedPointsValue"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  materialIdx: index("idx_material_certifications_material").on(t.materialId),
+  typeIdx: index("idx_material_certifications_type").on(t.certificationType),
+}));
 
 export type MaterialCertification = typeof materialCertifications.$inferSelect;
 
@@ -378,7 +387,12 @@ export const materialSpecs = pgTable("material_specs", {
   rejectionReason: text("rejectionReason"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  materialIdx: index("idx_material_specs_material").on(t.materialId),
+  supplierIdx: index("idx_material_specs_supplier").on(t.supplierId),
+  submittedByIdx: index("idx_material_specs_submitted_by").on(t.submittedBy),
+  statusIdx: index("idx_material_specs_status").on(t.status),
+}));
 
 export type MaterialSpec = typeof materialSpecs.$inferSelect;
 export type InsertMaterialSpec = typeof materialSpecs.$inferInsert;
@@ -413,7 +427,9 @@ export const ccpsScores = pgTable("ccps_scores", {
   ccpsTotal: integer("ccpsTotal"),
   sourcingDifficulty: integer("sourcingDifficulty"),
   calculatedAt: timestamp("calculatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  materialPersonaIdx: uniqueIndex("idx_ccps_scores_material_persona").on(t.materialId, t.personaKey),
+}));
 
 export type CcpsScore = typeof ccpsScores.$inferSelect;
 
@@ -481,7 +497,11 @@ export const rfqs = pgTable("rfqs", {
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: index("idx_rfqs_user").on(t.userId),
+  statusIdx: index("idx_rfqs_status").on(t.status),
+  createdAtIdx: index("idx_rfqs_created_at").on(t.createdAt.desc()),
+}));
 
 export type Rfq = typeof rfqs.$inferSelect;
 
@@ -498,7 +518,11 @@ export const rfqItems = pgTable("rfq_items", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   // Soft-delete — see retention policy note on rfqs table.
   deletedAt: timestamp("deleted_at"),
-});
+}, (t) => ({
+  rfqIdx: index("idx_rfq_items_rfq").on(t.rfqId),
+  materialIdx: index("idx_rfq_items_material").on(t.materialId),
+  assemblyIdx: index("idx_rfq_items_assembly").on(t.assemblyId),
+}));
 
 export type RfqItem = typeof rfqItems.$inferSelect;
 
@@ -557,7 +581,10 @@ export const agentConversations = pgTable("agent_conversations", {
   content: text("content").notNull(),
   metadata: text("metadata"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: index("idx_agent_conversations_user").on(t.userId),
+  sessionIdx: index("idx_agent_conversations_session").on(t.sessionId),
+}));
 
 export type AgentConversation = typeof agentConversations.$inferSelect;
 
@@ -574,7 +601,9 @@ export const agentAnalytics = pgTable("agent_analytics", {
   escalated: boolean("escalated").default(false),
   handedOffToHuman: boolean("handedOffToHuman").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  sessionIdx: index("idx_agent_analytics_session").on(t.sessionId),
+}));
 
 export type AgentAnalytic = typeof agentAnalytics.$inferSelect;
 
@@ -645,7 +674,11 @@ export const suppliers = pgTable("suppliers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
-});
+}, (t) => ({
+  userIdx: uniqueIndex("idx_suppliers_user_id").on(t.userId),
+  tierIdx: index("idx_suppliers_tier").on(t.tier),
+  verifiedIdx: index("idx_suppliers_verified").on(t.verified),
+}));
 
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = typeof suppliers.$inferInsert;
@@ -717,7 +750,10 @@ export const architectReferrals = pgTable("architect_referrals", {
   refereeId: integer("referee_id"),                 // architects.id — set when they sign up
   creditedAt: timestamp("credited_at"),             // null until +3 credits granted to referrer
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  referrerIdx: index("idx_architect_referrals_referrer").on(t.referrerId),
+  refereeIdx: index("idx_architect_referrals_referee").on(t.refereeId),
+}));
 
 export type ArchitectReferral = typeof architectReferrals.$inferSelect;
 
@@ -730,7 +766,10 @@ export const architectDownloadEvents = pgTable("architect_download_events", {
   // bypass method: null=standard credit, 'linkedin'=LinkedIn share, 'referral'=referral credit
   bypassMethod: varchar("bypass_method", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  architectIdx: index("idx_architect_download_events_architect").on(t.architectId),
+  materialIdx: index("idx_architect_download_events_material").on(t.materialId),
+}));
 
 export type ArchitectDownloadEvent = typeof architectDownloadEvents.$inferSelect;
 
@@ -761,7 +800,11 @@ export const supplierMaterialEpds = pgTable("supplier_material_epds", {
   status: verificationStatusEnum("status").default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  supplierIdx: index("idx_supplier_material_epds_supplier").on(t.supplierId),
+  materialIdx: index("idx_supplier_material_epds_material").on(t.materialId),
+  statusIdx: index("idx_supplier_material_epds_status").on(t.status),
+}));
 
 export type SupplierMaterialEpd = typeof supplierMaterialEpds.$inferSelect;
 export type InsertSupplierMaterialEpd = typeof supplierMaterialEpds.$inferInsert;
@@ -779,7 +822,10 @@ export const supplierSubscriptions = pgTable("supplier_subscriptions", {
   isBeta: boolean("isBeta").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  supplierIdx: index("idx_supplier_subscriptions_supplier").on(t.supplierId),
+  statusIdx: index("idx_supplier_subscriptions_status").on(t.status),
+}));
 
 export type SupplierSubscription = typeof supplierSubscriptions.$inferSelect;
 
@@ -822,7 +868,10 @@ export const companyOfWeekSlots = pgTable("company_of_week_slots", {
   showcasePageSlug: text("showcasePageSlug").notNull().unique(),
   emailSentAt: timestamp("emailSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  supplierIdx: index("idx_company_of_week_supplier").on(t.supplierId),
+  weekIdx: index("idx_company_of_week_date").on(t.weekStartDate),
+}));
 
 export type CompanyOfWeekSlot = typeof companyOfWeekSlots.$inferSelect;
 export type InsertCompanyOfWeekSlot = typeof companyOfWeekSlots.$inferInsert;
@@ -842,7 +891,10 @@ export const buyerSubscriptions = pgTable("buyer_subscriptions", {
   maxSeats: integer("maxSeats").default(1),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: uniqueIndex("idx_buyer_subscriptions_user").on(t.userId),
+  statusIdx: index("idx_buyer_subscriptions_status").on(t.status),
+}));
 
 export type BuyerSubscription = typeof buyerSubscriptions.$inferSelect;
 
@@ -861,7 +913,10 @@ export const usageTracking = pgTable("usage_tracking", {
   reportedToMs: boolean("reportedToMs").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: index("idx_usage_tracking_user").on(t.userId),
+  supplierIdx: index("idx_usage_tracking_supplier").on(t.supplierId),
+}));
 
 export type UsageTracking = typeof usageTracking.$inferSelect;
 
@@ -881,7 +936,9 @@ export const supplierFilters = pgTable("supplier_filters", {
   minOrderQuantity: decimal("minOrderQuantity", { precision: 12, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  supplierIdx: uniqueIndex("idx_supplier_filters_supplier").on(t.supplierId),
+}));
 
 export type SupplierFilter = typeof supplierFilters.$inferSelect;
 
@@ -914,7 +971,11 @@ export const rfqBids = pgTable("rfq_bids", {
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
+  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
+  statusIdx: index("idx_rfq_bids_status").on(t.status),
+}));
 
 export type RfqBid = typeof rfqBids.$inferSelect;
 
@@ -929,7 +990,11 @@ export const rfqThreads = pgTable("rfq_threads", {
   lastMessageAt: timestamp("lastMessageAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  rfqIdx: index("idx_rfq_threads_rfq").on(t.rfqId),
+  supplierIdx: index("idx_rfq_threads_supplier").on(t.supplierId),
+  buyerIdx: index("idx_rfq_threads_buyer").on(t.buyerId),
+}));
 
 export type RfqThread = typeof rfqThreads.$inferSelect;
 
@@ -944,7 +1009,10 @@ export const rfqMessages = pgTable("rfq_messages", {
   isRead: boolean("isRead").default(false),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  threadIdx: index("idx_rfq_messages_thread").on(t.threadId),
+  senderIdx: index("idx_rfq_messages_sender").on(t.senderId),
+}));
 
 export type RfqMessage = typeof rfqMessages.$inferSelect;
 
@@ -961,7 +1029,9 @@ export const notifications = pgTable("notifications", {
   isRead: boolean("isRead").default(false),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userUnreadIdx: index("idx_notifications_user_unread").on(t.userId, t.isRead),
+}));
 
 export type Notification = typeof notifications.$inferSelect;
 
@@ -979,7 +1049,9 @@ export const rfqAnalytics = pgTable("rfq_analytics", {
   purchasedAt: timestamp("purchasedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  rfqIdx: uniqueIndex("idx_rfq_analytics_rfq").on(t.rfqId),
+}));
 
 export type RfqAnalytic = typeof rfqAnalytics.$inferSelect;
 
@@ -997,7 +1069,10 @@ export const materialSwaps = pgTable("material_swaps", {
   usageCount: integer("usageCount").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  materialIdx: index("idx_material_swaps_material").on(t.materialId),
+  swapMaterialIdx: index("idx_material_swaps_swap_material").on(t.swapMaterialId),
+}));
 
 export type MaterialSwap = typeof materialSwaps.$inferSelect;
 
@@ -1021,7 +1096,11 @@ export const conversations = pgTable("conversations", {
   labelColor: varchar("labelColor", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  buyerIdx: index("idx_conversations_buyer").on(t.buyerId),
+  supplierIdx: index("idx_conversations_supplier").on(t.supplierId),
+  rfqIdx: index("idx_conversations_rfq").on(t.rfqId),
+}));
 
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -1041,7 +1120,10 @@ export const messages = pgTable("messages", {
   attachmentType: varchar("attachmentType", { length: 50 }),
   attachmentName: varchar("attachmentName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  conversationIdx: index("idx_messages_conversation").on(t.conversationId),
+  senderIdx: index("idx_messages_sender").on(t.senderId),
+}));
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
@@ -1059,7 +1141,10 @@ export const subscriptions = pgTable("subscriptions", {
   lastRenewalDate: timestamp("lastRenewalDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: index("idx_subscriptions_user").on(t.userId),
+  statusIdx: index("idx_subscriptions_status").on(t.status),
+}));
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
@@ -1077,7 +1162,11 @@ export const videoCalls = pgTable("video_calls", {
   endedAt: timestamp("endedAt"),
   durationSeconds: integer("durationSeconds"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  callerIdx: index("idx_video_calls_caller").on(t.callerId),
+  calleeIdx: index("idx_video_calls_callee").on(t.calleeId),
+  conversationIdx: index("idx_video_calls_conversation").on(t.conversationId),
+}));
 
 export type VideoCall = typeof videoCalls.$inferSelect;
 export type InsertVideoCall = typeof videoCalls.$inferInsert;
@@ -1113,7 +1202,10 @@ export const messageReactions = pgTable("message_reactions", {
   userId: integer("userId").notNull(),
   reactionType: varchar("reactionType", { length: 20 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: index("idx_message_reactions_user").on(t.userId),
+  uniqueReaction: uniqueIndex("idx_message_reactions_unique").on(t.messageId, t.userId, t.reactionType),
+}));
 
 export type MessageReaction = typeof messageReactions.$inferSelect;
 export type InsertMessageReaction = typeof messageReactions.$inferInsert;
@@ -1132,7 +1224,11 @@ export const callHistory = pgTable("call_history", {
   durationSeconds: integer("durationSeconds").default(0),
   groupCallId: text("group_call_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  conversationIdx: index("idx_call_history_conversation").on(t.conversationId),
+  callerIdx: index("idx_call_history_caller").on(t.callerId),
+  receiverIdx: index("idx_call_history_receiver").on(t.receiverId),
+}));
 
 export type CallHistory = typeof callHistory.$inferSelect;
 export type InsertCallHistory = typeof callHistory.$inferInsert;
@@ -1146,7 +1242,9 @@ export const monthlyCallUsage = pgTable("monthly_call_usage", {
   totalMinutes: integer("totalMinutes").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userMonthIdx: uniqueIndex("idx_monthly_call_usage_user_month").on(t.userId, t.month),
+}));
 
 export type MonthlyCallUsage = typeof monthlyCallUsage.$inferSelect;
 export type InsertMonthlyCallUsage = typeof monthlyCallUsage.$inferInsert;
@@ -1168,7 +1266,9 @@ export const legalAcceptances = pgTable("legal_acceptances", {
   userAgent: text("userAgent"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: uniqueIndex("idx_legal_acceptances_user").on(t.userId),
+}));
 
 export type LegalAcceptance = typeof legalAcceptances.$inferSelect;
 export type InsertLegalAcceptance = typeof legalAcceptances.$inferInsert;
@@ -1196,6 +1296,7 @@ export const suppliersLocation = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
+    supplierIdx: index("idx_suppliers_location_supplier").on(table.supplierId),
     stateIdx: index("idx_suppliers_location_state").on(table.state),
     cityIdx: index("idx_suppliers_location_city").on(table.city),
     latLngIdx: index("idx_suppliers_location_latlng").on(table.latitude, table.longitude),
@@ -1763,7 +1864,10 @@ export const rfqDrafts = pgTable("rfq_drafts", {
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  architectIdx: index("idx_rfq_drafts_architect").on(t.architectId),
+  statusIdx: index("idx_rfq_drafts_status").on(t.status),
+}));
 
 export type RfqDraft = typeof rfqDrafts.$inferSelect;
 export type InsertRfqDraft = typeof rfqDrafts.$inferInsert;
@@ -1793,7 +1897,13 @@ export const rfqRequests = pgTable("rfq_requests", {
   // FK to the draft that produced this request (for audit trail)
   draftId: integer("draft_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  architectIdx: index("idx_rfq_requests_architect").on(t.architectId),
+  supplierIdx: index("idx_rfq_requests_supplier").on(t.supplierId),
+  materialIdx: index("idx_rfq_requests_material").on(t.materialId),
+  draftIdx: index("idx_rfq_requests_draft").on(t.draftId),
+  statusIdx: index("idx_rfq_requests_status").on(t.status),
+}));
 
 export type RfqRequest = typeof rfqRequests.$inferSelect;
 export type InsertRfqRequest = typeof rfqRequests.$inferInsert;
@@ -1807,7 +1917,9 @@ export const referrals = pgTable("referrals", {
   referredEmail: varchar("referred_email", { length: 320 }).notNull(),
   status: varchar("status", { length: 50 }).default("pending").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  referrerIdx: index("idx_referrals_referrer").on(t.referrerId),
+}));
 
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
@@ -1832,7 +1944,9 @@ export const emailCredentials = pgTable("email_credentials", {
   salt: bytea("salt").notNull(),
   hash: bytea("hash").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: uniqueIndex("idx_email_credentials_user").on(t.userId),
+}));
 
 export type EmailCredential = typeof emailCredentials.$inferSelect;
 
@@ -1853,7 +1967,9 @@ export const userEngagement = pgTable("user_engagement", {
   specSheetsGenerated: integer("specSheetsGenerated").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: uniqueIndex("idx_user_engagement_user").on(t.userId),
+}));
 
 export type UserEngagement = typeof userEngagement.$inferSelect;
 
@@ -1864,7 +1980,10 @@ export const engagementLog = pgTable("engagement_log", {
   creditsEarned: integer("creditsEarned").default(0).notNull(),
   metadata: json("metadata"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdx: index("idx_engagement_log_user").on(t.userId),
+  actionIdx: index("idx_engagement_log_action").on(t.action),
+}));
 
 export type EngagementLog = typeof engagementLog.$inferSelect;
 
