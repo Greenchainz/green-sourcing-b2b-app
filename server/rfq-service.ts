@@ -251,6 +251,15 @@ export async function submitBid(
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
+  const [existingBid] = await db
+    .select({ id: rfqBids.id })
+    .from(rfqBids)
+    .where(and(eq(rfqBids.rfqId, rfqId), eq(rfqBids.supplierId, supplierId)))
+    .limit(1)
+    .execute();
+
+  const isNewBid = !existingBid;
+
   const [bidResult] = await db
     .insert(rfqBids)
     .values({
@@ -278,24 +287,26 @@ export async function submitBid(
 
   const bidId = bidResult.id;
 
-  // Update RFQ analytics
-  const analytics = await db.select().from(rfqAnalytics).where(eq(rfqAnalytics.rfqId, rfqId)).execute();
-  if (analytics.length > 0) {
-    const currentBids = analytics[0].totalBidsReceived || 0;
-    const newAvgPrice = analytics[0].avgBidPrice ? (parseFloat(analytics[0].avgBidPrice.toString()) * currentBids + bidPrice) / (currentBids + 1) : bidPrice;
-    const newLowest = analytics[0].lowestBidPrice ? Math.min(parseFloat(analytics[0].lowestBidPrice.toString()), bidPrice) : bidPrice;
-    const newHighest = analytics[0].highestBidPrice ? Math.max(parseFloat(analytics[0].highestBidPrice.toString()), bidPrice) : bidPrice;
+  // Update RFQ analytics — only increment counts for first-time bids
+  if (isNewBid) {
+    const analytics = await db.select().from(rfqAnalytics).where(eq(rfqAnalytics.rfqId, rfqId)).execute();
+    if (analytics.length > 0) {
+      const currentBids = analytics[0].totalBidsReceived || 0;
+      const newAvgPrice = analytics[0].avgBidPrice ? (parseFloat(analytics[0].avgBidPrice.toString()) * currentBids + bidPrice) / (currentBids + 1) : bidPrice;
+      const newLowest = analytics[0].lowestBidPrice ? Math.min(parseFloat(analytics[0].lowestBidPrice.toString()), bidPrice) : bidPrice;
+      const newHighest = analytics[0].highestBidPrice ? Math.max(parseFloat(analytics[0].highestBidPrice.toString()), bidPrice) : bidPrice;
 
-    await db
-      .update(rfqAnalytics)
-      .set({
-        totalBidsReceived: currentBids + 1,
-        avgBidPrice: newAvgPrice.toString(),
-        lowestBidPrice: newLowest.toString(),
-        highestBidPrice: newHighest.toString(),
-      })
-      .where(eq(rfqAnalytics.rfqId, rfqId))
-      .execute();
+      await db
+        .update(rfqAnalytics)
+        .set({
+          totalBidsReceived: currentBids + 1,
+          avgBidPrice: newAvgPrice.toString(),
+          lowestBidPrice: newLowest.toString(),
+          highestBidPrice: newHighest.toString(),
+        })
+        .where(eq(rfqAnalytics.rfqId, rfqId))
+        .execute();
+    }
   }
 
   // Get buyer's userId from RFQ
