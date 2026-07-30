@@ -330,13 +330,21 @@ export const messagingRouter = router({
         return { added: false };
       }
 
-      await db.insert(messageReactions).values({
-        messageId: input.messageId,
-        userId: ctx.user.id,
-        reactionType: input.reactionType,
-      });
+      // Use INSERT ... ON CONFLICT DO NOTHING to make the insert atomic: if two
+      // concurrent requests both passed the SELECT check above, only one will
+      // insert; the other will silently no-op rather than surfacing a unique
+      // violation as a user-visible error.
+      const inserted = await db
+        .insert(messageReactions)
+        .values({
+          messageId: input.messageId,
+          userId: ctx.user.id,
+          reactionType: input.reactionType,
+        })
+        .onConflictDoNothing()
+        .returning({ id: messageReactions.id });
 
-      return { added: true };
+      return { added: inserted.length > 0 };
     }),
 
   getMessageReactions: protectedProcedure

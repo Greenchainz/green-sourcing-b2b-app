@@ -9,7 +9,7 @@
  *  - env        — NODE_ENV
  *  - sha        — Git commit SHA injected at build time (COMMIT_SHA env var)
  *  - requestId  — injected per-request via logger.child({ requestId })
- *  - userId     — injected per-request (first 8 chars of hashed id — not raw PII)
+ *  - userId     — injected per-request (first 8 hex chars of SHA-256 hash — not raw PII)
  *
  * Usage:
  *   import { logger } from "./_core/logger";
@@ -20,6 +20,7 @@
  *   reqLog.warn({ path: req.path }, "Unauthorized access attempt");
  */
 
+import { createHash } from "crypto";
 import pino, { type Logger } from "pino";
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -114,7 +115,7 @@ export const logger: Logger = createLogger();
 
 /**
  * Create a child logger for a single request, stamped with requestId and an
- * opaque userId prefix (not the raw ID — avoids PII in log storage).
+ * opaque userId hash (first 8 hex chars of SHA-256 — not the raw ID, avoids PII in log storage).
  */
 export function requestLogger(opts: {
   requestId?: string;
@@ -123,8 +124,14 @@ export function requestLogger(opts: {
 }): Logger {
   return logger.child({
     requestId: opts.requestId,
-    // Truncate userId to 8 chars as an opaque correlation token — not raw PII
-    userId: opts.userId != null ? String(opts.userId).slice(0, 8) : undefined,
-    tenantId: opts.tenantId != null ? String(opts.tenantId).slice(0, 8) : undefined,
+    // SHA-256 hash truncated to 8 hex chars — opaque correlation token, not raw PII
+    userId:
+      opts.userId != null
+        ? createHash("sha256").update(String(opts.userId)).digest("hex").slice(0, 8)
+        : undefined,
+    tenantId:
+      opts.tenantId != null
+        ? createHash("sha256").update(String(opts.tenantId)).digest("hex").slice(0, 8)
+        : undefined,
   });
 }
