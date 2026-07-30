@@ -292,7 +292,7 @@ gh workflow run deploy-azure.yml --ref main
    az containerapp ingress enable \
      --name greenchainz-backend-v2 \
      --resource-group rg-greenchainz-prod-container \
-     --type external --target-port 3001 --transport auto
+     --type external --target-port 3000 --transport auto
    ```
 
    > **Note:** Set `DISABLE_SIGNUP=true` to block `/api/auth/email/signup` while
@@ -331,12 +331,26 @@ gh workflow run deploy-azure.yml --ref main
 
 6. **Document in a GitHub Issue** with `security` label. Include: affected users, data types, exposure window, remediation.
 
-### Diagnostic query for tenant boundary violations
+### Diagnostic query for tenant boundary violations (requires access-audit events)
+
+Do **not** use generic `resourceType = 'rfq'` mutation logs as exposure proof:
+that value is currently reused for both `rfqs` and `rfq_requests` writes. First
+capture successful RFQ read/access events under a distinct resource type (for
+example `rfq_access`) that includes the canonical RFQ ID in metadata.
 
 ```sql
--- Find RFQ access attempts where the actor is neither the RFQ owner nor an invited supplier user.
+-- Find successful RFQ access events where the actor is neither the RFQ owner nor an invited supplier user.
 -- Ownership: rfqs.userId. Assignment: rfq_supplier_invites.supplier_id -> suppliers.userId.
-WITH invited_supplier_users AS (
+WITH access_events AS (
+  SELECT al.*
+  FROM audit_logs al
+  WHERE al."resourceType" = 'rfq_access'
+    AND (al."action" LIKE '%access%' OR al."action" LIKE '%view%' OR al."action" LIKE '%read%')
+    AND al."outcome" = 'success'
+    AND al."actorUserId" IS NOT NULL
+    AND (al."metadata"->>'rfqId') ~ '^[0-9]+$'
+),
+invited_supplier_users AS (
   SELECT rsi.rfq_id, array_agg(DISTINCT s."userId") AS invited_user_ids
   FROM rfq_supplier_invites rsi
   JOIN suppliers s ON s.id = rsi.supplier_id
@@ -350,16 +364,12 @@ SELECT r.id AS rfq_id,
        al."outcome",
        al."resourceId",
        al."createdAt" AS audit_created_at
-FROM rfqs r
-JOIN audit_logs al
-  ON al."resourceType" = 'rfq'
- AND al."resourceId" = r.id::text
+FROM access_events al
+JOIN rfqs r
+  ON r.id = (al."metadata"->>'rfqId')::integer
 LEFT JOIN invited_supplier_users isu
   ON isu.rfq_id = r.id
 WHERE r."deletedAt" IS NULL
-  AND (al."action" LIKE '%access%' OR al."action" LIKE '%view%' OR al."action" LIKE '%read%')
-  AND al."outcome" = 'success'
-  AND al."actorUserId" IS NOT NULL
   AND al."actorUserId" <> r."userId"
   AND NOT (al."actorUserId" = ANY(COALESCE(isu.invited_user_ids, ARRAY[]::integer[])))
 ORDER BY al."createdAt" DESC
