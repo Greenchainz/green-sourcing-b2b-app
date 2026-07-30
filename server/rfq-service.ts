@@ -262,6 +262,18 @@ export async function submitBid(
       notes,
       expiresAt,
     })
+    .onConflictDoUpdate({
+      target: [rfqBids.rfqId, rfqBids.supplierId],
+      set: {
+        status: "submitted",
+        bidPrice: bidPrice.toString(),
+        leadDays,
+        notes,
+        expiresAt,
+        updatedAt: new Date(),
+        deletedAt: null,
+      },
+    })
     .returning({ id: rfqBids.id });
 
   const bidId = bidResult.id;
