@@ -154,7 +154,6 @@
     "@types/nodemailer": "^7.0.11",
     "@types/office-js": "^1.0.592",
     "@types/pg": "^8.20.0",
-    "@types/pino-http": "^6.1.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^11.0.0",
