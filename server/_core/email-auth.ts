@@ -152,6 +152,10 @@ export function registerEmailAuthRoutes(app: Express): void {
 
   // POST /api/auth/email/signup
   app.post("/api/auth/email/signup", async (req: Request, res: Response) => {
+    if (process.env.DISABLE_SIGNUP === "true") {
+      return void res.status(503).json({ error: "Sign-up is temporarily disabled." });
+    }
+
     const signupLimit = isRateLimited(signupRateLimit, getRequestIp(req), 5, 60_000);
     if (signupLimit.limited) {
       res.setHeader("Retry-After", String(signupLimit.retryAfterSeconds));
