@@ -304,11 +304,23 @@ export async function endCall(
         )
       );
 
-    // Update monthly usage (only for caller)
+    // Update monthly usage atomically (only for caller)
     if (userId === session.callerId) {
       // Atomically increment or create the usage row for this user/month
       const currentMonth = new Date().toISOString().slice(0, 7);
 
+<<<<<<< HEAD
+      await db.insert(monthlyCallUsage).values({
+        userId,
+        month: currentMonth,
+        totalMinutes: durationMinutes,
+      }).onConflictDoUpdate({
+        target: [monthlyCallUsage.userId, monthlyCallUsage.month],
+        set: {
+          totalMinutes: sql`${monthlyCallUsage.totalMinutes} + ${durationMinutes}`,
+        },
+      });
+=======
       await db
         .insert(monthlyCallUsage)
         .values({
@@ -322,6 +334,7 @@ export async function endCall(
             totalMinutes: sql`${monthlyCallUsage.totalMinutes} + ${durationMinutes}`,
           },
         });
+>>>>>>> origin/main
     }
   }
 

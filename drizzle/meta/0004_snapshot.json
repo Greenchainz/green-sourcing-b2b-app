@@ -1,9 +1,13 @@
 {
 <<<<<<< HEAD
+  "id": "ced91fbe-ec54-494d-b995-861d9a690098",
+=======
+<<<<<<< HEAD
   "id": "fda80c64-c8d9-4704-bdc7-241ee69dc043",
 =======
   "id": "ffed9fc2-f670-43f7-9316-60229f17b00e",
   "id": "8fb20e44-6fca-4c5e-8070-d53410853be0",
+>>>>>>> origin/main
 >>>>>>> origin/main
   "prevId": "7a022dd5-6c28-4e78-8ade-44fa11416c23",
   "version": "7",
@@ -131,9 +135,12 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
       "indexes": {},
 <<<<<<< HEAD
 =======
+>>>>>>> origin/main
       "indexes": {
         "idx_agent_analytics_session": {
           "name": "idx_agent_analytics_session",
@@ -547,7 +554,10 @@
       },
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
       "indexes": {},
+>>>>>>> origin/main
 >>>>>>> origin/main
       "indexes": {
         "idx_architect_download_events_architect": {
@@ -632,7 +642,10 @@
       },
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
       "indexes": {},
+>>>>>>> origin/main
 >>>>>>> origin/main
       "indexes": {
         "idx_architect_referrals_referrer": {
@@ -1073,7 +1086,10 @@
       },
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
       "indexes": {},
+>>>>>>> origin/main
 >>>>>>> origin/main
       "indexes": {
         "idx_assembly_components_assembly": {
@@ -1641,7 +1657,11 @@
 <<<<<<< HEAD
           "isUnique": false,
 =======
+<<<<<<< HEAD
+          "isUnique": false,
+=======
           "isUnique": true,
+>>>>>>> origin/main
 >>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
@@ -2164,21 +2184,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "idx_call_history_receiver": {
-          "name": "idx_call_history_receiver",
-          "columns": [
-            {
-              "expression": "receiverId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {},
@@ -2331,8 +2336,11 @@
       "indexes": {
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
         "idx_ccps_scores_material": {
           "name": "idx_ccps_scores_material",
+>>>>>>> origin/main
 >>>>>>> origin/main
         "idx_ccps_scores_material_persona": {
           "name": "idx_ccps_scores_material_persona",
@@ -2342,6 +2350,8 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
+<<<<<<< HEAD
+=======
 <<<<<<< HEAD
 =======
             }
@@ -2371,6 +2381,7 @@
               "asc": true,
               "nulls": "last"
 >>>>>>> origin/main
+>>>>>>> origin/main
             },
             {
               "expression": "personaKey",
@@ -2381,7 +2392,22 @@
           ],
           "isUnique": true,
 <<<<<<< HEAD
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ccps_scores_material": {
+          "name": "idx_ccps_scores_material",
+          "columns": [
+            {
+              "expression": "materialId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
             }
           ],
           "isUnique": false,
@@ -2552,11 +2578,14 @@
       },
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
       "indexes": {},
 >>>>>>> origin/main
+>>>>>>> origin/main
       "indexes": {
-        "idx_company_of_week_supplier": {
-          "name": "idx_company_of_week_supplier",
+        "idx_company_of_week_slots_supplier": {
+          "name": "idx_company_of_week_slots_supplier",
           "columns": [
             {
               "expression": "supplierId",
@@ -2571,11 +2600,16 @@
           "with": {}
         },
 <<<<<<< HEAD
+        "idx_company_of_week_slots_week": {
+          "name": "idx_company_of_week_slots_week",
+=======
+<<<<<<< HEAD
         "idx_company_of_week_week": {
           "name": "idx_company_of_week_week",
 =======
         "idx_company_of_week_date": {
           "name": "idx_company_of_week_date",
+>>>>>>> origin/main
 >>>>>>> origin/main
           "columns": [
             {
@@ -3071,6 +3105,21 @@
             {
               "expression": "rfqId",
 >>>>>>> origin/main
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_conversations_last_message_at": {
+          "name": "idx_conversations_last_message_at",
+          "columns": [
+            {
+              "expression": "lastMessageAt",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3819,6 +3868,8 @@
 <<<<<<< HEAD
 =======
       "indexes": {},
+<<<<<<< HEAD
+=======
 >>>>>>> origin/main
       "indexes": {
         "idx_email_credentials_user": {
@@ -3841,6 +3892,7 @@
           "with": {}
         }
       },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
@@ -3993,6 +4045,8 @@
 <<<<<<< HEAD
 =======
       "indexes": {},
+<<<<<<< HEAD
+=======
 >>>>>>> origin/main
       "indexes": {
         "idx_engagement_log_user": {
@@ -4026,6 +4080,7 @@
           "with": {}
         }
       },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -5153,7 +5208,37 @@
           ],
 <<<<<<< HEAD
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_legal_acceptances_user_version": {
+          "name": "idx_legal_acceptances_user_version",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "termsVersion",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "privacyVersion",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
 =======
+<<<<<<< HEAD
+          "isUnique": false,
+=======
+>>>>>>> origin/main
           "isUnique": true,
 >>>>>>> origin/main
           "concurrently": false,
@@ -5421,11 +5506,14 @@
       },
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
       "indexes": {},
 >>>>>>> origin/main
+>>>>>>> origin/main
       "indexes": {
-        "idx_manufacturers_claimed_by": {
-          "name": "idx_manufacturers_claimed_by",
+        "idx_manufacturers_claimed_by_user": {
+          "name": "idx_manufacturers_claimed_by_user",
           "columns": [
             {
               "expression": "claimedByUserId",
@@ -5444,6 +5532,21 @@
           "columns": [
             {
               "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_manufacturers_verified": {
+          "name": "idx_manufacturers_verified",
+          "columns": [
+            {
+              "expression": "verified",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5799,29 +5902,17 @@
       "indexes": {
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
         "idx_material_certs_material": {
           "name": "idx_material_certs_material",
+>>>>>>> origin/main
 >>>>>>> origin/main
         "idx_material_certifications_material": {
           "name": "idx_material_certifications_material",
           "columns": [
             {
               "expression": "materialId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_material_certifications_type": {
-          "name": "idx_material_certifications_type",
-          "columns": [
-            {
-              "expression": "certificationType",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6424,6 +6515,8 @@
           "with": {}
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
         }
       },
       "foreignKeys": {},
@@ -6431,6 +6524,7 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+>>>>>>> origin/main
 >>>>>>> origin/main
         },
         "idx_material_specs_status": {
@@ -7332,6 +7426,8 @@
           "notNull": false
         }
       },
+<<<<<<< HEAD
+=======
       "indexes": {
         "idx_materials_manufacturer": {
           "name": "idx_materials_manufacturer",
@@ -7389,6 +7485,7 @@
       },
 <<<<<<< HEAD
 =======
+>>>>>>> origin/main
       "indexes": {},
 >>>>>>> origin/main
       "foreignKeys": {},
@@ -7667,6 +7764,8 @@
       "indexes": {
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
         "idx_monthly_call_usage_user": {
           "name": "idx_monthly_call_usage_user",
           "columns": [
@@ -7682,6 +7781,7 @@
           "method": "btree",
           "with": {}
         },
+>>>>>>> origin/main
 >>>>>>> origin/main
         "idx_monthly_call_usage_user_month": {
           "name": "idx_monthly_call_usage_user_month",
@@ -7700,6 +7800,21 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_monthly_call_usage_user": {
+          "name": "idx_monthly_call_usage_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -7800,16 +7915,15 @@
         "idx_notifications_is_read": {
           "name": "idx_notifications_is_read",
 =======
+<<<<<<< HEAD
+        "idx_notifications_is_read": {
+          "name": "idx_notifications_is_read",
+=======
         "idx_notifications_user_unread": {
           "name": "idx_notifications_user_unread",
 >>>>>>> origin/main
+>>>>>>> origin/main
           "columns": [
-            {
-              "expression": "userId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
             {
               "expression": "isRead",
               "isExpression": false,
@@ -8181,6 +8295,8 @@
 <<<<<<< HEAD
 =======
       "indexes": {},
+<<<<<<< HEAD
+=======
 >>>>>>> origin/main
       "indexes": {
         "idx_referrals_referrer": {
@@ -8199,6 +8315,7 @@
           "with": {}
         }
       },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -8409,6 +8526,9 @@
             }
           ],
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
@@ -8425,8 +8545,11 @@
             }
           ],
           "isUnique": false,
+<<<<<<< HEAD
+=======
 =======
           "isUnique": true,
+>>>>>>> origin/main
 >>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
@@ -8589,7 +8712,25 @@
           "with": {}
         },
 <<<<<<< HEAD
+        "idx_rfq_bids_status": {
+          "name": "idx_rfq_bids_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
         "idx_rfq_bids_rfq_supplier": {
           "name": "idx_rfq_bids_rfq_supplier",
           "columns": [
@@ -8606,6 +8747,8 @@
               "nulls": "last"
             }
           ],
+<<<<<<< HEAD
+=======
           "isUnique": true,
           "concurrently": false,
           "method": "btree",
@@ -8622,6 +8765,7 @@
               "nulls": "last"
             }
           ],
+>>>>>>> origin/main
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
@@ -8719,6 +8863,8 @@
 <<<<<<< HEAD
 =======
       "indexes": {},
+<<<<<<< HEAD
+=======
 >>>>>>> origin/main
       "indexes": {
         "idx_rfq_drafts_architect": {
@@ -8752,6 +8898,7 @@
           "with": {}
         }
       },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -8840,21 +8987,6 @@
           "columns": [
             {
               "expression": "materialId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_rfq_items_assembly": {
-          "name": "idx_rfq_items_assembly",
-          "columns": [
-            {
-              "expression": "assemblyId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -9179,6 +9311,8 @@
 <<<<<<< HEAD
 =======
       "indexes": {},
+<<<<<<< HEAD
+=======
 >>>>>>> origin/main
       "indexes": {
         "idx_rfq_requests_architect": {
@@ -9260,6 +9394,7 @@
           "with": {}
         }
       },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -9602,7 +9737,11 @@
 <<<<<<< HEAD
           "type": "numeric(12, 2)",
 =======
+<<<<<<< HEAD
+          "type": "numeric(12, 2)",
+=======
           "type": "numeric",
+>>>>>>> origin/main
 >>>>>>> origin/main
           "primaryKey": false,
           "notNull": false
@@ -9708,6 +9847,8 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+<<<<<<< HEAD
+=======
         },
 <<<<<<< HEAD
         "idx_rfqs_due_date": {
@@ -9733,6 +9874,7 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+>>>>>>> origin/main
         }
       },
       "foreignKeys": {},
@@ -10957,7 +11099,10 @@
           "isUnique": false,
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
           "isUnique": true,
+>>>>>>> origin/main
 >>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
@@ -11104,7 +11249,10 @@
       },
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
       "indexes": {},
+>>>>>>> origin/main
 >>>>>>> origin/main
       "indexes": {
         "idx_supplier_material_epds_supplier": {
@@ -11359,7 +11507,10 @@
           ],
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
           "isUnique": true,
+>>>>>>> origin/main
 >>>>>>> origin/main
           "isUnique": false,
           "concurrently": false,
@@ -11921,10 +12072,16 @@
         "idx_suppliers_user": {
           "name": "idx_suppliers_user",
 =======
+<<<<<<< HEAD
+      "indexes": {
+        "idx_suppliers_user": {
+          "name": "idx_suppliers_user",
+=======
       "indexes": {},
       "indexes": {
         "idx_suppliers_user_id": {
           "name": "idx_suppliers_user_id",
+>>>>>>> origin/main
 >>>>>>> origin/main
           "columns": [
             {
@@ -11937,7 +12094,11 @@
 <<<<<<< HEAD
           "isUnique": false,
 =======
+<<<<<<< HEAD
+          "isUnique": false,
+=======
           "isUnique": true,
+>>>>>>> origin/main
 >>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
@@ -12098,6 +12259,8 @@
       "indexes": {
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
         "idx_suppliers_location_supplier": {
           "name": "idx_suppliers_location_supplier",
           "columns": [
@@ -12113,6 +12276,7 @@
           "method": "btree",
           "with": {}
         },
+>>>>>>> origin/main
 >>>>>>> origin/main
         "idx_suppliers_location_state": {
           "name": "idx_suppliers_location_state",
@@ -12533,6 +12697,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_usage_tracking_dimension": {
+          "name": "idx_usage_tracking_dimension",
+          "columns": [
+            {
+              "expression": "dimension",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -12645,6 +12824,8 @@
 <<<<<<< HEAD
 =======
       "indexes": {},
+<<<<<<< HEAD
+=======
 >>>>>>> origin/main
       "indexes": {
         "idx_user_engagement_user": {
@@ -12663,6 +12844,7 @@
           "with": {}
         }
       },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -12877,6 +13059,21 @@
         }
       },
       "indexes": {
+        "idx_video_calls_conversation": {
+          "name": "idx_video_calls_conversation",
+          "columns": [
+            {
+              "expression": "conversationId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "idx_video_calls_caller": {
           "name": "idx_video_calls_caller",
           "columns": [
@@ -12897,21 +13094,6 @@
           "columns": [
             {
               "expression": "calleeId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_video_calls_conversation": {
-          "name": "idx_video_calls_conversation",
-          "columns": [
-            {
-              "expression": "conversationId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

@@ -171,12 +171,19 @@ export const manufacturers = pgTable("manufacturers", {
   deletedAt: timestamp("deleted_at"),
 <<<<<<< HEAD
 }, (table) => ({
+  claimedByUserIdx: index("idx_manufacturers_claimed_by_user").on(table.claimedByUserId),
+  categoryIdx: index("idx_manufacturers_category").on(table.category),
+  verifiedIdx: index("idx_manufacturers_verified").on(table.verified),
+=======
+<<<<<<< HEAD
+}, (table) => ({
   claimedByIdx: index("idx_manufacturers_claimed_by").on(table.claimedByUserId),
   categoryIdx: index("idx_manufacturers_category").on(table.category),
 =======
 }, (t) => ({
   claimedByIdx: index("idx_manufacturers_claimed_by").on(t.claimedByUserId),
   categoryIdx: index("idx_manufacturers_category").on(t.category),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -265,6 +272,9 @@ export const materials = pgTable("materials", {
   embedding: vector("embedding", { dimensions: 1536 }),
   searchText: text("searchText"),
 <<<<<<< HEAD
+});
+=======
+<<<<<<< HEAD
 }, (table) => ({
   manufacturerIdx: index("idx_materials_manufacturer").on(table.manufacturerId),
   categoryIdx: index("idx_materials_category").on(table.category),
@@ -276,6 +286,7 @@ export const materials = pgTable("materials", {
   hasEpdIdx: index("idx_materials_has_epd").on(t.hasEpd),
 >>>>>>> origin/main
 }));
+>>>>>>> origin/main
 
 export type Material = typeof materials.$inferSelect;
 
@@ -325,9 +336,15 @@ export const assemblyComponents = pgTable("assembly_components", {
   assemblyIdx: index("idx_assembly_components_assembly").on(table.assemblyId),
   materialIdx: index("idx_assembly_components_material").on(table.materialId),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  assemblyIdx: index("idx_assembly_components_assembly").on(table.assemblyId),
+  materialIdx: index("idx_assembly_components_material").on(table.materialId),
+=======
 }, (t) => ({
   assemblyIdx: index("idx_assembly_components_assembly").on(t.assemblyId),
   materialIdx: index("idx_assembly_components_material").on(t.materialId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -352,12 +369,17 @@ export const materialCertifications = pgTable("material_certifications", {
 <<<<<<< HEAD
 }, (table) => ({
   materialIdx: index("idx_material_certifications_material").on(table.materialId),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  materialIdx: index("idx_material_certifications_material").on(table.materialId),
   typeIdx: index("idx_material_certifications_type").on(table.certificationType),
 =======
 }, (t) => ({
   materialIdx: index("idx_material_certs_material").on(t.materialId),
   materialIdx: index("idx_material_certifications_material").on(t.materialId),
   typeIdx: index("idx_material_certifications_type").on(t.certificationType),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -418,17 +440,23 @@ export const materialSpecs = pgTable("material_specs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
 }, (table) => ({
   materialIdx: index("idx_material_specs_material").on(table.materialId),
   supplierIdx: index("idx_material_specs_supplier").on(table.supplierId),
   submittedByIdx: index("idx_material_specs_submitted_by").on(table.submittedBy),
   statusIdx: index("idx_material_specs_status").on(table.status),
+<<<<<<< HEAD
+=======
 =======
 }, (t) => ({
   materialIdx: index("idx_material_specs_material").on(t.materialId),
   supplierIdx: index("idx_material_specs_supplier").on(t.supplierId),
   submittedByIdx: index("idx_material_specs_submitted_by").on(t.submittedBy),
   statusIdx: index("idx_material_specs_status").on(t.status),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -467,11 +495,18 @@ export const ccpsScores = pgTable("ccps_scores", {
   calculatedAt: timestamp("calculatedAt").defaultNow().notNull(),
 <<<<<<< HEAD
 }, (table) => ({
+  // Unique composite: one score per material per persona
+  materialPersonaIdx: uniqueIndex("idx_ccps_scores_material_persona").on(table.materialId, table.personaKey),
+  materialIdx: index("idx_ccps_scores_material").on(table.materialId),
+=======
+<<<<<<< HEAD
+}, (table) => ({
   materialPersonaIdx: uniqueIndex("idx_ccps_scores_material_persona").on(table.materialId, table.personaKey),
 =======
 }, (t) => ({
   materialIdx: index("idx_ccps_scores_material").on(t.materialId),
   materialPersonaIdx: uniqueIndex("idx_ccps_scores_material_persona").on(t.materialId, t.personaKey),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -545,12 +580,18 @@ export const rfqs = pgTable("rfqs", {
 }, (table) => ({
   userIdx: index("idx_rfqs_user").on(table.userId),
   statusIdx: index("idx_rfqs_status").on(table.status),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  userIdx: index("idx_rfqs_user").on(table.userId),
+  statusIdx: index("idx_rfqs_status").on(table.status),
   dueDateIdx: index("idx_rfqs_due_date").on(table.dueDate),
 =======
 }, (t) => ({
   userIdx: index("idx_rfqs_user").on(t.userId),
   statusIdx: index("idx_rfqs_status").on(t.status),
   createdAtIdx: index("idx_rfqs_created_at").on(t.createdAt.desc()),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -573,12 +614,18 @@ export const rfqItems = pgTable("rfq_items", {
 }, (table) => ({
   rfqIdx: index("idx_rfq_items_rfq").on(table.rfqId),
   materialIdx: index("idx_rfq_items_material").on(table.materialId),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  rfqIdx: index("idx_rfq_items_rfq").on(table.rfqId),
+  materialIdx: index("idx_rfq_items_material").on(table.materialId),
   assemblyIdx: index("idx_rfq_items_assembly").on(table.assemblyId),
 =======
 }, (t) => ({
   rfqIdx: index("idx_rfq_items_rfq").on(t.rfqId),
   materialIdx: index("idx_rfq_items_material").on(t.materialId),
   assemblyIdx: index("idx_rfq_items_assembly").on(t.assemblyId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -644,9 +691,15 @@ export const agentConversations = pgTable("agent_conversations", {
   userIdx: index("idx_agent_conversations_user").on(table.userId),
   sessionIdx: index("idx_agent_conversations_session").on(table.sessionId),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  userIdx: index("idx_agent_conversations_user").on(table.userId),
+  sessionIdx: index("idx_agent_conversations_session").on(table.sessionId),
+=======
 }, (t) => ({
   userIdx: index("idx_agent_conversations_user").on(t.userId),
   sessionIdx: index("idx_agent_conversations_session").on(t.sessionId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -665,8 +718,8 @@ export const agentAnalytics = pgTable("agent_analytics", {
   escalated: boolean("escalated").default(false),
   handedOffToHuman: boolean("handedOffToHuman").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (t) => ({
-  sessionIdx: index("idx_agent_analytics_session").on(t.sessionId),
+}, (table) => ({
+  sessionIdx: index("idx_agent_analytics_session").on(table.sessionId),
 }));
 
 export type AgentAnalytic = typeof agentAnalytics.$inferSelect;
@@ -742,12 +795,19 @@ export const suppliers = pgTable("suppliers", {
 }, (table) => ({
   userIdx: index("idx_suppliers_user").on(table.userId),
   tierIdx: index("idx_suppliers_tier").on(table.tier),
+  verifiedIdx: index("idx_suppliers_verified").on(table.verified),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  userIdx: index("idx_suppliers_user").on(table.userId),
+  tierIdx: index("idx_suppliers_tier").on(table.tier),
   verificationIdx: index("idx_suppliers_verification").on(table.verificationStatus),
 =======
 }, (t) => ({
   userIdx: uniqueIndex("idx_suppliers_user_id").on(t.userId),
   tierIdx: index("idx_suppliers_tier").on(t.tier),
   verifiedIdx: index("idx_suppliers_verified").on(t.verified),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -826,9 +886,15 @@ export const architectReferrals = pgTable("architect_referrals", {
   referrerIdx: index("idx_architect_referrals_referrer").on(table.referrerId),
   refereeIdx: index("idx_architect_referrals_referee").on(table.refereeId),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  referrerIdx: index("idx_architect_referrals_referrer").on(table.referrerId),
+  refereeIdx: index("idx_architect_referrals_referee").on(table.refereeId),
+=======
 }, (t) => ({
   referrerIdx: index("idx_architect_referrals_referrer").on(t.referrerId),
   refereeIdx: index("idx_architect_referrals_referee").on(t.refereeId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -848,9 +914,15 @@ export const architectDownloadEvents = pgTable("architect_download_events", {
   architectIdx: index("idx_architect_download_events_architect").on(table.architectId),
   materialIdx: index("idx_architect_download_events_material").on(table.materialId),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  architectIdx: index("idx_architect_download_events_architect").on(table.architectId),
+  materialIdx: index("idx_architect_download_events_material").on(table.materialId),
+=======
 }, (t) => ({
   architectIdx: index("idx_architect_download_events_architect").on(t.architectId),
   materialIdx: index("idx_architect_download_events_material").on(t.materialId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -884,15 +956,21 @@ export const supplierMaterialEpds = pgTable("supplier_material_epds", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
 }, (table) => ({
   supplierIdx: index("idx_supplier_material_epds_supplier").on(table.supplierId),
   materialIdx: index("idx_supplier_material_epds_material").on(table.materialId),
   statusIdx: index("idx_supplier_material_epds_status").on(table.status),
+<<<<<<< HEAD
+=======
 =======
 }, (t) => ({
   supplierIdx: index("idx_supplier_material_epds_supplier").on(t.supplierId),
   materialIdx: index("idx_supplier_material_epds_material").on(t.materialId),
   statusIdx: index("idx_supplier_material_epds_status").on(t.status),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -917,10 +995,16 @@ export const supplierSubscriptions = pgTable("supplier_subscriptions", {
   supplierIdx: index("idx_supplier_subscriptions_supplier").on(table.supplierId),
   statusIdx: index("idx_supplier_subscriptions_status").on(table.status),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  supplierIdx: index("idx_supplier_subscriptions_supplier").on(table.supplierId),
+  statusIdx: index("idx_supplier_subscriptions_status").on(table.status),
+=======
 }, (t) => ({
   supplierIdx: uniqueIndex("idx_supplier_subscriptions_supplier").on(t.supplierId),
   supplierIdx: index("idx_supplier_subscriptions_supplier").on(t.supplierId),
   statusIdx: index("idx_supplier_subscriptions_status").on(t.status),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -967,12 +1051,18 @@ export const companyOfWeekSlots = pgTable("company_of_week_slots", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 <<<<<<< HEAD
 }, (table) => ({
+  supplierIdx: index("idx_company_of_week_slots_supplier").on(table.supplierId),
+  weekIdx: index("idx_company_of_week_slots_week").on(table.weekStartDate),
+=======
+<<<<<<< HEAD
+}, (table) => ({
   supplierIdx: index("idx_company_of_week_supplier").on(table.supplierId),
   weekIdx: index("idx_company_of_week_week").on(table.weekStartDate),
 =======
 }, (t) => ({
   supplierIdx: index("idx_company_of_week_supplier").on(t.supplierId),
   weekIdx: index("idx_company_of_week_date").on(t.weekStartDate),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -999,9 +1089,15 @@ export const buyerSubscriptions = pgTable("buyer_subscriptions", {
   userIdx: index("idx_buyer_subscriptions_user").on(table.userId),
   statusIdx: index("idx_buyer_subscriptions_status").on(table.status),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  userIdx: index("idx_buyer_subscriptions_user").on(table.userId),
+  statusIdx: index("idx_buyer_subscriptions_status").on(table.status),
+=======
 }, (t) => ({
   userIdx: uniqueIndex("idx_buyer_subscriptions_user").on(t.userId),
   statusIdx: index("idx_buyer_subscriptions_status").on(t.status),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1026,10 +1122,17 @@ export const usageTracking = pgTable("usage_tracking", {
 }, (table) => ({
   userIdx: index("idx_usage_tracking_user").on(table.userId),
   supplierIdx: index("idx_usage_tracking_supplier").on(table.supplierId),
+  dimensionIdx: index("idx_usage_tracking_dimension").on(table.dimension),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  userIdx: index("idx_usage_tracking_user").on(table.userId),
+  supplierIdx: index("idx_usage_tracking_supplier").on(table.supplierId),
 =======
 }, (t) => ({
   userIdx: index("idx_usage_tracking_user").on(t.userId),
   supplierIdx: index("idx_usage_tracking_supplier").on(t.supplierId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1055,9 +1158,14 @@ export const supplierFilters = pgTable("supplier_filters", {
 }, (table) => ({
   supplierIdx: index("idx_supplier_filters_supplier").on(table.supplierId),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  supplierIdx: index("idx_supplier_filters_supplier").on(table.supplierId),
+=======
 }, (t) => ({
   supplierIdx: index("idx_supplier_filters_supplier").on(t.supplierId),
   supplierIdx: uniqueIndex("idx_supplier_filters_supplier").on(t.supplierId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1093,10 +1201,17 @@ export const rfqBids = pgTable("rfq_bids", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
 }, (table) => ({
   rfqIdx: index("idx_rfq_bids_rfq").on(table.rfqId),
   supplierIdx: index("idx_rfq_bids_supplier").on(table.supplierId),
   statusIdx: index("idx_rfq_bids_status").on(table.status),
+<<<<<<< HEAD
+  // Composite: supplier's bids per RFQ (used in bid comparison queries)
+  rfqSupplierIdx: index("idx_rfq_bids_rfq_supplier").on(table.rfqId, table.supplierId),
+=======
 =======
 }, (t) => ({
   rfqIdx: index("idx_rfq_bids_rfq").on(t.rfqId),
@@ -1106,6 +1221,7 @@ export const rfqBids = pgTable("rfq_bids", {
   supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
   rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
   statusIdx: index("idx_rfq_bids_status").on(t.status),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1123,15 +1239,21 @@ export const rfqThreads = pgTable("rfq_threads", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
 }, (table) => ({
   rfqIdx: index("idx_rfq_threads_rfq").on(table.rfqId),
   supplierIdx: index("idx_rfq_threads_supplier").on(table.supplierId),
   buyerIdx: index("idx_rfq_threads_buyer").on(table.buyerId),
+<<<<<<< HEAD
+=======
 =======
 }, (t) => ({
   rfqIdx: index("idx_rfq_threads_rfq").on(t.rfqId),
   supplierIdx: index("idx_rfq_threads_supplier").on(t.supplierId),
   buyerIdx: index("idx_rfq_threads_buyer").on(t.buyerId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1153,9 +1275,15 @@ export const rfqMessages = pgTable("rfq_messages", {
   threadIdx: index("idx_rfq_messages_thread").on(table.threadId),
   senderIdx: index("idx_rfq_messages_sender").on(table.senderId),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  threadIdx: index("idx_rfq_messages_thread").on(table.threadId),
+  senderIdx: index("idx_rfq_messages_sender").on(table.senderId),
+=======
 }, (t) => ({
   threadIdx: index("idx_rfq_messages_thread").on(t.threadId),
   senderIdx: index("idx_rfq_messages_sender").on(t.senderId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1177,12 +1305,18 @@ export const notifications = pgTable("notifications", {
 <<<<<<< HEAD
 }, (table) => ({
   userIdx: index("idx_notifications_user").on(table.userId),
+  isReadIdx: index("idx_notifications_is_read").on(table.isRead),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  userIdx: index("idx_notifications_user").on(table.userId),
   isReadIdx: index("idx_notifications_is_read").on(table.userId, table.isRead),
 =======
 }, (t) => ({
   userIdx: index("idx_notifications_user").on(t.userId),
   // Unread notifications are the hot path — partial index for speed
   userUnreadIdx: index("idx_notifications_user_unread").on(t.userId, t.isRead),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1207,8 +1341,14 @@ export const rfqAnalytics = pgTable("rfq_analytics", {
   rfqIdx: index("idx_rfq_analytics_rfq").on(table.rfqId),
   winningBidIdx: index("idx_rfq_analytics_winning_bid").on(table.winningBidId),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  rfqIdx: index("idx_rfq_analytics_rfq").on(table.rfqId),
+  winningBidIdx: index("idx_rfq_analytics_winning_bid").on(table.winningBidId),
+=======
 }, (t) => ({
   rfqIdx: uniqueIndex("idx_rfq_analytics_rfq").on(t.rfqId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1232,11 +1372,17 @@ export const materialSwaps = pgTable("material_swaps", {
 }, (table) => ({
   materialIdx: index("idx_material_swaps_material").on(table.materialId),
   swapMaterialIdx: index("idx_material_swaps_swap_material").on(table.swapMaterialId),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  materialIdx: index("idx_material_swaps_material").on(table.materialId),
+  swapMaterialIdx: index("idx_material_swaps_swap_material").on(table.swapMaterialId),
   tierIdx: index("idx_material_swaps_tier").on(table.swapTier),
 =======
 }, (t) => ({
   materialIdx: index("idx_material_swaps_material").on(t.materialId),
   swapMaterialIdx: index("idx_material_swaps_swap_material").on(t.swapMaterialId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1264,6 +1410,13 @@ export const conversations = pgTable("conversations", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 <<<<<<< HEAD
 }, (table) => ({
+  buyerIdx: index("idx_conversations_buyer").on(table.buyerId),
+  supplierIdx: index("idx_conversations_supplier").on(table.supplierId),
+  rfqIdx: index("idx_conversations_rfq").on(table.rfqId),
+  lastMessageAtIdx: index("idx_conversations_last_message_at").on(table.lastMessageAt),
+=======
+<<<<<<< HEAD
+}, (table) => ({
   rfqIdx: index("idx_conversations_rfq").on(table.rfqId),
   buyerIdx: index("idx_conversations_buyer").on(table.buyerId),
   supplierIdx: index("idx_conversations_supplier").on(table.supplierId),
@@ -1273,6 +1426,7 @@ export const conversations = pgTable("conversations", {
   buyerIdx: index("idx_conversations_buyer").on(t.buyerId),
   supplierIdx: index("idx_conversations_supplier").on(t.supplierId),
   rfqIdx: index("idx_conversations_rfq").on(t.rfqId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1299,9 +1453,15 @@ export const messages = pgTable("messages", {
   conversationIdx: index("idx_messages_conversation").on(table.conversationId),
   senderIdx: index("idx_messages_sender").on(table.senderId),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  conversationIdx: index("idx_messages_conversation").on(table.conversationId),
+  senderIdx: index("idx_messages_sender").on(table.senderId),
+=======
 }, (t) => ({
   conversationIdx: index("idx_messages_conversation").on(t.conversationId),
   senderIdx: index("idx_messages_sender").on(t.senderId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1326,9 +1486,15 @@ export const subscriptions = pgTable("subscriptions", {
   userIdx: index("idx_subscriptions_user").on(table.userId),
   statusIdx: index("idx_subscriptions_status").on(table.status),
 =======
+<<<<<<< HEAD
+}, (table) => ({
+  userIdx: index("idx_subscriptions_user").on(table.userId),
+  statusIdx: index("idx_subscriptions_status").on(table.status),
+=======
 }, (t) => ({
   userIdx: index("idx_subscriptions_user").on(t.userId),
   statusIdx: index("idx_subscriptions_status").on(t.status),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1350,6 +1516,12 @@ export const videoCalls = pgTable("video_calls", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 <<<<<<< HEAD
 }, (table) => ({
+  conversationIdx: index("idx_video_calls_conversation").on(table.conversationId),
+  callerIdx: index("idx_video_calls_caller").on(table.callerId),
+  calleeIdx: index("idx_video_calls_callee").on(table.calleeId),
+=======
+<<<<<<< HEAD
+}, (table) => ({
   callerIdx: index("idx_video_calls_caller").on(table.callerId),
   calleeIdx: index("idx_video_calls_callee").on(table.calleeId),
   conversationIdx: index("idx_video_calls_conversation").on(table.conversationId),
@@ -1358,6 +1530,7 @@ export const videoCalls = pgTable("video_calls", {
   callerIdx: index("idx_video_calls_caller").on(t.callerId),
   calleeIdx: index("idx_video_calls_callee").on(t.calleeId),
   conversationIdx: index("idx_video_calls_conversation").on(t.conversationId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1399,6 +1572,13 @@ export const messageReactions = pgTable("message_reactions", {
 }, (table) => ({
   messageIdx: index("idx_message_reactions_message").on(table.messageId),
   userIdx: index("idx_message_reactions_user").on(table.userId),
+  // Prevent duplicate reactions of the same type from the same user on the same message
+  uniqueReactionIdx: uniqueIndex("idx_message_reactions_unique").on(table.messageId, table.userId, table.reactionType),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  messageIdx: index("idx_message_reactions_message").on(table.messageId),
+  userIdx: index("idx_message_reactions_user").on(table.userId),
   uniqueReaction: uniqueIndex("idx_message_reactions_unique").on(table.messageId, table.userId, table.reactionType),
 =======
 }, (t) => ({
@@ -1406,6 +1586,7 @@ export const messageReactions = pgTable("message_reactions", {
   userIdx: index("idx_message_reactions_user").on(t.userId),
   userIdx: index("idx_message_reactions_user").on(t.userId),
   uniqueReaction: uniqueIndex("idx_message_reactions_unique").on(t.messageId, t.userId, t.reactionType),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1430,12 +1611,18 @@ export const callHistory = pgTable("call_history", {
 }, (table) => ({
   conversationIdx: index("idx_call_history_conversation").on(table.conversationId),
   callerIdx: index("idx_call_history_caller").on(table.callerId),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  conversationIdx: index("idx_call_history_conversation").on(table.conversationId),
+  callerIdx: index("idx_call_history_caller").on(table.callerId),
   receiverIdx: index("idx_call_history_receiver").on(table.receiverId),
 =======
 }, (t) => ({
   conversationIdx: index("idx_call_history_conversation").on(t.conversationId),
   callerIdx: index("idx_call_history_caller").on(t.callerId),
   receiverIdx: index("idx_call_history_receiver").on(t.receiverId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1453,11 +1640,18 @@ export const monthlyCallUsage = pgTable("monthly_call_usage", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 <<<<<<< HEAD
 }, (table) => ({
+  // Composite unique: one row per user per calendar month
+  userMonthIdx: uniqueIndex("idx_monthly_call_usage_user_month").on(table.userId, table.month),
+  userIdx: index("idx_monthly_call_usage_user").on(table.userId),
+=======
+<<<<<<< HEAD
+}, (table) => ({
   userMonthIdx: uniqueIndex("idx_monthly_call_usage_user_month").on(table.userId, table.month),
 =======
 }, (t) => ({
   userIdx: index("idx_monthly_call_usage_user").on(t.userId),
   userMonthIdx: uniqueIndex("idx_monthly_call_usage_user_month").on(t.userId, t.month),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1484,9 +1678,16 @@ export const legalAcceptances = pgTable("legal_acceptances", {
 <<<<<<< HEAD
 }, (table) => ({
   userIdx: index("idx_legal_acceptances_user").on(table.userId),
+  // Composite unique: one acceptance record per user per version pair
+  userVersionIdx: uniqueIndex("idx_legal_acceptances_user_version").on(table.userId, table.termsVersion, table.privacyVersion),
+=======
+<<<<<<< HEAD
+}, (table) => ({
+  userIdx: index("idx_legal_acceptances_user").on(table.userId),
 =======
 }, (t) => ({
   userIdx: uniqueIndex("idx_legal_acceptances_user").on(t.userId),
+>>>>>>> origin/main
 >>>>>>> origin/main
 }));
 
@@ -1516,7 +1717,6 @@ export const suppliersLocation = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
-    supplierIdx: index("idx_suppliers_location_supplier").on(table.supplierId),
     stateIdx: index("idx_suppliers_location_state").on(table.state),
     cityIdx: index("idx_suppliers_location_city").on(table.city),
     latLngIdx: index("idx_suppliers_location_latlng").on(table.latitude, table.longitude),
@@ -2087,6 +2287,9 @@ export const rfqDrafts = pgTable("rfq_drafts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 <<<<<<< HEAD
+});
+=======
+<<<<<<< HEAD
 }, (table) => ({
   architectIdx: index("idx_rfq_drafts_architect").on(table.architectId),
   statusIdx: index("idx_rfq_drafts_status").on(table.status),
@@ -2096,6 +2299,7 @@ export const rfqDrafts = pgTable("rfq_drafts", {
   statusIdx: index("idx_rfq_drafts_status").on(t.status),
 >>>>>>> origin/main
 }));
+>>>>>>> origin/main
 
 export type RfqDraft = typeof rfqDrafts.$inferSelect;
 export type InsertRfqDraft = typeof rfqDrafts.$inferInsert;
@@ -2126,6 +2330,9 @@ export const rfqRequests = pgTable("rfq_requests", {
   draftId: integer("draft_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 <<<<<<< HEAD
+});
+=======
+<<<<<<< HEAD
 }, (table) => ({
   architectIdx: index("idx_rfq_requests_architect").on(table.architectId),
   supplierIdx: index("idx_rfq_requests_supplier").on(table.supplierId),
@@ -2141,6 +2348,7 @@ export const rfqRequests = pgTable("rfq_requests", {
   statusIdx: index("idx_rfq_requests_status").on(t.status),
 >>>>>>> origin/main
 }));
+>>>>>>> origin/main
 
 export type RfqRequest = typeof rfqRequests.$inferSelect;
 export type InsertRfqRequest = typeof rfqRequests.$inferInsert;
@@ -2155,6 +2363,9 @@ export const referrals = pgTable("referrals", {
   status: varchar("status", { length: 50 }).default("pending").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 <<<<<<< HEAD
+});
+=======
+<<<<<<< HEAD
 }, (table) => ({
   referrerIdx: index("idx_referrals_referrer").on(table.referrerId),
 =======
@@ -2162,6 +2373,7 @@ export const referrals = pgTable("referrals", {
   referrerIdx: index("idx_referrals_referrer").on(t.referrerId),
 >>>>>>> origin/main
 }));
+>>>>>>> origin/main
 
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
@@ -2187,6 +2399,9 @@ export const emailCredentials = pgTable("email_credentials", {
   hash: bytea("hash").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 <<<<<<< HEAD
+});
+=======
+<<<<<<< HEAD
 }, (table) => ({
   userIdx: index("idx_email_credentials_user").on(table.userId),
 =======
@@ -2194,6 +2409,7 @@ export const emailCredentials = pgTable("email_credentials", {
   userIdx: uniqueIndex("idx_email_credentials_user").on(t.userId),
 >>>>>>> origin/main
 }));
+>>>>>>> origin/main
 
 export type EmailCredential = typeof emailCredentials.$inferSelect;
 
@@ -2215,6 +2431,9 @@ export const userEngagement = pgTable("user_engagement", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 <<<<<<< HEAD
+});
+=======
+<<<<<<< HEAD
 }, (table) => ({
   userIdx: uniqueIndex("idx_user_engagement_user").on(table.userId),
 =======
@@ -2222,6 +2441,7 @@ export const userEngagement = pgTable("user_engagement", {
   userIdx: uniqueIndex("idx_user_engagement_user").on(t.userId),
 >>>>>>> origin/main
 }));
+>>>>>>> origin/main
 
 export type UserEngagement = typeof userEngagement.$inferSelect;
 
@@ -2233,6 +2453,9 @@ export const engagementLog = pgTable("engagement_log", {
   metadata: json("metadata"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 <<<<<<< HEAD
+});
+=======
+<<<<<<< HEAD
 }, (table) => ({
   userIdx: index("idx_engagement_log_user").on(table.userId),
   actionIdx: index("idx_engagement_log_action").on(table.action),
@@ -2242,6 +2465,7 @@ export const engagementLog = pgTable("engagement_log", {
   actionIdx: index("idx_engagement_log_action").on(t.action),
 >>>>>>> origin/main
 }));
+>>>>>>> origin/main
 
 export type EngagementLog = typeof engagementLog.$inferSelect;
 
