@@ -44,6 +44,31 @@ const baseOptions: pino.LoggerOptions = {
     env: process.env.NODE_ENV ?? "unknown",
     sha: deploymentSha,
     service: "greenchainz-api",
+export const logger = pino(
+  {
+    level: process.env.LOG_LEVEL ?? (isDev ? "debug" : "info"),
+    redact: {
+      paths: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "password",
+        "secret",
+        "token",
+        "hash",
+        "salt",
+        "*.password",
+        "*.secret",
+        "*.token",
+        "*.hash",
+        "*.salt",
+      ],
+      censor: "[REDACTED]",
+    },
+    base: {
+      env: process.env.NODE_ENV ?? "development",
+      deploymentSha: process.env.DEPLOYMENT_SHA ?? "local",
+    },
+    timestamp: pino.stdTimeFunctions.isoTime,
   },
 
   // ISO timestamp instead of epoch ms for human readability in Azure Monitor
@@ -116,6 +141,12 @@ export const logger: Logger = createLogger();
 /**
  * Create a child logger for a single request, stamped with requestId and an
  * opaque userId hash (first 8 hex chars of SHA-256 — not the raw ID, avoids PII in log storage).
+/**
+ * Child logger pre-bound with a correlation/request ID.
+ *
+ * Accepts the raw Node.js header value (`string | string[] | undefined`) so
+ * callers can pass `req.headers["x-correlation-id"]` directly without
+ * needing to normalise the type themselves.
  */
 export function requestLogger(opts: {
   requestId?: string;
