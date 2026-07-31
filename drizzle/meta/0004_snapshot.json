@@ -1,5 +1,14 @@
 {
+<<<<<<< HEAD
   "id": "ced91fbe-ec54-494d-b995-861d9a690098",
+=======
+<<<<<<< HEAD
+  "id": "fda80c64-c8d9-4704-bdc7-241ee69dc043",
+=======
+  "id": "ffed9fc2-f670-43f7-9316-60229f17b00e",
+  "id": "8fb20e44-6fca-4c5e-8070-d53410853be0",
+>>>>>>> origin/main
+>>>>>>> origin/main
   "prevId": "7a022dd5-6c28-4e78-8ade-44fa11416c23",
   "version": "7",
   "dialect": "postgresql",
@@ -126,6 +135,12 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
+      "indexes": {},
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
       "indexes": {
         "idx_agent_analytics_session": {
           "name": "idx_agent_analytics_session",
@@ -143,6 +158,7 @@
           "with": {}
         }
       },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -536,6 +552,13 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+      "indexes": {},
+>>>>>>> origin/main
+>>>>>>> origin/main
       "indexes": {
         "idx_architect_download_events_architect": {
           "name": "idx_architect_download_events_architect",
@@ -617,6 +640,13 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+      "indexes": {},
+>>>>>>> origin/main
+>>>>>>> origin/main
       "indexes": {
         "idx_architect_referrals_referrer": {
           "name": "idx_architect_referrals_referrer",
@@ -1054,6 +1084,13 @@
           "notNull": false
         }
       },
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+      "indexes": {},
+>>>>>>> origin/main
+>>>>>>> origin/main
       "indexes": {
         "idx_assembly_components_assembly": {
           "name": "idx_assembly_components_assembly",
@@ -1617,7 +1654,15 @@
               "nulls": "last"
             }
           ],
+<<<<<<< HEAD
           "isUnique": false,
+=======
+<<<<<<< HEAD
+          "isUnique": false,
+=======
+          "isUnique": true,
+>>>>>>> origin/main
+>>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2289,6 +2334,14 @@
         }
       },
       "indexes": {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+        "idx_ccps_scores_material": {
+          "name": "idx_ccps_scores_material",
+>>>>>>> origin/main
+>>>>>>> origin/main
         "idx_ccps_scores_material_persona": {
           "name": "idx_ccps_scores_material_persona",
           "columns": [
@@ -2297,6 +2350,13 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+            }
+          ],
+          "isUnique": false,
             },
             {
               "expression": "personaKey",
@@ -2310,6 +2370,8 @@
           "method": "btree",
           "with": {}
         },
+        "idx_ccps_scores_material_persona": {
+          "name": "idx_ccps_scores_material_persona",
         "idx_ccps_scores_material": {
           "name": "idx_ccps_scores_material",
           "columns": [
@@ -2318,9 +2380,38 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
+>>>>>>> origin/main
+>>>>>>> origin/main
+            },
+            {
+              "expression": "personaKey",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+<<<<<<< HEAD
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ccps_scores_material": {
+          "name": "idx_ccps_scores_material",
+          "columns": [
+            {
+              "expression": "materialId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
             }
           ],
           "isUnique": false,
+>>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2485,6 +2576,13 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+      "indexes": {},
+>>>>>>> origin/main
+>>>>>>> origin/main
       "indexes": {
         "idx_company_of_week_slots_supplier": {
           "name": "idx_company_of_week_slots_supplier",
@@ -2501,8 +2599,18 @@
           "method": "btree",
           "with": {}
         },
+<<<<<<< HEAD
         "idx_company_of_week_slots_week": {
           "name": "idx_company_of_week_slots_week",
+=======
+<<<<<<< HEAD
+        "idx_company_of_week_week": {
+          "name": "idx_company_of_week_week",
+=======
+        "idx_company_of_week_date": {
+          "name": "idx_company_of_week_date",
+>>>>>>> origin/main
+>>>>>>> origin/main
           "columns": [
             {
               "expression": "weekStartDate",
@@ -2930,6 +3038,24 @@
         }
       },
       "indexes": {
+<<<<<<< HEAD
+        "idx_conversations_rfq": {
+          "name": "idx_conversations_rfq",
+          "columns": [
+            {
+              "expression": "rfqId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+=======
+>>>>>>> origin/main
         "idx_conversations_buyer": {
           "name": "idx_conversations_buyer",
           "columns": [
@@ -2960,11 +3086,25 @@
           "method": "btree",
           "with": {}
         },
+<<<<<<< HEAD
+        "idx_conversations_last_message": {
+          "name": "idx_conversations_last_message",
+          "columns": [
+            {
+              "expression": "buyerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lastMessageAt",
+=======
         "idx_conversations_rfq": {
           "name": "idx_conversations_rfq",
           "columns": [
             {
               "expression": "rfqId",
+>>>>>>> origin/main
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3725,7 +3865,34 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
       "indexes": {},
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
+      "indexes": {
+        "idx_email_credentials_user": {
+          "name": "idx_email_credentials_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+<<<<<<< HEAD
+          "isUnique": false,
+=======
+          "isUnique": true,
+>>>>>>> origin/main
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
@@ -3875,7 +4042,45 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
       "indexes": {},
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
+      "indexes": {
+        "idx_engagement_log_user": {
+          "name": "idx_engagement_log_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_engagement_log_action": {
+          "name": "idx_engagement_log_action",
+          "columns": [
+            {
+              "expression": "action",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -4387,7 +4592,27 @@
           "notNull": false
         }
       },
+<<<<<<< HEAD
+      "indexes": {
+        "idx_founder_video_views_video": {
+          "name": "idx_founder_video_views_video",
+          "columns": [
+            {
+              "expression": "videoId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+=======
       "indexes": {},
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -4515,7 +4740,42 @@
           "notNull": false
         }
       },
+<<<<<<< HEAD
+      "indexes": {
+        "idx_founder_videos_owner": {
+          "name": "idx_founder_videos_owner",
+          "columns": [
+            {
+              "expression": "ownerUserId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_founder_videos_status": {
+          "name": "idx_founder_videos_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+=======
       "indexes": {},
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
@@ -4946,6 +5206,7 @@
               "nulls": "last"
             }
           ],
+<<<<<<< HEAD
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
@@ -4973,7 +5234,13 @@
               "nulls": "last"
             }
           ],
+=======
+<<<<<<< HEAD
+          "isUnique": false,
+=======
+>>>>>>> origin/main
           "isUnique": true,
+>>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -5237,6 +5504,13 @@
           "notNull": false
         }
       },
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+      "indexes": {},
+>>>>>>> origin/main
+>>>>>>> origin/main
       "indexes": {
         "idx_manufacturers_claimed_by_user": {
           "name": "idx_manufacturers_claimed_by_user",
@@ -5626,6 +5900,14 @@
         }
       },
       "indexes": {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+        "idx_material_certs_material": {
+          "name": "idx_material_certs_material",
+>>>>>>> origin/main
+>>>>>>> origin/main
         "idx_material_certifications_material": {
           "name": "idx_material_certifications_material",
           "columns": [
@@ -6231,6 +6513,19 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+>>>>>>> origin/main
+>>>>>>> origin/main
         },
         "idx_material_specs_status": {
           "name": "idx_material_specs_status",
@@ -6361,6 +6656,24 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+<<<<<<< HEAD
+        },
+        "idx_material_swaps_tier": {
+          "name": "idx_material_swaps_tier",
+          "columns": [
+            {
+              "expression": "swapTier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+=======
+>>>>>>> origin/main
         }
       },
       "foreignKeys": {},
@@ -7113,7 +7426,68 @@
           "notNull": false
         }
       },
+<<<<<<< HEAD
+=======
+      "indexes": {
+        "idx_materials_manufacturer": {
+          "name": "idx_materials_manufacturer",
+          "columns": [
+            {
+              "expression": "manufacturerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_materials_category": {
+          "name": "idx_materials_category",
+          "columns": [
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+<<<<<<< HEAD
+        "idx_materials_verified": {
+          "name": "idx_materials_verified",
+          "columns": [
+            {
+              "expression": "verified",
+=======
+        "idx_materials_has_epd": {
+          "name": "idx_materials_has_epd",
+          "columns": [
+            {
+              "expression": "hasEpd",
+>>>>>>> origin/main
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
       "indexes": {},
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -7388,6 +7762,27 @@
         }
       },
       "indexes": {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+        "idx_monthly_call_usage_user": {
+          "name": "idx_monthly_call_usage_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+>>>>>>> origin/main
+>>>>>>> origin/main
         "idx_monthly_call_usage_user_month": {
           "name": "idx_monthly_call_usage_user_month",
           "columns": [
@@ -7516,8 +7911,18 @@
           "method": "btree",
           "with": {}
         },
+<<<<<<< HEAD
         "idx_notifications_is_read": {
           "name": "idx_notifications_is_read",
+=======
+<<<<<<< HEAD
+        "idx_notifications_is_read": {
+          "name": "idx_notifications_is_read",
+=======
+        "idx_notifications_user_unread": {
+          "name": "idx_notifications_user_unread",
+>>>>>>> origin/main
+>>>>>>> origin/main
           "columns": [
             {
               "expression": "isRead",
@@ -7887,7 +8292,30 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
       "indexes": {},
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
+      "indexes": {
+        "idx_referrals_referrer": {
+          "name": "idx_referrals_referrer",
+          "columns": [
+            {
+              "expression": "referrer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -8097,6 +8525,10 @@
               "nulls": "last"
             }
           ],
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
@@ -8113,6 +8545,12 @@
             }
           ],
           "isUnique": false,
+<<<<<<< HEAD
+=======
+=======
+          "isUnique": true,
+>>>>>>> origin/main
+>>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -8273,6 +8711,7 @@
           "method": "btree",
           "with": {}
         },
+<<<<<<< HEAD
         "idx_rfq_bids_status": {
           "name": "idx_rfq_bids_status",
           "columns": [
@@ -8288,6 +8727,10 @@
           "method": "btree",
           "with": {}
         },
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
         "idx_rfq_bids_rfq_supplier": {
           "name": "idx_rfq_bids_rfq_supplier",
           "columns": [
@@ -8304,6 +8747,25 @@
               "nulls": "last"
             }
           ],
+<<<<<<< HEAD
+=======
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+>>>>>>> origin/main
+        "idx_rfq_bids_status": {
+          "name": "idx_rfq_bids_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+>>>>>>> origin/main
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
@@ -8398,7 +8860,45 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
       "indexes": {},
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
+      "indexes": {
+        "idx_rfq_drafts_architect": {
+          "name": "idx_rfq_drafts_architect",
+          "columns": [
+            {
+              "expression": "architect_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_drafts_status": {
+          "name": "idx_rfq_drafts_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -8808,7 +9308,93 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
       "indexes": {},
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
+      "indexes": {
+        "idx_rfq_requests_architect": {
+          "name": "idx_rfq_requests_architect",
+          "columns": [
+            {
+              "expression": "architect_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_requests_supplier": {
+          "name": "idx_rfq_requests_supplier",
+          "columns": [
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_requests_material": {
+          "name": "idx_rfq_requests_material",
+          "columns": [
+            {
+              "expression": "material_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+<<<<<<< HEAD
+=======
+        "idx_rfq_requests_draft": {
+          "name": "idx_rfq_requests_draft",
+          "columns": [
+            {
+              "expression": "draft_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+>>>>>>> origin/main
+        "idx_rfq_requests_status": {
+          "name": "idx_rfq_requests_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -9148,7 +9734,15 @@
         },
         "deposit_amount": {
           "name": "deposit_amount",
+<<<<<<< HEAD
           "type": "numeric(12, 2)",
+=======
+<<<<<<< HEAD
+          "type": "numeric(12, 2)",
+=======
+          "type": "numeric",
+>>>>>>> origin/main
+>>>>>>> origin/main
           "primaryKey": false,
           "notNull": false
         },
@@ -9253,6 +9847,34 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+<<<<<<< HEAD
+=======
+        },
+<<<<<<< HEAD
+        "idx_rfqs_due_date": {
+          "name": "idx_rfqs_due_date",
+          "columns": [
+            {
+              "expression": "dueDate",
+              "isExpression": false,
+              "asc": true,
+=======
+        "idx_rfqs_created_at": {
+          "name": "idx_rfqs_created_at",
+          "columns": [
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": false,
+>>>>>>> origin/main
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+>>>>>>> origin/main
         }
       },
       "foreignKeys": {},
@@ -10475,6 +11097,13 @@
             }
           ],
           "isUnique": false,
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+          "isUnique": true,
+>>>>>>> origin/main
+>>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -10618,6 +11247,13 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+      "indexes": {},
+>>>>>>> origin/main
+>>>>>>> origin/main
       "indexes": {
         "idx_supplier_material_epds_supplier": {
           "name": "idx_supplier_material_epds_supplier",
@@ -10869,6 +11505,13 @@
               "nulls": "last"
             }
           ],
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+          "isUnique": true,
+>>>>>>> origin/main
+>>>>>>> origin/main
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
@@ -11424,9 +12067,22 @@
           "notNull": false
         }
       },
+<<<<<<< HEAD
       "indexes": {
         "idx_suppliers_user": {
           "name": "idx_suppliers_user",
+=======
+<<<<<<< HEAD
+      "indexes": {
+        "idx_suppliers_user": {
+          "name": "idx_suppliers_user",
+=======
+      "indexes": {},
+      "indexes": {
+        "idx_suppliers_user_id": {
+          "name": "idx_suppliers_user_id",
+>>>>>>> origin/main
+>>>>>>> origin/main
           "columns": [
             {
               "expression": "userId",
@@ -11435,7 +12091,15 @@
               "nulls": "last"
             }
           ],
+<<<<<<< HEAD
           "isUnique": false,
+=======
+<<<<<<< HEAD
+          "isUnique": false,
+=======
+          "isUnique": true,
+>>>>>>> origin/main
+>>>>>>> origin/main
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -11455,11 +12119,19 @@
           "method": "btree",
           "with": {}
         },
+<<<<<<< HEAD
+        "idx_suppliers_verification": {
+          "name": "idx_suppliers_verification",
+          "columns": [
+            {
+              "expression": "verificationStatus",
+=======
         "idx_suppliers_verified": {
           "name": "idx_suppliers_verified",
           "columns": [
             {
               "expression": "verified",
+>>>>>>> origin/main
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -11585,6 +12257,27 @@
         }
       },
       "indexes": {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+        "idx_suppliers_location_supplier": {
+          "name": "idx_suppliers_location_supplier",
+          "columns": [
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+>>>>>>> origin/main
+>>>>>>> origin/main
         "idx_suppliers_location_state": {
           "name": "idx_suppliers_location_state",
           "columns": [
@@ -11635,6 +12328,24 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+<<<<<<< HEAD
+        },
+        "idx_suppliers_location_supplier": {
+          "name": "idx_suppliers_location_supplier",
+          "columns": [
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+=======
+>>>>>>> origin/main
         }
       },
       "foreignKeys": {},
@@ -12110,7 +12821,30 @@
           "default": "now()"
         }
       },
+<<<<<<< HEAD
+=======
       "indexes": {},
+<<<<<<< HEAD
+=======
+>>>>>>> origin/main
+      "indexes": {
+        "idx_user_engagement_user": {
+          "name": "idx_user_engagement_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+>>>>>>> origin/main
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
