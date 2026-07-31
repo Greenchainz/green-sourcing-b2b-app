@@ -16,6 +16,8 @@ KEY_VAULT="greenchainz-vault"
 BACKEND_IMAGE="${ACR_LOGIN_SERVER}/greenchainz-backend"
 FRONTEND_IMAGE="${ACR_LOGIN_SERVER}/greenchainz-frontend"
 TAG="${TAG:-latest}"
+BACKEND_APP_NAME="greenchainz-backend-v2"
+FRONTEND_APP_NAME="greenchainz-frontend"
 
 # Colors for output
 RED='\033[0;31m'
@@ -65,7 +67,7 @@ deploy_backend() {
     
     # Build from repository root
     docker build \
-        -f backend/Dockerfile.azure \
+        -f Dockerfile.backend \
         -t ${BACKEND_IMAGE}:${TAG} \
         -t ${BACKEND_IMAGE}:$(date +%Y%m%d-%H%M%S) \
         .
@@ -76,7 +78,7 @@ deploy_backend() {
     echo_info "Deploying backend to Container Apps..."
     
     az containerapp update \
-        --name greenchainz-container \
+        --name ${BACKEND_APP_NAME} \
         --resource-group $RESOURCE_GROUP \
         --image ${BACKEND_IMAGE}:${TAG}
     
@@ -84,7 +86,7 @@ deploy_backend() {
     
     # Get the URL
     BACKEND_URL=$(az containerapp show \
-        --name greenchainz-container \
+        --name ${BACKEND_APP_NAME} \
         --resource-group $RESOURCE_GROUP \
         --query "properties.configuration.ingress.fqdn" -o tsv)
     
@@ -96,21 +98,22 @@ deploy_frontend() {
     echo_info "Building frontend image..."
     
     # Get backend URL for build args
-    BACKEND_URL=$(az containerapp show \
-        --name greenchainz-container \
+    BACKEND_FQDN=$(az containerapp show \
+        --name ${BACKEND_APP_NAME} \
         --resource-group $RESOURCE_GROUP \
         --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
     
-    if [ -z "$BACKEND_URL" ]; then
-        BACKEND_URL="https://greenchainz.com"
+    if [ -z "$BACKEND_FQDN" ]; then
+        BACKEND_FQDN="greenchainz.com"
     fi
     
-    # Build from repository root (Next.js)
+    # Build from repository root (Vite frontend)
     docker build \
-        -f Dockerfile \
-        --build-arg NEXT_PUBLIC_BACKEND_URL=https://${BACKEND_URL} \
-        --build-arg NEXT_PUBLIC_AZURE_TENANT=${NEXT_PUBLIC_AZURE_TENANT:-"greenchainz2025.onmicrosoft.com"} \
-        --build-arg NEXT_PUBLIC_AZURE_CLIENT_ID=${NEXT_PUBLIC_AZURE_CLIENT_ID:-""} \
+        -f Dockerfile.frontend \
+        --build-arg VITE_BACKEND_URL=https://${BACKEND_FQDN} \
+        --build-arg VITE_FRONTEND_WEBPUBSUB_ENDPOINT=${VITE_FRONTEND_WEBPUBSUB_ENDPOINT:-"https://greenchainz.webpubsub.azure.com"} \
+        --build-arg VITE_FRONTEND_WEBPUBSUB_HUB=${VITE_FRONTEND_WEBPUBSUB_HUB:-"greenchainzhub"} \
+        --build-arg VITE_AZURE_MAPS_KEY=${VITE_AZURE_MAPS_KEY:-""} \
         -t ${FRONTEND_IMAGE}:${TAG} \
         -t ${FRONTEND_IMAGE}:$(date +%Y%m%d-%H%M%S) \
         .
@@ -121,15 +124,15 @@ deploy_frontend() {
     echo_info "Deploying frontend to Container Apps..."
     
     # Check if frontend container app exists
-    if az containerapp show --name greenchainz-frontend --resource-group $RESOURCE_GROUP &> /dev/null; then
+    if az containerapp show --name ${FRONTEND_APP_NAME} --resource-group $RESOURCE_GROUP &> /dev/null; then
         az containerapp update \
-            --name greenchainz-frontend \
+            --name ${FRONTEND_APP_NAME} \
             --resource-group $RESOURCE_GROUP \
             --image ${FRONTEND_IMAGE}:${TAG}
     else
         echo_info "Creating new frontend Container App..."
         az containerapp create \
-            --name greenchainz-frontend \
+            --name ${FRONTEND_APP_NAME} \
             --resource-group $RESOURCE_GROUP \
             --environment $CONTAINER_ENV \
             --image ${FRONTEND_IMAGE}:${TAG} \
@@ -147,7 +150,7 @@ deploy_frontend() {
     
     # Get the URL
     FRONTEND_URL=$(az containerapp show \
-        --name greenchainz-frontend \
+        --name ${FRONTEND_APP_NAME} \
         --resource-group $RESOURCE_GROUP \
         --query "properties.configuration.ingress.fqdn" -o tsv)
     
@@ -188,17 +191,19 @@ setup_managed_identity() {
     
     # Get the Container App's managed identity principal ID
     PRINCIPAL_ID=$(az containerapp show \
-        --name greenchainz-container \
+        --name ${BACKEND_APP_NAME} \
         --resource-group $RESOURCE_GROUP \
         --query "identity.principalId" -o tsv)
     
     if [ -n "$PRINCIPAL_ID" ]; then
-        # Grant Key Vault access
-        az keyvault set-policy \
-            --name $KEY_VAULT \
-            --object-id $PRINCIPAL_ID \
-            --secret-permissions get list \
-            > /dev/null
+        # Grant Key Vault access (RBAC mode)
+        KV_ID=$(az keyvault show --name $KEY_VAULT --query id -o tsv)
+        az role assignment create \
+            --assignee-object-id $PRINCIPAL_ID \
+            --assignee-principal-type ServicePrincipal \
+            --role "Key Vault Secrets User" \
+            --scope "$KV_ID" \
+            > /dev/null 2>&1 || true
         
         echo_success "Managed identity configured for Key Vault access"
     else
@@ -213,7 +218,7 @@ show_status() {
     
     echo "Backend Container App:"
     az containerapp show \
-        --name greenchainz-container \
+        --name ${BACKEND_APP_NAME} \
         --resource-group $RESOURCE_GROUP \
         --query "{Name:name, Status:properties.runningStatus, URL:properties.configuration.ingress.fqdn, Replicas:properties.template.scale}" \
         -o table 2>/dev/null || echo "  Not deployed"
@@ -221,7 +226,7 @@ show_status() {
     echo ""
     echo "Frontend Container App:"
     az containerapp show \
-        --name greenchainz-frontend \
+        --name ${FRONTEND_APP_NAME} \
         --resource-group $RESOURCE_GROUP \
         --query "{Name:name, Status:properties.runningStatus, URL:properties.configuration.ingress.fqdn}" \
         -o table 2>/dev/null || echo "  Not deployed"
@@ -237,7 +242,7 @@ show_status() {
 
 # View logs
 view_logs() {
-    local app_name=${1:-greenchainz-container}
+    local app_name=${1:-${BACKEND_APP_NAME}}
     echo_info "Viewing logs for $app_name..."
     
     az containerapp logs show \
@@ -302,4 +307,3 @@ main() {
 }
 
 main "$@"
-
