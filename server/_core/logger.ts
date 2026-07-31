@@ -1,49 +1,16 @@
+import pino from "pino";
+
+const isDev = process.env.NODE_ENV !== "production";
+
 /**
- * Structured JSON logger — wraps pino for production-grade log ingestion.
- *
- * In production: emits newline-delimited JSON consumed by Azure Log Analytics.
- * In development: pretty-prints with pino-pretty when the terminal is a TTY,
- *                 or raw JSON otherwise (keeps pipe/grep usable).
- *
- * Every log record automatically includes:
- *  - env        — NODE_ENV
- *  - sha        — Git commit SHA injected at build time (COMMIT_SHA env var)
- *  - requestId  — injected per-request via logger.child({ requestId })
- *  - userId     — injected per-request (first 8 hex chars of SHA-256 hash — not raw PII)
+ * Structured logger — emits JSON in production (ingested by Azure Log Analytics),
+ * pretty-printed in development. Import and use everywhere instead of console.log.
  *
  * Usage:
  *   import { logger } from "./_core/logger";
- *   logger.info({ userId: "abc123" }, "User logged in");
- *
- *   // Per-request child logger:
- *   const reqLog = logger.child({ requestId: req.id, userId: req.user?.id });
- *   reqLog.warn({ path: req.path }, "Unauthorized access attempt");
+ *   logger.info({ userId, duration }, "RFQ submitted");
+ *   logger.error({ err }, "Database query failed");
  */
-
-import { createHash } from "crypto";
-import pino, { type Logger } from "pino";
-
-const isDev = process.env.NODE_ENV !== "production";
-const isTestEnv = process.env.NODE_ENV === "test";
-
-// Deployment SHA — set by GitHub Actions as COMMIT_SHA or WEBSITE_DEPLOYMENT_ID (Azure)
-const deploymentSha =
-  process.env.COMMIT_SHA ??
-  process.env.WEBSITE_DEPLOYMENT_ID ??
-  "local";
-
-const baseOptions: pino.LoggerOptions = {
-  // Minimum level: suppress debug in production to reduce log volume / cost
-  level: isDev ? "debug" : "info",
-
-  // Silence logging entirely in test runs unless DEBUG_LOGS=true
-  ...(isTestEnv && process.env.DEBUG_LOGS !== "true" ? { level: "silent" } : {}),
-
-  // Base fields included on every log record
-  base: {
-    env: process.env.NODE_ENV ?? "unknown",
-    sha: deploymentSha,
-    service: "greenchainz-api",
 export const logger = pino(
   {
     level: process.env.LOG_LEVEL ?? (isDev ? "debug" : "info"),
@@ -70,77 +37,21 @@ export const logger = pino(
     },
     timestamp: pino.stdTimeFunctions.isoTime,
   },
-
-  // ISO timestamp instead of epoch ms for human readability in Azure Monitor
-  timestamp: pino.stdTimeFunctions.isoTime,
-
-  // Redact fields that must never reach log storage
-  redact: {
-    paths: [
-      "password",
-      "passwd",
-      "pwd",
-      "secret",
-      "client_secret",
-      "access_token",
-      "refresh_token",
-      "id_token",
-      "jwt",
-      "authorization",
-      "cookie",
-      "set-cookie",
-      "req.headers.authorization",
-      "req.headers.cookie",
-      "res.headers['set-cookie']",
-    ],
-    censor: "[REDACTED]",
-  },
-
-  // Serializers: sanitize/trim common objects before logging
-  serializers: {
-    req: (req: { method?: string; url?: string; id?: string }) => ({
-      method: req.method,
-      url: req.url ? new URL(req.url, "http://localhost").pathname : undefined,
-      id: req.id,
-    }),
-    res: (res: { statusCode?: number }) => ({
-      statusCode: res.statusCode,
-    }),
-    err: pino.stdSerializers.err,
-  },
-};
-
-function createLogger(): Logger {
-  if (isDev && process.stdout.isTTY) {
-    // In interactive development terminals, try pino-pretty for human-readable output. If it's not
-    // installed this falls through to raw JSON (never blocks startup).
-    try {
-      return pino({
-        ...baseOptions,
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "SYS:HH:MM:ss.l",
-            ignore: "pid,hostname,env,sha,service",
-          },
+  isDev
+    ? pino.transport({
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          translateTime: "HH:MM:ss",
+          ignore: "pid,hostname,env,deploymentSha",
         },
-      });
-    } catch {
-      // pino-pretty unavailable — emit raw JSON
-    }
-  }
+      })
+    : undefined
+);
 
-  return pino(baseOptions);
-}
+// Backward-compatible alias used by newer middleware imports.
+export const log = logger;
 
-export const logger: Logger = createLogger();
-
-// ── Convenience child factory ─────────────────────────────────────────────────
-
-/**
- * Create a child logger for a single request, stamped with requestId and an
- * opaque userId hash (first 8 hex chars of SHA-256 — not the raw ID, avoids PII in log storage).
 /**
  * Child logger pre-bound with a correlation/request ID.
  *
@@ -148,21 +59,7 @@ export const logger: Logger = createLogger();
  * callers can pass `req.headers["x-correlation-id"]` directly without
  * needing to normalise the type themselves.
  */
-export function requestLogger(opts: {
-  requestId?: string;
-  userId?: number | string;
-  tenantId?: number | string;
-}): Logger {
-  return logger.child({
-    requestId: opts.requestId,
-    // SHA-256 hash truncated to 8 hex chars — opaque correlation token, not raw PII
-    userId:
-      opts.userId != null
-        ? createHash("sha256").update(String(opts.userId)).digest("hex").slice(0, 8)
-        : undefined,
-    tenantId:
-      opts.tenantId != null
-        ? createHash("sha256").update(String(opts.tenantId)).digest("hex").slice(0, 8)
-        : undefined,
-  });
+export function requestLogger(correlationId: string | string[] | undefined) {
+  const id = Array.isArray(correlationId) ? correlationId[0] : (correlationId ?? "");
+  return logger.child({ correlationId: id });
 }
