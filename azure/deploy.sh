@@ -1,10 +1,14 @@
 #!/bin/bash
 # GreenChainz Azure Deployment Script
-# Usage: ./azure/deploy.sh [backend|frontend|all]
+# Usage: ./azure/deploy.sh [app|all|setup|status|logs [app-name]]
+#
+# Emergency manual deploy. Standard releases use release-production.yml.
+# Builds the single container image (Express server + Vite client in dist/public/)
+# and deploys it to the one Container App.
 
 set -e
 
-# Configuration - Update these values
+# Configuration
 RESOURCE_GROUP="rg-greenchainz-prod-container"
 ACR_NAME="acrgreenchainzprod916"
 ACR_LOGIN_SERVER="${ACR_NAME}.azurecr.io"
@@ -12,12 +16,10 @@ CONTAINER_ENV="cae-greenchainz-env"
 LOCATION="eastus"
 KEY_VAULT="greenchainz-vault"
 
-# Image tags
-BACKEND_IMAGE="${ACR_LOGIN_SERVER}/greenchainz-backend"
-FRONTEND_IMAGE="${ACR_LOGIN_SERVER}/greenchainz-frontend"
+# Single image / single Container App (server serves dist/public/ as static files)
+APP_IMAGE="${ACR_LOGIN_SERVER}/greenchainz-backend"
 TAG="${TAG:-latest}"
-BACKEND_APP_NAME="greenchainz-backend-v2"
-FRONTEND_APP_NAME="greenchainz-frontend"
+APP_NAME="greenchainz-backend-v2"
 
 # Colors for output
 RED='\033[0;31m'
@@ -61,100 +63,37 @@ acr_login() {
     echo_success "ACR login successful"
 }
 
-# Build and push backend
-deploy_backend() {
-    echo_info "Building backend image..."
-    
-    # Build from repository root
+# Build and deploy the single app image (Express server + Vite client in dist/public/)
+deploy_app() {
+    echo_info "Building app image (server + Vite client)..."
+
+    # VITE_BACKEND_URL is intentionally omitted (left empty/unset):
+    # The Express server serves the Vite client from the same origin, so the
+    # browser makes relative API requests. Setting this to the Container Apps
+    # FQDN would break authenticated calls because the session cookie is scoped
+    # to greenchainz.com and is not sent cross-origin to the ACA host.
     docker build \
         -f Dockerfile.backend \
-        -t ${BACKEND_IMAGE}:${TAG} \
-        -t ${BACKEND_IMAGE}:$(date +%Y%m%d-%H%M%S) \
+        -t "${APP_IMAGE}:${TAG}" \
+        -t "${APP_IMAGE}:$(date +%Y%m%d-%H%M%S)" \
         .
-    
-    echo_info "Pushing backend image to ACR..."
-    docker push ${BACKEND_IMAGE}:${TAG}
-    
-    echo_info "Deploying backend to Container Apps..."
-    
-    az containerapp update \
-        --name ${BACKEND_APP_NAME} \
-        --resource-group $RESOURCE_GROUP \
-        --image ${BACKEND_IMAGE}:${TAG}
-    
-    echo_success "Backend deployed successfully!"
-    
-    # Get the URL
-    BACKEND_URL=$(az containerapp show \
-        --name ${BACKEND_APP_NAME} \
-        --resource-group $RESOURCE_GROUP \
-        --query "properties.configuration.ingress.fqdn" -o tsv)
-    
-    echo_info "Backend URL: https://${BACKEND_URL}"
-}
 
-# Build and push frontend
-deploy_frontend() {
-    echo_info "Building frontend image..."
-    
-    # Get backend URL for build args
-    BACKEND_FQDN=$(az containerapp show \
-        --name ${BACKEND_APP_NAME} \
-        --resource-group $RESOURCE_GROUP \
-        --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
-    
-    if [ -z "$BACKEND_FQDN" ]; then
-        BACKEND_FQDN="greenchainz.com"
-    fi
-    
-    # Build from repository root (Vite frontend)
-    docker build \
-        -f Dockerfile.frontend \
-        --build-arg VITE_BACKEND_URL=https://${BACKEND_FQDN} \
-        --build-arg VITE_FRONTEND_WEBPUBSUB_ENDPOINT=${VITE_FRONTEND_WEBPUBSUB_ENDPOINT:-"https://greenchainz.webpubsub.azure.com"} \
-        --build-arg VITE_FRONTEND_WEBPUBSUB_HUB=${VITE_FRONTEND_WEBPUBSUB_HUB:-"greenchainzhub"} \
-        --build-arg VITE_AZURE_MAPS_KEY=${VITE_AZURE_MAPS_KEY:-""} \
-        -t ${FRONTEND_IMAGE}:${TAG} \
-        -t ${FRONTEND_IMAGE}:$(date +%Y%m%d-%H%M%S) \
-        .
-    
-    echo_info "Pushing frontend image to ACR..."
-    docker push ${FRONTEND_IMAGE}:${TAG}
-    
-    echo_info "Deploying frontend to Container Apps..."
-    
-    # Check if frontend container app exists
-    if az containerapp show --name ${FRONTEND_APP_NAME} --resource-group $RESOURCE_GROUP &> /dev/null; then
-        az containerapp update \
-            --name ${FRONTEND_APP_NAME} \
-            --resource-group $RESOURCE_GROUP \
-            --image ${FRONTEND_IMAGE}:${TAG}
-    else
-        echo_info "Creating new frontend Container App..."
-        az containerapp create \
-            --name ${FRONTEND_APP_NAME} \
-            --resource-group $RESOURCE_GROUP \
-            --environment $CONTAINER_ENV \
-            --image ${FRONTEND_IMAGE}:${TAG} \
-            --target-port 3000 \
-            --ingress external \
-            --min-replicas 1 \
-            --max-replicas 5 \
-            --cpu 0.25 \
-            --memory 0.5Gi \
-            --registry-server $ACR_LOGIN_SERVER \
-            --registry-identity system
-    fi
-    
-    echo_success "Frontend deployed successfully!"
-    
-    # Get the URL
-    FRONTEND_URL=$(az containerapp show \
-        --name ${FRONTEND_APP_NAME} \
-        --resource-group $RESOURCE_GROUP \
+    echo_info "Pushing image to ACR..."
+    docker push "${APP_IMAGE}:${TAG}"
+
+    echo_info "Deploying to Container App ${APP_NAME}..."
+    az containerapp update \
+        --name "${APP_NAME}" \
+        --resource-group "${RESOURCE_GROUP}" \
+        --image "${APP_IMAGE}:${TAG}"
+
+    echo_success "App deployed successfully!"
+
+    APP_FQDN=$(az containerapp show \
+        --name "${APP_NAME}" \
+        --resource-group "${RESOURCE_GROUP}" \
         --query "properties.configuration.ingress.fqdn" -o tsv)
-    
-    echo_info "Frontend URL: https://${FRONTEND_URL}"
+    echo_info "App URL: https://${APP_FQDN}"
 }
 
 # Setup Key Vault secrets
@@ -188,26 +127,41 @@ setup_keyvault() {
 # Grant managed identity access to Key Vault
 setup_managed_identity() {
     echo_info "Setting up managed identity access..."
-    
+
     # Get the Container App's managed identity principal ID
     PRINCIPAL_ID=$(az containerapp show \
-        --name ${BACKEND_APP_NAME} \
-        --resource-group $RESOURCE_GROUP \
+        --name "${APP_NAME}" \
+        --resource-group "${RESOURCE_GROUP}" \
         --query "identity.principalId" -o tsv)
-    
-    if [ -n "$PRINCIPAL_ID" ]; then
-        # Grant Key Vault access (RBAC mode)
-        KV_ID=$(az keyvault show --name $KEY_VAULT --query id -o tsv)
+
+    if [ -z "$PRINCIPAL_ID" ]; then
+        echo_error "No managed identity on ${APP_NAME}. Enable system-assigned identity first."
+        exit 1
+    fi
+
+    KV_ID=$(az keyvault show --name "${KEY_VAULT}" --query id -o tsv)
+
+    # Check for an existing assignment to keep this operation idempotent
+    EXISTING=$(az role assignment list \
+        --assignee "$PRINCIPAL_ID" \
+        --role "Key Vault Secrets User" \
+        --scope "$KV_ID" \
+        --query "length(@)" -o tsv 2>/dev/null || echo "0")
+
+    if [ "$EXISTING" -gt 0 ]; then
+        echo_info "Key Vault Secrets User role already assigned — skipping."
+    else
+        echo_info "Granting Key Vault Secrets User role..."
         az role assignment create \
-            --assignee-object-id $PRINCIPAL_ID \
+            --assignee-object-id "$PRINCIPAL_ID" \
             --assignee-principal-type ServicePrincipal \
             --role "Key Vault Secrets User" \
             --scope "$KV_ID" \
-            > /dev/null 2>&1 || true
-        
+            > /dev/null || {
+                echo_error "Failed to grant Key Vault access to ${PRINCIPAL_ID}."
+                return 1
+            }
         echo_success "Managed identity configured for Key Vault access"
-    else
-        echo_warn "Could not get managed identity. Enable it manually."
     fi
 }
 
@@ -215,67 +169,42 @@ setup_managed_identity() {
 show_status() {
     echo_info "Deployment Status:"
     echo ""
-    
-    echo "Backend Container App:"
+
+    echo "Container App:"
     az containerapp show \
-        --name ${BACKEND_APP_NAME} \
-        --resource-group $RESOURCE_GROUP \
+        --name "${APP_NAME}" \
+        --resource-group "${RESOURCE_GROUP}" \
         --query "{Name:name, Status:properties.runningStatus, URL:properties.configuration.ingress.fqdn, Replicas:properties.template.scale}" \
         -o table 2>/dev/null || echo "  Not deployed"
-    
-    echo ""
-    echo "Frontend Container App:"
-    az containerapp show \
-        --name ${FRONTEND_APP_NAME} \
-        --resource-group $RESOURCE_GROUP \
-        --query "{Name:name, Status:properties.runningStatus, URL:properties.configuration.ingress.fqdn}" \
-        -o table 2>/dev/null || echo "  Not deployed"
-    
-    echo ""
-    echo "Redis Cache:"
-    az redis show \
-        --name greenchainz \
-        --resource-group greenchainz-production \
-        --query "{Name:name, Status:provisioningState, Host:hostName}" \
-        -o table 2>/dev/null || echo "  Not found"
 }
 
 # View logs
 view_logs() {
-    local app_name=${1:-${BACKEND_APP_NAME}}
+    local app_name=${1:-${APP_NAME}}
     echo_info "Viewing logs for $app_name..."
-    
+
     az containerapp logs show \
-        --name $app_name \
-        --resource-group $RESOURCE_GROUP \
+        --name "$app_name" \
+        --resource-group "${RESOURCE_GROUP}" \
         --follow
 }
 
 # Main
 main() {
     local command=${1:-all}
-    
+
     echo ""
     echo "╔═══════════════════════════════════════════════════════════╗"
     echo "║          GreenChainz Azure Deployment                      ║"
     echo "╚═══════════════════════════════════════════════════════════╝"
     echo ""
-    
+
     check_prerequisites
-    
+
     case $command in
-        backend)
+        app|all)
             acr_login
-            deploy_backend
-            ;;
-        frontend)
-            acr_login
-            deploy_frontend
-            ;;
-        all)
-            acr_login
-            deploy_backend
-            deploy_frontend
+            deploy_app
             show_status
             ;;
         setup)
@@ -286,22 +215,20 @@ main() {
             show_status
             ;;
         logs)
-            view_logs ${2}
+            view_logs "${2}"
             ;;
         *)
-            echo "Usage: $0 [backend|frontend|all|setup|status|logs [app-name]]"
+            echo "Usage: $0 [app|all|setup|status|logs [app-name]]"
             echo ""
             echo "Commands:"
-            echo "  backend   - Build and deploy backend only"
-            echo "  frontend  - Build and deploy frontend only"
-            echo "  all       - Build and deploy both (default)"
+            echo "  app|all   - Build and deploy the single app image (default)"
             echo "  setup     - Configure Key Vault secrets and managed identity"
             echo "  status    - Show deployment status"
             echo "  logs      - View container logs (optional: specify app name)"
             exit 1
             ;;
     esac
-    
+
     echo ""
     echo_success "Deployment complete!"
 }
