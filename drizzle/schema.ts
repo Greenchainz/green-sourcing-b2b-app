@@ -824,7 +824,7 @@ export const supplierSubscriptions = pgTable("supplier_subscriptions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
-  supplierIdx: index("idx_supplier_subscriptions_supplier").on(t.supplierId),
+  supplierIdx: uniqueIndex("idx_supplier_subscriptions_supplier").on(t.supplierId),
   statusIdx: index("idx_supplier_subscriptions_status").on(t.status),
 }));
 
