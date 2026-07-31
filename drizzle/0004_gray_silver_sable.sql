@@ -24,6 +24,7 @@ CREATE INDEX IF NOT EXISTS "idx_conversations_supplier" ON "conversations" USING
 CREATE INDEX IF NOT EXISTS "idx_conversations_rfq" ON "conversations" USING btree ("rfqId");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_conversations_last_message_at" ON "conversations" USING btree ("lastMessageAt");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_legal_acceptances_user" ON "legal_acceptances" USING btree ("userId");--> statement-breakpoint
+DELETE FROM "legal_acceptances" WHERE id NOT IN (SELECT DISTINCT ON ("userId","termsVersion","privacyVersion") id FROM "legal_acceptances" ORDER BY "userId","termsVersion","privacyVersion",id DESC);--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_legal_acceptances_user_version" ON "legal_acceptances" USING btree ("userId","termsVersion","privacyVersion");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_manufacturers_claimed_by_user" ON "manufacturers" USING btree ("claimedByUserId");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_manufacturers_category" ON "manufacturers" USING btree ("category");--> statement-breakpoint
@@ -37,9 +38,11 @@ CREATE INDEX IF NOT EXISTS "idx_material_swaps_material" ON "material_swaps" USI
 CREATE INDEX IF NOT EXISTS "idx_material_swaps_swap_material" ON "material_swaps" USING btree ("swapMaterialId");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_message_reactions_message" ON "message_reactions" USING btree ("messageId");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_message_reactions_user" ON "message_reactions" USING btree ("userId");--> statement-breakpoint
+DELETE FROM "message_reactions" WHERE id NOT IN (SELECT DISTINCT ON ("messageId","userId","reactionType") id FROM "message_reactions" ORDER BY "messageId","userId","reactionType",id DESC);--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_message_reactions_unique" ON "message_reactions" USING btree ("messageId","userId","reactionType");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_messages_conversation" ON "messages" USING btree ("conversationId");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_messages_sender" ON "messages" USING btree ("senderId");--> statement-breakpoint
+DELETE FROM "monthly_call_usage" WHERE id NOT IN (SELECT DISTINCT ON ("userId","month") id FROM "monthly_call_usage" ORDER BY "userId","month",id DESC);--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_monthly_call_usage_user_month" ON "monthly_call_usage" USING btree ("userId","month");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_monthly_call_usage_user" ON "monthly_call_usage" USING btree ("userId");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_notifications_user" ON "notifications" USING btree ("userId");--> statement-breakpoint

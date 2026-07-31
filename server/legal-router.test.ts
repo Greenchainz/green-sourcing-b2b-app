@@ -116,18 +116,13 @@ describe("Legal Router", () => {
       ).rejects.toThrow();
     });
 
-    it("should insert new legal acceptance record", async () => {
-      const mockInsert = vi.fn().mockReturnValue({
-        values: vi.fn().mockResolvedValue({}),
+    it("should upsert a legal acceptance record", async () => {
+      const mockOnConflictDoUpdate = vi.fn().mockResolvedValue({});
+      const mockValues = vi.fn().mockReturnValue({
+        onConflictDoUpdate: mockOnConflictDoUpdate,
       });
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
 
-      const mockSelect = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      });
-
-      mockDb.select = mockSelect;
       mockDb.insert = mockInsert;
 
       const caller = legalRouter.createCaller(mockCtx as any);
@@ -135,29 +130,7 @@ describe("Legal Router", () => {
 
       expect(result.success).toBe(true);
       expect(mockInsert).toHaveBeenCalledWith(legalAcceptances);
-    });
-
-    it("should update existing legal acceptance record", async () => {
-      const mockUpdate = vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue({}),
-        }),
-      });
-
-      const mockSelect = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ userId: 123 }]),
-        }),
-      });
-
-      mockDb.select = mockSelect;
-      mockDb.update = mockUpdate;
-
-      const caller = legalRouter.createCaller(mockCtx as any);
-      const result = await caller.acceptTerms({ version: "1.0" });
-
-      expect(result.success).toBe(true);
-      expect(mockUpdate).toHaveBeenCalledWith(legalAcceptances);
+      expect(mockOnConflictDoUpdate).toHaveBeenCalled();
     });
   });
 
@@ -173,18 +146,13 @@ describe("Legal Router", () => {
       ).rejects.toThrow();
     });
 
-    it("should insert new legal acceptance record for privacy", async () => {
-      const mockInsert = vi.fn().mockReturnValue({
-        values: vi.fn().mockResolvedValue({}),
+    it("should upsert a legal acceptance record for privacy", async () => {
+      const mockOnConflictDoUpdate = vi.fn().mockResolvedValue({});
+      const mockValues = vi.fn().mockReturnValue({
+        onConflictDoUpdate: mockOnConflictDoUpdate,
       });
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
 
-      const mockSelect = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      });
-
-      mockDb.select = mockSelect;
       mockDb.insert = mockInsert;
 
       const caller = legalRouter.createCaller(mockCtx as any);
@@ -192,6 +160,7 @@ describe("Legal Router", () => {
 
       expect(result.success).toBe(true);
       expect(mockInsert).toHaveBeenCalledWith(legalAcceptances);
+      expect(mockOnConflictDoUpdate).toHaveBeenCalled();
     });
   });
 
@@ -205,18 +174,13 @@ describe("Legal Router", () => {
       await expect(caller.acceptCookieConsent()).rejects.toThrow();
     });
 
-    it("should insert new legal acceptance record for cookies", async () => {
-      const mockInsert = vi.fn().mockReturnValue({
-        values: vi.fn().mockResolvedValue({}),
+    it("should upsert a legal acceptance record for cookies", async () => {
+      const mockOnConflictDoUpdate = vi.fn().mockResolvedValue({});
+      const mockValues = vi.fn().mockReturnValue({
+        onConflictDoUpdate: mockOnConflictDoUpdate,
       });
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
 
-      const mockSelect = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      });
-
-      mockDb.select = mockSelect;
       mockDb.insert = mockInsert;
 
       const caller = legalRouter.createCaller(mockCtx as any);
@@ -224,6 +188,7 @@ describe("Legal Router", () => {
 
       expect(result.success).toBe(true);
       expect(mockInsert).toHaveBeenCalledWith(legalAcceptances);
+      expect(mockOnConflictDoUpdate).toHaveBeenCalled();
     });
   });
 
@@ -242,18 +207,13 @@ describe("Legal Router", () => {
       ).rejects.toThrow();
     });
 
-    it("should accept all documents at once", async () => {
-      const mockInsert = vi.fn().mockReturnValue({
-        values: vi.fn().mockResolvedValue({}),
+    it("should upsert all legal documents at once", async () => {
+      const mockOnConflictDoUpdate = vi.fn().mockResolvedValue({});
+      const mockValues = vi.fn().mockReturnValue({
+        onConflictDoUpdate: mockOnConflictDoUpdate,
       });
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
 
-      const mockSelect = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      });
-
-      mockDb.select = mockSelect;
       mockDb.insert = mockInsert;
 
       const caller = legalRouter.createCaller(mockCtx as any);
@@ -264,32 +224,7 @@ describe("Legal Router", () => {
 
       expect(result.success).toBe(true);
       expect(mockInsert).toHaveBeenCalledWith(legalAcceptances);
-    });
-
-    it("should update existing record when accepting all", async () => {
-      const mockUpdate = vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue({}),
-        }),
-      });
-
-      const mockSelect = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ userId: 123 }]),
-        }),
-      });
-
-      mockDb.select = mockSelect;
-      mockDb.update = mockUpdate;
-
-      const caller = legalRouter.createCaller(mockCtx as any);
-      const result = await caller.acceptAll({
-        termsVersion: "1.0",
-        privacyVersion: "1.0",
-      });
-
-      expect(result.success).toBe(true);
-      expect(mockUpdate).toHaveBeenCalledWith(legalAcceptances);
+      expect(mockOnConflictDoUpdate).toHaveBeenCalled();
     });
   });
 });

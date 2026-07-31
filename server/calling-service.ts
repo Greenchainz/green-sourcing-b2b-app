@@ -304,43 +304,20 @@ export async function endCall(
         )
       );
 
-    // Update monthly usage (only for caller)
+    // Update monthly usage atomically (only for caller)
     if (userId === session.callerId) {
       const currentMonth = new Date().toISOString().slice(0, 7);
 
-      // Check if usage record exists
-      const existing = await db
-        .select()
-        .from(monthlyCallUsage)
-        .where(
-          and(
-            eq(monthlyCallUsage.userId, userId),
-            eq(monthlyCallUsage.month, currentMonth)
-          )
-        )
-        .limit(1);
-
-      if (existing.length > 0) {
-        // Update existing
-        await db
-          .update(monthlyCallUsage)
-          .set({
-            totalMinutes: sql`${monthlyCallUsage.totalMinutes} + ${durationMinutes}`,
-          })
-          .where(
-            and(
-              eq(monthlyCallUsage.userId, userId),
-              eq(monthlyCallUsage.month, currentMonth)
-            )
-          );
-      } else {
-        // Insert new
-        await db.insert(monthlyCallUsage).values({
-          userId,
-          month: currentMonth,
-          totalMinutes: durationMinutes,
-        });
-      }
+      await db.insert(monthlyCallUsage).values({
+        userId,
+        month: currentMonth,
+        totalMinutes: durationMinutes,
+      }).onConflictDoUpdate({
+        target: [monthlyCallUsage.userId, monthlyCallUsage.month],
+        set: {
+          totalMinutes: sql`${monthlyCallUsage.totalMinutes} + ${durationMinutes}`,
+        },
+      });
     }
   }
 
