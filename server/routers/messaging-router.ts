@@ -311,32 +311,50 @@ export const messagingRouter = router({
       const db = await getDb();
       if (!db) throw new Error('Database not available');
 
-      const existing = await db
-        .select()
-        .from(messageReactions)
-        .where(
-          and(
-            eq(messageReactions.messageId, input.messageId),
-            eq(messageReactions.userId, ctx.user.id),
-            eq(messageReactions.reactionType, input.reactionType)
-          )
-        )
-        .limit(1);
+      // Attempt an atomic insert; if the reaction already exists, DO NOTHING returns empty
+      const inserted = await db
+        .insert(messageReactions)
+        .values({
+          messageId: input.messageId,
+          userId: ctx.user.id,
+          reactionType: input.reactionType,
+        })
+        .onConflictDoNothing()
+        .returning({ id: messageReactions.id });
 
-      if (existing.length > 0) {
+      if (inserted.length === 0) {
+        // Row already existed — toggle it off
         await db
           .delete(messageReactions)
-          .where(eq(messageReactions.id, existing[0].id));
+          .where(
+            and(
+              eq(messageReactions.messageId, input.messageId),
+              eq(messageReactions.userId, ctx.user.id),
+              eq(messageReactions.reactionType, input.reactionType)
+            )
+          );
         return { added: false };
       }
 
-      await db.insert(messageReactions).values({
-        messageId: input.messageId,
-        userId: ctx.user.id,
-        reactionType: input.reactionType,
-      });
+<<<<<<< HEAD
+      // Use INSERT ... ON CONFLICT DO NOTHING to make the insert atomic: if two
+      // concurrent requests both passed the SELECT check above, only one will
+      // insert; the other will silently no-op rather than surfacing a unique
+      // violation as a user-visible error.
+      const inserted = await db
+        .insert(messageReactions)
+        .values({
+          messageId: input.messageId,
+          userId: ctx.user.id,
+          reactionType: input.reactionType,
+        })
+        .onConflictDoNothing()
+        .returning({ id: messageReactions.id });
 
+      return { added: inserted.length > 0 };
+=======
       return { added: true };
+>>>>>>> origin/main
     }),
 
   getMessageReactions: protectedProcedure

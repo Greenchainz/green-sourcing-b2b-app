@@ -174,25 +174,33 @@ setup_managed_identity() {
     KV_ID=$(az keyvault show --name "${KEY_VAULT}" --query id -o tsv)
 
     # Check for an existing assignment to keep this operation idempotent
-    EXISTING=$(az role assignment list \
+    if ! EXISTING=$(az role assignment list \
         --assignee "$PRINCIPAL_ID" \
         --role "Key Vault Secrets User" \
         --scope "$KV_ID" \
-        --query "length(@)" -o tsv 2>/dev/null || echo "0")
+        --query "length(@)" -o tsv); then
+        echo_error "Failed to check existing Key Vault role assignments."
+        return 1
+    fi
 
     if [ "$EXISTING" -gt 0 ]; then
         echo_info "Key Vault Secrets User role already assigned — skipping."
     else
         echo_info "Granting Key Vault Secrets User role..."
-        az role assignment create \
+        if ! CREATE_OUTPUT=$(az role assignment create \
             --assignee-object-id "$PRINCIPAL_ID" \
             --assignee-principal-type ServicePrincipal \
             --role "Key Vault Secrets User" \
             --scope "$KV_ID" \
-            > /dev/null || {
+            -o json 2>&1); then
+            if echo "$CREATE_OUTPUT" | grep -q "RoleAssignmentExists"; then
+                echo_info "Role assignment already exists — skipping."
+            else
                 echo_error "Failed to grant Key Vault access to ${PRINCIPAL_ID}."
+                echo_error "$CREATE_OUTPUT"
                 return 1
-            }
+            fi
+        fi
         echo_success "Managed identity configured for Key Vault access"
     fi
 }
