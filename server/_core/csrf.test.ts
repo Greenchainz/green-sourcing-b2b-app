@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response } from "express";
 import { csrfProtection } from "./csrf";
 
 // Silence logger output during tests
