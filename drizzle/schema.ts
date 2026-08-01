@@ -259,7 +259,11 @@ export const materials = pgTable("materials", {
   // Semantic search: pgvector embedding (text-embedding-3-small, 1536 dim)
   embedding: vector("embedding", { dimensions: 1536 }),
   searchText: text("searchText"),
-});
+}, (t) => ({
+  manufacturerIdx: index("idx_materials_manufacturer").on(t.manufacturerId),
+  categoryIdx: index("idx_materials_category").on(t.category),
+  hasEpdIdx: index("idx_materials_has_epd").on(t.hasEpd),
+}));
 
 export type Material = typeof materials.$inferSelect;
 
@@ -328,7 +332,7 @@ export const materialCertifications = pgTable("material_certifications", {
   leedPointsValue: integer("leedPointsValue"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
-  materialIdx: index("idx_material_certifications_material").on(t.materialId),
+  materialIdx: index("idx_material_certs_material").on(t.materialId),
   typeIdx: index("idx_material_certifications_type").on(t.certificationType),
 }));
 
@@ -429,6 +433,7 @@ export const ccpsScores = pgTable("ccps_scores", {
   sourcingDifficulty: integer("sourcingDifficulty"),
   calculatedAt: timestamp("calculatedAt").defaultNow().notNull(),
 }, (t) => ({
+  materialIdx: index("idx_ccps_scores_material").on(t.materialId),
   materialPersonaIdx: uniqueIndex("idx_ccps_scores_material_persona").on(t.materialId, t.personaKey),
 }));
 
@@ -1251,6 +1256,7 @@ export const monthlyCallUsage = pgTable("monthly_call_usage", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
+  userIdx: index("idx_monthly_call_usage_user").on(t.userId),
   userMonthIdx: uniqueIndex("idx_monthly_call_usage_user_month").on(t.userId, t.month),
 }));
 

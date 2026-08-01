@@ -153,20 +153,6 @@ export const supplierResponseRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "This request is no longer accepting responses" });
       }
 
-      // Upsert: one bid per supplier per RFQ
-      const existing = await db
-        .select({ id: rfqBids.id })
-        .from(rfqBids)
-        .where(
-          and(
-            eq(rfqBids.rfqId, input.rfqId),
-            eq(rfqBids.supplierId, supplierRow.id),
-          )
-        )
-        .limit(1);
-
-      let bidId: number;
-
       // Infer data quality level server-side from submitted evidence.
       // Never trust a level from client input.
       const hasEpdEvidence =
@@ -195,20 +181,28 @@ export const supplierResponseRouter = router({
         dataQualityLevel: inferredQualityLevel,
       };
 
-      if (existing.length > 0) {
-        await db.update(rfqBids).set(bidData).where(eq(rfqBids.id, existing[0].id));
-        bidId = existing[0].id;
-      } else {
-        const [inserted] = await db.insert(rfqBids).values(bidData).returning({ id: rfqBids.id });
-        bidId = inserted.id;
-      }
+      const [upsertedBid] = await db
+        .insert(rfqBids)
+        .values(bidData)
+        .onConflictDoUpdate({
+          target: [rfqBids.rfqId, rfqBids.supplierId],
+          targetWhere: sql`deleted_at IS NULL`,
+          set: {
+            ...bidData,
+            updatedAt: new Date(),
+            deletedAt: null,
+          },
+        })
+        .returning({ id: rfqBids.id });
+
+      const bidId = upsertedBid.id;
 
       // Auto-score this response
       // Need median — fetch all bid prices for this RFQ
       const allBids = await db
         .select({ bidPrice: rfqBids.bidPrice })
         .from(rfqBids)
-        .where(eq(rfqBids.rfqId, input.rfqId));
+        .where(and(eq(rfqBids.rfqId, input.rfqId), isNull(rfqBids.deletedAt)));
 
       const median = computeMedianBidPrice(
         allBids.map((b) => (b.bidPrice != null ? parseFloat(b.bidPrice) : null))
@@ -368,7 +362,7 @@ export const supplierResponseRouter = router({
       const bids = await db
         .select()
         .from(rfqBids)
-        .where(eq(rfqBids.rfqId, input.rfqId));
+        .where(and(eq(rfqBids.rfqId, input.rfqId), isNull(rfqBids.deletedAt)));
 
       if (bids.length === 0) return { updated: 0 };
 
@@ -424,6 +418,7 @@ export const supplierResponseRouter = router({
           and(
             eq(rfqBids.rfqId, input.rfqId),
             eq(rfqBids.supplierId, supplierRow.id),
+            isNull(rfqBids.deletedAt),
           )
         )
         .limit(1);
