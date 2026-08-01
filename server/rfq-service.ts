@@ -287,6 +287,7 @@ export async function submitBid(
     })
     .onConflictDoUpdate({
       target: [rfqBids.rfqId, rfqBids.supplierId],
+      targetWhere: sql`deleted_at IS NULL`,
       set: {
         bidPrice: bidPrice.toString(),
         leadDays,
