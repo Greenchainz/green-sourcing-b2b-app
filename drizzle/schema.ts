@@ -329,7 +329,6 @@ export const materialCertifications = pgTable("material_certifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
   materialIdx: index("idx_material_certifications_material").on(t.materialId),
-  materialIdx: index("idx_material_certs_material").on(t.materialId),
   typeIdx: index("idx_material_certifications_type").on(t.certificationType),
 }));
 
