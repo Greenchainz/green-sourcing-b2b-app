@@ -329,6 +329,7 @@ export const materialCertifications = pgTable("material_certifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
   materialIdx: index("idx_material_certifications_material").on(t.materialId),
+  materialIdx: index("idx_material_certs_material").on(t.materialId),
   typeIdx: index("idx_material_certifications_type").on(t.certificationType),
 }));
 
@@ -977,6 +978,8 @@ export const rfqBids = pgTable("rfq_bids", {
   // Partial unique index: allows one live (non-deleted) bid per rfqId/supplierId
   // while soft-deleted rows and revisions are unrestricted.
   rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId).where(sql`deleted_at IS NULL`),
+  // Composite: most bid queries filter by both rfqId and supplierId
+  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
   statusIdx: index("idx_rfq_bids_status").on(t.status),
 }));
 
@@ -1208,6 +1211,7 @@ export const messageReactions = pgTable("message_reactions", {
   reactionType: varchar("reactionType", { length: 20 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
+  messageIdx: index("idx_message_reactions_message").on(t.messageId),
   userIdx: index("idx_message_reactions_user").on(t.userId),
   uniqueReaction: uniqueIndex("idx_message_reactions_unique").on(t.messageId, t.userId, t.reactionType),
 }));
