@@ -294,7 +294,7 @@ export const supplierResponseRouter = router({
         })
         .from(rfqBids)
         .innerJoin(suppliers, eq(rfqBids.supplierId, suppliers.id))
-        .where(eq(rfqBids.rfqId, input.rfqId))
+        .where(and(eq(rfqBids.rfqId, input.rfqId), isNull(rfqBids.deletedAt)))
         .orderBy(
           // Sort by score desc (nulls last), then by submitted date
           sql`${rfqBids.rfxTotalScore}::numeric desc nulls last`,

@@ -162,7 +162,13 @@ export const rfqMarketplaceRouter = router({
         const [existingBid] = await db
           .select({ id: rfqBids.id })
           .from(rfqBids)
-          .where(and(eq(rfqBids.rfqId, input.rfqId), eq(rfqBids.supplierId, supplierRecord.id)))
+          .where(
+            and(
+              eq(rfqBids.rfqId, input.rfqId),
+              eq(rfqBids.supplierId, supplierRecord.id),
+              isNull(rfqBids.deletedAt),
+            ),
+          )
           .limit(1);
 
         if (!existingBid) {
@@ -364,7 +370,7 @@ export const rfqMarketplaceRouter = router({
         })
         .from(rfqBids)
         .leftJoin(suppliers, eq(rfqBids.supplierId, suppliers.id))
-        .where(eq(rfqBids.rfqId, input.rfqId))
+        .where(and(eq(rfqBids.rfqId, input.rfqId), isNull(rfqBids.deletedAt)))
         .orderBy(desc(rfqBids.createdAt));
 
       const analytics = await db
