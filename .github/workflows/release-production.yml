@@ -13,6 +13,9 @@ name: Release to Production
 #      out-of-band promotions where a release tag is not yet created.
 #
 # GATE: Both paths require explicit approval via the `Production` GitHub
+# Environment.  Because resolve-sha, migrate, and deploy each reference
+# environment: Production, GitHub requests a separate approval for each job
+# when it becomes eligible — three approvals are required per run.
 # Environment. Three approval prompts will appear: one when resolve-sha
 # becomes eligible, one when migrate becomes eligible, and one when deploy
 # becomes eligible. Each job requests its own approval independently.
@@ -70,6 +73,10 @@ jobs:
   resolve-sha:
     name: Resolve Image SHA
     runs-on: ubuntu-latest
+    # This auth-free job runs in the Production environment to request the first
+    # of three required approvals (resolve-sha, migrate, and deploy each request
+    # their own approval when eligible — GitHub does not cache approvals across
+    # jobs in the same run).
     # This job references the Production environment so reviewers see the
     # pending deployment immediately. Note: migrate and deploy also reference
     # Production and will each prompt for their own separate approval when they
@@ -139,6 +146,8 @@ jobs:
     name: Migrate Production DB
     runs-on: ubuntu-latest
     needs: resolve-sha
+    # This job references environment: Production and will request its own
+    # approval when it becomes eligible (after resolve-sha succeeds).
     # This job references Production and will prompt for its own approval once
     # resolve-sha completes — GitHub grants approval per eligible job, not once
     # for the entire run.
