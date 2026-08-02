@@ -14,7 +14,6 @@ const isDev = process.env.NODE_ENV !== "production";
 export const logger = pino(
   {
     level: process.env.LOG_LEVEL ?? (isDev ? "debug" : "info"),
-    // Redact sensitive fields before they reach the log sink.
     redact: {
       paths: [
         "req.headers.authorization",
@@ -32,7 +31,6 @@ export const logger = pino(
       ],
       censor: "[REDACTED]",
     },
-    // Standard fields included on every log line.
     base: {
       env: process.env.NODE_ENV ?? "development",
       deploymentSha: process.env.DEPLOYMENT_SHA ?? "local",
@@ -51,7 +49,11 @@ export const logger = pino(
     : undefined
 );
 
-/** Child logger pre-bound with a correlation/request ID.
+// Backward-compatible alias used by newer middleware imports.
+export const log = logger;
+
+/**
+ * Child logger pre-bound with a correlation/request ID.
  *
  * Accepts the raw Node.js header value (`string | string[] | undefined`) so
  * callers can pass `req.headers["x-correlation-id"]` directly without

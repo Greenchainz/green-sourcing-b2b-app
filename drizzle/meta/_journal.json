@@ -33,10 +33,29 @@
     {
       "idx": 4,
       "version": "7",
+      "when": 1785437092356,
+      "tag": "0004_gray_silver_sable",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
       "when": 1785429558190,
       "tag": "0004_vengeful_gladiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
       "when": 1785433367901,
       "tag": "0004_supreme_molten_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785695700000,
+      "tag": "0041_partial_indexes",
       "breakpoints": true
     }
   ]

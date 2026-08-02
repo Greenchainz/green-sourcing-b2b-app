@@ -268,7 +268,7 @@ export async function submitBid(
   const [existingBid] = await db
     .select({ id: rfqBids.id, status: rfqBids.status })
     .from(rfqBids)
-    .where(and(eq(rfqBids.rfqId, rfqId), eq(rfqBids.supplierId, supplierId)))
+    .where(and(eq(rfqBids.rfqId, rfqId), eq(rfqBids.supplierId, supplierId), isNull(rfqBids.deletedAt)))
     .limit(1)
     .execute();
 
@@ -287,6 +287,7 @@ export async function submitBid(
     })
     .onConflictDoUpdate({
       target: [rfqBids.rfqId, rfqBids.supplierId],
+      targetWhere: sql`deleted_at IS NULL`,
       set: {
         bidPrice: bidPrice.toString(),
         leadDays,

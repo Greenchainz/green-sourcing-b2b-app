@@ -12,6 +12,7 @@ import helmet from "helmet";
 import { v4 as uuidv4 } from "uuid";
 import { createServer } from "http";
 import net from "net";
+import pinoHttp from "pino-http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -39,11 +40,10 @@ import { isLocalMode } from "../../lib/founder-video-storage";
 import { sdaConnectorRouter } from "../sda-connector-routes";
 import { registerEmailAuthRoutes } from "./email-auth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
-import { registerHibpProxyRoute } from "../hibp-proxy-route";
 import { sdk } from "./sdk";
 import { runStartupSecurityPreflight } from "./security-preflight";
-import { requestLoggerMiddleware, log } from "./log";
-import { easyAuthMiddleware } from "./easy-auth";
+import { logger } from "./logger.js";
+import { csrfProtection } from "./csrf.js";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -109,6 +109,10 @@ const ALLOWED_PUBLIC_HOSTS = new Set([
   "www.greenchainz.com",
 ]);
 
+function stripPort(host: string): string {
+  return host.replace(/:\d+$/, "");
+}
+
 function getForwardedHost(req: express.Request): string {
   const forwardedHostHeader = req.headers["x-forwarded-host"];
   const rawForwardedHost = Array.isArray(forwardedHostHeader)
@@ -128,7 +132,7 @@ function isHostAllowedForPublicApi(req: express.Request): boolean {
   const host = getRequestHost(req);
 
   if (forwardedHost) {
-    return ALLOWED_PUBLIC_HOSTS.has(forwardedHost);
+    return ALLOWED_PUBLIC_HOSTS.has(stripPort(forwardedHost));
   }
 
   // Local development and internal container health checks.
@@ -141,7 +145,7 @@ function isHostAllowedForPublicApi(req: express.Request): boolean {
     return true;
   }
 
-  return ALLOWED_PUBLIC_HOSTS.has(host);
+  return ALLOWED_PUBLIC_HOSTS.has(stripPort(host));
 }
 
 function isHealthEndpoint(path: string): boolean {
@@ -258,7 +262,7 @@ async function startServer() {
 
   const preflight = runStartupSecurityPreflight();
   if (process.env.NODE_ENV === "production" && preflight.hasFailures) {
-    log.error("startup.preflight.failed", { checks: preflight.checks.filter(c => c.status === "FAIL") });
+    console.error("[startup] FATAL: Security preflight failed in production");
     process.exit(1);
   }
 
@@ -291,14 +295,6 @@ async function startServer() {
   app.set("trust proxy", true);
   const server = createServer(app);
 
-  // ── Correlation ID + structured request logging ───────────────────────────
-  // Must be installed before any middleware that can terminate requests
-  // (redirect, network guard) so that every response — including 308 redirects
-  // and 403 rejections — carries X-Correlation-ID and is captured in the
-  // structured http.request log.
-  app.use(createRequestIdMiddleware);
-  app.use(requestLoggerMiddleware);
-
   app.use((req, res, next) => {
     // Never redirect API, health, or crawl-critical files. Behind Azure Front
     // Door the origin Host header is rewritten to the container FQDN, which can
@@ -315,7 +311,7 @@ async function startServer() {
     }
 
     const safeForwardedHost = getForwardedHost(req);
-    const host = (safeForwardedHost || getRequestHost(req)).toLowerCase();
+    const host = stripPort((safeForwardedHost || getRequestHost(req)).toLowerCase());
     const forwardedProtoHeader = req.headers["x-forwarded-proto"];
     const forwardedProto = Array.isArray(forwardedProtoHeader)
       ? forwardedProtoHeader[0]
@@ -461,37 +457,42 @@ async function startServer() {
     })
   );
 
-  // Easy Auth: never trust caller-supplied x-ms-client-principal in production.
-  // The canonical auth path is sdk.authenticateRequest(req) via signed cookie.
-  app.use((req, res, next) => {
-    if (process.env.NODE_ENV !== "production") {
-      next();
-      return;
-    }
-
-    const easyAuthHeader = req.headers["x-ms-client-principal"];
-    if (typeof easyAuthHeader === "string" && easyAuthHeader.length > 0) {
-      console.warn(
-        `[network-guard] Ignoring x-ms-client-principal header path=${req.path} host=${String(req.headers.host ?? "")}`
-      );
-      delete req.headers["x-ms-client-principal"];
-    }
-    next();
-  });
-
-  // Safe no-op in local dev (header absent → empty identity attached).
-  app.use(easyAuthMiddleware);
-  // Additional security headers not covered by helmet defaults.
-  app.use((_req, res, next) => {
-    // Opt legacy browsers into the XSS filter; modern browsers ignore this but it's
-    // required by several security audit checklists.
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    // Restrict access to browser features that GreenChainz does not use.
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    next();
-  });
-
   app.use(createRequestIdMiddleware);
+
+  // ── Structured HTTP request logging ──────────────────────────────────────
+  // Emits one JSON log line per request in production (ingested by Azure Log
+  // Analytics). In dev, pino-pretty formats it for the terminal.
+  // Health / readiness probes are suppressed to reduce log noise.
+  app.use(
+    pinoHttp({
+      logger,
+      // Assign the already-generated request ID so pino-http picks it up
+      genReqId: (req) => (req as express.Request).id ?? uuidv4(),
+      // Suppress health probe logs — they flood the stream
+      autoLogging: {
+        ignore: (req) => {
+          const path = (req as express.Request).path;
+          return (
+            path === "/health" ||
+            path === "/healthz" ||
+            path === "/ready" ||
+            path === "/api/health"
+          );
+        },
+      },
+      customLogLevel(_req, res, err) {
+        if (err || res.statusCode >= 500) return "error";
+        if (res.statusCode >= 400) return "warn";
+        return "info";
+      },
+    })
+  );
+
+  // ── CSRF protection ───────────────────────────────────────────────────────
+  // Validates Origin/Referer headers on state-changing authenticated requests.
+  // Defence-in-depth on top of SameSite=Lax + Content-Type JSON checks.
+  app.use(csrfProtection());
+
   app.use(express.json({
     limit: "5mb",
     verify: (req: any, _res, buf) => { req.rawBody = buf; },
@@ -753,7 +754,6 @@ async function startServer() {
 
   registerEmailAuthRoutes(app);
   registerOAuthProviderRoutes(app);
-  registerHibpProxyRoute(app);
 
   // ── Delegated route groups ────────────────────────────────────────────────
   registerAdminRoutes(app, adminRateLimit);
@@ -796,7 +796,7 @@ async function startServer() {
   }
 
   server.listen(port, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${port}/`);
+    logger.info({ port, env: process.env.NODE_ENV, sha: process.env.COMMIT_SHA ?? "local" }, `Server running on http://0.0.0.0:${port}/`);
   });
 
   // ── Graceful shutdown ───────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   pgEnum,
@@ -332,7 +333,6 @@ export const materialCertifications = pgTable("material_certifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
   materialIdx: index("idx_material_certs_material").on(t.materialId),
-  materialIdx: index("idx_material_certifications_material").on(t.materialId),
   typeIdx: index("idx_material_certifications_type").on(t.certificationType),
 }));
 
@@ -830,7 +830,6 @@ export const supplierSubscriptions = pgTable("supplier_subscriptions", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
   supplierIdx: uniqueIndex("idx_supplier_subscriptions_supplier").on(t.supplierId),
-  supplierIdx: index("idx_supplier_subscriptions_supplier").on(t.supplierId),
   statusIdx: index("idx_supplier_subscriptions_status").on(t.status),
 }));
 
@@ -944,7 +943,6 @@ export const supplierFilters = pgTable("supplier_filters", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
-  supplierIdx: index("idx_supplier_filters_supplier").on(t.supplierId),
   supplierIdx: uniqueIndex("idx_supplier_filters_supplier").on(t.supplierId),
 }));
 
@@ -980,12 +978,11 @@ export const rfqBids = pgTable("rfq_bids", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
+  supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
   rfqIdx: index("idx_rfq_bids_rfq").on(t.rfqId),
-  supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
-  // Composite: most bid queries filter by both rfqId and supplierId
-  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
-  supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
-  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
+  // Partial unique index: allows one live (non-deleted) bid per rfqId/supplierId
+  // while soft-deleted rows and revisions are unrestricted.
+  rfqSupplierActiveIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId).where(sql`deleted_at IS NULL`),
   statusIdx: index("idx_rfq_bids_status").on(t.status),
 }));
 
@@ -1043,8 +1040,9 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
   userIdx: index("idx_notifications_user").on(t.userId),
-  // Unread notifications are the hot path — partial index for speed
-  userUnreadIdx: index("idx_notifications_user_unread").on(t.userId, t.isRead),
+  // Partial index: covers only unread notifications, which is the hot-path query.
+  // userId alone is sufficient as the leading column; isRead = false is the predicate.
+  userUnreadIdx: index("idx_notifications_user_unread").on(t.userId).where(sql`"isRead" = false`),
 }));
 
 export type Notification = typeof notifications.$inferSelect;
@@ -1218,7 +1216,6 @@ export const messageReactions = pgTable("message_reactions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
   messageIdx: index("idx_message_reactions_message").on(t.messageId),
-  userIdx: index("idx_message_reactions_user").on(t.userId),
   userIdx: index("idx_message_reactions_user").on(t.userId),
   uniqueReaction: uniqueIndex("idx_message_reactions_unique").on(t.messageId, t.userId, t.reactionType),
 }));
