@@ -109,6 +109,10 @@ const ALLOWED_PUBLIC_HOSTS = new Set([
   "www.greenchainz.com",
 ]);
 
+function stripPort(host: string): string {
+  return host.replace(/:\d+$/, "");
+}
+
 function getForwardedHost(req: express.Request): string {
   const forwardedHostHeader = req.headers["x-forwarded-host"];
   const rawForwardedHost = Array.isArray(forwardedHostHeader)
@@ -128,7 +132,7 @@ function isHostAllowedForPublicApi(req: express.Request): boolean {
   const host = getRequestHost(req);
 
   if (forwardedHost) {
-    return ALLOWED_PUBLIC_HOSTS.has(forwardedHost);
+    return ALLOWED_PUBLIC_HOSTS.has(stripPort(forwardedHost));
   }
 
   // Local development and internal container health checks.
@@ -141,7 +145,7 @@ function isHostAllowedForPublicApi(req: express.Request): boolean {
     return true;
   }
 
-  return ALLOWED_PUBLIC_HOSTS.has(host);
+  return ALLOWED_PUBLIC_HOSTS.has(stripPort(host));
 }
 
 function isHealthEndpoint(path: string): boolean {
@@ -307,7 +311,7 @@ async function startServer() {
     }
 
     const safeForwardedHost = getForwardedHost(req);
-    const host = (safeForwardedHost || getRequestHost(req)).toLowerCase();
+    const host = stripPort((safeForwardedHost || getRequestHost(req)).toLowerCase());
     const forwardedProtoHeader = req.headers["x-forwarded-proto"];
     const forwardedProto = Array.isArray(forwardedProtoHeader)
       ? forwardedProtoHeader[0]
