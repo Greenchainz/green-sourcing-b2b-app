@@ -1,7 +1,7 @@
 import { getDb } from "./db";
-import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, rfqAnalytics, materials, users } from "../drizzle/schema";
+import { rfqs, rfqItems, rfqBids, rfqThreads, rfqMessages, suppliers, supplierFilters, rfqAnalytics, materials, users, decisionMakerPersonas } from "../drizzle/schema";
 import { eq, and, desc, sql, isNull, inArray } from "drizzle-orm";
-import { calculateCcps, personaToWeights } from "./ccps-engine";
+import { calculateCcps, personaToWeights, type PersonaWeights } from "./ccps-engine";
 import { geocodeAddress, calculateDistance, getDistanceScore, type Coordinates } from "./azure-maps-service";
 import { findMatchingSuppliers } from "../lib/greenchainz/matching/rfq-supplier-match";
 
@@ -251,6 +251,29 @@ export async function submitBid(
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
+  // Reject submissions against terminal RFQs (awarded/closed) to prevent
+  // overwriting an accepted bid or corrupting an awarded RFQ's state.
+  const [rfqState] = await db
+    .select({ status: rfqs.status })
+    .from(rfqs)
+    .where(eq(rfqs.id, rfqId))
+    .limit(1)
+    .execute();
+
+  if (!rfqState) throw new Error("RFQ not found");
+  if (rfqState.status === "awarded" || rfqState.status === "closed") {
+    throw new Error(`Cannot submit a bid on an ${rfqState.status} RFQ`);
+  }
+
+  const [existingBid] = await db
+    .select({ id: rfqBids.id, status: rfqBids.status })
+    .from(rfqBids)
+    .where(and(eq(rfqBids.rfqId, rfqId), eq(rfqBids.supplierId, supplierId), isNull(rfqBids.deletedAt)))
+    .limit(1)
+    .execute();
+
+  const isNewBid = !existingBid;
+
   const [bidResult] = await db
     .insert(rfqBids)
     .values({
@@ -262,28 +285,46 @@ export async function submitBid(
       notes,
       expiresAt,
     })
+    .onConflictDoUpdate({
+      target: [rfqBids.rfqId, rfqBids.supplierId],
+      targetWhere: sql`deleted_at IS NULL`,
+      set: {
+        bidPrice: bidPrice.toString(),
+        leadDays,
+        notes,
+        expiresAt,
+        updatedAt: new Date(),
+        // Preserve terminal bid statuses (accepted/rejected) — only move a
+        // mutable bid back to submitted. Similarly, leave deletedAt alone for
+        // terminal bids so soft-deleted accepted rows are not accidentally restored.
+        status: sql`CASE WHEN ${rfqBids.status} IN ('accepted', 'rejected') THEN ${rfqBids.status} ELSE 'submitted' END`,
+        deletedAt: sql`CASE WHEN ${rfqBids.status} IN ('accepted', 'rejected') THEN ${rfqBids.deletedAt} ELSE NULL END`,
+      },
+    })
     .returning({ id: rfqBids.id });
 
   const bidId = bidResult.id;
 
-  // Update RFQ analytics
-  const analytics = await db.select().from(rfqAnalytics).where(eq(rfqAnalytics.rfqId, rfqId)).execute();
-  if (analytics.length > 0) {
-    const currentBids = analytics[0].totalBidsReceived || 0;
-    const newAvgPrice = analytics[0].avgBidPrice ? (parseFloat(analytics[0].avgBidPrice.toString()) * currentBids + bidPrice) / (currentBids + 1) : bidPrice;
-    const newLowest = analytics[0].lowestBidPrice ? Math.min(parseFloat(analytics[0].lowestBidPrice.toString()), bidPrice) : bidPrice;
-    const newHighest = analytics[0].highestBidPrice ? Math.max(parseFloat(analytics[0].highestBidPrice.toString()), bidPrice) : bidPrice;
+  // Update RFQ analytics — only increment counts for first-time bids
+  if (isNewBid) {
+    const analytics = await db.select().from(rfqAnalytics).where(eq(rfqAnalytics.rfqId, rfqId)).execute();
+    if (analytics.length > 0) {
+      const currentBids = analytics[0].totalBidsReceived || 0;
+      const newAvgPrice = analytics[0].avgBidPrice ? (parseFloat(analytics[0].avgBidPrice.toString()) * currentBids + bidPrice) / (currentBids + 1) : bidPrice;
+      const newLowest = analytics[0].lowestBidPrice ? Math.min(parseFloat(analytics[0].lowestBidPrice.toString()), bidPrice) : bidPrice;
+      const newHighest = analytics[0].highestBidPrice ? Math.max(parseFloat(analytics[0].highestBidPrice.toString()), bidPrice) : bidPrice;
 
-    await db
-      .update(rfqAnalytics)
-      .set({
-        totalBidsReceived: currentBids + 1,
-        avgBidPrice: newAvgPrice.toString(),
-        lowestBidPrice: newLowest.toString(),
-        highestBidPrice: newHighest.toString(),
-      })
-      .where(eq(rfqAnalytics.rfqId, rfqId))
-      .execute();
+      await db
+        .update(rfqAnalytics)
+        .set({
+          totalBidsReceived: currentBids + 1,
+          avgBidPrice: newAvgPrice.toString(),
+          lowestBidPrice: newLowest.toString(),
+          highestBidPrice: newHighest.toString(),
+        })
+        .where(eq(rfqAnalytics.rfqId, rfqId))
+        .execute();
+    }
   }
 
   // Get buyer's userId from RFQ
@@ -618,15 +659,24 @@ export async function acceptBid(rfqId: number, bidId: number): Promise<{ success
  * Enrich RFQ with CCPS data and sustainability insights (for agent)
  */
 export async function enrichRfqWithCcps(rfqId: number, buyerPersona: string = "default"): Promise<{ enrichedData: any }> {
-  // Type assertion to fix persona type mismatch
-  const personaKey = buyerPersona as any;
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
 
   const rfq = await getRfqWithBids(rfqId);
   if (!rfq) throw new Error("RFQ not found");
 
-  const weights = personaToWeights(personaKey);
+  let weights: PersonaWeights | undefined;
+  if (buyerPersona && buyerPersona !== "default") {
+    const personaRows = await db
+      .select()
+      .from(decisionMakerPersonas)
+      .where(eq(decisionMakerPersonas.personaKey, buyerPersona))
+      .limit(1);
+
+    if (personaRows.length > 0) {
+      weights = personaToWeights(personaRows[0]);
+    }
+  }
 
   // Calculate CCPS for each material in the RFQ
   const enrichedItems = [];
@@ -648,7 +698,7 @@ export async function enrichRfqWithCcps(rfqId: number, buyerPersona: string = "d
         .where(sql`materialId = ${item.materialId}`)
         .execute();
       
-      const ccps = calculateCcps(material[0] as any, baseline[0] as any, weights as any);
+      const ccps = calculateCcps(material[0] as any, baseline[0] as any, weights);
       enrichedItems.push({
         ...item,
         material: material[0] as any,

@@ -37,11 +37,14 @@ export default function CADocumentsPage() {
   const [nextBallInCourt, setNextBallInCourt] = useState<(typeof BALL_IN_COURT_OPTIONS)[number]>("architect");
   const [officialResponse, setOfficialResponse] = useState("");
 
-  const listQuery = trpc.caDocuments.listMine.useQuery({
-    type: typeFilter === "all" ? undefined : typeFilter,
-    status: statusFilter === "all" ? undefined : statusFilter,
-    limit: 150,
-  });
+  const listQuery = trpc.caDocuments.listMine.useQuery(
+    {
+      type: typeFilter === "all" ? undefined : typeFilter,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      limit: 150,
+    },
+    { placeholderData: prev => prev }
+  );
   const detailQuery = trpc.caDocuments.getById.useQuery(
     { documentId: selectedId ?? 0 },
     { enabled: selectedId !== null },
@@ -362,4 +365,3 @@ export default function CADocumentsPage() {
     </div>
   );
 }
-

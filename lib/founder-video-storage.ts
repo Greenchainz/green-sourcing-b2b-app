@@ -200,13 +200,13 @@ export async function generateReadSasUrl(blobKey: string): Promise<string> {
   return generateSasUrl(blobKey, BlobSASPermissions.parse("r"), expiresOn);
 }
 
-export async function generateUploadSasUrl(blobKey: string): Promise<string> {
+export async function generateUploadSasUrl(blobKey: string, contentType = "video/webm"): Promise<string> {
   if (isLocalMode()) {
     return `${localBase()}/api/dev/fv-upload/${blobKey}`;
   }
 
   const expiresOn = new Date(Date.now() + 30 * 60 * 1000);
-  return generateSasUrl(blobKey, BlobSASPermissions.parse("cw"), expiresOn, "video/webm");
+  return generateSasUrl(blobKey, BlobSASPermissions.parse("cw"), expiresOn, contentType);
 }
 
 /** Canonical (no-SAS) blob URL stored in DB. */
@@ -218,9 +218,23 @@ export function buildBlobUrl(blobKey: string): string {
   return `${blobEndpoint}/${CONTAINER_NAME}/${blobKey}`;
 }
 
-/** Convenience: blobKey for a video — yyyy-mm/<videoId>.webm */
-export function blobKeyForVideo(videoId: number, createdAt: Date = new Date()): string {
+/** Convenience: blobKey for a video — yyyy-mm/<videoId>.<extension> */
+export function blobKeyForVideo(videoId: number, createdAt: Date = new Date(), extension = "webm"): string {
   const yyyy = createdAt.getUTCFullYear();
   const mm = String(createdAt.getUTCMonth() + 1).padStart(2, "0");
-  return `${yyyy}-${mm}/${videoId}.webm`;
+  const safeExt = extension.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10) || "webm";
+  return `${yyyy}-${mm}/${videoId}.${safeExt}`;
 }
+
+/**
+ * Delete a blob from the founder-videos container.
+ * No-ops in local mode (local dev files are ephemeral tmp files).
+ * Treats a 404 as success — the blob is gone either way.
+ */
+export async function deleteFounderVideoBlob(blobKey: string): Promise<void> {
+  if (!blobKey || isLocalMode()) return;
+  const client = getBlobServiceClient();
+  const blobClient = client.getContainerClient(CONTAINER_NAME).getBlobClient(blobKey);
+  await blobClient.deleteIfExists();
+}
+

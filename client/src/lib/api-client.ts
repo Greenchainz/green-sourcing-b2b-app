@@ -206,27 +206,6 @@ export async function getSupplier(id: string) {
 }
 
 /**
- * Get supplier dashboard data
- */
-export async function getSupplierDashboard() {
-  return get<{
-    stats: {
-      totalRFQs: number;
-      activeRFQs: number;
-      responseRate: number;
-      avgResponseTime: number;
-    };
-    recentRFQs: Array<{
-      id: string;
-      title: string;
-      buyer: string;
-      status: 'pending' | 'responded' | 'accepted' | 'rejected';
-      createdAt: string;
-    }>;
-  }>('/api/supplier/dashboard');
-}
-
-/**
  * Get supplier RFQs
  */
 export async function getSupplierRFQs(params?: {
@@ -425,7 +404,6 @@ export const api = {
   setUserRole,
   getSuppliers,
   getSupplier,
-  getSupplierDashboard,
   getSupplierRFQs,
   verifySupplier,
   rejectSupplier,

@@ -15,7 +15,6 @@ import {
   supplierSubscriptions,
 } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { randomBytes } from "node:crypto";
 import { broadcastNotification } from "./webpubsub-manager";
 import { createDistributedCallSessionStore } from "./services/distributed-call-session-store";
 
@@ -141,7 +140,6 @@ export async function initiateCall(params: {
     );
   }
 
-  const callId = `call-${Date.now()}-${randomBytes(4).toString("hex")}`;
   const callId = `call-${Date.now()}-${crypto.randomUUID()}`;
   // RFC-4122 v4 UUID — both parties join the same ACS group call room
   const groupCallId = crypto.randomUUID();
@@ -254,6 +252,19 @@ export async function rejectCall(callId: string): Promise<void> {
     callId,
   });
 
+  // Optional missed-call forwarding SMS for founders/admins who want real-phone fallback.
+  void import("./call-forwarding-service")
+    .then(({ sendMissedCallForwardingSms }) =>
+      sendMissedCallForwardingSms({
+        callerId: session.callerId,
+        calleeId: session.receiverId,
+        callType: session.callType,
+      }),
+    )
+    .catch((error: unknown) => {
+      console.error("[Call Forwarding] Failed to send missed-call SMS:", error);
+    });
+
   await callSessionStore.delete(callId);
 }
 
@@ -297,39 +308,22 @@ export async function endCall(
     if (userId === session.callerId) {
       const currentMonth = new Date().toISOString().slice(0, 7);
 
-      // Check if usage record exists
-      const existing = await db
-        .select()
-        .from(monthlyCallUsage)
-        .where(
-          and(
-            eq(monthlyCallUsage.userId, userId),
-            eq(monthlyCallUsage.month, currentMonth)
-          )
-        )
-        .limit(1);
-
-      if (existing.length > 0) {
-        // Update existing
-        await db
-          .update(monthlyCallUsage)
-          .set({
-            totalMinutes: sql`${monthlyCallUsage.totalMinutes} + ${durationMinutes}`,
-          })
-          .where(
-            and(
-              eq(monthlyCallUsage.userId, userId),
-              eq(monthlyCallUsage.month, currentMonth)
-            )
-          );
-      } else {
-        // Insert new
-        await db.insert(monthlyCallUsage).values({
+      // Atomic upsert: insert or increment — avoids read-then-write race condition.
+      // The unique index on (userId, month) makes the ON CONFLICT target deterministic.
+      await db
+        .insert(monthlyCallUsage)
+        .values({
           userId,
           month: currentMonth,
           totalMinutes: durationMinutes,
+        })
+        .onConflictDoUpdate({
+          target: [monthlyCallUsage.userId, monthlyCallUsage.month],
+          set: {
+            totalMinutes: sql`${monthlyCallUsage.totalMinutes} + ${durationMinutes}`,
+            updatedAt: new Date(),
+          },
         });
-      }
     }
   }
 

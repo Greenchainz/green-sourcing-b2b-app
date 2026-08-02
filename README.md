@@ -199,7 +199,6 @@ Bicep definitions live in `azure/bicep/`. The CI/CD pipeline uses OIDC (no store
 ```
 DATABASE_URL                  PostgreSQL connection string
 JWT_SECRET                    Session cookie signing secret
-OAUTH_SERVER_URL              Must be in .env (not .env.local)
 MICROSOFT_CLIENT_ID           8b597068-9347-4e99-8860-8c4e9a9bc112
 MICROSOFT_CLIENT_SECRET       From Azure Portal
 AZURE_KEY_VAULT_URL           Key Vault URI

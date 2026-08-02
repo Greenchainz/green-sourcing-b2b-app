@@ -33,9 +33,9 @@ Ensure the following are set in your `Container App` configuration:
 - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` (if using Redis)
 - `AZURE_STORAGE_CONNECTION_STRING`
 
-Optional (About page video):
+Optional (About page videos):
 
-- `ABOUT_VIDEO_BLOB_KEY`: Blob key in the `founder-videos` Azure Storage container (e.g. `about/about-video-faststart.mp4`). Server-side only — the tRPC `founderVideo.aboutVideo` endpoint generates a short-lived SAS URL at runtime.
+- About page videos are stored as YouTube video IDs in the `about_youtube_videos` database table. No blob storage key is required. Manage entries via the admin tRPC procedures `founderVideo.addAboutVideo`, `founderVideo.removeAboutVideo`, and `founderVideo.aboutVideos`.
 
 ---
 

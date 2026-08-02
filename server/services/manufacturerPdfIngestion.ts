@@ -11,7 +11,7 @@ import { DocumentAnalysisClient, AzureKeyCredential } from "@azure/ai-form-recog
 import axios from "axios";
 import { getDb } from "../db";
 import { materialTechnicalSpecs, materials } from "../../drizzle/schema";
-import { eq, ilike, or } from "drizzle-orm";
+import { ilike, or, inArray } from "drizzle-orm";
 
 // ─── Manufacturer Spec Sheet Catalog ──────────────────────────────────────────
 // Each entry maps a manufacturer + product category to a public PDF URL.
@@ -441,22 +441,23 @@ async function findMatchingMaterialIds(
 
 // ─── DB Upsert ────────────────────────────────────────────────────────────────
 
-async function upsertTechnicalSpecs(
-  materialId: number,
+async function upsertTechnicalSpecsBatch(
+  materialIds: number[],
   specs: ExtractedSpecs,
   sheet: ManufacturerSpecSheet,
   db: Awaited<ReturnType<typeof getDb>>
 ): Promise<void> {
-  if (!db) return;
+  if (!db || materialIds.length === 0) return;
 
   const existing = await db
-    .select({ id: materialTechnicalSpecs.id })
+    .select({ materialId: materialTechnicalSpecs.materialId })
     .from(materialTechnicalSpecs)
-    .where(eq(materialTechnicalSpecs.materialId, materialId))
-    .limit(1);
+    .where(inArray(materialTechnicalSpecs.materialId, materialIds));
+
+  const existingIds = new Set(existing.map((e) => e.materialId));
+  const newIds = materialIds.filter((id) => !existingIds.has(id));
 
   const specData = {
-    materialId,
     fireRating: specs.fireRating ?? null,
     fireRatingStandard: specs.fireRatingStandard ?? null,
     flamespreadIndex: specs.flamespreadIndex ?? null,
@@ -485,16 +486,20 @@ async function upsertTechnicalSpecs(
     updatedAt: new Date(),
   };
 
-  if (existing.length > 0) {
+  if (existingIds.size > 0) {
     await db
       .update(materialTechnicalSpecs)
       .set(specData as any)
-      .where(eq(materialTechnicalSpecs.materialId, materialId));
-  } else {
-    await db.insert(materialTechnicalSpecs).values({
+      .where(inArray(materialTechnicalSpecs.materialId, Array.from(existingIds)));
+  }
+
+  if (newIds.length > 0) {
+    const insertData = newIds.map((materialId) => ({
+      materialId,
       ...specData,
       createdAt: new Date(),
-    } as any);
+    } as any));
+    await db.insert(materialTechnicalSpecs).values(insertData);
   }
 }
 
@@ -598,11 +603,9 @@ export async function runManufacturerPdfIngestion(
         continue;
       }
 
-      // Step 4: Upsert specs for each matched material
-      if (!options.dryRun) {
-        for (const materialId of materialIds) {
-          await upsertTechnicalSpecs(materialId, specs, sheet, db);
-        }
+      // Step 4: Upsert specs for each matched material in batch
+      if (!options.dryRun && materialIds.length > 0) {
+        await upsertTechnicalSpecsBatch(materialIds, specs, sheet, db);
       }
 
       console.log(`[PDF Ingestion] Updated ${materialIds.length} materials for: ${sheet.productName}`);

@@ -226,11 +226,32 @@ jobs:
             echo "? No advisory identity patterns found."
           fi
 
-  # --- Job 5: Summary notification ---
+  # --- Job 5: Secret scanning with gitleaks ---
+  # Catches committed credentials/tokens in git history (what caught the Sentry token)
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout code (full history for gitleaks)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for secrets in git history
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Fail on any finding — no exceptions without a .gitleaksignore entry
+          GITLEAKS_ENABLE_COMMENTS: false
+
+  # --- Job 6: Summary notification ---
   scan-summary:
     name: Scan Summary
     runs-on: ubuntu-latest
-    needs: [dependency-scan, container-scan, npm-audit, code-pattern-guards]
+    needs: [dependency-scan, container-scan, npm-audit, code-pattern-guards, secret-scan]
     if: always()
     steps:
       - name: Print scan summary
@@ -243,6 +264,7 @@ jobs:
           echo "Container scan:       ${{ needs.container-scan.result }}"
           echo "npm audit:            ${{ needs.npm-audit.result }}"
           echo "Code pattern guards:  ${{ needs.code-pattern-guards.result }}"
+          echo "Secret scan:          ${{ needs.secret-scan.result }}"
           echo "========================================"
           echo "Results are available in the GitHub Security tab."
           echo "Artifact retention: 90 days."

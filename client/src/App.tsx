@@ -142,7 +142,6 @@ const RfqDetail = lazy(() => import("./pages/RfqDetail"));
 const Compare = lazy(() => import("./pages/Compare"));
 const CarbonCompare = lazy(() => import("./pages/CarbonCompare"));
 const CarbonDashboard = lazy(() => import("./pages/CarbonDashboard"));
-// TODO: verify no external links to /supplier-dashboard, then remove this import and SupplierDashboard.tsx
 const BuyerRfqDashboard = lazy(() => import("./pages/BuyerRfqDashboard"));
 const RfqDashboard = lazy(() => import("./pages/RfqDashboard"));
 const SupplierRegistration = lazy(() =>
@@ -176,6 +175,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminManufacturers = lazy(() => import("./pages/AdminManufacturers"));
 const CrmDashboard = lazy(() => import("./pages/admin/CrmDashboard"));
 const ConciergeDashboard = lazy(() => import("./pages/admin/ConciergeDashboard"));
+const AboutVideos = lazy(() => import("./pages/admin/AboutVideos"));
 const SupplierSpecSubmission = lazy(() => import("./pages/SupplierSpecSubmission"));
 const MaterialSwap = lazy(() => import("./pages/MaterialSwap"));
 const CarbonWin = lazy(() => import("./pages/CarbonWin"));
@@ -286,6 +286,7 @@ function Router() {
       <Route path="/admin/users">{() => <Redirect to="/admin?tab=users" />}</Route>
       <Route path="/admin/crm" component={CrmDashboard} />
       <Route path="/admin/concierge" component={ConciergeDashboard} />
+      <Route path="/admin/about-videos" component={AboutVideos} />
       <Route path="/admin/founder-videos" component={FounderVideoList} />
       <Route path="/admin/founder-videos/analytics" component={FounderVideoDashboard} />
       <Route path="/admin/founder-videos/new" component={FounderVideoNew} />

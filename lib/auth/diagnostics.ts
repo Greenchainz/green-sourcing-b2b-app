@@ -36,6 +36,6 @@ export function formatUserError(error: Error, traceId: string): any {
   return { message: "An error occurred", traceId };
 }
 
-export function incrementAuthMetric(metric: string): void {
+export function incrementAuthMetric(_metric: string): void {
   // no-op
 }

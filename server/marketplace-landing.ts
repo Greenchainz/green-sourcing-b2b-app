@@ -141,6 +141,7 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
+    console.log("[Marketplace Landing] Received token: [REDACTED]");
     console.log(
       "[Marketplace Landing] Received token:",
       redactSensitiveData({ token })
@@ -170,6 +171,11 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
+    console.log("[Marketplace Landing] Resolved subscription:", {
+      id: subscription.id,
+      planId: subscription.planId,
+      email: subscription.beneficiary.emailId,
+    });
     console.log(
       "[Marketplace Landing] Resolved subscription:",
       redactSensitiveData({
@@ -223,6 +229,11 @@ export async function handleLandingPage(req: Request, res: Response) {
       );
     }
 
+    console.log("[Marketplace Landing] Subscription activated:", {
+      userId,
+      tier,
+      msSubscriptionId: subscription.id,
+    });
     console.log(
       "[Marketplace Landing] Subscription activated:",
       redactSensitiveData({
@@ -253,6 +264,7 @@ export async function handleLandingPage(req: Request, res: Response) {
     // Step 7: Redirect to user dashboard
     const dashboardUrl = `${getFrontendBaseUrl(req)}/dashboard?welcome=true`;
     return res.redirect(dashboardUrl);
+
   } catch (error: unknown) {
     console.error("[Marketplace Landing] Error:", redactSensitiveData(error));
     return res.status(500).json({
@@ -306,6 +318,7 @@ async function findOrCreateUserByEmail(
     })
     .returning({ id: users.id });
 
+  console.log("[Marketplace Landing] Created new user from AppSource:", { id: inserted.id, email });
   console.log(
     "[Marketplace Landing] Created new user from AppSource:",
     redactSensitiveData({ id: inserted.id, email })
