@@ -51,6 +51,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate drizzle artifacts and fail on drift
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/greenchainz_ci
         run: |
           pnpm db:generate
           git diff --quiet -- drizzle || (echo "Drizzle artifacts are out of date. Run 'pnpm db:generate' and commit the results."; git --no-pager diff -- drizzle; exit 1)
