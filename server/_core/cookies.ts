@@ -8,6 +8,24 @@
  */
 import type { CookieOptions, Request } from "express";
 
+function getRequestHost(req: Request): string {
+  const forwardedHostHeader = req.headers["x-forwarded-host"];
+  const rawForwardedHost = Array.isArray(forwardedHostHeader)
+    ? forwardedHostHeader[0]
+    : String(forwardedHostHeader ?? "").split(",")[0].trim();
+  const forwardedHost = rawForwardedHost.toLowerCase();
+  if (/^[a-z0-9.-]+(?::\d+)?$/.test(forwardedHost)) {
+    return forwardedHost.replace(/:\d+$/, "");
+  }
+
+  const host = String(req.headers.host ?? "").toLowerCase();
+  if (/^[a-z0-9.-]+(?::\d+)?$/.test(host)) {
+    return host.replace(/:\d+$/, "");
+  }
+
+  return "";
+}
+
 function isSecureRequest(req: Request) {
   if (req.protocol === "https") return true;
 
@@ -24,23 +42,15 @@ function isSecureRequest(req: Request) {
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  // const hostname = req.hostname;
-  // const shouldSetDomain =
-  //   hostname &&
-  //   !LOCAL_HOSTS.has(hostname) &&
-  //   !isIpAddress(hostname) &&
-  //   hostname !== "127.0.0.1" &&
-  //   hostname !== "::1";
-
-  // const domain =
-  //   shouldSetDomain && !hostname.startsWith(".")
-  //     ? `.${hostname}`
-  //     : shouldSetDomain
-  //       ? hostname
-  //       : undefined;
+  const host = getRequestHost(req);
+  // Keep host-only cookies for localhost/dev domains.
+  // In production, share the session across apex + www to prevent OAuth loops
+  // when the callback lands on one host and the SPA is served from the other.
+  const domain = host.endsWith("greenchainz.com") ? ".greenchainz.com" : undefined;
 
   const secure = isSecureRequest(req);
   return {
+    domain,
     httpOnly: true,
     path: "/",
     // Lax = cookie sent on same-site requests + top-level cross-site navigations.
