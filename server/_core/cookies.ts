@@ -50,6 +50,7 @@ export function getSessionCookieOptions(
 
   const secure = isSecureRequest(req);
   return {
+    domain,
     httpOnly: true,
     path: "/",
     // Lax = cookie sent on same-site requests + top-level cross-site navigations.
