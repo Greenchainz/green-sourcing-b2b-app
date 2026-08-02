@@ -42,9 +42,16 @@ export const SENSITIVE_QUERY_ARGS = new Set([
 
 const IPV4_RE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
 
-// Matches the most common colon-separated IPv6 forms (full and compressed).
-const IPV6_RE =
-  /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b/g;
+// Two patterns to cover IPv6 without matching HH:MM:SS in ISO timestamps:
+//
+// 1. Full-form IPv6 (8 colon-separated groups, exactly 7 single colons).
+//    Uses {7} repetition so time strings like "12:34:56" (2 colons) never match.
+const IPV6_FULL_RE = /\b[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){7}\b/g;
+
+// 2. Compressed IPv6 — identified by the mandatory double-colon (::) that
+//    timestamps never contain.  The pattern `(?:hex:)+ : hex` requires the
+//    "extra" colon that makes :: impossible to confuse with a clock segment.
+const IPV6_COMPRESSED_RE = /(?:[0-9a-fA-F]{0,4}:)+:[0-9a-fA-F]{0,4}/g;
 
 function buildQueryArgRe(): RegExp {
   const escaped = [...SENSITIVE_QUERY_ARGS]
@@ -61,7 +68,8 @@ const QUERY_ARG_RE = buildQueryArgRe();
 export function scrub(value: string): string {
   return value
     .replace(IPV4_RE, "[IP]")
-    .replace(IPV6_RE, "[IP]")
+    .replace(IPV6_FULL_RE, "[IP]")
+    .replace(IPV6_COMPRESSED_RE, "[IP]")
     .replace(QUERY_ARG_RE, "$1=[REDACTED]");
 }
 

@@ -1,9 +1,23 @@
-﻿name: Deploy to Azure Container Apps
+﻿name: Deploy to Azure Container Apps (Legacy — use release-production.yml)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DEPRECATED TRIGGER: This workflow previously auto-deployed on every push to
+# main. That behaviour is now replaced by two purpose-built workflows:
+#
+#   build-and-stage.yml      — fires on push to main → deploys to STAGING
+#   release-production.yml   — fires on GitHub Release or workflow_dispatch
+#                              → deploys exact image digest to PRODUCTION
+#
+# This workflow is kept as a manual escape hatch only. It still deploys to
+# production and still requires the Production environment approval gate.
+# For standard releases, prefer release-production.yml.
+# ─────────────────────────────────────────────────────────────────────────────
 
 on:
-  push:
-    branches:
-      - main
+  # ⚠️  push to main is intentionally REMOVED here.
+  # build-and-stage.yml handles push-to-main → staging.
+  # release-production.yml handles production releases.
+  # This workflow is manual-only from this point forward.
   workflow_dispatch:
 
 # --- Azure OIDC identifiers (non-secret, safe to commit) ---
@@ -264,7 +278,6 @@ jobs:
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-            ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:latest
           cache-from: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:cache,mode=max
           build-args: |
@@ -281,7 +294,6 @@ jobs:
           push: true
           tags: |
             ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-            ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:latest
           no-cache: true
           cache-to: type=registry,ref=${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}:cache,mode=max
           # cache-from temporarily removed to force clean rebuild (stale registry cache)
@@ -999,6 +1011,7 @@ jobs:
         run: |
           ENV_VARS=(
             "DEPLOY_TIMESTAMP=${{ github.run_id }}"
+            "DEPLOYMENT_SHA=${{ github.sha }}"
             "FRONTEND_URL=https://greenchainz.com"
             "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net"
             "DATABASE_URL=secretref:database-url"

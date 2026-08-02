@@ -57,23 +57,9 @@ export const legalRouter = router({
       }
 
       const now = new Date();
-      const existing = await db
-        .select()
-        .from(legalAcceptances)
-        .where(eq(legalAcceptances.userId, userId));
-
-      if (existing.length > 0) {
-        await db
-          .update(legalAcceptances)
-          .set({
-            termsAccepted: true,
-            termsAcceptedAt: now,
-            termsVersion: input.version,
-            updatedAt: now,
-          })
-          .where(eq(legalAcceptances.userId, userId));
-      } else {
-        await db.insert(legalAcceptances).values({
+      await db
+        .insert(legalAcceptances)
+        .values({
           userId,
           termsAccepted: true,
           termsAcceptedAt: now,
@@ -82,8 +68,20 @@ export const legalRouter = router({
           cookieConsentGiven: false,
           createdAt: now,
           updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [
+            legalAcceptances.userId,
+            legalAcceptances.termsVersion,
+            legalAcceptances.privacyVersion,
+          ],
+          set: {
+            termsAccepted: true,
+            termsAcceptedAt: now,
+            termsVersion: input.version,
+            updatedAt: now,
+          },
         });
-      }
 
       return { success: true };
     }),
@@ -106,23 +104,9 @@ export const legalRouter = router({
       }
 
       const now = new Date();
-      const existing = await db
-        .select()
-        .from(legalAcceptances)
-        .where(eq(legalAcceptances.userId, userId));
-
-      if (existing.length > 0) {
-        await db
-          .update(legalAcceptances)
-          .set({
-            privacyAccepted: true,
-            privacyAcceptedAt: now,
-            privacyVersion: input.version,
-            updatedAt: now,
-          })
-          .where(eq(legalAcceptances.userId, userId));
-      } else {
-        await db.insert(legalAcceptances).values({
+      await db
+        .insert(legalAcceptances)
+        .values({
           userId,
           privacyAccepted: true,
           privacyAcceptedAt: now,
@@ -131,8 +115,20 @@ export const legalRouter = router({
           cookieConsentGiven: false,
           createdAt: now,
           updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [
+            legalAcceptances.userId,
+            legalAcceptances.termsVersion,
+            legalAcceptances.privacyVersion,
+          ],
+          set: {
+            privacyAccepted: true,
+            privacyAcceptedAt: now,
+            privacyVersion: input.version,
+            updatedAt: now,
+          },
         });
-      }
 
       return { success: true };
     }),
@@ -149,22 +145,9 @@ export const legalRouter = router({
     }
 
     const now = new Date();
-    const existing = await db
-      .select()
-      .from(legalAcceptances)
-      .where(eq(legalAcceptances.userId, userId));
-
-    if (existing.length > 0) {
-      await db
-        .update(legalAcceptances)
-        .set({
-          cookieConsentGiven: true,
-          cookieConsentAt: now,
-          updatedAt: now,
-        })
-        .where(eq(legalAcceptances.userId, userId));
-    } else {
-      await db.insert(legalAcceptances).values({
+    await db
+      .insert(legalAcceptances)
+      .values({
         userId,
         cookieConsentGiven: true,
         cookieConsentAt: now,
@@ -172,8 +155,19 @@ export const legalRouter = router({
         privacyAccepted: false,
         createdAt: now,
         updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [
+          legalAcceptances.userId,
+          legalAcceptances.termsVersion,
+          legalAcceptances.privacyVersion,
+        ],
+        set: {
+          cookieConsentGiven: true,
+          cookieConsentAt: now,
+          updatedAt: now,
+        },
       });
-    }
 
     return { success: true };
   }),
@@ -197,28 +191,9 @@ export const legalRouter = router({
       }
 
       const now = new Date();
-      const existing = await db
-        .select()
-        .from(legalAcceptances)
-        .where(eq(legalAcceptances.userId, userId));
-
-      if (existing.length > 0) {
-        await db
-          .update(legalAcceptances)
-          .set({
-            termsAccepted: true,
-            termsAcceptedAt: now,
-            termsVersion: input.termsVersion,
-            privacyAccepted: true,
-            privacyAcceptedAt: now,
-            privacyVersion: input.privacyVersion,
-            cookieConsentGiven: true,
-            cookieConsentAt: now,
-            updatedAt: now,
-          })
-          .where(eq(legalAcceptances.userId, userId));
-      } else {
-        await db.insert(legalAcceptances).values({
+      await db
+        .insert(legalAcceptances)
+        .values({
           userId,
           termsAccepted: true,
           termsAcceptedAt: now,
@@ -230,8 +205,23 @@ export const legalRouter = router({
           cookieConsentAt: now,
           createdAt: now,
           updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [
+            legalAcceptances.userId,
+            legalAcceptances.termsVersion,
+            legalAcceptances.privacyVersion,
+          ],
+          set: {
+            termsAccepted: true,
+            termsAcceptedAt: now,
+            privacyAccepted: true,
+            privacyAcceptedAt: now,
+            cookieConsentGiven: true,
+            cookieConsentAt: now,
+            updatedAt: now,
+          },
         });
-      }
 
       return { success: true };
     }),

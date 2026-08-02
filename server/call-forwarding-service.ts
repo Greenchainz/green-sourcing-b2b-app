@@ -54,7 +54,7 @@ export async function setMissedCallForwardingSettings(input: {
   const current = await getMissedCallForwardingSettings();
   const normalizedPhone = normalizePhoneE164(input.phone ?? current.phone);
   if (!normalizedPhone) {
-    throw new Error("A valid US phone number is required for missed-call forwarding.");
+    throw new Error("A valid E.164 phone number is required for missed-call forwarding.");
   }
 
   await db
@@ -94,39 +94,44 @@ export async function sendMissedCallForwardingSms(params: {
   calleeId: number;
   callType: "voice" | "video";
 }): Promise<void> {
-  const settings = await getMissedCallForwardingSettings();
-  if (!settings.enabled) return;
+  try {
+    const settings = await getMissedCallForwardingSettings();
+    if (!settings.enabled) return;
 
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
 
-  const callerRows = await db
-    .select({ id: users.id, name: users.name, email: users.email })
-    .from(users)
-    .where(eq(users.id, params.callerId))
-    .limit(1);
+    const callerRows = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, params.callerId))
+      .limit(1);
 
-  const calleeRows = await db
-    .select({ id: users.id, name: users.name, email: users.email })
-    .from(users)
-    .where(eq(users.id, params.calleeId))
-    .limit(1);
+    const calleeRows = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, params.calleeId))
+      .limit(1);
 
-  const callerLabel =
-    callerRows[0]?.name?.trim() ||
-    callerRows[0]?.email?.trim() ||
-    `User ${params.callerId}`;
-  const calleeLabel =
-    calleeRows[0]?.name?.trim() ||
-    calleeRows[0]?.email?.trim() ||
-    `User ${params.calleeId}`;
+    const callerLabel =
+      callerRows[0]?.name?.trim() ||
+      callerRows[0]?.email?.trim() ||
+      `User ${params.callerId}`;
+    const calleeLabel =
+      calleeRows[0]?.name?.trim() ||
+      calleeRows[0]?.email?.trim() ||
+      `User ${params.calleeId}`;
 
-  const message = truncateForSms(
-    `GreenChainz missed ${params.callType} call: ${callerLabel} called ${calleeLabel}. Open Messages to reconnect.`,
-  );
+    const message = truncateForSms(
+      `GreenChainz missed ${params.callType} call: ${callerLabel} called ${calleeLabel}. Open Messages to reconnect.`,
+    );
 
-  const result = await sendSms(settings.phone, message);
-  if (!result.success) {
-    throw new Error(result.error ?? "Failed to send missed-call forwarding SMS");
+    const result = await sendSms(settings.phone, message);
+    if (!result.success) {
+      throw new Error(result.error ?? "Failed to send missed-call forwarding SMS");
+    }
+  } catch (err) {
+    console.error('[Call Forwarding] sendMissedCallForwardingSms failed:', err);
+    // Do not re-throw — this is a best-effort notification
   }
 }

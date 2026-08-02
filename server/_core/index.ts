@@ -12,6 +12,7 @@ import helmet from "helmet";
 import { v4 as uuidv4 } from "uuid";
 import { createServer } from "http";
 import net from "net";
+import pinoHttp from "pino-http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -41,6 +42,8 @@ import { registerEmailAuthRoutes } from "./email-auth";
 import { registerOAuthProviderRoutes } from "./oauth-providers";
 import { sdk } from "./sdk";
 import { runStartupSecurityPreflight } from "./security-preflight";
+import { logger } from "./logger.js";
+import { csrfProtection } from "./csrf.js";
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 function createRateLimiter(maxRequests: number, windowMs: number) {
@@ -451,6 +454,41 @@ async function startServer() {
   );
 
   app.use(createRequestIdMiddleware);
+
+  // ── Structured HTTP request logging ──────────────────────────────────────
+  // Emits one JSON log line per request in production (ingested by Azure Log
+  // Analytics). In dev, pino-pretty formats it for the terminal.
+  // Health / readiness probes are suppressed to reduce log noise.
+  app.use(
+    pinoHttp({
+      logger,
+      // Assign the already-generated request ID so pino-http picks it up
+      genReqId: (req) => (req as express.Request).id ?? uuidv4(),
+      // Suppress health probe logs — they flood the stream
+      autoLogging: {
+        ignore: (req) => {
+          const path = (req as express.Request).path;
+          return (
+            path === "/health" ||
+            path === "/healthz" ||
+            path === "/ready" ||
+            path === "/api/health"
+          );
+        },
+      },
+      customLogLevel(_req, res, err) {
+        if (err || res.statusCode >= 500) return "error";
+        if (res.statusCode >= 400) return "warn";
+        return "info";
+      },
+    })
+  );
+
+  // ── CSRF protection ───────────────────────────────────────────────────────
+  // Validates Origin/Referer headers on state-changing authenticated requests.
+  // Defence-in-depth on top of SameSite=Lax + Content-Type JSON checks.
+  app.use(csrfProtection());
+
   app.use(express.json({
     limit: "5mb",
     verify: (req: any, _res, buf) => { req.rawBody = buf; },
@@ -754,7 +792,7 @@ async function startServer() {
   }
 
   server.listen(port, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${port}/`);
+    logger.info({ port, env: process.env.NODE_ENV, sha: process.env.COMMIT_SHA ?? "local" }, `Server running on http://0.0.0.0:${port}/`);
   });
 
   // ── Graceful shutdown ───────────────────────────────────────────────────────
@@ -765,7 +803,7 @@ async function startServer() {
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    console.log(`[shutdown] ${signal} received — closing server gracefully`);
+    logger.info(`[shutdown] ${signal} received — closing server gracefully`);
 
     // Force-exit safety net if draining hangs.
     const forceExit = setTimeout(() => {
