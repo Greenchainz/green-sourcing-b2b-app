@@ -13,9 +13,9 @@ name: Release to Production
 #      out-of-band promotions where a release tag is not yet created.
 #
 # GATE: Both paths require explicit approval via the `Production` GitHub
-# Environment.  Approval is requested on the first job (resolve-sha) so
-# reviewers see the pending deployment immediately; the same approval covers
-# migrate and deploy within the same run (GitHub re-uses it automatically).
+# Environment.  Because resolve-sha, migrate, and deploy each reference
+# environment: Production, GitHub requests a separate approval for each job
+# when it becomes eligible — three approvals are required per run.
 #
 # HOW TO RELEASE:
 #   Standard: Push a semver tag → create a GitHub Release → approve in UI.
@@ -70,9 +70,10 @@ jobs:
   resolve-sha:
     name: Resolve Image SHA
     runs-on: ubuntu-latest
-    # Placing this auth-free job in the Production environment acts as the
-    # single approval gate for the whole pipeline: once a reviewer approves here,
-    # GitHub reuses that approval for migrate and deploy in the same run.
+    # This auth-free job runs in the Production environment to request the first
+    # of three required approvals (resolve-sha, migrate, and deploy each request
+    # their own approval when eligible — GitHub does not cache approvals across
+    # jobs in the same run).
     # DO NOT add azure/login or id-token: write here — tag-ref OIDC subjects
     # (refs/tags/v*) are not registered as federated credentials; doing so would
     # reproduce AADSTS700213.  Azure auth belongs in migrate and deploy, which
@@ -138,8 +139,8 @@ jobs:
     name: Migrate Production DB
     runs-on: ubuntu-latest
     needs: resolve-sha
-    # Production environment approval was already granted in resolve-sha; this
-    # job reuses that approval automatically (same environment, same run).
+    # This job references environment: Production and will request its own
+    # approval when it becomes eligible (after resolve-sha succeeds).
     environment: Production
     timeout-minutes: 20
     permissions:
