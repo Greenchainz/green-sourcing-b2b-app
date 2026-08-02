@@ -1,5 +1,6 @@
 {
-  "id": "ced91fbe-ec54-494d-b995-861d9a690098",
+  "id": "ffed9fc2-f670-43f7-9316-60229f17b00e",
+  "id": "8fb20e44-6fca-4c5e-8070-d53410853be0",
   "prevId": "7a022dd5-6c28-4e78-8ade-44fa11416c23",
   "version": "7",
   "dialect": "postgresql",
@@ -126,6 +127,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_agent_analytics_session": {
           "name": "idx_agent_analytics_session",
@@ -536,6 +538,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_architect_download_events_architect": {
           "name": "idx_architect_download_events_architect",
@@ -617,6 +620,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_architect_referrals_referrer": {
           "name": "idx_architect_referrals_referrer",
@@ -1054,6 +1058,7 @@
           "notNull": false
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_assembly_components_assembly": {
           "name": "idx_assembly_components_assembly",
@@ -1617,7 +1622,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2139,6 +2144,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_call_history_receiver": {
+          "name": "idx_call_history_receiver",
+          "columns": [
+            {
+              "expression": "receiverId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -2289,8 +2309,36 @@
         }
       },
       "indexes": {
+        "idx_ccps_scores_material": {
+          "name": "idx_ccps_scores_material",
         "idx_ccps_scores_material_persona": {
           "name": "idx_ccps_scores_material_persona",
+          "columns": [
+            {
+              "expression": "materialId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+            },
+            {
+              "expression": "personaKey",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ccps_scores_material_persona": {
+          "name": "idx_ccps_scores_material_persona",
+        "idx_ccps_scores_material": {
+          "name": "idx_ccps_scores_material",
           "columns": [
             {
               "expression": "materialId",
@@ -2306,18 +2354,6 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_ccps_scores_material": {
-          "name": "idx_ccps_scores_material",
-          "columns": [
-            {
-              "expression": "materialId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
             }
           ],
           "isUnique": false,
@@ -2485,9 +2521,10 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
-        "idx_company_of_week_slots_supplier": {
-          "name": "idx_company_of_week_slots_supplier",
+        "idx_company_of_week_supplier": {
+          "name": "idx_company_of_week_supplier",
           "columns": [
             {
               "expression": "supplierId",
@@ -2501,8 +2538,8 @@
           "method": "btree",
           "with": {}
         },
-        "idx_company_of_week_slots_week": {
-          "name": "idx_company_of_week_slots_week",
+        "idx_company_of_week_date": {
+          "name": "idx_company_of_week_date",
           "columns": [
             {
               "expression": "weekStartDate",
@@ -2965,21 +3002,6 @@
           "columns": [
             {
               "expression": "rfqId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_conversations_last_message_at": {
-          "name": "idx_conversations_last_message_at",
-          "columns": [
-            {
-              "expression": "lastMessageAt",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3726,6 +3748,23 @@
         }
       },
       "indexes": {},
+      "indexes": {
+        "idx_email_credentials_user": {
+          "name": "idx_email_credentials_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
@@ -3876,6 +3915,38 @@
         }
       },
       "indexes": {},
+      "indexes": {
+        "idx_engagement_log_user": {
+          "name": "idx_engagement_log_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_engagement_log_action": {
+          "name": "idx_engagement_log_action",
+          "columns": [
+            {
+              "expression": "action",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -4946,33 +5017,6 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_legal_acceptances_user_version": {
-          "name": "idx_legal_acceptances_user_version",
-          "columns": [
-            {
-              "expression": "userId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "termsVersion",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "privacyVersion",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
           "isUnique": true,
           "concurrently": false,
           "method": "btree",
@@ -5237,9 +5281,10 @@
           "notNull": false
         }
       },
+      "indexes": {},
       "indexes": {
-        "idx_manufacturers_claimed_by_user": {
-          "name": "idx_manufacturers_claimed_by_user",
+        "idx_manufacturers_claimed_by": {
+          "name": "idx_manufacturers_claimed_by",
           "columns": [
             {
               "expression": "claimedByUserId",
@@ -5258,21 +5303,6 @@
           "columns": [
             {
               "expression": "category",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_manufacturers_verified": {
-          "name": "idx_manufacturers_verified",
-          "columns": [
-            {
-              "expression": "verified",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5626,11 +5656,28 @@
         }
       },
       "indexes": {
+        "idx_material_certs_material": {
+          "name": "idx_material_certs_material",
         "idx_material_certifications_material": {
           "name": "idx_material_certifications_material",
           "columns": [
             {
               "expression": "materialId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_material_certifications_type": {
+          "name": "idx_material_certifications_type",
+          "columns": [
+            {
+              "expression": "certificationType",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6231,6 +6278,13 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
         },
         "idx_material_specs_status": {
           "name": "idx_material_specs_status",
@@ -7113,6 +7167,53 @@
           "notNull": false
         }
       },
+      "indexes": {
+        "idx_materials_manufacturer": {
+          "name": "idx_materials_manufacturer",
+          "columns": [
+            {
+              "expression": "manufacturerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_materials_category": {
+          "name": "idx_materials_category",
+          "columns": [
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_materials_has_epd": {
+          "name": "idx_materials_has_epd",
+          "columns": [
+            {
+              "expression": "hasEpd",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
@@ -7388,6 +7489,21 @@
         }
       },
       "indexes": {
+        "idx_monthly_call_usage_user": {
+          "name": "idx_monthly_call_usage_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "idx_monthly_call_usage_user_month": {
           "name": "idx_monthly_call_usage_user_month",
           "columns": [
@@ -7405,21 +7521,6 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_monthly_call_usage_user": {
-          "name": "idx_monthly_call_usage_user",
-          "columns": [
-            {
-              "expression": "userId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -7516,9 +7617,15 @@
           "method": "btree",
           "with": {}
         },
-        "idx_notifications_is_read": {
-          "name": "idx_notifications_is_read",
+        "idx_notifications_user_unread": {
+          "name": "idx_notifications_user_unread",
           "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
             {
               "expression": "isRead",
               "isExpression": false,
@@ -7888,6 +7995,23 @@
         }
       },
       "indexes": {},
+      "indexes": {
+        "idx_referrals_referrer": {
+          "name": "idx_referrals_referrer",
+          "columns": [
+            {
+              "expression": "referrer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -8097,22 +8221,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_rfq_analytics_winning_bid": {
-          "name": "idx_rfq_analytics_winning_bid",
-          "columns": [
-            {
-              "expression": "winningBidId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -8273,21 +8382,6 @@
           "method": "btree",
           "with": {}
         },
-        "idx_rfq_bids_status": {
-          "name": "idx_rfq_bids_status",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "idx_rfq_bids_rfq_supplier": {
           "name": "idx_rfq_bids_rfq_supplier",
           "columns": [
@@ -8299,6 +8393,21 @@
             },
             {
               "expression": "supplierId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_bids_status": {
+          "name": "idx_rfq_bids_status",
+          "columns": [
+            {
+              "expression": "status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8399,6 +8508,38 @@
         }
       },
       "indexes": {},
+      "indexes": {
+        "idx_rfq_drafts_architect": {
+          "name": "idx_rfq_drafts_architect",
+          "columns": [
+            {
+              "expression": "architect_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_drafts_status": {
+          "name": "idx_rfq_drafts_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -8487,6 +8628,21 @@
           "columns": [
             {
               "expression": "materialId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_items_assembly": {
+          "name": "idx_rfq_items_assembly",
+          "columns": [
+            {
+              "expression": "assemblyId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8809,6 +8965,83 @@
         }
       },
       "indexes": {},
+      "indexes": {
+        "idx_rfq_requests_architect": {
+          "name": "idx_rfq_requests_architect",
+          "columns": [
+            {
+              "expression": "architect_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_requests_supplier": {
+          "name": "idx_rfq_requests_supplier",
+          "columns": [
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_requests_material": {
+          "name": "idx_rfq_requests_material",
+          "columns": [
+            {
+              "expression": "material_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_requests_draft": {
+          "name": "idx_rfq_requests_draft",
+          "columns": [
+            {
+              "expression": "draft_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfq_requests_status": {
+          "name": "idx_rfq_requests_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -9148,7 +9381,7 @@
         },
         "deposit_amount": {
           "name": "deposit_amount",
-          "type": "numeric(12, 2)",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -9246,6 +9479,21 @@
               "expression": "status",
               "isExpression": false,
               "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_rfqs_created_at": {
+          "name": "idx_rfqs_created_at",
+          "columns": [
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": false,
               "nulls": "last"
             }
           ],
@@ -10475,6 +10723,7 @@
             }
           ],
           "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -10618,6 +10867,7 @@
           "default": "now()"
         }
       },
+      "indexes": {},
       "indexes": {
         "idx_supplier_material_epds_supplier": {
           "name": "idx_supplier_material_epds_supplier",
@@ -10869,6 +11119,7 @@
               "nulls": "last"
             }
           ],
+          "isUnique": true,
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
@@ -11424,9 +11675,10 @@
           "notNull": false
         }
       },
+      "indexes": {},
       "indexes": {
-        "idx_suppliers_user": {
-          "name": "idx_suppliers_user",
+        "idx_suppliers_user_id": {
+          "name": "idx_suppliers_user_id",
           "columns": [
             {
               "expression": "userId",
@@ -11435,7 +11687,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -11585,6 +11837,21 @@
         }
       },
       "indexes": {
+        "idx_suppliers_location_supplier": {
+          "name": "idx_suppliers_location_supplier",
+          "columns": [
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "idx_suppliers_location_state": {
           "name": "idx_suppliers_location_state",
           "columns": [
@@ -11986,21 +12253,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "idx_usage_tracking_dimension": {
-          "name": "idx_usage_tracking_dimension",
-          "columns": [
-            {
-              "expression": "dimension",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {},
@@ -12111,6 +12363,23 @@
         }
       },
       "indexes": {},
+      "indexes": {
+        "idx_user_engagement_user": {
+          "name": "idx_user_engagement_user",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -12325,21 +12594,6 @@
         }
       },
       "indexes": {
-        "idx_video_calls_conversation": {
-          "name": "idx_video_calls_conversation",
-          "columns": [
-            {
-              "expression": "conversationId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "idx_video_calls_caller": {
           "name": "idx_video_calls_caller",
           "columns": [
@@ -12360,6 +12614,21 @@
           "columns": [
             {
               "expression": "calleeId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_video_calls_conversation": {
+          "name": "idx_video_calls_conversation",
+          "columns": [
+            {
+              "expression": "conversationId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

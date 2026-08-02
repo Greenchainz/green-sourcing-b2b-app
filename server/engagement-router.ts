@@ -38,42 +38,36 @@ export const engagementRouter = router({
     const db = await getDb();
     if (!db) return null;
 
+    // Atomically create the record if it doesn't exist, then fetch
+    await db
+      .insert(userEngagement)
+      .values({ userId: ctx.user.id })
+      .onConflictDoNothing();
+
     const rows = await db
       .select()
       .from(userEngagement)
       .where(eq(userEngagement.userId, ctx.user.id))
       .limit(1);
 
-    if (rows.length > 0) return rows[0];
-
-    // Create a new engagement record
-    const [created] = await db
-      .insert(userEngagement)
-      .values({ userId: ctx.user.id })
-      .returning();
-
-    return created;
+    return rows[0] ?? null;
   }),
 
   checkIn: protectedProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new Error("Database unavailable");
 
-    // Get or create engagement record
-    let rows = await db
+    // Atomically create the engagement record if it doesn't exist, then fetch
+    await db
+      .insert(userEngagement)
+      .values({ userId: ctx.user.id })
+      .onConflictDoNothing();
+
+    const rows = await db
       .select()
       .from(userEngagement)
       .where(eq(userEngagement.userId, ctx.user.id))
       .limit(1);
-
-    if (rows.length === 0) {
-      await db.insert(userEngagement).values({ userId: ctx.user.id });
-      rows = await db
-        .select()
-        .from(userEngagement)
-        .where(eq(userEngagement.userId, ctx.user.id))
-        .limit(1);
-    }
 
     const engagement = rows[0];
     const now = new Date();
@@ -144,16 +138,11 @@ export const engagementRouter = router({
 
       const creditsEarned = ACTION_CREDITS[input.action] || 0;
 
-      // Ensure engagement record exists
-      const rows = await db
-        .select()
-        .from(userEngagement)
-        .where(eq(userEngagement.userId, ctx.user.id))
-        .limit(1);
-
-      if (rows.length === 0) {
-        await db.insert(userEngagement).values({ userId: ctx.user.id });
-      }
+      // Ensure engagement record exists atomically
+      await db
+        .insert(userEngagement)
+        .values({ userId: ctx.user.id })
+        .onConflictDoNothing();
 
       // Update credits + action counter
       const counterField =
