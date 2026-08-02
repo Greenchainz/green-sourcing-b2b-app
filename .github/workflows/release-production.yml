@@ -68,6 +68,7 @@ jobs:
   resolve-sha:
     name: Resolve Image SHA
     runs-on: ubuntu-latest
+    environment: Production  # OIDC subject must match federated credential; tag refs are not registered
     timeout-minutes: 10
     permissions:
       contents: read
