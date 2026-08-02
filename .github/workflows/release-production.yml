@@ -72,7 +72,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      id-token: write  # required for Azure OIDC login (ACR pre-flight check)
     outputs:
       deploy_sha: ${{ steps.resolve.outputs.deploy_sha }}
     steps:
@@ -86,7 +85,7 @@ jobs:
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          if ! printf '%s' "$TAG_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+          if ! printf '%s' "$TAG_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Release tag '$TAG_NAME' does not match v*.*.* — only semver release tags trigger production promotion."
             exit 1
           fi
@@ -125,31 +124,6 @@ jobs:
           echo "resolved_sha=${SHA}" >> $GITHUB_ENV
           echo "Will promote image SHA: ${SHA}"
 
-      - name: Log in to Azure (OIDC — ACR pre-flight only)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ env.AZURE_CLIENT_ID }}
-          tenant-id: ${{ env.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Verify both ACR images exist before allowing migrations
-        run: |
-          SHA="${{ steps.resolve.outputs.deploy_sha }}"
-          for img in "${{ env.BACKEND_IMAGE }}" "${{ env.FRONTEND_IMAGE }}"; do
-            if ! az acr repository show-tags \
-                --name "${{ env.ACR }}" \
-                --repository "$img" \
-                --query "[?@=='${SHA}']" --output tsv 2>/dev/null | grep -q "$SHA"; then
-              echo "::error::ACR image ${img}:${SHA} not found. Ensure build-and-stage.yml completed successfully for this SHA before promoting to production."
-              exit 1
-            fi
-            echo "✅ ACR image ${img}:${SHA} verified"
-          done
-
-      - name: Azure logout
-        if: always()
-        run: az logout || true
-
   # ─── Run Drizzle migrations (GATED — requires Production env approval) ──────
   migrate:
     name: Migrate Production DB
@@ -174,6 +148,20 @@ jobs:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify both ACR images exist before allowing migrations
+        run: |
+          SHA="${{ needs.resolve-sha.outputs.deploy_sha }}"
+          for img in "${{ env.BACKEND_IMAGE }}" "${{ env.FRONTEND_IMAGE }}"; do
+            if ! az acr repository show-tags \
+                --name "${{ env.ACR }}" \
+                --repository "$img" \
+                --query "[?@=='${SHA}']" --output tsv 2>/dev/null | grep -q "$SHA"; then
+              echo "::error::ACR image ${img}:${SHA} not found. Ensure build-and-stage.yml completed successfully for this SHA before promoting to production."
+              exit 1
+            fi
+            echo "✅ ACR image ${img}:${SHA} verified"
+          done
 
       - uses: pnpm/action-setup@v4
 
