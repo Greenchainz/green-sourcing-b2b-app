@@ -2222,7 +2222,7 @@ export const emailSequences = pgTable(
   "email_sequences",
   {
     id: serial("id").primaryKey(),
-    contactEmail: varchar("contact_email", { length: 320 }).notNull(),
+    contactEmail: varchar("contact_email", { length: 320 }),
     step: integer("step").notNull().default(1),
     status: varchar("status", { length: 50 }).notNull().default("pending"),
     sentAt: timestamp("sent_at"),
