@@ -2227,11 +2227,7 @@ export const emailSequences = pgTable(
     status: varchar("status", { length: 50 }).notNull().default("pending"),
     sentAt: timestamp("sent_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (t) => ({
-    contactEmailIdx: index("idx_email_seq_contact_email").on(t.contactEmail),
-    statusSentAtIdx: index("idx_email_seq_status_sent_at").on(t.status, t.sentAt),
-  })
+  }
 );
 
 export type EmailSequence = typeof emailSequences.$inferSelect;
