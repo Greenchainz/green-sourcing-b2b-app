@@ -13,7 +13,9 @@ name: Release to Production
 #      out-of-band promotions where a release tag is not yet created.
 #
 # GATE: Both paths require explicit approval via the `Production` GitHub
-# Environment before the migrate and deploy jobs will execute.
+# Environment.  Approval is requested on the first job (resolve-sha) so
+# reviewers see the pending deployment immediately; the same approval covers
+# migrate and deploy within the same run (GitHub re-uses it automatically).
 #
 # HOW TO RELEASE:
 #   Standard: Push a semver tag → create a GitHub Release → approve in UI.
@@ -68,7 +70,14 @@ jobs:
   resolve-sha:
     name: Resolve Image SHA
     runs-on: ubuntu-latest
-    environment: Production  # OIDC subject must match federated credential; tag refs are not registered
+    # Placing this auth-free job in the Production environment acts as the
+    # single approval gate for the whole pipeline: once a reviewer approves here,
+    # GitHub reuses that approval for migrate and deploy in the same run.
+    # DO NOT add azure/login or id-token: write here — tag-ref OIDC subjects
+    # (refs/tags/v*) are not registered as federated credentials; doing so would
+    # reproduce AADSTS700213.  Azure auth belongs in migrate and deploy, which
+    # run under the environment:Production OIDC subject.
+    environment: Production
     timeout-minutes: 10
     permissions:
       contents: read
@@ -129,9 +138,8 @@ jobs:
     name: Migrate Production DB
     runs-on: ubuntu-latest
     needs: resolve-sha
-    # ⚠️  This is the production approval gate. The `Production` GitHub
-    # Environment must have required reviewers configured. Approving here
-    # allows both this job and the downstream deploy job to proceed.
+    # Production environment approval was already granted in resolve-sha; this
+    # job reuses that approval automatically (same environment, same run).
     environment: Production
     timeout-minutes: 20
     permissions:
