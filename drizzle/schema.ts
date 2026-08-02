@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   pgEnum,
@@ -977,10 +978,11 @@ export const rfqBids = pgTable("rfq_bids", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({
-  rfqIdx: index("idx_rfq_bids_rfq").on(t.rfqId),
   supplierIdx: index("idx_rfq_bids_supplier").on(t.supplierId),
-  // Composite: most bid queries filter by both rfqId and supplierId
-  rfqSupplierIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId),
+  rfqIdx: index("idx_rfq_bids_rfq").on(t.rfqId),
+  // Partial unique index: allows one live (non-deleted) bid per rfqId/supplierId
+  // while soft-deleted rows and revisions are unrestricted.
+  rfqSupplierActiveIdx: uniqueIndex("idx_rfq_bids_rfq_supplier").on(t.rfqId, t.supplierId).where(sql`deleted_at IS NULL`),
   statusIdx: index("idx_rfq_bids_status").on(t.status),
 }));
 
@@ -1038,8 +1040,9 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
   userIdx: index("idx_notifications_user").on(t.userId),
-  // Unread notifications are the hot path — partial index for speed
-  userUnreadIdx: index("idx_notifications_user_unread").on(t.userId, t.isRead),
+  // Partial index: covers only unread notifications, which is the hot-path query.
+  // userId alone is sufficient as the leading column; isRead = false is the predicate.
+  userUnreadIdx: index("idx_notifications_user_unread").on(t.userId).where(sql`"isRead" = false`),
 }));
 
 export type Notification = typeof notifications.$inferSelect;
