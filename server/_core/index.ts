@@ -64,6 +64,14 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
     const now = Date.now();
     const entry = counts.get(ip);
     if (!entry || now >= entry.resetAt) {
+      // Hard cap: drop oldest half of entries to prevent OOM under DDoS/bot floods
+      if (counts.size >= 100_000) {
+        let dropped = 0;
+        for (const key of counts.keys()) {
+          counts.delete(key);
+          if (++dropped >= 50_000) break;
+        }
+      }
       counts.set(ip, { count: 1, resetAt: now + windowMs });
       next();
       return;
@@ -637,7 +645,7 @@ async function startServer() {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[readiness] DB check failed:", message);
-      res.status(503).json({ status: "not_ready", reason: "database_unavailable" });
+      res.status(503).end();
     }
   });
 
