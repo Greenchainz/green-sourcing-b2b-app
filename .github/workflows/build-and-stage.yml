@@ -126,6 +126,9 @@ jobs:
               if echo "$stderr_content" | grep -qi "SecretNotFound\|was not found\|does not exist"; then
                 echo "Secret '$name' not found in Key Vault (optional — continuing)"
                 echo "${env_name}=" >> "$GITHUB_ENV"
+              elif echo "$stderr_content" | grep -qi "ForbiddenByConnection\|Public network access is disabled"; then
+                echo "::warning::Key Vault access is blocked by network policy for optional secret '$name' — continuing with empty value"
+                echo "${env_name}=" >> "$GITHUB_ENV"
               else
                 echo "::error::Key Vault lookup failed for '$name' (exit $exit_code): $stderr_content"
                 exit 1
