@@ -60,9 +60,7 @@ const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
     console.error('Invalid Azure environment variables:', parsed.error.format());
-    if (process.env.NODE_ENV === 'production') {
-        throw new Error('Critical Azure configuration missing.');
-    }
+    throw new Error('Critical Azure configuration missing.');
 }
 
-export const env = parsed.success ? parsed.data : (process.env as unknown as z.infer<typeof envSchema>);
+export const env = parsed.data;

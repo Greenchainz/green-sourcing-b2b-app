@@ -18,6 +18,7 @@
  */
 
 import { Request, Response } from "express";
+import { z } from "zod";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { getSubscriptionDetails } from "./marketplace-auth";
 import type { MarketplaceSubscription } from "./marketplace-landing";
@@ -43,6 +44,20 @@ export interface WebhookPayload {
   status: string;
   operationRequestSource: string;
 }
+
+const webhookPayloadSchema = z.object({
+  id: z.string().min(1),
+  activityId: z.string().min(1),
+  subscriptionId: z.string().min(1),
+  offerId: z.string().min(1),
+  publisherId: z.string().min(1),
+  planId: z.string().min(1),
+  quantity: z.number(),
+  timeStamp: z.string().min(1),
+  action: z.enum(["Subscribed", "Unsubscribed", "Suspended", "Reinstated", "ChangePlan", "ChangeQuantity", "Renewed"]),
+  status: z.string(),
+  operationRequestSource: z.string(),
+});
 
 /**
  * Webhook handler
@@ -81,7 +96,12 @@ async function verifyMarketplaceWebhookAuthorization(authHeader: string | undefi
 
 export async function handleWebhook(req: Request, res: Response) {
   try {
-    const payload: WebhookPayload = req.body;
+    const parsed = webhookPayloadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      console.error("[Marketplace Webhook] Invalid payload:", parsed.error.format());
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+    const payload: WebhookPayload = parsed.data;
 
     console.log("[Marketplace Webhook] Received event:", {
       action: payload.action,
@@ -221,10 +241,11 @@ async function handleSubscribed(userId: number, subscription: MarketplaceSubscri
   if (user) {
     const dashboardUrl = `${BASE_URL}/dashboard`;
     const planLabel = tier === "premium" ? "Premium" : "Standard";
-    await sendEmail({
-      to: user.email,
-      subject: `Welcome to GreenChainz ${planLabel} 🎉`,
-      html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `Welcome to GreenChainz ${planLabel} 🎉`,
+        html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
         <div class="hdr"><h1 style="margin:0;font-size:24px;">You're on GreenChainz ${planLabel}</h1></div>
         <div class="body">
           <p>Hi ${user.name},</p>
@@ -235,9 +256,12 @@ async function handleSubscribed(userId: number, subscription: MarketplaceSubscri
           ${FOOTER}
         </div>
       </body></html>`,
-      text: `Hi ${user.name},\n\nYour GreenChainz ${planLabel} subscription is now active.\n\nDashboard: ${dashboardUrl}\n\nQuestions? Email founder@greenchainz.com`,
-    });
-    console.log(`[Marketplace Webhook] Welcome email sent to ${user.email}`);
+        text: `Hi ${user.name},\n\nYour GreenChainz ${planLabel} subscription is now active.\n\nDashboard: ${dashboardUrl}\n\nQuestions? Email founder@greenchainz.com`,
+      });
+      console.log(`[Marketplace Webhook] Welcome email sent to ${user.email}`);
+    } catch (err) {
+      console.error("[Marketplace Webhook] Welcome email failed — continuing:", err);
+    }
   }
 }
 
@@ -252,10 +276,11 @@ async function handleUnsubscribed(userId: number, _msSubscriptionId: string) {
 
   const user = await getUserEmailAndName(userId);
   if (user) {
-    await sendEmail({
-      to: user.email,
-      subject: "Your GreenChainz subscription has been cancelled",
-      html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Your GreenChainz subscription has been cancelled",
+        html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
         <div class="hdr" style="background:linear-gradient(135deg,#64748b 0%,#475569 100%);"><h1 style="margin:0;font-size:24px;">Subscription Cancelled</h1></div>
         <div class="body">
           <p>Hi ${user.name},</p>
@@ -266,9 +291,12 @@ async function handleUnsubscribed(userId: number, _msSubscriptionId: string) {
           ${FOOTER}
         </div>
       </body></html>`,
-      text: `Hi ${user.name},\n\nYour GreenChainz subscription has been cancelled.\n\nYou'll retain access until the end of your current billing period. To resubscribe, visit Microsoft AppSource.\n\nQuestions? Email founder@greenchainz.com`,
-    });
-    console.log(`[Marketplace Webhook] Cancellation email sent to ${user.email}`);
+        text: `Hi ${user.name},\n\nYour GreenChainz subscription has been cancelled.\n\nYou'll retain access until the end of your current billing period. To resubscribe, visit Microsoft AppSource.\n\nQuestions? Email founder@greenchainz.com`,
+      });
+      console.log(`[Marketplace Webhook] Cancellation email sent to ${user.email}`);
+    } catch (err) {
+      console.error("[Marketplace Webhook] Cancellation email failed — continuing:", err);
+    }
   }
 }
 
@@ -292,10 +320,11 @@ async function handleSuspended(userId: number, _msSubscriptionId: string) {
 
   const user = await getUserEmailAndName(userId);
   if (user) {
-    await sendEmail({
-      to: user.email,
-      subject: "Action required: GreenChainz subscription suspended",
-      html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Action required: GreenChainz subscription suspended",
+        html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
         <div class="hdr" style="background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);"><h1 style="margin:0;font-size:24px;">Subscription Suspended</h1></div>
         <div class="body">
           <p>Hi ${user.name},</p>
@@ -306,9 +335,12 @@ async function handleSuspended(userId: number, _msSubscriptionId: string) {
           ${FOOTER}
         </div>
       </body></html>`,
-      text: `Hi ${user.name},\n\nYour GreenChainz subscription has been suspended due to a payment issue on your Microsoft account.\n\nTo restore access, please update your payment method at https://appsource.microsoft.com\n\nNeed help? Email founder@greenchainz.com`,
-    });
-    console.log(`[Marketplace Webhook] Suspension email sent to ${user.email}`);
+        text: `Hi ${user.name},\n\nYour GreenChainz subscription has been suspended due to a payment issue on your Microsoft account.\n\nTo restore access, please update your payment method at https://appsource.microsoft.com\n\nNeed help? Email founder@greenchainz.com`,
+      });
+      console.log(`[Marketplace Webhook] Suspension email sent to ${user.email}`);
+    } catch (err) {
+      console.error("[Marketplace Webhook] Suspension email failed — continuing:", err);
+    }
   }
 }
 
@@ -333,10 +365,11 @@ async function handleReinstated(userId: number, _subscription: MarketplaceSubscr
   const user = await getUserEmailAndName(userId);
   if (user) {
     const dashboardUrl = `${BASE_URL}/dashboard`;
-    await sendEmail({
-      to: user.email,
-      subject: "GreenChainz subscription reinstated — you're back!",
-      html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "GreenChainz subscription reinstated — you're back!",
+        html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
         <div class="hdr"><h1 style="margin:0;font-size:24px;">Subscription Reinstated ✓</h1></div>
         <div class="body">
           <p>Hi ${user.name},</p>
@@ -346,9 +379,12 @@ async function handleReinstated(userId: number, _subscription: MarketplaceSubscr
           ${FOOTER}
         </div>
       </body></html>`,
-      text: `Hi ${user.name},\n\nYour GreenChainz subscription has been reinstated and your full access is restored.\n\nDashboard: ${dashboardUrl}\n\nQuestions? Email founder@greenchainz.com`,
-    });
-    console.log(`[Marketplace Webhook] Reinstatement email sent to ${user.email}`);
+        text: `Hi ${user.name},\n\nYour GreenChainz subscription has been reinstated and your full access is restored.\n\nDashboard: ${dashboardUrl}\n\nQuestions? Email founder@greenchainz.com`,
+      });
+      console.log(`[Marketplace Webhook] Reinstatement email sent to ${user.email}`);
+    } catch (err) {
+      console.error("[Marketplace Webhook] Reinstatement email failed — continuing:", err);
+    }
   }
 }
 
@@ -374,10 +410,11 @@ async function handleChangePlan(userId: number, subscription: MarketplaceSubscri
   if (user) {
     const planLabel = newTier === "premium" ? "Premium" : newTier === "standard" ? "Standard" : "Free";
     const dashboardUrl = `${BASE_URL}/dashboard`;
-    await sendEmail({
-      to: user.email,
-      subject: `GreenChainz plan updated to ${planLabel}`,
-      html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `GreenChainz plan updated to ${planLabel}`,
+        html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
         <div class="hdr"><h1 style="margin:0;font-size:24px;">Plan Updated to ${planLabel}</h1></div>
         <div class="body">
           <p>Hi ${user.name},</p>
@@ -387,9 +424,12 @@ async function handleChangePlan(userId: number, subscription: MarketplaceSubscri
           ${FOOTER}
         </div>
       </body></html>`,
-      text: `Hi ${user.name},\n\nYour GreenChainz subscription has been updated to the ${planLabel} plan.\n\nDashboard: ${dashboardUrl}\n\nQuestions? Email founder@greenchainz.com`,
-    });
-    console.log(`[Marketplace Webhook] Plan change email sent to ${user.email} (→ ${planLabel})`);
+        text: `Hi ${user.name},\n\nYour GreenChainz subscription has been updated to the ${planLabel} plan.\n\nDashboard: ${dashboardUrl}\n\nQuestions? Email founder@greenchainz.com`,
+      });
+      console.log(`[Marketplace Webhook] Plan change email sent to ${user.email} (→ ${planLabel})`);
+    } catch (err) {
+      console.error("[Marketplace Webhook] Plan change email failed — continuing:", err);
+    }
   }
 }
 
@@ -414,10 +454,11 @@ async function handleChangeQuantity(userId: number, subscription: MarketplaceSub
   const user = await getUserEmailAndName(userId);
   if (user) {
     const seats = subscription.quantity ?? 1;
-    await sendEmail({
-      to: user.email,
-      subject: `GreenChainz seat count updated to ${seats}`,
-      html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `GreenChainz seat count updated to ${seats}`,
+        html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
         <div class="hdr"><h1 style="margin:0;font-size:24px;">Seats Updated</h1></div>
         <div class="body">
           <p>Hi ${user.name},</p>
@@ -427,9 +468,12 @@ async function handleChangeQuantity(userId: number, subscription: MarketplaceSub
           ${FOOTER}
         </div>
       </body></html>`,
-      text: `Hi ${user.name},\n\nYour GreenChainz subscription has been updated to ${seats} seat${seats !== 1 ? "s" : ""}. Billing will adjust at your next renewal.\n\nQuestions? Email founder@greenchainz.com`,
-    });
-    console.log(`[Marketplace Webhook] Quantity change email sent to ${user.email} (${seats} seats)`);
+        text: `Hi ${user.name},\n\nYour GreenChainz subscription has been updated to ${seats} seat${seats !== 1 ? "s" : ""}. Billing will adjust at your next renewal.\n\nQuestions? Email founder@greenchainz.com`,
+      });
+      console.log(`[Marketplace Webhook] Quantity change email sent to ${user.email} (${seats} seats)`);
+    } catch (err) {
+      console.error("[Marketplace Webhook] Quantity change email failed — continuing:", err);
+    }
   }
 }
 
@@ -461,10 +505,11 @@ async function handleRenewed(userId: number, subscription: MarketplaceSubscripti
       ? renewalDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
       : "your next billing date";
     const dashboardUrl = `${BASE_URL}/dashboard`;
-    await sendEmail({
-      to: user.email,
-      subject: "GreenChainz subscription renewed",
-      html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "GreenChainz subscription renewed",
+        html: `<!DOCTYPE html><html><head><style>${SHARED_STYLE}</style></head><body>
         <div class="hdr"><h1 style="margin:0;font-size:24px;">Subscription Renewed ✓</h1></div>
         <div class="body">
           <p>Hi ${user.name},</p>
@@ -474,9 +519,12 @@ async function handleRenewed(userId: number, subscription: MarketplaceSubscripti
           ${FOOTER}
         </div>
       </body></html>`,
-      text: `Hi ${user.name},\n\nYour GreenChainz subscription has been renewed. Next renewal: ${nextDate}.\n\nDashboard: ${dashboardUrl}\n\nQuestions? Email founder@greenchainz.com`,
-    });
-    console.log(`[Marketplace Webhook] Renewal email sent to ${user.email} (next: ${nextDate})`);
+        text: `Hi ${user.name},\n\nYour GreenChainz subscription has been renewed. Next renewal: ${nextDate}.\n\nDashboard: ${dashboardUrl}\n\nQuestions? Email founder@greenchainz.com`,
+      });
+      console.log(`[Marketplace Webhook] Renewal email sent to ${user.email} (next: ${nextDate})`);
+    } catch (err) {
+      console.error("[Marketplace Webhook] Renewal email failed — continuing:", err);
+    }
   }
 }
 

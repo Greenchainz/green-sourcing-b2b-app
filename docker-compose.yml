@@ -7,7 +7,7 @@ services:
   # SERVICE 1: PostgreSQL Database
   # ---------------------------------
   db:
-    image: postgres:15
+    image: postgres:15.10
     container_name: greenchainz-db
     restart: unless-stopped
     ports:
