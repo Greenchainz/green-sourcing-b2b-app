@@ -27,6 +27,28 @@ function buildRedirectUri(_req: Request, provider: string): string {
   return `${baseUrl}/api/auth/callback/${provider}`;
 }
 
+function hostOnlyCookieOptions(req: Request): {
+  httpOnly: true;
+  path: "/";
+  sameSite: "lax";
+  secure: boolean;
+} {
+  const scopedOptions = getSessionCookieOptions(req);
+  return {
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    secure: scopedOptions.secure,
+  };
+}
+
+function clearSessionCookies(req: Request, res: Response): void {
+  const scopedOptions = getSessionCookieOptions(req);
+  res.clearCookie("app_session_id", { ...scopedOptions, maxAge: -1 });
+  // Clear legacy host-only cookies to avoid duplicate-name shadowing.
+  res.clearCookie("app_session_id", { ...hostOnlyCookieOptions(req), maxAge: -1 });
+}
+
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 // Trusted external origins that may receive a short-lived auth code via returnPath redirect.
@@ -373,14 +395,12 @@ export function registerOAuthProviderRoutes(app: Express) {
 
   // Logout route must register before /:provider wildcard
   app.post("/api/auth/logout", (req: Request, res: Response) => {
-    const cookieOptions = getSessionCookieOptions(req);
-    res.clearCookie("app_session_id", { ...cookieOptions, maxAge: -1 });
+    clearSessionCookies(req, res);
     res.json({ success: true });
   });
 
   app.get("/api/auth/logout", (req: Request, res: Response) => {
-    const cookieOptions = getSessionCookieOptions(req);
-    res.clearCookie("app_session_id", { ...cookieOptions, maxAge: -1 });
+    clearSessionCookies(req, res);
     res.redirect(302, "/");
   });
 
@@ -513,6 +533,12 @@ export function registerOAuthProviderRoutes(app: Express) {
       });
 
       const cookieOptions = getSessionCookieOptions(req);
+      // Keep host-only + domain cookies in sync during migration to avoid
+      // stale host-only values shadowing the domain cookie.
+      res.cookie("app_session_id", sessionToken, {
+        ...hostOnlyCookieOptions(req),
+        maxAge: ONE_YEAR_MS,
+      });
       res.cookie("app_session_id", sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
       // For external allowlisted origins (e.g. the Forma extension auth-callback page),

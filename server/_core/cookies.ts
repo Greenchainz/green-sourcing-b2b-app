@@ -46,7 +46,9 @@ export function getSessionCookieOptions(
   // Keep host-only cookies for localhost/dev domains.
   // In production, share the session across apex + www to prevent OAuth loops
   // when the callback lands on one host and the SPA is served from the other.
-  const domain = host.endsWith("greenchainz.com") ? ".greenchainz.com" : undefined;
+  const isProductionHost =
+    host === "greenchainz.com" || host === "www.greenchainz.com";
+  const domain = isProductionHost ? ".greenchainz.com" : undefined;
 
   const secure = isSecureRequest(req);
   return {
