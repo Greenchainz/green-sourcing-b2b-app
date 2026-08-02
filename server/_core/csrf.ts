@@ -44,11 +44,13 @@ function buildAllowedOrigins(): Set<string> {
   const origins = new Set<string>([
     "greenchainz.com",
     "www.greenchainz.com",
-    // Staging / preview containers
-    "staging.greenchainz.com",
   ]);
 
-  // Allow the locally configured APP_BASE_URL hostname (dev + staging)
+  // Allow the locally configured APP_BASE_URL hostname (dev + staging).
+  // Staging deployments set APP_BASE_URL=https://staging.greenchainz.com in
+  // their environment — this is the correct, isolated way to allow staging
+  // without hardcoding it here (which would let a compromised staging instance
+  // authorise mutations on the production database).
   const baseUrl = process.env.APP_BASE_URL;
   if (baseUrl) {
     try {
