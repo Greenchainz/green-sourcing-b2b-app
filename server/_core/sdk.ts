@@ -12,16 +12,6 @@ import { ENV } from "./env";
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
 
-/** In-memory revocation set: jti → expiry epoch (ms). Entries are pruned lazily. */
-const revokedJtis = new Map<string, number>();
-
-function pruneRevokedJtis(): void {
-  const now = Date.now();
-  for (const [jti, expiresAt] of revokedJtis) {
-    if (expiresAt < now) revokedJtis.delete(jti);
-  }
-}
-
 export type SessionPayload = {
   openId: string;
   appId: string;
@@ -138,9 +128,9 @@ class SDKServer {
         return null;
       }
 
-      // Reject revoked tokens (e.g. after logout) so a stale host-only cookie
-      // on another production host cannot authenticate requests.
-      if (typeof jti === "string" && revokedJtis.has(jti)) {
+      // Reject revoked tokens (e.g. after logout) so a stale cookie on any
+      // production replica cannot authenticate requests.
+      if (typeof jti === "string" && jti && await db.isJtiRevoked(jti)) {
         console.warn("[Auth] Session token has been revoked");
         return null;
       }
@@ -154,8 +144,9 @@ class SDKServer {
 
   /**
    * Revoke the session token present in the current request.
-   * After this call, verifySession will reject that token even if its host-only
-   * cookie copy survives on another production host (migration period safety).
+   * The revocation is persisted in the shared database so every backend
+   * replica consistently rejects the token — not just the one that handled
+   * the logout request.
    */
   async revokeRequestSession(req: Request): Promise<void> {
     const cookies = this.parseCookies(req.headers.cookie);
@@ -170,11 +161,8 @@ class SDKServer {
       const { jti, exp } = payload as Record<string, unknown>;
       if (typeof jti !== "string" || !jti) return;
 
-      pruneRevokedJtis();
-      // Keep the revocation entry until the token's natural expiry so that
-      // the set doesn't grow unboundedly.
-      const expiresAt = typeof exp === "number" ? exp * 1000 : Date.now() + ONE_YEAR_MS;
-      revokedJtis.set(jti, expiresAt);
+      const expiresAt = new Date(typeof exp === "number" ? exp * 1000 : Date.now() + ONE_YEAR_MS);
+      await db.insertRevokedJti(jti, expiresAt);
     } catch {
       // Invalid or already-expired token — nothing to revoke.
     }

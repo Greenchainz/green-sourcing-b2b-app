@@ -2690,3 +2690,18 @@ export const learningSynthesis = pgTable("learning_synthesis", {
 });
 
 export type LearningSynthesis = typeof learningSynthesis.$inferSelect;
+
+// ─── Revoked JTIs ───────────────────────────────────────────────────────────
+// Shared across all replicas so that logout revocations are honoured by every
+// backend instance, not just the one that processed the logout request.
+
+export const revokedJtis = pgTable(
+  "revoked_jtis",
+  {
+    jti: text("jti").primaryKey(),
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (table) => ({
+    expiresAtIdx: index("idx_revoked_jtis_expires_at").on(table.expiresAt),
+  })
+);
