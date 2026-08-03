@@ -815,7 +815,7 @@ async function startServer() {
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    logger.info(`[shutdown] ${signal} received — closing server gracefully`);
+    logger.info({ signal }, "shutdown.received");
 
     // Force-exit safety net if draining hangs.
     const forceExit = setTimeout(() => {
