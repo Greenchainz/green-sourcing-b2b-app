@@ -1,5 +1,5 @@
 /**
- * OAuth Provider Routes - Microsoft Entra ID, LinkedIn
+ * OAuth Provider Routes - Microsoft Entra ID only
  *
  * Replaces the Manus OAuth flow with direct provider OAuth 2.0.
  * Session is stored as a signed JWT cookie.
@@ -175,18 +175,6 @@ function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
   return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params}`;
 }
 
-function getLinkedInAuthUrl(redirectUri: string, state: string): string {
-  const clientId = getEnvWithDevDefault("LINKEDIN_CLIENT_ID", "77lzd3h7nzedke");
-  const params = new URLSearchParams({
-    response_type: "code",
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    state,
-    scope: "openid profile email",
-  });
-  return `https://www.linkedin.com/oauth/v2/authorization?${params}`;
-}
-
 // Token exchange
 
 interface OAuthUserInfo {
@@ -245,54 +233,6 @@ async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise
   };
 }
 
-async function exchangeLinkedInCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const clientId = getEnvWithDevDefault("LINKEDIN_CLIENT_ID", "77lzd3h7nzedke");
-  const clientSecret = getRequiredEnv("LINKEDIN_CLIENT_SECRET");
-
-  const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri,
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
-
-  if (!tokenRes.ok) {
-    const err = await tokenRes.text();
-    throw new Error(`LinkedIn token exchange failed: ${err}`);
-  }
-
-  const tokens = await tokenRes.json() as { access_token: string; id_token?: string };
-
-  // LinkedIn OIDC id_token
-  if (tokens.id_token) {
-    const [, payload] = tokens.id_token.split(".");
-    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString());
-    return {
-      openId: `linkedin:${decoded.sub}`,
-      email: decoded.email ?? null,
-      name: decoded.name ?? null,
-      provider: "linkedin",
-    };
-  }
-
-  // Fallback: userinfo endpoint
-  const userRes = await fetch("https://api.linkedin.com/v2/userinfo", {
-    headers: { Authorization: `Bearer ${tokens.access_token}` },
-  });
-  const user = await userRes.json() as { sub: string; email?: string; name?: string };
-  return {
-    openId: `linkedin:${user.sub}`,
-    email: user.email ?? null,
-    name: user.name ?? null,
-    provider: "linkedin",
-  };
-}
-
 // Route registration
 
 export function registerOAuthProviderRoutes(app: Express) {
@@ -348,9 +288,6 @@ export function registerOAuthProviderRoutes(app: Express) {
         case "microsoft":
           authUrl = getMicrosoftAuthUrl(redirectUri, state);
           break;
-        case "linkedin":
-          authUrl = getLinkedInAuthUrl(redirectUri, state);
-          break;
         default:
           res.status(400).json({ error: `Unknown provider: ${provider}` });
           return;
@@ -395,9 +332,6 @@ export function registerOAuthProviderRoutes(app: Express) {
       switch (provider) {
         case "microsoft":
           userInfo = await exchangeMicrosoftCode(code, redirectUri);
-          break;
-        case "linkedin":
-          userInfo = await exchangeLinkedInCode(code, redirectUri);
           break;
         default:
           res.redirect(302, "/login?error=unknown_provider");
