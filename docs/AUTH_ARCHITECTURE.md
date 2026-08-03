@@ -90,7 +90,7 @@ See `lib/secrets.ts` for the full mapping.
 
 ## Session Flow
 
-1. User authenticates via any provider
+1. User authenticates via Microsoft
 2. Server creates JWT with `openId`, `appId`, `name`, `exp` (1 year)
 3. JWT is set as `app_session_id` cookie (HttpOnly, Secure, SameSite=Lax)
 4. Every API request: `sdk.authenticateRequest(req)` reads the cookie, verifies JWT, looks up user in DB
