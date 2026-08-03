@@ -1,5 +1,5 @@
 /**
- * OAuth Provider Routes - Microsoft Entra ID, Google, LinkedIn
+ * OAuth Provider Routes - Microsoft Entra ID, LinkedIn
  *
  * Replaces the Manus OAuth flow with direct provider OAuth 2.0.
  * Session is stored as a signed JWT cookie.
@@ -175,20 +175,6 @@ function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
   return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params}`;
 }
 
-function getGoogleAuthUrl(redirectUri: string, state: string): string {
-  const clientId = getEnvWithDevDefault("GOOGLE_CLIENT_ID", "856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com");
-  const params = new URLSearchParams({
-    client_id: clientId,
-    response_type: "code",
-    redirect_uri: redirectUri,
-    scope: "openid profile email",
-    state,
-    access_type: "offline",
-    prompt: "select_account",
-  });
-  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-}
-
 function getLinkedInAuthUrl(redirectUri: string, state: string): string {
   const clientId = getEnvWithDevDefault("LINKEDIN_CLIENT_ID", "77lzd3h7nzedke");
   const params = new URLSearchParams({
@@ -256,53 +242,6 @@ async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise
     email: user.mail ?? user.userPrincipalName ?? null,
     name: user.displayName ?? null,
     provider: "microsoft",
-  };
-}
-
-async function exchangeGoogleCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
-  const clientId = getEnvWithDevDefault("GOOGLE_CLIENT_ID", "856406055657-actjkcr6fd9hpvq6b0a7harehqscgj9d.apps.googleusercontent.com");
-  const clientSecret = getRequiredEnv("GOOGLE_CLIENT_SECRET");
-
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      redirect_uri: redirectUri,
-      grant_type: "authorization_code",
-    }),
-  });
-
-  if (!tokenRes.ok) {
-    const err = await tokenRes.text();
-    throw new Error(`Google token exchange failed: ${err}`);
-  }
-
-  const tokens = await tokenRes.json() as { id_token?: string; access_token: string };
-
-  if (tokens.id_token) {
-    const [, payload] = tokens.id_token.split(".");
-    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString());
-    return {
-      openId: `google:${decoded.sub}`,
-      email: decoded.email ?? null,
-      name: decoded.name ?? null,
-      provider: "google",
-    };
-  }
-
-  // Fallback: userinfo endpoint
-  const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-    headers: { Authorization: `Bearer ${tokens.access_token}` },
-  });
-  const user = await userRes.json() as { id: string; email?: string; name?: string };
-  return {
-    openId: `google:${user.id}`,
-    email: user.email ?? null,
-    name: user.name ?? null,
-    provider: "google",
   };
 }
 
@@ -409,9 +348,6 @@ export function registerOAuthProviderRoutes(app: Express) {
         case "microsoft":
           authUrl = getMicrosoftAuthUrl(redirectUri, state);
           break;
-        case "google":
-          authUrl = getGoogleAuthUrl(redirectUri, state);
-          break;
         case "linkedin":
           authUrl = getLinkedInAuthUrl(redirectUri, state);
           break;
@@ -459,9 +395,6 @@ export function registerOAuthProviderRoutes(app: Express) {
       switch (provider) {
         case "microsoft":
           userInfo = await exchangeMicrosoftCode(code, redirectUri);
-          break;
-        case "google":
-          userInfo = await exchangeGoogleCode(code, redirectUri);
           break;
         case "linkedin":
           userInfo = await exchangeLinkedInCode(code, redirectUri);
