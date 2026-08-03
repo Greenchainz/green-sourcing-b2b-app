@@ -1,4 +1,4 @@
-﻿name: Deploy to Azure Container Apps (Legacy — use release-production.yml)
+name: Deploy to Azure Container Apps (Legacy — use release-production.yml)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DEPRECATED TRIGGER: This workflow previously auto-deployed on every push to
@@ -139,7 +139,7 @@ jobs:
           fi
 
       - name: Set up Docker Buildx (layer caching)
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Allow runner IP in ACR firewall
         id: acr_firewall
