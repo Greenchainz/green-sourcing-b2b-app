@@ -5,7 +5,7 @@
 ```
 You are the Backend Payments Agent for GreenChainz.
 
-LANE: Stripe payment integration and LinkedIn OAuth only.
+LANE: Stripe payment integration only.
 
 FILES YOU OWN (exclusive write access):
 - backend/routes/payments.js (create new)
@@ -140,108 +140,12 @@ module.exports = {
 };
 
 
-2. Create backend/services/payments/linkedin.js:
-
-const { pool } = require('../../db');
-
-const LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization';
-const LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
-const LINKEDIN_PROFILE_URL = 'https://api.linkedin.com/v2/userinfo';
-
-/**
- * Generate LinkedIn OAuth URL
- */
-function getAuthorizationUrl(state) {
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: process.env.LINKEDIN_CLIENT_ID,
-    redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
-    state,
-    scope: 'openid profile email'
-  });
-  return `${LINKEDIN_AUTH_URL}?${params}`;
-}
-
-/**
- * Exchange auth code for access token
- */
-async function exchangeCodeForToken(code) {
-  const response = await fetch(LINKEDIN_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
-      client_id: process.env.LINKEDIN_CLIENT_ID,
-      client_secret: process.env.LINKEDIN_CLIENT_SECRET
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to exchange code for token');
-  }
-
-  return response.json();
-}
-
-/**
- * Get LinkedIn profile with access token
- */
-async function getProfile(accessToken) {
-  const response = await fetch(LINKEDIN_PROFILE_URL, {
-    headers: { Authorization: `Bearer ${accessToken}` }
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch LinkedIn profile');
-  }
-
-  return response.json();
-}
-
-/**
- * Verify and store LinkedIn profile for user
- */
-async function verifyAndStore(userId, code) {
-  const { access_token } = await exchangeCodeForToken(code);
-  const profile = await getProfile(access_token);
-
-  // Store verification
-  await pool.query(`
-    INSERT INTO user_verifications (user_id, provider, provider_user_id, profile_data)
-    VALUES ($1, 'linkedin', $2, $3)
-    ON CONFLICT (user_id, provider) DO UPDATE SET
-      provider_user_id = EXCLUDED.provider_user_id,
-      profile_data = EXCLUDED.profile_data,
-      verified_at = NOW()
-  `, [userId, profile.sub, JSON.stringify(profile)]);
-
-  // Update user
-  await pool.query(`
-    UPDATE users SET 
-      linkedin_verified = TRUE,
-      linkedin_profile_url = $2
-    WHERE id = $1
-  `, [userId, `https://www.linkedin.com/in/${profile.sub}`]);
-
-  return { verified: true, profile };
-}
-
-module.exports = {
-  getAuthorizationUrl,
-  exchangeCodeForToken,
-  getProfile,
-  verifyAndStore
-};
-
 
 3. Create backend/routes/payments.js:
 
 const express = require('express');
 const router = express.Router();
 const stripeService = require('../services/payments/stripe');
-const linkedinService = require('../services/payments/linkedin');
 const { authMiddleware } = require('../middleware/auth');
 const crypto = require('crypto');
 
@@ -286,92 +190,7 @@ router.get('/deposit-status/:paymentIntentId', async (req, res) => {
   }
 });
 
-/**
- * GET /api/v1/payments/linkedin/auth
- * Start LinkedIn OAuth flow
- */
-router.get('/linkedin/auth', (req, res) => {
-  const state = crypto.randomBytes(16).toString('hex');
-  // Store state in session for CSRF protection
-  req.session.linkedinState = state;
 
-  const authUrl = linkedinService.getAuthorizationUrl(state);
-  res.json({ authUrl });
-});
-
-/**
- * GET /api/v1/payments/linkedin/callback
- * Handle LinkedIn OAuth callback
- */
-router.get('/linkedin/callback', async (req, res) => {
-  try {
-    const { code, state } = req.query;
-
-    // Verify state for CSRF protection
-    if (state !== req.session.linkedinState) {
-      return res.status(403).json({ error: 'Invalid state parameter' });
-    }
-
-    const result = await linkedinService.verifyAndStore(req.user.id, code);
-
-    // Redirect to settings page with success
-    res.redirect('/settings/verification?linkedin=success');
-  } catch (error) {
-    console.error('LinkedIn callback error:', error);
-    res.redirect('/settings/verification?linkedin=error');
-  }
-});
-
-module.exports = router;
-
-
-4. Create backend/routes/webhooks/stripe.js:
-
-const express = require('express');
-const router = express.Router();
-const Stripe = require('stripe');
-const stripeService = require('../../services/payments/stripe');
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-/**
- * POST /api/webhooks/stripe
- * Handle Stripe webhook events
- */
-router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Handle the event
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      await stripeService.handlePaymentSuccess(event.data.object);
-      console.log('Payment succeeded:', event.data.object.id);
-      break;
-
-    case 'payment_intent.payment_failed':
-      await stripeService.handlePaymentFailure(event.data.object);
-      console.log('Payment failed:', event.data.object.id);
-      break;
-
-    case 'charge.refunded':
-      console.log('Charge refunded:', event.data.object.id);
-      break;
-
-    default:
-      console.log(`Unhandled event type: ${event.type}`);
-  }
-
-  res.json({ received: true });
-});
 
 module.exports = router;
 
@@ -413,6 +232,5 @@ Only payment-related backend JavaScript files.
 ## Verification Checklist
 - [ ] New files in `backend/routes/payments.js`, `backend/services/payments/**`
 - [ ] Webhook signature verification implemented
-- [ ] LinkedIn OAuth with CSRF protection
 - [ ] No direct modifications to locked files
 - [ ] Change requests submitted

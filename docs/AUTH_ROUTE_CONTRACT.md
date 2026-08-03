@@ -13,7 +13,7 @@ GreenChainz uses a **custom, self-managed authentication model**.
 | WE DO NOT USE | WE DO USE |
 |---|---|
 | Azure Easy Auth / App Service Auth | Custom OAuth2 via `oauth-providers.ts` |
-| `/.auth/login/aad`, `/.auth/callback` | `/api/auth/:provider` -> OIDC -> cookie |
+| `/.auth/login/aad`, `/.auth/callback` | `/api/auth/microsoft` -> OIDC -> cookie |
 | localStorage tokens | `app_session_id` JWT cookie (HttpOnly, Secure, SameSite=Lax) |
 | User JWTs for service-to-service | Managed Identity or API keys |
 | Client secrets in frontend/mobile/plugin | PKCE / device flow |
@@ -40,7 +40,7 @@ GreenChainz uses a **custom, self-managed authentication model**.
 | Route | Method | Auth Required | Who Calls It | Notes |
 |---|---|---|---|---|
 | `/api/auth/microsoft` | GET | None | Browser (redirect) | Initiates Microsoft OAuth2 flow |
-| `/api/auth/callback/:provider` | GET | None | OAuth provider | Receives code, exchanges token, sets cookie, redirects |
+| `/api/auth/callback/microsoft` | GET | None | OAuth provider | Receives code, exchanges token, sets cookie, redirects |
 | `/api/auth/email/signup` | POST | None | Browser (fetch) | Creates account + issues session cookie |
 | `/api/auth/email/login` | POST | None | Browser (fetch) | Validates password + issues session cookie |
 | `/api/auth/me` | GET | None | Browser (fetch) | Returns `{ authenticated, user }`; anonymous callers get `200` with `user: null` |
