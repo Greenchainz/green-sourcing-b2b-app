@@ -1,6 +1,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import { parse as parseCookieHeader } from "cookie";
+import crypto from "crypto";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
@@ -10,6 +11,16 @@ import { ENV } from "./env";
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
+
+/** In-memory revocation set: jti → expiry epoch (ms). Entries are pruned lazily. */
+const revokedJtis = new Map<string, number>();
+
+function pruneRevokedJtis(): void {
+  const now = Date.now();
+  for (const [jti, expiresAt] of revokedJtis) {
+    if (expiresAt < now) revokedJtis.delete(jti);
+  }
+}
 
 export type SessionPayload = {
   openId: string;
@@ -100,6 +111,7 @@ class SDKServer {
       name: payload.name,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setJti(crypto.randomUUID())
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
   }
@@ -117,7 +129,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name } = payload as Record<string, unknown>;
+      const { openId, appId, name, jti } = payload as Record<string, unknown>;
 
       // Only openId is required - appId (VITE_APP_ID) is a build-time var that
       // is empty at runtime in Container Apps, so we cannot require it here.
@@ -126,10 +138,45 @@ class SDKServer {
         return null;
       }
 
+      // Reject revoked tokens (e.g. after logout) so a stale host-only cookie
+      // on another production host cannot authenticate requests.
+      if (typeof jti === "string" && revokedJtis.has(jti)) {
+        console.warn("[Auth] Session token has been revoked");
+        return null;
+      }
+
       return { openId, appId: typeof appId === "string" ? appId : "", name: typeof name === "string" ? name : "" };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
       return null;
+    }
+  }
+
+  /**
+   * Revoke the session token present in the current request.
+   * After this call, verifySession will reject that token even if its host-only
+   * cookie copy survives on another production host (migration period safety).
+   */
+  async revokeRequestSession(req: Request): Promise<void> {
+    const cookies = this.parseCookies(req.headers.cookie);
+    const cookieValue = cookies.get(COOKIE_NAME);
+    if (!cookieValue) return;
+
+    try {
+      const secretKey = this.getSessionSecret();
+      const { payload } = await jwtVerify(cookieValue, secretKey, {
+        algorithms: ["HS256"],
+      });
+      const { jti, exp } = payload as Record<string, unknown>;
+      if (typeof jti !== "string" || !jti) return;
+
+      pruneRevokedJtis();
+      // Keep the revocation entry until the token's natural expiry so that
+      // the set doesn't grow unboundedly.
+      const expiresAt = typeof exp === "number" ? exp * 1000 : Date.now() + ONE_YEAR_MS;
+      revokedJtis.set(jti, expiresAt);
+    } catch {
+      // Invalid or already-expired token — nothing to revoke.
     }
   }
 

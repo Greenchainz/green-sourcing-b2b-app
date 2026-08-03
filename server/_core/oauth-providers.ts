@@ -14,7 +14,7 @@
 import crypto from "crypto";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
-import { getSessionCookieOptions } from "./cookies";
+import { getSessionCookieOptions, hostOnlyCookieOptions, issueSessionCookies } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
 import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
@@ -27,26 +27,14 @@ function buildRedirectUri(_req: Request, provider: string): string {
   return `${baseUrl}/api/auth/callback/${provider}`;
 }
 
-function hostOnlyCookieOptions(req: Request): {
-  httpOnly: true;
-  path: "/";
-  sameSite: "lax";
-  secure: boolean;
-} {
-  const scopedOptions = getSessionCookieOptions(req);
-  return {
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-    secure: scopedOptions.secure,
-  };
-}
-
-function clearSessionCookies(req: Request, res: Response): void {
+async function clearSessionCookies(req: Request, res: Response): Promise<void> {
   const scopedOptions = getSessionCookieOptions(req);
   res.clearCookie("app_session_id", { ...scopedOptions, maxAge: -1 });
   // Clear legacy host-only cookies to avoid duplicate-name shadowing.
   res.clearCookie("app_session_id", { ...hostOnlyCookieOptions(req), maxAge: -1 });
+  // Revoke the JWT server-side so a stale host-only cookie on the other
+  // production host cannot authenticate requests after logout.
+  await sdk.revokeRequestSession(req);
 }
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
@@ -394,13 +382,13 @@ export function registerOAuthProviderRoutes(app: Express) {
   });
 
   // Logout route must register before /:provider wildcard
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    clearSessionCookies(req, res);
+  app.post("/api/auth/logout", async (req: Request, res: Response) => {
+    await clearSessionCookies(req, res);
     res.json({ success: true });
   });
 
-  app.get("/api/auth/logout", (req: Request, res: Response) => {
-    clearSessionCookies(req, res);
+  app.get("/api/auth/logout", async (req: Request, res: Response) => {
+    await clearSessionCookies(req, res);
     res.redirect(302, "/");
   });
 
@@ -532,14 +520,9 @@ export function registerOAuthProviderRoutes(app: Express) {
         expiresInMs: ONE_YEAR_MS,
       });
 
-      const cookieOptions = getSessionCookieOptions(req);
-      // Keep host-only + domain cookies in sync during migration to avoid
-      // stale host-only values shadowing the domain cookie.
-      res.cookie("app_session_id", sessionToken, {
-        ...hostOnlyCookieOptions(req),
-        maxAge: ONE_YEAR_MS,
-      });
-      res.cookie("app_session_id", sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      // Use the shared helper to set both domain-scoped and host-only cookies
+      // so all auth flows stay in sync during the migration period.
+      issueSessionCookies(req, res, "app_session_id", sessionToken, ONE_YEAR_MS);
 
       // For external allowlisted origins (e.g. the Forma extension auth-callback page),
       // issue a short-lived single-use code instead of embedding the session JWT in the

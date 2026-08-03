@@ -6,7 +6,7 @@
  * restrictions). SameSite=Lax works for same-origin API calls and
  * OAuth redirect callbacks. See docs/AUTH_ARCHITECTURE.md.
  */
-import type { CookieOptions, Request } from "express";
+import type { CookieOptions, Request, Response } from "express";
 
 function getRequestHost(req: Request): string {
   const forwardedHostHeader = req.headers["x-forwarded-host"];
@@ -63,4 +63,42 @@ export function getSessionCookieOptions(
     sameSite: "lax",
     secure,
   };
+}
+
+/**
+ * Returns cookie options for a host-only (no domain) session cookie.
+ * Used alongside the domain-scoped cookie during the migration period to
+ * prevent stale host-only values from shadowing the shared domain cookie.
+ */
+export function hostOnlyCookieOptions(req: Request): {
+  httpOnly: true;
+  path: "/";
+  sameSite: "lax";
+  secure: boolean;
+} {
+  const scopedOptions = getSessionCookieOptions(req);
+  return {
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    secure: scopedOptions.secure ?? false,
+  };
+}
+
+/**
+ * Issues both a domain-scoped and a host-only session cookie in a single call.
+ * Call this from every auth flow (OAuth, email) so both cookie types stay in
+ * sync during the migration period.
+ */
+export function issueSessionCookies(
+  req: Request,
+  res: Response,
+  cookieName: string,
+  token: string,
+  maxAge: number
+): void {
+  // Write host-only cookie first so the domain cookie wins on same-host reads
+  // (last Set-Cookie header with the same name takes precedence in most browsers).
+  res.cookie(cookieName, token, { ...hostOnlyCookieOptions(req), maxAge });
+  res.cookie(cookieName, token, { ...getSessionCookieOptions(req), maxAge });
 }
