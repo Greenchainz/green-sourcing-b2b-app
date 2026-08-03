@@ -21,6 +21,8 @@ interface IncomingCallData {
   timestamp: number;
 }
 
+export type { IncomingCallData };
+
 interface IncomingCallNotificationProps {
   onAccept: (callData: IncomingCallData) => void;
 }
@@ -49,12 +51,10 @@ export function IncomingCallNotification({ onAccept }: IncomingCallNotificationP
     [declineCallMutation, incomingCall?.callId],
   );
 
-  // Listen for incoming call events via WebSocket/polling
-  // TODO: Replace with WebSocket subscription when available
+  // Incoming call events arrive over the app-level Web PubSub WebSocket
+  // (useWebPubSub in App.tsx), which dispatches "incoming-video-call"
+  // CustomEvents on window. This component just renders the dialog.
   useEffect(() => {
-    // This is a placeholder - in production, this would listen to WebSocket events
-    // For now, we'll rely on the backend broadcasting via Web PubSub
-
     const handleIncomingCall = (event: CustomEvent<IncomingCallData>) => {
       const callData = event.detail;
       setIncomingCall(callData);

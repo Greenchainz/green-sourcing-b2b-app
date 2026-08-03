@@ -7,9 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ChatWidgetProvider } from "./contexts/ChatWidgetContext";
 // CookieConsentBanner removed — CookieYes (index.html) handles consent
-// VIDEO CALLING — cut for launch, restore when ACS is implemented
-// import { IncomingCallNotification } from "./components/messaging/IncomingCallNotification";
-// import { WebRTCVideoCall } from "./components/messaging/WebRTCVideoCall";
+import { GlobalIncomingCall } from "./components/messaging/GlobalIncomingCall";
 import { SupplierLayout } from "./components/SupplierLayout";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useWebPubSub } from "./hooks/useWebPubSub";
@@ -542,8 +540,8 @@ function AppInner() {
             <IntercomWidget />
           </Suspense>
         ) : null}
-        {/* <IncomingCallNotification onAccept={handleAcceptCall} /> */}
-        {/* <WebRTCVideoCall ... /> — restored when ACS signaling is complete */}
+        {/* Incoming video call dialog — global, so calls surface on any page */}
+        {user ? <GlobalIncomingCall /> : null}
         {showDeferredWidgets && user ? (
           <Suspense fallback={null}>
             <ChatWidget />

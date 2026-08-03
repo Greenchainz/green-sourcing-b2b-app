@@ -2,8 +2,6 @@ import { useState } from "react";
 import { ConversationList } from "./ConversationList";
 import { MessageThread } from "./MessageThread";
 import { MessageInput } from "./MessageInput";
-// VIDEO CALLING — cut for launch
-// import { VideoCallButton } from "./VideoCallButton";
 import { MessageCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -19,10 +17,6 @@ function ConversationHeader({ conversationId }: { conversationId: number }) {
         <h3 className="font-semibold">{conversation.otherPartyName}</h3>
         <p className="text-sm text-muted-foreground">{conversation.rfqTitle || "Direct Message"}</p>
       </div>
-      {/* VIDEO CALLING — cut for launch */}
-      {/* {conversation.otherPartyId && conversation.otherPartyName && (
-        <VideoCallButton ... />
-      )} */}
     </div>
   );
 }
