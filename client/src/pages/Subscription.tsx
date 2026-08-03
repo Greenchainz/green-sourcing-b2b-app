@@ -2,12 +2,31 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, X, Zap, MessageCircle, Video } from "lucide-react";
+import { Check, X, Zap, MessageCircle, Video, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useState } from "react";
 
 export default function Subscription() {
+  const [requestedTier, setRequestedTier] = useState<"standard" | "premium" | null>(null);
   const { data: subscription, isLoading: subLoading, error: subError } = trpc.microsoftSubscription.getMySubscription.useQuery(undefined, { retry: false });
   const { data: tier, isLoading: tierLoading, error: tierError } = trpc.microsoftSubscription.getMyTier.useQuery(undefined, { retry: false });
   const { data: usageStats } = trpc.messaging.getUserUsageStats.useQuery(undefined, { retry: false });
+
+  const requestUpgrade = trpc.microsoftSubscription.requestUpgrade.useMutation({
+    onSuccess: (result, variables) => {
+      if (result.success) {
+        setRequestedTier(variables.tier);
+        toast.success("Upgrade request sent!", {
+          description: "We'll email you an invoice with payment options within 1 business day.",
+        });
+      } else {
+        toast.error("Could not send your upgrade request. Please try again or email founder@greenchainz.com.");
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message || "Could not send your upgrade request.");
+    },
+  });
 
   if (subLoading || tierLoading) {
     return (
@@ -217,16 +236,19 @@ export default function Subscription() {
                   ))}
                 </ul>
 
-                {currentTier !== tierKey && (
+                {currentTier !== tierKey && tierKey !== "free" && (
                   <Button
                     className="w-full"
                     variant={tierKey === "premium" ? "default" : "outline"}
+                    disabled={requestUpgrade.isPending || requestedTier === tierKey}
                     onClick={() => {
-                      // TODO: Implement upgrade flow via Microsoft AppSource
-                      window.open("https://appsource.microsoft.com/en-us/product/web-apps/greenchainz", "_blank");
+                      requestUpgrade.mutate({ tier: tierKey as "standard" | "premium" });
                     }}
                   >
-                    {tierKey === "free" ? "Current Plan" : "Upgrade"}
+                    {requestUpgrade.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    {requestedTier === tierKey ? "Request Sent ✓" : "Upgrade"}
                   </Button>
                 )}
               </CardContent>
@@ -240,21 +262,27 @@ export default function Subscription() {
         <CardHeader>
           <CardTitle>Billing Information</CardTitle>
           <CardDescription>
-            All billing is handled through Microsoft AppSource
+            Invoiced billing — no credit card required to get started
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Your subscription is managed through Microsoft AppSource. To update payment methods,
-            view invoices, or cancel your subscription, please visit your Microsoft account.
+            When you request an upgrade, our team emails you an invoice with payment
+            options (bank transfer, card, or Microsoft AppSource). Your plan is
+            activated as soon as payment is confirmed. For billing questions, invoices,
+            or cancellations, email{" "}
+            <a href="mailto:founder@greenchainz.com" className="underline">
+              founder@greenchainz.com
+            </a>
+            .
           </p>
           <Button
             variant="outline"
             onClick={() => {
-              window.open("https://account.microsoft.com/services", "_blank");
+              window.location.href = "mailto:founder@greenchainz.com?subject=GreenChainz%20Billing";
             }}
           >
-            Manage Billing
+            Contact Billing
           </Button>
         </CardContent>
       </Card>

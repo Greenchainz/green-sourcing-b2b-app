@@ -392,3 +392,93 @@ export async function updateUserTier(
 
   return updated;
 }
+
+// ─── White-glove upgrade requests ───────────────────────────────────────────
+
+const TIER_PRICING: Record<Exclude<SubscriptionTier, "free">, string> = {
+  standard: "$99/month",
+  premium: "$299/month",
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * White-glove tier upgrade request.
+ *
+ * Billing path for beta: instead of requiring AppSource self-serve checkout,
+ * a signed-in user requests an upgrade, the founder receives an email with
+ * everything needed to invoice them (wire transfer / card link / AppSource),
+ * and once payment lands an admin activates the tier via
+ * `microsoftSubscription.updateUserTier`.
+ */
+export async function requestTierUpgrade(params: {
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  requestedTier: Exclude<SubscriptionTier, "free">;
+  note?: string;
+}): Promise<{ success: boolean }> {
+  const { userId, userName, userEmail, requestedTier, note } = params;
+
+  const currentTier = await getUserTier(userId);
+  const { sendEmail, FOUNDER_EMAIL } = await import("./email-service");
+
+  const safeName = escapeHtml(userName ?? "Unknown");
+  const safeEmail = escapeHtml(userEmail ?? "no email on file");
+  const safeNote = note ? escapeHtml(note) : null;
+  const price = TIER_PRICING[requestedTier];
+
+  const founderOk = await sendEmail({
+    to: FOUNDER_EMAIL,
+    subject: `💰 Upgrade request: ${safeName} → ${requestedTier} (${price})`,
+    html: `
+      <h2>New subscription upgrade request</h2>
+      <table cellpadding="4">
+        <tr><td><strong>User ID</strong></td><td>${userId}</td></tr>
+        <tr><td><strong>Name</strong></td><td>${safeName}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${safeEmail}</td></tr>
+        <tr><td><strong>Current tier</strong></td><td>${currentTier}</td></tr>
+        <tr><td><strong>Requested tier</strong></td><td>${requestedTier} (${price})</td></tr>
+        ${safeNote ? `<tr><td><strong>Note</strong></td><td>${safeNote}</td></tr>` : ""}
+      </table>
+      <p>Next steps:</p>
+      <ol>
+        <li>Reply to the user with an invoice or payment link (wire, card, or AppSource).</li>
+        <li>Once payment lands, activate the tier in the admin panel
+            (<code>microsoftSubscription.updateUserTier</code> — user ID ${userId}, tier "${requestedTier}").</li>
+      </ol>
+    `,
+  });
+
+  if (!founderOk) {
+    console.error(
+      `[Upgrade Request] Failed to notify founder — user ${userId} → ${requestedTier}`
+    );
+    return { success: false };
+  }
+
+  if (userEmail) {
+    // Confirmation to the user — fire-and-forget; the request itself succeeded.
+    void sendEmail({
+      to: userEmail,
+      subject: `Your GreenChainz ${requestedTier} upgrade request`,
+      html: `
+        <h2>Thanks for upgrading to ${requestedTier.charAt(0).toUpperCase() + requestedTier.slice(1)}!</h2>
+        <p>We received your upgrade request (${price}). Our team will email you an
+        invoice with payment options within 1 business day. Your new plan is
+        activated as soon as payment is confirmed.</p>
+        <p>Questions? Just reply to this email.</p>
+        <p>— The GreenChainz Team</p>
+      `,
+    }).catch((err: unknown) => console.error("[Upgrade Request] Confirmation email failed:", err));
+  }
+
+  return { success: true };
+}

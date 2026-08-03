@@ -44,14 +44,9 @@ const validatePayload = (input: NotificationPayload): NotificationPayload => {
 };
 
 /**
- * Owner notification stub — Manus notification service removed.
- *
- * TODO: Wire this to a real Azure channel. Options:
- *   - Email: use outreach-email-service.ts (Resend) to send to founder@greenchainz.com
- *   - Push: Azure Communication Services
- *
- * For now, logs the notification to console so the admin procedure
- * doesn't throw at runtime while the replacement is being built.
+ * Owner notification — emails the founder via email-service
+ * (Resend primary, Zeptomail SMTP fallback). Returns false instead of
+ * throwing so admin procedures degrade gracefully if delivery fails.
  */
 export async function notifyOwner(
   payload: NotificationPayload

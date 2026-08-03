@@ -32,7 +32,6 @@ import { videoCallingRouter } from './routers/video-calling-router';
 import { microsoftSubscriptionRouter } from './routers/microsoft-subscription-router';
 import { notificationsRouter } from './routers/notifications-router';
 import { authRouter, rfqInternalRouter, agentRouter, leadsRouter, materialSwapsRouter } from './routers/misc-router';
-import { autodeskRouter } from './routers/autodesk-router';
 import { featuredRouter } from './featured-router';
 import { manufacturerSearchRouter } from './manufacturer-search-router';
 import { founderVideoRouter } from './routers/founder-video';
@@ -89,7 +88,6 @@ export const appRouter = router({
   notifications: notificationsRouter,
   concierge: conciergeRouter,
   suggestions: suggestionsRouter,
-  autodesk: autodeskRouter,
   featured: featuredRouter,
   manufacturerSearch: manufacturerSearchRouter,
   founderVideo: founderVideoRouter,
