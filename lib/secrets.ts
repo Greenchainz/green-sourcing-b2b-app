@@ -65,9 +65,6 @@ export async function loadSecrets(): Promise<void> {
       const secretMappings: Record<string, string> = {
         // JWT session signing
         "jwt-secret": "JWT_SECRET",
-        // better-auth
-        "AUTH-SECRET": "AUTH_SECRET",
-        "BETTER-AUTH-URL": "BETTER_AUTH_URL",
         // Microsoft Entra ID (user login + Marketplace API)
         // "microsoft-client-secret" is the canonical production vault key for the
         // Azure AD / Entra ID client secret (App Registration client secret).
@@ -78,6 +75,8 @@ export async function loadSecrets(): Promise<void> {
         // NOTE: AZURE_AD_CLIENT_ID and AZURE_AD_TENANT_ID are NOT secrets —
         // they are public OAuth identifiers. Set them as plain Container App env vars.
         "microsoft-client-secret": "AZURE_AD_CLIENT_SECRET",
+        // Google OAuth
+        "google-client-secret": "GOOGLE_CLIENT_SECRET",
         // LinkedIn OAuth
         "LINKEDIN-CLIENTID": "LINKEDIN_CLIENT_ID",
         "LINKEDIN-SECRET": "LINKEDIN_CLIENT_SECRET",
