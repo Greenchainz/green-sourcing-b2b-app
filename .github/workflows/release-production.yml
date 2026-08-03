@@ -211,11 +211,17 @@ jobs:
             echo "kv-public-access-toggled=false" >> $GITHUB_OUTPUT
           fi
           az keyvault network-rule add --name "${{ env.KEY_VAULT }}" --ip-address "$RUNNER_IP" --output none
-          # Bounded retry for KV firewall propagation
-          for i in $(seq 1 12); do
-            az keyvault secret list --vault-name "${{ env.KEY_VAULT }}" -o none 2>/dev/null && break
-            echo "Waiting for KV firewall... ($i/12)"
-            sleep 5
+          # Bounded retry for KV firewall propagation — probe secret show, not secret list
+          for i in $(seq 1 18); do
+            if az keyvault secret show \
+                --vault-name "${{ env.KEY_VAULT }}" \
+                --name "Database-URL" \
+                --query value -o tsv > /dev/null 2>&1; then
+              echo "✅ Key Vault firewall propagated (attempt $i)"
+              break
+            fi
+            echo "Waiting for KV firewall propagation... ($i/18)"
+            sleep 10
           done
 
       - name: Read DATABASE_URL from Key Vault
@@ -313,9 +319,16 @@ jobs:
             echo "kv-toggled=false" >> $GITHUB_OUTPUT
           fi
           az keyvault network-rule add --name "${{ env.KEY_VAULT }}" --ip-address "$RUNNER_IP" --output none
-          for i in $(seq 1 12); do
-            az keyvault secret list --vault-name "${{ env.KEY_VAULT }}" -o none 2>/dev/null && break
-            sleep 5
+          for i in $(seq 1 18); do
+            if az keyvault secret show \
+                --vault-name "${{ env.KEY_VAULT }}" \
+                --name "Database-URL" \
+                --query value -o tsv > /dev/null 2>&1; then
+              echo "✅ Key Vault firewall propagated (attempt $i)"
+              break
+            fi
+            echo "Waiting for KV firewall propagation... ($i/18)"
+            sleep 10
           done
 
       - name: Pull production secrets from Key Vault
