@@ -33,7 +33,7 @@ User clicks "Continue with Microsoft"
   → 302 redirect to /rfq-dashboard (or wherever they came from)
 ```
 
-Same flow for Google (`/api/auth/google`) and LinkedIn (`/api/auth/linkedin`).
+This flow is Microsoft-only (`/api/auth/microsoft`).
 
 Email/password login uses `/api/auth/email/login` and `/api/auth/email/signup`.
 
@@ -43,7 +43,7 @@ All paths issue the same `app_session_id` JWT cookie. One auth system.
 
 | File | Purpose |
 |------|---------|
-| `server/_core/oauth-providers.ts` | Microsoft, Google, LinkedIn OAuth routes |
+| `server/_core/oauth-providers.ts` | Microsoft OAuth routes |
 | `server/_core/email-auth.ts` | Email/password signup and login |
 | `server/_core/cookies.ts` | Session cookie options (SameSite, Secure, etc.) |
 | `server/_core/sdk.ts` | `createSessionToken()` and `authenticateRequest()` |
@@ -78,17 +78,15 @@ This codebase’s canonical auth path is `server/_core/oauth-providers.ts` + `ap
 
 ### 5. Secrets come from Azure Key Vault via Managed Identity
 `lib/secrets.ts` loads secrets at startup using the user-assigned managed
-identity (`ec248abf-f6ce-4d7c-8888-740317709f1b`). OAuth client secrets
-(Microsoft, Google, LinkedIn) are stored in Key Vault, not in env vars.
+identity (`ec248abf-f6ce-4d7c-8888-740317709f1b`). The Microsoft OAuth client
+secret is stored in Key Vault, not in env vars.
 See `lib/secrets.ts` for the full mapping.
 
 ## OAuth Provider Credentials
 
 | Provider | Client ID env var | Client Secret env var | Key Vault secret name |
 |----------|------------------|-----------------------|----------------------|
-| Microsoft | `AZURE_AD_CLIENT_ID` | `AZURE_AD_CLIENT_SECRET` | `AZURE-AD-CLIENT-SECRET` |
-| Google | `GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_SECRET` | `GOOGLE-SECRET` |
-| LinkedIn | `LINKEDIN_CLIENT_ID` | `LINKEDIN_CLIENT_SECRET` | `LINKEDIN-SECRET` |
+| Microsoft | `AZURE_AD_CLIENT_ID` | `AZURE_AD_CLIENT_SECRET` | `microsoft-client-secret` |
 
 ## Session Flow
 

@@ -17,7 +17,7 @@ import * as db from "../db";
 import { getSessionCookieOptions, hostOnlyCookieOptions, issueSessionCookies } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
-import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
+import { getRequiredEnv } from "./oauth-env";
 
 // Helpers
 

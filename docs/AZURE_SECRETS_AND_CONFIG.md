@@ -97,15 +97,11 @@ These **MUST** be stored in Azure Key Vault. Production will **refuse to start**
 | `AUTODESK_CLIENT_SECRET` | `autodesk-secret` | Autodesk API secret |
 | `FSC_API_KEY` | `fsc-api-key` | FSC database API key |
 
-#### OAuth Provider Secrets (if using social login)
+#### OAuth Provider Secrets (Microsoft auth)
 
 | Variable | Key Vault Secret Name |
 |----------|----------------------|
-| `GOOGLE_CLIENT_SECRET` | `google-client-secret` |
-| `FACEBOOK_APP_SECRET` | `facebook-app-secret` |
-| `LINKEDIN_CLIENT_SECRET` | `linkedin-client-secret` |
-| `GITHUB_CLIENT_SECRET` | `github-client-secret` |
-| `MICROSOFT_CLIENT_SECRET` | `microsoft-client-secret` |
+| `AZURE_AD_CLIENT_SECRET` | `microsoft-client-secret` |
 
 ---
 
@@ -200,10 +196,6 @@ Safe to include in configuration files. These are feature flags and tuning param
 | `AUTODESK-CLIENT-SECRET` | `AUTODESK_CLIENT_SECRET` | `lib/secrets.ts` |
 | `INTERCOM-SECRET` | `INTERCOM_SECRET` | `lib/secrets.ts` |
 | `microsoft-webhook-secret` | `MICROSOFT_WEBHOOK_SECRET` | `lib/secrets.ts` |
-| `AUTH-SECRET` | `AUTH_SECRET` | `lib/secrets.ts` |
-| `BETTER-AUTH-URL` | `BETTER_AUTH_URL` | `lib/secrets.ts` |
-| `LINKEDIN-CLIENTID` | `LINKEDIN_CLIENT_ID` | `lib/secrets.ts` |
-| `LINKEDIN-SECRET` | `LINKEDIN_CLIENT_SECRET` | `lib/secrets.ts` |
 | `ZEPTOMAIL-SMTP-USER` | `ZEPTOMAIL_SMTP_USER` | `lib/secrets.ts` |
 | `ZEPTOMAIL-SMTP-PASSWORD` | `ZEPTOMAIL_SMTP_PASSWORD` | `lib/secrets.ts` |
 | `FRONTEND-URL` | `FRONTEND_URL` | `lib/secrets.ts` |

@@ -40,8 +40,6 @@ GreenChainz uses a **custom, self-managed authentication model**.
 | Route | Method | Auth Required | Who Calls It | Notes |
 |---|---|---|---|---|
 | `/api/auth/microsoft` | GET | None | Browser (redirect) | Initiates Microsoft OAuth2 flow |
-| `/api/auth/google` | GET | None | Browser (redirect) | Initiates Google OAuth2 flow |
-| `/api/auth/linkedin` | GET | None | Browser (redirect) | Initiates LinkedIn OAuth2 flow |
 | `/api/auth/callback/:provider` | GET | None | OAuth provider | Receives code, exchanges token, sets cookie, redirects |
 | `/api/auth/email/signup` | POST | None | Browser (fetch) | Creates account + issues session cookie |
 | `/api/auth/email/login` | POST | None | Browser (fetch) | Validates password + issues session cookie |
