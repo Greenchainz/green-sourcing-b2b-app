@@ -75,6 +75,11 @@ export async function loadSecrets(): Promise<void> {
         // NOTE: AZURE_AD_CLIENT_ID and AZURE_AD_TENANT_ID are NOT secrets —
         // they are public OAuth identifiers. Set them as plain Container App env vars.
         "microsoft-client-secret": "AZURE_AD_CLIENT_SECRET",
+        // Google OAuth
+        "google-client-secret": "GOOGLE_CLIENT_SECRET",
+        // LinkedIn OAuth
+        "LINKEDIN-CLIENTID": "LINKEDIN_CLIENT_ID",
+        "LINKEDIN-SECRET": "LINKEDIN_CLIENT_SECRET",
         // Database
         "DATABASE-URL": "DATABASE_URL",
         // Email (Zeptomail SMTP — transactional, dedicated IPs)

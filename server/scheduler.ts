@@ -240,15 +240,10 @@ const UPDATE_CONCURRENCY = 5;
   setTimeout(runHitsDigest, 3 * 60 * 1000);
   setInterval(runHitsDigest, 7 * 24 * 60 * 60 * 1000);
 
-  // ── EPD Sync Scheduler (Autodesk SDA) — DISABLED (SDA shut down April 2026) ─
-  // SDA was decommissioned. The stub in autodesk-sda-service.ts returns empty
-  // arrays / throws. Re-enable if a replacement EPD source is wired in.
-  // To re-enable: uncomment the block below and set an appropriate interval.
-  //
-  // setTimeout(async () => {
-  //   const { startEpdSyncScheduler } = await import('./epd-sync-scheduler');
-  //   startEpdSyncScheduler(24 * 60 * 60 * 1000); // daily, not hourly
-  // }, 3 * 60 * 1000);
+  // ── EPD data ────────────────────────────────────────────────────────────
+  // Autodesk SDA was decommissioned April 2026 and its integration removed.
+  // EPD data comes from EC3 (Building Transparency) — see seed-materials.ts
+  // and the /api/admin/seed-materials endpoint above.
 
   // ── Supplier Scraper — first run: 5min, then weekly ───────────────────────
   setTimeout(async () => {

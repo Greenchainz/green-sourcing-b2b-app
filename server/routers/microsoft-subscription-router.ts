@@ -19,6 +19,26 @@ export const microsoftSubscriptionRouter = router({
       return await userHasAccess(ctx.user.id, input.requiredTier);
     }),
 
+  // White-glove upgrade: emails the founder to invoice the user (wire, card,
+  // or AppSource); an admin then activates the tier via updateUserTier.
+  requestUpgrade: protectedProcedure
+    .input(
+      z.object({
+        tier: z.enum(['standard', 'premium']),
+        note: z.string().max(2000).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { requestTierUpgrade } = await import('../microsoft-subscription-service');
+      return await requestTierUpgrade({
+        userId: ctx.user.id,
+        userName: ctx.user.name ?? null,
+        userEmail: ctx.user.email ?? null,
+        requestedTier: input.tier,
+        note: input.note,
+      });
+    }),
+
   getAllSubscriptions: adminProcedure.query(async () => {
     const { getAllSubscriptions } = await import('../microsoft-subscription-service');
     return await getAllSubscriptions();

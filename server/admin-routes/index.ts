@@ -622,21 +622,6 @@ export function registerAdminRoutes(
     }
   });
 
-  // Seed materials from Autodesk SDA
-  app.post('/api/admin/seed-materials-autodesk', adminRateLimit, async (req, res) => {
-    try {
-      const user = await requireEasyAuthAdminUser(req, res);
-      if (!user) return;
-      const { fetchSDAMaterialsForSeed } = await import('../autodesk-sda-service');
-      const results = await fetchSDAMaterialsForSeed();
-      const totalFetched = results.reduce((sum, r) => sum + r.fetched, 0);
-      res.json({ success: true, totalFetched, categories: results.map(r => ({ category: r.category, fetched: r.fetched })) });
-    } catch (err) {
-      console.error('[admin] Autodesk SDA seed error:', err);
-      res.status(500).json(createErrorResponse('Autodesk seed failed', getRequestId(req), err instanceof Error ? err.message : String(err)));
-    }
-  });
-
   // Import materials from an uploaded EPD PDF via GPT-4o extraction
   app.post(
     '/api/admin/import-pdf-materials',

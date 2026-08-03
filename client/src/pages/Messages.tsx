@@ -14,7 +14,9 @@
  *
  * Video calling:
  *   - App-level useWebPubSub() establishes WS for real-time call notifications
- *   - IncomingCallNotification handles callee-side incoming call dialog
+ *   - App-level GlobalIncomingCall shows the callee-side incoming call dialog
+ *     on any page; on accept it navigates here with call params in the query
+ *     string, which this page consumes to open VideoCallModal as callee
  *   - VideoCallModal handles WebRTC peer connection + video streams
  *   - Call initiation button lives in ThreadPanel header
  */
@@ -30,7 +32,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { IncomingCallNotification } from "@/components/messaging/IncomingCallNotification";
 import {
   ArrowLeft,
   Building2,
@@ -91,14 +92,6 @@ interface PendingOutgoingCall {
   callId: string;
   remoteUserId: number;
   remoteName: string;
-}
-
-interface IncomingCallData {
-  callId: string;
-  callerId: number;
-  callerName: string;
-  conversationId: number;
-  timestamp: number;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -758,7 +751,25 @@ export default function Messages() {
   });
 
   const initiateCallMutation = trpc.videoCalling.initiateWebRTCCall.useMutation();
-  const acceptCallMutation = trpc.videoCalling.acceptWebRTCCall.useMutation();
+
+  // Accepted-call handoff from GlobalIncomingCall (App level): the accept
+  // mutation already ran there; we just open the call modal as callee.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const callId = params.get("callId");
+    const callerId = Number(params.get("callerId"));
+    const callerName = params.get("callerName");
+    if (!callId || !callerId || !callerName) return;
+
+    setActiveCall({
+      callId,
+      remoteUserId: callerId,
+      remoteName: callerName,
+      isInitiator: false,
+    });
+    // Strip call params so refresh/back doesn't re-open a stale call
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   useEffect(() => {
     const onCallAccepted = (event: Event) => {
@@ -842,23 +853,6 @@ export default function Messages() {
     [activeCall, initiateCallMutation, pendingOutgoingCall]
   );
 
-  const handleAcceptCall = useCallback(
-    async (callData: IncomingCallData) => {
-      try {
-        await acceptCallMutation.mutateAsync({ callId: callData.callId });
-        setActiveCall({
-          callId: callData.callId,
-          remoteUserId: callData.callerId,
-          remoteName: callData.callerName,
-          isInitiator: false,
-        });
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : "Failed to accept call");
-      }
-    },
-    [acceptCallMutation]
-  );
-
   const handleEndCall = useCallback(() => {
     setActiveCall(null);
     setPendingOutgoingCall(null);
@@ -885,9 +879,6 @@ export default function Messages() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-
-      {/* Incoming call notification — listens for window events from useWebPubSub */}
-      <IncomingCallNotification onAccept={handleAcceptCall} />
 
       {/* Active video call modal */}
       {activeCall && (
