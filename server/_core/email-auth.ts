@@ -19,7 +19,7 @@ import { promisify } from "util";
 import { Pool } from "pg";
 import * as db from "../db";
 import { sdk } from "./sdk";
-import { getSessionCookieOptions } from "./cookies";
+import { issueSessionCookies } from "./cookies";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
 const scryptAsync = promisify(scrypt);
@@ -139,7 +139,9 @@ async function issueSession(
   name: string
 ): Promise<void> {
   const token = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
-  res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+  // Use the shared helper to set both domain-scoped and host-only cookies so
+  // email auth stays in sync with OAuth during the migration period.
+  issueSessionCookies(req, res, COOKIE_NAME, token, ONE_YEAR_MS);
 }
 
 // Route registration

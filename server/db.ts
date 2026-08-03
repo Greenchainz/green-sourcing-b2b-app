@@ -14,9 +14,9 @@
  *   - lib/azure/postgres.ts is DEAD (zero importers) — delete it when convenient.
  */
 
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, lt } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, revokedJtis } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { getDb as getSharedDb } from '../lib/db';
 import type { DbUserRole } from "../shared/types/roles";
@@ -144,4 +144,48 @@ export async function updateUserRole(
   const resolvedDb = await getDb();
   if (!resolvedDb) throw new Error("[Database] Cannot update user role: database not available");
   await resolvedDb.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+// ─── Revoked JTIs ────────────────────────────────────────────────────────────
+
+/**
+ * Persist a revoked JWT ID so every replica rejects it on next auth check.
+ * Also prunes already-expired entries to keep the table small.
+ */
+export async function insertRevokedJti(jti: string, expiresAt: Date): Promise<void> {
+  const resolvedDb = await getDb();
+  if (!resolvedDb) {
+    console.warn("[Database] Cannot revoke JTI: database not available");
+    return;
+  }
+  await resolvedDb
+    .insert(revokedJtis)
+    .values({ jti, expiresAt })
+    .onConflictDoNothing();
+
+  // Best-effort cleanup of expired entries — ignore errors so logout always
+  // succeeds even if the prune fails.
+  void resolvedDb
+    .delete(revokedJtis)
+    .where(lt(revokedJtis.expiresAt, new Date()))
+    .catch((err: unknown) => console.error("[Database] Failed to prune expired JTIs:", err));
+}
+
+/**
+ * Returns true if the given JTI has been revoked (i.e. the user logged out).
+ */
+export async function isJtiRevoked(jti: string): Promise<boolean> {
+  const resolvedDb = await getDb();
+  if (!resolvedDb) {
+    // If the DB is unavailable we cannot confirm revocation; allow the request
+    // through rather than blocking all auth, but log the degraded state.
+    console.warn("[Database] Cannot check JTI revocation: database not available — allowing request");
+    return false;
+  }
+  const rows = await resolvedDb
+    .select({ jti: revokedJtis.jti })
+    .from(revokedJtis)
+    .where(eq(revokedJtis.jti, jti))
+    .limit(1);
+  return rows.length > 0;
 }

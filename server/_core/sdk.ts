@@ -1,6 +1,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import { parse as parseCookieHeader } from "cookie";
+import crypto from "crypto";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
@@ -100,6 +101,7 @@ class SDKServer {
       name: payload.name,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setJti(crypto.randomUUID())
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
   }
@@ -117,7 +119,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name } = payload as Record<string, unknown>;
+      const { openId, appId, name, jti } = payload as Record<string, unknown>;
 
       // Only openId is required - appId (VITE_APP_ID) is a build-time var that
       // is empty at runtime in Container Apps, so we cannot require it here.
@@ -126,10 +128,43 @@ class SDKServer {
         return null;
       }
 
+      // Reject revoked tokens (e.g. after logout) so a stale cookie on any
+      // production replica cannot authenticate requests.
+      if (typeof jti === "string" && jti && await db.isJtiRevoked(jti)) {
+        console.warn("[Auth] Session token has been revoked");
+        return null;
+      }
+
       return { openId, appId: typeof appId === "string" ? appId : "", name: typeof name === "string" ? name : "" };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
       return null;
+    }
+  }
+
+  /**
+   * Revoke the session token present in the current request.
+   * The revocation is persisted in the shared database so every backend
+   * replica consistently rejects the token — not just the one that handled
+   * the logout request.
+   */
+  async revokeRequestSession(req: Request): Promise<void> {
+    const cookies = this.parseCookies(req.headers.cookie);
+    const cookieValue = cookies.get(COOKIE_NAME);
+    if (!cookieValue) return;
+
+    try {
+      const secretKey = this.getSessionSecret();
+      const { payload } = await jwtVerify(cookieValue, secretKey, {
+        algorithms: ["HS256"],
+      });
+      const { jti, exp } = payload as Record<string, unknown>;
+      if (typeof jti !== "string" || !jti) return;
+
+      const expiresAt = new Date(typeof exp === "number" ? exp * 1000 : Date.now() + ONE_YEAR_MS);
+      await db.insertRevokedJti(jti, expiresAt);
+    } catch {
+      // Invalid or already-expired token — nothing to revoke.
     }
   }
 
