@@ -33,11 +33,6 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_RFQ_DEPOSIT_PRICE_ID=price_...
 STRIPE_RFQ_DEPOSIT_AMOUNT_CENTS=2500
 
-# LinkedIn OAuth (required in production)
-LINKEDIN_CLIENT_ID=
-LINKEDIN_CLIENT_SECRET=
-LINKEDIN_REDIRECT_URI=http://localhost:3000/api/v1/auth/linkedin/callback
-
 # Azure AI Foundry (optional, graceful degradation)
 AZURE_AI_FOUNDRY_ENDPOINT=
 AZURE_AI_FOUNDRY_KEY=
@@ -45,7 +40,6 @@ AZURE_AI_FOUNDRY_DEPLOYMENT_NAME=
 
 2. Update backend/config/validateEnv.js:
    - Add STRIPE_SECRET_KEY to required vars in production
-   - Add warning for missing LINKEDIN_CLIENT_ID
    - Validate STRIPE_RFQ_DEPOSIT_AMOUNT_CENTS is a positive integer
 
 3. Create docs/SECRETS-SETUP.md documenting:

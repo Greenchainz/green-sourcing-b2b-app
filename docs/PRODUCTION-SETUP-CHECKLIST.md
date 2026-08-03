@@ -19,7 +19,6 @@ Create a Key Vault and add the following secrets (do not put these in `Container
 | `SESSION_SECRET`         | 32+ char random string for Sessions | `openssl rand -base64 48` |
 | `COOKIE_SECRET`          | 32+ char random string for Cookies  | `openssl rand -base64 48` |
 | `AZURE_CLIENT_SECRET`    | Azure AD App Client Secret          | Azure Portal (App Reg)    |
-| `LINKEDIN_CLIENT_SECRET` | LinkedIn App Client Secret          | LinkedIn Developers       |
 | `SMTP_PASS`              | Email Provider Password             | Zoho/SendGrid             |
 
 ### B. Environment Variables (Container Configuration)
@@ -63,14 +62,6 @@ Required environment variables:
 - `AZURE_AD_CLIENT_ID`
 - `AZURE_AD_CLIENT_SECRET`
 - `AZURE_AD_TENANT_ID`
-
-### C. LinkedIn Developers
-
-1. Create App.
-2. Verify Domain.
-3. **Products**: Add "Sign In with LinkedIn" and "Share on LinkedIn".
-4. **OAuth 2.0 Settings**:
-   - Redirect URL: `https://api.your-domain.com/auth/linkedin/callback` (Verify route path in code)
 
 ---
 

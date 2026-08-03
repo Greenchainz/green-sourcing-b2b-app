@@ -33,7 +33,6 @@ This document provides a complete inventory of all secrets used by GreenChainz, 
 | `STRIPE_WEBHOOK_SECRET` | `stripe-webhook-secret` | If using webhooks | Stripe webhook signing |
 | `REDIS_PASSWORD` | `redis-password` | If using Redis | Azure Redis access key |
 | `AZURE_CLIENT_SECRET` | `azure-client-secret` | If using Azure AD | Azure AD app secret |
-| `LINKEDIN_CLIENT_SECRET` | `linkedin-client-secret` | If using LinkedIn | LinkedIn OAuth secret |
 | `AZURE_AI_FOUNDRY_KEY` | `ai-foundry-key` | If using AI Foundry | Azure AI Foundry API key |
 | `AZURE_DOCUMENT_INTELLIGENCE_KEY` | `document-intel-key` | If using Doc AI | Azure AI key |
 | `AZURE_OPENAI_KEY` | `openai-key` | If using OpenAI | Azure OpenAI API key |
@@ -112,36 +111,6 @@ These secrets are **required in production** and the application will refuse to 
 - **Classification:** 🟢 PUBLIC
 - **Default:** `2500` (= $25.00)
 - **Note:** Configure based on business requirements
-
----
-
-## OAuth Provider Secrets
-
-### LinkedIn OAuth (Verification Feature)
-
-Required when `FEATURE_LINKEDIN_VERIFICATION=true`
-
-| Variable | Key Vault Name | Description |
-|----------|---------------|-------------|
-| `LINKEDIN_CLIENT_ID` | N/A (not secret) | LinkedIn app ID |
-| `LINKEDIN_CLIENT_SECRET` | `linkedin-client-secret` | LinkedIn app secret |
-| `LINKEDIN_REDIRECT_URI` | N/A (server config) | OAuth callback URL |
-
-**Setup:**
-1. Go to [LinkedIn Developers](https://www.linkedin.com/developers/)
-2. Create an application
-3. Add redirect URI: `https://api.greenchainz.com/auth/linkedin/callback`
-4. Request OAuth 2.0 scopes: `r_liteprofile`, `r_emailaddress`
-5. Copy Client ID and Client Secret
-
-### Other OAuth Providers
-
-| Provider | Client ID Var | Secret Var | Key Vault Name |
-|----------|--------------|------------|----------------|
-| Google | `GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_SECRET` | `google-client-secret` |
-| GitHub | `GITHUB_CLIENT_ID` | `GITHUB_CLIENT_SECRET` | `github-client-secret` |
-| Microsoft | `MICROSOFT_CLIENT_ID` | `MICROSOFT_CLIENT_SECRET` | `microsoft-client-secret` |
-| Facebook | `FACEBOOK_APP_ID` | `FACEBOOK_APP_SECRET` | `facebook-app-secret` |
 
 ---
 
@@ -249,9 +218,6 @@ az keyvault secret set --vault-name $VAULT_NAME --name postgres-password --value
 az keyvault secret set --vault-name $VAULT_NAME --name stripe-secret-key --value "sk_live_..."
 az keyvault secret set --vault-name $VAULT_NAME --name stripe-webhook-secret --value "whsec_..."
 
-# Store LinkedIn OAuth (if using)
-az keyvault secret set --vault-name $VAULT_NAME --name linkedin-client-secret --value "YOUR_LINKEDIN_SECRET"
-
 # Store AI Foundry key (if using)
 az keyvault secret set --vault-name $VAULT_NAME --name ai-foundry-key --value "YOUR_AI_FOUNDRY_KEY"
 ```
@@ -307,9 +273,6 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_test_...
 STRIPE_RFQ_DEPOSIT_AMOUNT_CENTS=2500
 
-# LinkedIn (optional for dev)
-FEATURE_LINKEDIN_VERIFICATION=false
-
 # Local dev secrets (OK for development only)
 JWT_SECRET=dev-jwt-secret-min-32-chars-replace-in-prod
 ```
@@ -322,8 +285,6 @@ All secrets stored in Azure Key Vault and referenced via managed identity.
 # Container App environment variables
 NODE_ENV: production
 STRIPE_RFQ_DEPOSIT_AMOUNT_CENTS: "2500"
-FEATURE_LINKEDIN_VERIFICATION: "true"
-LINKEDIN_REDIRECT_URI: https://api.greenchainz.com/auth/linkedin/callback
 AZURE_AI_FOUNDRY_ENDPOINT: https://greenchainz-ai.cognitiveservices.azure.com/
 ```
 
@@ -338,7 +299,6 @@ The application validates all required secrets at startup:
 // - Required secrets presence
 // - Minimum length validation
 // - Placeholder detection (blocks insecure defaults)
-// - Conditional requirements (e.g., LinkedIn when feature enabled)
 ```
 
 Production will refuse to start if:

@@ -1,4 +1,5 @@
 /**
+ * OAuth Provider Routes - Microsoft Entra ID only
  * OAuth Provider Routes - Microsoft Entra ID, LinkedIn
  *
  * Replaces the Manus OAuth flow with direct provider OAuth 2.0.
@@ -17,7 +18,7 @@ import * as db from "../db";
 import { getSessionCookieOptions, hostOnlyCookieOptions, issueSessionCookies } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
-import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
+import { getRequiredEnv } from "./oauth-env";
 
 // Helpers
 

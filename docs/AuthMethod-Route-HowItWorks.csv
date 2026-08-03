@@ -1,8 +1,6 @@
 Route,Method,Auth Level,Auth Mechanism,Who Calls It,Notes
 /api/auth/microsoft,GET,Public,None,Browser (redirect),Initiates Microsoft OAuth2 flow
-/api/auth/google,GET,Public,None,Browser (redirect),Initiates Google OAuth2 flow
-/api/auth/linkedin,GET,Public,None,Browser (redirect),Initiates LinkedIn OAuth2 flow
-/api/auth/callback/:provider,GET,Public,None,OAuth provider,Receives code; exchanges token; sets cookie; redirects
+/api/auth/callback/microsoft,GET,Public,None,OAuth provider,Receives code; exchanges token; sets cookie; redirects
 /api/auth/email/signup,POST,Public,None,Browser (fetch),Creates account and issues session cookie
 /api/auth/email/login,POST,Public,None,Browser (fetch),Validates password and issues session cookie
 /api/auth/me,GET,Authenticated,JWT cookie (app_session_id),Browser (fetch),Returns current user from session

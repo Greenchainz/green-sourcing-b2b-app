@@ -35,9 +35,7 @@ YOUR IMMEDIATE TASKS:
 2. Update azure/containerapp-backend.yaml:
    - Add Key Vault references for new secrets:
      * STRIPE_SECRET_KEY
-     * STRIPE_WEBHOOK_SECRET  
-     * LINKEDIN_CLIENT_ID
-     * LINKEDIN_CLIENT_SECRET
+     * STRIPE_WEBHOOK_SECRET
    - Ensure Redis connection string from Key Vault
    - Configure proper health probes:
      * Liveness: /health

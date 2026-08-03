@@ -292,8 +292,6 @@ az containerapp update \
 | `session-secret` | `openssl rand -base64 64` | Session issuance/validation broken |
 | `cookie-secret` | `openssl rand -base64 64` | Session verification broken |
 | `AzureAD-ClientSecret` | Azure AD App Registration portal | Microsoft login broken |
-| `GOOGLE-SECRET` | Google Cloud Console | Google login broken |
-| `LINKEDIN-SECRET` | LinkedIn Developer portal | LinkedIn login broken |
 
 ---
 
