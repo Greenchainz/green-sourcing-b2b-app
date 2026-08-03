@@ -139,7 +139,7 @@ jobs:
           fi
 
       - name: Set up Docker Buildx (layer caching)
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Allow runner IP in ACR firewall
         id: acr_firewall
