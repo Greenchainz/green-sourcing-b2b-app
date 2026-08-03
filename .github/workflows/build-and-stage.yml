@@ -205,14 +205,14 @@ jobs:
       # digest. This satisfies SLSA Level 2 provenance requirements and enables
       # supply-chain audits via `gh attestation verify`.
       - name: Attest frontend build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.ACR }}.azurecr.io/${{ env.FRONTEND_IMAGE }}
           subject-digest: ${{ steps.push_frontend.outputs.digest }}
           push-to-registry: true
 
       - name: Attest backend build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.ACR }}.azurecr.io/${{ env.BACKEND_IMAGE }}
           subject-digest: ${{ steps.push_backend.outputs.digest }}
