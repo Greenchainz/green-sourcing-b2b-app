@@ -1,4 +1,4 @@
-﻿name: Deploy to Azure Container Apps (Legacy — use release-production.yml)
+name: Deploy to Azure Container Apps (Legacy — use release-production.yml)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DEPRECATED TRIGGER: This workflow previously auto-deployed on every push to
@@ -271,7 +271,7 @@ jobs:
           exit 1
 
       - name: Build & push frontend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.frontend
@@ -287,7 +287,7 @@ jobs:
             VITE_FRONTEND_WEBPUBSUB_HUB=greenchainzhub
 
       - name: Build & push backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.backend
