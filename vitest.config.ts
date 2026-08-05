@@ -28,7 +28,7 @@ export default defineConfig({
     ],
     coverage: {
       provider: "v8",
-      reporter: ["cobertura"],
+      reporter: ["cobertura", "text"],
       reportsDirectory: "coverage",
       include: [
         "server/**/*.ts",
@@ -40,6 +40,8 @@ export default defineConfig({
       exclude: [
         "**/*.test.ts",
         "**/*.spec.ts",
+        "**/*.test.tsx",
+        "**/*.spec.tsx",
         "**/*.d.ts",
       ],
     },
