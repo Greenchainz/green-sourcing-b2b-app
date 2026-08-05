@@ -21,7 +21,8 @@
     "lint": "eslint \"server/**/*.ts\" \"client/src/**/*.{ts,tsx}\" \"lib/**/*.ts\"",
     "lint:fix": "eslint \"server/**/*.ts\" \"client/src/**/*.{ts,tsx}\" \"lib/**/*.ts\" --fix",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
-    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.1.0",
@@ -160,6 +161,7 @@
     "@typescript-eslint/eslint-plugin": "^8.62.1",
     "@typescript-eslint/parser": "^8.62.1",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "add": "^2.0.6",
     "autoprefixer": "^10.5.0",
     "drizzle-kit": "^0.28.1",
