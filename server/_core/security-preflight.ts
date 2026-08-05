@@ -57,7 +57,6 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
         new Set(
             [
                 resolvedOAuthClientId,
-                process.env.AZURE_CLIENT_ID,
                 process.env.MICROSOFT_CLIENT_ID,
             ]
                 .map(normalizeClientId)
