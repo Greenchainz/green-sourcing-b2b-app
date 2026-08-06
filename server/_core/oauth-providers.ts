@@ -28,6 +28,27 @@ function buildRedirectUri(_req: Request, provider: string): string {
   return `${baseUrl}/api/auth/callback/${provider}`;
 }
 
+function getForwardedHostContext(req: Request): {
+  host: string | null;
+  proto: string | null;
+} {
+  const rawForwardedHost = req.headers["x-forwarded-host"];
+  const rawForwardedProto = req.headers["x-forwarded-proto"];
+  const forwardedHost = Array.isArray(rawForwardedHost)
+    ? rawForwardedHost[0]
+    : typeof rawForwardedHost === "string"
+      ? rawForwardedHost.split(",")[0]?.trim() ?? ""
+      : "";
+  const forwardedProto = Array.isArray(rawForwardedProto)
+    ? rawForwardedProto[0]
+    : typeof rawForwardedProto === "string"
+      ? rawForwardedProto.split(",")[0]?.trim() ?? ""
+      : "";
+  const safeHost = /^[a-z0-9.-]+(?::\d+)?$/i.test(forwardedHost) ? forwardedHost.toLowerCase() : null;
+  const safeProto = /^[a-z]+$/i.test(forwardedProto) ? forwardedProto.toLowerCase() : null;
+  return { host: safeHost, proto: safeProto };
+}
+
 async function clearSessionCookies(req: Request, res: Response): Promise<void> {
   const scopedOptions = getSessionCookieOptions(req);
   res.clearCookie("app_session_id", { ...scopedOptions, maxAge: -1 });
@@ -146,34 +167,77 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
 // Public Entra app registration for GreenChainz user sign-in (OAuth2/OIDC).
 // These are NOT secrets — they are the same public identifiers baked into the
 // frontend container and documented in .env.example. Only the client *secret*
-// is sensitive.
+// is sensitive (see getRequiredEnv("AZURE_AD_CLIENT_SECRET")). In production,
+// AZURE_AD_TENANT_ID and AZURE_AD_CLIENT_ID must be set; if missing the initiate
+// route redirects to /login?error=oauth_config_missing rather than returning 500.
 const MICROSOFT_TENANT_ID = "1d04bf50-8175-40af-a9d5-f8e441460b06";
 const MICROSOFT_CLIENT_ID = "8b597068-9347-4e99-8860-8c4e9a9bc112";
 
+function firstNonEmptyEnv(...keys: string[]): string | null {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function isStrictOAuthConfigEnv(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
 function getMicrosoftTenantId(): string {
-  const value = process.env.AZURE_AD_TENANT_ID || process.env.MICROSOFT_TENANT_ID;
-  if (value && value.length > 0) return value;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Missing Microsoft OAuth tenant config (AZURE_AD_TENANT_ID or MICROSOFT_TENANT_ID)");
+  const value = firstNonEmptyEnv("AZURE_AD_TENANT_ID", "MICROSOFT_TENANT_ID");
+  if (value) return value;
+  if (isStrictOAuthConfigEnv()) {
+    throw new Error(
+      "Missing Microsoft OAuth config: set AZURE_AD_TENANT_ID or MICROSOFT_TENANT_ID in production"
+    );
   }
   return MICROSOFT_TENANT_ID;
 }
 
 function getMicrosoftClientId(): string {
-  const value = process.env.AZURE_AD_CLIENT_ID || process.env.MICROSOFT_CLIENT_ID;
-  if (value && value.length > 0) return value;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Missing Microsoft OAuth client config (AZURE_AD_CLIENT_ID or MICROSOFT_CLIENT_ID)");
+  const value = firstNonEmptyEnv("AZURE_AD_CLIENT_ID", "MICROSOFT_CLIENT_ID");
+  if (value) return value;
+  if (isStrictOAuthConfigEnv()) {
+    throw new Error(
+      "Missing Microsoft OAuth config: set AZURE_AD_CLIENT_ID or MICROSOFT_CLIENT_ID in production"
+    );
   }
   return MICROSOFT_CLIENT_ID;
 }
 
 function getMicrosoftClientSecret(): string {
-  const value = process.env.AZURE_AD_CLIENT_SECRET || process.env.MICROSOFT_CLIENT_SECRET;
-  if (!value || value.length === 0) {
-    throw new Error("Missing Microsoft OAuth secret config (AZURE_AD_CLIENT_SECRET or MICROSOFT_CLIENT_SECRET)");
+  const secret = firstNonEmptyEnv("AZURE_AD_CLIENT_SECRET", "MICROSOFT_CLIENT_SECRET");
+  if (!secret) {
+    throw new Error(
+      "Missing Microsoft OAuth config: set AZURE_AD_CLIENT_SECRET or MICROSOFT_CLIENT_SECRET"
+    );
   }
-  return value;
+  return secret;
+}
+
+function mapCallbackError(error: unknown, provider?: string): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+  if (normalized.includes("aadsts50011")) {
+    return "redirect_mismatch";
+  }
+  if (normalized.includes("invalid_grant")) {
+    // Use a provider-neutral key so LinkedIn errors are not labelled with
+    // Microsoft-specific messaging on the login page.
+    return provider === "microsoft" ? "invalid_grant" : "token_exchange_failed";
+  }
+  if (
+    normalized.includes("missing microsoft oauth config") ||
+    normalized.includes("azure_ad_client_secret") ||
+    normalized.includes("microsoft_client_secret")
+  ) {
+    return "oauth_config_missing";
+  }
+  return "callback_failed";
 }
 
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
@@ -371,8 +435,15 @@ export function registerOAuthProviderRoutes(app: Express) {
           return;
       }
     } catch (err) {
-      console.error("[Auth] Failed to build auth URL:", err);
-      res.status(500).json({ error: "Failed to initiate OAuth flow" });
+      const errMsg = err instanceof Error ? err.message : String(err ?? "");
+      const isConfigError = errMsg.toLowerCase().includes("missing microsoft oauth config");
+      if (isConfigError) {
+        console.error("[Auth] OAuth configuration missing, cannot initiate flow:", errMsg);
+        res.redirect(302, "/login?error=oauth_config_missing");
+      } else {
+        console.error("[Auth] Failed to build auth URL:", err);
+        res.redirect(302, "/login?error=callback_failed");
+      }
       return;
     }
 
@@ -387,7 +458,14 @@ export function registerOAuthProviderRoutes(app: Express) {
     const error = req.query.error as string;
 
     if (error) {
-      console.error(`[Auth] Provider error from ${provider}:`, error, req.query.error_description);
+      const { host, proto } = getForwardedHostContext(req);
+      console.error(`[Auth] Provider error from ${provider}:`, {
+        error,
+        errorDescription: req.query.error_description,
+        requestHost: req.headers.host ?? null,
+        forwardedHost: host,
+        forwardedProto: proto,
+      });
       res.redirect(302, `/login?error=${encodeURIComponent(error)}`);
       return;
     }
@@ -496,28 +574,16 @@ export function registerOAuthProviderRoutes(app: Express) {
       }
       res.redirect(302, finalRedirect);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const stack = err instanceof Error ? err.stack : undefined;
-      const host = req.get("host");
-      const xForwardedHost = req.get("x-forwarded-host");
-      const xForwardedProto = req.get("x-forwarded-proto");
+      const { host, proto } = getForwardedHostContext(req);
       console.error(`[Auth] Callback failed for ${provider}:`, {
-        message,
-        stack,
-        host,
-        xForwardedHost,
-        xForwardedProto,
+        error: err instanceof Error ? err.message : String(err ?? ""),
+        stack: err instanceof Error ? err.stack : undefined,
+        requestHost: req.headers.host ?? null,
+        forwardedHost: host,
+        forwardedProto: proto,
       });
-
-      let errorKey = "callback_failed";
-      if (message.includes("AADSTS50011")) {
-        errorKey = "aad_redirect_mismatch";
-      } else if (message.toLowerCase().includes("invalid_grant")) {
-        errorKey = "invalid_grant";
-      } else if (message.includes("Missing Microsoft OAuth")) {
-        errorKey = "oauth_config_missing";
-      }
-      res.redirect(302, `/login?error=${errorKey}`);
+      const mappedError = mapCallbackError(err, provider);
+      res.redirect(302, `/login?error=${encodeURIComponent(mappedError)}`);
     }
   });
 
