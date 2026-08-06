@@ -536,6 +536,7 @@ export function registerOAuthProviderRoutes(app: Express) {
       console.error(`[Auth] Callback failed for ${provider}:`, {
         errorKey,
         message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
         hostContext: getSafeHostContext(req),
       });
       res.redirect(302, `/login?error=${encodeURIComponent(errorKey)}`);
