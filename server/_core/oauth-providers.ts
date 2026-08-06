@@ -193,7 +193,8 @@ function getSafeHostContext(req: Request): { host: string | null; forwardedHost:
   const safeValue = (value: unknown): string | null => {
     if (typeof value !== "string") return null;
     const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    if (trimmed.length === 0) return null;
+    return trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
   };
   return {
     host: safeValue(req.headers.host),
