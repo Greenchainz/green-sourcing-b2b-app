@@ -219,7 +219,7 @@ jobs:
       - name: Close ACR firewall
         if: always()
         run: |
-          RUNNER_IP="${{ steps.acr_firewall.outputs.runner-ip }}"
+          RUNNER_IP="${{ steps.acr_firewall.outputs['runner-ip'] }}"
           if [ -n "$RUNNER_IP" ]; then
             az acr network-rule remove --name ${{ env.ACR }} --ip-address "$RUNNER_IP" --output none || \
               echo "::warning::Failed to remove ACR network rule for ${RUNNER_IP} — remove it manually."
