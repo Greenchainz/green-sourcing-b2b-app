@@ -497,11 +497,13 @@ export function registerOAuthProviderRoutes(app: Express) {
       res.redirect(302, finalRedirect);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
       const host = req.get("host");
       const xForwardedHost = req.get("x-forwarded-host");
       const xForwardedProto = req.get("x-forwarded-proto");
       console.error(`[Auth] Callback failed for ${provider}:`, {
         message,
+        stack,
         host,
         xForwardedHost,
         xForwardedProto,
