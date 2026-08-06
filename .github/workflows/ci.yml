@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -32,6 +35,35 @@ jobs:
 
       - name: Run verify
         run: pnpm verify
+
+      - name: Generate coverage report
+        run: pnpm test:coverage
+
+      - name: Upload coverage artifact
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report-typescript
+          path: coverage/cobertura-coverage.xml
+
+  upload-coverage-typescript:
+    needs: verify
+    if: ${{ !cancelled() && needs.verify.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      code-quality: write
+    steps:
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage-report-typescript
+          path: coverage/
+      - uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage/cobertura-coverage.xml
+          language: TypeScript
+          label: code-coverage-agent
 
   migration-drift-check:
     name: Migration Drift Check
