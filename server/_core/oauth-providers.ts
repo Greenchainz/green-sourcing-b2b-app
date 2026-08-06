@@ -152,14 +152,63 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
 const MICROSOFT_TENANT_ID = "1d04bf50-8175-40af-a9d5-f8e441460b06";
 const MICROSOFT_CLIENT_ID = "8b597068-9347-4e99-8860-8c4e9a9bc112";
 
+function isProduction(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
+function getConfigErrorMessage(configName: string): string {
+  return `OAuth configuration is incomplete: missing ${configName}`;
+}
+
 function getMicrosoftTenantId(): string {
-  const value = process.env.AZURE_AD_TENANT_ID;
-  return value && value.length > 0 ? value : MICROSOFT_TENANT_ID;
+  const primary = process.env.AZURE_AD_TENANT_ID?.trim();
+  if (primary) return primary;
+  const fallback = process.env.MICROSOFT_TENANT_ID?.trim();
+  if (fallback) return fallback;
+  if (!isProduction()) return MICROSOFT_TENANT_ID;
+  throw new Error(getConfigErrorMessage("AZURE_AD_TENANT_ID or MICROSOFT_TENANT_ID"));
 }
 
 function getMicrosoftClientId(): string {
-  const value = process.env.AZURE_AD_CLIENT_ID;
-  return value && value.length > 0 ? value : MICROSOFT_CLIENT_ID;
+  const primary = process.env.AZURE_AD_CLIENT_ID?.trim();
+  if (primary) return primary;
+  const fallback = process.env.MICROSOFT_CLIENT_ID?.trim();
+  if (fallback) return fallback;
+  if (!isProduction()) return MICROSOFT_CLIENT_ID;
+  throw new Error(getConfigErrorMessage("AZURE_AD_CLIENT_ID or MICROSOFT_CLIENT_ID"));
+}
+
+function getMicrosoftClientSecret(): string {
+  const primary = process.env.AZURE_AD_CLIENT_SECRET?.trim();
+  if (primary) return primary;
+  const fallback = process.env.MICROSOFT_CLIENT_SECRET?.trim();
+  if (fallback) return fallback;
+  if (isProduction()) {
+    throw new Error(getConfigErrorMessage("AZURE_AD_CLIENT_SECRET or MICROSOFT_CLIENT_SECRET"));
+  }
+  return getRequiredEnv("AZURE_AD_CLIENT_SECRET");
+}
+
+function getSafeHostContext(req: Request): { host: string | null; forwardedHost: string | null; forwardedProto: string | null } {
+  const safeValue = (value: unknown): string | null => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  };
+  return {
+    host: safeValue(req.headers.host),
+    forwardedHost: safeValue(req.headers["x-forwarded-host"]),
+    forwardedProto: safeValue(req.headers["x-forwarded-proto"]),
+  };
+}
+
+function mapOAuthCallbackError(err: unknown): "invalid_grant" | "aad_redirect_mismatch" | "oauth_config_missing" | "callback_failed" {
+  const message = err instanceof Error ? err.message : String(err ?? "");
+  const lower = message.toLowerCase();
+  if (lower.includes("invalid_grant")) return "invalid_grant";
+  if (lower.includes("aadsts50011")) return "aad_redirect_mismatch";
+  if (lower.includes("oauth configuration is incomplete")) return "oauth_config_missing";
+  return "callback_failed";
 }
 
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
@@ -200,7 +249,7 @@ interface OAuthUserInfo {
 async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
   const tenantId = getMicrosoftTenantId();
   const clientId = getMicrosoftClientId();
-  const clientSecret = getRequiredEnv("AZURE_AD_CLIENT_SECRET");
+  const clientSecret = getMicrosoftClientSecret();
 
   const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
     method: "POST",
@@ -482,8 +531,13 @@ export function registerOAuthProviderRoutes(app: Express) {
       }
       res.redirect(302, finalRedirect);
     } catch (err) {
-      console.error(`[Auth] Callback failed for ${provider}:`, err);
-      res.redirect(302, `/login?error=callback_failed`);
+      const errorKey = mapOAuthCallbackError(err);
+      console.error(`[Auth] Callback failed for ${provider}:`, {
+        errorKey,
+        message: err instanceof Error ? err.message : String(err),
+        hostContext: getSafeHostContext(req),
+      });
+      res.redirect(302, `/login?error=${encodeURIComponent(errorKey)}`);
     }
   });
 

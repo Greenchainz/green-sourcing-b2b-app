@@ -9,6 +9,9 @@ type DesiredRole = "architect" | "supplier" | null;
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
     invalid_state: "Sign-in session expired or was tampered with. Please try again.",
     missing_code: "Sign-in was cancelled or didn't complete. Please try again.",
+    invalid_grant: "Your Microsoft sign-in code expired or was already used. Please try signing in again.",
+    aad_redirect_mismatch: "Microsoft sign-in redirect URI mismatch (AADSTS50011). Please contact support to verify Azure redirect settings.",
+    oauth_config_missing: "Microsoft sign-in is temporarily unavailable due to server configuration. Please contact support.",
     callback_failed: "Sign-in failed on the server. Please try again — if this keeps happening, contact support.",
     unknown_provider: "Unknown sign-in provider. Please use the button below.",
     access_denied: "You cancelled the sign-in or denied access. Please try again.",
