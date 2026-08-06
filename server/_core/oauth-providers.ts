@@ -167,9 +167,9 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
 // Public Entra app registration for GreenChainz user sign-in (OAuth2/OIDC).
 // These are NOT secrets — they are the same public identifiers baked into the
 // frontend container and documented in .env.example. Only the client *secret*
-// is sensitive (see getRequiredEnv("AZURE_AD_CLIENT_SECRET")). We fall back to
-// the known-correct values when the env var is missing so the OAuth initiate
-// route degrades gracefully instead of returning a 500.
+// is sensitive (see getRequiredEnv("AZURE_AD_CLIENT_SECRET")). In production,
+// AZURE_AD_TENANT_ID and AZURE_AD_CLIENT_ID must be set; if missing the initiate
+// route redirects to /login?error=oauth_config_missing rather than returning 500.
 const MICROSOFT_TENANT_ID = "1d04bf50-8175-40af-a9d5-f8e441460b06";
 const MICROSOFT_CLIENT_ID = "8b597068-9347-4e99-8860-8c4e9a9bc112";
 
@@ -219,14 +219,16 @@ function getMicrosoftClientSecret(): string {
   return secret;
 }
 
-function mapCallbackError(error: unknown): string {
+function mapCallbackError(error: unknown, provider?: string): string {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const normalized = message.toLowerCase();
   if (normalized.includes("aadsts50011")) {
     return "redirect_mismatch";
   }
   if (normalized.includes("invalid_grant")) {
-    return "invalid_grant";
+    // Use a provider-neutral key so LinkedIn errors are not labelled with
+    // Microsoft-specific messaging on the login page.
+    return provider === "microsoft" ? "invalid_grant" : "token_exchange_failed";
   }
   if (
     normalized.includes("missing microsoft oauth config") ||
@@ -433,8 +435,15 @@ export function registerOAuthProviderRoutes(app: Express) {
           return;
       }
     } catch (err) {
-      console.error("[Auth] Failed to build auth URL:", err);
-      res.status(500).json({ error: "Failed to initiate OAuth flow" });
+      const errMsg = err instanceof Error ? err.message : String(err ?? "");
+      const isConfigError = errMsg.toLowerCase().includes("missing microsoft oauth config");
+      if (isConfigError) {
+        console.error("[Auth] OAuth configuration missing, cannot initiate flow:", errMsg);
+        res.redirect(302, "/login?error=oauth_config_missing");
+      } else {
+        console.error("[Auth] Failed to build auth URL:", err);
+        res.redirect(302, "/login?error=callback_failed");
+      }
       return;
     }
 
@@ -568,11 +577,12 @@ export function registerOAuthProviderRoutes(app: Express) {
       const { host, proto } = getForwardedHostContext(req);
       console.error(`[Auth] Callback failed for ${provider}:`, {
         error: err instanceof Error ? err.message : String(err ?? ""),
+        stack: err instanceof Error ? err.stack : undefined,
         requestHost: req.headers.host ?? null,
         forwardedHost: host,
         forwardedProto: proto,
       });
-      const mappedError = mapCallbackError(err);
+      const mappedError = mapCallbackError(err, provider);
       res.redirect(302, `/login?error=${encodeURIComponent(mappedError)}`);
     }
   });
