@@ -18,7 +18,7 @@ import * as db from "../db";
 import { getSessionCookieOptions, hostOnlyCookieOptions, issueSessionCookies } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
-import { getEnvWithDevDefault } from "./oauth-env";
+import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
 
 // Helpers
 
@@ -26,6 +26,27 @@ function buildRedirectUri(_req: Request, provider: string): string {
   // Always use the canonical production domain to avoid Container Apps internal domain mismatch
   const baseUrl = process.env.APP_BASE_URL || "https://greenchainz.com";
   return `${baseUrl}/api/auth/callback/${provider}`;
+}
+
+function getForwardedHostContext(req: Request): {
+  host: string | null;
+  proto: string | null;
+} {
+  const rawForwardedHost = req.headers["x-forwarded-host"];
+  const rawForwardedProto = req.headers["x-forwarded-proto"];
+  const forwardedHost = Array.isArray(rawForwardedHost)
+    ? rawForwardedHost[0]
+    : typeof rawForwardedHost === "string"
+      ? rawForwardedHost.split(",")[0]?.trim() ?? ""
+      : "";
+  const forwardedProto = Array.isArray(rawForwardedProto)
+    ? rawForwardedProto[0]
+    : typeof rawForwardedProto === "string"
+      ? rawForwardedProto.split(",")[0]?.trim() ?? ""
+      : "";
+  const safeHost = /^[a-z0-9.-]+(?::\d+)?$/i.test(forwardedHost) ? forwardedHost.toLowerCase() : null;
+  const safeProto = /^[a-z]+$/i.test(forwardedProto) ? forwardedProto.toLowerCase() : null;
+  return { host: safeHost, proto: safeProto };
 }
 
 async function clearSessionCookies(req: Request, res: Response): Promise<void> {
@@ -428,7 +449,14 @@ export function registerOAuthProviderRoutes(app: Express) {
     const error = req.query.error as string;
 
     if (error) {
-      console.error(`[Auth] Provider error from ${provider}:`, error, req.query.error_description);
+      const { host, proto } = getForwardedHostContext(req);
+      console.error(`[Auth] Provider error from ${provider}:`, {
+        error,
+        errorDescription: req.query.error_description,
+        requestHost: req.headers.host ?? null,
+        forwardedHost: host,
+        forwardedProto: proto,
+      });
       res.redirect(302, `/login?error=${encodeURIComponent(error)}`);
       return;
     }
@@ -537,7 +565,13 @@ export function registerOAuthProviderRoutes(app: Express) {
       }
       res.redirect(302, finalRedirect);
     } catch (err) {
-      console.error(`[Auth] Callback failed for ${provider}:`, err);
+      const { host, proto } = getForwardedHostContext(req);
+      console.error(`[Auth] Callback failed for ${provider}:`, {
+        error: err instanceof Error ? err.message : String(err ?? ""),
+        requestHost: req.headers.host ?? null,
+        forwardedHost: host,
+        forwardedProto: proto,
+      });
       const mappedError = mapCallbackError(err);
       res.redirect(302, `/login?error=${encodeURIComponent(mappedError)}`);
     }
