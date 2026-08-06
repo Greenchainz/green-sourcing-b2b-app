@@ -181,6 +181,10 @@ jobs:
         id: acr_firewall
         run: |
           RUNNER_IP=$(curl -sf https://api.ipify.org)
+          if ! printf '%s' "$RUNNER_IP" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Could not determine runner IP (got: '${RUNNER_IP}'). api.ipify.org may be unavailable."
+            exit 1
+          fi
           echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
           ACR_PUBLIC_ACCESS_WAS=$(az acr show --name "${{ env.ACR }}" --query publicNetworkAccess --output tsv)
           case "$ACR_PUBLIC_ACCESS_WAS" in
@@ -195,7 +199,8 @@ jobs:
             echo "acr-toggled=false" >> $GITHUB_OUTPUT
           fi
           az acr network-rule add --name ${{ env.ACR }} --ip-address "$RUNNER_IP" --output none
-          sleep 5
+          # Allow time for the ACR network-rule to propagate before querying the registry.
+          sleep 15
 
       - name: Verify both ACR images exist before allowing migrations
         run: |
@@ -215,9 +220,13 @@ jobs:
         if: always()
         run: |
           RUNNER_IP="${{ steps.acr_firewall.outputs.runner-ip }}"
-          [ -n "$RUNNER_IP" ] && az acr network-rule remove --name ${{ env.ACR }} --ip-address "$RUNNER_IP" --output none || true
+          if [ -n "$RUNNER_IP" ]; then
+            az acr network-rule remove --name ${{ env.ACR }} --ip-address "$RUNNER_IP" --output none || \
+              echo "::warning::Failed to remove ACR network rule for ${RUNNER_IP} — remove it manually."
+          fi
           if [ "${{ steps.acr_firewall.outputs.public-access-was }}" = "Disabled" ]; then
-            az acr update --name ${{ env.ACR }} --public-network-enabled false --output none || true
+            az acr update --name ${{ env.ACR }} --public-network-enabled false --output none || \
+              echo "::warning::Failed to restore ACR public-network-access to Disabled — check ACR settings manually."
           fi
 
       - uses: pnpm/action-setup@v6
