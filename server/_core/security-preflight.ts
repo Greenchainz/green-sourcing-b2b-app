@@ -133,14 +133,14 @@ export function runStartupSecurityPreflight(): { hasFailures: boolean; checks: C
             checks,
             "Identity Separation",
             "FAIL",
-            "Managed identity client ID matches the user-auth app registration client ID. These must be different identities."
+            "Managed identity client ID (AZURE_MI_CLIENT_ID/MANAGED_IDENTITY_CLIENT_ID) matches user-auth client ID (AZURE_AD_CLIENT_ID/AZURE_CLIENT_ID/MICROSOFT_CLIENT_ID/default). These must be different identities."
         );
     } else {
         add(
             checks,
             "Identity Separation",
             "PASS",
-            "Managed identity and user-auth app registration identities are separated."
+            "Managed identity IDs (AZURE_MI_CLIENT_ID/MANAGED_IDENTITY_CLIENT_ID) and user-auth IDs (AZURE_AD_CLIENT_ID/AZURE_CLIENT_ID/MICROSOFT_CLIENT_ID/default) are separated."
         );
     }
 
