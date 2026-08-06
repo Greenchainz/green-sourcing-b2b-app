@@ -18,7 +18,7 @@ import * as db from "../db";
 import { getSessionCookieOptions, hostOnlyCookieOptions, issueSessionCookies } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
-import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
+import { getEnvWithDevDefault } from "./oauth-env";
 
 // Helpers
 
@@ -146,20 +146,34 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
 // Public Entra app registration for GreenChainz user sign-in (OAuth2/OIDC).
 // These are NOT secrets — they are the same public identifiers baked into the
 // frontend container and documented in .env.example. Only the client *secret*
-// is sensitive (see getRequiredEnv("AZURE_AD_CLIENT_SECRET")). We fall back to
-// the known-correct values when the env var is missing so the OAuth initiate
-// route degrades gracefully instead of returning a 500.
+// is sensitive.
 const MICROSOFT_TENANT_ID = "1d04bf50-8175-40af-a9d5-f8e441460b06";
 const MICROSOFT_CLIENT_ID = "8b597068-9347-4e99-8860-8c4e9a9bc112";
 
 function getMicrosoftTenantId(): string {
-  const value = process.env.AZURE_AD_TENANT_ID;
-  return value && value.length > 0 ? value : MICROSOFT_TENANT_ID;
+  const value = process.env.AZURE_AD_TENANT_ID || process.env.MICROSOFT_TENANT_ID;
+  if (value && value.length > 0) return value;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Missing Microsoft OAuth tenant config (AZURE_AD_TENANT_ID or MICROSOFT_TENANT_ID)");
+  }
+  return MICROSOFT_TENANT_ID;
 }
 
 function getMicrosoftClientId(): string {
-  const value = process.env.AZURE_AD_CLIENT_ID;
-  return value && value.length > 0 ? value : MICROSOFT_CLIENT_ID;
+  const value = process.env.AZURE_AD_CLIENT_ID || process.env.MICROSOFT_CLIENT_ID;
+  if (value && value.length > 0) return value;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Missing Microsoft OAuth client config (AZURE_AD_CLIENT_ID or MICROSOFT_CLIENT_ID)");
+  }
+  return MICROSOFT_CLIENT_ID;
+}
+
+function getMicrosoftClientSecret(): string {
+  const value = process.env.AZURE_AD_CLIENT_SECRET || process.env.MICROSOFT_CLIENT_SECRET;
+  if (!value || value.length === 0) {
+    throw new Error("Missing Microsoft OAuth secret config (AZURE_AD_CLIENT_SECRET or MICROSOFT_CLIENT_SECRET)");
+  }
+  return value;
 }
 
 function getMicrosoftAuthUrl(redirectUri: string, state: string): string {
@@ -200,7 +214,7 @@ interface OAuthUserInfo {
 async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise<OAuthUserInfo> {
   const tenantId = getMicrosoftTenantId();
   const clientId = getMicrosoftClientId();
-  const clientSecret = getRequiredEnv("AZURE_AD_CLIENT_SECRET");
+  const clientSecret = getMicrosoftClientSecret();
 
   const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
     method: "POST",
@@ -482,8 +496,26 @@ export function registerOAuthProviderRoutes(app: Express) {
       }
       res.redirect(302, finalRedirect);
     } catch (err) {
-      console.error(`[Auth] Callback failed for ${provider}:`, err);
-      res.redirect(302, `/login?error=callback_failed`);
+      const message = err instanceof Error ? err.message : String(err);
+      const host = req.get("host");
+      const xForwardedHost = req.get("x-forwarded-host");
+      const xForwardedProto = req.get("x-forwarded-proto");
+      console.error(`[Auth] Callback failed for ${provider}:`, {
+        message,
+        host,
+        xForwardedHost,
+        xForwardedProto,
+      });
+
+      let errorKey = "callback_failed";
+      if (message.includes("AADSTS50011")) {
+        errorKey = "aad_redirect_mismatch";
+      } else if (message.toLowerCase().includes("invalid_grant")) {
+        errorKey = "invalid_grant";
+      } else if (message.includes("Missing Microsoft OAuth")) {
+        errorKey = "oauth_config_missing";
+      }
+      res.redirect(302, `/login?error=${errorKey}`);
     }
   });
 
