@@ -64,6 +64,7 @@ jobs:
           file: coverage/cobertura-coverage.xml
           language: TypeScript
           label: code-coverage-agent
+          fail-on-error: false
 
   migration-drift-check:
     name: Migration Drift Check
