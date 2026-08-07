@@ -433,7 +433,11 @@ function SupplierOnboardingGuard() {
     if (!isSupplierUser || isLoading) return;
     if (profile === null) {
       const path = window.location.pathname;
-      if (!path.startsWith("/supplier/onboarding")) {
+      const isPublicPath = path.startsWith("/supplier/onboarding") ||
+        path === "/privacy" ||
+        path === "/cookie-policy" ||
+        path === "/terms";
+      if (!isPublicPath) {
         navigate("/supplier/onboarding");
       }
     }
