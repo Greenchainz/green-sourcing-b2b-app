@@ -195,7 +195,7 @@ export function Privacy() {
     script.src = 'https://cdn-cookieyes.com/client_data/a5b171ae3f8360099a5b38c5903e22ea/privacy-policy/script.js';
     document.head.appendChild(script);
     return () => {
-      document.head.removeChild(script);
+      script.remove();
     };
   }, []);
 
