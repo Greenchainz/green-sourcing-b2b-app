@@ -152,9 +152,11 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
 const MICROSOFT_TENANT_ID = "1d04bf50-8175-40af-a9d5-f8e441460b06";
 const MICROSOFT_CLIENT_ID = "8b597068-9347-4e99-8860-8c4e9a9bc112";
 
+// Use "common" to allow any Microsoft account (personal or work/school) to sign in.
+// Set AZURE_AD_TENANT_ID env var to restrict back to a specific tenant if needed.
 function getMicrosoftTenantId(): string {
   const value = process.env.AZURE_AD_TENANT_ID;
-  return value && value.length > 0 ? value : MICROSOFT_TENANT_ID;
+  return value && value.length > 0 ? value : "common";
 }
 
 function getMicrosoftClientId(): string {
