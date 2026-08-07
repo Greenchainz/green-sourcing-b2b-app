@@ -303,6 +303,7 @@ function Router() {
       <Route path={"/tools/tco"} component={TCOCalculatorPage} />
       <Route path={"/terms"} component={Terms} />
       <Route path={"/privacy"} component={Privacy} />
+      <Route path={"/cookie-policy"}>{() => <Redirect to="/privacy" />}</Route>
       <Route path={"/support"} component={Support} />
       <Route path={"/how-it-works"} component={HowItWorks} />
       <Route path={"/pricing"} component={Pricing} />
@@ -432,7 +433,11 @@ function SupplierOnboardingGuard() {
     if (!isSupplierUser || isLoading) return;
     if (profile === null) {
       const path = window.location.pathname;
-      if (!path.startsWith("/supplier/onboarding")) {
+      const isPublicPath = path.startsWith("/supplier/onboarding") ||
+        path === "/privacy" ||
+        path === "/cookie-policy" ||
+        path === "/terms";
+      if (!isPublicPath) {
         navigate("/supplier/onboarding");
       }
     }
@@ -472,6 +477,7 @@ function ArchitectOnboardingGuard() {
         path === "/about" ||
         path === "/terms" ||
         path === "/privacy" ||
+        path === "/cookie-policy" ||
         path === "/support" ||
         path === "/how-it-works" ||
         path === "/blog" ||

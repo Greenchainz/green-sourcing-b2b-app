@@ -1,6 +1,7 @@
 import Markdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { useLocation } from 'wouter';
+import { useEffect } from 'react';
 
 const PRIVACY_CONTENT = `# Privacy Policy
 
@@ -186,6 +187,17 @@ For GDPR-related inquiries, contact our Data Protection Officer at: dpo@greencha
 
 export function Privacy() {
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.id = 'cky-privacy-policy';
+    script.type = 'text/javascript';
+    script.src = 'https://cdn-cookieyes.com/client_data/a5b171ae3f8360099a5b38c5903e22ea/privacy-policy/script.js';
+    document.head.appendChild(script);
+    return () => {
+      script.remove();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground py-6 sm:py-12 px-4">
