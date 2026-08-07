@@ -1025,7 +1025,6 @@ jobs:
             # Vault, so they must be set as plain env vars or the OAuth initiate
             # route (/api/auth/microsoft) 500s on a missing identifier.
             "AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112"
-            "AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06"
             "AZURE_STORAGE_ACCOUNT_NAME=greencontent"
             "ALLOW_AZURE_MAPS_SUBSCRIPTION_KEY_IN_PROD=true"
             # Allow server to start during the brief window before system-assigned
@@ -1226,7 +1225,6 @@ jobs:
             # Not secrets - kept in sync with the backend so any auth code paths
             # served from this container resolve the correct app registration.
             "AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112"
-            "AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06"
           )
           if [ -n "${{ steps.kv.outputs.sentry-dsn }}" ]; then
             ENV_VARS+=(
