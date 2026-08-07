@@ -10,11 +10,8 @@ export function CookieConsentBanner() {
     // Check if user has already accepted cookies
     const cookieConsent = localStorage.getItem('gc_cookie_consent');
     if (!cookieConsent) {
-      // Small delay to let Cookieyes load first
-      const timer = setTimeout(() => {
-        setShowBanner(true);
-      }, 2000);
-      return () => clearTimeout(timer);
+      // Show banner immediately (CookieYes CDN script removed)
+      setShowBanner(true);
     }
   }, []);
 
