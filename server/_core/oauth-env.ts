@@ -10,6 +10,8 @@ function isProduction(): boolean {
 }
 
 export function isStrictOAuthConfigEnv(): boolean {
+    // Keep this as a dedicated helper so strict-mode rules can be expanded
+    // beyond NODE_ENV checks without touching OAuth provider call sites.
     return isProduction();
 }
 
