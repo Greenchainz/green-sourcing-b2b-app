@@ -9,6 +9,10 @@ function isProduction(): boolean {
     return process.env.NODE_ENV === "production";
 }
 
+export function isStrictOAuthConfigEnv(): boolean {
+    return isProduction();
+}
+
 export function getEnvWithDevDefault(key: string, devDefault: string): string {
     const value = process.env[key];
     if (value && value.length > 0) {
