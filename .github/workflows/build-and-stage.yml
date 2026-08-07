@@ -343,7 +343,6 @@ jobs:
               "DEPLOY_TIMESTAMP=${{ github.run_id }}" \
               "NODE_ENV=production" \
               "AZURE_AD_CLIENT_ID=8b597068-9347-4e99-8860-8c4e9a9bc112" \
-              "AZURE_AD_TENANT_ID=1d04bf50-8175-40af-a9d5-f8e441460b06" \
               "AZURE_KEY_VAULT_URL=https://greenchainz-vault.vault.azure.net" \
               "FRONTEND_URL=https://staging.greenchainz.com" \
               "ENVIRONMENT=staging" \
