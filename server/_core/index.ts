@@ -443,8 +443,9 @@ async function startServer() {
             "wss://*.intercom.io",
             // WebPubSub real-time messaging
             "wss://greenchainz.webpubsub.azure.com",
-            // CookieYes consent banner fetches its config from the CDN
+            // CookieYes consent banner fetches config from CDN and logs to its API
             "https://cdn-cookieyes.com",
+            "https://log.cookieyes.com",
           ],
           // OSM iframe used in RFQ location preview
           frameSrc: ["https://www.openstreetmap.org"],
