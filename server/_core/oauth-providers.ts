@@ -183,19 +183,11 @@ function firstNonEmptyEnv(...keys: string[]): string | null {
   return null;
 }
 
-function isStrictOAuthConfigEnv(): boolean {
-  return process.env.NODE_ENV === "production";
-}
-
+// Use "common" to allow any Microsoft account (personal or work/school) to sign in.
+// Set AZURE_AD_TENANT_ID or MICROSOFT_TENANT_ID env var to restrict to a specific tenant.
 function getMicrosoftTenantId(): string {
   const value = firstNonEmptyEnv("AZURE_AD_TENANT_ID", "MICROSOFT_TENANT_ID");
-  if (value) return value;
-  if (isStrictOAuthConfigEnv()) {
-    throw new Error(
-      "Missing Microsoft OAuth config: set AZURE_AD_TENANT_ID or MICROSOFT_TENANT_ID in production"
-    );
-  }
-  return MICROSOFT_TENANT_ID;
+  return value ?? "common";
 }
 
 function getMicrosoftClientId(): string {
