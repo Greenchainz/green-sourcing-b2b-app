@@ -18,7 +18,7 @@ import * as db from "../db";
 import { getSessionCookieOptions, hostOnlyCookieOptions, issueSessionCookies } from "./cookies";
 import { sdk } from "./sdk";
 import { ONE_YEAR_MS } from "@shared/const";
-import { getEnvWithDevDefault, getRequiredEnv } from "./oauth-env";
+import { getEnvWithDevDefault, getRequiredEnv, isStrictOAuthConfigEnv } from "./oauth-env";
 
 // Helpers
 
@@ -170,7 +170,6 @@ function consumeState(state: string): { returnPath: string; role: OAuthRole } | 
 // is sensitive (see getRequiredEnv("AZURE_AD_CLIENT_SECRET")). In production,
 // AZURE_AD_TENANT_ID and AZURE_AD_CLIENT_ID must be set; if missing the initiate
 // route redirects to /login?error=oauth_config_missing rather than returning 500.
-const MICROSOFT_TENANT_ID = "1d04bf50-8175-40af-a9d5-f8e441460b06";
 const MICROSOFT_CLIENT_ID = "8b597068-9347-4e99-8860-8c4e9a9bc112";
 
 function firstNonEmptyEnv(...keys: string[]): string | null {
