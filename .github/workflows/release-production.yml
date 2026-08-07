@@ -137,6 +137,15 @@ jobs:
             SHA="$FULL_SHA"
           fi
 
+          # Validate the commit exists in this repository.
+          # git rev-parse only runs for short SHAs above; a full 40-char SHA that
+          # is a typo or belongs to another repo would otherwise pass undetected
+          # and cause a confusing "ACR image not found" failure later.
+          if ! git cat-file -e "${SHA}^{commit}" 2>/dev/null; then
+            echo "::error::Commit '${SHA}' does not exist in this repository. Provide a valid git SHA that has been built by build-and-stage.yml."
+            exit 1
+          fi
+
           echo "deploy_sha=${SHA}" >> $GITHUB_OUTPUT
           echo "resolved_sha=${SHA}" >> $GITHUB_ENV
           echo "Will promote image SHA: ${SHA}"
@@ -168,6 +177,31 @@ jobs:
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Allow runner IP in ACR firewall
+        id: acr_firewall
+        run: |
+          RUNNER_IP=$(curl -sf https://api.ipify.org)
+          if ! printf '%s' "$RUNNER_IP" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Could not determine runner IP (got: '${RUNNER_IP}'). api.ipify.org may be unavailable."
+            exit 1
+          fi
+          echo "runner-ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+          ACR_PUBLIC_ACCESS_WAS=$(az acr show --name "${{ env.ACR }}" --query publicNetworkAccess --output tsv)
+          case "$ACR_PUBLIC_ACCESS_WAS" in
+            Enabled|Disabled) ;;
+            *) echo "::error::Unexpected ACR publicNetworkAccess value: '$ACR_PUBLIC_ACCESS_WAS' — cannot determine safe cleanup state"; exit 1 ;;
+          esac
+          echo "public-access-was=${ACR_PUBLIC_ACCESS_WAS}" >> $GITHUB_OUTPUT
+          if [ "$ACR_PUBLIC_ACCESS_WAS" != "Enabled" ]; then
+            az acr update --name ${{ env.ACR }} --public-network-enabled true --output none
+            echo "acr-toggled=true" >> $GITHUB_OUTPUT
+          else
+            echo "acr-toggled=false" >> $GITHUB_OUTPUT
+          fi
+          az acr network-rule add --name ${{ env.ACR }} --ip-address "$RUNNER_IP" --output none
+          # Allow time for the ACR network-rule to propagate before querying the registry.
+          sleep 15
+
       - name: Verify both ACR images exist before allowing migrations
         run: |
           SHA="${{ needs.resolve-sha.outputs.deploy_sha }}"
@@ -181,6 +215,19 @@ jobs:
             fi
             echo "✅ ACR image ${img}:${SHA} verified"
           done
+
+      - name: Close ACR firewall
+        if: always()
+        run: |
+          RUNNER_IP="${{ steps.acr_firewall.outputs['runner-ip'] }}"
+          if [ -n "$RUNNER_IP" ]; then
+            az acr network-rule remove --name ${{ env.ACR }} --ip-address "$RUNNER_IP" --output none || \
+              echo "::warning::Failed to remove ACR network rule for ${RUNNER_IP} — remove it manually."
+          fi
+          if [ "${{ steps.acr_firewall.outputs.public-access-was }}" = "Disabled" ]; then
+            az acr update --name ${{ env.ACR }} --public-network-enabled false --output none || \
+              echo "::warning::Failed to restore ACR public-network-access to Disabled — check ACR settings manually."
+          fi
 
       - uses: pnpm/action-setup@v6
 

@@ -26,5 +26,24 @@ export default defineConfig({
       "shared/**/*.test.ts",
       "client/**/*.test.ts",
     ],
+    coverage: {
+      provider: "v8",
+      reporter: ["cobertura", "text"],
+      reportsDirectory: "coverage",
+      include: [
+        "server/**/*.ts",
+        "lib/**/*.ts",
+        "shared/**/*.ts",
+        "client/src/**/*.ts",
+        "client/src/**/*.tsx",
+      ],
+      exclude: [
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/*.test.tsx",
+        "**/*.spec.tsx",
+        "**/*.d.ts",
+      ],
+    },
   },
 });
